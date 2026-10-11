@@ -85,6 +85,7 @@ export interface FlowScanResult {
 }
 
 export interface RunFlowScanOptions {
+  pageKey?: string
   deadlineMs?: number
   /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
   landingStep?: FlowScanStep | null
@@ -96,12 +97,13 @@ async function captureFlowStep(
   page: Page,
   auditId: string,
   stepIndex: number,
-  label: string
+  label: string,
+  pageKey?: string,
 ): Promise<FlowScanStep> {
   let screenshotUrl: string | null = null
   try {
     const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
-    screenshotUrl = await uploadScreenshot(auditId, 'desktop', buffer, `flow-${stepIndex}`)
+    screenshotUrl = await uploadScreenshot(auditId, 'desktop', buffer, pageKey ? `${pageKey}-flow-${stepIndex}` : `flow-${stepIndex}`)
   } catch (err) {
     logger.error('Flow step screenshot failed', err)
   }
@@ -182,7 +184,7 @@ async function runFlowScanWithinBudget(
   if (options.landingStep) {
     steps.push(options.landingStep)
   } else {
-    steps.push(await captureFlowStep(page, auditId, 0, 'Landing'))
+    steps.push(await captureFlowStep(page, auditId, 0, 'Landing', options.pageKey))
   }
 
   const landingUrl = page.url()
@@ -298,7 +300,7 @@ async function runFlowScanWithinBudget(
   }
 
   const postClickMetrics = await measurePostClickLoading(page)
-  steps.push(await captureFlowStep(page, auditId, 1, 'After click'))
+  steps.push(await captureFlowStep(page, auditId, 1, 'After click', options.pageKey))
 
   const finalUrl = page.url()
   const httpStatus = clickResponseStatus

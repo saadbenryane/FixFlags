@@ -4,8 +4,9 @@ import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 function parseWorkerConcurrency(): number {
   const raw = process.env.AUDIT_WORKER_CONCURRENCY
   if (!raw) return process.env.NODE_ENV === 'production' ? 2 : 1
-  const parsed = Number.parseInt(raw, 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  const parsed = Number(raw)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 64) throw new Error('AUDIT_WORKER_CONCURRENCY must be an integer between 1 and 64')
+  return parsed
 }
 
 export const WORKER_CONCURRENCY = parseWorkerConcurrency()

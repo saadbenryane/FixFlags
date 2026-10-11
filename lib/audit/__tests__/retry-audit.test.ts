@@ -1,78 +1,42 @@
-import assert from 'node:assert/strict'
-import { describe, it, vi, beforeEach } from 'vitest'
-vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
-
-// Controllable prisma + queue doubles. retryAudit only touches audit.findUnique
-// / audit.update and the queue, so stub exactly those boundaries.
-const auditUpdate = vi.fn().mockResolvedValue({})
-const auditFindUnique = vi.fn()
-vi.mock('@/lib/db', () => ({
-  prisma: {
-    audit: {
-      findUnique: (...args: unknown[]) => auditFindUnique(...args),
-      update: (...args: unknown[]) => auditUpdate(...args),
-    },
-  },
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+const mocks = vi.hoisted(() => ({ find: vi.fn(), update: vi.fn(), admit: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { audit: { findUnique: mocks.find, update: mocks.update } } }))
+vi.mock('@/lib/audit/create-audit', () => ({
+  createAndEnqueueAudit: mocks.admit,
+  ParentAuditError: class extends Error { constructor(message: string, readonly status: number) { super(message) } },
 }))
-
-const queueAdd = vi.fn().mockResolvedValue({})
-const queueGetJob = vi.fn()
-vi.mock('@/lib/queue/client', () => ({
-  getAuditQueue: () => ({
-    getJob: (...args: unknown[]) => queueGetJob(...args),
-    add: (...args: unknown[]) => queueAdd(...args),
-  }),
-}))
-
-import { retryAudit } from '@/lib/audit/retry-audit'
-
-beforeEach(() => {
-  auditUpdate.mockClear()
-  auditFindUnique.mockClear()
-  queueAdd.mockClear()
-  queueGetJob.mockClear()
-})
-
-describe('retryAudit', () => {
-  it('clears a lingering active job on a failed audit instead of throwing', async () => {
-    auditFindUnique.mockResolvedValue({ id: 'a1', status: 'FAILED', url: 'https://x.com' })
-    const moveToFailed = vi.fn().mockResolvedValue(undefined)
-    const remove = vi.fn().mockResolvedValue(undefined)
-    queueGetJob.mockResolvedValue({
-      getState: vi.fn().mockResolvedValue('active'),
-      moveToFailed,
-      remove,
-    })
-
-    const result = await retryAudit('a1')
-
-    assert.equal(result.status, 'QUEUED')
-    assert.equal(moveToFailed.mock.calls.length, 1) // stale active job killed
-    assert.equal(remove.mock.calls.length, 1)
-    assert.equal(queueAdd.mock.calls.length, 1) // re-enqueued
-    assert.equal(auditUpdate.mock.calls.length, 1)
+import { retryAudit } from '../retry-audit'
+const owner = { userId: 'owner', visitorKey: 'visitor', anonymousAuditIds: [] }
+const prior = { id: 'before', status: 'FAILED', url: 'https://example.com/', userId: 'owner', isPublic: false, auditMode: 'CRITICAL_PATH' }
+beforeEach(() => { vi.clearAllMocks(); mocks.find.mockResolvedValue(prior); mocks.admit.mockResolvedValue({ auditId: 'after', status: 'QUEUED', siteId: 'site', reused: false }) })
+describe('new linked retry admission', () => {
+  it('admits fresh work and leaves the terminal execution and all its evidence untouched', async () => {
+    expect(await retryAudit('before', owner)).toEqual({ auditId: 'after', status: 'QUEUED', siteId: 'site', reused: false })
+    expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ parentId: 'before', retryParent: true,
+      url: prior.url, userId: 'owner', skipUsageCount: true, useProjectScanAccess: true }))
+    expect(mocks.update).not.toHaveBeenCalled()
   })
-
-  it('removes a waiting job without moving it to failed', async () => {
-    auditFindUnique.mockResolvedValue({ id: 'a2', status: 'FAILED', url: 'https://x.com' })
-    const moveToFailed = vi.fn().mockResolvedValue(undefined)
-    const remove = vi.fn().mockResolvedValue(undefined)
-    queueGetJob.mockResolvedValue({
-      getState: vi.fn().mockResolvedValue('waiting'),
-      moveToFailed,
-      remove,
-    })
-
-    await retryAudit('a2')
-
-    assert.equal(moveToFailed.mock.calls.length, 0)
-    assert.equal(remove.mock.calls.length, 1)
-    assert.equal(queueAdd.mock.calls.length, 1)
+  it('keeps the anonymous browser identity and records a fresh linked execution', async () => {
+    mocks.find.mockResolvedValue({ ...prior, userId: null, auditMode: 'SINGLE' })
+    await retryAudit('before', { ...owner, userId: null, anonymousAuditIds: ['before'] })
+    expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ userId: null, visitorKey: 'visitor', parentId: 'before', auditMode: 'SINGLE' }))
   })
-
-  it('rejects retrying an audit that is not terminal', async () => {
-    auditFindUnique.mockResolvedValue({ id: 'a3', status: 'CHECKING', url: 'https://x.com' })
-    await assert.rejects(retryAudit('a3'), /Can only retry/)
-    assert.equal(queueAdd.mock.calls.length, 0)
+  it('refuses anonymous retry without its private Site identity even if a historical cookie names the Audit', async () => {
+    mocks.find.mockResolvedValue({ ...prior, userId: null })
+    await expect(retryAudit('before', { userId: null, visitorKey: '', anonymousAuditIds: ['before'] })).rejects.toMatchObject({ status: 409 })
+    expect(mocks.admit).not.toHaveBeenCalled()
+  })
+  it('refuses another tenant and a stranger without the owning anonymous cookie', async () => {
+    await expect(retryAudit('before', { ...owner, userId: 'stranger' })).rejects.toMatchObject({ status: 403 })
+    mocks.find.mockResolvedValue({ ...prior, userId: null })
+    await expect(retryAudit('before', { userId: null, visitorKey: 'stranger', anonymousAuditIds: [] })).rejects.toMatchObject({ status: 403 })
+    expect(mocks.admit).not.toHaveBeenCalled()
+  })
+  it('does not restart unfinished work or fabricate a queued state for an already admitted replay', async () => {
+    mocks.find.mockResolvedValue({ ...prior, status: 'CHECKING' })
+    await expect(retryAudit('before', owner)).rejects.toMatchObject({ status: 409 })
+    mocks.find.mockResolvedValue(prior)
+    mocks.admit.mockResolvedValue({ auditId: 'after', status: 'CHECKING', siteId: 'site', reused: true })
+    expect(await retryAudit('before', owner)).toMatchObject({ status: 'CHECKING', reused: true })
   })
 })

@@ -1,7 +1,10 @@
-import type { Prisma, VerifierExecutionStatus } from '@prisma/client'
+import type { Prisma, VerifierExecutionStatus, AuditVerifierExecution } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { baseCheckId } from '@/lib/audit/flag-identity'
 import { AUDIT_CAPABILITIES } from '@/lib/audit/capability-matrix'
+import { SEARCH_HANDLED_CHECK_IDS } from '@/lib/audit/search/inventory'
+import { currentExecutionOwnership, executionWrite } from '@/lib/audit/execution-ownership'
+import { registeredCheck } from '@/lib/audit/check-registry'
 
 type DbClient = typeof prisma | Prisma.TransactionClient
 
@@ -41,7 +44,8 @@ export async function recordVerifierExecution(input: {
   status: VerifierExecutionStatus
   evidenceReference?: Prisma.InputJsonValue
   detail?: Prisma.InputJsonValue
-}, db: DbClient = prisma) {
+}, db: DbClient = prisma): Promise<AuditVerifierExecution> {
+  if (db === prisma && currentExecutionOwnership()) return executionWrite(tx => recordVerifierExecution(input, tx))
   const targetKey = verifierTargetKey(input)
   if (!targetKey) throw new Error('Verifier execution requires a stable target identity')
   const scopeKey = verifierScopeKey(input.pageUrl)
@@ -57,6 +61,8 @@ export async function recordVerifierExecution(input: {
       status: input.status,
       evidenceReference: input.evidenceReference,
       detail: input.detail,
+      checkVersion: currentExecutionOwnership() ? registeredCheck(input.checkId)?.version : undefined,
+      executionGeneration: currentExecutionOwnership()?.generation,
     },
     update: {
       source: input.source,
@@ -93,6 +99,7 @@ export async function recordTargetedPageVerifierExecutions(input: {
   flowCompleted: boolean
   availableTools: Array<'html-parse' | 'browser-capture' | 'flow-navigation' | 'pagespeed'>
 }, db: DbClient = prisma): Promise<number> {
+  if (db === prisma && currentExecutionOwnership()) return executionWrite(tx => recordTargetedPageVerifierExecutions(input, tx))
   const audit = await db.audit.findUnique({
     where: { id: input.auditId },
     select: { parentId: true },
@@ -134,6 +141,7 @@ export async function recordTargetedPageVerifierExecutions(input: {
       const flag = occurrence.flag
       const checkId = baseCheckId(flag.checkId)
       if (!checkId || flag.source === 'AI' || checkId.startsWith('journey-')) continue
+      if (SEARCH_HANDLED_CHECK_IDS.has(checkId)) continue
       if (flag.pageUrl && !samePage(flag.pageUrl, input.pageUrl)) continue
       if (!flag.pageUrl && !input.primary) continue
       const tool = CHECK_TOOL.get(checkId)
@@ -197,6 +205,7 @@ export async function recordTargetedJourneyVerifierExecutions(input: {
   journeyType: string
   visitedUrls: string[]
 }, db: DbClient = prisma): Promise<number> {
+  if (db === prisma && currentExecutionOwnership()) return executionWrite(tx => recordTargetedJourneyVerifierExecutions(input, tx))
   const audit = await db.audit.findUnique({ where: { id: input.auditId }, select: { parentId: true } })
   if (!audit?.parentId) return 0
   const attempts = await db.improvementAttempt.findMany({

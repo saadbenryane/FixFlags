@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   runUpdateMany: vi.fn(),
   journeyFindFirst: vi.fn(),
   executionFindUnique: vi.fn(),
-  executionUpsert: vi.fn(),
+  executionCreate: vi.fn(),
   attemptFindFirst: vi.fn(),
   attemptCreateMany: vi.fn(),
   attemptUpdateMany: vi.fn(),
@@ -18,6 +18,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({
+      $queryRaw: vi.fn(async () => [{ id: 'audit-1' }]),
+      outcomeBindingExecution: { findUnique: mocks.executionFindUnique, create: mocks.executionCreate },
+      outcomeBindingAttempt: { findFirst: mocks.attemptFindFirst, createMany: mocks.attemptCreateMany, updateMany: mocks.attemptUpdateMany },
+      auditPipelineEvent: { create: vi.fn(async () => ({})) },
+    }),
     runRequest: {
       findFirst: mocks.runFindFirst,
       updateMany: mocks.runUpdateMany,
@@ -26,7 +32,7 @@ vi.mock('@/lib/db', () => ({
     flag: { updateMany: mocks.flagUpdateMany },
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
-      upsert: mocks.executionUpsert,
+      create: mocks.executionCreate,
     },
     outcomeBindingAttempt: {
       findFirst: mocks.attemptFindFirst,
@@ -68,7 +74,7 @@ describe('unmocked Checkout purchase probe', () => {
     vi.clearAllMocks()
     mocks.journeyFindFirst.mockResolvedValue(null)
     mocks.executionFindUnique.mockResolvedValue(null)
-    mocks.executionUpsert.mockResolvedValue({ id: 'execution-1' })
+    mocks.executionCreate.mockResolvedValue({ id: 'execution-1' })
     mocks.attemptFindFirst.mockResolvedValue(null)
     mocks.attemptCreateMany.mockResolvedValue({ count: 1 })
     mocks.attemptUpdateMany.mockResolvedValue({ count: 0 })
@@ -154,7 +160,7 @@ describe('unmocked Checkout purchase probe', () => {
     expect(journey.goalAchieved).toBe(false)
     expect(journey.findings).toEqual([])
     expect(journey.steps.some((step) => step.url.startsWith(`${origin}/unknown`))).toBe(true)
-    expect(mocks.executionUpsert.mock.calls.some((call) => call[0]?.create?.disposition === 'SUCCEEDED')).toBe(false)
+    expect(mocks.executionCreate.mock.calls.some((call) => call[0]?.data?.disposition === 'SUCCEEDED')).toBe(false)
   }, 120_000)
 })
 
@@ -194,9 +200,9 @@ function lastJourney(): {
 }
 
 function lastDisposition(): string {
-  const call = mocks.executionUpsert.mock.calls.at(-1)
+  const call = mocks.executionCreate.mock.calls.at(-1)
   expect(call).toBeTruthy()
-  return call![0].create.disposition
+  return call![0].data.disposition
 }
 
 async function listenFixtures(): Promise<{ origin: string; close: () => Promise<void> }> {

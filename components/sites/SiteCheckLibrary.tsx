@@ -9,7 +9,7 @@ import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
-import { fetchSiteAction, readSiteActionResponse, siteActionMessage } from '@/lib/sites/client-actions'
+import { executeSiteAction, createSiteActionController, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy'
 import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 
@@ -26,28 +26,27 @@ export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, o
   const [target, setTarget] = useState(view.site.url)
   const [fixtures, setFixtures] = useState<OutcomeFixtureView[]>([])
   const [busy, setBusy] = useState(false)
+  const action = useRef(createSiteActionController()).current
+  const [authRequired, setAuthRequired] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   useEffect(() => {
     if (!open || !owner) return
     let active = true
-    void fetch(`/api/sites/${siteId}/outcome-fixtures`).then(async response => {
-      if (!response.ok) throw new Error('Signup setup could not be loaded. Try again.')
-      const body = await response.json() as { fixtures: OutcomeFixtureView[] }
+    void executeSiteAction(`/api/sites/${siteId}/outcome-fixtures`, { cache: 'no-store' }, 'fixtures').then(body => {
       if (active) setFixtures(body.fixtures)
-    }).catch(error => { if (active) setMessage(error instanceof Error ? error.message : 'Could not load setup.') })
+    }).catch(error => { if (active) { setMessage(error instanceof Error ? error.message : SITE_ACTION_COPY.invalidResponse); setAuthRequired(error instanceof SiteActionError && error.status === 401) } })
     return () => { active = false }
   }, [open, owner, siteId])
   async function add(body: object) {
-    if (busy) return
+    if (action.pending) return
     setBusy(true); setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/outcomes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      const result = await readSiteActionResponse(response)
-      if (!response.ok) { setMessage(result.error ?? 'Could not add this check.'); return }
-      try { await onRefresh() } catch { setMessage(SITE_ACTION_COPY.refreshPending); return }
-      setMessage(SITE_ACTION_COPY.added)
-    } catch (error) { setMessage(siteActionMessage(error)) }
-    finally { setBusy(false) }
+    const completed = await action.submit(async () => {
+      return executeSiteAction(`/api/sites/${siteId}/outcomes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'outcome')
+    }, onRefresh)
+    if (completed.kind === 'refused') { setMessage(completed.error.message); setAuthRequired(completed.error.status === 401) }
+    else if (completed.kind === 'saved_refresh_pending') setMessage(SITE_ACTION_COPY.refreshPending)
+    else if (completed.kind === 'saved') setMessage(SITE_ACTION_COPY.added)
+    setBusy(false)
   }
   const checkout = view.outcomes.filter((outcome) => outcome.kind === 'CHECKOUT')
   const authorized = fixtures.filter((fixture) => fixture.enabled && fixture.authorizedAt && fixture.lastDryRunVersion === fixture.version)
@@ -86,6 +85,8 @@ export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, o
         ['Analytics', view.settings.analytics.status === 'connected', view.settings.analytics.configured],
       ].filter(([, connected, configured]) => Boolean(connected || configured)).map(([name, connected]) => <section key={String(name)} className="rounded-card border border-border p-4"><h3 className="font-medium">{name}</h3><p className="mt-1 text-sm text-muted-foreground">{connected ? 'Connected' : 'Ready to connect'}</p><Button className="mt-3" variant="outline" asChild><Link href={`/sites/${siteId}/settings#connections`}>{connected ? 'Manage' : 'Connect'}</Link></Button></section>)}</div>}
       {message ? <p role="status" className="text-sm">{message}</p> : null}
+      {authRequired ? <Link className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+        target="_blank" rel="noopener" href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`}>{SITE_ACTION_COPY.signInAction}</Link> : null}
     </ResponsiveDepth>
   </>
 }

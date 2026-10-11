@@ -1,3 +1,4 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
 import { Plan, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
@@ -149,7 +150,7 @@ export async function persistAuditRunCost(
 
   if (phase === 'triage') {
     const estimatedCostUsd = llmCostUsd + infraOverheadUsd
-    await prisma.auditRunCost.upsert({
+    await executionWrite(tx => tx.auditRunCost.upsert({
       where: { auditId },
       create: {
         auditId,
@@ -180,7 +181,7 @@ export async function persistAuditRunCost(
         triageModel: metrics.llmModel,
         triageCostUsd: new Prisma.Decimal(llmCostUsd),
       },
-    })
+    }))
     return
   }
 
@@ -199,7 +200,7 @@ export async function persistAuditRunCost(
       const estimatedCostUsd =
         totalLlmCost + computeInfraOverheadUsd(pagespeedCalls, durationMs)
 
-      await prisma.auditRunCost.update({
+      await executionWrite(tx => tx.auditRunCost.update({
         where: { auditId },
         data: {
           durationMs,
@@ -214,13 +215,13 @@ export async function persistAuditRunCost(
           prescriptionModel: metrics.llmModel,
           prescriptionCostUsd: new Prisma.Decimal(prescriptionCost),
         },
-      })
+      }))
     }
     return
   }
 
   const estimatedCostUsd = llmCostUsd + infraOverheadUsd
-  await prisma.auditRunCost.upsert({
+  await executionWrite(tx => tx.auditRunCost.upsert({
     where: { auditId },
     create: {
       auditId,
@@ -243,7 +244,7 @@ export async function persistAuditRunCost(
       estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
       ...coverageCostFields(metrics),
     },
-  })
+  }))
 }
 
 export function formatUsd(amount: number | Prisma.Decimal): string {

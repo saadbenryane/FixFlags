@@ -1,5 +1,7 @@
 import type { Prisma, ReportCompleteness } from '@prisma/client'
 import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
+import { searchVerifierSchema } from '@/lib/audit/search/contracts'
+import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 
 type EvidenceCoverage = {
   desktopScreenshot?: boolean
@@ -51,6 +53,7 @@ function normalizeUrl(value: string): string {
 }
 
 export function assessVerificationCoverage(input: {
+  auditId?: string
   status: string
   reportCompleteness: ReportCompleteness
   evidenceCoverage: unknown
@@ -65,8 +68,9 @@ export function assessVerificationCoverage(input: {
   verifierExecutions: Array<{
     targetKey: string
     scopeKey: string
-    status: 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE'
+    status: 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE' | 'PENDING' | 'RUNNING'
     evidenceReference: Prisma.JsonValue | null
+    detail?: Prisma.JsonValue | null
   }>
 }): VerificationCoverageDecision {
   const failedModules = parseFailedModules(input.failedModules)
@@ -82,15 +86,22 @@ export function assessVerificationCoverage(input: {
     : undefined
   const completeReview =
     input.status === 'COMPLETED' && input.reportCompleteness === 'FULL'
+  const search = searchVerifierSchema.safeParse(targetExecution?.detail)
+  const isSearch = search.success && search.data.auditId === input.auditId && search.data.pageUrl === input.pageUrl &&
+    search.data.checkId === input.checkId?.split('::page:')[0]
+  const exactCheck = checkVerifierSchema.safeParse(targetExecution?.detail)
+  const isExactCheck = exactCheck.success && exactCheck.data.auditId === input.auditId &&
+    exactCheck.data.checkId === input.checkId?.split('::page:')[0] &&
+    (!input.pageUrl || normalizeUrl(exactCheck.data.pageUrl) === normalizeUrl(input.pageUrl))
   const evidenceComparable = Boolean(
-    evidence.desktopScreenshot && evidence.metadata && (!isAi || evidence.aiAssessment)
+    isExactCheck ? exactCheck.data.comparable : isSearch ? search.data.comparable : evidence.desktopScreenshot && evidence.metadata && (!isAi || evidence.aiAssessment)
   )
-  const relevantPageCovered = input.pageUrl
+  const relevantPageCovered = isExactCheck || (input.pageUrl
     ? input.pages.some(
         (page) =>
           page.status === 'COMPLETED' && normalizeUrl(page.url) === normalizeUrl(input.pageUrl!)
       )
-    : input.pages.some((page) => page.status === 'COMPLETED')
+    : input.pages.some((page) => page.status === 'COMPLETED'))
   const supportingVerifierCompleted = isJourney
     ? input.journeyReviewIncluded && Boolean(input.journeyReviewAt)
     : isAi
@@ -107,7 +118,8 @@ export function assessVerificationCoverage(input: {
     evidenceComparable,
     relevantPageCovered,
     verifierExecuted,
-    verifierStatus: targetExecution?.status ?? 'MISSING',
+    verifierStatus: targetExecution?.status === 'COMPLETED' || targetExecution?.status === 'FAILED' ||
+      targetExecution?.status === 'NOT_APPLICABLE' ? targetExecution.status : 'MISSING',
     targetKey,
     scopeKey,
     executionEvidenceReference: targetExecution?.evidenceReference ?? null,
@@ -116,7 +128,7 @@ export function assessVerificationCoverage(input: {
     pageUrl: input.pageUrl,
   }
 
-  if (!completeReview) {
+  if (!completeReview && !((isSearch || isExactCheck) && input.status === 'COMPLETED')) {
     return { comparable: false, reason: 'The update Review was partial or incomplete.', coverage }
   }
   if (!evidenceComparable) {
@@ -125,7 +137,7 @@ export function assessVerificationCoverage(input: {
   if (!relevantPageCovered) {
     return { comparable: false, reason: 'The update Review did not complete the affected page.', coverage }
   }
-  if (failedModules.length > 0) {
+  if (failedModules.length > 0 && !isSearch && !isExactCheck) {
     return {
       comparable: false,
       reason: `The update Review was degraded because these modules failed: ${failedModules.join(', ')}.`,

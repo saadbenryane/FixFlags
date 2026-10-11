@@ -79,8 +79,11 @@ vi.mock('@/lib/db', () => ({
 let capturedProcessor: ((job: any) => Promise<any>) | undefined
 let lastWorkerOpts: any
 
+vi.mock('@/lib/audit/progressive/runtime', () => ({ startProgressiveWorkers: () => ({ close: vi.fn(async () => undefined) }) }))
+
 vi.mock('bullmq', () => {
   class FakeWorker {
+    close = vi.fn(async () => undefined)
     constructor(_name: string, processor: any, opts: any) {
       capturedProcessor = processor
       lastWorkerOpts = opts

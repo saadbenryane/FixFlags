@@ -355,7 +355,7 @@ describe('SiteBoard chrome', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/retry')) {
-        return { ok: true, json: async () => ({ status: 'QUEUED' }) }
+        return { ok: true, json: async () => ({ status: 'QUEUED', auditId: 'audit-retry' }) }
       }
       expect(init?.cache).toBe('no-store')
       await refreshGate
@@ -398,11 +398,12 @@ describe('SiteBoard chrome', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/reports/audit-1/retry', { method: 'POST' })
     })
-    await waitFor(() => {
-      expect(screen.queryByText('Check failed')).not.toBeInTheDocument()
-    })
-    expect(screen.getByText('Check started again')).toBeVisible()
+    expect(await screen.findByText(SITE_BOARD_COPY.checkStarted)).toBeVisible()
+    // The command receipt is visible immediately, but a pending refresh cannot
+    // replace the previously recorded verdict with an invented queued state.
+    expect(screen.getByText('Check failed')).toBeVisible()
     releaseRefresh()
+    await waitFor(() => expect(screen.queryByText('Check failed')).not.toBeInTheDocument())
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example', { cache: 'no-store' })
     })
@@ -770,7 +771,7 @@ describe('SiteBoard chrome', () => {
     })
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).endsWith('/runs')) {
-        return { ok: true, status: 202, json: async () => ({ runId: 'run-1', auditId: 'audit-new', outcomeIds: [] }) }
+        return { ok: true, status: 202, json: async () => ({ runId: 'run-1', auditId: 'audit-new', outcomeIds: [], reused: false }) }
       }
       await refreshGate
       return { ok: true, status: 200, json: async () => ownedView }

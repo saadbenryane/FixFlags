@@ -1,7 +1,15 @@
+import { executionWrite, executionTransaction, currentExecutionOwnership } from '@/lib/audit/execution-ownership'
 import type { OutcomeExecutionMechanism, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
 import { normalizeAuditUrl } from '@/lib/audit/url'
+import { safeFetchDocument } from '@/lib/audit/url'
+import { getBrowser } from '@/lib/audit/screenshot'
+import { createAuditPage } from '@/lib/audit/browser/page-session'
+import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import { PageCaptureError } from '@/lib/audit/browser/page-capture'
+import { TaskFailure } from '@/lib/audit/progressive/contracts'
 import { runGoalProbe, type BrowserJourneyConfig } from '@/lib/integrity/run-goal-probe'
 import { runPathProbe } from '@/lib/integrity/run-path-probe'
 import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
@@ -35,6 +43,8 @@ type BoundSelection = {
       mechanism: OutcomeExecutionMechanism
       required: boolean
       config: Prisma.JsonValue
+      fixture?: { id: string; version: number }
+      configurationError?: string
     }>
   }
 }
@@ -53,39 +63,53 @@ async function recordBindingEvidence(input: {
   mechanism: OutcomeExecutionMechanism
   attempts: BindingObservation[]
   conclusive: BindingObservation
+  flag?: Prisma.FlagUncheckedCreateInput
 }): Promise<void> {
   const { auditId, outcomeId, bindingKey, mechanism, conclusive } = input
-  const execution = await prisma.outcomeBindingExecution.upsert({
-    where: { auditId_outcomeId_bindingKey: { auditId, outcomeId, bindingKey } },
-    create: {
+  if (currentExecutionOwnership()?.taskId && ['request_failed', 'rendered_surface_unavailable', 'form_execution_failed', 'probe_error'].includes(conclusive.reason)) {
+    await executionWrite(tx => tx.auditPipelineEvent.create({ data: {
+      auditId, executionId: currentExecutionOwnership()!.taskId!, traceId: auditId,
+      attempt: currentExecutionOwnership()!.generation, stage: 'checking', event: 'binding_attempt_interrupted', status: 'partial',
+      detail: { version: 1, outcomeId, bindingKey, bindingVersion: input.bindingVersion ?? null, observations: input.attempts as Prisma.InputJsonValue },
+    } }))
+    throw new TaskFailure('BINDING_EXECUTION_INTERRUPTED', true)
+  }
+  await executionTransaction(async tx => {
+  await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
+  const existing = await tx.outcomeBindingExecution.findUnique({
+    where: { auditId_outcomeId_bindingKey: { auditId, outcomeId, bindingKey } }, select: { id: true },
+  })
+  if (existing) return
+  const generation = currentExecutionOwnership()?.generation
+  const execution = await tx.outcomeBindingExecution.create({
+    data: {
       auditId,
       outcomeId,
       bindingKey,
       mechanism,
       disposition: conclusive.disposition,
       reason: conclusive.reason,
-      detail: { ...conclusive.detail, bindingVersion: input.bindingVersion ?? 1 },
-    },
-    update: {
-      mechanism,
-      disposition: conclusive.disposition,
-      reason: conclusive.reason,
-      detail: { ...conclusive.detail, bindingVersion: input.bindingVersion ?? 1 },
+      detail: conclusive.detail,
+      bindingVersion: input.bindingVersion,
+      executionGeneration: generation,
     },
   })
+  if (input.flag) await tx.flag.create({ data: input.flag })
   // Continue the existing sequence so a restarted worker never reuses an attempt number.
-  const last = await prisma.outcomeBindingAttempt.findFirst({
+  const last = await tx.outcomeBindingAttempt.findFirst({
     where: { auditId, outcomeId, bindingKey },
     orderBy: { attempt: 'desc' },
     select: { attempt: true },
   })
   const startAt = (last?.attempt ?? 0) + 1
-  await prisma.outcomeBindingAttempt.createMany({
+  await tx.outcomeBindingAttempt.createMany({
     data: input.attempts.map((observation, index) => ({
       auditId,
       outcomeId,
       bindingKey,
       attempt: startAt + index,
+      bindingVersion: input.bindingVersion,
+      executionGeneration: generation,
       mechanism,
       disposition: observation.disposition,
       reason: observation.reason,
@@ -94,11 +118,18 @@ async function recordBindingEvidence(input: {
     })),
   })
   if (input.attempts.some((observation) => observation.disposition === 'SUCCEEDED')) {
-    await prisma.outcomeBindingAttempt.updateMany({
+    await tx.outcomeBindingAttempt.updateMany({
       where: { auditId, outcomeId, bindingKey, disposition: 'FAILED', transient: false },
       data: { transient: true },
     })
   }
+  await tx.auditPipelineEvent.create({ data: {
+    auditId, executionId: execution.id, traceId: auditId, attempt: startAt,
+    stage: 'checking', event: 'binding_observation_committed', status: 'completed',
+    detail: { version: 1, outcomeId, bindingKey, bindingVersion: input.bindingVersion ?? null,
+      generation: generation ?? null, observations: input.attempts as Prisma.InputJsonValue },
+  } })
+  })
 }
 
 /** Record one conclusive observation that required no confirmation attempt. */
@@ -139,7 +170,7 @@ async function runCheckoutBinding(input: {
 }): Promise<void> {
   const startedAt = Date.now()
   const result = await runPathProbe({
-    runId: `outcome-${input.runId}-${input.bindingKey}`,
+    runId: `outcome-${input.runId}-${input.bindingKey}-g${currentExecutionOwnership()?.generation ?? 0}`,
     url: input.startUrl,
     allowLocalhost: input.allowLocalhost,
   })
@@ -194,10 +225,10 @@ async function runCheckoutBinding(input: {
     })),
   })
   if (isFlag) {
-    await prisma.flag.updateMany({
+    await executionWrite(tx => tx.flag.updateMany({
       where: { auditId: input.auditId, checkId: { startsWith: 'journey-checkout-failed-' } },
       data: { fingerprint: 'outcome:checkout' },
-    })
+    }))
   }
   await recordBindingEvidence({
     auditId: input.auditId,
@@ -265,40 +296,39 @@ async function probeAvailabilityOnce(input: {
   url: string
   config: AvailabilityBindingConfig
 }): Promise<BindingObservation> {
-  const response = await fetch(input.url, {
-    method: 'GET',
-    redirect: 'manual',
-    signal: AbortSignal.timeout(8_000),
-    headers: { accept: 'text/html,application/xhtml+xml' },
-  }).catch(() => null)
+  const response = await safeFetchDocument(input.url, { timeoutMs: 8_000, deadline: Date.now() + 8000, maxBytes: 64_000 }).catch(() => null)
   if (!response) return { disposition: 'BLOCKED', reason: 'request_failed' }
-  if (response.status >= 300 && response.status < 400) {
-    return { disposition: 'BLOCKED', reason: 'redirect_unfollowed', detail: { status: response.status } }
+  const status = response.statusCode
+  if (status >= 300 && status < 400) {
+    return { disposition: 'BLOCKED', reason: 'redirect_unfollowed', detail: { status } }
   }
-  const responseText = await response.text().catch(() => '')
+  const responseText = response.body ?? ''
   const botWall = /(?:captcha|cloudflare|checking your browser|access denied|verify you are human)/i.test(responseText.slice(0, 20_000))
   if (botWall) {
-    return { disposition: 'BLOCKED', reason: 'bot_wall', detail: { status: response.status } }
+    return { disposition: 'BLOCKED', reason: 'bot_wall', detail: { status } }
   }
-  const audit = await prisma.audit.findUnique({
-    where: { id: input.auditId },
-    select: { htmlMetadata: true },
-  })
-  const metadata = audit?.htmlMetadata && typeof audit.htmlMetadata === 'object' && !Array.isArray(audit.htmlMetadata)
-    ? audit.htmlMetadata as Record<string, unknown>
-    : null
-  if (response.ok && !metadata) {
-    return { disposition: 'BLOCKED', reason: 'rendered_surface_unavailable', detail: { status: response.status } }
-  }
-  const pageText = typeof metadata?.pageText === 'string' ? metadata.pageText : ''
-  const rendered = input.config.expectedText
-    ? pageText.toLowerCase().includes(input.config.expectedText.toLowerCase())
-    : input.config.expectedSelector === 'body' && pageText.trim().length > 0
-  const available = response.status >= 200 && response.status < 300 && rendered
-  return {
-    disposition: available ? 'SUCCEEDED' : 'FAILED',
-    reason: available ? 'available' : response.ok ? 'expected_surface_missing' : 'http_unavailable',
-    detail: { status: response.status, rendered },
+  if (status < 200 || status >= 300) return { disposition: 'FAILED', reason: 'http_unavailable',
+    detail: { status, url: input.url, finalUrl: response.finalUrl, source: 'public-http', collectedAt: new Date().toISOString() } }
+  let session: Awaited<ReturnType<typeof createAuditPage>> | undefined
+  try {
+    session = await createAuditPage(await getBrowser(), input.url, { profile: DESKTOP_CAPTURE_PROFILE,
+      allowLocalhost: process.env.FIXFLAGS_CHECKOUT_FIXTURE === '1', journeySafe: true, deadline: Date.now() + 12_000,
+      resourcePriority: 'availability' })
+    const pageText = await session.page.evaluate(() => document.body?.innerText.slice(0, 64_000) ?? '')
+    const rendered = input.config.expectedText ? pageText.toLowerCase().includes(input.config.expectedText.toLowerCase())
+      : input.config.expectedSelector === 'body' ? pageText.trim().length > 0
+      : await session.page.locator(input.config.expectedSelector).first().isVisible()
+    if (!rendered && session.safetyRestrictions?.length) return { disposition: 'BLOCKED', reason: 'protected_action_requires_fixture',
+      detail: { status, restrictions: session.safetyRestrictions } }
+    return { disposition: rendered ? 'SUCCEEDED' : 'FAILED', reason: rendered ? 'available' : 'expected_surface_missing',
+      detail: { status, rendered, url: input.url, finalUrl: session.page.url(), source: 'public-http-and-rendered-dom', collectedAt: new Date().toISOString() } }
+  } catch (error) {
+    if (error instanceof PageCaptureError && ['HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT'].includes(error.code))
+      return { disposition: 'BLOCKED', reason: 'bot_wall', detail: { status: error.httpStatus } }
+    return { disposition: 'BLOCKED', reason: 'rendered_surface_unavailable', detail: { status } }
+  } finally {
+    session?.disposeNetwork()
+    await session?.page.context().close().catch(() => undefined)
   }
 }
 
@@ -335,10 +365,10 @@ async function runAvailabilityBinding(input: {
     attempts.push(conclusive)
   }
 
+  let failureFlag: Prisma.FlagUncheckedCreateInput | undefined
   if (conclusive.disposition === 'FAILED') {
     const copy = availabilityFlagCopy(conclusive.reason)
-    await prisma.flag.create({
-      data: {
+    failureFlag = {
         auditId: input.auditId,
         checkId: 'outcome-availability-failed',
         rubric: 'EXPERIENCE',
@@ -353,8 +383,7 @@ async function runAvailabilityBinding(input: {
         pageUrl: safe.url,
         fingerprint: `outcome:availability:${input.bindingKey}`,
         position: 1,
-      },
-    })
+      }
   }
   await recordBindingEvidence({
     auditId: input.auditId,
@@ -362,6 +391,7 @@ async function runAvailabilityBinding(input: {
     bindingKey: input.bindingKey,
     bindingVersion: input.bindingVersion,
     mechanism: 'HTTP_AVAILABILITY',
+    flag: failureFlag,
     attempts,
     conclusive,
   })
@@ -374,11 +404,13 @@ async function runSignupBinding(input: {
   bindingVersion?: number
   projectId: string
   config: SafeFormBindingConfig
+  fixtureVersion?: number
   allowLocalhost: boolean
 }): Promise<void> {
   const result = await executeSafeFormFixture({
     projectId: input.projectId,
     fixtureId: input.config.fixtureId,
+    expectedVersion: input.fixtureVersion,
     startUrl: input.config.startUrl,
     allowLocalhost: input.allowLocalhost,
   })
@@ -398,7 +430,7 @@ async function runSignupBinding(input: {
 }
 
 /** Execute every required binding selected for this Audit. Checkout is not assumed. */
-export async function runBoundOutcomeExecutions(auditId: string): Promise<boolean> {
+export async function runBoundOutcomeExecutions(auditId: string, only?: { outcomeId: string; bindingKey: string }): Promise<boolean> {
   const request = await prisma.runRequest.findFirst({
     where: { auditId, status: { in: ['QUEUED', 'RUNNING'] } },
     include: {
@@ -418,10 +450,22 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
     },
   })
   if (!request?.audit || request.selections.length === 0) return false
-  const runnable = request.selections.filter((selection) => selection.outcome.bindings.length > 0)
+  const spec = readExecutionSpec(request.executionSpec)
+  if (request.executionSpec != null && !spec) throw new Error('Invalid admitted execution specification')
+  // Unversioned requests are historical compatibility only. New requests always
+  // execute the admitted snapshot, never mutable binding configuration.
+  const selections: BoundSelection[] = spec
+    ? spec.outcomes.map(outcome => ({ outcome: {
+        id: outcome.id, kind: outcome.kind as BoundSelection['outcome']['kind'],
+        bindings: outcome.bindings.filter(binding => binding.required).map(binding => ({
+          ...binding, config: binding.config as Prisma.JsonValue,
+        })),
+      } }))
+    : request.selections
+  const runnable = selections.filter(selection => selection.outcome.bindings.length > 0)
   if (runnable.length === 0) return false
 
-  await prisma.runRequest.updateMany({
+  await executionWrite(tx => tx.runRequest.updateMany({
     where: { id: request.id, status: 'QUEUED' },
     // Renew the lease on the way to RUNNING. A browser verification can outlast
     // the lease taken at creation, and a run reclaimed mid-execution would be
@@ -431,11 +475,12 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
       startedAt: new Date(),
       leaseUntil: new Date(Date.now() + OUTCOME_RUN_LEASE_MS),
     },
-  })
+  }))
 
   const allowLocalhost = process.env.NODE_ENV !== 'production' && process.env.FIXFLAGS_CHECKOUT_FIXTURE === '1'
   for (const selection of runnable as BoundSelection[]) {
     for (const binding of selection.outcome.bindings) {
+      if (only && (selection.outcome.id !== only.outcomeId || binding.key !== only.bindingKey)) continue
       const existing = await prisma.outcomeBindingExecution.findUnique({
         where: {
           auditId_outcomeId_bindingKey: {
@@ -447,15 +492,15 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         select: { id: true },
       })
       if (existing) continue
-      const snapshot = request.context && typeof request.context === 'object' && !Array.isArray(request.context)
-        ? (request.context as Record<string, unknown>).bindingVersions : null
-      const expectedVersions = snapshot && typeof snapshot === 'object'
-        ? (snapshot as Record<string, unknown>)[selection.outcome.id] : null
-      const expectedVersion = expectedVersions && typeof expectedVersions === 'object'
-        ? (expectedVersions as Record<string, unknown>)[binding.key] : undefined
-      if (typeof expectedVersion === 'number' && expectedVersion !== binding.version) {
+      const currentBinding = request.selections.find(candidate => candidate.outcome.id === selection.outcome.id)?.outcome.bindings.find(current => current.key === binding.key)
+      if (spec && (!currentBinding || !currentBinding.enabled || currentBinding.version !== binding.version)) {
         await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key,
           bindingVersion: binding.version, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_changed' })
+        continue
+      }
+      if (binding.configurationError) {
+        await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key,
+          bindingVersion: binding.version, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: binding.configurationError })
         continue
       }
       const validated = validateBindingForOutcome(selection.outcome.kind, binding.mechanism, binding.config)
@@ -498,6 +543,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
           bindingVersion: binding.version,
+          fixtureVersion: binding.fixture?.version,
           projectId: request.projectId,
           config: validated.data.config,
           allowLocalhost,
@@ -550,6 +596,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         runId: request.id,
         outcomeId: selection.outcome.id,
         bindingKey: binding.key,
+        bindingVersion: binding.version,
         config: validated.data.config,
       })
     }

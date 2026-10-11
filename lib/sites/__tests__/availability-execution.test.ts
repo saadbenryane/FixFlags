@@ -5,23 +5,31 @@ const mocks = vi.hoisted(() => ({
   runFindFirst: vi.fn(),
   runUpdateMany: vi.fn(),
   executionFindUnique: vi.fn(),
-  executionUpsert: vi.fn(),
+  executionCreate: vi.fn(),
   attemptFindFirst: vi.fn(),
   attemptCreateMany: vi.fn(),
   attemptUpdateMany: vi.fn(),
   flagCreate: vi.fn(),
   auditFindUnique: vi.fn(),
+  createAuditPage: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({
+      $queryRaw: vi.fn(async () => [{ id: 'audit-1' }]),
+      outcomeBindingExecution: { findUnique: mocks.executionFindUnique, create: mocks.executionCreate },
+      outcomeBindingAttempt: { findFirst: mocks.attemptFindFirst, createMany: mocks.attemptCreateMany, updateMany: mocks.attemptUpdateMany },
+      auditPipelineEvent: { create: vi.fn(async () => ({})) },
+      flag: { create: mocks.flagCreate },
+    }),
     runRequest: {
       findFirst: mocks.runFindFirst,
       updateMany: mocks.runUpdateMany,
     },
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
-      upsert: mocks.executionUpsert,
+      create: mocks.executionCreate,
     },
     outcomeBindingAttempt: {
       findFirst: mocks.attemptFindFirst,
@@ -33,6 +41,8 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
+vi.mock('@/lib/audit/screenshot', () => ({ getBrowser: async () => ({}) }))
+vi.mock('@/lib/audit/browser/page-session', () => ({ createAuditPage: mocks.createAuditPage }))
 import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
 
 const binding = {
@@ -63,13 +73,14 @@ describe('availability Outcome execution', () => {
     vi.clearAllMocks()
     mocks.runFindFirst.mockResolvedValue(availabilityRun())
     mocks.executionFindUnique.mockResolvedValue(null)
-    mocks.executionUpsert.mockResolvedValue({ id: 'execution-1' })
+    mocks.executionCreate.mockResolvedValue({ id: 'execution-1' })
     mocks.attemptFindFirst.mockResolvedValue(null)
     mocks.attemptCreateMany.mockResolvedValue({ count: 1 })
     mocks.attemptUpdateMany.mockResolvedValue({ count: 0 })
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.flagCreate.mockResolvedValue({ id: 'flag-1' })
-    mocks.auditFindUnique.mockResolvedValue({ htmlMetadata: { pageText: 'Example page is ready.' } })
+    mocks.auditFindUnique.mockResolvedValue({ htmlMetadata: { pageText: 'Unrelated old capture must never be read.' } })
+    mocks.createAuditPage.mockResolvedValue({ page: { evaluate: async () => 'Example page is ready.', url: () => 'https://example.net/', context: () => ({ close: async () => {} }) }, disposeNetwork: vi.fn() })
   })
 
   it('records a successful public response and that is the only Clear', async () => {
@@ -78,8 +89,8 @@ describe('availability Outcome execution', () => {
     await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
 
     expect(mocks.flagCreate).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
         mechanism: 'HTTP_AVAILABILITY',
         disposition: 'SUCCEEDED',
         reason: 'available',
@@ -97,19 +108,19 @@ describe('availability Outcome execution', () => {
       throw new Error('offline')
     }))
     await runBoundCheckoutForAudit('audit-1')
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'BLOCKED', reason: 'request_failed' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'request_failed' }),
     }))
     expect(assessRequiredBindings([binding], [
       { key: binding.key, disposition: 'BLOCKED', reason: 'request_failed' },
     ]).state).toBe('COULD_NOT_VERIFY')
 
-    mocks.executionUpsert.mockClear()
+    mocks.executionCreate.mockClear()
     vi.stubGlobal('fetch', vi.fn(async () => new Response('no', { status: 503 })))
     await runBoundCheckoutForAudit('audit-1')
     expect(mocks.flagCreate).toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'FAILED', reason: 'http_unavailable' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'FAILED', reason: 'http_unavailable' }),
     }))
     expect(assessRequiredBindings([binding], [
       { key: binding.key, disposition: 'FAILED', reason: 'http_unavailable' },
@@ -146,12 +157,12 @@ describe('availability Outcome execution', () => {
       where: expect.objectContaining({ disposition: 'FAILED', transient: false }),
       data: { transient: true },
     }))
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'available' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'available' }),
     }))
   })
 
-  it('does not open a Flag when a 200 does not render the expected surface', async () => {
+  it('confirms a missing expected surface before opening a Flag', async () => {
     mocks.runFindFirst.mockResolvedValue({
       id: 'run-1',
       selections: [{
@@ -174,8 +185,8 @@ describe('availability Outcome execution', () => {
     expect(mocks.flagCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ fingerprint: `outcome:availability:${binding.key}` }),
     }))
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'FAILED', reason: 'expected_surface_missing' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'FAILED', reason: 'expected_surface_missing' }),
     }))
   })
 
@@ -187,8 +198,8 @@ describe('availability Outcome execution', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(mocks.flagCreate).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'BLOCKED', reason: 'bot_wall' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'bot_wall' }),
     }))
     expect(assessRequiredBindings([binding], [
       { key: binding.key, disposition: 'BLOCKED', reason: 'bot_wall' },
@@ -196,14 +207,14 @@ describe('availability Outcome execution', () => {
   })
 
   it('treats a successful response with no rendered capture as Couldn\'t verify', async () => {
-    mocks.auditFindUnique.mockResolvedValue(null)
+    mocks.createAuditPage.mockRejectedValueOnce(new Error('Browser interrupted'))
     vi.stubGlobal('fetch', vi.fn(async () => new Response('ok', { status: 200 })))
 
     await runBoundCheckoutForAudit('audit-1')
 
     expect(mocks.flagCreate).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'BLOCKED', reason: 'rendered_surface_unavailable' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'rendered_surface_unavailable' }),
     }))
   })
 })

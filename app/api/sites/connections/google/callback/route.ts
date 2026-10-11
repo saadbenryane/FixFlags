@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
       hostForProject: async (projectId, userId) => {
         const project = await prisma.project.findFirst({
           where: { id: projectId, userId, deletedAt: null },
-          select: { canonicalHost: true },
+          select: { url: true },
         })
-        return project?.canonicalHost ?? null
+        return project?.url ?? null
       },
     })
     if ('error' in result) return NextResponse.redirect(`${base}/dashboard`)

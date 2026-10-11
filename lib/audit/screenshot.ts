@@ -2,6 +2,7 @@ import { chromium, type Browser, type Page } from 'playwright'
 import { AxeBuilder } from '@axe-core/playwright'
 import fs from 'fs'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
+import { currentExecutionOwnership } from './execution-ownership'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
 import { assertPublicAuditUrl } from './url'
@@ -127,11 +128,15 @@ export function dedupeConsoleErrors(
 }
 
 export interface ScreenshotResult {
+  originalDocument?: import('./search/contracts').PublicDocument
+  desktopFinalUrl?: string
+  desktopHttpStatus?: number | null
   desktopUrl: string | null
   mobileUrl: string | null
   desktopBase64: string | null
   mobileBase64: string | null
   desktopHtml: string | null
+  desktopHtmlTruncated?: boolean
   consoleErrors: Array<{ type: string; text: string }>
   captureStatus: ScreenshotCaptureStatus
   captureFailures: PageCaptureFailure[]
@@ -147,14 +152,19 @@ export interface ScreenshotResult {
   actionTimeline?: ActionTimelineEvent[]
   formProbe?: FormProbeResult | null
   axeViolations?: import('./checks/accessibility').AxeViolation[]
+  collectionRestrictions?: string[]
   evidenceHarvest?: HarvestedEvidence[]
 }
 
 interface ViewportCapture {
+  originalDocument?: import('./search/contracts').PublicDocument
+  finalUrl?: string
+  httpStatus?: number | null
   base64: string | null
   url: string | null
   initialUrl: string | null
   html: string | null
+  htmlTruncated?: boolean
   captureMetrics?: CaptureMetrics | null
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
@@ -164,6 +174,7 @@ interface ViewportCapture {
   technologyResourcesTruncated?: boolean
   technologyRuntimeMarkers?: string[]
   axeViolations?: import('./checks/accessibility').AxeViolation[]
+  collectionRestrictions?: string[]
   evidenceHarvest?: HarvestedEvidence
 }
 
@@ -276,7 +287,8 @@ async function waitForFinishedLoadState(
     .waitForFunction(() => document.title.trim().length > 0, { timeout: 3_000 })
     .catch(() => {})
 
-  let loadingClearedMs: number | null = initial.loadingVisible ? null : Date.now() - startedAt
+  // Without observed loading UI there is no loading-clearance measurement.
+  let loadingClearedMs: number | null = null
   if (initial.loadingVisible) {
     await page
       .waitForFunction(
@@ -339,7 +351,10 @@ async function captureDesktopWithFlow(
   scanAccess?: ScanAccessConfig | null,
   flowDeadlineMs?: number,
   deadline?: number,
-  onInitialScreenshot?: (url: string) => void
+  onInitialScreenshot?: (url: string) => void,
+  collectOriginalDocument = true,
+  captureMedia = true,
+  mediaOnly = false,
 ): Promise<
   ViewportCapture & {
     flowResult: FlowScanResult | null
@@ -365,29 +380,36 @@ async function captureDesktopWithFlow(
   let page: Page | null = null
   let disposeNetwork: (() => void) | null = null
   try {
-    const captureStartedAt = Date.now()
     timeline.push('navigate', `Open ${targetUrl}`, { url: targetUrl })
     const session = await createAuditPage(b, targetUrl, {
       profile: DESKTOP_CAPTURE_PROFILE,
       consoleErrors,
       settle: false,
       scanAccess,
-      journeySafe: runFlow,
+      journeySafe: true,
       deadline,
+      collectSearchEvidence: collectOriginalDocument,
     })
     page = session.page
+    const captureStartedAt = session.navigationStartedAt
     disposeNetwork = session.disposeNetwork
     result.responseHeaders = session.responseHeaders
+    result.originalDocument = session.originalDocument
+    result.finalUrl = page.url()
+    result.httpStatus = session.httpStatus
     result.networkFailures = [...session.networkFailures]
     result.technologyResources = [...session.technologyResources]
     result.technologyResourcesTruncated = session.technologyResourcesTruncated()
     result.formProbe = session.formProbe
+    result.collectionRestrictions = session.safetyRestrictions
     timeline.push('capture', 'Page loaded', { url: page.url() })
 
     const initial = await readLoadSnapshot(page)
-    const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-    result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
-    onInitialScreenshot?.(result.initialUrl)
+    if (captureMedia) {
+      const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+      result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
+      onInitialScreenshot?.(result.initialUrl)
+    }
 
     result.loadExperience = await waitForFinishedLoadState(
       page,
@@ -401,9 +423,16 @@ async function captureDesktopWithFlow(
     // destination resources cannot contaminate the landing-page stack.
     result.technologyResources = [...session.technologyResources]
     result.technologyResourcesTruncated = session.technologyResourcesTruncated()
-    result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
-    result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
-    result.html = await page.content()
+    if (!mediaOnly) {
+      result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
+      result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
+      const rendered = await page.evaluate(() => {
+      const html = document.documentElement.outerHTML
+      return html.length > 1_000_000 || new TextEncoder().encode(html).byteLength > 1_000_000
+        ? { html: null, truncated: true } : { html, truncated: false }
+    })
+      result.html = rendered.html
+      result.htmlTruncated = rendered.truncated
 
     // Run axe-core on the top document + same-origin frames only.
     // Legacy mode disables cross-origin frame injection (YouTube/Calendly/etc.),
@@ -415,19 +444,23 @@ async function captureDesktopWithFlow(
         .analyze()
       result.axeViolations = axeResults.violations as import('./checks/accessibility').AxeViolation[]
     } catch (err) {
-      logger.warn('axe-core scan failed, falling back to PageSpeed checks', err)
-      result.axeViolations = []
+      logger.warn('axe-core scan failed; accessibility evidence is unavailable', err)
+      // Undefined means collection failed. An empty array means axe actually ran.
+      result.axeViolations = undefined
+    }
     }
 
-    const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-    result.base64 = buffer.toString('base64')
-    result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
-    timeline.push('capture', 'Desktop screenshot captured', {
+    if (captureMedia) {
+      const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+      result.base64 = buffer.toString('base64')
+      result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
+    }
+    timeline.push('capture', captureMedia ? 'Desktop screenshot captured' : 'Rendered content inspected', {
       screenshot: result.url,
       url: page.url(),
     })
 
-    try {
+    if (captureMedia && !mediaOnly) try {
       result.evidenceHarvest = await harvestEvidenceOnPage(
         page,
         'desktop',
@@ -491,28 +524,33 @@ async function captureMobileViewport(
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
   scanAccess?: ScanAccessConfig | null,
-  deadline?: number
+  deadline?: number,
+  captureMedia = true,
+  mediaOnly = false,
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
   let disposeNetwork: (() => void) | null = null
 
   try {
-    const captureStartedAt = Date.now()
     const session = await createAuditPage(b, targetUrl, {
       profile: MOBILE_CAPTURE_PROFILE,
       consoleErrors,
       settle: false,
       scanAccess,
       deadline,
+      journeySafe: true,
     })
     page = session.page
+    const captureStartedAt = session.navigationStartedAt
     disposeNetwork = session.disposeNetwork
     result.networkFailures = [...session.networkFailures]
 
     const initial = await readLoadSnapshot(page)
-    const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-    result.initialUrl = await uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey))
+    if (captureMedia) {
+      const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+      result.initialUrl = await uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey))
+    }
 
     result.loadExperience = await waitForFinishedLoadState(
       page,
@@ -523,17 +561,19 @@ async function captureMobileViewport(
       initial
     )
 
-    const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-    result.base64 = buffer.toString('base64')
-    result.url = await uploadScreenshot(auditId, 'mobile', buffer, pageKey)
+    if (captureMedia) {
+      const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+      result.base64 = buffer.toString('base64')
+      result.url = await uploadScreenshot(auditId, 'mobile', buffer, pageKey)
+    }
 
-    try {
+    if (captureMedia && !mediaOnly) try {
       result.evidenceHarvest = await harvestEvidenceOnPage(page, 'mobile') ?? undefined
     } catch (err) {
       logger.warn('Mobile evidence harvest skipped', err)
     }
 
-    try {
+    if (!mediaOnly) try {
       result.captureMetrics = await measureMobileLayout(page)
       result.captureMetrics.loadExperience = result.loadExperience ?? null
     } catch (err) {
@@ -557,8 +597,14 @@ export async function captureScreenshots(
     flowDeadlineMs?: number
     deadline?: number
     onInitialScreenshot?: (url: string) => void
+    collectOriginalDocument?: boolean
+    /** Progressive DOM collection must not depend on private media storage. */
+    captureMedia?: boolean
+    mediaOnly?: boolean
   }
 ): Promise<ScreenshotResult> {
+  const generation = currentExecutionOwnership()?.generation
+  if (generation && !pageKey?.endsWith('-g' + generation)) pageKey = (pageKey ?? 'primary') + '-g' + generation
   await assertPublicAuditUrl(url)
   const b = await getBrowser()
   const consoleErrors: Array<{ type: string; text: string }> = []
@@ -577,7 +623,10 @@ export async function captureScreenshots(
       scanAccess,
       options?.flowDeadlineMs,
       options?.deadline,
-      options?.onInitialScreenshot
+      options?.onInitialScreenshot,
+      options?.collectOriginalDocument ?? true,
+      options?.captureMedia ?? true,
+      options?.mediaOnly ?? false,
     ),
     captureMobileViewport(
       b,
@@ -586,7 +635,9 @@ export async function captureScreenshots(
       pageKey,
       consoleErrors,
       scanAccess,
-      options?.deadline
+      options?.deadline,
+      options?.captureMedia ?? true,
+      options?.mediaOnly ?? false,
     ),
   ])
 
@@ -631,10 +682,14 @@ export async function captureScreenshots(
     desktopBase64: desktop.base64,
     mobileBase64: mobile.base64,
     desktopHtml: desktop.html,
+    desktopHtmlTruncated: desktop.htmlTruncated,
+    originalDocument: desktop.originalDocument,
+    desktopFinalUrl: desktop.finalUrl,
+    desktopHttpStatus: desktop.httpStatus,
     consoleErrors: dedupeConsoleErrors(consoleErrors),
     captureStatus: {
-      desktop: desktop.url ? 'ok' : 'failed',
-      mobile: mobile.url ? 'ok' : 'failed',
+      desktop: options?.captureMedia === false ? 'pending' : desktop.url ? 'ok' : 'failed',
+      mobile: options?.captureMedia === false ? 'pending' : mobile.url ? 'ok' : 'failed',
     },
     captureFailures,
     flowResult: desktop.flowResult,
@@ -648,7 +703,8 @@ export async function captureScreenshots(
     technologyRuntimeMarkers: desktop.technologyRuntimeMarkers ?? [],
     actionTimeline: desktop.actionTimeline ?? [],
     formProbe: desktop.formProbe ?? null,
-    axeViolations: desktop.axeViolations ?? [],
+    axeViolations: desktop.axeViolations,
+    collectionRestrictions: desktop.collectionRestrictions ?? [],
     evidenceHarvest: [desktop.evidenceHarvest, mobile.evidenceHarvest].filter(
       (harvest): harvest is HarvestedEvidence => Boolean(harvest)
     ),

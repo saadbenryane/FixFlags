@@ -7,7 +7,7 @@ describe('SitePromptCopyButton', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ prompt: 'Repair the checkout heading.' }),
+      json: async () => ({ ok: true, prompt: 'Repair the checkout heading.', handoff: null }),
     }))
   })
 

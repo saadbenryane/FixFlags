@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
+import { searchAttentionDecision } from '@/lib/audit/search/policy'
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -8,6 +10,7 @@ import { compareFlagPriority, flagPriority, type FlagVerificationState } from '@
 import type { SiteRecord } from '@/lib/sites/types'
 
 function toSiteFlagSeed(flag: {
+  attentionPolicy?: unknown
   id: string
   checkId: string | null
   rubric: string
@@ -39,6 +42,7 @@ function toSiteFlagSeed(flag: {
     outcomeId: flag.relatedOutcome?.id,
   })
   return {
+    attentionPolicy: flag.attentionPolicy,
     id: flag.improvementId ?? flag.id,
     sourceFlagId: flag.sourceFlagId ?? flag.id,
     confidence: flag.confidence ?? null,
@@ -47,10 +51,10 @@ function toSiteFlagSeed(flag: {
     rubric: flag.rubric,
     severity: flag.severity,
     impactTag: flag.impactTag,
-    problem: flag.problem,
+    problem: searchAttentionDecision(flag)?.reason === 'historical_intent_not_established' ? SEARCH_COPY.historicalPolicy : flag.problem,
     evidence: flag.evidence,
     whyItMatters: flag.whyItMatters,
-    fix: flag.fix,
+    fix: searchAttentionDecision(flag)?.reason === 'historical_intent_not_established' ? SEARCH_COPY.rules.indexing.guidance : flag.fix,
     pageUrl: flag.pageUrl,
     status: flag.status,
     resolvedInId: flag.resolvedInId,
@@ -100,7 +104,7 @@ function partitionCustomerFlags(seeds: SiteFlagSeed[]): {
   const recommendations: SiteFlagSeed[] = []
   for (const seed of seeds) {
     if (isCustomerFlag(seed)) flags.push(seed)
-    else recommendations.push(seed)
+    else if (searchAttentionDecision(seed)?.kind !== 'observation') recommendations.push(seed)
   }
   return { flags, recommendations }
 }
@@ -211,6 +215,7 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: {
+      attentionPolicy: true,
       id: true,
       checkId: true,
       rubric: true,
@@ -257,6 +262,7 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
         include: {
           flag: {
             select: {
+              attentionPolicy: true,
               id: true,
               checkId: true,
               rubric: true,

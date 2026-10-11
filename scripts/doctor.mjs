@@ -24,17 +24,19 @@ const check = async (name, run) => {
 await check('environment', async () => {
   const required = ['DATABASE_URL', 'REDIS_URL', 'BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_APP_URL']
   const missing = required.filter((key) => !process.env[key])
-  if (
+  if (missing.length) throw new Error(`Missing ${missing.join(', ')}`)
+  return 'required runtime values configured'
+})
+
+// Capabilities are not runtime prerequisites. Keep their absence visible, while
+// allowing independent public checks to run. Release readiness remains strict.
+if (
     !hasUsableCredential(process.env.OPENAI_API_KEY) &&
     !hasUsableCredential(process.env.OPEN_CODE_API_KEY) &&
     !hasUsableCredential(process.env.OPENCODE_API_KEY) &&
     !hasUsableCredential(process.env.ANTHROPIC_API_KEY)
-  ) {
-    missing.push('a non-placeholder OPENAI_API_KEY or ANTHROPIC_API_KEY')
-  }
-  if (missing.length) throw new Error(`Missing ${missing.join(', ')}`)
-  return 'required values configured without obvious placeholders'
-})
+  ) results.push({ name: 'AI explanation', ok: true, limited: true,
+    detail: 'No usable provider key. Deterministic checks remain executable; explanation is unavailable. This is not release readiness.' })
 
 await check('PostgreSQL', async () => {
   const client = new PrismaClient()
@@ -111,7 +113,7 @@ if (process.argv.includes('--live')) {
 
 const failed = results.filter((result) => !result.ok)
 for (const result of results) {
-  console.log(`${result.ok ? 'PASS' : 'FAIL'} ${result.name}: ${result.detail}`)
+  console.log(`${result.limited ? 'LIMIT' : result.ok ? 'PASS' : 'FAIL'} ${result.name}: ${result.detail}`)
 }
 if (failed.length) {
   console.error('\nFix the failed prerequisites, then run npm run doctor again.')

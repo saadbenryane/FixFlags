@@ -12,10 +12,10 @@ import { MONITORING_COPY as C } from '@/lib/marketing/copy'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { z } from 'zod'
 import { watchIntervalSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
-import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'
+import { fetchSiteAction, executeSiteAction, createSiteActionController } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 const watchOptions = z.object({ intervals: z.array(watchIntervalSchema) })
-const activationResult = z.object({ ok: z.boolean(), stage: z.enum(['coverage', 'schedule']).optional(), message: z.string().optional(), interval: watchIntervalSchema.optional(), everyMinutes: z.number().int().min(60).optional(), firstCheck: z.enum(['requested', 'unavailable']).optional(), reused: z.boolean().optional() })
 
 type Cadence = 'weekly' | 'daily'
 type Result = { ok: boolean; stage?: 'coverage' | 'schedule'; message?: string; interval?: WatchInterval; everyMinutes?: number; firstCheck?: 'requested' | 'unavailable'; reused?: boolean }
@@ -29,6 +29,8 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
   const [cadence, setCadence] = useState<Cadence>(view.watch.interval === 'daily' ? 'daily' : 'weekly')
   const [loadError, setLoadError] = useState(false)
   const [busy, setBusy] = useState(false)
+  const submission = useRef(createSiteActionController()).current
+  const [refreshWarning, setRefreshWarning] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [authRequired, setAuthRequired] = useState(false)
   const [reload, setReload] = useState(0)
@@ -61,17 +63,19 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
   }, [open, owner, siteId, reload, authRequired])
 
   async function activate() {
-    if (busy || !intervals?.includes(cadence)) return
-    setBusy(true); setResult(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/watch/activate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: scheduled ? view.watch.interval : cadence, ...(scheduled && view.watch.interval === 'custom' ? { everyMinutes: view.watch.everyMinutes } : {}) }) })
-      if (response.status === 401 || response.status === 403) { setAuthRequired(true); return }
-      const body = activationResult.parse(await response.json())
-      setResult(response.ok ? body : { ...body, ok: false })
-      // The response is authoritative even if a later overview refresh fails.
-      await onRefresh().catch(() => undefined)
-    } catch (error) { setResult({ ok: false, message: siteActionMessage(error) }) }
-    finally { setBusy(false); requestAnimationFrame(() => resultFocus.current?.focus()) }
+    if (submission.pending || !intervals?.includes(cadence)) return
+    setBusy(true); setResult(null); setRefreshWarning(false)
+    const completed = await submission.submit(() => executeSiteAction(`/api/sites/${siteId}/watch/activate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ interval: scheduled ? view.watch.interval : cadence,
+        ...(scheduled && view.watch.interval === 'custom' ? { everyMinutes: view.watch.everyMinutes } : {}) }),
+    }, 'monitoringActivation'), onRefresh, body => setResult(body))
+    if (completed.kind === 'refused') {
+      setResult({ ok: false, message: completed.error.message })
+      if (completed.error.status === 401) setAuthRequired(true)
+    }
+    setRefreshWarning(completed.kind === 'saved_refresh_pending')
+    setBusy(false); requestAnimationFrame(() => resultFocus.current?.focus())
   }
 
   const signedInHref = `/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}` as Route
@@ -80,6 +84,7 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
 
   if (hideSettled && compact) return null
   return <>
+    {refreshWarning ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.refreshPending}</p> : null}
     <section className={compact ? 'rounded-control bg-muted/50 px-4 py-3' : 'rounded-card border border-border bg-background p-5'} aria-label={C.title}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-xl">

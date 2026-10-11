@@ -1,8 +1,8 @@
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
   canonicalProductHost,
-  canonicalProductUrl,
   parseProductIntelligence,
   productNameFromUrl,
   type ProductIntelligence,
@@ -17,13 +17,16 @@ const MAX_PI_MUTATION_ATTEMPTS = 5
  */
 export async function ensureProductProject(
   userId: string,
-  auditUrl: string
+  auditUrl: string,
+  transaction?: Prisma.TransactionClient,
 ): Promise<{ id: string; productIntelligence: ProductIntelligence | null }> {
   const canonicalHost = canonicalProductHost(auditUrl)
   if (!canonicalHost) throw new Error('A valid Product hostname is required')
-  const canonicalUrl = canonicalProductUrl(auditUrl)
+  // Identity is the hostname. Its configured executable origin is a separate
+  // fact: never invent HTTPS or drop a port when admitting a public target.
+  const canonicalUrl = new URL(auditUrl).origin
 
-  const project = await prisma.$transaction(async (tx) => {
+  const resolve = async (tx: Prisma.TransactionClient) => {
     const existing = await tx.project.findUnique({
       where: { userId_canonicalHost: { userId, canonicalHost } },
       select: { id: true, productIntelligence: true },
@@ -31,7 +34,7 @@ export async function ensureProductProject(
     if (existing) {
       return tx.project.update({
         where: { id: existing.id },
-        data: { url: canonicalUrl, deletedAt: null },
+        data: { deletedAt: null },
         select: { id: true, productIntelligence: true },
       })
     }
@@ -46,10 +49,13 @@ export async function ensureProductProject(
         canonicalHost,
         isManaged: false,
       },
-      update: { url: canonicalUrl, deletedAt: null },
+      update: { deletedAt: null },
       select: { id: true, productIntelligence: true },
     })
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  }
+  const project = transaction
+    ? await resolve(transaction)
+    : await executionTransaction(resolve, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
   return {
     id: project.id,
@@ -77,8 +83,7 @@ export async function mutateProjectIntelligence(
   mutation: (current: ProductIntelligence | null) => ProductIntelligence
 ): Promise<ProductIntelligence> {
   for (let attempt = 0; attempt < MAX_PI_MUTATION_ATTEMPTS; attempt += 1) {
-    const outcome = await prisma.$transaction(
-      async (tx) => {
+    const outcome = await executionTransaction(async (tx) => {
         const project = await tx.project.findUnique({
           where: { id: projectId },
           select: { productIntelligence: true, productIntelligenceRevision: true },
@@ -97,9 +102,7 @@ export async function mutateProjectIntelligence(
           },
         })
         return updated.count === 1 ? next : null
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-    )
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     if (outcome) return outcome
   }
 

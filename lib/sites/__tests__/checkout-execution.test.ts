@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   runUpdateMany: vi.fn(),
   journeyFindFirst: vi.fn(),
   executionFindUnique: vi.fn(),
-  executionUpsert: vi.fn(),
+  executionCreate: vi.fn(),
   attemptFindFirst: vi.fn(),
   attemptCreateMany: vi.fn(),
   attemptUpdateMany: vi.fn(),
@@ -17,6 +17,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({
+      $queryRaw: vi.fn(async () => [{ id: 'audit-1' }]),
+      outcomeBindingExecution: { findUnique: mocks.executionFindUnique, create: mocks.executionCreate },
+      outcomeBindingAttempt: { findFirst: mocks.attemptFindFirst, createMany: mocks.attemptCreateMany, updateMany: mocks.attemptUpdateMany },
+      auditPipelineEvent: { create: vi.fn(async () => ({})) },
+    }),
     runRequest: {
       findFirst: mocks.runFindFirst,
       updateMany: mocks.runUpdateMany,
@@ -25,7 +31,7 @@ vi.mock('@/lib/db', () => ({
     flag: { updateMany: mocks.flagUpdateMany },
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
-      upsert: mocks.executionUpsert,
+      create: mocks.executionCreate,
     },
     outcomeBindingAttempt: {
       findFirst: mocks.attemptFindFirst,
@@ -71,7 +77,7 @@ describe('bound Checkout execution', () => {
     })
     mocks.journeyFindFirst.mockResolvedValue(null)
     mocks.executionFindUnique.mockResolvedValue(null)
-    mocks.executionUpsert.mockResolvedValue({ id: 'execution-1' })
+    mocks.executionCreate.mockResolvedValue({ id: 'execution-1' })
     mocks.attemptFindFirst.mockResolvedValue(null)
     mocks.attemptCreateMany.mockResolvedValue({ count: 1 })
     mocks.attemptUpdateMany.mockResolvedValue({ count: 0 })
@@ -201,8 +207,8 @@ describe('bound Checkout execution', () => {
       where: expect.objectContaining({ disposition: 'FAILED', transient: false }),
       data: { transient: true },
     }))
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'BLOCKED', reason: 'flaky' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'flaky' }),
     }))
   })
 
@@ -235,8 +241,8 @@ describe('bound Checkout execution', () => {
 
     expect(mocks.runGoalProbe).not.toHaveBeenCalled()
     expect(mocks.runPathProbe).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
         outcomeId: 'outcome-signup',
         disposition: 'BLOCKED',
         reason: 'binding_configuration_invalid',
@@ -267,8 +273,8 @@ describe('bound Checkout execution', () => {
     await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
     expect(mocks.runGoalProbe).not.toHaveBeenCalled()
     expect(mocks.runPathProbe).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ reason: 'protected_fixture_required' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ reason: 'protected_fixture_required' }),
     }))
   })
 
@@ -285,8 +291,8 @@ describe('bound Checkout execution', () => {
     await runBoundCheckoutForAudit('audit-1')
 
     expect(mocks.runPathProbe).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'checkout_reached' }),
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'checkout_reached' }),
     }))
   })
 
@@ -321,6 +327,6 @@ describe('bound Checkout execution', () => {
       'audit-1',
       expect.objectContaining({ goalAchieved: false, findings: [] }),
     )
-    expect(mocks.executionUpsert.mock.calls.some((call) => call[0]?.create?.disposition === 'SUCCEEDED')).toBe(false)
+    expect(mocks.executionCreate.mock.calls.some((call) => call[0]?.data?.disposition === 'SUCCEEDED')).toBe(false)
   })
 })

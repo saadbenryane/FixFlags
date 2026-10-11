@@ -1,3 +1,4 @@
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { Prisma, type TechnologyDetectionStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
@@ -148,7 +149,7 @@ export async function persistTechnologyObservations(
   detectorVersion = TECHNOLOGY_DETECTOR_VERSION,
   detectedAt = new Date()
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  await executionTransaction(async (tx) => {
     await tx.auditTechnologyObservation.deleteMany({ where: { auditId } })
 
     for (const detection of detections) {

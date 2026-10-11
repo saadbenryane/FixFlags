@@ -11,7 +11,7 @@ export const MARKETING_NAV = [...MARKETING_LINKS] as const
 
 export const FOOTER_COLUMNS = {
   product: [
-    { href: '/how-it-works', label: 'Product' },
+    { href: '/#product', label: 'Product' },
     { href: '/integrations', label: 'Integrations' },
     { href: '/how-it-works', label: 'How it works' },
     { href: '/pricing', label: 'Pricing' },
@@ -21,6 +21,8 @@ export const FOOTER_COLUMNS = {
     { href: '/help', label: 'Help Center' },
     { href: '/docs', label: 'Docs' },
     { href: '/faq', label: 'FAQ' },
+    { href: '/blog', label: 'Blog' },
+    { href: '/issues', label: 'Flag Library' },
   ],
   company: [
     { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },

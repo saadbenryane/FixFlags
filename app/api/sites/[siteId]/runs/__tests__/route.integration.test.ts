@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+vi.mock('node:crypto', async importOriginal => ({ ...await importOriginal<typeof import('node:crypto')>(), randomUUID: () => 'run-care' }))
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -78,8 +79,9 @@ describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
     expect(await response.json()).toEqual({
       runId: 'run-care', auditId: 'audit-care', outcomeIds: [], reused: false,
     })
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({
         projectId: 'project-1', source: 'WEB', selections: undefined,
         context: { action: 'run_site_care' },
       }),

@@ -15,6 +15,8 @@ import { runBestEffort } from '../observability/best-effort'
 import { runIntegrityPathJob } from '../integrity/run-path-job'
 import { runIntegrityImprove } from '../integrity/improve'
 import { reportOperationalError } from '../observability/report-error'
+import { startProgressiveWorkers } from '../audit/progressive/runtime'
+import { readExecutionSpec } from '../sites/domain/execution-spec'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -35,7 +37,6 @@ export function startWorker() {
   const worker = new Worker(
     'audit',
     async (job) => {
-      if (!getBrowserDiagnostics().connected) await getAuditBrowser()
       await touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'active' })
       if (job.name === 'repo-scan') {
         const { repoScanId } = job.data as { repoScanId: string }
@@ -77,9 +78,9 @@ export function startWorker() {
         await runAudit(auditId)
         const terminal = await prisma.audit.findUnique({
           where: { id: auditId },
-          select: { status: true },
+          select: { status: true, executionSpec: true },
         })
-        if (terminal && terminal.status !== 'COMPLETED' && terminal.status !== 'FAILED') {
+        if (terminal && readExecutionSpec(terminal.executionSpec)?.engine !== 'progressive-v1' && terminal.status !== 'COMPLETED' && terminal.status !== 'FAILED') {
           await prisma.audit.update({
             where: { id: auditId },
             data: {
@@ -120,12 +121,10 @@ export function startWorker() {
       return
     }
     browserRecoveryRunning = true
-    void worker.pause()
-      .then(() => touchWorkerHeartbeat({ ...diagnostics, queueState: 'paused' }))
-      .then(() => getAuditBrowser())
-      .then(() => worker.resume())
+    // A browser outage must not stop public-response, provider, or availability work.
+    void getAuditBrowser()
       .then(() => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }))
-      .catch((error) => logger.error('Worker browser recovery failed; queue consumption remains paused', error))
+      .catch((error) => logger.error('Worker browser recovery failed; independent work remains available', error))
       .finally(() => { browserRecoveryRunning = false })
   }, HEARTBEAT_INTERVAL_MS)
   heartbeatTimer.unref?.()
@@ -172,9 +171,10 @@ export function startWorker() {
     const auditId = (job.data as { auditId: string }).auditId
     const audit = await prisma.audit.findUnique({
       where: { id: auditId },
-      select: { status: true },
+      select: { status: true, executionSpec: true },
     })
     if (audit?.status === 'FAILED' || audit?.status === 'COMPLETED') return
+    if (readExecutionSpec(audit?.executionSpec)?.engine === 'progressive-v1') return
 
     const attempts = job.opts.attempts ?? 1
     if (job.attemptsMade >= attempts) {
@@ -205,6 +205,9 @@ export function startWorker() {
     logger.error(`Audit job ${jobId} stalled and will not be replayed`)
   })
 
+  const tasks = startProgressiveWorkers()
+  const closeAuditWorker = worker.close.bind(worker)
+  worker.close = async force => { clearInterval(heartbeatTimer); await Promise.all([closeAuditWorker(force), tasks.close()]) }
   return worker
 }
 

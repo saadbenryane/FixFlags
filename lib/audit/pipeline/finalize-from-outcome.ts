@@ -25,6 +25,7 @@ interface FinalizeFromOutcomeInput {
   auditUrl: string
   pageRuns: PageRun[]
   startedAt: Date
+  captureAdditionalEvidence?: boolean
 }
 
 function buildEvidence(pageRuns: PageRun[], aiAssessment: boolean) {
@@ -108,7 +109,7 @@ async function finalizeTriageComplete(
 
   await ctx.events.log({ stage: 'finalizing', event: 'persist_started' })
   await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
-  await persistEvidenceAnchors(auditId, auditUrl, pageRuns)
+  if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, pageRuns)
 
   await finalizeTriageAudit({
     auditId,
@@ -149,7 +150,7 @@ async function finalizeTriageDegradedOutcome(
     detail: outcome.reason,
     error: outcome.message,
   })
-  await persistEvidenceAnchors(auditId, auditUrl, outcome.pageRuns)
+  if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, outcome.pageRuns)
   await finalizeTriageDegraded({
     auditId,
     durationMs: ctx.clock.now().getTime() - startedAt.getTime(),

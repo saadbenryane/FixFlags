@@ -2,11 +2,13 @@ import type { Browser, Page } from 'playwright'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
+import { createAuditPage } from '@/lib/audit/browser/page-session'
 
 export interface SlowReplayResult {
   timeToFirstTextMs: number
   timeToCtaMs: number
   screenshotUrls: string[]
+  complete?: boolean
 }
 
 const SLOW_3G = {
@@ -46,6 +48,7 @@ export async function runSlowReplay(
   browser: Browser,
   auditId: string,
   pageUrl: string,
+  options: { deadline?: number; pageKey?: string; scanAccess?: import('../scan-access').ScanAccessConfig | null } = {},
 ): Promise<SlowReplayResult> {
   let page: Page | null = null
   const screenshotUrls: string[] = []
@@ -53,23 +56,17 @@ export async function runSlowReplay(
   let timeToCtaMs = 30_000
 
   try {
-    const context = await browser.newContext({
-      viewport: {
-        width: MOBILE_CAPTURE_PROFILE.width,
-        height: MOBILE_CAPTURE_PROFILE.height,
+    const session = await createAuditPage(browser, pageUrl, {
+      profile: MOBILE_CAPTURE_PROFILE, settle: false, deadline: options.deadline, scanAccess: options.scanAccess,
+      journeySafe: true,
+      allowLocalhost: process.env.NODE_ENV !== 'production' && process.env.DEV_ALLOW_LOCALHOST === 'true',
+      configurePage: async initialPage => {
+        const cdp = await initialPage.context().newCDPSession(initialPage)
+        await cdp.send('Network.emulateNetworkConditions', SLOW_3G)
       },
-      deviceScaleFactor: MOBILE_CAPTURE_PROFILE.deviceScaleFactor,
-      isMobile: true,
-      userAgent: MOBILE_CAPTURE_PROFILE.userAgent,
-      // Fresh context has empty cache (Playwright has no page.setCacheEnabled).
     })
-    page = await context.newPage()
-
-    const cdp = await context.newCDPSession(page)
-    await cdp.send('Network.emulateNetworkConditions', SLOW_3G)
-
-    const started = Date.now()
-    await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    page = session.page
+    const started = session.navigationStartedAt
 
     const waitUntil = async (targetMs: number) => {
       const elapsed = Date.now() - started
@@ -79,7 +76,7 @@ export async function runSlowReplay(
     const captureScreenshot = async (label: string) => {
       try {
         const buffer = Buffer.from(await page!.screenshot({ type: 'png', fullPage: false }))
-        const url = await uploadScreenshot(auditId, 'mobile', buffer, label)
+        const url = await uploadScreenshot(auditId, 'mobile', buffer, options.pageKey ? options.pageKey + '-' + label : label)
         screenshotUrls.push(url)
       } catch (err) {
         logger.error('Slow replay screenshot failed', err)
@@ -107,10 +104,10 @@ export async function runSlowReplay(
     await waitUntil(8_000)
     await captureScreenshot('flow-slow-8s')
 
-    return { timeToFirstTextMs, timeToCtaMs, screenshotUrls }
+    return { timeToFirstTextMs, timeToCtaMs, screenshotUrls, complete: true }
   } catch (err) {
     logger.error('Slow replay probe failed', err)
-    return { timeToFirstTextMs, timeToCtaMs, screenshotUrls }
+    return { timeToFirstTextMs, timeToCtaMs, screenshotUrls, complete: false }
   } finally {
     if (page) {
       const context = page.context()

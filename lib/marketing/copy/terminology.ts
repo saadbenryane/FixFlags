@@ -153,7 +153,7 @@ export const SITE_BOARD_COPY = {
   recordedChecksBody: 'What actually ran, with its scope and result. A completed check does not certify the entire website.',
   previousEvidence: 'Previous evidence',
   verificationLimits: 'What this result establishes',
-  checkResultStatuses: { passed: 'Passed', completed: 'Completed', findings: 'Findings recorded', failed: 'Could not complete', not_applicable: 'Not applicable' },
+  checkResultStatuses: { passed: 'Passed', completed: 'Completed', findings: 'Findings recorded', failed: 'Could not complete', not_applicable: 'Not applicable', observed: 'Observed', unknown: 'Could not establish' },
   siteCheckOutOfDate: 'The last check is out of date. Run a new check for current evidence.',
   checking: 'Checking',
   browserSource: 'FixFlags browser',
@@ -168,8 +168,8 @@ export const SITE_BOARD_COPY = {
   learning: 'Learning your website',
   healthyEvidence: {
     conversion: {
-      answer: 'Journey completed',
-      detail: 'Latest browser journey reached its expected end',
+      answer: 'Public journey exercised',
+      detail: 'Recorded steps cover this public journey, not every visitor action',
     },
     search: {
       answer: 'Metadata checked',
@@ -194,16 +194,16 @@ export const SITE_BOARD_COPY = {
       detail: 'The page loaded and produced inspectable metadata',
     },
     security: {
-      answer: 'Security checked',
-      detail: 'HTTPS and mixed content checks completed',
+      answer: 'HTTPS observed',
+      detail: 'HTTPS and captured image transport were checked; this is not a security certification',
     },
     tracking: {
-      answer: 'Measurement checked',
-      detail: 'Public measurement checks completed',
+      answer: 'Analytics markup detected',
+      detail: 'An analytics snippet appeared in captured HTML; event delivery was not verified',
     },
     accessibility: {
-      answer: 'Accessibility tested',
-      detail: 'Automated accessibility tests completed',
+      answer: 'No axe violations recorded',
+      detail: 'Automated rules checked the top-level page; manual accessibility was not evaluated',
     },
     fallback: {
       answer: 'Evidence checked',

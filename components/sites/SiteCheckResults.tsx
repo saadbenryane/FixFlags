@@ -7,6 +7,7 @@ import { SITE_BOARD_COPY as C, SITE_ACTION_COPY as A } from '@/lib/marketing/cop
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { Button } from '@/components/ui/button'
 import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'
+import { SearchResults } from './SearchResults'
 
 export function SiteCheckResults({ results, siteId, area, nextCursor = null }: {
   results: SiteCheckResult[]; siteId?: string; area?: SiteCardArea; nextCursor?: string | null
@@ -29,10 +30,13 @@ export function SiteCheckResults({ results, siteId, area, nextCursor = null }: {
   }
   if (!all.length && !cursor) return null
   return <section className="space-y-3">
-    <h3 className="text-sm font-semibold">{C.recordedChecks}</h3>
-    <p className="text-sm text-muted-foreground">{A.resultScope}</p>
+    {all.some(result => result.search) ? <SearchResults results={all} /> : null}
+    {all.some(result => !result.search) ? <>
+      <h3 className="text-sm font-semibold">{C.recordedChecks}</h3>
+      <p className="text-sm text-muted-foreground">{A.resultScope}</p>
+    </> : null}
     {[false, true].map(historical => {
-      const group = all.filter(result => result.historical === historical)
+      const group = all.filter(result => !result.search && result.historical === historical)
       if (!group.length) return null
       return <div key={String(historical)} className="space-y-3">
         <h4 className="text-sm font-medium">{historical ? A.previousResults : A.currentResults}</h4>

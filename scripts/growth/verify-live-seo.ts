@@ -4,6 +4,8 @@
  * Reports observations. Exits 1 when expected current-repo titles or crawl
  * hygiene are not live yet.
  */
+import { SEO } from '@/lib/marketing/copy'
+
 const ORIGIN = process.env.SEO_VERIFY_ORIGIN?.replace(/\/$/, '') || 'https://fixflags.com'
 const WWW = ORIGIN.replace('https://', 'https://www.')
 
@@ -38,7 +40,7 @@ async function main(): Promise<void> {
   const homeTitle = titleFromHtml(homeHtml)
   checks.push({
     id: 'home-title',
-    ok: home.status === 200 && /FixFlags/i.test(homeTitle) && /looked after/i.test(homeTitle),
+    ok: home.status === 200 && homeTitle === SEO.home.title,
     detail: `home status ${home.status} title=${JSON.stringify(homeTitle)}`,
   })
   checks.push({

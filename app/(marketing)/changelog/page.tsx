@@ -1,7 +1,9 @@
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { CHANGELOG_ENTRIES } from '@/lib/marketing/copy'
+import { CHANGELOG_ENTRIES, CHANGELOG_PAGE } from '@/lib/marketing/copy'
+import { blogDate } from '@/lib/marketing/copy/blog'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('changelog', '/changelog')
@@ -9,13 +11,18 @@ export const metadata = buildPageMetadata('changelog', '/changelog')
 export default function ChangelogPage() {
   return (
     <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]">
+      <MarketingPageViewTracker page="/changelog" />
       <Container className="mx-auto max-w-3xl space-y-8 sm:space-y-10 lg:space-y-12">
-        <LandingSectionHeader
-          label="Changelog"
-          headline="What's new recently"
+        <div className="space-y-4">
+          <LandingSectionHeader
+          label={CHANGELOG_PAGE.label}
+          headline={CHANGELOG_PAGE.headline}
           align="left"
           as="h1"
-        />
+          />
+          <p className="text-base leading-relaxed text-muted-foreground">{CHANGELOG_PAGE.body}</p>
+          <Link href="/docs" className="inline-flex min-h-11 items-center text-sm font-medium text-link hover:underline">{CHANGELOG_PAGE.docsCta}</Link>
+        </div>
 
         <ol className="space-y-8">
           {CHANGELOG_ENTRIES.map((entry) => (
@@ -25,7 +32,7 @@ export default function ChangelogPage() {
                   dateTime={entry.date}
                   className="font-mono text-2xs uppercase tracking-label text-muted-foreground"
                 >
-                  {entry.date}
+                  {blogDate(entry.date)}
                 </time>
                 <h2 className="text-lg font-semibold">{entry.title}</h2>
               </div>
@@ -41,3 +48,4 @@ export default function ChangelogPage() {
     </Section>
   )
 }
+import Link from 'next/link'

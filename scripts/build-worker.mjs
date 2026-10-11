@@ -17,3 +17,9 @@ await build({
   tsconfig: 'tsconfig.json',
   logLevel: 'info',
 })
+
+await build({
+  entryPoints: ['worker/check-parser.ts'], outfile: 'dist/worker/check-parser.js', bundle: true,
+  platform: 'node', format: 'cjs', target: 'node22', packages: 'external', sourcemap: true,
+  tsconfig: 'tsconfig.json', logLevel: 'info',
+})

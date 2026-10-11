@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('node:crypto', async () => ({ ...await vi.importActual('node:crypto'), randomUUID: () => 'run-1' }))
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 const mocks = vi.hoisted(() => ({
@@ -59,7 +60,7 @@ const ownedOutcome = {
   environment: 'production',
   projectId: 'project-1',
   project: { url: 'https://shop.example/' },
-  bindings: [{ required: true, config: { startUrl: 'https://shop.example/products/widget' } }],
+  bindings: [{ key: 'checkout-browser-v1', version: 1, enabled: true, mechanism: 'BROWSER_JOURNEY', required: true, config: { startUrl: 'https://shop.example/products/widget' } }],
 }
 
 describe('RunRequest tenant boundary and idempotency', () => {
@@ -117,13 +118,15 @@ describe('RunRequest tenant boundary and idempotency', () => {
     })
 
     expect(result).toEqual({ runId: 'run-1', auditId: 'audit-1', outcomeIds: [], reused: false })
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({
         projectId: 'project-1',
         legacyOutcomeId: null,
         source: 'WEB',
         selections: undefined,
-        context: { action: 'run_site_care', bindingVersions: {} },
+        context: { action: 'run_site_care' },
+        requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        executionSpec: expect.objectContaining({ version: 1, targetUrl: 'https://shop.example/', scope: 'SITE', outcomes: [] }),
       }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
@@ -187,16 +190,9 @@ describe('RunRequest tenant boundary and idempotency', () => {
       idempotencyKey: 'web:site-care:blocked',
     })).rejects.toThrow('This period’s analyses are used up')
 
-    // Reporting "could not start" for a spent allowance is both false and leaves
-    // the customer with nothing to do about it.
-    expect(mocks.runUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'run-1' },
-      data: expect.objectContaining({
-        status: 'FAILED',
-        errorCode: 'UPGRADE_REQUIRED',
-        errorMessage: 'This period’s analyses are used up',
-      }),
-    }))
+    // Refusal rolls back both ledgers and retains its typed, actionable reason.
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.runUpdate).not.toHaveBeenCalled()
   })
 
   it('does not reuse an active Flag verification as a broad Site-care run', async () => {
@@ -209,7 +205,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
       verificationTarget: {
         kind: 'DIAGNOSTIC',
         pageUrl: 'https://shop.example/contact',
-        checkId: 'form-feedback',
+        checkId: 'security-csp-missing',
         attemptId: 'attempt-1',
         parentAuditId: 'audit-parent',
       },
@@ -244,18 +240,18 @@ describe('RunRequest tenant boundary and idempotency', () => {
       verificationTarget: {
         kind: 'DIAGNOSTIC',
         pageUrl: 'https://shop.example/contact',
-        checkId: 'form-feedback',
+        checkId: 'security-csp-missing',
         attemptId: 'attempt-1',
         parentAuditId: 'audit-parent',
       },
     })
 
     expect(result.outcomeIds).toEqual([])
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({
         legacyOutcomeId: null,
         selections: undefined,
-        verificationTarget: expect.objectContaining({ kind: 'DIAGNOSTIC', checkId: 'form-feedback' }),
+        verificationTarget: expect.objectContaining({ kind: 'DIAGNOSTIC', checkId: 'security-csp-missing' }),
       }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
@@ -335,8 +331,8 @@ describe('RunRequest tenant boundary and idempotency', () => {
     })
 
     expect(result.outcomeIds).toEqual(['outcome-1', 'outcome-2'])
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({
         legacyOutcomeId: 'outcome-1',
         selections: {
           create: [{ outcomeId: 'outcome-1' }, { outcomeId: 'outcome-2' }],
@@ -412,7 +408,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     await requestOutcomeRun({
       projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1', source: 'WATCH',
     })
-    expect(mocks.runCreate).toHaveBeenCalledTimes(1)
+    expect(mocks.createAudit).toHaveBeenCalledTimes(1)
   })
 
   it('reads a completed worker result without reconciling or changing run state', async () => {
@@ -538,8 +534,8 @@ describe('RunRequest tenant boundary and idempotency', () => {
     const result = await retryFailedExecution('audit-care')
 
     expect(result).toEqual({ ok: true, auditId: 'audit-care-retry', runId: 'run-1' })
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ projectId: 'project-1', source: 'INTERNAL', selections: undefined }),
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({ projectId: 'project-1', source: 'INTERNAL', selections: undefined }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
       url: 'https://shop.example/', runRequestId: 'run-1',
@@ -667,12 +663,13 @@ describe('RunRequest tenant boundary and idempotency', () => {
         projectId?: string
         status?: { in?: string[] }
         leaseUntil?: { gt?: Date }
+        OR?: Array<{ leaseUntil?: { gt?: Date } }>
       },
     ): boolean {
       if (where.projectId !== undefined && where.projectId !== row.projectId) return false
       const statuses = where.status?.in
       if (statuses && !statuses.includes(row.status)) return false
-      const cutoff = where.leaseUntil?.gt
+      const cutoff = where.leaseUntil?.gt ?? where.OR?.find(branch => branch.leaseUntil)?.leaseUntil?.gt
       if (cutoff === undefined) return true
       // Only a live lease is in flight; NULL and expired are not.
       return row.leaseUntil !== null && row.leaseUntil > cutoff
@@ -727,7 +724,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
       // than only in a read-time check.
       expect(where).toMatchObject({
         status: { in: ['QUEUED', 'RUNNING'] },
-        leaseUntil: { gt: expect.any(Date) },
+        OR: expect.arrayContaining([{ leaseUntil: { gt: expect.any(Date) } }, expect.objectContaining({ audit: expect.any(Object) })]),
       })
     })
 
@@ -741,8 +738,8 @@ describe('RunRequest tenant boundary and idempotency', () => {
       })
 
       // A run that never reaches a worker must still expire rather than block.
-      expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ leaseUntil: expect.any(Date) }),
+      expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+        runRequestAdmission: expect.objectContaining({ leaseUntil: expect.any(Date) }),
       }))
     })
   })

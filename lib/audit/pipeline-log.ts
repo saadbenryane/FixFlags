@@ -1,3 +1,4 @@
+import { executionWrite, executionTransaction } from '@/lib/audit/execution-ownership'
 import { randomUUID } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -157,7 +158,7 @@ export async function logPipelineEvent(
     ...(event.error ? { error: sanitizeText(event.error) } : {}),
     ...(event.detail ? { detail: sanitizeText(event.detail) } : {}),
   }
-  await prisma.auditPipelineEvent.create({
+  await executionWrite(tx => tx.auditPipelineEvent.create({
     data: {
       auditId,
       ...trace,
@@ -170,7 +171,7 @@ export async function logPipelineEvent(
         : undefined,
       occurredAt: (dependencies.clock ?? systemClock).now(),
     },
-  })
+  }))
 }
 
 export function createPipelineEventSink(
@@ -188,7 +189,7 @@ export async function initPipelineLog(
   dependencies: { traceId?: string; clock?: Clock } = {}
 ): Promise<ReviewExecutionTrace> {
   const clock = dependencies.clock ?? systemClock
-  return prisma.$transaction(async (tx) => {
+  return executionTransaction(async (tx) => {
     await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtextextended(${`fixflags:pipeline:${auditId}`}, 0))
     `

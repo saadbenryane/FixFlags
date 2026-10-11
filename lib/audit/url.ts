@@ -1,5 +1,6 @@
 import { resolve4, resolve6 } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import { publicHttpCapacity } from './progressive/capacity'
 
 const PUBLIC_PROTOCOLS = new Set(['http:', 'https:'])
 
@@ -140,6 +141,8 @@ export async function safeFetchHtml(
   const timeoutMs = options.timeoutMs ?? 10_000
   const maxBytes = options.maxBytes ?? 5_000_000
   const maxRedirects = options.maxRedirects ?? 5
+  const release = await publicHttpCapacity.acquire(AbortSignal.timeout(timeoutMs))
+  try {
   let current = (await assertPublicAuditUrl(rawUrl)).toString()
 
   for (let redirect = 0; redirect <= maxRedirects; redirect++) {
@@ -210,4 +213,58 @@ export async function safeFetchHtml(
   }
 
   throw new Error(`Destination exceeded ${maxRedirects} redirects`)
+  } finally { release() }
+}
+
+/** Public non-HTML evidence uses the same DNS and redirect boundary as HTML capture. */
+export async function safeFetchDocument(rawUrl: string, options: {
+  timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
+} = {}): Promise<{
+  body: string; finalUrl: string; statusCode: number; headers: Record<string, string>;
+  complete: boolean; redirects: string[];
+}> {
+  const expiresAt = Math.min(options.deadline ?? Infinity, Date.now() + (options.timeoutMs ?? 5000))
+  const release = await publicHttpCapacity.acquire(AbortSignal.timeout(Math.max(1, expiresAt - Date.now())))
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), Math.max(1, expiresAt - Date.now()))
+  const redirects: string[] = []
+  const maxBytes = options.maxBytes ?? 1_000_000
+  try {
+    let current = (await assertPublicAuditUrl(rawUrl)).toString()
+    for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
+      if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
+      const response = await fetch(current, { redirect: 'manual', signal: controller.signal,
+        headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: 'text/html,text/plain,application/xml,text/xml' } })
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location')
+        await response.body?.cancel()
+        if (!location) throw new Error('Redirect response is missing a location')
+        redirects.push(current)
+        current = (await assertPublicAuditUrl(new URL(location, current).toString())).toString()
+        continue
+      }
+      const headers = Object.fromEntries(response.headers.entries())
+      if (!response.body) return { body: '', finalUrl: current, statusCode: response.status, headers, complete: true, redirects }
+      const reader = response.body.getReader()
+      const chunks: Uint8Array[] = []
+      let bytes = 0, complete = true
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (bytes + value.byteLength > maxBytes) {
+            chunks.push(value.subarray(0, maxBytes - bytes))
+            complete = false
+            await reader.cancel()
+            break
+          }
+          bytes += value.byteLength
+          chunks.push(value)
+        }
+      } finally { reader.releaseLock() }
+      return { body: new TextDecoder().decode(Buffer.concat(chunks)), finalUrl: current,
+        statusCode: response.status, headers, complete, redirects }
+    }
+    throw new Error('Public evidence redirect limit exceeded')
+  } finally { clearTimeout(timer); release() }
 }

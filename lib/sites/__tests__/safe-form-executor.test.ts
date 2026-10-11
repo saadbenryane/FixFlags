@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
 }))
 
-vi.mock('@/lib/db', () => ({ prisma: { outcomeFixture: { findFirst: mocks.fixtureFindFirst } } }))
+vi.mock('@/lib/db', () => ({ prisma: { outcomeFixture: { findFirst: mocks.fixtureFindFirst },
+  $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ outcomeFixture: { findFirst: mocks.fixtureFindFirst } }),
+} }))
 vi.mock('@/lib/security/crypto', () => ({ decryptSecret: (value: string) => value }))
 vi.mock('@/lib/audit/screenshot', () => ({ getBrowser: mocks.getBrowser }))
 vi.mock('@/lib/audit/browser/page-session', () => ({ createAuditPage: mocks.createAuditPage }))

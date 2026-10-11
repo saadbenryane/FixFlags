@@ -1,0 +1,22 @@
+{
+  "method": "built-in image_gen",
+  "prompt": "Use case: ads-marketing. Create a wide editorial cover illustration for FixFlags, about someone watching website quality while builders ship faster. A small vivid flag-orange flag stands beside a steady charcoal inspection frame. A few off-white browser-shaped panels flow past it, suggesting several websites being checked. Sculptural matte paper and porcelain, subtle physical depth, soft daylight, a warm off-white background, restrained shadows, generous empty space. Wide 2:1 composition, keep the important objects within the central area. Palette: white, warm stone, charcoal, and FixFlags orange #FF5A00 only. No words, numbers, logos, charts, fake screenshots, robots, sparkles, or purple gradients. Calm, precise, polished editorial art.",
+  "asset": "/marketing/blog/website-quality-cover-v2.webp",
+  "sourceImage": "/Users/saadbenryane/.codex/generated_images/01a128c1-398b-7b93-930c-4f6a68a2b24e/exec-6762c076-a7f7-4a0b-a39b-341254b55d30.png",
+  "createdOn": "2026-10-11",
+  "originalAsset": "/marketing/blog/website-quality-cover-v1.webp",
+  "edits": [
+    {
+      "method": "built-in image_gen",
+      "prompt": "Edit image 1, the existing wide FixFlags editorial cover. Image 2 is the official FixFlags logo lockup and image 3 is the official logo mark, both supplied only as exact brand references. Preserve image 1 as closely as possible: the same 2:1 wide composition, all three people, poses, pale browser panels, charcoal conveyor and inspection portal, orange flag, warm cream background, materials, lighting and shadows. The user likes this illustration. Add the complete official logo from image 2 as a small crisp signature in the open cream space at the lower right, about 250 pixels wide in a 1600 pixel wide image, inset comfortably from the edges. Use the exact orange angular F mark from image 3 and the exact dark FixFlags wordmark from image 2, with correct proportions and spelling. The logo should appear flat and clean, without a rectangle behind it, sitting naturally in the negative space. Do not invent or redesign the logo. Do not cover any person, browser panel, conveyor or inspection portal. Keep the existing orange flag. No other text or added objects. The only change should be this unobtrusive official logo signature.",
+      "references": [
+        "/marketing/blog/website-quality-cover-v1.webp",
+        "/brand/logo-lockup-dark.png",
+        "/brand/logo-mark.png"
+      ],
+      "asset": "/marketing/blog/website-quality-cover-v2.webp",
+      "sourceImage": "/Users/saadbenryane/.codex/generated_images/01a128c1-398b-7b93-930c-4f6a68a2b24e/exec-82325f94-9288-477c-b343-49e19e8c1210.png",
+      "createdOn": "2026-10-11"
+    }
+  ]
+}

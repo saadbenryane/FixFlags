@@ -23,6 +23,7 @@ export function classifyWalk(outcome: WalkOutcome): ClassifiedWalk {
   if (outcome.pageUnavailable || isHardHttpFailure(outcome.httpStatus)) {
     return { health: 'RED', reason: 'http_error' }
   }
+  if (outcome.safetyRefused && !outcome.reachedCheckout) return { health: 'UNKNOWN', reason: 'safety_boundary' }
   if (outcome.checkoutErrorVisible) return { health: 'RED', reason: 'checkout_error' }
   if (outcome.httpStatus !== null && outcome.httpStatus >= 400) return { health: 'UNKNOWN', reason: 'probe_error' }
   if (outcome.reachedCheckout) return { health: 'GREEN', reason: 'checkout_reached' }

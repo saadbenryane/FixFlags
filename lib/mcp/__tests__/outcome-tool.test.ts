@@ -9,11 +9,11 @@ const stubs = vi.hoisted(() => ({
   loadSiteOutcomeDetail: vi.fn(),
   mcpOutcomePayload: vi.fn(),
   latestAudit: vi.fn().mockResolvedValue({ id: 'audit-1' }),
-  checkResults: vi.fn().mockResolvedValue([]),
+  checkResults: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findFirst: stubs.latestAudit } } }))
-vi.mock('@/lib/sites/application/check-results', () => ({ loadSiteCheckResults: stubs.checkResults }))
+vi.mock('@/lib/sites/application/check-results', () => ({ loadSiteCheckResultPage: stubs.checkResults }))
 
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: stubs.loadSiteRecord }))
 vi.mock('@/lib/sites/outcomes', () => ({
@@ -65,7 +65,7 @@ describe('MCP Outcome tool', () => {
     expect(stubs.loadSiteOutcomeDetail).toHaveBeenCalledTimes(1)
     expect(stubs.loadSiteOutcomeDetail).toHaveBeenCalledWith(site, 'outcome-1')
     expect(stubs.mcpOutcomePayload).toHaveBeenCalledWith(detail)
-    expect(result.structuredContent).toEqual({ siteId: 'site-1', outcomes: [projected], checkResults: [] })
-    expect(stubs.checkResults).toHaveBeenCalledWith(site, 'audit-1')
+    expect(result.structuredContent).toEqual({ siteId: 'site-1', outcomes: [projected], checkResults: [], checkResultsNextCursor: null })
+    expect(stubs.checkResults).toHaveBeenCalledWith(site, 'audit-1', undefined)
   })
 })

@@ -9,6 +9,7 @@ import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { BOARD_CARD_ICONS, BoardGrid, BoardSummaryStrip, ProductBoardCard } from '@/components/sites/BoardCard'
 import { RecommendationList, SiteCardFindings } from '@/components/sites/SiteCardFindings'
 import { SiteCheckResults } from '@/components/sites/SiteCheckResults'
+import { SiteExecutionProgress } from '@/components/sites/SiteExecutionProgress'
 import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
 import { useSiteResource } from '@/hooks/useSiteResource'
 import { SiteCheckLibrary } from '@/components/sites/SiteCheckLibrary'
@@ -37,7 +38,8 @@ import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/
 import { outcomeCoverageLabel, outcomeFreshnessDisclosure, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
-import { projectSiteActivity } from '@/lib/sites/activity'
+import { createSiteActionController, executeSiteAction } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { runBanner } from '@/lib/sites/presentation'
 
 function isEmptyUncheckedCard(card: BoardCardView) {
@@ -62,7 +64,6 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
   const signedIn = Boolean(user)
   const { view, refresh, disconnected: updatesDisconnected } = useSiteResource(siteId, initial)
   const disconnected = updatesDisconnected || Boolean(view.recoveryUnavailable)
-  const setView = (update: (current: SiteHomeView) => SiteHomeView) => { void refresh(update(view), { revalidate: false }) }
   const ownsSite = Boolean(user?.id && view.site.projectId && view.site.userId === user.id)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -75,6 +76,8 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const action = useRef(createSiteActionController()).current
+  const [authRequired, setAuthRequired] = useState(false)
   const opener = useRef<HTMLElement | null>(null)
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
   const watch = view.watch
@@ -90,89 +93,35 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
   const alertNotice = siteWatchAlertNotice(alert)
   const summaryNote = siteSummaryNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
   async function retryCheck() {
-    if (!view.audit.id || busy) return
-    setBusy(true)
-    try {
-      const response = await fetch(`/api/reports/${view.audit.id}/retry`, { method: 'POST' })
-      const body = await response.json().catch(() => ({})) as { message?: string }
-      if (!response.ok) return setToast(body.message ?? 'Could not retry this check. Try again.')
-      setToast('Check started again')
-      setView((current) => ({ ...current,
-        activity: projectSiteActivity({ status: 'QUEUED', startedAt: null, failureCode: null, pages: [], events: [] }),
-        audit: { ...current.audit, status: 'QUEUED', failureCode: null, progress: 0 } }))
-      await refresh()
-    } catch {
-      setToast(SITE_BOARD_COPY.connectionInterrupted)
-    } finally {
-      setBusy(false)
-    }
+    if (!view.audit.id) return
+    await submit(() => executeSiteAction(`/api/reports/${view.audit.id}/retry`, { method: 'POST' }, 'retry'))
   }
 
   async function verifyOutcome(outcomeId: string) {
-    if (busy) return
-    setBusy(true)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
         method: 'POST', headers: { 'Idempotency-Key': `web:${outcomeId}:${Date.now()}` },
-      })
-      const body = await response.json().catch(() => ({})) as { message?: string }
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
-          return
-        }
-        return setToast(body.message || 'Could not start this verification')
-      }
-      setToast(SITE_BOARD_COPY.checkStarted)
-      await refresh()
-    } catch {
-      setToast(SITE_BOARD_COPY.connectionInterrupted)
-    } finally {
-      setBusy(false)
-    }
+      }, 'run'))
   }
 
   async function refreshSiteEvidence() {
-    if (busy) return
-    setBusy(true)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/runs`, {
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/runs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': `web:site-care:${siteId}:${Date.now()}`,
         },
         body: JSON.stringify({ scope: 'site', outcomeIds: [] }),
-      })
-      const body = await response.json().catch(() => ({})) as { auditId?: string | null; message?: string; code?: string }
-      if (!response.ok) {
-        if (response.status === 401) router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
-        // A spent allowance and a busy Site both explain themselves. Replacing
-        // that sentence with a generic failure leaves the customer retrying a
-        // check that cannot start.
-        else setToast(body.message || SITE_BOARD_COPY.checkStartFailed)
-        return
-      }
-      setSelectedCard(null)
-      setToast(SITE_BOARD_COPY.checkStarted)
-      setView((current) => ({
-        ...current,
-        audit: {
-          ...current.audit,
-          id: body.auditId ?? current.audit.id,
-          status: 'QUEUED',
-          progress: 0,
-          walkFinished: false,
-          failureCode: null,
-        },
-        activity: projectSiteActivity({ status: 'QUEUED', startedAt: null, failureCode: null, pages: [], events: [] }),
-      }))
-      await refresh()
-    } catch {
-      setToast(SITE_BOARD_COPY.connectionInterrupted)
-    } finally {
-      setBusy(false)
-    }
+      }, 'run'))
+  }
+
+  async function submit(mutation: () => Promise<unknown>) {
+    if (action.pending) return
+    setBusy(true); setToast(null)
+    const completed = await action.submit(mutation, () => refresh(), () => { setToast(SITE_BOARD_COPY.checkStarted); setAuthRequired(false) })
+    if (completed.kind === 'refused') { setToast(completed.error.message); setAuthRequired(completed.error.status === 401) }
+    else if (completed.kind === 'saved_refresh_pending') setToast(SITE_ACTION_COPY.refreshPending)
+    else if (completed.kind === 'saved') { setToast(SITE_BOARD_COPY.checkStarted); setAuthRequired(false) }
+    setBusy(false)
   }
 
   const selected = selectedCard ? view.cards.find((card) => card.id === selectedCard) ?? null : null
@@ -259,6 +208,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
         </Button> : null}
         <SiteCheckLibrary open={libraryOpen} onOpenChange={setLibraryOpen} siteId={siteId} view={view} owner={ownsSite} onRefresh={refresh} onOpenCard={setSelectedCard} onCheck={refreshSiteEvidence} />
       </>}>
+      {authRequired ? <Button asChild variant="outline"><a target="_blank" rel="noopener noreferrer" href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`}>{SITE_ACTION_COPY.signInAction}</a></Button> : null}
       {viewMode === 'home' && showActivityPanel ? <SiteActivityPanel banner={banner} activity={view.activity} disconnected={disconnected} onRetry={ownsSite ? refreshSiteEvidence : undefined} retryBusy={busy}>
       {notice ? (
         <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} />
@@ -269,6 +219,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
       {viewMode === 'home' && !view.activity && notice ? <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} /> : null}
       {viewMode === 'home' && !view.activity && summaryNote ? <p role="status" className="text-sm text-muted-foreground">{summaryNote.body}</p> : null}
 
+      {viewMode === 'home' && checking && view.executionProgress ? <SiteExecutionProgress progress={view.executionProgress} /> : null}
       {viewMode === 'home' ? <SiteMonitoringActivation hideSettled siteId={siteId} view={view} owner={ownsSite} checking={checking} onRefresh={refresh} onExploreCoverage={() => setLibraryOpen(true)} /> : null}
       {viewMode === 'home' && alertNotice ? (
       <section className="rounded-card border border-border/80 bg-background p-5" role="status">

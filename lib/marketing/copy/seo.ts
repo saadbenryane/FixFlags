@@ -65,9 +65,9 @@ export const SEO = {
       'Scan any URL for Lorem ipsum, TODO markers, AI-builder template artifacts, and unreplaced tokens. Free tool.',
   },
   blog: {
-    title: 'Blog',
+    title: 'FixFlags Blog',
     description:
-      'Notes on shipping AI-built products without the embarrassing bugs: product review, what breaks first, and what to fix before users see it.',
+      'Practical guides to website launch checks, independent verification, and monitoring the customer actions that matter.',
   },
   privacy: {
     title: 'Privacy Policy',

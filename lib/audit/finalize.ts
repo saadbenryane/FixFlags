@@ -1,3 +1,4 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { projectSiteAnalysis } from '@/lib/sites/application/project-analysis'
@@ -14,6 +15,7 @@ import { triageFailureCode } from '@/lib/audit/pipeline/triage-failure'
 import { DETERMINISTIC_SCAN_VERDICT } from '@/lib/audit/verdict'
 import type { TriageFailureReason } from '@/lib/audit/pipeline/triage-failure'
 import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 
 type FinalizeBaseInput = {
   auditId: string
@@ -59,13 +61,14 @@ export async function persistImprovementCycle(
 ): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
-    select: { improvementProjectedAt: true },
+    select: { improvementProjectedAt: true, executionSpec: true },
   })
   if (!audit || audit.improvementProjectedAt) return
 
   try {
     await projectSiteAnalysis(auditId)
-    if (parentId) await diffFlagsAgainstParent(auditId, parentId)
+    const scope = readExecutionSpec(audit.executionSpec)?.scope
+    if (parentId && scope !== 'OUTCOMES' && scope !== 'DIAGNOSTIC') await diffFlagsAgainstParent(auditId, parentId)
     await executeProductCommand({ type: 'MATERIALIZE_ATTENTION', auditId })
     // Targeted recovery consumes the persisted binding assessment, rather than
     // treating optional broad-report evidence as the Outcome's success rule.
@@ -86,10 +89,10 @@ export async function persistImprovementCycle(
     // improvementProjectedAt is a completion receipt, not a lease. Write it
     // only after every idempotent projection step succeeds so a process crash
     // leaves the Review recoverable by the scheduler.
-    await prisma.audit.updateMany({
+    await executionWrite(tx => tx.audit.updateMany({
       where: { id: auditId, status: 'COMPLETED', improvementProjectedAt: null },
       data: { improvementProjectedAt: new Date() },
-    })
+    }))
   } catch (error) {
     await logPipelineEvent(auditId, {
       stage: 'completed',
@@ -119,10 +122,10 @@ export async function persistAuditFailedModules(
   pageRuns: Array<{ failedModules: string[] }>
 ): Promise<void> {
   const modules = [...new Set(pageRuns.flatMap((page) => page.failedModules))].sort()
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: modules.length > 0 ? { failedModules: modules } : { failedModules: Prisma.JsonNull },
-  })
+  }))
 }
 
 /** Complete phase-1 triage. Anonymous visitors stop here; signed-up users may enqueue prescription. */
@@ -169,7 +172,7 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'triage_completed' })
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: input.auditId },
     data: {
       status: 'COMPLETED',
@@ -184,7 +187,7 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
       failureMetadata: undefined,
       errorMsg: null,
     },
-  })
+  }))
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
@@ -274,7 +277,7 @@ export async function finalizeTriageDegraded(
     detail: input.reason,
   })
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: input.auditId },
     data: {
       status: 'COMPLETED',
@@ -291,7 +294,7 @@ export async function finalizeTriageDegraded(
       failureCode,
       failureStage: 'judging',
     },
-  })
+  }))
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
@@ -351,7 +354,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'completed' })
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: input.auditId },
     data: {
       status: 'COMPLETED',
@@ -365,7 +368,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
       failureStage: null,
       failureMetadata: undefined,
     },
-  })
+  }))
 
   // Triage completion owns the durable Product projection and usage. The
   // prescription phase enriches prompts only and must not re-diff or re-verify.
@@ -435,7 +438,7 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
     error: input.errorMsg,
   })
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: input.auditId },
     data: {
       status: 'COMPLETED',
@@ -452,7 +455,7 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       failureCode: input.failureCode,
       failureStage: input.failureStage,
     },
-  })
+  }))
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
@@ -510,7 +513,7 @@ export async function finalizeDeterministicOnly(
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'deterministic_completed' })
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: input.auditId },
     data: {
       status: 'COMPLETED',
@@ -528,7 +531,7 @@ export async function finalizeDeterministicOnly(
       failureMetadata: undefined,
       errorMsg: null,
     },
-  })
+  }))
 
   await completeImprovementProjection(input.auditId, null)
 

@@ -20,6 +20,11 @@ function outcome(overrides: Partial<WalkOutcome> = {}): WalkOutcome {
 }
 
 describe('classifyWalk', () => {
+  it('keeps scanner-imposed submission refusal unknown without concealing a real HTTP failure', () => {
+    expect(classifyWalk(outcome({ safetyRefused: true, cartUpdated: false }))).toEqual({ health: 'UNKNOWN', reason: 'safety_boundary' })
+    expect(classifyWalk(outcome({ safetyRefused: true, httpStatus: 404, pageUnavailable: true })))
+      .toEqual({ health: 'RED', reason: 'http_error' })
+  })
   it('is GREEN when checkout is reached', () => {
     expect(classifyWalk(outcome({ reachedCheckout: true, failedStep: null }))).toEqual({
       health: 'GREEN',

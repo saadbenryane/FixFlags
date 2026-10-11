@@ -1,21 +1,25 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { useSiteAction } from '@/hooks/useSiteAction'
+import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SiteActionFeedback } from './SiteActionFeedback'
 
 export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId: string; flagId: string; verifying?: boolean }) {
   const router = useRouter()
-  const [busy, setBusy] = useState(false)
+  const { busy, message, error, submit, clearFeedback } = useSiteAction()
   const [verificationRunning, setVerificationRunning] = useState(verifying)
-  const [message, setMessage] = useState<string | null>(null)
   const [changeSummary, setChangeSummary] = useState('')
   const [verifyOpen, setVerifyOpen] = useState(false)
+  const intent = useRef<{ flagId: string; key: string } | null>(null)
 
   useEffect(() => {
     setVerificationRunning(verifying)
@@ -28,39 +32,24 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
   }, [router, verificationRunning])
 
   async function verify() {
-    setBusy(true)
-    try {
-      const res = await fetch(`/api/sites/${siteId}/flags/${flagId}/verify`, {
+    if (intent.current?.flagId !== flagId) intent.current = { flagId, key: `web:verify:${flagId}:${crypto.randomUUID()}` }
+    const result = await submit(async () => {
+      const body = await executeSiteAction(`/api/sites/${siteId}/flags/${flagId}/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': `web:verify:${flagId}:${crypto.randomUUID()}`,
+          'Idempotency-Key': intent.current!.key,
         },
         body: JSON.stringify({ changeSummary: changeSummary.trim() }),
-      })
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string
-        message?: string
-        signup?: boolean
-      }
-      if (res.status === 401 || body.signup) {
-        router.push(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}/flags/${flagId}`)}`)
-        return
-      }
-      if (!res.ok) {
-        setMessage(body.message || body.error || SITE_BOARD_COPY.verificationFailed)
-        return
-      }
+      }, 'flagVerify')
+      if (body.siteId !== siteId || body.flagId !== flagId) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse)
+      return body
+    }, () => {
       setVerificationRunning(true)
       setVerifyOpen(false)
-      setMessage(SITE_BOARD_COPY.verificationStarted)
-      router.refresh()
-    } catch {
-      setMessage(SITE_BOARD_COPY.verificationConnectionLost)
-      router.refresh()
-    } finally {
-      setBusy(false)
-    }
+      return SITE_BOARD_COPY.verificationStarted
+    }, () => router.refresh())
+    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') intent.current = null
   }
 
   return (
@@ -72,7 +61,7 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
 
       <div className="border-t border-border/80 pt-5">
         <p className="text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.verifyStepBody}</p>
-        <Button className="mt-3 w-full" variant="brand" disabled={busy || verificationRunning} onClick={() => { setMessage(null); setVerifyOpen(true) }}>
+        <Button className="mt-3 w-full" variant="brand" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
           <ShieldCheck aria-hidden="true" />
           {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
         </Button>
@@ -91,7 +80,7 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
             <p id="flag-change-summary-hint" className="text-xs text-muted-foreground">{SITE_BOARD_COPY.changeHint}</p>
             <Textarea id="flag-change-summary" aria-describedby="flag-change-summary-hint" value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} rows={3} placeholder={SITE_BOARD_COPY.changePlaceholder} />
           </div>
-          {message ? <p role="status" aria-live="polite" className="text-sm leading-relaxed">{message}</p> : null}
+          <SiteActionFeedback message={message} error={error} siteId={siteId} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>Cancel</Button>
             <Button type="button" variant="brand" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>

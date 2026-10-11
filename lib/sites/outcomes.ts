@@ -1,3 +1,4 @@
+import { executionTransaction, executionWrite } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { createHash } from 'node:crypto'
@@ -7,6 +8,8 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { observedPurchaseStart } from '@/lib/sites/checkout-inference'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, currentOutcomeState, customerBindingResult, outcomeStatusLabel, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
+import { assessmentIsComparable } from '@/lib/sites/domain/assessment-comparability'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import type { BrowserJourneyConfig } from '@/lib/sites/application/binding-config'
 import {
@@ -117,6 +120,7 @@ async function pageUrlsForIds(pageIds: string[]): Promise<string[]> {
 
 async function toOutcomeView(row: {
   id: string
+  projectId?: string | null
   name: string
   slug: string
   description: string | null
@@ -129,7 +133,7 @@ async function toOutcomeView(row: {
   enabled: boolean
   staleAfterMinutes: number
   expectation: string | null
-  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null; mechanism: string; version: number }>
+  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null; mechanism: string; version: number; config?: Prisma.JsonValue }>
   assessments: Array<{
     state: 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY'
     summary: string
@@ -143,6 +147,16 @@ async function toOutcomeView(row: {
 }): Promise<SiteOutcomeView> {
   const pageIds = row.pages.map((p) => p.pageId)
   const latest = row.assessments[0] ?? null
+  const revisions = await Promise.all(row.bindings.map(async binding => {
+    if (binding.mechanism !== 'SAFE_FORM' || !row.projectId) return binding
+    const config = binding.config as { fixtureId?: unknown } | null
+    if (typeof config?.fixtureId !== 'string') return binding
+    const fixture = await prisma.outcomeFixture.findFirst({ where: { id: config.fixtureId, projectId: row.projectId },
+      select: { id: true, version: true, enabled: true, authorizedAt: true, lastDryRunVersion: true } })
+    return { ...binding, ...(fixture ? { fixture: { id: fixture.id, version: fixture.version,
+      authorized: fixture.enabled && Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version } } : {}) }
+  }))
+  const comparable = latest && assessmentIsComparable(latest.coverage, revisions, row.environment)
   return {
     id: row.id,
     name: row.name,
@@ -171,10 +185,10 @@ async function toOutcomeView(row: {
       version: binding.version,
     })),
     coverage: latest?.coverage ?? null,
-    state: currentOutcomeState(latest),
-    summary: latest?.summary ?? UNASSESSED_OUTCOME_SUMMARY,
-    lastVerifiedAt: latest?.assessedAt.toISOString() ?? null,
-    validUntil: latest?.validUntil.toISOString() ?? null,
+    state: latest && !comparable ? 'COULD_NOT_VERIFY' : currentOutcomeState(latest),
+    summary: latest && !comparable ? SITE_ACTION_COPY.configurationUnknown : latest?.summary ?? UNASSESSED_OUTCOME_SUMMARY,
+    lastVerifiedAt: comparable ? latest.assessedAt.toISOString() : null,
+    validUntil: comparable ? latest.validUntil.toISOString() : null,
     flagId: latest?.improvementId ?? null,
     latestRunId: row.runSelections[0]?.runRequest.id ?? latest?.runRequestId ?? null,
     running: row.runSelections.some(
@@ -243,7 +257,7 @@ export async function syncOutcomesFromAudit(input: {
   if (audit.projectId !== input.site.projectId)
     throw new Error('Analysis does not belong to this Site')
   let checkoutOutcomeId: string | null = null
-  await prisma.$transaction(async (tx) => {
+  await executionTransaction(async (tx) => {
     const owner = input.site.projectId
       ? { projectId: input.site.projectId }
       : { provisionalSiteId: input.site.provisionalSiteId! }
@@ -421,7 +435,7 @@ export async function confirmPageAvailability(site: SiteRecord): Promise<SiteOut
   const owner = site.projectId
     ? { projectId: site.projectId }
     : { provisionalSiteId: site.provisionalSiteId! }
-  const row = await prisma.siteOutcome.upsert({
+  const row = await executionWrite(tx => tx.siteOutcome.upsert({
     where,
     create: {
       ...owner,
@@ -434,7 +448,7 @@ export async function confirmPageAvailability(site: SiteRecord): Promise<SiteOut
       inferenceSource: 'browser',
     },
     update: {},
-  })
+  }))
   return confirmSiteOutcome({
     site,
     outcomeId: row.id,
@@ -469,7 +483,7 @@ export async function confirmSiteOutcome(input: {
     safeFixture = { id: fixture.id, targetUrl: fixture.targetUrl }
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await executionTransaction(async (tx) => {
     // Every confirmation, reconfirmation and withdrawal for one Outcome must
     // observe the previous mutation after it commits. Without this row lock, a
     // withdrawal can scan bindings before a concurrent confirmation inserts
@@ -561,7 +575,7 @@ export async function confirmSiteOutcome(input: {
       where: { id: outcome.id },
       include: {
         pages: true,
-        bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
+        bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
         assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
         runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
       },
@@ -589,12 +603,13 @@ export async function createSiteOutcome(input: {
     if (!fixture || fixture.version !== fixture.lastDryRunVersion || fixture.targetUrl !== target.toString()) throw new OutcomeFixtureRequiredError()
   }
   const slug = `${input.kind.toLowerCase()}-${createHash('sha256').update(target.toString()).digest('hex').slice(0, 24)}`
-  const row = await prisma.siteOutcome.upsert({
-    where: { projectId_slug: { projectId: input.site.projectId, slug } },
+  const projectId = input.site.projectId
+  const row = await executionWrite(tx => tx.siteOutcome.upsert({
+    where: { projectId_slug: { projectId, slug } },
     create: { projectId: input.site.projectId, slug, name: nameForConfirmedOutcomeKind(input.kind), kind: input.kind,
       expectation: expectationForKind(input.kind), inferenceSource: 'user' },
     update: {},
-  })
+  }))
   return confirmSiteOutcome({ site: input.site, outcomeId: row.id, confirmed: true, kind: input.kind, fixtureId: input.fixtureId, targetUrl: target.toString() })
 }
 
@@ -628,16 +643,16 @@ export async function renameSiteOutcome(input: {
   })
   if (!outcome) return null
 
-  const updated = await prisma.siteOutcome.update({
+  const updated = await executionWrite(tx => tx.siteOutcome.update({
     where: { id: outcome.id },
     data: { name: input.name.trim(), inferenceSource: 'user' },
     include: {
       pages: true,
-      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
       assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
-  })
+  }))
   return toOutcomeView(updated)
 }
 
@@ -651,7 +666,7 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
     where: ownerFilter,
     include: {
       pages: true,
-      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
       assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
@@ -697,7 +712,7 @@ export async function loadSiteOutcomeDetail(
     where: { id: outcomeId, ...ownerFilter },
     include: {
       pages: true,
-      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
       assessments: { orderBy: { assessedAt: 'desc' }, take: 20 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 20 },
       bindingAttempts: { orderBy: { createdAt: 'desc' }, take: 20 },
@@ -863,10 +878,10 @@ export async function setSiteOutcomeEnabled(input: {
   enabled: boolean
 }): Promise<SiteOutcomeDetailView | null> {
   if (!input.site.projectId) return null
-  const changed = await prisma.siteOutcome.updateMany({
+  const changed = await executionWrite(tx => tx.siteOutcome.updateMany({
     where: { id: input.outcomeId, projectId: input.site.projectId },
     data: { enabled: input.enabled },
-  })
+  }))
   if (changed.count !== 1) return null
   return loadSiteOutcomeDetail(input.site, input.outcomeId)
 }

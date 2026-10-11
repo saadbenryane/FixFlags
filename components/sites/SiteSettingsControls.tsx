@@ -14,7 +14,10 @@ import type { PublicConnection } from '@/lib/sites/connections/match'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { formatAlertDate, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
-import { fetchSiteAction, readSiteActionResponse, siteActionMessage, SiteActionError } from '@/lib/sites/client-actions'
+import { executeSiteAction } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
+import { useSiteAction } from '@/hooks/useSiteAction'
+import { SiteActionFeedback } from './SiteActionFeedback'
 
 type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
 type GoogleProvider = 'SEARCH_CONSOLE' | 'ANALYTICS'
@@ -40,144 +43,49 @@ export function SiteSettingsControls({
   const [shop, setShop] = useState(initial.shopify.domain ?? '')
   const [searchConsole, setSearchConsole] = useState(initial.searchConsole)
   const [analytics, setAnalytics] = useState(initial.analytics)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [authRequired, setAuthRequired] = useState(false)
+  const { busy, message, error, submit } = useSiteAction()
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const alertNotice = watch.alert ? siteWatchAlertNotice(watch.alert) : null
-  function reportError(error: unknown) {
-    setMessage(siteActionMessage(error))
-    if (error instanceof SiteActionError && error.status === 401) setAuthRequired(true)
-  }
-
   async function saveNotifications() {
     if (!level || recovery == null) return
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/settings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationLevel: level, notifyOnRecovery: recovery }),
-      })
-      const body = await readSiteActionResponse(response)
-      setMessage(response.ok ? 'Notification preferences saved.' : body.error ?? 'Could not save preferences.')
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setBusy(false)
-    }
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/settings`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notificationLevel: level, notifyOnRecovery: recovery }),
+    }, 'settings'), () => C.settings.notificationsSaved, () => router.refresh())
   }
 
   async function connectShopify() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/shopify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shop }),
-      })
-      const body = await readSiteActionResponse(response)
-      if (response.ok && body.authorizeUrl) {
-        window.location.assign(body.authorizeUrl)
-        return
-      }
-      setMessage(body.error ?? 'Could not connect Shopify.')
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setBusy(false)
-    }
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/connections/shopify`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shop }),
+    }, 'authorize'), body => { window.location.assign(body.authorizeUrl); return null })
   }
 
   async function disconnectShopify() {
-    setBusy(true)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/shopify`, { method: 'DELETE' })
-      const body = await readSiteActionResponse(response)
-      if (response.ok) {
-        setShop('')
-        setMessage('Shopify disconnected from this Site.')
-        router.refresh()
-      } else {
-        setMessage(body.error ?? 'Could not disconnect Shopify.')
-      }
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setBusy(false)
-    }
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/connections/shopify`, { method: 'DELETE' }, 'acknowledgement'),
+      () => { setShop(''); return C.settings.shopifyDisconnected }, () => router.refresh())
   }
 
   async function connectGoogle(provider: GoogleProvider) {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, action: 'connect' }),
-      })
-      const body = await readSiteActionResponse(response)
-      if (response.ok && body.authorizeUrl) {
-        window.location.assign(body.authorizeUrl)
-        return
-      }
-      setMessage(body.error ?? 'Could not start the Google connection.')
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setBusy(false)
-    }
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/connections/google`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, action: 'connect' }),
+    }, 'authorize'), body => { window.location.assign(body.authorizeUrl); return null })
   }
 
   async function disconnectGoogle(provider: GoogleProvider) {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/google`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider }),
-      })
-      const body = await readSiteActionResponse(response)
-      if (!response.ok) {
-        setMessage(body.error ?? 'Could not disconnect this provider.')
-        return
-      }
-      const next = provider === 'SEARCH_CONSOLE'
-        ? { ...searchConsole, status: 'revoked' as const, detail: 'Disconnected. Earlier numbers stay on the Site.' }
-        : { ...analytics, status: 'revoked' as const, detail: 'Disconnected. Earlier numbers stay on the Site.' }
-      if (provider === 'SEARCH_CONSOLE') setSearchConsole(next)
-      else setAnalytics(next)
-      setMessage(provider === 'SEARCH_CONSOLE' ? 'Search Console disconnected from this Site.' : 'Analytics disconnected from this Site.')
-      router.refresh()
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setBusy(false)
-    }
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/connections/google`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider }),
+    }, 'acknowledgement'), () => {
+      const update = (connection: PublicConnection): PublicConnection => ({ ...connection, status: 'revoked', detail: C.settings.disconnectedDetail })
+      if (provider === 'SEARCH_CONSOLE') setSearchConsole(update)
+      else setAnalytics(update)
+      return C.settings.googleDisconnected(provider)
+    }, () => router.refresh())
   }
 
   async function removeSite() {
-    if (!window.confirm('Remove this Site, stop Watch, and disconnect Shopify?')) return
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}`, { method: 'DELETE' })
-      const body = await readSiteActionResponse(response)
-      if (!response.ok) {
-        setMessage(body.error ?? 'Could not remove this Site.')
-        return
-      }
-      router.push('/dashboard')
-      router.refresh()
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setBusy(false)
-    }
+    if (!window.confirm(C.settings.removeConfirmation)) return
+    await submit(() => executeSiteAction(`/api/sites/${siteId}`, { method: 'DELETE' }, 'acknowledgement'),
+      () => { router.push('/dashboard'); return null }, () => router.refresh())
   }
 
   return (
@@ -267,8 +175,7 @@ export function SiteSettingsControls({
         onConnect={() => void connectGoogle('ANALYTICS')}
         onDisconnect={() => void disconnectGoogle('ANALYTICS')}
       /> : null}
-      {message ? <p className="text-sm text-muted-foreground" role="status">{message}</p> : null}
-      {authRequired ? <Button variant="outline" asChild><Link href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}/settings`)}`}>Sign in again</Link></Button> : null}
+      <SiteActionFeedback message={message} error={error} siteId={siteId} />
       <section className="rounded-2xl border border-destructive/30 bg-background p-5">
         <h2 className="text-lg font-semibold">Remove Site</h2>
         <p className="mt-1 text-sm text-muted-foreground">

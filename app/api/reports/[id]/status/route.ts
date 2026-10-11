@@ -12,7 +12,6 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
-import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
@@ -62,13 +61,6 @@ export async function GET(
     )
     if (access === 'denied') {
       return apiError('You do not have access to this report', 403)
-    }
-
-    if (NON_TERMINAL.has(audit.status)) {
-      const secondsSinceUpdate = (Date.now() - audit.updatedAt.getTime()) / 1000
-      if (secondsSinceUpdate > 15) {
-        await recoverAuditJobOnPoll(id, audit)
-      }
     }
 
     const refreshed = NON_TERMINAL.has(audit.status)

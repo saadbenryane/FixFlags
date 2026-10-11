@@ -10,7 +10,8 @@ import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'
 
 const { prismaMock } = vi.hoisted(() => {
   const prismaMock = {
-    audit: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    audit: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    $queryRaw: vi.fn(async () => [{ id: 'audit-1' }]),
     runRequest: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
     screenshot: { deleteMany: vi.fn() },
     auditPage: { deleteMany: vi.fn() },
@@ -45,6 +46,12 @@ vi.mock('@/lib/audit/gsc-integration', () => ({
 }))
 vi.mock('@/lib/audit/checks/search-performance', () => ({
   runSearchPerformanceChecks: vi.fn(async () => []),
+}))
+vi.mock('@/lib/audit/search/google', () => ({
+  runGoogleSearchForAudit: vi.fn(async () => ({ receipts: [], findings: [] })),
+}))
+vi.mock('@/lib/audit/search/workflow', () => ({
+  runCheckedPageSearch: vi.fn(async () => []),
 }))
 vi.mock('@/lib/audit/open-check', () => ({
   DEFAULT_OPEN_CHECK_CEILING: 80,
@@ -130,8 +137,13 @@ describe('runAudit orchestrator', () => {
     vi.clearAllMocks()
     prismaMock.audit.findUnique.mockResolvedValue(makeAudit())
     prismaMock.audit.update.mockResolvedValue({})
+    prismaMock.audit.updateMany.mockResolvedValue({ count: 1 })
+    prismaMock.audit.findUniqueOrThrow.mockResolvedValue({ executionGeneration: 1 })
     ;(runPage as Mock).mockResolvedValue(makePageRun())
-    ;(finalizeFromOutcome as Mock).mockResolvedValue(true)
+    ;(finalizeFromOutcome as Mock).mockImplementation(async () => {
+      prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))
+      return true
+    })
     ;(tryPartialFinalize as Mock).mockResolvedValue(false)
   })
 
@@ -177,7 +189,10 @@ describe('runAudit orchestrator', () => {
 
   it('partial-finalizes on a mid-run timeout instead of failing', async () => {
     ;(runPage as Mock).mockRejectedValue(new AuditDeadlineError('capturing'))
-    ;(tryPartialFinalize as Mock).mockResolvedValue(true)
+    ;(tryPartialFinalize as Mock).mockImplementation(async () => {
+      prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))
+      return true
+    })
 
     await runAudit('audit-1')
 

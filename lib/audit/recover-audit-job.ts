@@ -1,4 +1,7 @@
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { claimExecution, withExecutionOwnership } from './execution-ownership'
+import { incrementUsageOnCompleteForAudit } from './usage'
 import { getAuditQueue } from '@/lib/queue/client'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
@@ -312,17 +315,23 @@ export async function recoverCompletedImprovementProjections(
   limit = IMPROVEMENT_PROJECTION_RECOVERY_LIMIT
 ): Promise<ImprovementProjectionRecoveryResult> {
   const audits = await prisma.audit.findMany({
-    where: { status: 'COMPLETED', improvementProjectedAt: null },
+    where: { status: 'COMPLETED', improvementProjectedAt: null,
+      verifierExecutions: { none: { workKind: 'finalize', workState: 'RUNNING', workLeaseUntil: { gt: new Date() } } } },
     orderBy: { completedAt: 'asc' },
     take: Math.max(1, Math.min(limit, IMPROVEMENT_PROJECTION_RECOVERY_LIMIT)),
-    select: { id: true, parentId: true },
+    select: { id: true, parentId: true, userId: true },
   })
 
   let projected = 0
   let failed = 0
   for (const audit of audits) {
     try {
-      await persistImprovementCycle(audit.id, audit.parentId)
+      const owner = await claimExecution(audit.id, true)
+      if (!owner) continue
+      await withExecutionOwnership(owner, async () => {
+        if (audit.userId) await incrementUsageOnCompleteForAudit(audit.id, audit.userId)
+        await persistImprovementCycle(audit.id, audit.parentId)
+      })
       projected++
     } catch (error) {
       failed++
@@ -347,8 +356,11 @@ async function queryStuckAudits(cutoff: Date, retries = 2): Promise<Array<{ id: 
         where: {
           status: { notIn: ['COMPLETED', 'FAILED'] },
           updatedAt: { lt: cutoff },
+          OR: [{ executionSpec: { equals: Prisma.DbNull } }, { NOT: { executionSpec: { path: ['engine'], equals: 'progressive-v1' } } }],
         },
         select: { id: true, status: true, startedAt: true, reviewDepth: true },
+        orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+        take: 50,
       })
     } catch (err) {
       if (attempt < retries) {

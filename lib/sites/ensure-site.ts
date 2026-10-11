@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 import { encodeSiteId, siteUrlParts, type SiteRecord } from '@/lib/sites/types'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { productNameFromUrl } from '@/lib/audit/product-intelligence'
@@ -14,12 +15,12 @@ export async function ensureSiteForAudit(input: {
   userId?: string | null
   projectId?: string | null
   sessionKey?: string | null
-}): Promise<SiteRecord> {
+}, db: Prisma.TransactionClient = prisma): Promise<SiteRecord> {
   const parts = siteUrlParts(input.url)
   if (!parts) throw new Error('A valid Site hostname is required')
 
   if (input.projectId) {
-    const project = await prisma.project.findUnique({
+    const project = await db.project.findUnique({
       where: { id: input.projectId },
       select: {
         id: true,
@@ -57,7 +58,7 @@ export async function ensureSiteForAudit(input: {
   }
 
   if (input.userId) {
-    const project = await prisma.project.findUnique({
+    const project = await db.project.findUnique({
       where: {
         userId_canonicalHost: {
           userId: input.userId,
@@ -101,7 +102,7 @@ export async function ensureSiteForAudit(input: {
   }
 
   const sessionKey = input.sessionKey?.trim() || `audit:${input.auditId}`
-  const provisional = await prisma.provisionalSite.upsert({
+  const provisional = await db.provisionalSite.upsert({
     where: {
       sessionKey_canonicalHost: {
         sessionKey,

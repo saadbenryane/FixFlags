@@ -6,9 +6,6 @@ const BLOCKED_PAYMENT_HOST_PATTERN =
 
 const DOWNLOAD_EXTENSION_PATTERN = /\.(?:zip|pdf|dmg|exe|msi|apk|ipa|gz|tgz|rar|7z|csv|xlsx?)(?:\?|$)/i
 
-const ENGAGEMENT_PATH_PATTERN =
-  /newsletter|subscribe|signup|sign-up|register|contact|demo|waitlist|join|update-user/i
-
 /** Same-origin cart/checkout POSTs that a buy-path walk must be allowed to fire. */
 const CART_MUTATION_PATH_PATTERN =
   /\/(?:cart(?:\/add(?:\.js)?)?|checkouts?|wallets|payments)(?:\/|$|\?|\.js)/i
@@ -20,6 +17,8 @@ export interface FormProbeResult {
 }
 
 export interface JourneyRouteGuardOptions {
+  /** Full origin, including protocol and port. Hostname alone grants no mutation authority. */
+  origin?: string
   /** Page origin hostname; required for same-origin engagement probes. */
   originHost?: string
   /** Collect at most one engagement POST probe result. */
@@ -29,6 +28,7 @@ export interface JourneyRouteGuardOptions {
    * buy-path walk can add to cart. Payment hosts stay blocked.
    */
   allowCartMutations?: boolean
+  onRefusal?: (reason: 'protected_action_requires_fixture' | 'payment_or_download_blocked') => void
 }
 
 export function isBlockedPaymentUrl(url: string): boolean {
@@ -55,18 +55,11 @@ export function isCartMutationPath(url: string): boolean {
   }
 }
 
-function isEngagementMutation(url: string): boolean {
-  try {
-    return ENGAGEMENT_PATH_PATTERN.test(new URL(url).pathname)
-  } catch {
-    return ENGAGEMENT_PATH_PATTERN.test(url)
-  }
-}
-
 /**
  * Journey-safe route handler: keep public-URL SSRF guard, plus block payments
- * and file downloads. Mutating requests are blocked except one same-origin
- * engagement probe (newsletter/signup/contact) that records status then fulfills.
+ * and file downloads. Public engagement requests are never sent as probes:
+ * a successful POST can create real accounts or messages even if we hide its response.
+ * Reversible Signup submission is owned by the authorized fixture executor.
  */
 export async function applyJourneyRouteGuards(
   route: Route,
@@ -76,61 +69,31 @@ export async function applyJourneyRouteGuards(
   const request = route.request()
   const url = request.url()
   if (isBlockedPaymentUrl(url) || isLikelyDownloadUrl(url)) {
+    options?.onRefusal?.('payment_or_download_blocked')
     await route.abort('blockedbyclient')
     return
   }
 
   const method = request.method().toUpperCase()
-  if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-    const resourceType = request.resourceType()
-    if (resourceType === 'document' || resourceType === 'xhr' || resourceType === 'fetch') {
-      const probe = options?.formProbe
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let sameOrigin = false
       try {
-        sameOrigin = Boolean(options?.originHost) && new URL(url).hostname === options?.originHost
+        sameOrigin = Boolean(options?.origin) && new URL(url).origin === options?.origin
       } catch {
         sameOrigin = false
       }
 
-      if (options?.allowCartMutations && sameOrigin && isCartMutationPath(url)) {
+      // Cart entry is reversible in this isolated context. Payment, wallet and
+      // checkout submission endpoints are not authorized by a cart permission.
+      const cartEntry = /\/cart(?:\/(?:add|change|update|clear))?(?:\.js)?\/?$/i.test(new URL(url).pathname)
+      if (options?.allowCartMutations && sameOrigin && cartEntry) {
         await continueFn()
         return
       }
 
-      if (
-        probe &&
-        !probe.probed &&
-        sameOrigin &&
-        isEngagementMutation(url)
-      ) {
-        probe.probed = true
-        try {
-          const response = await route.fetch()
-          probe.result = {
-            url: url.slice(0, 500),
-            method,
-            status: response.status(),
-          }
-          // Fulfill with a generic error so the page does not treat the probe as success.
-          await route.fulfill({
-            status: 418,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              error: 'fixflags_probe',
-              message: 'Probe only. Subscription/account not created.',
-              upstreamStatus: response.status(),
-            }),
-          })
-        } catch {
-          probe.result = { url: url.slice(0, 500), method, status: 0 }
-          await route.abort('blockedbyclient')
-        }
-        return
-      }
-
+      options?.onRefusal?.('protected_action_requires_fixture')
       await route.abort('blockedbyclient')
       return
-    }
   }
   await continueFn()
 }

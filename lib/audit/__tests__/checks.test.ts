@@ -11,6 +11,9 @@ import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metada
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runAccessibilityChecks } from '@/lib/audit/checks/accessibility'
 import { runSeoChecks } from '@/lib/audit/checks/seo'
+import { evaluateSearch, searchFindings } from '@/lib/audit/search/registry'
+import { evidence as searchEvidence, document as searchDocument } from '@/lib/audit/search/__tests__/fixtures'
+import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { deadDestinationFlags } from '@/lib/audit/open-check'
 import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
@@ -329,14 +332,15 @@ describe('runSeoChecks', () => {
     )
     assert.ok(
       checkIds(
-        await runSeoChecks('https://example.com', healthyMeta({ hasStructuredData: false }))
+        searchFindings(await evaluateSearch(searchEvidence()))
       ).includes('no-structured-data')
     )
   })
 
-  it('flags missing sitemap.xml and robots.txt', async () => {
-    restoreFetch = mockFetchHead({ 'sitemap.xml': 404, 'robots.txt': 404 })
-    const ids = checkIds(await runSeoChecks('https://example.com', healthyMeta()))
+  it('records missing resource responses without claiming an indexing failure', async () => {
+    const ids = checkIds(await evaluateSearch(searchEvidence(undefined, {
+      robots: searchDocument('', { status: 404 }), sitemaps: [searchDocument('', { status: 404 })],
+    })))
     assert.ok(ids.includes('sitemap-missing'))
     assert.ok(ids.includes('robots-txt-missing'))
   })
@@ -680,6 +684,16 @@ function healthyCaptureMetrics(
     ...overrides,
   }
 }
+
+describe('mobile loading evidence', () => {
+  it('never reports scanner waiting time as blocked loading UI when no loading state was observed', () => {
+    const metrics = healthyCaptureMetrics({ loadExperience: { device: 'mobile', initialScreenshotUrl: null,
+      initialCaptureElapsedMs: 30_000, finalCaptureElapsedMs: 33_000,
+      loadingVisibleAtInitial: false, loadingVisibleAtFinal: false, loadingClearedMs: 30_000,
+      loadingLabel: null, finalReadyState: 'complete', finalTitle: 'Instant public content' } })
+    assert(!runMobileUXQualityChecks(healthyMeta({}), metrics).some(flag => flag.checkId === 'mobile-load-delay-content'))
+  })
+})
 
 describe('runLayoutChecks', () => {
   it('flags primary CTA below the mobile fold', () => {
@@ -1425,15 +1439,13 @@ describe('trigger matrix - one failing signal per checkId', () => {
       ),
     'no-structured-data': async () =>
       checkIds(
-        await runSeoChecks('https://example.com', healthyMeta({ hasStructuredData: false }))
+        searchFindings(await evaluateSearch(searchEvidence()))
       ),
     'sitemap-missing': async () => {
-      restoreFetch = mockFetchHead({ 'sitemap.xml': 404, 'robots.txt': 200 })
-      return checkIds(await runSeoChecks('https://example.com', healthyMeta()))
+      return checkIds(searchFindings(await evaluateSearch(searchEvidence(undefined, { sitemaps: [searchDocument('', { status: 404 })] }))))
     },
     'robots-txt-missing': async () => {
-      restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 404 })
-      return checkIds(await runSeoChecks('https://example.com', healthyMeta()))
+      return checkIds(await evaluateSearch(searchEvidence(undefined, { robots: searchDocument('', { status: 404 }) })))
     },
     'broken-internal-links': () =>
       deadDestinationFlags(
@@ -2304,8 +2316,9 @@ describe('trigger matrix - one failing signal per checkId', () => {
       ),
   }
 
-  it('triggers matrix covers every checkId without extras', () => {
-    assert.deepEqual(Object.keys(triggers).sort(), [...ALL_CHECK_IDS].sort())
+  it('legacy finding triggers cover their inventory; Search assertion receipts have a separate contract suite', () => {
+    const findingIds = ALL_CHECK_IDS.filter(id => CHECK_REGISTRY[id].module !== 'search')
+    assert.deepEqual(Object.keys(triggers).sort(), [...findingIds].sort())
   })
 
   for (const checkId of ALL_CHECK_IDS) {

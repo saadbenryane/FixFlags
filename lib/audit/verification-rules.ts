@@ -1,19 +1,20 @@
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
+import { CHECK_REGISTRY } from './check-registry'
 
 /** Client-safe lookup - no server-only audit imports. */
 export const CHECK_ID_TO_RULE: Record<string, string> = {
   'title-missing':
     'View page source or DevTools Elements, confirm a non-empty <title> tag.',
   'title-too-short':
-    'Confirm the title is at least 10 characters and describes the page.',
+    'Review whether the title usefully identifies this page; length alone does not establish a failure.',
   'title-too-long':
-    'Confirm the title is 60 characters or fewer in search preview.',
+    'Review whether the title accurately and concisely describes the page. Google specifies no fixed character limit.',
   'description-missing':
     'The page includes a meta description a search result can show.',
   'description-too-short':
-    'Confirm the meta description is at least 50 characters.',
+    'Review whether the description accurately summarizes the page. There is no fixed Google character requirement.',
   'description-too-long':
-    'Confirm the meta description is 160 characters or fewer.',
+    'Review whether the description accurately and concisely describes the page. Displayed snippets vary by query and device.',
   'og-image-missing':
     'View page source for og:image; open the image URL in a new tab (should return 200).',
   'og-image-broken':
@@ -24,9 +25,9 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'viewport-missing':
     'View page source, confirm meta name="viewport" with width=device-width.',
   'lang-missing': 'Confirm the <html> element has a lang attribute.',
-  'canonical-missing': 'View page source, confirm link rel="canonical" points to this page.',
+  'canonical-missing': 'Review canonical preferences when duplicate URLs need consolidation. A canonical declaration is optional.',
   'robots-blocks-indexing':
-    'View page source, confirm robots meta does not include noindex.',
+    'Freshly inspect applicable headers, original HTML, rendered HTML, and sitemap declarations against the recorded failure. Do not remove intentional exclusions.',
   'favicon-missing':
     'Confirm link rel="icon" or apple-touch-icon exists and the icon loads in the browser tab.',
   'checkout-link-dead':
@@ -97,12 +98,12 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Run axe DevTools; ensure list elements contain only li elements and script/supporting elements.',
   'axe-meta-viewport':
     'Run axe DevTools; ensure the viewport meta tag allows user scaling for accessibility.',
-  'h1-missing': 'DevTools Elements, confirm exactly one visible H1 on the page.',
-  'h1-multiple': 'DevTools Elements, confirm only one H1; secondary headings should be H2/H3.',
+  'h1-missing': 'Review the visible heading hierarchy and whether a descriptive main heading would help.',
+  'h1-multiple': 'Review the heading hierarchy. Multiple H1 elements do not automatically prevent indexing.',
   'no-structured-data':
     'View page source for script type="application/ld+json" or validate in Rich Results Test.',
   'sitemap-missing': 'Open /sitemap.xml; it should return 200 with valid XML.',
-  'robots-txt-missing': 'Open /robots.txt; it should return 200.',
+  'robots-txt-missing': 'Review the recorded robots.txt response; absence alone does not prevent crawling.',
   'broken-internal-links':
     'Click or HEAD each flagged internal URL; all should return 200.',
   'broken-page-anchors':
@@ -415,6 +416,8 @@ export const ALL_VERIFICATION_RULES: Record<string, string> = {
   ...MOBILE_UX_VERIFICATION_RULES,
   ...JOURNEY_VERIFICATION_RULES,
   ...SEARCH_PERFORMANCE_VERIFICATION_RULES,
+  ...Object.fromEntries(Object.entries(CHECK_REGISTRY).filter(([, definition]) => definition.module === 'search')
+    .map(([id]) => [id, 'A fresh execution must independently evaluate this recorded Search responsibility on the same page with comparable evidence. Google records remain separate from live-page recovery.'])),
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

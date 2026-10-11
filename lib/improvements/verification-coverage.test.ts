@@ -21,6 +21,18 @@ const complete = {
 }
 
 describe('assessVerificationCoverage', () => {
+  it('accepts an exact HTTP assertion without a screenshot or unrelated module success', () => {
+    const detail = { kind: 'check-verifier', version: 1, auditId: 'after', taskId: 'task',
+      checkId: 'security-csp-missing', checkVersion: 1, pageUrl: 'https://example.com/', source: 'http',
+      collectedAt: '2026-10-11T10:00:00.000Z', comparable: true, verdict: 'passed',
+      assertion: { key: 'content-security-policy', name: 'CSP', expected: 'CSP is present', observed: 'CSP present', passed: true } }
+    const input = { ...complete, auditId: 'after', checkId: detail.checkId,
+      reportCompleteness: 'PARTIAL' as const, evidenceCoverage: {}, pages: [], failedModules: ['browser'],
+      verifierExecutions: [{ ...complete.verifierExecutions[0], targetKey: 'check:security-csp-missing', detail }] }
+    expect(assessVerificationCoverage(input).comparable).toBe(true)
+    expect(assessVerificationCoverage({ ...input, verifierExecutions: [{ ...input.verifierExecutions[0],
+      detail: { ...detail, auditId: 'another' } }] }).comparable).toBe(false)
+  })
   it('accepts only a complete comparable verifier run', () => {
     expect(assessVerificationCoverage(complete)).toMatchObject({ comparable: true })
   })

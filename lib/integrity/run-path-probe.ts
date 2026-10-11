@@ -37,9 +37,11 @@ export interface RunPathProbeOptions {
   allowLocalhost?: boolean
   browser?: Browser
   confirmRed?: boolean
+  deadline?: number
 }
 
 export async function runPathProbe(options: RunPathProbeOptions): Promise<PathProbeResult> {
+  options = { ...options, deadline: options.deadline ?? Date.now() + 60_000 }
   const runId = options.runId ?? `probe-${Date.now()}`
   const browser = options.browser ?? (await getAuditBrowser())
   const confirmRed = options.confirmRed !== false
@@ -100,6 +102,8 @@ async function runAttempt(
       journeySafe: true,
       recordVideoDir: videoDir,
       settle: true,
+      deadline: options.deadline,
+      onSafetyRefusal: () => { outcome.safetyRefused = true },
     })
     page = session.page
     finalUrl = page.url()

@@ -10,6 +10,7 @@ import {
   factsFromSearchRows,
   type AnalyticsProperty,
   type ConnectionFact,
+  searchPropertyCoversUrl,
 } from '@/lib/sites/connections/match'
 
 const STATE_TTL_MS = 10 * 60 * 1000
@@ -228,6 +229,7 @@ export async function syncGoogleConnection(input: {
   projectId: string
   provider: SiteConnectionProvider
   host: string
+  siteUrl?: string
   accessToken: string
   propertyId?: string | null
   client?: GoogleConnectionClient
@@ -235,8 +237,11 @@ export async function syncGoogleConnection(input: {
   const client = input.client ?? liveGoogleClient()
   try {
     if (input.provider === 'SEARCH_CONSOLE') {
-      const property = input.propertyId ?? chooseSearchProperty(await client.listSearchSites(input.accessToken), input.host)
-      if (!property) {
+      const properties = input.propertyId ? [] : await client.listSearchSites(input.accessToken)
+      const property = input.propertyId ?? (input.siteUrl
+        ? properties.find(property => searchPropertyCoversUrl(property.siteUrl, input.siteUrl!))?.siteUrl ?? null
+        : chooseSearchProperty(properties, input.host))
+      if (!property || input.siteUrl && !searchPropertyCoversUrl(property, input.siteUrl)) {
         await saveFacts(input.connectionId, input.projectId, [])
         return { status: 'MISMATCH', detail: 'No Search Console property matches this Site.', propertyId: null, propertyLabel: null }
       }
@@ -299,7 +304,8 @@ export async function completeGoogleConnection(input: {
     connectionId: connection.id,
     projectId: parsed.projectId,
     provider: parsed.provider,
-    host,
+    host: host.includes('://') ? new URL(host).hostname : host,
+    siteUrl: host.includes('://') ? host : undefined,
     accessToken: tokens.accessToken,
     client,
   })

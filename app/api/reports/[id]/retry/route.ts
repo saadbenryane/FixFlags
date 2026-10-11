@@ -8,6 +8,7 @@ import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { readClaimedAnonymousIds } from '@/lib/audit/usage'
 import { headers } from 'next/headers'
 import { requestSiteRun } from '@/lib/sites/application/run-requests'
+import { peekVisitorKey } from '@/lib/sites/visitor-identity'
 
 export async function POST(
   _req: NextRequest,
@@ -42,7 +43,8 @@ export async function POST(
       const run = await requestSiteRun({ projectId: audit.projectId, userId: session.user.id, source: 'WEB', scope: 'SITE', outcomeIds: [] })
       return NextResponse.json({ status: 'QUEUED', auditId: run.auditId, runId: run.runId })
     }
-    const result = await retryAudit(id)
+    const result = await retryAudit(id, { userId: session?.user?.id ?? null,
+      anonymousAuditIds: anonAuditIds, visitorKey: await peekVisitorKey(), clientId })
     return NextResponse.json(result)
   } catch (err) {
     return handleRouteError(err)

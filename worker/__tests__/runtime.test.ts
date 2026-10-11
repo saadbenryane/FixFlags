@@ -53,6 +53,17 @@ function dependencies(): WorkerRuntimeDependencies & {
 }
 
 describe('standalone worker runtime', () => {
+  it('keeps independent queues and recovery available when Chromium cannot start', async () => {
+    const deps = dependencies()
+    deps.warmBrowser = async () => { throw new Error('Chromium unavailable') }
+    deps.readBrowserDiagnostics = () => ({ connected: false, activeContexts: 0 })
+    const heartbeat = vi.fn().mockResolvedValue(undefined)
+    deps.touchHeartbeat = heartbeat
+    await createWorkerRuntime(deps).start()
+    expect(heartbeat).toHaveBeenCalledWith({ browserOk: false, activeBrowserContexts: 0 })
+    expect(deps.calls).toContain('worker:start')
+    expect(deps.calls).toContain('scheduler:start')
+  })
   it('warms Chromium and publishes readiness before consuming jobs', async () => {
     const deps = dependencies()
     const runtime = createWorkerRuntime(deps)

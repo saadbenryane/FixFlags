@@ -1,3 +1,4 @@
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import { resolveMonitoringFlagStatus } from '@/lib/audit/flag-status-resolution'
 import {
@@ -243,11 +244,9 @@ export async function diffFlagsAgainstParent(
   }
 
   if (updates.length > 0) {
-    await prisma.$transaction(
-      updates.map((update) =>
-        prisma.flag.update({ where: { id: update.id }, data: update.data })
-      )
-    )
+    await executionTransaction(async tx => Promise.all(updates.map((update) =>
+        tx.flag.update({ where: { id: update.id }, data: update.data })
+      )))
   }
 
   // Product watch: email only when this project is watched and regressions appear.
@@ -341,6 +340,7 @@ export async function getFlagDiffSummary(
       status: parentFlag.status,
       confidence: parentFlag.confidence,
       impactTag: parentFlag.impactTag,
+      attentionPolicy: parentFlag.attentionPolicy,
       pageUrl: parentFlag.pageUrl,
     }
 
@@ -379,6 +379,7 @@ export async function getFlagDiffSummary(
         status: 'REGRESSED',
         confidence: monitoringFlag.confidence,
         impactTag: monitoringFlag.impactTag,
+        attentionPolicy: monitoringFlag.attentionPolicy,
         pageUrl: monitoringFlag.pageUrl,
       })
     } else {
@@ -391,6 +392,7 @@ export async function getFlagDiffSummary(
         status: 'OPEN',
         confidence: monitoringFlag.confidence,
         impactTag: monitoringFlag.impactTag,
+        attentionPolicy: monitoringFlag.attentionPolicy,
         pageUrl: monitoringFlag.pageUrl,
       })
     }
@@ -415,6 +417,7 @@ export async function getFlagDiffSummary(
       status: monitoringFlag.status,
       confidence: monitoringFlag.confidence,
       impactTag: monitoringFlag.impactTag,
+      attentionPolicy: monitoringFlag.attentionPolicy,
       pageUrl,
       foundOnNewPage: isFoundOnNewlyReviewedPage({
         pageUrl,

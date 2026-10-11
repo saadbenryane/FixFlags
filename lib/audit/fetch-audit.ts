@@ -118,6 +118,8 @@ export function stripInternalAuditFields<T extends Record<string, unknown>>(
     utmCampaign,
     failureMetadata,
     pipelineEvents,
+    executionSpec, executionToken, executionGeneration, executionLeaseUntil,
+    dispatchState, dispatchAttempts, dispatchNextAt, dispatchError, dispatchLeaseUntil,
     ...rest
   } = audit
   void htmlMetadata
@@ -133,6 +135,8 @@ export function stripInternalAuditFields<T extends Record<string, unknown>>(
   void utmCampaign
   void failureMetadata
   void pipelineEvents
+  void executionSpec; void executionToken; void executionGeneration; void executionLeaseUntil
+  void dispatchState; void dispatchAttempts; void dispatchNextAt; void dispatchError; void dispatchLeaseUntil
   return rest
 }
 

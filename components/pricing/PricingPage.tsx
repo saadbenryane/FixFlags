@@ -5,6 +5,7 @@ import { Check, Flag, ShieldCheck } from 'lucide-react'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
+import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
 import { MarketingCompareSection } from '@/components/marketing/MarketingCompareSection'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
@@ -45,6 +46,9 @@ export function PricingPage() {
                 <li key={assurance}>{assurance}</li>
               ))}
             </ul>
+            <Link href="#compare-plans" className="mt-5 inline-flex min-h-11 items-center text-sm font-medium text-link hover:underline">
+              {PRICING.compareTitle} &darr;
+            </Link>
           </div>
 
           <div className="relative mx-auto hidden w-full max-w-[29rem] lg:block">
@@ -155,6 +159,22 @@ export function PricingPage() {
             {PRICING.studioCta}
           </Link>
         </p>
+
+        <section aria-labelledby="pricing-comparison-heading" className="space-y-6 scroll-mt-[var(--header-offset)]" id="compare-plans">
+          <div className="max-w-2xl space-y-3">
+            <MarketingEyebrow>{PRICING.compareLabel}</MarketingEyebrow>
+            <Heading as="h2" id="pricing-comparison-heading" className="font-display text-3xl font-semibold tracking-display sm:text-4xl">
+              {PRICING.compareTitle}
+            </Heading>
+            <Body className="text-muted-foreground">{PRICING.compareBody}</Body>
+          </div>
+          <PricingComparisonTable />
+          <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{PRICING.compareNote}</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <Link href="/docs/site-care" className="inline-flex min-h-11 items-center font-medium text-link hover:underline">{PRICING.coverageLink}</Link>
+            <Link href="/docs/integrations" className="inline-flex min-h-11 items-center font-medium text-link hover:underline">{PRICING.connectionsLink}</Link>
+          </div>
+        </section>
 
         <MarketingCompareSection embedded />
 

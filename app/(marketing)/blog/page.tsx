@@ -1,50 +1,44 @@
+import Image from 'next/image'
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/ui/container'
-import { Section } from '@/components/ui/section'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { BLOG_POSTS, BLOG_INDEX } from '@/lib/marketing/copy'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
+import { BLOG_POSTS, BLOG_PAGE, blogDate, blogReadingMinutes } from '@/lib/marketing/copy/blog'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import s from '@/components/marketing/blog/BlogEditorial.module.css'
 
 export const metadata = buildPageMetadata('blog', '/blog')
 
 export default function BlogPage() {
-  return (
-    <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]">
-      <Container className="mx-auto max-w-3xl space-y-8 sm:space-y-10 lg:space-y-12">
-        <LandingSectionHeader
-          label={BLOG_INDEX.label}
-          headline={BLOG_INDEX.headline}
-          as="h1"
-          align="left"
-        />
-
-        <ol className="space-y-8">
-          {BLOG_POSTS.map((post) => (
-            <li key={post.slug} className="space-y-3 border-b border-border/30 pb-8 last:border-0">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <time
-                  dateTime={post.date}
-                  className="font-mono text-2xs uppercase tracking-label text-muted-foreground"
-                >
-                  {post.date}
-                </time>
-                <h2 className="text-lg font-semibold">
-                  <Link href={`/blog/${post.slug}`} className="hover:underline">
-                    {post.title}
-                  </Link>
-                </h2>
-              </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">{post.excerpt}</p>
-              <Link
-                href={`/blog/${post.slug}`}
-                className="inline-block text-sm font-medium text-brand hover:underline"
-              >
-                Read more &rarr;
-              </Link>
-            </li>
-          ))}
-        </ol>
-      </Container>
-    </Section>
-  )
+  return <div className={s.page}>
+    <MarketingPageViewTracker page="/blog" />
+    <Container variant="marketing" className={s.container}>
+      <header>
+        <p className={s.kicker}>{BLOG_PAGE.label}</p>
+        <h1 className={s.indexTitle}>{BLOG_PAGE.headline}</h1>
+        <p className={s.deck}>{BLOG_PAGE.body}</p>
+      </header>
+      <ol className={s.posts}>
+        {BLOG_POSTS.map((post, position) => <li key={post.slug}>
+          <article className={position === 0 ? s.featured : s.post}>
+            <div className={position === 0 ? s.featuredCopy : undefined}>
+              <div className={s.kicker}><span className={s.number}>{String(position + 1).padStart(2, '0')}</span><span>{post.category}</span></div>
+              <h2 className={s.postTitle}><Link href={`/blog/${post.slug}`}>{post.title}</Link></h2>
+              <p className={s.excerpt}>{post.excerpt}</p>
+              <div className={s.meta}><time dateTime={post.date}>{blogDate(post.date)}</time><span>{BLOG_PAGE.readingTime(blogReadingMinutes(post))}</span></div>
+              <Link href={`/blog/${post.slug}`} className={s.readLink} aria-label={`${BLOG_PAGE.readArticle}: ${post.title}`}>{BLOG_PAGE.readArticle}<ArrowRight size={16} aria-hidden="true" /></Link>
+            </div>
+            {position === 0 ? <div className={s.featuredImage}><Image src={post.cover.src} alt={post.cover.alt} fill priority sizes="(min-width: 1280px) 540px, (min-width: 768px) 50vw, calc(100vw - 40px)" /></div> : null}
+          </article>
+        </li>)}
+      </ol>
+      <section className={s.indexEnding} aria-labelledby="blog-next-step">
+        <div><h2 id="blog-next-step">{BLOG_PAGE.guideTitle}</h2><p>{BLOG_PAGE.guideBody}</p></div>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
+          <Link href="/new" className={s.readLink}>{BLOG_PAGE.startCta}<ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link href="/docs" className={s.readLink}>{BLOG_PAGE.docsCta}</Link>
+        </div>
+      </section>
+    </Container>
+  </div>
 }

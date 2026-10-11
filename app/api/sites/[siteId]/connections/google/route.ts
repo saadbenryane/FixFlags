@@ -36,6 +36,7 @@ async function owner(siteId: string) {
     userId: session.user.id,
     projectId: access.decision.site.projectId,
     host: access.decision.site.canonicalHost,
+    siteUrl: access.decision.site.url,
   }
 }
 
@@ -71,6 +72,7 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
       projectId: owned.projectId,
       provider,
       host: owned.host,
+      siteUrl: owned.siteUrl,
       accessToken: token,
       propertyId: connection.propertyId,
     })

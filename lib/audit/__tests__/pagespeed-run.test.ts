@@ -35,18 +35,13 @@ function lighthouseBody(overrides: Record<string, unknown> = {}): Record<string,
   }
   return {
     lighthouseResult: { categories, audits },
-    crux: {
-      data: {
-        record: {
-          metrics: {
-            largest_contentful_paint: { percentile: 2400 },
-            cumulative_layout_shift: { percentile: 0.121 },
-            first_contentful_paint: { percentile: 1100 },
-            interaction_to_next_paint: { percentile: 160 },
-            first_byte: { percentile: 400 },
-          },
-          key: { formFactor: 'PHONE', effectiveConnectionType: '4G' },
-        },
+    loadingExperience: {
+      id: 'https://example.com/', metrics: {
+        LARGEST_CONTENTFUL_PAINT_MS: { percentile: 2400 },
+        CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 12 },
+        FIRST_CONTENTFUL_PAINT_MS: { percentile: 1100 },
+        INTERACTION_TO_NEXT_PAINT: { percentile: 160 },
+        EXPERIMENTAL_TIME_TO_FIRST_BYTE: { percentile: 400 },
       },
     },
     ...overrides,
@@ -91,9 +86,11 @@ describe('fetchPageSpeedData', () => {
     assert.equal(result.desktop?.failedAccessibilityAudits[0].id, 'color-contrast')
 
     assert.equal(result.desktop?.crux?.lcp, 2400)
-    assert.equal(result.desktop?.crux?.cls, 0.121)
-    assert.equal(result.desktop?.crux?.formFactor, 'PHONE')
-    assert.equal(result.desktop?.crux?.effectiveConnectionType, '4G')
+    assert.equal(result.desktop?.crux?.cls, 0.12)
+    assert.equal(result.desktop?.crux?.scope, 'page')
+    assert.equal(result.desktop?.crux?.reportingWindowDays, 28)
+    assert.equal(result.desktop?.crux?.formFactor, null)
+    assert.equal(result.desktop?.crux?.effectiveConnectionType, null)
 
     assert.equal(result.mobile?.strategy, 'mobile')
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -187,5 +184,35 @@ describe('fetchPageSpeedData', () => {
     assert.equal(result.desktop?.score, 90)
     assert.equal(result.desktop?.crux, null)
     assert.equal(result.desktop?.lcp, null)
+  })
+
+  it('retains zero lab measurements and does not mistake malformed responses for measurements', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ lighthouseResult: {
+      categories: { performance: { score: 0 } }, audits: {
+        'cumulative-layout-shift': { numericValue: 0 }, 'total-blocking-time': { numericValue: 0 },
+      },
+    } })), { status: 200 }))
+    const zero = await fetchPageSpeedData('https://zero.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(zero.desktop).toMatchObject({ score: 0, cls: 0, tbt: 0 })
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+    const invalid = await fetchPageSpeedData('https://invalid.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(invalid.desktop).toBeNull()
+    expect(invalid.desktopFailure).toEqual({ code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
+  })
+
+  it('returns per-device transient failure and provider retry timing without inline replay', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('busy', { status: 429, headers: { 'retry-after': '120' } }))
+    const result = await fetchPageSpeedData('https://retry.example', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result.mobileFailure).toEqual({ code: 'PROVIDER_QUOTA', retryable: true, retryAfterMs: 120_000 })
+    expect(result.desktopFailure).toBeUndefined()
+    expect(result.desktopError).toBeUndefined()
+  })
+
+  it('labels origin-only field data rather than attributing it to the requested page', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ loadingExperience: { id: 'https://example.com/page', metrics: {} },
+      originLoadingExperience: { id: 'https://example.com/', metrics: { CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 0 } } } })), { status: 200 }))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop?.crux).toMatchObject({ cls: 0, scope: 'origin', url: 'https://example.com/', reportingWindowDays: 28 })
   })
 })

@@ -1,3 +1,4 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { ACTIVE_RUN_STATUSES } from './run-leases'
@@ -6,6 +7,7 @@ import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { validateBindingForOutcome } from './binding-config'
 import { logger } from '@/lib/logger'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 
 export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<void> {
   const requests = await prisma.runRequest.findMany({
@@ -25,9 +27,14 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
     },
   })
   for (const request of requests) {
+    const specification = readExecutionSpec(request.executionSpec)
+    if (request.executionSpec != null && !specification) throw new Error('Invalid admitted execution specification')
     for (const selection of request.selections) {
       const outcome = selection.outcome
-      const requiredBindings = outcome.bindings.filter((binding) => binding.required)
+      const admitted = specification?.outcomes.find(item => item.id === outcome.id)
+      const requiredBindings = admitted
+        ? admitted.bindings.filter(binding => binding.required).map(binding => ({ ...binding, config: binding.config as Prisma.JsonValue, scope: binding.scope as Prisma.JsonValue }))
+        : outcome.bindings.filter((binding) => binding.required)
       const executions = await prisma.outcomeBindingExecution.findMany({
         where: { auditId, outcomeId: outcome.id },
       })
@@ -38,8 +45,8 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             key: execution.bindingKey,
             disposition: execution.disposition,
             reason: execution.reason,
-            version: execution.detail && typeof execution.detail === 'object' && !Array.isArray(execution.detail)
-              && typeof execution.detail.bindingVersion === 'number' ? execution.detail.bindingVersion : undefined,
+            version: execution.bindingVersion ?? (execution.detail && typeof execution.detail === 'object' && !Array.isArray(execution.detail)
+              && typeof execution.detail.bindingVersion === 'number' ? execution.detail.bindingVersion : undefined),
           })),
         )
         const checkoutBinding = requiredBindings.find((binding) => binding.mechanism === 'BROWSER_JOURNEY' && outcome.kind === 'CHECKOUT')
@@ -62,10 +69,10 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             })
           : null
         if (occurrence && occurrence.improvement.outcomeId !== outcome.id) {
-          await prisma.improvement.update({
+          await executionWrite(tx => tx.improvement.update({
             where: { id: occurrence.improvementId },
             data: { outcomeId: outcome.id },
-          })
+          }))
         }
         const linkedImprovement = occurrence?.improvement ?? (verdict.state === 'FLAG'
           ? await prisma.improvement.findFirst({
@@ -77,7 +84,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         const validUntil = verdict.state === 'COULD_NOT_VERIFY'
           ? assessedAt
           : new Date(assessedAt.getTime() + outcome.staleAfterMinutes * 60_000)
-        await prisma.outcomeAssessment.upsert({
+        await executionWrite(tx => tx.outcomeAssessment.upsert({
           where: { runRequestId_outcomeId: { runRequestId: request.id, outcomeId: outcome.id } },
           create: {
             outcomeId: outcome.id,
@@ -103,7 +110,8 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
               scope: checkoutBinding?.scope ?? null,
               bindings: requiredBindings.map((binding) => {
                 const validated = validateBindingForOutcome(outcome.kind, binding.mechanism, binding.config)
-                return { key: binding.key, mechanism: binding.mechanism, version: binding.version,
+                const fixture = admitted?.bindings.find(item => item.key === binding.key)?.fixture
+                return { key: binding.key, mechanism: binding.mechanism, version: binding.version, ...(fixture ? { fixture } : {}),
                   config: validated.success ? validated.data.config : null, scope: binding.scope }
               }) as unknown as Prisma.InputJsonArray,
             },
@@ -111,7 +119,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             validUntil,
           },
           update: {},
-        })
+        }))
         await recordSiteLifecycleEvent({
           name: 'outcome_run_result',
           idempotencyKey: `outcome-run-result:${request.id}:${outcome.id}`,
@@ -139,7 +147,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         }
       }
     }
-    await prisma.runRequest.updateMany({
+    await executionWrite(tx => tx.runRequest.updateMany({
       where: { id: request.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
       data: {
         status: 'COMPLETED',
@@ -148,7 +156,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         errorMessage: null,
         leaseUntil: null,
       },
-    })
+    }))
   }
 }
 
@@ -164,7 +172,7 @@ export async function markOutcomeRunsCouldNotVerify(
   for (const request of requests) {
     const assessedAt = new Date()
     for (const selection of request.selections) {
-      await prisma.outcomeAssessment.upsert({
+      await executionWrite(tx => tx.outcomeAssessment.upsert({
         where: { runRequestId_outcomeId: { runRequestId: request.id, outcomeId: selection.outcomeId } },
         create: {
           outcomeId: selection.outcomeId,
@@ -182,7 +190,7 @@ export async function markOutcomeRunsCouldNotVerify(
           validUntil: assessedAt,
         },
         update: {},
-      })
+      }))
       await recordSiteLifecycleEvent({
         name: 'outcome_run_result',
         idempotencyKey: `outcome-run-result:${request.id}:${selection.outcomeId}`,
@@ -198,7 +206,7 @@ export async function markOutcomeRunsCouldNotVerify(
         logger.error('Inconclusive Outcome telemetry failed', { runId: request.id, error })
       })
     }
-    await prisma.runRequest.updateMany({
+    await executionWrite(tx => tx.runRequest.updateMany({
       where: { id: request.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
       data: {
         status: 'FAILED',
@@ -207,6 +215,6 @@ export async function markOutcomeRunsCouldNotVerify(
         completedAt: assessedAt,
         leaseUntil: null,
       },
-    })
+    }))
   }
 }

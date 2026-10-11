@@ -1,3 +1,4 @@
+import { executionWrite, executionTransaction } from '@/lib/audit/execution-ownership'
 import { prisma } from '../../db'
 import { captureScreenshots, getAuditBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
@@ -48,6 +49,7 @@ import {
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 import { judgePageStage } from '@/lib/audit/pipeline/stages/judge-page'
 import { checkReceiptSchema } from '@/lib/audit/checks/receipt'
+import { runSearchWorkflow } from '@/lib/audit/search/workflow'
 
 interface CaptureOutage {
   failureCode: string
@@ -141,7 +143,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       : 'FULL'
   const isTeaserScan = pipelineMode === 'TEASER'
 
-  const page = await prisma.auditPage.create({
+  const page = await executionWrite(tx => tx.auditPage.create({
     data: {
       auditId: ctx.auditId,
       url: normalizedUrl,
@@ -150,7 +152,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       role: input.role,
       status: 'CAPTURING',
     },
-  })
+  }))
 
   let screenshots: Awaited<ReturnType<typeof captureScreenshots>> | null = null
   let pagespeed: Awaited<ReturnType<typeof fetchPageSpeedData>> | null = null
@@ -173,7 +175,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         if (initialScreenshotPersisted) return
         initialScreenshotPersisted = true
         try {
-          await prisma.screenshot.create({
+          await executionWrite(tx => tx.screenshot.create({
             data: {
               auditId: ctx.auditId,
               pageId: page.id,
@@ -182,11 +184,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
               width: DESKTOP_VIEWPORT.width,
               height: DESKTOP_VIEWPORT.height,
             },
-          })
-          await prisma.audit.update({
+          }))
+          await executionWrite(tx => tx.audit.update({
             where: { id: ctx.auditId },
             data: { progress: PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE },
-          })
+          }))
           await ctx.events.log({
             stage: 'capturing',
             event: 'initial_screenshot_persisted',
@@ -266,14 +268,14 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       (f: PageCaptureFailure) => f.code && f.code !== 'CAPTURE_FAILED'
     )
     const outage = buildCaptureOutageMessage(desktopFailure, normalizedUrl)
-    await prisma.auditPage.update({
+    await executionWrite(tx => tx.auditPage.update({
       where: { id: page.id },
       data: {
         status: 'FAILED',
         failureCode: outage.failureCode,
         failureMessage: outage.failureMessage,
       },
-    })
+    }))
     throw new SiteOutageError(outage.failureCode, outage.failureMessage, outage.throwMessage)
   }
 
@@ -301,20 +303,21 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     slowReplay: slowReplayResult,
   }
 
-  await prisma.$transaction([
-    prisma.screenshot.create({
+  const desktopScreenshotUrl = screenshots.desktopUrl
+  await executionTransaction(async tx => Promise.all([
+    tx.screenshot.create({
       data: {
         auditId: ctx.auditId,
         pageId: page.id,
         device: 'DESKTOP',
-        url: screenshots.desktopUrl,
+        url: desktopScreenshotUrl,
         width: DESKTOP_VIEWPORT.width,
         height: DESKTOP_VIEWPORT.height,
       },
     }),
     ...(screenshots.mobileUrl
       ? [
-          prisma.screenshot.create({
+          tx.screenshot.create({
             data: {
               auditId: ctx.auditId,
               pageId: page.id,
@@ -326,7 +329,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           }),
         ]
       : []),
-    prisma.auditPage.update({
+    tx.auditPage.update({
       where: { id: page.id },
       data: {
         status: 'CHECKING',
@@ -336,7 +339,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         consoleErrors: screenshots.consoleErrors as never,
       },
     }),
-  ])
+  ]))
 
   if (input.primary) {
     const inferred = inferProductContract(normalizedUrl, metadataFromHtml)
@@ -350,12 +353,12 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     const productContract = resolveContractForCapture(inferred, projectPi)
 
     // Honest mid-capture anchor before status flips to CHECKING.
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: ctx.auditId },
       data: { progress: PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE },
-    })
+    }))
 
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: ctx.auditId },
       data: {
         status: 'CHECKING',
@@ -370,7 +373,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
             }
           : {}),
       },
-    })
+    }))
 
     // Seed / refresh Project PI when heuristic (never overwrite user-owned PI fields)
     if (auditRow?.projectId && productContract.source !== 'user') {
@@ -433,7 +436,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // Industry remains part of the page snapshot; technology observations have
   // their own normalized audit-level records.
   if (input.primary) {
-    await prisma.auditPage.update({
+    await executionWrite(tx => tx.auditPage.update({
       where: { id: page.id },
       data: {
         performanceData: {
@@ -441,7 +444,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           industryGuess,
         } as never,
       },
-    })
+    }))
   }
 
   assertDeadline(ctx, 'checking')
@@ -450,12 +453,21 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     // Streaming anchor: from here the progressive report may show live
     // findings as deterministic check modules complete (flags persist at
     // CHECKS_DONE). Keeps the ring moving through the opaque CHECKING gap.
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: ctx.auditId },
       data: { progress: PIPELINE_PROGRESS_SUBSTEP.CHECKS_STARTED },
-    })
+    }))
   }
   const checksStart = ctx.clock.now().getTime()
+  ctx.searchResources ??= new Map()
+  const search = await runSearchWorkflow({
+    auditId: ctx.auditId, pageUrl: normalizedUrl,
+    original: screenshots.originalDocument,
+    renderedHtml: screenshots.desktopHtml, finalUrl: screenshots.desktopFinalUrl,
+    headers: screenshots.responseHeaders, status: screenshots.desktopHttpStatus,
+    privateCapture: Boolean(ctx.scanAccess), deadline: ctx.deadline,
+    cache: ctx.searchResources,
+  })
 
   const { flags: detFlags, failedModules, executions } = await runAllChecks(
     normalizedUrl,
@@ -474,6 +486,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.captureMetrics ?? null,
     screenshots?.responseHeaders ?? null,
     screenshots?.axeViolations,
+    true,
   )
 
   for (const execution of executions) {
@@ -485,11 +498,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       detail: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, ...execution, pageUrl: normalizedUrl }),
       evidenceReference: { auditId: ctx.auditId, pageUrl: normalizedUrl, module: execution.module },
     }
-    await prisma.auditVerifierExecution.upsert({
+    await executionWrite(tx => tx.auditVerifierExecution.upsert({
       where: { auditId_targetKey_scopeKey: { auditId: ctx.auditId, targetKey, scopeKey } },
       create: { auditId: ctx.auditId, targetKey, scopeKey, ...receipt },
       update: receipt,
-    })
+    }))
   }
 
   for (const mod of failedModules) {
@@ -501,7 +514,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   }
 
   const flags = suppressFlagsForPageRole(suppressOverlappingFlags(
-    detFlags
+    detFlags.concat(search.findings)
       .concat(
         input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult, detectPagePurpose(metadata, normalizedUrl).purpose) : []
       )
@@ -536,10 +549,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // Nudge progress mid-CHECKING so the ring keeps moving through the (opaque)
   // gap between deterministic checks finishing and the AI judge starting.
   if (input.primary) {
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: ctx.auditId },
       data: { progress: PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE },
-    })
+    }))
   }
 
   // Deferred flow scan: run after checks complete if deadline budget allows.
@@ -550,10 +563,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   if (shouldRunFlow && hasDeadlineBudgetForFlow && !captured.flowResult) {
     await ctx.events.log({ stage: 'checking', event: 'flow_started_deferred' })
     if (input.primary) {
-      await prisma.audit.update({
+      await executionWrite(tx => tx.audit.update({
         where: { id: ctx.auditId },
         data: { progress: PIPELINE_PROGRESS_SUBSTEP.FLOW_RUNNING },
-      })
+      }))
     }
     const flowStart = ctx.clock.now().getTime()
     let flowSession: Awaited<ReturnType<typeof createAuditPage>> | null = null
@@ -635,17 +648,17 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   })
 
   if (shouldRunFlow) {
-    await prisma.auditPage.update({
+    await executionWrite(tx => tx.auditPage.update({
       where: { id: page.id },
       data: { performanceData: { ...storedPerformance, industryGuess } as never },
-    })
-    await prisma.audit.update({
+    }))
+    await executionWrite(tx => tx.audit.update({
       where: { id: ctx.auditId },
       data: {
         performanceData: storedPerformance as never,
         ...(flowResult ? { flowData: serializeFlowData(flowResult) as never } : {}),
       },
-    })
+    }))
   }
   // Capture and the deferred walk can observe the same failure. Keep one
   // corrective action while retaining the combined network evidence above.
@@ -669,6 +682,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   flags.splice(0, flags.length, ...flagsWithTargets)
 
   const completeness =
+    search.receipt.complete &&
     (screenshots?.mobileUrl || mobileBase64) &&
     pagespeed?.desktop &&
     pagespeed?.mobile
@@ -690,6 +704,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const triageFailure = judgeResult.artifact?.triageFailure
 
   return {
+    searchReceipt: search.receipt,
     pageId: page.id,
     url: normalizedUrl,
     metadata,

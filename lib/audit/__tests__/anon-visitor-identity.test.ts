@@ -51,6 +51,8 @@ vi.mock('@/lib/db', () => {
       return 1
     },
     audit: {
+      updateMany: async () => ({ count: 1 }),
+      findUniqueOrThrow: async () => ({ dispatchAttempts: 1, createdAt: new Date() }),
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const id = `audit-new-${mocks.state.createdAudits.length + 1}`
         mocks.state.createdAudits.push({ id, url: String(data.url) })

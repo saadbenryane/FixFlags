@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
-import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'
+import { createSiteActionController, executeSiteAction } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
 
 type Draft = {
   name: string
@@ -37,6 +38,14 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const submission = useRef(createSiteActionController()).current
+  const [authRequired, setAuthRequired] = useState(false)
+
+  async function refresh() {
+    const result = await executeSiteAction(`/api/sites/${siteId}/outcome-fixtures`, { cache: 'no-store' }, 'fixtures')
+    setFixtures(result.fixtures)
+    router.refresh()
+  }
 
   function payload() {
     const fields: Record<string, { by: 'label'; value: string }> = {
@@ -60,58 +69,53 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
   }
 
   async function save() {
+    if (submission.pending) return
     setBusy(true)
     setMessage(null)
-    try {
-      const response = await fetchSiteAction(editing
+    const completed = await submission.submit(async () => {
+      const body = await executeSiteAction(editing
         ? `/api/sites/${siteId}/outcome-fixtures/${editing}`
         : `/api/sites/${siteId}/outcome-fixtures`, {
         method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload()),
-      })
-      const body = await response.json().catch(() => ({})) as { fixture?: OutcomeFixtureView; error?: string }
-      if (!response.ok || !body.fixture) {
-        setMessage(body.error ?? 'Could not save this fixture.')
-        return
-      }
+      }, 'fixture')
       setFixtures((current) => editing
-        ? current.map((item) => item.id === body.fixture!.id ? body.fixture! : item)
-        : [...current, body.fixture!])
-      setMessage('Fixture saved. Run it safely before authorizing it.')
+        ? current.map((item) => item.id === body.fixture.id ? body.fixture : item)
+        : [...current, body.fixture])
       setDraft(EMPTY)
       setEditing(null)
       setOpen(false)
-      router.refresh()
-    } catch (error) {
-      setMessage(siteActionMessage(error))
-    } finally {
-      setBusy(false)
-    }
+      return body.fixture
+    }, refresh)
+    if (completed.kind === 'refused') { setMessage(completed.error.message); setAuthRequired(completed.error.status === 401) }
+    else if (completed.kind === 'saved_refresh_pending') setMessage(C.refreshPending)
+    else if (completed.kind === 'saved') { setMessage(C.fixtures.saved); setAuthRequired(false) }
+    setBusy(false)
   }
 
   async function action(fixture: OutcomeFixtureView, actionName: 'dry-run' | 'authorize' | 'revoke' | 'delete') {
-    if (actionName === 'delete' && !window.confirm('Delete this fixture and disable the Outcome method that uses it?')) return
+    if (submission.pending) return
+    if (actionName === 'delete' && !window.confirm(C.fixtures.deleteConfirmation)) return
     setBusy(true)
     setMessage(null)
-    try {
-      const response = await fetchSiteAction(`/api/sites/${siteId}/outcome-fixtures/${fixture.id}${actionName === 'delete' ? '' : `/${actionName}`}`, {
-        method: actionName === 'delete' ? 'DELETE' : 'POST',
-      })
-      const body = await response.json().catch(() => ({})) as { fixture?: OutcomeFixtureView; error?: string }
-      if (!response.ok) {
-        setMessage(body.error ?? 'Could not update this fixture.')
-        return
+    const completed = await submission.submit(async () => {
+      const url = `/api/sites/${siteId}/outcome-fixtures/${fixture.id}${actionName === 'delete' ? '' : `/${actionName}`}`
+      if (actionName === 'delete') {
+        await executeSiteAction(url, { method: 'DELETE' }, 'acknowledgement')
+        setFixtures(current => current.filter(item => item.id !== fixture.id))
+      } else {
+        const body = await executeSiteAction(url, { method: 'POST' }, 'fixture')
+        setFixtures(current => current.map(item => item.id === body.fixture.id ? body.fixture : item))
       }
-      if (actionName === 'delete') setFixtures((current) => current.filter((item) => item.id !== fixture.id))
-      else if (body.fixture) setFixtures((current) => current.map((item) => item.id === body.fixture!.id ? body.fixture! : item))
-      setMessage(actionName === 'dry-run' ? 'Dry run finished. Review its result before authorizing.' : actionName === 'authorize' ? 'Fixture authorized for Signup verification.' : actionName === 'revoke' ? 'Fixture authorization revoked.' : 'Fixture deleted.')
-      router.refresh()
-    } catch (error) {
-      setMessage(siteActionMessage(error))
-    } finally {
-      setBusy(false)
+    }, refresh)
+    if (completed.kind === 'refused') { setMessage(completed.error.message); setAuthRequired(completed.error.status === 401) }
+    else if (completed.kind === 'saved_refresh_pending') setMessage(C.refreshPending)
+    else if (completed.kind === 'saved') {
+      setAuthRequired(false)
+      setMessage(actionName === 'dry-run' ? C.fixtures.dryRun : actionName === 'authorize' ? C.fixtures.authorized : actionName === 'revoke' ? C.fixtures.revoked : C.fixtures.deleted)
     }
+    setBusy(false)
   }
 
   function edit(fixture: OutcomeFixtureView) {
@@ -185,6 +189,7 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
         </form>
       )}
       {message ? <p className="text-sm text-muted-foreground" role="status">{message}</p> : null}
+      {authRequired ? <Button asChild variant="outline"><a target="_blank" rel="noopener noreferrer" href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}/settings`)}`}>{C.signInAction}</a></Button> : null}
     </div>
   )
 }

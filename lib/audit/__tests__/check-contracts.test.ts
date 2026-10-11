@@ -5,8 +5,18 @@ import { recordCheckObservations } from '../checks/observations'
 import { checkReceiptSchema, readCheckReceipt } from '../checks/receipt'
 import { isCustomerFlag } from '../attention'
 import type { PageMetadata } from '../metadata'
+import { registerPageEvaluators, PAGE_CHECKS } from '../checks/catalog'
+import { PAGE_CHECK_DEFINITIONS } from '../checks/definitions'
 
 describe('registered check and evidence contracts', () => {
+  it('validates executable registration and rejects unsupported schemas or missing evaluators', () => {
+    const entries = [...PAGE_CHECKS.values()]
+    expect(registerPageEvaluators(entries).size).toBe(Object.keys(PAGE_CHECK_DEFINITIONS).length)
+    expect(() => registerPageEvaluators(entries.slice(1))).toThrow('Missing')
+    expect(() => registerPageEvaluators([...entries, entries[0]])).toThrow('Invalid')
+    expect(() => registerPageEvaluators([{ ...entries[0], evaluate: undefined } as never], { [entries[0].id]: entries[0].definition })).toThrow('Invalid')
+    expect(() => registerPageEvaluators([entries[0]], { [entries[0].id]: { ...entries[0].definition, resultSchema: 'unknown' } as never })).toThrow('Invalid')
+  })
   it('attributes every registered identity without using its legacy rubric', () => {
     expect(Object.keys(CHECK_REGISTRY)).toEqual([...ALL_CHECK_IDS])
     expect(CHECK_REGISTRY['flow-destination-no-cta'].area).toBe('conversion')
@@ -14,9 +24,9 @@ describe('registered check and evidence contracts', () => {
     expect(CHECK_REGISTRY['form-inputs-no-label'].area).toBe('accessibility')
     expect(CHECK_MODULES.measurement.area).toBe('tracking')
   })
-  it('keeps heuristic guidance while reserving attention for observed material failures', () => {
+  it('preserves accepted non-Search Flag eligibility', () => {
     for (const checkId of ['flow-destination-no-cta', 'trust-no-authority-signals', 'messaging-weak-value-prop', 'security-csp-missing']) {
-      expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1 })).toBe(false)
+      expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1 })).toBe(true)
     }
     expect(isCustomerFlag({ checkId: 'flow-cta-404', severity: 'IMPORTANT', confidence: 1 })).toBe(true)
     expect(isCustomerFlag({ checkId: 'no-https', severity: 'CRITICAL', confidence: 1 })).toBe(true)

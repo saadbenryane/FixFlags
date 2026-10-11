@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   auditUpdate: vi.fn(),
+  auditUpdateMany: vi.fn(),
   userFindUnique: vi.fn(),
   mergePrescriptionResults: vi.fn(),
   flagKeyForRow: vi.fn(),
@@ -20,7 +21,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    audit: { findUnique: mocks.auditFindUnique, update: mocks.auditUpdate },
+    audit: { findUnique: mocks.auditFindUnique, update: mocks.auditUpdate,
+      updateMany: mocks.auditUpdateMany, findUniqueOrThrow: async () => ({ executionGeneration: 1 }) },
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: async () => [{ id: 'a1' }], audit: { update: mocks.auditUpdate } }),
     user: { findUnique: mocks.userFindUnique },
   },
 }))
@@ -103,6 +106,7 @@ function resetMocks(): void {
   }
   mocks.auditFindUnique.mockResolvedValue({ ...AUDIT })
   mocks.auditUpdate.mockResolvedValue({})
+  mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
   mocks.userFindUnique.mockResolvedValue({ ...USER })
   mocks.hasUnlimitedScans.mockReturnValue(false)
   mocks.remainingAiReportCredits.mockResolvedValue(2)

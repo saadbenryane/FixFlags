@@ -1,3 +1,4 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import type { ImpactTag, Prisma, RubricName, Severity } from '@prisma/client'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
@@ -103,12 +104,12 @@ async function mergeActionTimeline(
     !Array.isArray(audit.performanceData)
       ? (audit.performanceData as Record<string, unknown>)
       : {}
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: {
       performanceData: { ...base, actionTimeline: merged } as unknown as Prisma.InputJsonValue,
     },
-  })
+  }))
 }
 
 function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
@@ -247,7 +248,7 @@ export async function persistJourneyResult(
     )
   }
 
-  const review = await prisma.journeyReview.create({
+  const review = await executionWrite(tx => tx.journeyReview.create({
     data: {
       auditId,
       journeyType: result.journeyType,
@@ -304,10 +305,10 @@ export async function persistJourneyResult(
         })),
       },
     },
-  })
+  }))
 
   for (const f of findingsToPersist) {
-    const created = await prisma.flag.create({
+    const created = await executionWrite(tx => tx.flag.create({
       data: {
         auditId,
         checkId: f.checkId,
@@ -324,11 +325,11 @@ export async function persistJourneyResult(
         fingerprint: `journey:${f.checkId}:${f.url}`,
         position: f.stepNumber,
       },
-    })
-    await prisma.journeyFinding.updateMany({
+    }))
+    await executionWrite(tx => tx.journeyFinding.updateMany({
       where: { journeyReviewId: review.id, checkId: f.checkId, stepNumber: f.stepNumber },
       data: { flagId: created.id },
-    })
+    }))
   }
 
   await mergeActionTimeline(auditId, result.actionTimeline as ActionTimelineEvent[] | undefined)
@@ -343,10 +344,10 @@ export async function runJourneyReviewsForAudit(
 ): Promise<number> {
   if (!options.included) return 0
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: { progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START },
-  })
+  }))
   await logPipelineEvent(auditId, {
     stage: 'JOURNEY_REVIEW',
     event: 'started',
@@ -462,7 +463,7 @@ export async function runJourneyReviewsForAudit(
         })
       }
 
-      if (journeyType === 'multi-step-funnel' && result.steps.length >= 3) {
+      if (journeyType === 'multi-step-funnel' && result.steps.length >= 3 && !result.blockedReason) {
         const evalGuard = aiGuard.canCall(4_000)
         if (!evalGuard.allowed) {
           logger.info('Skipping journey evaluator', { reason: evalGuard.reason, journeyType })
@@ -493,14 +494,14 @@ export async function runJourneyReviewsForAudit(
             })
             findingCount += persisted.length
           }
-          await prisma.journeyReview.updateMany({
+          await executionWrite(tx => tx.journeyReview.updateMany({
             where: { auditId, journeyType },
             data: {
               evaluatorInputTokens: evalResult.usage.inputTokens,
               evaluatorOutputTokens: evalResult.usage.outputTokens,
               evaluatorModel: evalResult.usage.model,
             },
-          })
+          }))
           aiGuard.recordOutcome(evalResult.usage.inputTokens, evalResult.usage.outputTokens)
         } catch (err) {
           logger.warn('Journey evaluator failed', { journeyType, err: String(err) })
@@ -513,10 +514,10 @@ export async function runJourneyReviewsForAudit(
     }
   }
 
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: { journeyReviewAt: new Date(), progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE },
-  })
+  }))
   await logPipelineEvent(auditId, {
     stage: 'JOURNEY_REVIEW',
     event: 'completed',

@@ -3,6 +3,8 @@ import { isCustomerFlag } from '@/lib/audit/attention'
 import { prisma } from '@/lib/db'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
+import { loadExecutionProgress, type ExecutionProgress } from './execution-progress'
+import { applySearchCardEvidence } from '@/lib/sites/search-view'
 import {
   buildCoverageFacts,
   isAuditFinished,
@@ -49,6 +51,7 @@ export type SiteHomeView = {
   presentation: SitePresentation
   activity?: SiteActivity
   recoveryUnavailable?: boolean
+  executionProgress?: ExecutionProgress | null
   audit: {
     id: string | null
     status: string | null
@@ -118,6 +121,7 @@ const auditSelect = {
   evidenceCoverage: true,
   verifierExecutions: {
     where: { targetKey: { startsWith: 'module:' } },
+    take: 1000,
     select: { id: true, targetKey: true, status: true, pageUrl: true, detail: true, updatedAt: true },
   },
   url: true,
@@ -299,6 +303,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       if (observation) {
         card.answer = observation.name
         card.detail = observation.observation ?? null
+        card.checkedAt = observation.checkedAt
       }
     }
     // Category activity needs an actual method receipt, not a blanket run flag.
@@ -317,6 +322,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     if (audit?.status === 'FAILED' && !audit.startedAt && !card.evidenced) {
       card.answer = 'Not checked'; card.status = 'Not checked'; card.detail = 'The check did not start.'
     }
+    applySearchCardEvidence(card, audit?.verifierExecutions ?? [], inFlight, now)
     if (card.id === 'search' && connectionNotes.search) card.facts = [...card.facts, connectionNotes.search].slice(0, 4)
     if (card.id === 'tracking' && connectionNotes.tracking) card.facts = [...card.facts, connectionNotes.tracking].slice(0, 4)
     if (card.id === 'search' && connections?.searchConsole.status === 'connected') card.sources = [...card.sources, 'Search Console']
@@ -435,6 +441,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   return {
     site,
+    executionProgress: await loadExecutionProgress(site, audit?.id ?? null),
     activity: projectSiteActivity({ status: audit?.status ?? null, startedAt: audit?.startedAt ?? null, failureCode: audit?.failureCode ?? null,
       pages: checkedPages, events: [...(audit?.pipelineEvents ?? [])].reverse() }),
     checkedPages: checkedPages.map((page) => ({ ...page, checkedAt: page.updatedAt.toISOString() })),

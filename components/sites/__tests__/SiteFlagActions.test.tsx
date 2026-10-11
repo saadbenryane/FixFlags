@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 const refresh = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -22,7 +23,7 @@ describe('SiteFlagActions', () => {
   })
 
   it('copies the fix prompt without treating copy as verification', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ prompt: 'FixFlags Flag: Show a confirmation.' }) })
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'FixFlags Flag: Show a confirmation.', handoff: null }) })
     vi.stubGlobal('fetch', fetchMock)
     render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
@@ -44,7 +45,7 @@ describe('SiteFlagActions', () => {
   })
 
   it('copies a prompt without starting verify or exposing a private share action', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ prompt: 'FixFlags Flag: No confirmation after contact' }) })
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'FixFlags Flag: No confirmation after contact', handoff: null }) })
     vi.stubGlobal('fetch', fetchMock)
     const writeText = vi.mocked(navigator.clipboard.writeText)
     render(
@@ -67,7 +68,7 @@ describe('SiteFlagActions', () => {
     })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ prompt: 'FixFlags Flag: Manual copy prompt' }),
+      json: async () => ({ ok: true, prompt: 'FixFlags Flag: Manual copy prompt', handoff: null }),
     }))
     render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
 
@@ -120,9 +121,9 @@ describe('SiteFlagActions', () => {
     await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
     const dialog = screen.getByRole('dialog')
     await within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
-    expect(await within(dialog).findByText(SITE_BOARD_COPY.verificationConnectionLost)).toBeVisible()
+    expect(await within(dialog).findByText(SITE_ACTION_COPY.interrupted)).toBeVisible()
     expect(dialog).toBeVisible()
-    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(refresh).not.toHaveBeenCalled()
     expect(screen.queryByText(SITE_BOARD_COPY.verificationStarted)).not.toBeInTheDocument()
   })
 })

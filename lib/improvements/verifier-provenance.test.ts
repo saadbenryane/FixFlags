@@ -50,7 +50,7 @@ describe('verifier execution provenance', () => {
                 {
                   flag: {
                     source: 'DETERMINISTIC',
-                    checkId: 'title-missing',
+                    checkId: 'og-image-missing',
                     fingerprint: null,
                     pageUrl: 'https://example.com/pricing',
                   },
@@ -83,9 +83,9 @@ describe('verifier execution provenance', () => {
     expect(upsert).toHaveBeenCalledTimes(1)
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({
-        targetKey: 'check:title-missing',
+        targetKey: 'check:og-image-missing',
         status: 'COMPLETED',
-        evidenceReference: expect.objectContaining({ verifier: 'title-missing' }),
+        evidenceReference: expect.objectContaining({ verifier: 'og-image-missing' }),
       }),
     }))
   })
@@ -100,7 +100,7 @@ describe('verifier execution provenance', () => {
             occurrences: [{
               flag: {
                 source: 'DETERMINISTIC',
-                checkId: 'title-missing',
+                checkId: 'og-image-missing',
                 fingerprint: null,
                 pageUrl: null,
               },

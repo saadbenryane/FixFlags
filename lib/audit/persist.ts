@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import {
   Prisma,
   RubricName,
@@ -11,6 +11,8 @@ import type { TriageOutput } from './judge-triage-schema'
 import type { PrescriptionOutput } from './judge-prescription-schema'
 import { verificationRuleForCheckId } from './verify-flags'
 import { whyItMattersForCheckId, isGenericWhyItMatters } from './flag-copy'
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
+import { SEARCH_CHECK_REGISTRY } from '@/lib/audit/search/definitions'
 import {
   calculateOverallScore,
   clampScore,
@@ -42,10 +44,13 @@ export function buildDeterministicFlagRow(
     rubric: flag.rubric,
     impactTag: flag.impactTag ? (flag.impactTag as ImpactTag) : null,
     severity: flag.severity as Severity,
+    attentionPolicy: flag.attentionPolicy as Prisma.InputJsonValue | undefined,
     problem: flag.problem,
     evidence: flag.evidence,
     whyItMatters:
-      enrichment?.whyItMatters && !isGenericWhyItMatters(enrichment.whyItMatters)
+      flag.attentionPolicy?.policy === 'search'
+        ? SEARCH_COPY.consequences[SEARCH_CHECK_REGISTRY[flag.checkId.split('::page:')[0] as keyof typeof SEARCH_CHECK_REGISTRY]?.responsibility ?? 'presentation']
+        : enrichment?.whyItMatters && !isGenericWhyItMatters(enrichment.whyItMatters)
         ? enrichment.whyItMatters
         : whyItMattersForCheckId(flag.checkId),
     fix: flag.fix,
@@ -57,6 +62,7 @@ export function buildDeterministicFlagRow(
     lovablePrompt: enrichment?.lovablePrompt ?? null,
     boltPrompt: enrichment?.boltPrompt ?? null,
     verificationRule:
+      flag.verificationRule ??
       enrichment?.verificationRule ??
       verificationRuleForCheckId(flag.checkId) ??
       null,
@@ -140,17 +146,23 @@ export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null
   return valid.includes(tag as ImpactTag) ? (tag as ImpactTag) : null
 }
 
-/**
- * Clear triage-owned results before a fresh persist.
- * Preserves JOURNEY flags written earlier in the pipeline (see runJourneyReviewsForAudit).
- */
-export async function clearAuditResults(auditId: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.flag.deleteMany({
-      where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] } },
-    }),
-    prisma.reportRubric.deleteMany({ where: { auditId } }),
-  ])
+/** Stable projection identities; repeated publication never deletes originating evidence. */
+async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, rows: Prisma.FlagCreateManyInput[]) {
+  await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
+  const previous = await tx.flag.findMany({ where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] } },
+    select: { id: true, fingerprint: true, source: true, affectedPaths: true } })
+  const existing = new Map(previous.map(row => [row.source + ':' + row.fingerprint, row]))
+  const created: Prisma.FlagCreateManyInput[] = []
+  for (const row of rows) {
+    const prior = existing.get(row.source + ':' + row.fingerprint)
+    if (!prior) { created.push(row); continue }
+    const paths = [...new Set([
+      ...(Array.isArray(prior.affectedPaths) ? prior.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
+      ...(Array.isArray(row.affectedPaths) ? row.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
+    ])]
+    await tx.flag.update({ where: { id: prior.id }, data: { ...row, affectedPaths: paths.length ? paths : undefined } })
+  }
+  if (created.length) await tx.flag.createMany({ data: created })
 }
 
 /** Soft score impact so journey findings affect rubric grades without double-counting checks. */
@@ -169,18 +181,15 @@ function journeySeverityPenalty(severity: string): number {
 
 /**
  * Persist deterministic flags and partial rubric scores during the pipeline run.
- * Wipe-and-rewrite is valid only when `deterministicFlags` is the collapsed
- * union of every reviewed page so far. Never pass a single page as the Product.
+ * Callers supply the collapsed union; committed Flag identities remain stable.
  */
 export async function persistDeterministicFlags(
   auditId: string,
   deterministicFlags: DeterministicFlag[],
-  rubricScores: Partial<Record<RubricName, number | null>>
+  rubricScores: Partial<Record<RubricName, number | null>>,
+  transaction?: Prisma.TransactionClient,
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await tx.flag.deleteMany({
-      where: { auditId, source: 'DETERMINISTIC' },
-    })
+  const persist = async (tx: Prisma.TransactionClient) => {
 
     const pages = await tx.auditPage.findMany({
       where: { auditId },
@@ -239,9 +248,7 @@ export async function persistDeterministicFlags(
       auditId,
     }))
 
-    if (flagRows.length > 0) {
-      await tx.flag.createMany({ data: flagRows })
-    }
+    await persistFlagRows(tx, auditId, flagRows)
 
     const overallScore = calculateOverallScore(rubricScores)
     await tx.audit.update({
@@ -251,7 +258,9 @@ export async function persistDeterministicFlags(
         reportCompleteness: 'PARTIAL',
       },
     })
-  })
+  }
+  if (transaction) await persist(transaction)
+  else await executionTransaction(persist)
 }
 
 export function buildTriageAiFlagRow(
@@ -312,9 +321,8 @@ export async function persistTriageResults(
   deterministicFlags: DeterministicFlag[],
   rubricScores: Partial<Record<RubricName, number | null>>
 ): Promise<void> {
-  await clearAuditResults(auditId)
 
-  await prisma.$transaction(async (tx) => {
+  await executionTransaction(async (tx) => {
     const pages = await tx.auditPage.findMany({
       where: { auditId },
       select: { id: true, normalizedUrl: true },
@@ -374,8 +382,7 @@ export async function persistTriageResults(
         resolvedScores[rubricName] = finalScore
         resolvedGrades[rubricName] = finalGrade
 
-        return tx.reportRubric.create({
-          data: {
+        const data: Prisma.ReportRubricUncheckedCreateInput = {
             auditId,
             name: rubricName,
             score: finalScore,
@@ -395,8 +402,8 @@ export async function persistTriageResults(
             claudePrompt: null,
             lovablePrompt: null,
             boltPrompt: null,
-          },
-        })
+        }
+        return tx.reportRubric.upsert({ where: { auditId_name: { auditId, name: rubricName } }, create: data, update: data })
       })
     )
 
@@ -422,9 +429,7 @@ export async function persistTriageResults(
       })),
     ]
 
-    if (flagRows.length > 0) {
-      await tx.flag.createMany({ data: flagRows })
-    }
+    await persistFlagRows(tx, auditId, flagRows)
 
     const overallScore = calculateOverallScore(resolvedScores, resolvedGrades)
     await tx.audit.update({
@@ -457,7 +462,7 @@ export async function mergePrescriptionResults(
   auditId: string,
   prescription: PrescriptionOutput
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  await executionTransaction(async (tx) => {
     const flags = await tx.flag.findMany({ where: { auditId } })
     const prescriptionByKey = new Map(
       prescription.flagPrescriptions.map((item) => [item.flagKey, item])

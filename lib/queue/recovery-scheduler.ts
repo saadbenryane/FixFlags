@@ -1,4 +1,4 @@
-import { tryAcquireLock } from './lock'
+import { tryAcquireLock, withSchedulerLease } from './lock'
 import {
   recoverCompletedImprovementProjections,
   runStuckAuditRecoverySweep,
@@ -13,9 +13,12 @@ import { deleteExpiredProductSignals } from '@/lib/signals/product-signals'
 import { logger } from '@/lib/logger'
 import { recoverExpiredSiteRuns } from '@/lib/sites/application/run-leases'
 import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
+import { dispatchPendingAudits } from '@/lib/audit/dispatch'
+import { recoverProgressiveAudits } from '@/lib/audit/progressive/runtime'
 
-const RECOVERY_INTERVAL_MS = 120_000 // ~2 min
-const RECOVERY_LOCK_TTL_MS = 110_000 // < interval so it re-acquires next tick
+const PROGRESSIVE_RECOVERY_INTERVAL_MS = 10_000
+const RECOVERY_INTERVAL_MS = 120_000
+const RECOVERY_LOCK_TTL_MS = 110_000
 
 const WATCH_INTERVAL_MS = 5 * 60_000 // every 5 min
 const WATCH_LOCK_TTL_MS = 4 * 60_000
@@ -33,6 +36,19 @@ const SIGNAL_RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SIGNAL_RETENTION_LOCK_TTL_MS = 25 * 60 * 60 * 1000
 
 let started = false
+let progressiveRecoveryRunning = false
+
+async function progressiveRecoveryTick(): Promise<void> {
+  if (progressiveRecoveryRunning) return
+  progressiveRecoveryRunning = true
+  try {
+    await withSchedulerLease('progressive-recovery', async signal => {
+      await dispatchPendingAudits()
+      if (!signal.aborted) await recoverProgressiveAudits()
+    })
+  } catch (error) { logger.error('Progressive recovery sweep failed', error instanceof Error ? error : new Error(String(error))) }
+  finally { progressiveRecoveryRunning = false }
+}
 
 async function recoveryTick(): Promise<void> {
   if (!(await tryAcquireLock('recover-stuck-audits', RECOVERY_LOCK_TTL_MS))) return
@@ -124,6 +140,11 @@ async function signalRetentionTick(): Promise<void> {
 export function startRecoveryScheduler(): void {
   if (started) return
   started = true
+
+  const progressiveRecovery = setInterval(() => void progressiveRecoveryTick(), PROGRESSIVE_RECOVERY_INTERVAL_MS)
+  progressiveRecovery.unref?.()
+  const initialProgressive = setTimeout(() => void progressiveRecoveryTick(), 1000)
+  initialProgressive.unref?.()
 
   const initialRecovery = setTimeout(() => void recoveryTick(), 15_000)
   initialRecovery.unref?.()

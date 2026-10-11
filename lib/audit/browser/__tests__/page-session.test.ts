@@ -28,7 +28,7 @@ describe('audit page session form evidence', () => {
       on: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'),
       url: () => 'http://localhost:4100/',
     }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn() }
+    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
     const browser = { newContext: vi.fn(async () => context) } as unknown as Browser
     const session = await createAuditPage(browser, 'http://localhost:4100/', {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, settle: false,

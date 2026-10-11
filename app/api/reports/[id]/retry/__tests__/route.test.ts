@@ -14,6 +14,7 @@ vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser }))
 vi.mock('@/lib/audit/access', () => ({ canManageAudit, canRetryAnonymousAudit }))
 vi.mock('@/lib/audit/retry-audit', () => ({ retryAudit }))
+vi.mock('@/lib/sites/visitor-identity', () => ({ peekVisitorKey: async () => 'visitor-own' }))
 vi.mock('@/lib/audit/usage', () => ({
   ANON_AUDIT_IDS_COOKIE: 'ff_anon_report_ids',
   readClaimedAnonymousIds,
@@ -84,7 +85,7 @@ describe('POST /api/reports/[id]/retry', () => {
       'anon-1',
       ['anon-1']
     )
-    expect(retryAudit).toHaveBeenCalledWith('anon-1')
+    expect(retryAudit).toHaveBeenCalledWith('anon-1', { userId: null, anonymousAuditIds: ['anon-1'], visitorKey: 'visitor-own', clientId: 'test-client' })
   })
 
   it('returns 403 for an anonymous teaser not present in the anon cookie', async () => {
@@ -127,7 +128,7 @@ describe('POST /api/reports/[id]/retry', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.status).toBe('QUEUED')
-    expect(retryAudit).toHaveBeenCalledWith('a1')
+    expect(retryAudit).toHaveBeenCalledWith('a1', { userId: 'u1', anonymousAuditIds: ['anon-1'], visitorKey: 'visitor-own', clientId: 'test-client' })
   })
 
   it('returns 200 and enqueues retry when audit is AI-degraded (completed without triage)', async () => {

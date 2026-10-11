@@ -1,5 +1,6 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { Prisma, type Audit } from '@prisma/client'
 import { runWithContext } from '@/lib/logger/context'
 import { PIPELINE_PROGRESS } from './progress'
 import {
@@ -30,8 +31,8 @@ import type { PipelineContext, PageRun } from './pipeline/types'
 import { runJourneyReviewsForAudit } from './journey/run-journey-reviews'
 import { runCorridorConsistencyChecks } from './checks/corridor-consistency'
 import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
-import { pullGscDataForAudit } from './gsc-integration'
-import { runSearchPerformanceChecks } from './checks/search-performance'
+import { runGoogleSearchForAudit } from './search/google'
+import { runCheckedPageSearch } from './search/workflow'
 import {
   asReviewDepth,
   auditDeadlineMsForDepth,
@@ -50,6 +51,9 @@ import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { systemClock } from '@/lib/time/clock'
 import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
 import { markOutcomeRunsCouldNotVerify } from '@/lib/sites/application/run-requests'
+import { claimExecution, ExecutionOwnershipLost, withExecutionOwnership } from './execution-ownership'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { coordinateProgressiveAudit } from './progressive/runtime'
 
 async function persistReviewedFlagsSoFar(auditId: string, pageRuns: PageRun[]): Promise<void> {
   if (pageRuns.length === 0) return
@@ -61,9 +65,29 @@ async function persistReviewedFlagsSoFar(auditId: string, pageRuns: PageRun[]): 
 }
 
 export async function runAudit(auditId: string): Promise<void> {
+  const audit = await prisma.audit.findUnique({ where: { id: auditId } })
+  if (!audit) throw new Error(`Audit ${auditId} not found`)
+  if (audit.status === 'FAILED') return
+  if (readExecutionSpec(audit.executionSpec)?.engine === 'progressive-v1') {
+    await coordinateProgressiveAudit(auditId)
+    return
+  }
+  const owner = await claimExecution(auditId, audit.status === 'COMPLETED')
+  if (!owner) return
+  await withExecutionOwnership(owner, async () => {
+    await runOwnedAudit(auditId, audit)
+    const terminal = await prisma.audit.findUnique({ where: { id: auditId }, select: { status: true } })
+    if (terminal && !['COMPLETED', 'FAILED'].includes(terminal.status)) {
+      await executionWrite(tx => tx.audit.update({ where: { id: auditId }, data: {
+        status: 'FAILED', failureCode: 'AUDIT_JOB_NON_TERMINAL', failureStage: 'worker',
+        errorMsg: 'The worker stopped before completing this check.', completedAt: new Date(),
+      } }))
+    }
+  })
+}
+
+async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
   return runWithContext({ auditId }, async () => {
-    const audit = await prisma.audit.findUnique({ where: { id: auditId } })
-    if (!audit) throw new Error(`Audit ${auditId} not found`)
     if (audit.status === 'COMPLETED') {
       // A worker may have exited after the Review reached COMPLETED but before
       // its durable Improvement projection finished. Resume that idempotent
@@ -77,15 +101,9 @@ export async function runAudit(auditId: string): Promise<void> {
     const startedAt = clock.now()
     const scanAccess = await resolveAuditScanAccess(auditId)
 
-    // Always fresh capture, including parented re-checks.
-    await prisma.$transaction([
-      prisma.screenshot.deleteMany({ where: { auditId } }),
-      prisma.auditPage.deleteMany({ where: { auditId } }),
-      prisma.journeyReview.deleteMany({ where: { auditId } }),
-      prisma.flag.deleteMany({ where: { auditId, source: 'JOURNEY' } }),
-    ])
+    // Retries receive a new Audit. Recorded captures and observations are never erased.
 
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: auditId },
       data: {
         status: 'CAPTURING',
@@ -99,7 +117,7 @@ export async function runAudit(auditId: string): Promise<void> {
         failureMetadata: Prisma.JsonNull,
         progress: PIPELINE_PROGRESS.CAPTURING,
       },
-    })
+    }))
 
     const trace = await initPipelineLog(auditId, { clock })
     const ctx: PipelineContext = {
@@ -120,10 +138,10 @@ export async function runAudit(auditId: string): Promise<void> {
     let openCheckResults: OpenCheckResult[] = []
 
     try {
-      await prisma.audit.update({
+      await executionWrite(tx => tx.audit.update({
         where: { id: auditId },
         data: { progressDetail: progressReviewingDetail(audit.url) },
-      })
+      }))
 
       const primary = await runPage(ctx, {
         url: audit.url,
@@ -137,10 +155,10 @@ export async function runAudit(auditId: string): Promise<void> {
       // Targeted Outcomes use this same worker and durable evidence lifecycle.
       await runBoundCheckoutForAudit(auditId)
 
-      await prisma.audit.update({
+      await executionWrite(tx => tx.audit.update({
         where: { id: auditId },
         data: { progressDetail: AUDIT_PROGRESS.reviewProgress.openingLinks },
-      })
+      }))
 
       const hop1Plan = planReviewTargets({
         pastedUrl: audit.url,
@@ -190,10 +208,10 @@ export async function runAudit(auditId: string): Promise<void> {
           })
           break
         }
-        await prisma.audit.update({
+        await executionWrite(tx => tx.audit.update({
           where: { id: auditId },
           data: { progressDetail: progressReviewingDetail(url) },
-        })
+        }))
         const secondaryCtx: PipelineContext = {
           ...ctx,
           deadline: Math.min(ctx.deadline, ctx.clock.now().getTime() + secondaryPageBudgetMs),
@@ -250,10 +268,10 @@ export async function runAudit(auditId: string): Promise<void> {
             })
             break
           }
-          await prisma.audit.update({
+          await executionWrite(tx => tx.audit.update({
             where: { id: auditId },
             data: { progressDetail: progressReviewingDetail(url) },
-          })
+          }))
           const secondaryCtx: PipelineContext = {
             ...ctx,
             deadline: Math.min(ctx.deadline, ctx.clock.now().getTime() + secondaryPageBudgetMs),
@@ -272,7 +290,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
       if (hop1Plan.truncated) ctx.supplementalPagesSkipped = true
 
-      await prisma.audit.update({
+      await executionWrite(tx => tx.audit.update({
         where: { id: auditId },
         data: {
           openCheckResults: openCheckResults as unknown as Prisma.InputJsonValue,
@@ -285,7 +303,7 @@ export async function runAudit(auditId: string): Promise<void> {
           }) as unknown as Prisma.InputJsonValue,
           progressDetail: AUDIT_PROGRESS.reviewProgress.prioritizingFlags,
         },
-      })
+      }))
 
       if (pageRuns.length > 1) {
         const corridorFlags = runCorridorConsistencyChecks(
@@ -309,19 +327,14 @@ export async function runAudit(auditId: string): Promise<void> {
         scanAccess: ctx.scanAccess,
       })
 
-      // Pull GSC data and run search-performance checks before finalize.
-      // This runs after all pages are captured so we have the full URL list.
-      if (audit.userId) {
-        const urls = pageRuns.map((p) => p.url)
-        await pullGscDataForAudit(auditId, audit.userId, urls)
-        for (const pageRun of pageRuns) {
-          const gscFlags = await runSearchPerformanceChecks(auditId, pageRun.url)
-          if (gscFlags.length > 0) {
-            pageRun.flags.push(...gscFlags)
-          }
-        }
-        await persistReviewedFlagsSoFar(auditId, pageRuns)
-      }
+      // Live-page facts and Google's indexed-version facts retain separate receipts.
+      const duplicateTitles = await runCheckedPageSearch(pageRuns.flatMap(page => page.searchReceipt ? [page.searchReceipt] : []))
+      for (const pageRun of pageRuns) pageRun.flags.push(...duplicateTitles.filter(flag => flag.pageUrl === pageRun.url))
+      const google = await runGoogleSearchForAudit({ auditId, userId: audit.userId,
+        pages: pageRuns.map(page => ({ url: page.url, local: page.searchReceipt })),
+        deadline: ctx.deadline - FINALIZE_RESERVE_MS })
+      for (const pageRun of pageRuns) pageRun.flags.push(...google.findings.filter(flag => flag.pageUrl === pageRun.url))
+      await persistReviewedFlagsSoFar(auditId, pageRuns)
 
       const retriedPageRuns = await retryPrimaryTriage(ctx, pageRuns)
       await finalizeFromOutcome({
@@ -332,12 +345,13 @@ export async function runAudit(auditId: string): Promise<void> {
         startedAt,
       })
       if (ctx.supplementalPagesSkipped || !reviewedPagesHaveFullPageSpeed(retriedPageRuns)) {
-        await prisma.audit.updateMany({
+        await executionWrite(tx => tx.audit.updateMany({
           where: { id: auditId, status: 'COMPLETED' },
           data: { reportCompleteness: 'PARTIAL' },
-        })
+        }))
       }
     } catch (error) {
+      if (error instanceof ExecutionOwnershipLost) throw error
       const partialDone = await tryPartialFinalize(ctx, pageRuns, error)
       if (partialDone) return
 
@@ -367,7 +381,7 @@ export async function runAudit(auditId: string): Promise<void> {
           model: ctx.usage.models.join(','),
         })
 
-        await prisma.audit.update({
+        await executionWrite(tx => tx.audit.update({
           where: { id: auditId },
           data: {
             status: 'FAILED',
@@ -376,7 +390,7 @@ export async function runAudit(auditId: string): Promise<void> {
             failureStage,
             failureMetadata: { jobId: auditId },
           },
-        })
+        }))
         await markOutcomeRunsCouldNotVerify(auditId, failureCode, errorMsg)
       }
 

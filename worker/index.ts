@@ -28,8 +28,9 @@ const runtime = createWorkerRuntime({
       redis.disconnect()
     }
     if (process.env.NODE_ENV === 'production') {
-      if (!isProdStorageConfigured()) throw new Error('Worker storage configuration is incomplete')
-      await checkR2Connection()
+      if (!isProdStorageConfigured()) logger.warn('Private capture storage is unavailable. Independent HTTP and provider work remains executable.')
+      else void checkR2Connection().catch(error => logger.warn('Private capture storage preflight failed. Capture tasks will retain their failure condition.',
+        { message: error instanceof Error ? error.message : 'storage unavailable' }))
     }
     if (process.env.NODE_ENV !== 'production' && process.env.FIXFLAGS_ALLOW_DUPLICATE_WORKERS !== '1') {
       const heartbeat = await readWorkerHeartbeat()

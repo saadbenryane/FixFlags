@@ -1,4 +1,5 @@
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
+import { CHECK_DEFINITIONS } from './check-registry'
 
 /** How a capability is evaluated in the FixFlags pipeline. */
 export type AuditTool =
@@ -45,7 +46,14 @@ export interface AuditCapability {
  * Canonical map of what FixFlags can analyze, how, and where it lives.
  * Used by scripts/audit-capability-report.ts and goal planning.
  */
-export const AUDIT_CAPABILITIES: AuditCapability[] = [
+const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
+  {
+    id: 'search-evidence', dimension: 'REACH', category: 'seo', label: 'Public Search evidence and structured-data inspection',
+    tool: 'browser-capture', status: 'live',
+
+    verify: 'npx vitest run lib/audit/search',
+    notes: 'Original response, rendered DOM, bounded site resources, and separately authorized Google evidence.',
+  },
   // MESSAGE - messaging clarity
   {
     id: 'copy-messaging-clarity',
@@ -54,13 +62,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Value proposition clarity & jargon detection',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'messaging-weak-value-prop',
-      'messaging-jargon-overload',
-      'messaging-no-audience',
-      'messaging-long-sentences',
-      'messaging-headline-too-short',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
   {
@@ -70,13 +72,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Conversion path, risk reversal & social proof',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'friction-no-commitment-path',
-      'friction-trial-commitment-unclear',
-      'friction-form-too-many-fields',
-      'friction-no-risk-reversal',
-      'friction-no-social-proof',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
   {
@@ -86,13 +82,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Authority signals, claim substantiation & contact',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'trust-no-authority-signals',
-      'trust-testimonial-quality',
-      'trust-unsupported-claims',
-      'trust-no-direct-contact',
-      'trust-no-internal-links',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
 
@@ -104,12 +94,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Visual hierarchy, competing CTAs, font sprawl',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'hierarchy-competing-actions',
-      'hierarchy-no-sections',
-      'hierarchy-no-headline',
-      'hierarchy-information-density',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
   {
@@ -119,12 +104,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Mobile UX: zoom, thumb zone, CTA labels, loading',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'mobile-input-zoom',
-      'mobile-cta-thumb-zone',
-      'mobile-cta-weak-label',
-      'mobile-load-delay-content',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
 
@@ -136,7 +116,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Hero headline specificity',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['h1-generic'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -146,7 +126,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'CTA detected in page',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['no-cta-detected'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -156,7 +136,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'CTA focus above the fold',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['competing-ctas'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
   {
@@ -166,7 +146,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Heading hierarchy (H1 + section H2s)',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['heading-hierarchy-missing'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
   {
@@ -176,7 +156,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Placeholder / lorem / TODO copy',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['placeholder-copy-detected', 'template-default-copy', 'unreplaced-template-token'],
+
   },
   {
     id: 'copy-dead-cta-links',
@@ -185,7 +165,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Dead hash/empty CTA hrefs',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['cta-dead-link'],
+
   },
   {
     id: 'copy-social-proof-quality',
@@ -194,7 +174,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Fake testimonials / unverifiable social proof',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['social-proof-unverifiable'],
+
     verify: 'npm run demo:audit:offline',
   },
 
@@ -206,7 +186,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Web analytics (GA4, GTM, PostHog)',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['measurement-ga-gtm-posthog-missing'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -216,7 +196,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'AI review of measurement setup',
     tool: 'ai-judge',
     status: 'live',
-    checkIds: [],
+
     verify: 'npm run dev:all + audit URL',
   },
 
@@ -228,7 +208,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Mixed content detection',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['security-mixed-content'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -238,30 +218,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'CSP, HSTS, X-Frame-Options, and other response security headers',
     tool: 'html-parse',
     status: 'live',
-      checkIds: [
-      'security-csp-missing',
-      'security-csp-unsafe-inline',
-      'security-csp-unsafe-eval',
-      'security-csp-weak-object-src',
-      'security-csp-report-only',
-      'security-hsts-missing',
-      'security-hsts-too-short',
-      'security-hsts-no-subdomains',
-      'security-hsts-no-preload',
-      'security-frame-options-missing',
-      'security-frame-options-too-permissive',
-      'security-content-type-options-missing',
-      'security-headers-missing',
-      'security-headers-hardening',
-      'security-referrer-policy-missing',
-      'security-referrer-policy-weak',
-      'security-coop-missing',
-      'security-coep-missing',
-      'security-corp-missing',
-      'security-permissions-policy-missing',
-      'security-permissions-policy-overbroad',
-      'security-x-permitted-cross-domain',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Reads raw HTTP response headers captured during page navigation, not PageMetadata.',
   },
@@ -274,17 +231,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Title & meta description',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'title-missing',
-      'title-too-short',
-      'title-too-long',
-      'description-missing',
-      'description-too-short',
-      'description-too-long',
-      'viewport-missing',
-      'lang-missing',
-      'favicon-missing',
-    ],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -294,7 +241,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Open Graph & Twitter cards',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['og-image-missing', 'og-image-broken', 'og-title-missing', 'og-description-missing'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -304,7 +251,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Canonical, robots, structured data',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['canonical-missing', 'robots-blocks-indexing', 'no-structured-data'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -314,7 +261,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'H1 count & SEO headings',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['h1-missing', 'h1-multiple'],
+
   },
   {
     id: 'reach-site-map-robots',
@@ -323,7 +270,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'sitemap.xml & robots.txt',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['sitemap-missing', 'robots-txt-missing'],
+
     notes: 'Domain-level; out of scope for demo fixture loop.',
   },
   {
@@ -333,14 +280,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Page indexing status & search performance signals',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'indexing-failure',
-      'soft-404',
-      'robots-blocked',
-      'noindex-meta',
-      'canonical-mismatch',
-      'low-ctr',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Uses GSC data from index_statuses and search_performance tables.',
   },
@@ -351,7 +291,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Broken internal links',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['broken-internal-links'],
+
   },
 
   // REACH - trust
@@ -362,12 +302,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'HTTPS, privacy, contact, cookies',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'no-https',
-      'no-privacy-policy',
-      'no-contact-info',
-      'cookie-consent-absent',
-    ],
+
     verify: 'npm run demo:audit',
   },
   {
@@ -377,7 +312,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'JavaScript console errors',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['console-errors-critical', 'console-errors-some'],
+
   },
 
   // EXPERIENCE - performance
@@ -388,20 +323,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Core Web Vitals (LCP, CLS, INP)',
     tool: 'pagespeed',
     status: 'live',
-    checkIds: [
-      'perf-score-critical',
-      'perf-score-poor',
-      'lcp-critical',
-      'lcp-poor',
-      'cls-critical',
-      'cls-poor',
-      'inp-critical',
-      'inp-poor',
-      'render-blocking',
-      'unused-js-large',
-      'unused-css-large',
-      'unoptimized-images',
-    ],
+
     notes: 'Requires PageSpeed API; out of scope for offline demo loop.',
   },
   {
@@ -411,7 +333,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Mobile PageSpeed & LCP',
     tool: 'pagespeed',
     status: 'live',
-    checkIds: ['mobile-perf-critical', 'mobile-perf-poor', 'mobile-lcp-critical', 'tap-targets-small'],
+
   },
 
   // EXPERIENCE - accessibility
@@ -422,15 +344,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'DOM accessibility (labels, alt, skip link)',
     tool: 'html-parse',
     status: 'live',
-    checkIds: [
-      'images-missing-alt',
-      'form-inputs-no-label',
-      'buttons-no-text',
-      'links-no-text',
-      'iframe-no-title',
-      'tabindex-positive',
-      'skip-link-missing',
-    ],
+
   },
   {
     id: 'experience-a11y-lighthouse',
@@ -439,7 +353,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Lighthouse a11y audits (contrast, focus, keyboard)',
     tool: 'pagespeed',
     status: 'live',
-    checkIds: ['color-contrast-poor', 'keyboard-nav-trap', 'focus-visible-missing'],
+
   },
   {
     id: 'experience-a11y-axe-core',
@@ -448,21 +362,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'axe-core structural & landmark accessibility',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: [
-      'heading-order-skipped',
-      'axe-aria-required-children',
-      'axe-aria-required-parent',
-      'axe-duplicate-id-active',
-      'axe-duplicate-id-aria',
-      'axe-landmark-banner',
-      'axe-landmark-contentinfo',
-      'axe-landmark-main',
-      'axe-landmark-duplicate',
-      'axe-landmark-one-main',
-      'axe-missing-h1',
-      'axe-list-structure',
-      'axe-meta-viewport',
-    ],
+
     notes: 'Axe-core scan runs during browser capture; results mapped to FixFlags check IDs.',
   },
 
@@ -474,7 +374,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Primary CTA above fold on mobile',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['cta-below-fold-mobile'],
+
     verify: 'npm run dev:all + full audit',
     notes: 'Uses CaptureMetrics from mobile Playwright viewport.',
   },
@@ -485,7 +385,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Auth & checkout links resolve',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['checkout-link-dead', 'auth-page-broken'],
+
     notes: 'HEAD-checks login/sign-up and checkout/payment links, incl. cross-origin.',
   },
 
@@ -497,7 +397,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Slow or stuck loading / skeleton UI',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['loading-indicator-stuck', 'loading-state-slow'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Detects visible skeleton/spinner/[aria-busy] after capture and slow first-screen loading states.',
   },
@@ -508,7 +408,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Form validation & submit feedback',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: ['form-missing-validation', 'flow-form-no-validation', 'flow-form-slow-feedback'],
+
     verify: 'npm run demo:audit:flow',
     notes: 'Static parse flags missing required/pattern attrs; flow probe verifies empty-submit feedback.',
   },
@@ -519,7 +419,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'prefers-reduced-motion & excessive animation',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['motion-ignores-reduced-preference'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Emulates prefers-reduced-motion during mobile capture; flags animations that still run.',
   },
@@ -532,7 +432,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'On-page hash links target existing sections',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['broken-page-anchors'],
+
     verify: 'npm run demo:audit:offline',
   },
   {
@@ -542,23 +442,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Primary CTA click & navigation',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: [
-      'flow-no-cta-found',
-      'flow-cta-unclickable',
-      'flow-cta-404',
-      'flow-cta-dead-end',
-      'flow-cta-external-leave',
-      'flow-cta-blank-destination',
-      'flow-cta-stuck-loading',
-      'flow-cta-destination-no-trust',
-      'flow-destination-no-headline',
-      'flow-destination-no-cta',
-      'flow-cta-message-mismatch',
-      'flow-destination-cta-overload',
-      'flow-destination-stuck-loading',
-      'flow-destination-no-privacy',
-      'flow-destination-slow-load',
-    ],
+
     verify: 'npm run demo:audit:flow',
   },
   {
@@ -568,7 +452,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Overlay / modal click blockers',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: ['overlay-blocks-nav', 'overlay-blocks-cta', 'overlay-blocks-form'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/beat-scout-precision.test.ts',
     notes: 'elementFromPoint overlay detection when CTA/nav/form clicks fail.',
   },
@@ -579,13 +463,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Engagement API and form submit failures',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: [
-      'api-engagement-unauthorized',
-      'api-engagement-server-error',
-      'form-submit-api-unauthorized',
-      'form-submit-api-server-error',
-      'form-submit-silent-failure',
-    ],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/beat-scout-precision.test.ts',
     notes: 'Same-origin network monitor + controlled journey form probe + silent failure.',
   },
@@ -596,39 +474,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'User journey walk (first-visit, pricing, signup, contact)',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: [
-      'journey-first-visit-unclear-value-prop',
-      'journey-first-visit-hidden-cta',
-      'journey-first-visit-dead-end',
-      'journey-first-visit-nav-broken',
-      'journey-first-visit-destination-no-headline',
-      'journey-first-visit-destination-no-next-action',
-      'journey-pricing-evaluation-unclear-value-prop',
-      'journey-pricing-evaluation-hidden-cta',
-      'journey-pricing-evaluation-dead-end',
-      'journey-pricing-evaluation-nav-broken',
-      'journey-pricing-evaluation-destination-no-headline',
-      'journey-pricing-evaluation-destination-no-next-action',
-      'journey-signup-unclear-value-prop',
-      'journey-signup-hidden-cta',
-      'journey-signup-dead-end',
-      'journey-signup-nav-broken',
-      'journey-signup-no-form',
-      'journey-signup-too-many-fields',
-      'journey-contact-not-found',
-      'journey-funnel-step-failed',
-      'journey-funnel-loop-detected',
-      'journey-funnel-timeout',
-      'journey-funnel-dead-end',
-      'journey-funnel-friction',
-      'journey-funnel-confusion',
-      'journey-funnel-broken-promise',
-      'journey-funnel-accessibility-barrier',
-      'journey-funnel-misleading-ux',
-      'journey-funnel-missing-feedback',
-      'journey-funnel-unclear-progress',
-      'journey-funnel-too-many-steps',
-    ],
+
     verify: 'Pro audit with journeyReviewIncluded',
     notes: 'Playwright multi-step journeys gated to Pro+. Fill-only signup; submissions blocked.',
   },
@@ -639,7 +485,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Cross-page Open Graph consistency on conversion corridor',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['corridor-og-title-drift', 'corridor-og-description-drift'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/corridor.test.ts',
   },
   {
@@ -649,7 +495,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Pricing nav, mobile menu, multi-step signup',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: ['flow-pricing-nav-broken', 'flow-mobile-menu-broken'],
+
     verify: 'npm run demo:audit:flow',
     notes: 'Nav probes run before primary CTA click on landing page.',
   },
@@ -660,7 +506,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Scroll-triggered section visibility',
     tool: 'flow-navigation',
     status: 'live',
-    checkIds: ['scroll-ghost-sections'],
+
     verify: 'npm run demo:audit:flow',
   },
   {
@@ -670,7 +516,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Slow 3G load replay with timed captures',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['slow-3g-blank-screen', 'slow-3g-cta-delayed'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/run-page-production-path.test.ts',
     notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s. Wired in pipeline/run-page.ts.',
   },
@@ -683,7 +529,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Cross-section spacing, radius, typography consistency',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['visual-radius-inconsistent', 'visual-typography-sprawl'],
+
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'DOM style sampling during mobile capture.',
   },
@@ -696,7 +542,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'AI judge MESSAGE / EXPERIENCE / REACH rubrics',
     tool: 'ai-judge',
     status: 'live',
-    checkIds: [],
+
     verify: 'npm run dev:all + audit URL',
     notes:
       'Covers visual polish and spacing feel via the EXPERIENCE rubric. Deterministic token checks live under experience-design-tokens / experience-visual-hierarchy.',
@@ -710,7 +556,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'FixFlags brand hex drift guard',
     tool: 'internal-guard',
     status: 'live',
-    checkIds: [],
+
     verify: 'npm run brand:hex-guard',
   },
   {
@@ -720,10 +566,16 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'FixFlags UI component drift guard',
     tool: 'internal-guard',
     status: 'live',
-    checkIds: [],
+
     verify: 'npm run ui:drift-guard',
   },
 ]
+
+export const AUDIT_CAPABILITIES: AuditCapability[] = CAPABILITY_DEFINITIONS.map(definition => ({
+  ...definition,
+  checkIds: Object.entries(CHECK_DEFINITIONS).filter(([, check]) =>
+    (check.capabilities as readonly string[]).includes(definition.id)).map(([id]) => id),
+}))
 
 /** All check IDs registered in the capability matrix (live capabilities only). */
 export function liveCheckIdsFromMatrix(): string[] {

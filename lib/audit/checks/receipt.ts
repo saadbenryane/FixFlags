@@ -11,6 +11,9 @@ export const checkReceiptSchema = z.object({
   kind: z.literal('site-module-check'), version: z.literal(1), module: z.string().min(1),
   passed: z.boolean(), applicable: z.boolean(), failed: z.boolean().optional(),
   pageUrl: z.string().url(), assertions: z.array(checkAssertionSchema).max(300).default([]),
+  execution: z.object({ auditId: z.string().min(1), taskId: z.string().min(1), checkVersion: z.number().int().positive(),
+    source: z.enum(['http', 'original-html', 'rendered-dom', 'pagespeed-desktop', 'pagespeed-mobile', 'axe']),
+    collectedAt: z.string().datetime() }).strict().optional(),
 }).superRefine((receipt, context) => {
   if (!CHECK_MODULES[receipt.module]) context.addIssue({ code: 'custom', message: 'Unregistered execution module' })
   for (const assertion of receipt.assertions) {

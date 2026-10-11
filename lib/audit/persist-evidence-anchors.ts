@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
 import {
@@ -14,8 +15,9 @@ export async function persistEvidenceAnchors(
   anchors: EvidenceAnchorMap
 ): Promise<void> {
   if (Object.keys(anchors).length === 0) return
+  await executionTransaction(async tx => {
 
-  const audit = await prisma.audit.findUnique({
+  const audit = await tx.audit.findUnique({
     where: { id: auditId },
     select: { performanceData: true },
   })
@@ -26,7 +28,7 @@ export async function persistEvidenceAnchors(
       ? (audit.performanceData as Record<string, unknown>)
       : {}
 
-  await prisma.audit.update({
+  await tx.audit.update({
     where: { id: auditId },
     data: {
       performanceData: {
@@ -36,7 +38,7 @@ export async function persistEvidenceAnchors(
     },
   })
 
-  const pages = await prisma.auditPage.findMany({
+  const pages = await tx.auditPage.findMany({
     where: { auditId },
     select: { id: true, performanceData: true },
   })
@@ -47,7 +49,7 @@ export async function persistEvidenceAnchors(
         ? (page.performanceData as Record<string, unknown>)
         : {}
 
-    await prisma.auditPage.update({
+    await tx.auditPage.update({
       where: { id: page.id },
       data: {
         performanceData: {
@@ -57,6 +59,7 @@ export async function persistEvidenceAnchors(
       },
     })
   }
+  })
 }
 
 export async function mergeFlowCtaEvidenceAnchors(

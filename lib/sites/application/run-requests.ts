@@ -5,14 +5,15 @@ import { RUN_LEASE_MS, activeRunWhere, reclaimExpiredRuns } from './run-leases'
 import { randomUUID } from 'node:crypto'
 import { Prisma, type RunRequestSource } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { createAndEnqueueAudit, AuditLimitError } from '@/lib/audit/create-audit'
+import { createAndEnqueueAudit, RunAdmissionReplay } from '@/lib/audit/create-audit'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
-import { requireExecutionReady } from '@/lib/queue/execution-readiness'
 import { normalizeAuditUrl } from '@/lib/audit/url'
+import { buildExecutionSpec, executionIntentHash } from './execution-spec'
+import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
 
@@ -186,6 +187,30 @@ export async function requestSiteRun(input: RunInput): Promise<{
   })
   if (!project) throw new SiteRunRefusal('Site not found', 404)
 
+  const single = outcomes.length === 1 ? outcomes[0] : null
+  const singleRequired = single?.bindings.filter((binding) => binding.required) ?? []
+  const singleConfig = singleRequired.length === 1 ? singleRequired[0]!.config as Record<string, unknown> : null
+  const singleStart = typeof singleConfig?.startUrl === 'string' ? singleConfig.startUrl : null
+  // Watch and multi-Outcome runs enter at the Site. One bound Outcome can
+  // start at its own page. Each binding still executes from its own config.
+  const requestedUrl = input.verificationTarget?.kind === 'DIAGNOSTIC'
+    ? input.verificationTarget.pageUrl
+    : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart)
+  const normalized = normalizeAuditUrl(requestedUrl)
+  const auditUrl = normalized.ok ? normalized.url : requestedUrl
+  const executionSpec = await buildExecutionSpec({
+    projectId: input.projectId, targetUrl: auditUrl, environment,
+    scope: input.verificationTarget?.kind === 'DIAGNOSTIC' ? 'DIAGNOSTIC' : scope,
+    outcomes, verificationTarget: input.verificationTarget,
+  })
+  const requestHash = executionIntentHash(executionSpec)
+  if (executionSpec.scope === 'DIAGNOSTIC') {
+    try { initialTaskPlan(executionSpec) }
+    catch { throw new SiteRunRefusal('This finding has no registered independent verifier. Its previous evidence is retained; a repair cannot be certified by this action.', 409) }
+  }
+  const matchesIntent = (run: { requestHash?: string | null; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }) =>
+    run.requestHash ? run.requestHash === requestHash : sameExecutionScope(run, selectedIds, input.verificationTarget)
+
   const requestedKey =
     input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
   const byKey = await prisma.runRequest.findUnique({
@@ -199,7 +224,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
     include: { selections: { select: { outcomeId: true } } },
   })
   if (byKey) {
-    if (byKey.projectId !== input.projectId || byKey.environment !== environment || !sameExecutionScope(byKey, selectedIds, input.verificationTarget)) {
+    if (byKey.projectId !== input.projectId || byKey.environment !== environment || !matchesIntent(byKey)) {
       throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
     }
     return { runId: byKey.id, auditId: byKey.auditId, outcomeIds: selectedIds, reused: true }
@@ -216,13 +241,12 @@ export async function requestSiteRun(input: RunInput): Promise<{
     include: { selections: { select: { outcomeId: true } } },
   })
   if (active) {
-    if (active.environment !== environment || !sameExecutionScope(active, selectedIds, input.verificationTarget)) {
+    if (active.environment !== environment || !matchesIntent(active)) {
       throw new SiteRunRefusal('Another Site run is already in progress', 409)
     }
     return { runId: active.id, auditId: active.auditId, outcomeIds: selectedIds, reused: true }
   }
 
-  if (input.source !== 'WATCH') await requireExecutionReady()
 
   if (input.source === 'WEB' || input.source === 'MCP' || input.source === 'API') {
     const recentRuns = await prisma.runRequest.count({
@@ -235,10 +259,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (recentRuns >= INTERACTIVE_RUN_LIMIT_PER_DAY) throw new RateLimitError(60 * 60)
   }
 
-  let run: { id: string }
-  try {
-    run = await prisma.runRequest.create({
-      data: {
+  const run = { id: randomUUID() }
+  const runAdmission: Prisma.RunRequestUncheckedCreateInput = {
+        id: run.id,
         projectId: input.projectId,
         // Compatibility-only dual-write. The complete selection relation below
         // remains authoritative, including multi-Outcome and diagnostic runs.
@@ -253,53 +276,13 @@ export async function requestSiteRun(input: RunInput): Promise<{
         requestedByUserId: input.userId,
         source: input.source,
         idempotencyKey: requestedKey,
-        context: { ...safeContext(input.context), bindingVersions: Object.fromEntries(outcomes.map(outcome => [outcome.id,
-          Object.fromEntries(outcome.bindings.map(binding => [binding.key, binding.version]))])) },
+        context: safeContext(input.context),
+        executionSpec: executionSpec as Prisma.InputJsonValue,
+        requestHash,
         verificationTarget: input.verificationTarget as Prisma.InputJsonValue | undefined,
-      },
-    })
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const concurrent = await prisma.runRequest.findFirst({
-        where: activeRunWhere(input.projectId, new Date()),
-        orderBy: { requestedAt: 'desc' },
-        include: { selections: { select: { outcomeId: true } } },
-      })
-      if (concurrent) {
-        if (concurrent.environment !== environment || !sameExecutionScope(concurrent, selectedIds, input.verificationTarget)) {
-          throw new SiteRunRefusal('Another Site run is already in progress', 409)
-        }
-        return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: selectedIds, reused: true }
       }
-      const sameKey = await prisma.runRequest.findUnique({
-        where: {
-          projectId_source_idempotencyKey: {
-            projectId: input.projectId,
-            source: input.source,
-            idempotencyKey: requestedKey,
-          },
-        },
-        include: { selections: { select: { outcomeId: true } } },
-      })
-      if (sameKey && sameKey.environment === environment && sameExecutionScope(sameKey, selectedIds, input.verificationTarget)) {
-        return { runId: sameKey.id, auditId: sameKey.auditId, outcomeIds: selectedIds, reused: true }
-      }
-    }
-    throw error
-  }
 
   try {
-    const single = outcomes.length === 1 ? outcomes[0] : null
-    const singleRequired = single?.bindings.filter((binding) => binding.required) ?? []
-    const singleConfig = singleRequired.length === 1 ? singleRequired[0]!.config as Record<string, unknown> : null
-    const singleStart = typeof singleConfig?.startUrl === 'string' ? singleConfig.startUrl : null
-    // Watch and multi-Outcome runs enter at the Site. One bound Outcome can
-    // start at its own page. Each binding still executes from its own config.
-    const requestedUrl = input.verificationTarget?.kind === 'DIAGNOSTIC'
-      ? input.verificationTarget.pageUrl
-      : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart)
-    const normalized = normalizeAuditUrl(requestedUrl)
-    const auditUrl = normalized.ok ? normalized.url : requestedUrl
     const parentAuditId = input.verificationTarget?.parentAuditId ?? input.parentAuditId
     const parent = parentAuditId
       ? await prisma.audit.findFirst({
@@ -329,14 +312,12 @@ export async function requestSiteRun(input: RunInput): Promise<{
       verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
       reuseActiveManual: false,
       runRequestId: run.id,
+      runRequestAdmission: runAdmission,
+      executionSpec,
       attribution: buildAttribution({
         url: auditUrl,
         source: auditSource(input.source),
       }),
-    })
-    await prisma.runRequest.update({
-      where: { id: run.id },
-      data: { auditId: started.auditId },
     })
     await recordSiteLifecycleEvent({
       name: 'outcome_run_requested',
@@ -354,20 +335,23 @@ export async function requestSiteRun(input: RunInput): Promise<{
     })
     return { runId: run.id, auditId: started.auditId, outcomeIds: selectedIds, reused: started.reused }
   } catch (error) {
-    // A blocked run still has to say why. Overwriting a plan-limit reason with a
-    // generic start failure would tell a customer whose Site they are watching
-    // that FixFlags simply could not start, which is both false and unactionable.
-    const limit = error instanceof AuditLimitError ? error : null
-    await prisma.runRequest.update({
-      where: { id: run.id },
-      data: {
-        status: 'FAILED',
-        errorCode: limit ? limit.code : 'RUN_START_FAILED',
-        errorMessage: limit ? limit.message : 'FixFlags could not start this verification.',
-        completedAt: new Date(),
-        leaseUntil: null,
-      },
-    })
+    if (error instanceof RunAdmissionReplay)
+      return { runId: error.runId, auditId: error.auditId, outcomeIds: selectedIds, reused: true }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const concurrent = await prisma.runRequest.findFirst({
+        where: { projectId: input.projectId, OR: [
+          { source: input.source, idempotencyKey: requestedKey },
+          { status: { in: ['QUEUED', 'RUNNING'] } },
+        ] }, include: { selections: { select: { outcomeId: true } } },
+      })
+      if (concurrent) {
+        if (concurrent.environment !== environment || !matchesIntent(concurrent))
+          throw new SiteRunRefusal('Another Site run is already in progress', 409)
+        return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: selectedIds, reused: true }
+      }
+    }
+    // Admission refusal rolls back both ledgers. There is no orphan request to fail.
+
     throw error
   }
 }

@@ -386,9 +386,8 @@ describe('diffFlagsAgainstParent', () => {
     prismaMock.audit.findUnique.mockReset()
     prismaMock.audit.findUnique.mockResolvedValue(childAudit())
     prismaMock.$transaction.mockReset()
-    prismaMock.$transaction.mockImplementation(async (queries: unknown[]) =>
-      Promise.all(queries as Promise<unknown>[])
-    )
+    prismaMock.$transaction.mockImplementation(async (work: unknown) => typeof work === 'function'
+      ? work(prismaMock) : Promise.all(work as Promise<unknown>[]))
     prismaMock.flag.update.mockImplementation((args: { where: { id: string }; data: unknown }) =>
       Promise.resolve({ id: args.where.id, data: args.data })
     )

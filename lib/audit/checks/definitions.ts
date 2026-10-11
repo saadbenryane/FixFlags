@@ -1,0 +1,61 @@
+import type { SiteCardArea } from '@/lib/sites/card-areas'
+
+export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
+export type PageCheckDefinition = {
+  version: 1; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
+  input: 'metadata' | 'headers' | 'performance' | 'mobile' | 'browser' | 'accessibility';
+  evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
+  assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only';
+}
+const assertion = (area: SiteCardArea, verifies: readonly string[] = []): AssertionDefinition => ({ area, verifies })
+function define(evaluator: string, area: SiteCardArea, name: string, input: PageCheckDefinition['input'],
+  assertions: Record<string, AssertionDefinition> = {}): PageCheckDefinition {
+  return { version: 1, area, name, input, evaluator, source: 'DETERMINISTIC', assertions,
+    resultSchema: 'site-module-check-v1', timeoutMs: 12_000, replaySafety: 'read_only',
+    requiredEvidence: input === 'headers' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
+      : input === 'mobile' ? ['pagespeed-mobile'] : evaluator === 'security' ? ['original-html']
+      : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe'] : ['rendered-html'] }
+}
+
+/** Portable contracts. Server registration supplies the declared evaluator. */
+export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
+  metadata: define('metadata', 'search', 'Page metadata', 'metadata', {
+    'title-presence': assertion('search'), 'description-presence': assertion('search'),
+    'preview-image-presence': assertion('search', ['og-image-missing']),
+    'preview-title-presence': assertion('search', ['og-title-missing']),
+    'preview-description-presence': assertion('search', ['og-description-missing']),
+    'viewport-presence': assertion('accessibility', ['viewport-missing']), 'language-presence': assertion('accessibility', ['lang-missing']),
+  }),
+  'og-image': define('og-image', 'search', 'Link preview image', 'metadata'),
+  seo: define('seo', 'search', 'Search access', 'metadata'),
+  accessibility: define('accessibility', 'accessibility', 'Accessibility checks', 'accessibility', {
+    'automated-accessibility': assertion('accessibility'),
+  }),
+  trust: define('trust', 'security', 'Public trust checks', 'metadata'),
+  security: define('security', 'security', 'Public security configuration', 'metadata', {
+    https: assertion('security', ['no-https']), 'image-transport': assertion('security', ['security-mixed-content']),
+  }),
+  'security-headers': define('security-headers', 'security', 'Response headers', 'headers', {
+    'content-security-policy': assertion('security', ['security-csp-missing']),
+    'x-content-type-options': assertion('security', ['security-content-type-options-missing']),
+  }),
+  measurement: define('measurement', 'tracking', 'Measurement configuration', 'metadata', {
+    'analytics-markup': assertion('tracking', ['measurement-ga-gtm-posthog-missing']),
+  }),
+  performance: define('performance', 'performance', 'Page speed', 'performance', {
+    lcp: assertion('performance', ['lcp-critical', 'lcp-poor']), cls: assertion('performance', ['cls-critical', 'cls-poor']),
+  }),
+  mobile: define('mobile', 'performance', 'Mobile page speed', 'mobile', { lcp: assertion('performance', ['mobile-lcp-critical']), cls: assertion('performance') }),
+  'mobile-ux-quality': define('mobile-ux-quality', 'performance', 'Mobile layout', 'browser'),
+  content: define('content', 'conversion', 'Page content', 'metadata'),
+  slop: define('slop', 'conversion', 'Content quality', 'metadata'),
+  'auth-checkout': define('auth-checkout', 'conversion', 'Public action controls', 'metadata'),
+  'messaging-clarity': define('messaging-clarity', 'conversion', 'Message clarity', 'metadata'),
+  'conversion-friction': define('conversion-friction', 'conversion', 'Action friction', 'metadata'),
+  'trust-psychology': define('trust-psychology', 'conversion', 'Trust context', 'metadata'),
+  layout: define('layout', 'conversion', 'Layout', 'browser'),
+  interaction: define('interaction', 'conversion', 'Interaction controls', 'browser'),
+  'cta-focus': define('cta-focus', 'conversion', 'Primary action', 'browser'),
+  'visual-polish': define('visual-polish', 'conversion', 'Visual consistency', 'browser'),
+  'visual-hierarchy': define('visual-hierarchy', 'conversion', 'Visual hierarchy', 'browser'),
+}

@@ -1,6 +1,9 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { MARKETING_LINKS, FOOTER_COLUMNS, ADMIN_NAV } from '@/lib/site/nav'
+import { LEGAL_LINKS } from '@/lib/site/nav'
+import { INDEXABLE_ROUTES } from '@/lib/marketing/seo-routes'
 
 describe('marketing nav labels', () => {
   it('keeps marketing nav compact', () => {
@@ -34,7 +37,21 @@ describe('marketing nav labels', () => {
   })
 
   it('leads the product footer with the Site product', () => {
-    assert.equal(FOOTER_COLUMNS.product[0]?.href, '/how-it-works')
+    assert.equal(FOOTER_COLUMNS.product[0]?.href, '/#product')
+  })
+
+  it('keeps footer destinations distinct and points only to published pages or contact', () => {
+    const links = [...FOOTER_COLUMNS.product, ...FOOTER_COLUMNS.resources, ...FOOTER_COLUMNS.company, ...LEGAL_LINKS]
+    const hrefs = links.map(link => link.href)
+    assert.equal(new Set(hrefs).size, hrefs.length)
+    assert.ok(hrefs.includes('/blog'))
+    const published = new Set(INDEXABLE_ROUTES.map(route => route.path))
+    for (const href of hrefs) {
+      if (href.startsWith('mailto:')) continue
+      const [path] = href.split('#')
+      assert.ok(published.has(path), href)
+    }
+    assert.match(readFileSync('components/marketing/homepage/HomepageHero.tsx', 'utf8'), /id="product"/)
   })
 })
 

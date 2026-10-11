@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import PricingRoute from '@/app/(marketing)/pricing/page'
 import { PricingPage } from '@/components/pricing/PricingPage'
@@ -36,7 +36,7 @@ describe('/pricing', () => {
     const route = readFileSync(join(process.cwd(), 'app/(marketing)/pricing/page.tsx'), 'utf8')
     expect(page).not.toMatch(/['"]use client['"]/)
     expect(page).not.toMatch(/useMe/)
-    expect(page).not.toMatch(/PricingComparisonTable/)
+    expect(page).toMatch(/PricingComparisonTable/)
     expect(page).not.toMatch(/shopifyNote/)
     expect(page).toMatch(/MarketingCompareSection embedded/)
     expect(route).not.toMatch(/['"]use client['"]/)
@@ -49,13 +49,35 @@ describe('/pricing', () => {
     expect(screen.getByRole('heading', { level: 1, name: PRICING.headline })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { name: 'Free' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('heading', { name: 'Pro' }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('heading', { name: 'Studio' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Studio' })).toBeInTheDocument()
     expect(screen.getAllByText('$49').length).toBeGreaterThan(0)
     expect(screen.getByText(PRICING.studioCta)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /waitlist/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Compare plans' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: new RegExp(SITE_COMPARE.headlineDisplay) })).toBeInTheDocument()
+  })
+
+  it('compares monthly pricing, availability, and the shared fix workflow', () => {
+    renderPricing()
+    const table = within(screen.getByRole('table', { name: 'FixFlags plan comparison' }))
+    const price = within(table.getByRole('row', { name: /Price/ }))
+    expect(price.getByText('$0')).toBeInTheDocument()
+    expect(price.getByText('$49 per website / month')).toBeInTheDocument()
+    expect(price.getByText('Quoted per website')).toBeInTheDocument()
+    const availability = within(table.getByRole('row', { name: /Availability/ }))
+    expect(availability.getByText('Available now')).toBeInTheDocument()
+    expect(availability.getAllByText('Join the waitlist')).toHaveLength(2)
+    const monitoring = within(table.getByRole('row', { name: /Scheduled monitoring/ }))
+    expect(monitoring.getByText('Weekly')).toBeInTheDocument()
+    expect(monitoring.getByText('Every day')).toBeInTheDocument()
+    for (const feature of ['Flags, evidence, and fix guidance', 'Verify after you publish', 'Connections']) {
+      const row = within(table.getByRole('row', { name: new RegExp(feature) }))
+      expect(row.getAllByRole('cell').map(cell => cell.textContent)).toEqual(['Included', 'Included', 'Included'])
+    }
+    expect(screen.getByText(PRICING.compareNote)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: PRICING.coverageLink })).toHaveAttribute('href', '/docs/site-care')
+    expect(screen.getByRole('link', { name: PRICING.connectionsLink })).toHaveAttribute('href', '/docs/integrations')
   })
 
   it('embeds FAQPage structured data on the route', () => {

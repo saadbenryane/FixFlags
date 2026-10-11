@@ -19,7 +19,7 @@ describe('Outcome responsibility controls', () => {
   })
 
   it('pauses through the narrow enabled contract and explains that an active run finishes', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(respond({ outcome: { enabled: false } }))
+    const fetchMock = vi.fn().mockResolvedValue(respond({ outcome: { id: 'outcome-1', enabled: false }, verificationQueued: false, verificationError: null }))
     vi.stubGlobal('fetch', fetchMock)
     render(<OutcomeEnabledControl siteId="site-1" outcomeId="outcome-1" enabled running />)
 
@@ -35,8 +35,9 @@ describe('Outcome responsibility controls', () => {
 
   it('reports whether re-enabling queued the required fresh verification', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond({
-      outcome: { enabled: true },
+      outcome: { id: 'outcome-1', enabled: true },
       verificationQueued: true,
+      verificationError: null,
     })))
     render(<OutcomeEnabledControl siteId="site-1" outcomeId="outcome-1" enabled={false} running={false} />)
 

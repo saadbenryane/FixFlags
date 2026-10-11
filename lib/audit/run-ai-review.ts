@@ -1,3 +1,5 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
+import { claimExecution, withExecutionOwnership } from './execution-ownership'
 import { prisma } from '@/lib/db'
 import { mergePrescriptionResults, flagKeyForRow } from './persist'
 import { finalizeAudit } from './finalize'
@@ -64,11 +66,16 @@ export async function runAiReview(auditId: string): Promise<void> {
     pageUrl: flag.pageUrl,
   }))
 
+  const { verdict, score } = audit
+  if (verdict == null || score == null) throw new Error('A recorded assessment is required before preparing this explanation')
+  const owner = await claimExecution(auditId, false, true)
+  if (!owner) throw new Error('Another worker owns this Audit')
+  return withExecutionOwnership(owner, async () => {
   const startedAt = Date.now()
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: { status: 'JUDGING', progress: PIPELINE_PROGRESS.JUDGING, includeAi: true },
-  })
+  }))
   await logPipelineEvent(auditId, { stage: 'judging', event: 'prescription_started' })
 
   let prescription
@@ -76,8 +83,8 @@ export async function runAiReview(auditId: string): Promise<void> {
     prescription = await runPrescriptionWithRetry(
       {
         url: audit.url,
-        verdict: audit.verdict,
-        score: audit.score,
+        verdict,
+        score,
         metadata,
         techStack,
         existingFlags,
@@ -102,7 +109,7 @@ export async function runAiReview(auditId: string): Promise<void> {
       error: errorMsg,
     })
 
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: auditId },
       data: {
         status: 'COMPLETED',
@@ -111,7 +118,7 @@ export async function runAiReview(auditId: string): Promise<void> {
         failureCode,
         failureStage: 'judging',
       },
-    })
+    }))
 
     throw error
   }
@@ -145,5 +152,6 @@ export async function runAiReview(auditId: string): Promise<void> {
       mobilePageSpeed: evidence?.mobilePageSpeed ?? true,
       flowScan: evidence?.flowScan ?? Boolean(audit.flowData),
     },
+  })
   })
 }

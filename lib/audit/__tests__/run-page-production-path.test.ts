@@ -39,6 +39,9 @@ vi.mock('@/lib/audit/checks', () => ({
   suppressOverlappingFlags: vi.fn((flags: unknown[]) => flags),
 }))
 vi.mock('@/lib/audit/checks/flow', () => ({ runFlowChecks: vi.fn(() => []) }))
+vi.mock('@/lib/audit/search/workflow', () => ({
+  runSearchWorkflow: vi.fn(async () => ({ receipt: { complete: true }, findings: [] })),
+}))
 vi.mock('@/lib/audit/browser/page-session', () => ({
   createAuditPage: vi.fn(async () => ({
     page: {

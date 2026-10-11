@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('node:crypto', async importOriginal => ({ ...await importOriginal<typeof import('node:crypto')>(), randomUUID: () => 'run-1' }))
 
 /**
  * Every trigger must enter the same tenant-scoped run command. Ownership, Outcome
@@ -37,7 +38,7 @@ vi.mock('@/lib/db', () => ({
     audit: { findFirst: mocks.auditFindFirst },
   },
 }))
-vi.mock('@/lib/audit/create-audit', () => ({ createAndEnqueueAudit: mocks.createAudit }))
+vi.mock('@/lib/audit/create-audit', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/audit/create-audit')>(), createAndEnqueueAudit: mocks.createAudit }))
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
@@ -52,7 +53,9 @@ const ownedOutcome = {
   environment: 'production',
   projectId: 'project-1',
   project: { url: 'https://shop.example/' },
-  bindings: [{ required: true, config: { startUrl: 'https://shop.example/products/widget' } }],
+  bindings: [{ key: 'checkout', version: 1, mechanism: 'BROWSER_JOURNEY', required: true,
+    config: { startUrl: 'https://shop.example/products/widget', steps: [{ action: 'wait', waitMs: 1000 }],
+      goal: { type: 'url_pattern', pattern: '/checkout', description: 'Checkout opens' }, safety: 'stop-at-checkout' } }],
 }
 
 const TRIGGERS = [
@@ -89,8 +92,9 @@ describe('trigger equivalence', () => {
     })
 
     expect(result.runId).toBe('run-1')
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({
         projectId: 'project-1',
         environment: 'production',
         requestedByUserId: 'user-1',
@@ -158,8 +162,9 @@ describe('trigger equivalence', () => {
     })
 
     expect(result).toMatchObject({ runId: 'run-1' })
-    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      runRequestAdmission: expect.objectContaining({
         projectId: 'project-1',
         source: 'INTEGRATION',
         requestedByUserId: 'user-1',

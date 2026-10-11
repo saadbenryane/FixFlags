@@ -1,5 +1,3 @@
-import { CORE_LOOP_LABEL } from './terminology'
-
 export const FAQ_SECTION = {
   title: 'Common questions',
   viewAll: 'View all questions',
@@ -83,7 +81,24 @@ export const FAQ: readonly FaqEntry[] = [
   },
 ] as const
 
+export const CHANGELOG_PAGE = {
+  label: 'Changelog',
+  headline: 'What is new in FixFlags',
+  body: 'Updates to the checks, evidence, and guides behind your Site.',
+  docsCta: 'Explore the documentation',
+} as const
+
 export const CHANGELOG_ENTRIES = [
+  {
+    date: '2026-10-11',
+    title: 'Integration setup belongs in the docs',
+    items: [
+      'Shopify, Google Analytics, and Google Search Console now have complete guides for setup, permissions, coverage, and recovery',
+      'Available integrations link to their guides, and Site settings includes contextual documentation links',
+      'Shopify authorization failures return to a recovery message in the guide',
+      'The standalone Shopify install page has been retired in favor of connecting from an owned Site',
+    ],
+  },
   {
     date: '2026-09-20',
     title: 'One Site, looked after',
@@ -111,22 +126,6 @@ export const CHANGELOG_ENTRIES = [
       'Analyze a public URL before signup and claim the same Site after authentication',
       'Coverage now distinguishes fresh evidence, partial checks, exclusions, and unavailable protected pages',
       'Help, Docs, pricing, samples, legal, email, and errors now use the same Site and Flag vocabulary',
-    ],
-  },
-] as const
-
-export const BLOG_POSTS = [
-  {
-    slug: 'why-ai-built-sites-need-a-launch-check',
-    title: 'Why AI-built sites still need a final review',
-    date: '2026-07-02',
-    excerpt:
-      'AI coding tools move fast, but speed skips the boring checks: dead CTAs, missing preview images, missing alt text. Here is why a final review matters before you share the link.',
-    body: [
-      'AI coding tools are very good at producing a page that looks finished. They are much less good at noticing the things that only show up when someone else actually uses the page: a call-to-action that points nowhere, an Open Graph image that never loads, a form input with no label.',
-      'None of these are hard to fix. Almost all of them are invisible until a real user, or a QA pass, goes looking.',
-      'That gap is what "finish what your AI started" means in practice. The build gets you 90% of the way. The last 10% is the pass that catches what speed skipped, and it is exactly the kind of checklist work that is easy to automate and easy to skip when you are moving fast.',
-      `The final review can be systematic: ${CORE_LOOP_LABEL.toLowerCase()}. That loop is the habit.`,
     ],
   },
 ] as const

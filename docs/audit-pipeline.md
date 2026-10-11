@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: architecture
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-11
 supersedes: []
 ---
 
@@ -9,7 +9,89 @@ supersedes: []
 
 Canonical reference for the FixFlags scan pipeline: stages, AI phases, degradation, recovery, and debugging.
 
-## Stage diagram
+## Progressive execution candidate
+
+New admissions snapshot `ExecutionSpec` with `engine: progressive-v1` on the existing
+Audit ledger. This describes the local implementation candidate, not deployed or
+release-accepted behavior. Historical Audits retain the legacy adapter below.
+
+`lib/sites/application/run-requests.ts` is the Site command boundary. Admission
+creates identity, quota admission, Audit, RunRequest and durable dispatch intent in
+one transaction. Redis and provider availability cannot manufacture a successful
+execution. Identical idempotent intent reuses the recorded execution; conflicting
+intent is refused.
+Owned RunRequest admission is private. A user-requested retry creates a fresh
+linked Audit through admission, keeps the prior Audit terminal and preserves its
+public/private boundary. Anonymous retries retain the owning browser identity
+and claim cookie. They do not reopen completed task checkpoints or delete jobs.
+
+The Audit coordinator admits a validated dependency graph and returns. Existing
+`AuditVerifierExecution` rows checkpoint work; append-only `AuditPipelineEvent`
+facts record claims, attempts, committed observations and terminal limitations.
+The task token, generation, lease and Audit recovery deadline fence publication.
+Queue delivery completion is not analysis completion.
+
+Public HTTP, rendered DOM/semantics, private captures, PageSpeed and authorized
+provider collection are independent work units. Deterministic evaluators wait only
+for declared inputs. DOM collection does not upload screenshots: storage recovery
+cannot prevent a rendered title or accessibility result from committing. An axe
+exception is missing evidence, never an empty successful scan. Captures retain
+their own task, source and time; they are not a pixel-perfect claim about a separate
+DOM observation. AI explanation consumes committed results and captures downstream
+and cannot establish an assertion or recovery.
+
+Resource queues separate HTTP, browser, provider, evaluation and availability
+work. HTTP defaults to four concurrent requests and the shared browser semaphore
+to two contexts per worker, prioritizing queued availability. CPU-heavy metadata
+and structured-data parsing runs in a bounded worker thread. These defaults do
+not establish production capacity; capacity and starvation acceptance remain required.
+
+The scheduler owns dispatch and interrupted-work reconciliation independently of
+customer reads. Transient tasks have a 30-minute recovery window from first
+interruption, bounded by one hour from admission; repeated worker/parser crashes
+stop after three execution attempts. Calls retain short deadlines. Protected
+actions require current fixture authorization and reconciled cleanup before replay.
+Public journey guards never transmit signup/contact mutations as status probes.
+Hostname equality cannot authorize cart mutations across protocol or port. A
+scanner-imposed refusal is an explicit coverage limit, not a website failure.
+Cart-entry permission does not authorize payment, wallet or checkout submission.
+An isolated Checkout probe has a bounded navigation context and records a safe
+execution boundary rather than blaming the website when the scanner refuses an action.
+Visitor loading timers start at navigation after browser-capacity admission.
+Queue waits are operational latency, never page-performance evidence. A loading-UI
+diagnosis requires an actually observed blocking loading state; absence of that
+state has no loading-clearance duration. Historical observations are not rewritten.
+Confirmed customer failures are committed, not retried in pursuit of a pass.
+Expired work becomes a visible unknown; completed observations and prior captures
+remain intact. Finalization and completion projections are idempotent.
+
+The legacy Audit stages remain monotonic projections of graph activity, not the
+source of task ownership. Site events use private, replayable durable cursors;
+clients refresh authoritative tenant-scoped queries. Neither event reconnect nor
+HTTP/MCP polling performs recovery. Module execution completion is distinct from
+assertion success. Current results require comparable page/configuration/source;
+older receipts are explicit historical evidence.
+
+The homepage's 104 responsibilities have explicit stable coverage identities and
+registered evaluator mappings. The capability report exposes partial coverage;
+registration is not execution proof. Capability check inventories derive from
+the check registry rather than a second list of finding identities.
+Outcome verification, Flag verification, prompt copying, settings and connection
+actions use shared submission ownership and operation-specific response contracts.
+Verification keeps its idempotency key after an uncertain response. Site refresh
+validates the complete projection and matching identity before replacing the
+recorded view; malformed responses retain visible disconnected evidence.
+
+Candidate limitations still requiring implementation or acceptance include
+working/failing/incomplete/recovery fixtures for every advertised item, exercised
+keyboard probes, durable Safe Signup setup runs, remaining shared action consumers,
+Search evaluators split by their minimal source dependencies, bounded finalization
+reads, capacity/fault coverage and real provider, private-storage, notification,
+MCP-client and observed owner sessions. Passing fixtures or the unit suite does not
+satisfy those release requirements. The integrated main checkout is not deployed
+or release accepted.
+
+## Legacy stage adapter
 
 ```
 audit job (BullMQ, always):
@@ -19,7 +101,7 @@ ai-review job (optional, gated):
   prescription LLM → FINALIZING → COMPLETED (sets aiReviewAt)
 ```
 
-Triage runs **inline in the audit job** for every scan. Prescription runs in a **separate async job** after triage completes.
+Legacy triage runs inline in the audit job. Prescription runs in a separate async job after triage completes. Progressive execution uses the task graph above.
 
 An Audit is an immutable Review observation of the Product at a moment in time ([knowledge/vision.md](../knowledge/vision.md)).
 
@@ -86,8 +168,8 @@ Users still get a usable report on `PARTIAL`; UI should not treat it as a failed
 Manual re-check is the core loop habit. Implementation invariants:
 
 1. **Always `monitoringMode: FULL`** — `startMonitoringAudit` in `lib/audit/monitoring.ts` always enqueues FULL. App code never writes `SUMMARY_ONLY` (legacy Prisma enum value only).
-2. **Fresh capture** — `runAudit` deletes prior screenshots and audit pages, then re-captures from live URL (including parented re-checks). There is no skipCapture / copy-parent path.
-3. **Shared credit pool** — manual update Reviews and completed scheduled Reviews consume one Product Review credit.
+2. **Fresh evaluation** — a user re-check is a new linked Audit. Interrupted execution preserves committed pages, captures and observations; it never deletes earlier evidence to restart. There is no copy-parent certification path.
+3. **Quota policy** — admission preserves the current access and quota policy. Recovery reuses the admitted Audit and cannot charge another analysis merely because a task retries.
 4. **One active manual Review per Product** — manual creation takes a Product-scoped PostgreSQL transaction advisory lock before checking for an active Review. Concurrent first or update requests reuse the persisted active Review, create no second queue job, and consume no second credit. Watch runs are classified separately and do not block the manual Review.
 5. **Persisted parent is authoritative** — the creation result returns the active or newly created Review's stored `parentId`. Re-check comparison and verification consume only that returned parent, never the caller's requested parent. A conflicting request resumes the active Review without fabricating a comparison.
 6. **Flag diff after durable completion** — when `audit.parentId` is set, the idempotent completion projection calls `diffFlagsAgainstParent` (`lib/audit/diff-flags.ts`) to mark child flags FIXED / REGRESSED / NEW vs the parent report.
@@ -125,11 +207,11 @@ Anonymous visitors: triage runs; fix prompts stripped by `lib/audit/report-acces
 | -------------------------------------- | ----------------------------------------------------------- | ---------------------------------- |
 | Triage succeeds                        | `COMPLETED`, `triageAt` set                                 | Score, verdict, rubrics            |
 | Triage fails (keys, timeout, provider) | `COMPLETED`, `triageAt` null, `failureCode` set             | Flags + honest degraded verdict    |
-| Capture fails                          | `FAILED`                                                    | Check failed panel                 |
+| Capture fails                          | Progressive: capture limitation; legacy: `FAILED`           | Recorded results plus missing capture evidence |
 | Prescription fails                     | `COMPLETED`, `triageAt` set, `failureCode` AI_REVIEW_FAILED | Triage report + partial AI callout |
 | PageSpeed 429                          | PARTIAL completeness                                        | Flags still run; perf data missing |
-| R2 missing (prod)                      | `FAILED` at capture                                         | Scanner unavailable                |
-| Worker down / stuck                    | Poll recovery → requeue or FAILED                           | Clear timeout message              |
+| R2 missing (prod)                      | Capture task remains limited; independent public checks continue | Missing private capture evidence |
+| Worker down / stuck                    | Scheduler recovery, then explicit exhausted coverage if necessary | Automatic recovery or honest limitation |
 
 ## Failure codes
 
@@ -144,23 +226,22 @@ Internal codes map to user copy via `lib/audit/user-facing-errors.ts` and `AUDIT
 
 ## Recovery
 
-Two paths share `lib/audit/recover-audit-job.ts`:
-
-1. **Poll-time** — every status poll after 15s idle (`recoverAuditJobOnPoll`)
-2. **Scheduler** — every ~2 min for audits stuck > `STUCK_AUDIT_MINUTES`
-
-Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER_DOWN_GIVEUP_SECONDS` (180s).
+`lib/queue/recovery-scheduler.ts` owns recovery. Progressive work is reconciled in
+bounded passes on a ten-second cadence; the historical adapter uses its slower
+stuck-Audit pass. Scheduler leases renew and release atomically by ownership token.
+Site, report and MCP reads return persisted state without initiating either path.
+Progressive recovery windows are not legacy `AUDIT_DEADLINE_MS` call budgets.
 
 ## Environment variables
 
 | Variable                               | Purpose                                              |
 | -------------------------------------- | ---------------------------------------------------- |
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | At least one required for triage                     |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Required for triage, not independent deterministic execution |
 | `JUDGE_PROVIDER_CHAIN`                 | Provider fallback order (default `openai,anthropic`) |
 | `TRIAGE_MODEL`, `TRIAGE_MAX_TOKENS`    | Cheap triage pass tuning                             |
 | `PAGESPEED_API_KEY`                    | Recommended prod; avoids 429                         |
 | `R2_*` (five vars)                     | Required for prod screenshots                        |
-| `AUDIT_DEADLINE_MS`                    | Hard audit deadline (default 180000)                 |
+| `AUDIT_DEADLINE_MS`                    | Legacy call budget (default 180000); not progressive recovery window |
 | `MIN_JUDGE_BUDGET_MS`                  | Min time before triage starts (default 25000)        |
 
 ## Health endpoints

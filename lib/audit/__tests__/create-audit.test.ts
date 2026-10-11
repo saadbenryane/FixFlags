@@ -20,6 +20,8 @@ const prismaMock = vi.hoisted(() => ({
     findUnique: vi.fn(),
     count: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
   },
   project: {
     findUnique: vi.fn(),
@@ -118,6 +120,8 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.audit.findFirst.mockResolvedValue(null)
     prismaMock.audit.count.mockResolvedValue(0)
     prismaMock.audit.update.mockResolvedValue({})
+    prismaMock.audit.updateMany.mockResolvedValue({ count: 1 })
+    prismaMock.audit.findUniqueOrThrow.mockResolvedValue({ dispatchAttempts: 1, createdAt: new Date() })
     prismaMock.provisionalSite.findUnique.mockResolvedValue(null)
     prismaMock.user.findUnique.mockResolvedValue(signedInUser())
     prismaMock.siteLifecycleEvent.upsert.mockResolvedValue({ id: 'event-1' })
@@ -193,7 +197,7 @@ describe('createAndEnqueueAudit', () => {
     expect(queueAdd).toHaveBeenCalledWith(
       'audit',
       { auditId: 'audit-1' },
-      expect.objectContaining({ jobId: 'audit-1', attempts: 1, delay: 0 })
+      expect.objectContaining({ jobId: 'audit-1', attempts: 1 })
     )
   })
 
@@ -313,7 +317,7 @@ describe('createAndEnqueueAudit', () => {
       parentId: null,
       siteId: 'project-1',
     })
-    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL)
+    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock)
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           userId: 'user-1',
@@ -458,6 +462,27 @@ describe('createAndEnqueueAudit', () => {
     await expect(
       createAndEnqueueAudit({ url: AUDIT_URL, parentId: 'parent-1' })
     ).rejects.toMatchObject({ name: 'ParentAuditError', status: 401 })
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
+  })
+
+  it('admits a fresh linked anonymous retry, retains privacy and identity, and never reuses the failed parent', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: null, status: 'FAILED', reviewDepth: 1, isPublic: false })
+    prismaMock.provisionalSite.findUnique.mockResolvedValue({ primaryAuditId: 'parent-1' })
+    ensureSiteForAudit.mockResolvedValue({ siteId: 'p_existing', kind: 'provisional', projectId: null, userId: null })
+    await createAndEnqueueAudit({ url: AUDIT_URL, parentId: 'parent-1', retryParent: true,
+      skipUsageCount: true, visitorKey: 'original-private-visitor', auditMode: 'SINGLE' })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      parentId: 'parent-1', isPublic: false, skipUsageCount: true, auditMode: 'SINGLE', reviewDepth: 1,
+    }) }))
+    expect(prismaMock.audit.findFirst).not.toHaveBeenCalled()
+    expect(ensureSiteForAudit).toHaveBeenCalledWith(expect.objectContaining({ sessionKey: 'original-private-visitor' }), prismaMock)
+    expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
+    expect(checkAnonymousAuditAllowed).not.toHaveBeenCalled()
+  })
+
+  it('does not permit a failed parent on an ordinary recheck', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'FAILED', reviewDepth: 1, isPublic: false })
+    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })).rejects.toMatchObject({ status: 400 })
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
   })
 
@@ -621,19 +646,18 @@ describe('createAndEnqueueAudit', () => {
     })
   })
 
-  it('marks the audit failed and rethrows when the queue add fails', async () => {
+  it('retains admitted work for scheduler dispatch when the queue is unavailable', async () => {
     const queueError = new Error('queue down')
     queueAdd.mockRejectedValueOnce(queueError)
 
-    await expect(createAndEnqueueAudit({ url: AUDIT_URL })).rejects.toThrow('queue down')
-    expect(prismaMock.audit.update).toHaveBeenCalledWith({
-      where: { id: 'audit-1' },
+    await expect(createAndEnqueueAudit({ url: AUDIT_URL })).resolves.toMatchObject({ auditId: 'audit-1', status: 'QUEUED' })
+    expect(prismaMock.audit.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        status: 'FAILED',
-        failureCode: 'QUEUE_ENQUEUE_FAILED',
-        failureStage: 'queue',
+        dispatchError: 'Queue admission is temporarily unavailable.',
+        dispatchNextAt: expect.any(Date),
       }),
-    })
+    }))
+    expect(prismaMock.audit.update).not.toHaveBeenCalled()
   })
 
   it('retries transient serializable conflicts before creating', async () => {

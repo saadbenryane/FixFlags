@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { executionWrite } from '@/lib/audit/execution-ownership'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import { isTriageProviderConfigured, type TriageResult } from '@/lib/audit/judge-triage'
 import type { PageMetadata } from '@/lib/audit/metadata'
@@ -53,14 +53,14 @@ export async function judgePageStage(
       status: 'skipped',
     })
   } else {
-    await prisma.auditPage.update({
+    await executionWrite(tx => tx.auditPage.update({
       where: { id: input.pageId },
       data: { status: 'JUDGING' },
-    })
-    await prisma.audit.update({
+    }))
+    await executionWrite(tx => tx.audit.update({
       where: { id: ctx.auditId },
       data: { status: 'JUDGING', progress: PIPELINE_PROGRESS.JUDGING },
-    })
+    }))
 
     const remainingMs = ctx.deadline - ctx.clock.now().getTime()
     await ctx.events.log({
@@ -103,10 +103,10 @@ export async function judgePageStage(
     }
   }
 
-  await prisma.auditPage.update({
+  await executionWrite(tx => tx.auditPage.update({
     where: { id: input.pageId },
     data: { status: 'COMPLETED', completeness: input.completeness },
-  })
+  }))
 
   return {
     status: artifact.triage

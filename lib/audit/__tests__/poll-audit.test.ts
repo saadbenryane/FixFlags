@@ -31,13 +31,13 @@ describe('pollAuditUntilDone', () => {
     expect(recoverAuditJobOnPoll).not.toHaveBeenCalled()
   })
 
-  it('runs recovery for non-terminal audits before re-checking', async () => {
+  it('observes persisted progress without causing recovery', async () => {
     prismaMock.audit.findUnique
       .mockResolvedValueOnce(auditRow('CHECKING'))
       .mockResolvedValueOnce(auditRow('COMPLETED'))
     const result = await pollAuditUntilDone({ auditId: 'audit-1', timeoutMs: 1000, intervalMs: 10 })
     assert.deepEqual(result, { status: 'COMPLETED', timedOut: false })
-    expect(recoverAuditJobOnPoll).toHaveBeenCalledWith('audit-1', expect.objectContaining({ status: 'CHECKING' }))
+    expect(recoverAuditJobOnPoll).not.toHaveBeenCalled()
   })
 
   it('stops early when a FAILED status arrives', async () => {

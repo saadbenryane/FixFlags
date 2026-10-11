@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
@@ -26,8 +26,9 @@ export async function persistFlagVisualEvidence(
   visuals: FlagVisualEvidenceMap
 ): Promise<void> {
   if (Object.keys(visuals).length === 0) return
+  await executionTransaction(async tx => {
 
-  const audit = await prisma.audit.findUnique({
+  const audit = await tx.audit.findUnique({
     where: { id: auditId },
     select: { performanceData: true },
   })
@@ -38,7 +39,7 @@ export async function persistFlagVisualEvidence(
       ? (audit.performanceData as Record<string, unknown>)
       : {}
 
-  await prisma.audit.update({
+  await tx.audit.update({
     where: { id: auditId },
     data: {
       performanceData: {
@@ -46,6 +47,7 @@ export async function persistFlagVisualEvidence(
         flagVisualEvidence: visuals,
       } as never,
     },
+  })
   })
 }
 

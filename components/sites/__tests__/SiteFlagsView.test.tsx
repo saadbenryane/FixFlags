@@ -233,6 +233,6 @@ describe('the Flags tab is reachable from the Site chrome', () => {
     )
     const links = screen.getAllByRole('link', { name: /^Flags/ })
     expect(links.length).toBeGreaterThan(0)
-    for (const link of links) expect(link).toHaveAttribute('href', '/sites/p_example/flags')
+    for (const link of links) expect(link).toHaveAttribute('href', '/sites/p_example?view=flags#flags')
   })
 })

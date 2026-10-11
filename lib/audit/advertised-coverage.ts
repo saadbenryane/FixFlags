@@ -1,0 +1,88 @@
+import { HOMEPAGE_CHECK_COVERAGE } from '@/lib/marketing/copy/check-coverage'
+import { PAGE_CHECK_DEFINITIONS } from './checks/definitions'
+import { SEARCH_DEFINITIONS } from './search/definitions'
+import { taskKindSchema } from './progressive/contracts'
+
+export type CoverageEvaluator = `page:${string}` | `search:${string}` | `task:${string}` | 'provider:analytics' | 'projection:availability'
+export type CoverageConfiguration = 'public' | 'pagespeed' | 'search_console' | 'analytics' | 'signup_fixture' | 'availability'
+export type AdvertisedCoverage = {
+  id: string; evaluators: readonly CoverageEvaluator[]; configuration: CoverageConfiguration;
+  extent: 'checked_scope' | 'heuristic' | 'partial'; limitation: string;
+}
+const scope = 'Applies only to the checked pages and recorded execution, not the entire website.'
+const heuristic = 'Observed content or layout signals, not proof of visitor behavior or business impact.'
+const lab = 'Requires available PageSpeed evidence. Lab measurements are separate from field data; unavailable metrics remain unknown.'
+const provider = 'Requires an authorized property covering the checked scope. Provider reporting time is separate from live collection time.'
+function entries(ids: readonly string[], evaluators: readonly CoverageEvaluator[], configuration: CoverageConfiguration = 'public',
+  extent: AdvertisedCoverage['extent'] = 'checked_scope', limitation = scope): AdvertisedCoverage[] {
+  return ids.map(id => ({ id, evaluators, configuration, extent, limitation }))
+}
+
+/** Explicit public responsibilities. This inventory maps execution, not passing verdicts. */
+export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
+  ...entries(['pages.discovery'], ['task:discovery']),
+  ...entries(['pages.internal-links', 'pages.section-links'], ['page:seo']),
+  ...entries(['pages.responses'], ['task:http']),
+  ...entries(['pages.pricing-contact', 'pages.action-destinations', 'pages.blank-dead-end', 'pages.loading', 'pages.destination-content', 'pages.promise-consistency'], ['task:flow']),
+  ...entries(['conversion.primary-action', 'conversion.mobile-navigation', 'conversion.validation', 'conversion.feedback'], ['task:flow']),
+  ...entries(['conversion.checkout-entry'], ['task:flow', 'task:bindings'], 'public', 'checked_scope', 'Public action navigation and configured safe cart/checkout entry only. Payment and purchase submission are not tested.'),
+  ...entries(['conversion.action-links'], ['page:auth-checkout']),
+  ...entries(['conversion.journey-failures'], ['task:journeys']),
+  ...entries(['conversion.overlays', 'conversion.reduced-motion'], ['page:interaction']),
+  ...entries(['conversion.loading-feedback', 'conversion.input-zoom', 'conversion.button-placement'], ['page:mobile-ux-quality'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.cta-focus'], ['page:cta-focus'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.value-proposition', 'conversion.audience-language'], ['page:messaging-clarity'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.placeholder-copy'], ['page:slop'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.form-friction'], ['page:conversion-friction'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.contact-privacy'], ['page:trust']),
+  ...entries(['conversion.claims'], ['page:trust-psychology'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.hierarchy', 'conversion.density'], ['page:visual-hierarchy'], 'public', 'heuristic', heuristic),
+  ...entries(['conversion.visual-consistency'], ['page:visual-polish'], 'public', 'heuristic', heuristic),
+  ...entries(['signup.confirmation', 'signup.fixture', 'signup.cleanup'], ['task:bindings'], 'signup_fixture', 'checked_scope', 'Requires a current reversible fixture and authorization. Confirmation is limited to its configured success criterion.'),
+  ...entries(['signup.authorization'], ['task:bindings'], 'signup_fixture', 'partial', 'Setup dry-run admission still needs durable worker execution; its HTTP result is not interruption-safe.'),
+  ...entries(['security.https', 'security.mixed-content'], ['page:security']),
+  ...entries(['security.privacy', 'security.contact', 'security.consent'], ['page:trust'], 'public', 'heuristic', 'Published trust signals are not legal-compliance verification.'),
+  ...entries(['security.csp', 'security.hsts', 'security.framing', 'security.content-type', 'security.referrer', 'security.cross-origin', 'security.permissions', 'security.cross-domain'], ['page:security-headers'], 'public', 'checked_scope', 'Published response configuration, not penetration testing or comprehensive security assurance.'),
+  ...entries(['performance.loading', 'performance.lcp', 'performance.cls', 'performance.inp', 'performance.render-blocking', 'performance.unused-code', 'performance.images'], ['page:performance', 'page:mobile'], 'pagespeed', 'checked_scope', lab),
+  ...entries(['performance.slow-visibility', 'performance.blank-delayed'], ['task:slow-replay']),
+  ...entries(['performance.destination-loading'], ['task:flow']),
+  ...entries(['search.presentation', 'search.headings'], ['search:presentation']),
+  ...entries(['search.canonicals'], ['search:canonical']),
+  ...entries(['search.indexing'], ['search:indexing']),
+  ...entries(['search.robots'], ['search:crawl']),
+  ...entries(['search.sitemaps', 'search.links'], ['search:discovery']),
+  ...entries(['search.structured-data'], ['search:structured-data'], 'public', 'checked_scope', 'Detected entities and supported feature requirements do not promise Google eligibility or rich-result appearance.'),
+  ...entries(['search.open-graph', 'search.favicon'], ['page:metadata']),
+  ...entries(['search.preview-image'], ['page:og-image']),
+  ...entries(['search.preview-consistency'], ['task:cross-page']),
+  ...entries(['search.google-indexing', 'search.google-soft404', 'search.google-declarations', 'search.google-ctr'], ['task:google'], 'search_console', 'checked_scope', provider),
+  ...entries(['tracking.page-tags', 'tracking.markup', 'tracking.absence', 'tracking.tools'], ['page:measurement'], 'public', 'checked_scope', 'Markup detection does not verify successful analytics delivery.'),
+  ...entries(['tracking.audience', 'tracking.page-traffic'], ['provider:analytics'], 'analytics', 'checked_scope', provider),
+  ...entries(['accessibility.names', 'accessibility.labels', 'accessibility.skip-links', 'accessibility.targets', 'accessibility.alt', 'accessibility.contrast', 'accessibility.language', 'accessibility.structure', 'accessibility.aria', 'accessibility.identifiers', 'accessibility.landmarks', 'accessibility.viewport'], ['page:accessibility'], 'public', 'checked_scope', 'Automated checks cover rendered evidence only; manual and assistive-technology review remain separate.'),
+  ...entries(['accessibility.traps', 'accessibility.focus', 'accessibility.tab-order'], ['page:accessibility'], 'public', 'partial', 'Current automated semantics and available Lighthouse findings do not establish exercised keyboard navigation. Bounded keyboard probes remain required.'),
+  ...entries(['uptime.response', 'uptime.errors', 'uptime.provenance'], ['task:bindings'], 'availability'),
+  ...entries(['uptime.console'], ['page:trust']),
+  ...entries(['uptime.schedule', 'uptime.incidents', 'uptime.history', 'uptime.recovery'], ['projection:availability'], 'availability', 'checked_scope', 'Persisted configured availability runs and incident history, not uninterrupted observation between scheduled checks.'),
+]
+
+export function validateAdvertisedCoverage(definitions: readonly AdvertisedCoverage[] = ADVERTISED_COVERAGE) {
+  const advertised = new Set<string>(HOMEPAGE_CHECK_COVERAGE.areas.flatMap(area => area.groups.flatMap(group => group.items.map(item => item.id))))
+  const mapped = new Map<string, AdvertisedCoverage>()
+  const search = new Set<string>(SEARCH_DEFINITIONS.map(definition => definition.evaluator))
+  for (const definition of definitions) {
+    if (mapped.has(definition.id) || !advertised.has(definition.id) || !definition.evaluators.length || !definition.limitation.trim())
+      throw new Error('Invalid advertised coverage: ' + definition.id)
+    for (const evaluator of definition.evaluators) {
+      const [kind, id] = evaluator.split(':')
+      const valid = kind === 'page' ? Object.hasOwn(PAGE_CHECK_DEFINITIONS, id)
+        : kind === 'search' ? search.has(id) : kind === 'task' ? taskKindSchema.safeParse(id).success
+          : evaluator === 'provider:analytics' || evaluator === 'projection:availability'
+      if (!valid) throw new Error('Missing coverage evaluator: ' + evaluator)
+    }
+    mapped.set(definition.id, definition)
+  }
+  for (const id of advertised) if (!mapped.has(id)) throw new Error('Missing advertised coverage: ' + id)
+  return mapped
+}
+
+export const ADVERTISED_COVERAGE_REGISTRY = validateAdvertisedCoverage()

@@ -2,7 +2,7 @@ import type { SlowReplayResult } from '../flow/slow-replay-probe'
 import type { DeterministicFlag } from '../flag-types'
 
 export function runSlowReplayChecks(result: SlowReplayResult | null): DeterministicFlag[] {
-  if (!result) return []
+  if (!result || result.complete === false) return []
 
   const findings: DeterministicFlag[] = []
 

@@ -49,6 +49,7 @@ export type CauseCertainty = 'REPRODUCED' | 'DETECTED' | 'OBSERVED' | 'LIKELY'
  * add it explicitly.
  */
 export interface FlagData extends AgentPrompts {
+  attentionPolicy?: unknown
   id?: string
   checkId: string | null
   rubric: string
@@ -79,6 +80,8 @@ export interface FlagData extends AgentPrompts {
  * PageUrl is optional because not all checks know the URL at emit time.
  */
 export interface DeterministicFlag {
+  verificationRule?: string
+  attentionPolicy?: import('./search/contracts').SearchAttention
   checkId: string
   rubric: string
   severity: string
@@ -99,6 +102,7 @@ export interface DeterministicFlag {
  * persist boundary for createMany compatibility.
  */
 export type DeterministicFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
+  attentionPolicy?: import('@prisma/client').Prisma.InputJsonValue
   auditId: string
   pageId: string | null
   rubricId: string | null
@@ -113,7 +117,7 @@ export type DeterministicFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
 /**
  * Post-persist query shape for AI-generated flags.
  */
-export type AiFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
+export type AiFlagRow = Omit<FlagData, 'severity' | 'impactTag' | 'attentionPolicy'> & {
   auditId: string
   pageId: string | null
   rubricId: string | null
@@ -174,6 +178,7 @@ export type ThemeMatchableFlag = Pick<FlagData, 'problem' | 'evidence'> & {
  * Minimal subset for diff comparison.
  */
 export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric' | 'severity'> & {
+  attentionPolicy?: unknown
   /** Exact persisted Flag represented by this diff item, when available. */
   id?: string
   status?: string

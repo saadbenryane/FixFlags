@@ -1,59 +1,21 @@
 import { prisma } from '@/lib/db'
-import { getAuditQueue } from '@/lib/queue/client'
-import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
-import { requireExecutionReady } from '@/lib/queue/execution-readiness'
+import { createAndEnqueueAudit, ParentAuditError } from './create-audit'
+import { canManageAudit, canRetryAnonymousAudit } from './access'
 
-export async function retryAudit(auditId: string): Promise<{ status: string }> {
-  const audit = await prisma.audit.findUnique({
-    where: { id: auditId },
-    select: { id: true, status: true, url: true },
-  })
-  if (!audit) throw new Error('Audit not found')
-  if (audit.status !== 'FAILED' && audit.status !== 'COMPLETED') {
-    throw new Error('Can only retry failed or completed audits for summary refresh')
-  }
-  await requireExecutionReady()
+export type AuditRetryViewer = { userId: string | null; anonymousAuditIds: string[]; visitorKey: string; clientId?: string }
 
-  // The audit's DB status is already terminal (FAILED/COMPLETED - guarded
-  // above). Any job still in the queue is therefore stale (e.g. a run that blew
-  // the deadline and was force-failed while its job lingered active). Clear it
-  // unconditionally so retry never dead-ends on "Audit is already running".
-  const queue = getAuditQueue()
-  const existingJob = await queue.getJob(auditId)
-  if (existingJob) {
-    const state = await existingJob.getState()
-    if (state === 'active') {
-      await existingJob.moveToFailed(new Error('Superseded by retry'), '0', true)
-    }
-    try {
-      await existingJob.remove()
-    } catch {
-      // Job may have been picked up or removed between checks.
-    }
-  }
-
-  await prisma.audit.update({
-    where: { id: auditId },
-    data: {
-      status: 'QUEUED',
-      progress: PIPELINE_PROGRESS.QUEUED,
-      startedAt: null,
-      errorMsg: null,
-      failureCode: null,
-      failureStage: null,
-      failureMetadata: undefined,
-      completedAt: null,
-      finalizedAt: null,
-      failedModules: undefined,
-    },
-  })
-
-  await queue.add('audit', { auditId }, {
-    jobId: auditId,
-    attempts: 1,
-    removeOnComplete: 100,
-    removeOnFail: 500,
-  })
-
-  return { status: 'QUEUED' }
+/** A user retry is a new linked admission. Never reopen a terminal execution,
+ * remove its queue job, or let completed checkpoints certify another run. */
+export async function retryAudit(auditId: string, viewer: AuditRetryViewer) {
+  const audit = await prisma.audit.findUnique({ where: { id: auditId },
+    select: { id: true, status: true, url: true, userId: true, isPublic: true, auditMode: true } })
+  if (!audit) throw new ParentAuditError('Audit not found', 404)
+  if (!canManageAudit(audit, viewer.userId ? { id: viewer.userId } : null) &&
+    !canRetryAnonymousAudit(audit, audit.id, viewer.anonymousAuditIds)) throw new ParentAuditError('You do not have access to this report', 403)
+  if (!['FAILED', 'COMPLETED'].includes(audit.status)) throw new ParentAuditError('Can only retry a terminal execution', 409)
+  if (audit.userId === null && !viewer.visitorKey) throw new ParentAuditError('Restore this Site’s browser identity before retrying.', 409)
+  const admitted = await createAndEnqueueAudit({ url: audit.url, userId: audit.userId, parentId: audit.id,
+    retryParent: true, skipUsageCount: true, visitorKey: viewer.visitorKey, clientId: viewer.clientId,
+    auditMode: audit.auditMode, useProjectScanAccess: Boolean(audit.userId) })
+  return { status: admitted.status, auditId: admitted.auditId, siteId: admitted.siteId, reused: admitted.reused }
 }

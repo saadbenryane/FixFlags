@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy'
+import { useSiteAction } from '@/hooks/useSiteAction'
+import { executeSiteAction } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
+import { SiteActionFeedback } from './SiteActionFeedback'
 
 export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running }: {
   siteId: string
@@ -12,30 +15,17 @@ export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running }: {
   running: boolean
 }) {
   const router = useRouter()
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const { busy, message, error, submit } = useSiteAction()
 
   async function update() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/outcomes/${outcomeId}`, {
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: !enabled }),
-      })
-      const body = await response.json().catch(() => ({})) as { error?: string; verificationQueued?: boolean; verificationError?: string | null }
-      if (!response.ok) {
-        setMessage(body.error ?? 'Could not update this Outcome.')
-        return
-      }
-      setMessage(enabled
-        ? running ? 'Paused. The active verification will finish.' : 'Outcome paused.'
-        : body.verificationQueued ? 'Outcome enabled. Fresh verification started.' : body.verificationError ?? 'Outcome enabled.')
-      router.refresh()
-    } finally {
-      setBusy(false)
-    }
+      }, 'outcomeEnabled'), body => !body.outcome.enabled
+        ? running ? C.outcome.pausedRunning : C.outcome.paused
+        : body.verificationQueued ? C.outcome.enabledVerifying : body.verificationError ?? C.outcome.enabled,
+      () => router.refresh())
   }
 
   return (
@@ -44,7 +34,7 @@ export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running }: {
         {enabled ? OUTCOME_DETAIL_COPY.pause : OUTCOME_DETAIL_COPY.enable}
       </Button>
       <p className="mt-2 max-w-md text-xs text-muted-foreground">{OUTCOME_DETAIL_COPY.pauseHelp}</p>
-      {message ? <p className="mt-2 text-sm text-muted-foreground" role="status">{message}</p> : null}
+      <SiteActionFeedback message={message} error={error} siteId={siteId} />
     </div>
   )
 }

@@ -131,11 +131,16 @@ export async function runJourneyTemplate(
   let abandonedReason: string | null = null
   const timeline = createActionTimeline(started)
   const probeEmail = probeEmailForAudit(options.auditId)
+  let refusedFromStep: number | null = null
 
   const session = await createAuditPage(browser, options.startUrl, {
     profile: DESKTOP_CAPTURE_PROFILE,
     journeySafe: true,
     scanAccess: options.scanAccess,
+    deadline,
+    onSafetyRefusal: reason => {
+      if (reason === 'protected_action_requires_fixture') refusedFromStep ??= steps.length + 1
+    },
   })
   const page = session.page
   const origin = new URL(options.startUrl).origin
@@ -984,11 +989,12 @@ export async function runJourneyTemplate(
     return {
       journeyType: options.journeyType,
       startUrl: options.startUrl,
-      status,
-      goalAchieved,
+      status: refusedFromStep === null ? status : 'ABANDONED',
+      goalAchieved: refusedFromStep === null && goalAchieved,
+      ...(refusedFromStep === null ? {} : { blockedReason: 'protected_action_requires_fixture' }),
       abandonedReason,
       steps,
-      findings,
+      findings: refusedFromStep === null ? findings : findings.filter(item => item.stepNumber < refusedFromStep!),
       durationMs: Date.now() - started,
       formProbe: session.formProbe,
       actionTimeline: timeline.snapshot(),

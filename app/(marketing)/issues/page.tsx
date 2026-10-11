@@ -10,6 +10,7 @@ import { issueIndexStructuredData } from '@/lib/marketing/structured-data'
 import { humanizeCheckId } from '@/lib/marketing/issue-page'
 import { rubricBadgeClasses } from '@/lib/rubric-icons'
 import { prisma } from '@/lib/db'
+import { FLAG_LIBRARY } from '@/lib/marketing/copy/library'
 
 export const metadata = buildPageMetadata('issues', '/issues')
 // This library is a live projection of the PostgreSQL knowledge graph.
@@ -54,20 +55,23 @@ export default async function IssuesIndexPage() {
         <main className="space-y-8 sm:space-y-10">
           <div className="text-center space-y-3">
             <Heading as="h1" className="text-3xl sm:text-4xl font-bold">
-              Flag Library
+              {FLAG_LIBRARY.title}
             </Heading>
             <Lead className="max-w-xl mx-auto text-muted-foreground">
-              Real Flags from {issues.length > 0 ? issuesWithMeta[0]?.siteCount ?? MIN_SAMPLE_SIZE : MIN_SAMPLE_SIZE}+
-              checked sites. Each page shows frequency, affected frameworks, anonymized examples, and a fix.
+              {FLAG_LIBRARY.body}
             </Lead>
           </div>
 
           {issuesWithMeta.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="space-y-4 text-center py-12">
+              <Heading as="h2" className="text-xl">{FLAG_LIBRARY.emptyTitle}</Heading>
               <Muted>
-                No Flags have crossed the sample-size threshold yet.
-                We need data from at least {MIN_SAMPLE_SIZE} checked sites per Flag.
+                {FLAG_LIBRARY.emptyBody(MIN_SAMPLE_SIZE)}
               </Muted>
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium">
+                <Link href="/docs/site-care" className="inline-flex min-h-11 items-center text-link hover:underline">{FLAG_LIBRARY.docsCta}</Link>
+                <Link href="/new" className="inline-flex min-h-11 items-center text-link hover:underline">{FLAG_LIBRARY.startCta}</Link>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -87,7 +91,7 @@ export default async function IssuesIndexPage() {
                         </span>
                       </div>
                       <Heading as="h2" className="text-base leading-snug">
-                        {issue.problemTemplate}
+                        {issue.problemTemplate || humanizeCheckId(issue.checkId)}
                       </Heading>
                       <Muted className="text-xs">
                         {issue.occurrenceCount} occurrences across {issue.siteCount} sites

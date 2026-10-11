@@ -89,6 +89,13 @@ export function checkoutResultCopy(reason: string): {
   fix: string
 } {
   switch (reason) {
+    case 'safety_boundary':
+      return {
+        summary: 'Checkout could not be verified within the safe execution boundary.',
+        problem: '',
+        evidence: 'FixFlags blocked a payment or unauthorized submission before transmission. This does not establish a website failure.',
+        fix: 'Provide a public checkout entry that can be inspected without submitting a purchase or creating an account.',
+      }
     case 'checkout_reached':
       return {
         summary: 'FixFlags independently reached checkout.',
@@ -175,6 +182,8 @@ export function checkoutResultCopy(reason: string): {
 /** Next step when Checkout could not be verified. Confirmed failures stay on the Flag. */
 export function checkoutCouldNotVerifyRecovery(reason: string | null | undefined): string {
   switch (reason) {
+    case 'safety_boundary':
+      return 'This check stops before payments or unauthorized submissions. Provide a safely reachable checkout entry.'
     case 'no_buy_control':
       return 'Check a page that has Add to cart or Buy, then verify again.'
     case 'bot_wall':

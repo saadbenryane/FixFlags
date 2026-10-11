@@ -33,6 +33,7 @@ export interface ReviewStageResult<TArtifact = unknown> {
 
 /** Result of running the pipeline against a single reviewed page. */
 export interface PageRun {
+  searchReceipt?: import('../search/contracts').SearchReceipt
   pageId: string
   url: string
   metadata: PageMetadata
@@ -61,6 +62,7 @@ export interface PageRun {
 
 /** Shared state threaded through one audit run. */
 export interface ReviewExecutionContext {
+  searchResources?: import('../search/collect').SearchResourceCache
   auditId: string
   deadline: number
   startedAt: Date

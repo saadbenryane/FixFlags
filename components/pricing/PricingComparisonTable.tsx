@@ -21,7 +21,7 @@ export function PricingComparisonTable() {
             key={key}
             aria-labelledby={`comparison-${key}`}
             className={cn(
-              "overflow-hidden rounded-[13px] border border-border/65 bg-background",
+              "overflow-hidden rounded-card border border-border/65 bg-background",
               highlight && "border-brand",
             )}
           >
@@ -35,7 +35,7 @@ export function PricingComparisonTable() {
               {PRICING_COMPARISON.rows.map((row) => (
                 <div
                   key={row.feature}
-                  className="grid grid-cols-[7.5rem_1fr] gap-4 px-4 py-3 text-sm"
+                  className="grid grid-cols-2 gap-4 px-4 py-3 text-sm"
                 >
                   <dt className="font-medium text-muted-foreground">{row.feature}</dt>
                   <dd className="text-right leading-snug">{row[key]}</dd>
@@ -46,12 +46,13 @@ export function PricingComparisonTable() {
         ))}
       </div>
 
-      <div className="hidden overflow-hidden rounded-[13px] border border-border/65 bg-background md:block">
+      <div className="hidden overflow-hidden rounded-card border border-border/65 bg-background md:block">
         <table className="w-full table-fixed text-sm">
+          <caption className="sr-only">{PRICING_COMPARISON.caption}</caption>
           <thead>
             <tr className="border-b border-border/30">
               <th
-                className="w-[22%] p-5 text-left text-xs font-semibold text-muted-foreground"
+                className="w-[31%] p-5 text-left text-xs font-semibold text-muted-foreground"
                 scope="col"
               >
                 {PRICING_COMPARISON.includedLabel}

@@ -11,7 +11,7 @@ import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
-import { loadSiteCheckResults } from '@/lib/sites/application/check-results'
+import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
@@ -69,10 +69,10 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.listOutcomes.name,
     {
       description: MCP_TOOLS.listOutcomes.desc,
-      inputSchema: z.object({ siteId: z.string().min(1) }),
+      inputSchema: z.object({ siteId: z.string().min(1), resultCursor: z.string().max(1024).optional() }),
       annotations: toolAnnotations(MCP_TOOLS.listOutcomes),
     },
-    async ({ siteId }) => {
+    async ({ siteId, resultCursor }) => {
       try {
         const site = await ownedSite(user.id, siteId)
         const outcomes = await listSiteOutcomes(site)
@@ -82,9 +82,11 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
             .map((outcome) => loadSiteOutcomeDetail(site, outcome.id)),
         )
         const latestAudit = await prisma.audit.findFirst({ where: { projectId: site.projectId! }, orderBy: { createdAt: 'desc' }, select: { id: true } })
+        const resultPage = await loadSiteCheckResultPage(site, latestAudit?.id ?? null, resultCursor)
         return mcpStructuredResult({
           siteId: site.siteId,
-          checkResults: await loadSiteCheckResults(site, latestAudit?.id ?? null),
+          checkResults: resultPage.results,
+          checkResultsNextCursor: resultPage.nextCursor,
           outcomes: details
             .filter((outcome) => outcome != null)
             .map((outcome) => mcpOutcomePayload(outcome)),

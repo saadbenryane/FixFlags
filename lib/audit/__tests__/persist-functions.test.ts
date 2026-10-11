@@ -4,8 +4,9 @@ import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
 
 // Stub Prisma before importing the persist module
 const mockTx = {
+  $queryRaw: vi.fn(async () => [{ id: 'audit-1' }]),
   flag: { deleteMany: vi.fn(), createMany: vi.fn(), findMany: vi.fn(), update: vi.fn() },
-  reportRubric: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+  reportRubric: { upsert: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
   auditPage: { findMany: vi.fn() },
   audit: { update: vi.fn(), findUnique: vi.fn() },
   creditPurchase: { aggregate: vi.fn() },
@@ -89,6 +90,7 @@ describe('persistDeterministicFlags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPageFindOnePage()
+    mockTx.flag.findMany.mockResolvedValue([])
     mockTx.reportRubric.findFirst.mockResolvedValue(null)
     mockTx.reportRubric.create.mockImplementation((args) => {
       const name = (args as { data: { name: string } }).data.name
@@ -142,12 +144,16 @@ describe('persistDeterministicFlags', () => {
     expect(flagData.data).toHaveLength(100)
   })
 
-  it('deletes existing deterministic flags before inserting', async () => {
-    await persistDeterministicFlags('audit-1', [makeDet({ checkId: 'title-missing' })], baseRubricScores())
-
-    expect(mockTx.flag.deleteMany).toHaveBeenCalledWith({
-      where: { auditId: 'audit-1', source: 'DETERMINISTIC' },
-    })
+  it('preserves prior evidence and stable Flag identity across replay', async () => {
+    const findings = [makeDet({ checkId: 'title-missing' })]
+    await persistDeterministicFlags('audit-1', findings, baseRubricScores())
+    const row = mockTx.flag.createMany.mock.calls[0][0].data[0]
+    mockTx.flag.findMany.mockResolvedValue([{ id: 'stable-flag', source: row.source, fingerprint: row.fingerprint, affectedPaths: [] }])
+    mockTx.flag.createMany.mockClear()
+    await persistDeterministicFlags('audit-1', findings, baseRubricScores())
+    expect(mockTx.flag.deleteMany).not.toHaveBeenCalled()
+    expect(mockTx.flag.createMany).not.toHaveBeenCalled()
+    expect(mockTx.flag.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'stable-flag' } }))
   })
 
   it('handles partial rubric scores (some null)', async () => {
@@ -218,8 +224,8 @@ describe('persistTriageResults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPageFindOnePage()
-    mockTx.reportRubric.create.mockImplementation((args) => {
-      const name = (args as { data: { name: string } }).data.name
+    mockTx.reportRubric.upsert.mockImplementation((args) => {
+      const name = (args as { create: { name: string } }).create.name
       return Promise.resolve(makeRubricCreate(name))
     })
     mockTx.flag.findMany.mockResolvedValue([])
@@ -244,7 +250,7 @@ describe('persistTriageResults', () => {
     await persistTriageResults('audit-1', triageOutput, [], {})
 
     // Should create 3 rubric records
-    expect(mockTx.reportRubric.create).toHaveBeenCalledTimes(3)
+    expect(mockTx.reportRubric.upsert).toHaveBeenCalledTimes(3)
     // Should create 1 flag (the AI flag)
     expect(mockTx.flag.createMany).toHaveBeenCalledTimes(1)
     const flagData = (mockTx.flag.createMany.mock.calls[0] as unknown[])[0] as { data: unknown[] }
@@ -255,7 +261,7 @@ describe('persistTriageResults', () => {
   it('handles 0 new AI flags', async () => {
     await persistTriageResults('audit-1', makeTriageOutput({ newFlags: [] }), [], {})
 
-    expect(mockTx.reportRubric.create).toHaveBeenCalledTimes(3)
+    expect(mockTx.reportRubric.upsert).toHaveBeenCalledTimes(3)
     expect(mockTx.flag.createMany).not.toHaveBeenCalled()
     const update = (mockTx.audit.update.mock.calls[0] as unknown[])[0] as {
       data: { verdict: string }
@@ -324,10 +330,10 @@ describe('persistTriageResults', () => {
     expect(update.data.verdict).toBe(
       'Highest priority: Signup journey cannot reach confirmation. New customers cannot finish creating an account.'
     )
-    const experience = mockTx.reportRubric.create.mock.calls
-      .map((call) => (call as unknown[])[0] as { data: { name: string; summary: string } })
-      .find((call) => call.data.name === 'EXPERIENCE')
-    expect(experience?.data.summary).toContain('Signup journey cannot reach confirmation')
+    const experience = mockTx.reportRubric.upsert.mock.calls
+      .map((call) => (call as unknown[])[0] as { create: { name: string; summary: string } })
+      .find((call) => call.create.name === 'EXPERIENCE')
+    expect(experience?.create.summary).toContain('Signup journey cannot reach confirmation')
   })
 
   it('merges deterministic flags with AI flags', async () => {
@@ -375,9 +381,8 @@ describe('persistTriageResults', () => {
     const { prisma } = await import('@/lib/db')
     await persistTriageResults('audit-1', makeTriageOutput(), [], baseRubricScores())
 
-    expect(prisma.flag.deleteMany).toHaveBeenCalledWith({
-      where: { auditId: 'audit-1', source: { in: ['DETERMINISTIC', 'AI'] } },
-    })
+    expect(prisma.flag.deleteMany).not.toHaveBeenCalled()
+    expect(mockTx.flag.deleteMany).not.toHaveBeenCalled()
   })
 
   it('applies journey severity penalties to rubric scores', async () => {
@@ -406,11 +411,11 @@ describe('persistTriageResults', () => {
 
     await persistTriageResults('audit-1', makeTriageOutput(), [], baseRubricScores())
 
-    const experienceCreate = mockTx.reportRubric.create.mock.calls
-      .map((c) => (c as unknown[])[0] as { data: { name: string; score: number | null } })
-      .find((c) => c.data.name === 'EXPERIENCE')
+    const experienceCreate = mockTx.reportRubric.upsert.mock.calls
+      .map((c) => (c as unknown[])[0] as { create: { name: string; score: number | null } })
+      .find((c) => c.create.name === 'EXPERIENCE')
     // base EXPERIENCE score 80 minus CRITICAL(8) + IMPORTANT(4) = 68
-    expect(experienceCreate?.data.score).toBe(68)
+    expect(experienceCreate?.create.score).toBe(68)
   })
 })
 

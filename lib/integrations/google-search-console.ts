@@ -3,6 +3,8 @@ import { getAuthBaseUrl } from '@/lib/auth/env'
 import { decryptSecret } from '@/lib/security/crypto'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+import { readBoundedJson } from '@/lib/http/read-json'
 
 const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
 const STATE_TTL_MS = 10 * 60 * 1000
@@ -195,12 +197,15 @@ export async function querySearchAnalytics(
   endDate: string,
   dimensions: string[],
   rowLimit = 25000,
-  startRow = 0
+  startRow = 0,
+  pageUrl?: string,
+  signal?: AbortSignal,
 ): Promise<GscSearchRow[]> {
   const res = await fetch(
     `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
     {
       method: 'POST',
+      signal: signal ?? AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -211,15 +216,71 @@ export async function querySearchAnalytics(
         dimensions,
         rowLimit,
         startRow,
+        ...(pageUrl ? { dimensionFilterGroups: [{ filters: [{ dimension: 'page', operator: 'equals', expression: pageUrl }] }] } : {}),
       }),
     }
   )
   if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`GSC searchAnalytics query failed (${res.status}): ${body}`)
+    throw await searchConsoleFailure(res)
   }
-  const data = (await res.json()) as GscSearchResponse
-  return data.rows ?? []
+  const parsed = searchRowsSchema.safeParse(await readBoundedJson(res, 1_000_000).catch(() => null))
+  if (!parsed.success) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
+  return parsed.data.rows ?? []
+}
+
+export class SearchConsoleError extends Error {
+  constructor(readonly code: 'AUTH_EXPIRED' | 'PERMISSION_REFUSED' | 'PROVIDER_QUOTA' | 'PROVIDER_UNAVAILABLE' | 'MALFORMED_PROVIDER_RESPONSE', readonly retryAfterMs?: number) {
+    super(code); this.name = 'SearchConsoleError'
+  }
+}
+
+async function searchConsoleFailure(response: Response): Promise<SearchConsoleError> {
+  const payload = await readBoundedJson(response, 16_384).catch(() => null) as { error?: { status?: string; errors?: Array<{ reason?: string }> } } | null
+  const quota = payload?.error?.status === 'RESOURCE_EXHAUSTED' ||
+    payload?.error?.errors?.some(item => ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'].includes(item.reason ?? ''))
+  return new SearchConsoleError(response.status === 429 || quota ? 'PROVIDER_QUOTA' : response.status === 401 ? 'AUTH_EXPIRED'
+    : response.status === 403 ? 'PERMISSION_REFUSED' : 'PROVIDER_UNAVAILABLE', providerRetryDelay(response.headers.get('retry-after')))
+}
+
+export function providerRetryDelay(value: string | null, now = Date.now()): number | undefined {
+  if (!value) return undefined
+  const seconds = Number(value)
+  const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(value) - now
+  return Number.isFinite(delay) && delay > 0 ? delay : undefined
+}
+
+const searchRowsSchema = z.object({ rows: z.array(z.object({
+  keys: z.array(z.string()), clicks: z.number().finite().nonnegative(), impressions: z.number().finite().nonnegative(),
+  ctr: z.number().finite().nonnegative(), position: z.number().finite().nonnegative(),
+})).max(1000).optional() })
+
+const indexResultSchema = z.object({
+  verdict: z.string().optional(), coverageState: z.string().optional(), robotsTxtState: z.string().optional(),
+  indexingState: z.string().optional(), lastCrawlTime: z.string().datetime({ offset: true }).optional(),
+  googleCanonical: z.string().url().optional(), userCanonical: z.string().url().optional(),
+  crawledAs: z.string().optional(), sitemap: z.array(z.string().url()).optional(),
+})
+export const urlInspectionSchema = z.object({ inspectionResult: z.object({
+  inspectionResultLink: z.string().url().optional(),
+  indexStatusResult: indexResultSchema.optional(),
+  richResultsResult: z.object({ verdict: z.string().optional(), detectedItems: z.array(z.object({
+    richResultType: z.string().optional(), items: z.array(z.object({
+      name: z.string().optional(), issues: z.array(z.object({ issueMessage: z.string().optional(), severity: z.string().optional() })).optional(),
+    })).optional(),
+  })).optional() }).optional(),
+}) })
+export type SearchUrlInspection = z.infer<typeof urlInspectionSchema>['inspectionResult']
+
+export async function inspectSearchUrl(accessToken: string, siteUrl: string, url: string, signal?: AbortSignal): Promise<SearchUrlInspection> {
+  const response = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
+    method: 'POST', signal: signal ?? AbortSignal.timeout(10_000),
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inspectionUrl: url, siteUrl }),
+  })
+  if (!response.ok) throw await searchConsoleFailure(response)
+  const parsed = urlInspectionSchema.safeParse(await readBoundedJson(response, 1_000_000).catch(() => null))
+  if (!parsed.success) throw new SearchConsoleError('MALFORMED_PROVIDER_RESPONSE')
+  return parsed.data.inspectionResult
 }
 
 export interface GscUrlInspection {
@@ -234,11 +295,8 @@ export interface GscUrlInspection {
       userCanonical?: string
       crawledAs?: string
       sitemap?: string[]
-      richResults?: {
-        verdict?: string
-        detectedItems?: unknown[]
-      }
     }
+    richResultsResult?: SearchUrlInspection['richResultsResult']
   }
 }
 
@@ -247,24 +305,7 @@ export async function inspectUrl(
   siteUrl: string,
   url: string
 ): Promise<GscUrlInspection['inspectionResult']['indexStatusResult'] | null> {
-  const res = await fetch(
-    `https://www.googleapis.com/webmasters/v3/urlInspection/index:inspect`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inspectionUrl: url,
-        siteUrl,
-      }),
-    }
-  )
-  if (!res.ok) {
-    logger.warn('GSC URL inspection failed', { status: res.status, url })
-    return null
-  }
-  const data = (await res.json()) as GscUrlInspection
-  return data.inspectionResult?.indexStatusResult ?? null
+  // Compatibility response; the complete evaluator keeps rich-results evidence separate.
+  try { return (await inspectSearchUrl(accessToken, siteUrl, url)).indexStatusResult ?? null }
+  catch { return null }
 }

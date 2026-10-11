@@ -26,7 +26,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       severity: 'CRITICAL',
       problem: 'Page title is missing',
       evidence: 'No <title> tag found in <head>',
-      fix: '1. Add a descriptive <title> tag (50-60 characters) to the <head>\n2. Include the primary keyword and brand name\n3. Verify the title is unique across pages',
+      fix: 'Add a descriptive title that matches this page. Google may shorten or rewrite its displayed title link.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -36,9 +36,9 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       rubric: 'REACH',
       impactTag: 'SEO',
       severity: 'IMPORTANT',
-      problem: `Page title is too short (${meta.title.length} chars)`,
-      evidence: `Title is ${meta.title.length} characters (minimum 10): "${meta.title}"`,
-      fix: '1. Expand the title to 50-60 characters\n2. Place the primary keyword near the start\n3. Include the brand name at the end',
+      problem: `Review this brief page title (${meta.title.length} characters)`,
+      evidence: `Title is ${meta.title.length} characters: "${meta.title}". Length alone does not establish a failure.`,
+      fix: 'Review whether the title accurately identifies this page. Google specifies no fixed character limit.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -64,7 +64,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       severity: 'IMPORTANT',
       problem: 'Meta description is missing',
       evidence: 'No <meta name="description"> tag found',
-      fix: '1. Add a meta description (120-160 characters) summarizing the page content\n2. Include a call to action and primary keywords\n3. Verify it appears in search snippet previews',
+      fix: 'Describe the page accurately and concisely. Google may choose another snippet for a query.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -74,9 +74,9 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       rubric: 'REACH',
       impactTag: 'SEO',
       severity: 'POLISH',
-      problem: `Meta description is too short (${meta.description.length} chars)`,
-      evidence: `Description is ${meta.description.length} characters (minimum 50): "${meta.description}"`,
-      fix: '1. Expand the meta description to 120-160 characters\n2. Describe what users get and include a CTA\n3. Avoid keyword stuffing',
+      problem: `Review this brief page description (${meta.description.length} characters)`,
+      evidence: `Description is ${meta.description.length} characters: "${meta.description}". There is no fixed Google character requirement.`,
+      fix: 'Review whether this description usefully summarizes the page without keyword stuffing.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

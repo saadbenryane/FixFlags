@@ -76,7 +76,8 @@ function outcomeRow() {
       validUntil: new Date(Date.now() + 60 * 60 * 1000),
       improvementId: null,
       runRequestId: 'run-new',
-      coverage: null,
+      coverage: { environment: 'production', requiredBindings: ['checkout-browser-v1'],
+        bindings: [{ key: 'checkout-browser-v1', version: 1, mechanism: 'BROWSER_JOURNEY' }] },
       auditId: 'audit-new',
     }],
     runSelections: [{
@@ -329,6 +330,8 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     row.bindings = [
       { key: 'page-availability-v1', required: true, scope: null, mechanism: 'HTTP_AVAILABILITY', version: 1 },
     ]
+    row.assessments[0].coverage = { environment: 'production', requiredBindings: ['page-availability-v1'],
+      bindings: [{ key: 'page-availability-v1', version: 1, mechanism: 'HTTP_AVAILABILITY' }] }
     row.assessments[0] = {
       ...row.assessments[0],
       state: 'COULD_NOT_VERIFY',
@@ -380,6 +383,8 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     row.bindings = [
       { key: 'page-availability-v1', required: true, scope: null, mechanism: 'HTTP_AVAILABILITY', version: 1 },
     ]
+    row.assessments[0].coverage = { environment: 'production', requiredBindings: ['page-availability-v1'],
+      bindings: [{ key: 'page-availability-v1', version: 1, mechanism: 'HTTP_AVAILABILITY' }] }
     row.assessments[0] = {
       ...row.assessments[0],
       state: 'COULD_NOT_VERIFY',
@@ -413,6 +418,8 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     row.bindings = [
       { key: 'page-availability-v1', required: true, scope: null, mechanism: 'HTTP_AVAILABILITY', version: 1 },
     ]
+    row.assessments[0].coverage = { environment: 'production', requiredBindings: ['page-availability-v1'],
+      bindings: [{ key: 'page-availability-v1', version: 1, mechanism: 'HTTP_AVAILABILITY' }] }
     row.assessments[0] = {
       ...row.assessments[0],
       state: 'FLAG',

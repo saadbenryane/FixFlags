@@ -6,7 +6,7 @@
  * not POLISH = Recommendation.
  */
 
-import { registeredCheck } from './check-registry'
+import { searchAttentionDecision } from './search/policy'
 
 export const MIN_ATTENTION_CONFIDENCE = 0.65
 export const MAX_ATTENTION_ITEMS = 3
@@ -25,6 +25,7 @@ export type CustomerFlagInput = {
   status?: string | null
   impactTag?: string | null
   checkId?: string | null
+  attentionPolicy?: unknown
 }
 
 function checkBaseId(checkId?: string | null): string {
@@ -48,9 +49,9 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   if (typeof flag.confidence === 'number' && flag.confidence < MIN_ATTENTION_CONFIDENCE) {
     return false
   }
+  const search = searchAttentionDecision(flag)
+  if (search) return search.kind === 'flag'
   if (isJourneyCritical(flag)) return true
-  const registered = registeredCheck(flag.checkId)
-  if (registered) return registered.materialFailure && !isPolishSeverity(flag.severity)
   if (flag.severity === 'CRITICAL') return true
   if (isPolishSeverity(flag.severity)) return false
   if (/^(title-too-long|description-too-long|og-|favicon)/.test(checkBaseId(flag.checkId))) return false

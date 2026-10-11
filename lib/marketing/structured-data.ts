@@ -315,6 +315,9 @@ export function blogPostingSchema(post: {
   title: string
   excerpt: string
   date: string
+  updatedAt?: string
+  publishedAt?: string
+  cover?: { src: string; width: number; height: number }
 }) {
   const url = `${SITE_URL}/blog/${post.slug}`
   return {
@@ -329,7 +332,9 @@ export function blogPostingSchema(post: {
         headline: post.title,
         description: post.excerpt,
         url,
-        datePublished: post.date,
+        datePublished: post.publishedAt ?? post.date,
+        ...(post.updatedAt ? { dateModified: post.updatedAt } : {}),
+        ...(post.cover ? { image: { '@type': 'ImageObject', url: `${SITE_URL}${post.cover.src}`, width: post.cover.width, height: post.cover.height } } : {}),
         author: { '@id': ORG_ID },
         publisher: { '@id': ORG_ID },
         isPartOf: { '@type': 'Blog', name: `${BRAND.name} Blog`, url: `${SITE_URL}/blog` },

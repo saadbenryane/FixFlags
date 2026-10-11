@@ -99,6 +99,8 @@ function normalizeFixtureInput(siteUrl: string, input: OutcomeFixtureInput) {
   if (!site.ok || !target.ok || !reset.ok || !cleanup.ok) {
     throw new OutcomeFixtureError('FIXTURE_URL_INVALID', 'Use valid public HTTPS URLs for the form and its hooks.')
   }
+  if ([target.url, reset.url, cleanup.url].some(url => new URL(url).protocol !== 'https:'))
+    throw new OutcomeFixtureError('FIXTURE_HTTPS_REQUIRED', 'Use HTTPS for the Signup page and its reset and cleanup hooks.')
   const siteOrigin = new URL(site.url).origin
   if ([target.url, reset.url, cleanup.url].some((url) => new URL(url).origin !== siteOrigin)) {
     throw new OutcomeFixtureError('FIXTURE_ORIGIN_MISMATCH', 'The form, reset hook, and cleanup hook must use this Site’s exact origin.')

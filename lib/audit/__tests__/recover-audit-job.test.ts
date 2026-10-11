@@ -4,6 +4,9 @@ import assert from 'node:assert/strict'
 const mocks = vi.hoisted(() => ({
   auditFindMany: vi.fn(),
   auditUpdate: vi.fn(),
+  auditUpdateMany: vi.fn(),
+  auditFindUniqueOrThrow: vi.fn(),
+  queryRaw: vi.fn(),
   queueAdd: vi.fn(),
   queueGetJob: vi.fn(),
   jobGetState: vi.fn(),
@@ -19,7 +22,12 @@ vi.mock('@/lib/db', () => ({
     audit: {
       findMany: mocks.auditFindMany,
       update: mocks.auditUpdate,
+      updateMany: mocks.auditUpdateMany,
+      findUniqueOrThrow: mocks.auditFindUniqueOrThrow,
     },
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: mocks.queryRaw, audit: {
+      update: mocks.auditUpdate, updateMany: mocks.auditUpdateMany,
+    } }),
   },
 }))
 
@@ -79,6 +87,9 @@ function resetMocks(): void {
   mocks.persistImprovementCycle.mockResolvedValue(undefined)
   mocks.auditFindMany.mockResolvedValue([])
   mocks.auditUpdate.mockResolvedValue({})
+  mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
+  mocks.auditFindUniqueOrThrow.mockResolvedValue({ executionGeneration: 1 })
+  mocks.queryRaw.mockResolvedValue([{ id: 'execution' }])
 }
 
 describe('deadline helpers', () => {
@@ -352,14 +363,19 @@ describe('recoverCompletedImprovementProjections', () => {
     const result = await recoverCompletedImprovementProjections()
 
     expect(mocks.auditFindMany).toHaveBeenCalledWith({
-      where: { status: 'COMPLETED', improvementProjectedAt: null },
+      where: { status: 'COMPLETED', improvementProjectedAt: null,
+        verifierExecutions: { none: { workKind: 'finalize', workState: 'RUNNING', workLeaseUntil: { gt: expect.any(Date) } } } },
       orderBy: { completedAt: 'asc' },
       take: 25,
-      select: { id: true, parentId: true },
+      select: { id: true, parentId: true, userId: true },
     })
     expect(mocks.persistImprovementCycle).toHaveBeenNthCalledWith(1, 'completed-1', null)
     expect(mocks.persistImprovementCycle).toHaveBeenNthCalledWith(2, 'completed-2', 'parent-1')
     expect(result).toEqual({ projected: 2, failed: 0, checked: 2 })
+    expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: 'COMPLETED', improvementProjectedAt: null }),
+      data: expect.objectContaining({ executionGeneration: { increment: 1 }, executionToken: expect.any(String) }),
+    }))
   })
 
   it('counts a failed projection and continues the batch', async () => {

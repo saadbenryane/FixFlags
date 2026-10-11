@@ -5,6 +5,11 @@ const receipt = { id: 'r1', targetKey: 'module:metadata', status: 'COMPLETED',
   pageUrl: 'https://example.com', updatedAt: new Date('2026-10-10T12:00:00Z'), detail: {} }
 
 describe('customer check results', () => {
+  it('retains unknown historical identities without inventing their assertion contract', () => {
+    expect(projectCheckResults('audit-1', [{ ...receipt, targetKey: 'module:retired-check', detail: { passed: true } }]))
+      .toMatchObject([{ name: 'retired-check', status: 'unknown', historical: true,
+        evidenceReference: { auditId: 'audit-1', executionId: 'r1' } }])
+  })
   it('never invents assertion passes from completed modules or absent Flags', () => {
     expect(projectCheckResults('audit-1', [receipt])).toMatchObject([{ kind: 'execution', status: 'completed' }])
     expect(projectCheckResults('audit-1', [receipt]).some(result => result.status === 'passed')).toBe(false)

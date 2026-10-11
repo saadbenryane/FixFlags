@@ -7,6 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { Textarea } from '@/components/ui/textarea'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { showFixPromptCopied } from './FixPromptToast'
+import { useSiteAction } from '@/hooks/useSiteAction'
+import { executeSiteAction } from '@/lib/sites/client-actions'
+import { SiteActionFeedback } from './SiteActionFeedback'
 
 export function SitePromptCopyButton({
   siteId,
@@ -19,9 +22,8 @@ export function SitePromptCopyButton({
   compact?: boolean
   iconOnly?: boolean
 }) {
-  const [busy, setBusy] = useState(false)
+  const { busy, message, error, submit } = useSiteAction()
   const [copied, setCopied] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
   const [manualPrompt, setManualPrompt] = useState<string | null>(null)
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -32,34 +34,23 @@ export function SitePromptCopyButton({
   }, [manualPrompt])
 
   async function copyPrompt() {
-    if (busy) return
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/flags/${flagId}/fix`, {
+    await submit(async () => {
+      const body = await executeSiteAction(`/api/sites/${siteId}/flags/${flagId}/fix`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'copy' }),
-      })
-      const body = await response.json().catch(() => ({})) as { prompt?: string; message?: string; error?: string }
-      if (!response.ok || !body.prompt) {
-        setMessage(body.message ?? body.error ?? SITE_BOARD_COPY.copyPromptFailed)
-        return
-      }
+      }, 'fixPrompt')
       try {
         await navigator.clipboard.writeText(body.prompt)
         setCopied(true)
         showFixPromptCopied()
-        setMessage(SITE_BOARD_COPY.copyPromptCopied)
         window.setTimeout(() => setCopied(false), 2000)
+        return true
       } catch {
         setManualPrompt(body.prompt)
+        return false
       }
-    } catch {
-      setMessage(SITE_BOARD_COPY.copyPromptFailed)
-    } finally {
-      setBusy(false)
-    }
+    }, copied => copied ? SITE_BOARD_COPY.copyPromptCopied : null)
   }
 
   return (
@@ -69,7 +60,7 @@ export function SitePromptCopyButton({
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           {iconOnly ? null : copied ? SITE_BOARD_COPY.copyPromptCopied : SITE_BOARD_COPY.copyPrompt}
         </Button>
-        {message && !copied ? <span className={iconOnly ? 'sr-only' : 'mt-2 text-sm text-muted-foreground'} role="status" aria-live="polite">{message}</span> : null}
+        {!copied ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
       </span>
       <Dialog open={Boolean(manualPrompt)} onOpenChange={(open) => { if (!open) setManualPrompt(null) }}>
         <DialogContent>

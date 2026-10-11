@@ -89,12 +89,19 @@ const PRO = PLANS[1]
 
 export const PRICING_COMPARISON = {
   includedLabel: 'What is included',
+  caption: 'FixFlags plan comparison',
   rows: [
     {
       feature: 'Price',
       free: '$0',
-      pro: `${PRO.price} per website`,
-      studio: 'Volume, per website',
+      pro: `${PRO.price} per website / month`,
+      studio: 'Quoted per website',
+    },
+    {
+      feature: 'Availability',
+      free: 'Available now',
+      pro: 'Join the waitlist',
+      studio: 'Join the waitlist',
     },
     {
       feature: 'Websites',
@@ -103,10 +110,22 @@ export const PRICING_COMPARISON = {
       studio: 'Many, quoted',
     },
     {
-      feature: 'Verification',
+      feature: 'Scheduled monitoring',
       free: 'Weekly',
       pro: 'Every day',
       studio: 'Quoted',
+    },
+    {
+      feature: 'Site board and coverage',
+      free: 'Included',
+      pro: 'Included',
+      studio: 'Included',
+    },
+    {
+      feature: 'Flags, evidence, and fix guidance',
+      free: 'Included',
+      pro: 'Included',
+      studio: 'Included',
     },
     {
       feature: 'Connections',
@@ -119,6 +138,18 @@ export const PRICING_COMPARISON = {
       free: 'Included',
       pro: 'Included',
       studio: 'Included',
+    },
+    {
+      feature: 'Flag and recovery emails',
+      free: 'Choose in Site settings',
+      pro: 'Choose in Site settings',
+      studio: 'Choose in Site settings',
+    },
+    {
+      feature: 'Proof export',
+      free: 'Included when signed in',
+      pro: 'Included when signed in',
+      studio: 'Included when signed in',
     },
   ],
 } as const
@@ -201,6 +232,11 @@ export const PRICING = {
   studioCta: 'Join the Studio waitlist',
   studioHref: '/waitlist/studio',
   compareTitle: 'Compare plans',
+  compareLabel: 'What you get',
+  compareBody: 'The same evidence and fix workflow on every plan. Choose how many websites you need looked after and how often they are checked.',
+  compareNote: 'Free is available today. Pro and Studio are on the waitlist, and we are not charging yet. Monitoring covers the pages and actions configured for your Site; a saved schedule does not mean every action has been verified.',
+  coverageLink: 'Understand monitoring coverage',
+  connectionsLink: 'See the included integrations',
   faqTitle: 'Pricing questions',
   upgradeSteps: 'Join the waitlist. We are not charging yet.',
   upgradeStepsLoggedIn: 'Join the waitlist. We are not charging yet.',

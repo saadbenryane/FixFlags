@@ -1,3 +1,4 @@
+import { executionWrite } from '@/lib/audit/execution-ownership'
 /**
  * Knowledge-graph persistence layer.
  *
@@ -62,7 +63,7 @@ async function upsertSite(
     )
   }
 
-  const site = await prisma.site.upsert({
+  const site = await executionWrite(tx => tx.site.upsert({
     where: { hostname },
     create: {
       hostname,
@@ -78,7 +79,7 @@ async function upsertSite(
       industryGuess:
         snapshot.industryGuess !== null ? snapshot.industryGuess : undefined,
     },
-  })
+  }))
 
   const pageIds: string[] = []
   for (const url of snapshot.pageUrls) {
@@ -86,7 +87,7 @@ async function upsertSite(
     const role =
       snapshot.pageRoles[url] ?? classifyPageRole(snapshot.pageUrls, url)
 
-    const page = await prisma.page.upsert({
+    const page = await executionWrite(tx => tx.page.upsert({
       where: {
         siteId_url: { siteId: site.id, url },
       },
@@ -101,16 +102,16 @@ async function upsertSite(
         lastSeenAt: new Date(),
         role,
       },
-    })
+    }))
     pageIds.push(page.id)
   }
 
   // Link the audit row to the site. Nullable per schema - existing audits
   // before this migration get filled by the backfill script.
-  await prisma.audit.update({
+  await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     data: { siteId: site.id },
-  })
+  }))
 
   // Link each AuditPage to its graph:Page by url match.
   const auditPages = await prisma.auditPage.findMany({
@@ -125,10 +126,10 @@ async function upsertSite(
       (await prisma.auditPage.findUnique({ where: { id: ap.id } }))?.pageId !==
         gid
     ) {
-      await prisma.auditPage.update({
+      await executionWrite(tx => tx.auditPage.update({
         where: { id: ap.id },
         data: { pageId: gid },
-      })
+      }))
     }
   }
 
@@ -149,11 +150,13 @@ async function upsertIssue(
     return null
   }
 
-  const issue = await prisma.issue.upsert({
-    where: { fingerprint: flag.fingerprint },
+  const fingerprint = flag.fingerprint
+  const checkId = flag.checkId
+  const issue = await executionWrite(tx => tx.issue.upsert({
+    where: { fingerprint },
     create: {
-      fingerprint: flag.fingerprint,
-      checkId: flag.checkId,
+      fingerprint,
+      checkId,
       rubric: flag.rubric,
       problemTemplate: flag.problem,
       fixTemplate: flag.fix,
@@ -161,17 +164,17 @@ async function upsertIssue(
     update: {
       lastSeenAt: new Date(),
     },
-  })
+  }))
 
   // One occurrence per flag. unique on flagId guards idempotency.
   try {
-    await prisma.issueOccurrence.create({
+    await executionWrite(tx => tx.issueOccurrence.create({
       data: {
         issueId: issue.id,
         siteId,
         flagId: flag.flagId,
       },
-    })
+    }))
   } catch (err: unknown) {
     // P2002 = unique violation on flagId: this flag already had an occurrence
     // recorded. That's the expected outcome on a re-run.
@@ -180,10 +183,10 @@ async function upsertIssue(
   }
 
   // Link the Flag row to the Issue for read-model joins.
-  await prisma.flag.update({
+  await executionWrite(tx => tx.flag.update({
     where: { id: flag.flagId },
     data: { issueId: issue.id },
-  })
+  }))
 
   return issue.id
 }
@@ -206,11 +209,11 @@ async function upsertFixPrompts(
 
   for (const [tool, template] of candidates) {
     if (!template) continue
-    await prisma.fixPrompt.upsert({
+    await executionWrite(tx => tx.fixPrompt.upsert({
       where: { issueId_tool: { issueId, tool } },
       create: { issueId, tool, template, usageCount: 1 },
       update: { template }, // refresh wording if upstream changed
-    })
+    }))
   }
 }
 
@@ -225,23 +228,23 @@ export async function reconcileSiteTechnologies(
   reconcileCurrent: boolean
 ): Promise<void> {
   if (reconcileCurrent) {
-    await prisma.siteTechnology.updateMany({
+    await executionWrite(tx => tx.siteTechnology.updateMany({
       where: { siteId, isCurrent: true },
       data: { isCurrent: false },
-    })
+    }))
   }
 
   for (const tech of detectedTech) {
-    const technology = await prisma.technology.upsert({
+    const technology = await executionWrite(tx => tx.technology.upsert({
       where: { name: tech.name },
       create: { name: tech.name, kind: tech.kind },
       update: {}, // name is unique, kind is fixed per tech
-    })
+    }))
 
     // Upsert the site-technology link with confidence.
     // Use upsert with P2002 catch for concurrent-audit safety.
     try {
-      await prisma.siteTechnology.upsert({
+      await executionWrite(tx => tx.siteTechnology.upsert({
         where: { siteId_technologyId: { siteId, technologyId: technology.id } },
         create: {
           siteId,
@@ -254,7 +257,7 @@ export async function reconcileSiteTechnologies(
           confidence: { set: tech.confidence },
           isCurrent: true,
         },
-      })
+      }))
     } catch (err: unknown) {
       // P2002 = race condition: another audit created the row between our check and write.
       const code = (err as { code?: string }).code

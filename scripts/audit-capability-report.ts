@@ -1,5 +1,6 @@
 import { AUDIT_CAPABILITIES, capabilitySummary } from '@/lib/audit/capability-matrix'
 import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
+import { ADVERTISED_COVERAGE_REGISTRY } from '@/lib/audit/advertised-coverage'
 
 function pad(value: string, width: number): string {
   return value.length >= width ? value : value + ' '.repeat(width - value.length)
@@ -10,6 +11,9 @@ function main() {
 
   console.log('FixFlags audit capability matrix\n')
   console.log(`Deterministic checks registered: ${CHECK_ID_COUNT}`)
+  console.log(`Homepage responsibilities mapped: ${ADVERTISED_COVERAGE_REGISTRY.size} (registration is not execution proof)`)
+  for (const item of ADVERTISED_COVERAGE_REGISTRY.values()) if (item.extent === 'partial')
+    console.log(`  Incomplete: ${item.id}. ${item.limitation}`)
   console.log(
     `Capabilities: ${summary.totalCapabilities} (${summary.byStatus.live} live, ${summary.byStatus.partial} partial, ${summary.byStatus.planned} planned)\n`
   )

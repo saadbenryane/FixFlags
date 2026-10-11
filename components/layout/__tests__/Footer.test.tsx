@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Footer } from '@/components/layout/footer'
 import { BRAND } from '@/lib/marketing/copy'
+import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
 
 vi.mock('next/image', () => ({
   default: ({
@@ -28,6 +29,14 @@ const LEGACY_TAGLINE =
 const LEGACY_MADE_WITH = 'Built for businesses that depend on their website.'
 
 describe('Footer', () => {
+  it('renders every configured destination, including the blog, without retired installation links', () => {
+    render(<Footer />)
+    for (const link of [...FOOTER_COLUMNS.product, ...FOOTER_COLUMNS.resources, ...FOOTER_COLUMNS.company, ...LEGAL_LINKS]) {
+      expect(screen.getByRole('link', { name: link.label })).toHaveAttribute('href', link.href)
+    }
+    expect(screen.queryByRole('link', { name: 'Install' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Shopify' })).not.toBeInTheDocument()
+  })
   it('renders the canonical footer description and category', () => {
     render(<Footer />)
 

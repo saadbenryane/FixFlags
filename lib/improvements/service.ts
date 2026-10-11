@@ -1,3 +1,4 @@
+import { executionWrite, executionTransaction } from '@/lib/audit/execution-ownership'
 import type {
   ImprovementOccurrenceKind,
   ImprovementStatus,
@@ -6,6 +7,8 @@ import type {
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
+import { searchVerifierSchema } from '@/lib/audit/search/contracts'
+import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import { flagFingerprint } from '@/lib/audit/flag-identity'
 import { parseProductContract } from '@/lib/audit/product-contract'
@@ -87,6 +90,7 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
     },
   })
   if (!audit?.userId || !audit.projectId) return
+  const projectId = audit.projectId
 
   const flags = audit.flags as ImprovementFlag[]
   const customerFlags = flags.filter(isCustomerFlag)
@@ -99,10 +103,10 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
     const fingerprint = improvementFingerprint(flag)
     let improvement = improvementsByFingerprint.get(fingerprint)
     if (!improvement) {
-      improvement = await prisma.improvement.upsert({
-        where: { projectId_fingerprint: { projectId: audit.projectId, fingerprint } },
+      improvement = await executionWrite(tx => tx.improvement.upsert({
+        where: { projectId_fingerprint: { projectId, fingerprint } },
         create: {
-          projectId: audit.projectId,
+          projectId,
           fingerprint,
           title: flag.problem,
           judgment: flag.whyItMatters || flag.problem,
@@ -123,21 +127,21 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
             flag.verificationRule || 'Recovery criteria have not been established.',
           priority: uniquePriority,
         },
-      })
+      }))
       improvementsByFingerprint.set(fingerprint, improvement)
       uniquePriority += 1
     }
     if (improvement.status === 'VERIFIED') {
-      await prisma.improvement.update({
+      await executionWrite(tx => tx.improvement.update({
         where: { id: improvement.id },
         data: { status: 'PROPOSED' },
-      })
+      }))
     }
     const observedFlags = flags.filter(
       (candidate) => improvementFingerprint(candidate) === fingerprint
     )
     for (const observedFlag of observedFlags) {
-      const occurrence = await prisma.improvementOccurrence.upsert({
+      const occurrence = await executionWrite(tx => tx.improvementOccurrence.upsert({
         where: { flagId: observedFlag.id },
         create: {
           improvementId: improvement.id,
@@ -150,7 +154,7 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
           auditId,
           kind: occurrenceKind(observedFlag.status),
         },
-      })
+      }))
       await appendImprovementCycleEvent({
         projectId: audit.projectId,
         improvementId: improvement.id,
@@ -190,7 +194,7 @@ export async function createImprovementAttempt(input: {
   })
   if (!improvement) throw new Error('Improvement not found for Product')
 
-  return prisma.$transaction(async (tx) => {
+  return executionTransaction(async (tx) => {
     // Serialize duplicate Ready-to-verify clicks for the same Improvement and
     // source Review. The open-attempt lookup and create must be one boundary,
     // otherwise concurrent web/MCP/CLI requests can both observe no attempt.
@@ -285,17 +289,18 @@ export async function recordFlagImprovementAttempt(input: {
     },
   })
   if (!flag?.audit.projectId) throw new Error('Flag is not attached to an owned Product')
+  const projectId = flag.audit.projectId
 
   let improvementId = flag.improvementOccurrence?.improvementId
   if (!improvementId) {
     const contract = parseProductContract(flag.audit.productContract)
     const fingerprint = improvementFingerprint(flag)
-    const improvement = await prisma.improvement.upsert({
+    const improvement = await executionWrite(tx => tx.improvement.upsert({
       where: {
-        projectId_fingerprint: { projectId: flag.audit.projectId, fingerprint },
+        projectId_fingerprint: { projectId, fingerprint },
       },
       create: {
-        projectId: flag.audit.projectId,
+        projectId,
         fingerprint,
         title: flag.problem,
         judgment: flag.whyItMatters,
@@ -311,18 +316,19 @@ export async function recordFlagImprovementAttempt(input: {
       },
       update: {},
       select: { id: true },
-    })
+    }))
     improvementId = improvement.id
-    const occurrence = await prisma.improvementOccurrence.upsert({
+    const occurrenceImprovementId = improvement.id
+    const occurrence = await executionWrite(tx => tx.improvementOccurrence.upsert({
       where: { flagId: flag.id },
       create: {
-        improvementId,
+        improvementId: occurrenceImprovementId,
         auditId: flag.audit.id,
         flagId: flag.id,
         kind: 'OBSERVED',
       },
       update: {},
-    })
+    }))
     await appendImprovementCycleEvent({
       projectId: flag.audit.projectId,
       improvementId,
@@ -338,7 +344,7 @@ export async function recordFlagImprovementAttempt(input: {
 
   if (input.action === 'REJECT') {
     if (!input.rejectionReason) throw new Error('Choose why this recommendation was rejected')
-    await prisma.$transaction(async (tx) => {
+    await executionTransaction(async (tx) => {
       await tx.improvement.update({
         where: { id: improvementId },
         data: {
@@ -400,7 +406,7 @@ export async function recordFlagImprovementAttempt(input: {
   }
 
   if (input.action === 'ACCEPT') {
-    await prisma.$transaction(async (tx) => {
+    await executionTransaction(async (tx) => {
       await tx.improvement.updateMany({
         where: { id: improvementId, acceptedAt: null },
         data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
@@ -486,10 +492,10 @@ export async function recordOwnerFlagFeedbackDecision(input: {
   if (!projectId) {
     const project = await ensureProductProject(input.userId, flag.audit.url)
     projectId = project.id
-    await prisma.audit.update({
+    await executionWrite(tx => tx.audit.update({
       where: { id: flag.audit.id },
       data: { projectId },
-    })
+    }))
   }
 
   const note = input.note?.trim()
@@ -514,10 +520,10 @@ export async function recordOwnerFlagFeedbackDecision(input: {
         rejectionStatus: input.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED',
       }, { clock })
 
-  await prisma.flag.update({
+  await executionWrite(tx => tx.flag.update({
     where: { id: input.flagId },
     data: { status: 'IGNORED' },
-  })
+  }))
 
   if (input.reason === 'intentional' || input.reason === 'low_priority') {
     const contract = parseProductContract(flag.audit.productContract)
@@ -630,6 +636,7 @@ export async function reconcileImprovementVerification(input: {
             scopeKey: true,
             status: true,
             evidenceReference: true,
+            detail: true,
           },
         },
       },
@@ -678,6 +685,7 @@ export async function reconcileImprovementVerification(input: {
     if (target && target.attemptId !== attempt.id) continue
     const current = currentByKey.get(improvementFingerprint(occurrence.flag))
     let coverageDecision = assessVerificationCoverage({
+      auditId: verificationAudit.id,
       status: verificationAudit.status,
       reportCompleteness: verificationAudit.reportCompleteness,
       evidenceCoverage: verificationAudit.evidenceCoverage,
@@ -711,9 +719,19 @@ export async function reconcileImprovementVerification(input: {
       ? 'The original AI observation has no stable evidence fingerprint for comparison.'
       : coverageDecision.reason
     const targetedState = target?.kind === 'OUTCOME' ? targetedRun?.assessments.find(item => item.outcomeId === target.outcomeId)?.state : null
+    const searchExecution = verificationAudit.verifierExecutions.find(execution =>
+      execution.targetKey === coverageDecision.coverage.targetKey && execution.scopeKey === coverageDecision.coverage.scopeKey)
+    const search = searchVerifierSchema.safeParse(searchExecution?.detail)
+    const exactCheck = checkVerifierSchema.safeParse(searchExecution?.detail)
+    const searchVerdict = search.success && search.data.auditId === input.verificationAuditId ? search.data.verdict
+      : exactCheck.success && exactCheck.data.auditId === input.verificationAuditId ? exactCheck.data.verdict : null
     const outcome: VerificationOutcome = !comparable
       ? 'INCONCLUSIVE'
       : targetedState === 'FLAG'
+        ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
+      : searchVerdict === 'passed'
+        ? 'IMPROVED'
+      : searchVerdict === 'failed'
         ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
       : !current
         ? 'IMPROVED'
@@ -728,7 +746,7 @@ export async function reconcileImprovementVerification(input: {
       afterFlagId: current?.id ?? null,
     }
 
-    await prisma.$transaction(async (tx) => {
+    await executionTransaction(async (tx) => {
       await tx.improvementAttempt.update({
         where: { id: attempt.id },
         data: {

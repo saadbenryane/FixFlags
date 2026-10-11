@@ -25,7 +25,11 @@ function createRedis(options: RedisOptions): Redis {
 /** Web/API connection. Lazy so the process can boot before Redis is reachable. */
 export function createQueueRedis(): Redis {
   return createRedis({
-    maxRetriesPerRequest: null,
+    // Queue producers must return control on an outage. Durable Audit/task
+    // dispatch intent, not an unbounded Redis promise, owns the retry window.
+    maxRetriesPerRequest: 1,
+    connectTimeout: 3000,
+    commandTimeout: 5000,
     enableReadyCheck: false,
     lazyConnect: true,
   })

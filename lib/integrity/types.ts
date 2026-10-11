@@ -14,6 +14,7 @@ export type PathReasonCode =
   | 'timeout'
   | 'flaky'
   | 'probe_error'
+  | 'safety_boundary'
 
 export type PathStepLabel = 'landing' | 'variant' | 'add_to_cart' | 'cart' | 'checkout' | 'failure' | `step_${number}`
 
@@ -35,6 +36,7 @@ export interface WalkOutcome {
   timedOut: boolean
   pageUnavailable: boolean
   failedStep: PathStepLabel | null
+  safetyRefused?: boolean
 }
 
 export interface PathProbeAttempt {

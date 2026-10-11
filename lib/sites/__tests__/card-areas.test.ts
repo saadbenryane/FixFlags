@@ -6,7 +6,28 @@ import { siteCardHealth } from '@/lib/sites/site-health'
 import { buildBoardCards } from '@/lib/sites/board-card'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
+function observedReceipt(module: string, assertions: string[]) {
+  return { kind: 'site-module-check', version: 1, module, pageUrl: 'https://example.com/', passed: true, applicable: true,
+    assertions: assertions.map(key => ({ key, name: key, expected: 'Fixture assertion is satisfied',
+      observed: 'Fixture input establishes this assertion', passed: true })),
+    execution: { auditId: 'current', taskId: 'task-' + module, checkVersion: 1, source: module === 'accessibility' ? 'axe' : 'original-html',
+      collectedAt: '2026-10-11T10:00:00.000Z' } }
+}
+
 describe('site card packaging', () => {
+  it('does not certify a category from completion-only receipts', () => {
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: new Date(), now: new Date(), evidenceCoverage: {}, flags: [],
+      verifierExecutions: ['security', 'trust', 'accessibility', 'measurement'].map(module => ({ targetKey: 'module:' + module, status: 'COMPLETED' })) })
+    for (const area of ['security', 'accessibility', 'tracking']) expect(facts.find(fact => fact.area === area)?.state).toBe('unknown')
+  })
+
+  it('publishes a confirmed Flag and a scoped assertion while unrelated tasks are running', () => {
+    const facts = buildCoverageFacts({ auditStatus: 'CHECKING', completedAt: null, now: new Date(), evidenceCoverage: {},
+      flags: [{ checkId: 'title-missing', rubric: 'REACH', severity: 'CRITICAL', impactTag: 'SEO' }],
+      verifierExecutions: [{ targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) }] })
+    expect(facts.find(fact => fact.area === 'search')).toMatchObject({ state: 'problem', openFlagCount: 1 })
+    expect(facts.find(fact => fact.area === 'tracking')).toMatchObject({ state: 'healthy', label: 'Analytics markup detected', checkedAt: '2026-10-11T10:00:00.000Z' })
+  })
   it('retains unrelated dated coverage after a completed scoped run', () => {
     const completedAt = new Date('2026-10-09T12:00:00Z')
     const now = new Date('2026-10-10T12:00:00Z')
@@ -172,8 +193,8 @@ describe('site card packaging', () => {
     const conversion = facts.find((fact) => fact.area === 'conversion')
     expect(conversion).toMatchObject({
       state: 'healthy',
-      label: 'Journey completed',
-      detail: 'Latest browser journey reached its expected end',
+      label: 'Public journey exercised',
+      detail: 'Recorded steps cover this public journey, not every visitor action',
     })
     expect(conversion?.detail).not.toContain('Score')
   })
@@ -236,7 +257,7 @@ describe('site card packaging', () => {
       now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true, metadata: true },
       verifierExecutions: [
-        { targetKey: 'module:accessibility', status: 'COMPLETED' },
+        { targetKey: 'module:accessibility', status: 'COMPLETED', detail: observedReceipt('accessibility', ['automated-accessibility']) },
       ],
       flags: [],
     })
@@ -248,8 +269,8 @@ describe('site card packaging', () => {
     })
     expect(facts.find((f) => f.area === 'accessibility')).toMatchObject({
       state: 'healthy',
-      label: 'Accessibility tested',
-      detail: 'Automated accessibility tests completed',
+      label: 'No axe violations recorded',
+      detail: 'Automated rules checked the top-level page; manual accessibility was not evaluated',
       evidenced: true,
     })
 
@@ -269,7 +290,7 @@ describe('site card packaging', () => {
     })
   })
 
-  it('evidences security and tracking only from completed module checks', () => {
+  it('evidences security and tracking from recorded assertions, never module completion alone', () => {
     const base = {
       auditStatus: 'COMPLETED' as const,
       completedAt: new Date('2026-09-08T12:00:00Z'),
@@ -301,21 +322,21 @@ describe('site card packaging', () => {
       ...base,
       verifierExecutions: [
         { targetKey: 'module:trust', status: 'COMPLETED' },
-        { targetKey: 'module:security', status: 'COMPLETED' },
-        { targetKey: 'module:measurement', status: 'COMPLETED' },
+        { targetKey: 'module:security', status: 'COMPLETED', detail: observedReceipt('security', ['https', 'image-transport']) },
+        { targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) },
       ],
     })
     expect(withModules.find((fact) => fact.area === 'security')).toMatchObject({
       state: 'healthy',
       evidenced: true,
-      label: 'Security checked',
-      detail: 'HTTPS and mixed content checks completed',
+      label: 'HTTPS observed',
+      detail: 'HTTPS and captured image transport were checked; this is not a security certification',
     })
     expect(withModules.find((fact) => fact.area === 'tracking')).toMatchObject({
       state: 'healthy',
       evidenced: true,
-      label: 'Measurement checked',
-      detail: 'Public measurement checks completed',
+      label: 'Analytics markup detected',
+      detail: 'An analytics snippet appeared in captured HTML; event delivery was not verified',
     })
     const stale = siteCardHealth({
       inFlight: false,

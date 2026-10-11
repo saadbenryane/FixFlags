@@ -179,28 +179,20 @@ export function validateWorkerEnv(): void {
     const message =
       '[env] No OPENAI_API_KEY or ANTHROPIC_API_KEY set. Triage and prescription ' +
       'are disabled; audits will complete with deterministic checks only.'
-    if (process.env.NODE_ENV === 'production' && !localDegraded) {
-      throw new Error(message)
-    } else {
-      logger.warn(message)
-    }
+    logger.warn(message)
   }
   if (!process.env.PAGESPEED_API_KEY) {
     const message =
       '[env] No PAGESPEED_API_KEY set. PageSpeed calls use IP-based quota and ' +
-      'will likely hit rate limits (429), causing Experience flags to be thinner ' +
-      'and rubric scores to be penalized. Set PAGESPEED_API_KEY for reliable results.'
-    if (process.env.NODE_ENV === 'production' && !localDegraded) {
-      throw new Error(message)
-    } else {
-      logger.warn(message)
-    }
+      'may encounter rate limits. Missing measurements remain unknown; other checks continue. ' +
+      'Set PAGESPEED_API_KEY for reliable provider access.'
+    logger.warn(message)
   }
   if (process.env.NODE_ENV === 'production' && !localDegraded) {
     if (!isProdStorageConfigured()) {
-      throw new Error(
+      logger.warn(
         '[env] R2 screenshot storage is NOT configured in production ' +
-          `(missing: ${missingStorageVars().join(', ')}).`
+          `(missing: ${missingStorageVars().join(', ')}). Capture storage is unavailable; other checks continue.`
       )
     }
   } else {
@@ -233,7 +225,7 @@ export function validateProductionEnv(): void {
   validateAuthEnv()
   const missing = missingProductionLaunchVars()
   if (missing.length > 0) {
-    throw new Error(
+    logger.warn(
       `[env] Production launch configuration is incomplete. Missing: ${missing.join(', ')}.`
     )
   }

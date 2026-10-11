@@ -20,7 +20,8 @@ supersedes: []
 ```bash
 npm install
 cp .env.example .env.local
-# Edit .env.local: at minimum set OPENAI_API_KEY or ANTHROPIC_API_KEY and BETTER_AUTH_SECRET
+# Edit .env.local: configure database, Redis, auth secret and local application URLs
+# Set real provider keys to exercise AI/PageSpeed; their absence must stay visible
 docker compose up -d
 npm run setup          # docker up + generate + migrate + seed
 npm run dev            # Next.js + one dedicated worker
@@ -30,7 +31,7 @@ Open http://localhost:3000, enter a public URL, wait ~60s for results.
 
 ## Environment variables
 
-Required for dev: `DATABASE_URL`, `REDIS_URL`, either `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (`http://localhost:3000`), `NEXT_PUBLIC_APP_URL` (`http://localhost:3000`).
+Required for dev: `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (`http://localhost:3000`), `NEXT_PUBLIC_APP_URL` (`http://localhost:3000`). AI explanation needs a usable provider key; independent deterministic execution does not. Doctor reports missing capabilities as limitations, not a release-ready result. Production readiness and credentialed release proof still require every shipped capability.
 
 See `.env.example` for full list.
 

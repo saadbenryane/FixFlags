@@ -44,7 +44,8 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://fixflags.com',
     tier: 'gold',
     maxImportantFalseBlockers: 0,
-    expectedTop3: ['cookie-consent-absent', 'no-structured-data', 'description-too-long'],
+    // Approved Search correction: absent optional markup is not a universal failure.
+    expectedTop3: ['cookie-consent-absent', 'description-too-long'],
     knownFalsePositives: ['form-missing-validation'],
     expectedPresent: ['cookie-consent-absent', 'security-headers-missing'],
   },
@@ -53,7 +54,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://nextjs.org',
     tier: 'gold',
     maxImportantFalseBlockers: 0,
-    expectedTop3: ['canonical-missing', 'measurement-ga-gtm-posthog-missing', 'no-structured-data'],
+    expectedTop3: ['canonical-missing', 'measurement-ga-gtm-posthog-missing'],
     knownFalsePositives: [
       'template-default-copy',
       'placeholder-copy-detected',
@@ -84,7 +85,6 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     expectedTop3: [
       'trust-no-authority-signals',
       'measurement-ga-gtm-posthog-missing',
-      'no-structured-data',
     ],
     knownFalsePositives: ['messaging-weak-value-prop', 'links-no-text', 'buttons-no-text'],
     expectedPresent: ['measurement-ga-gtm-posthog-missing', 'trust-no-authority-signals'],
@@ -151,7 +151,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     maxImportantFalseBlockers: 99,
     expectedTop3: [],
     knownFalsePositives: [],
-    expectedPresent: ['no-structured-data', 'cookie-consent-absent'],
+    expectedPresent: ['cookie-consent-absent'],
   },
   {
     file: 'v0-dev.html',
@@ -160,7 +160,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     maxImportantFalseBlockers: 99,
     expectedTop3: [],
     knownFalsePositives: [],
-    expectedPresent: ['no-structured-data', 'measurement-ga-gtm-posthog-missing'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing'],
   },
   {
     file: 'replit-com.html',

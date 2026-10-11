@@ -50,7 +50,7 @@ describe('Home notice for a Site that is not watched', () => {
     // Auto-enabling Watch would send email nobody asked for. The notice is a
     // statement and a link, and the board must not grow its own control.
     const shell = readFileSync(resolve(root, 'components/sites/SiteShell.tsx'), 'utf8')
-    expect(shell).toContain('href={`/sites/${siteId}/settings#watch`}')
+    expect(shell).toContain('href={`/sites/${siteId}?view=monitoring#monitoring`}')
     // Nothing in the scan path may switch Watch on as a side effect.
     const createAudit = readFileSync(resolve(root, 'lib/audit/create-audit.ts'), 'utf8')
     expect(createAudit).not.toMatch(/watchInterval\s*:/)

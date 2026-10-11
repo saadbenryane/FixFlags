@@ -1,164 +1,61 @@
-import { PageMetadata } from '../metadata'
-import { PageSpeedResult } from '../pagespeed'
-import { runMetadataChecks, runOgImageUrlCheck } from './metadata-checks'
-import { runPerformanceChecks } from './performance'
-import { runAccessibilityChecks, type AxeViolation } from './accessibility'
-import { runSeoChecks } from './seo'
-import { runTrustChecks } from './trust'
-import { runMobileChecks } from './mobile'
-import { runContentChecks } from './content'
-import { runSlopChecks } from './slop'
-import { runLayoutChecks } from './layout'
-import { runInteractionChecks } from './interaction'
-import { runMeasurementChecks } from './measurement'
-import { runSecurityBasicsChecks } from './security'
-import { runSecurityHeaderChecks } from './security-headers'
-import { runVisualPolishChecks } from './visual-polish'
-import { runCtaFocusChecks } from './cta-focus'
-import { runAuthCheckoutChecks } from './auth-checkout'
-import { runMessagingClarityChecks } from './messaging-clarity'
-import { runConversionFrictionChecks } from './conversion-friction'
-import { runTrustPsychologyChecks } from './trust-psychology'
-import { runVisualHierarchyChecks } from './visual-hierarchy'
-import { runMobileUXQualityChecks } from './mobile-ux-quality'
-import { logger } from '@/lib/logger'
+import type { PageMetadata } from '../metadata'
+import type { PageSpeedResult } from '../pagespeed'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import type { AxeViolation } from './accessibility'
+import type { CheckAssertion } from './assertion'
+import { PAGE_CHECKS, pageCheckApplicable, type PageCheckContext } from './catalog'
+import { logger } from '@/lib/logger'
 import { filterToolingPathFlags } from '../tooling-path-filter'
 import { detectPagePurpose } from '../page-purpose'
 import { suppressOverlappingFlags } from '../suppression'
-import type { CheckAssertion } from './assertion'
-import { CHECK_MODULES } from '../check-registry'
 import { recordCheckObservations } from './observations'
+import { SEARCH_HANDLED_CHECK_IDS } from '../search/inventory'
 
 export type { DeterministicFlag } from '../flag-types'
 export type { AxeViolation } from './accessibility'
-
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]
   failedModules: string[]
   executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; assertions?: CheckAssertion[] }>
 }
 
+/** Legacy adapter and progressive tasks invoke the same validated registrations. */
 export async function runAllChecks(
-  url: string,
-  metadata: PageMetadata,
-  desktop: PageSpeedResult | null,
-  mobile: PageSpeedResult | null,
-  consoleErrors: Array<{ type: string; text: string }>,
-  onAreaComplete?: (index: number) => void,
-  captureMetrics?: CaptureMetrics | null,
-  responseHeaders?: Record<string, string> | null,
-  axeViolations?: AxeViolation[],
+  url: string, metadata: PageMetadata, desktop: PageSpeedResult | null, mobile: PageSpeedResult | null,
+  consoleErrors: Array<{ type: string; text: string }>, onAreaComplete?: (index: number) => void,
+  captureMetrics?: CaptureMetrics | null, responseHeaders?: Record<string, string> | null,
+  axeViolations?: AxeViolation[], searchHandled = false, selectedModules?: readonly string[],
 ): Promise<RunAllChecksResult> {
-  const failedModules: string[] = []
-  const executions: RunAllChecksResult['executions'] = []
-  const metadataAssertions: CheckAssertion[] = []
-
-  // Detect the page's high-level purpose once. Conversion-friction, content,
-  // and trust-psychology checks gate on this so they do not fire on docs,
-  // articles, placeholder domains, or open-source project pages where a
-  // first-step or authority signal is not the job. Studio pages still get a
-  // first-step check, with a contact/booking prescription instead of SaaS trial.
+  if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
+  const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
   const purpose = detectPagePurpose(metadata, url)
-
-  // Group checks into independent buckets for parallel execution.
-  // Each bucket reads from different data sources, so they can run concurrently.
-  const bucketA: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
-    { name: 'metadata',        run: () => runMetadataChecks(metadata, assertion => metadataAssertions.push(assertion)) },
-    { name: 'og-image',        run: () => runOgImageUrlCheck(url, metadata) },
-    { name: 'accessibility',   run: () => runAccessibilityChecks(metadata, desktop ?? mobile, axeViolations) },
-    { name: 'seo',             run: () => runSeoChecks(url, metadata) },
-    { name: 'trust',           run: () => runTrustChecks(url, metadata, consoleErrors) },
-    { name: 'content',         run: () => runContentChecks(metadata, purpose) },
-    { name: 'slop',            run: () => runSlopChecks(metadata) },
-    { name: 'measurement',     run: () => runMeasurementChecks(metadata) },
-    { name: 'auth-checkout',   run: () => runAuthCheckoutChecks(url, metadata) },
-    { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
-    { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
-    { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },
-    { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata, purpose) },
-    { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata, purpose, url) },
-  ]
-
-  const bucketB: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
-    { name: 'performance',     run: () => runPerformanceChecks(desktop, mobile) },
-    { name: 'mobile',          run: () => runMobileChecks(mobile) },
-    { name: 'mobile-ux-quality', run: () => runMobileUXQualityChecks(metadata, captureMetrics ?? null, purpose.purpose) },
-  ]
-
-  const bucketC: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
-    { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null, purpose.purpose) },
-    { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
-    { name: 'cta-focus',       run: () => runCtaFocusChecks(captureMetrics ?? null) },
-    { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
-    { name: 'visual-hierarchy', run: () => runVisualHierarchyChecks(metadata, captureMetrics ?? null) },
-  ]
-
-  async function runBucket(checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }>): Promise<DeterministicFlag[]> {
-    const findings: DeterministicFlag[] = []
-    for (let i = 0; i < checkers.length; i++) {
-      const { name, run } = checkers[i]
-      try {
-        const results = await run()
-        const contract = CHECK_MODULES[name]
-        if (!contract) throw new Error(`Unregistered check module: ${name}`)
-        const applicable = contract.input === 'performance' ? Boolean(desktop || mobile)
-          : contract.input === 'mobile' ? Boolean(mobile)
-          : contract.input === 'headers' ? Boolean(responseHeaders)
-          : contract.input === 'accessibility' ? axeViolations !== undefined || Boolean(desktop || mobile)
-          : contract.input === 'browser' ? Boolean(captureMetrics) : true
-        const assertions = name === 'metadata' ? metadataAssertions : recordCheckObservations(name, {
-          url, metadata, headers: responseHeaders, desktop, mobile, axe: axeViolations,
-        })
-        executions.push({ module: name, passed: results.length === 0, applicable,
-          assertions })
-        findings.push(...results)
-      } catch (err) {
-        logger.error(`Check module "${name}" failed`, err)
-        failedModules.push(name)
-        executions.push({ module: name, passed: false, applicable: false, failed: true })
-      }
-    }
-    return findings
-  }
-
-  // Run all three buckets in parallel.
-  const [bucketAResults, bucketBResults, bucketCResults] = await Promise.allSettled([
-    runBucket(bucketA),
-    runBucket(bucketB),
-    runBucket(bucketC),
-  ])
-
-  const allFindings: DeterministicFlag[] = []
-  for (const result of [bucketAResults, bucketBResults, bucketCResults]) {
-    if (result.status === 'fulfilled') {
-      allFindings.push(...result.value)
-    } else {
-      logger.error('Check bucket failed', result.reason)
-    }
-  }
-
-  // Fire progress callbacks for all completed checkers.
-  let globalIndex = 0
-  for (const checker of [...bucketA, ...bucketB, ...bucketC]) {
-    void checker // progress callbacks are informational; buckets ran in parallel
-    onAreaComplete?.(globalIndex++)
-  }
-
-  // Deduplicate by checkId
+  const results = await Promise.all(selected.map(async (check, index) => {
+    const assertions: CheckAssertion[] = []
+    const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
+      metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => assertions.push(assertion) }
+    try {
+      const flags = await check.evaluate(input)
+      if (check.id !== 'metadata') assertions.push(...recordCheckObservations(check.id, {
+        url, metadata, desktop, mobile, headers: responseHeaders, axe: axeViolations,
+      }))
+      return { flags, execution: { module: check.id, passed: flags.length === 0,
+        applicable: pageCheckApplicable(check.definition, input), assertions } }
+    } catch (error) {
+      logger.error(`Check module "${check.id}" failed`, error)
+      return { flags: [] as DeterministicFlag[], execution: { module: check.id,
+        passed: false, applicable: false, failed: true, assertions: [] } }
+    } finally { onAreaComplete?.(index) }
+  }))
   const seen = new Set<string>()
-  const flags = allFindings.filter((f) => {
-    if (seen.has(f.checkId)) return false
-    seen.add(f.checkId)
-    return true
+  const flags = results.flatMap(result => result.flags).filter(flag => {
+    if (seen.has(flag.checkId)) return false
+    seen.add(flag.checkId); return true
   })
-
-  return {
-    flags: filterToolingPathFlags(suppressOverlappingFlags(flags)),
-    failedModules,
-    executions,
-  }
+  return { flags: filterToolingPathFlags(suppressOverlappingFlags(searchHandled
+      ? flags.filter(flag => !SEARCH_HANDLED_CHECK_IDS.has(flag.checkId)) : flags)),
+    failedModules: results.filter(result => result.execution.failed).map(result => result.execution.module),
+    executions: results.map(result => result.execution) }
 }
 
 export { SCAN_STEP_FAILURE_PENALTY, computeRubricScores } from './rubric-scoring'

@@ -23,7 +23,7 @@ describe('monitoring activation experience', () => {
     expect(screen.getByText(C.scope)).toBeVisible(); expect(screen.getByRole('button', { name: C.expand })).toBeVisible()
   })
   it('reports saved schedule separately from the first check', async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(response({ intervals: ['weekly'] })).mockResolvedValue(response({ ok: true, interval: 'weekly', firstCheck: 'unavailable' }))
+    const fetch = vi.fn().mockResolvedValueOnce(response({ intervals: ['weekly'] })).mockResolvedValue(response({ ok: true, interval: 'weekly', nextRunAt: '2026-10-12T09:00:00Z', outcomeId: 'availability-1', firstCheck: 'unavailable', reused: false }))
     vi.stubGlobal('fetch', fetch); show(); await open(); fireEvent.click(screen.getAllByRole('button', { name: C.turnOn }).at(-1)!)
     expect(await screen.findByText(C.checkFailed)).toBeVisible(); expect(screen.getByRole('button', { name: C.retry })).toBeVisible()
     expect(refresh).toHaveBeenCalled(); expect(screen.queryByText(C.pageClear)).not.toBeInTheDocument()
@@ -62,12 +62,12 @@ describe('monitoring activation experience', () => {
     const fetch = vi.fn().mockResolvedValueOnce(response({ intervals: ['weekly'] })).mockImplementation(() => new Promise(r => { resolve = r }))
     vi.stubGlobal('fetch', fetch); show(); await open(); fireEvent.click(screen.getAllByRole('button', { name: C.turnOn }).at(-1)!)
     const pending = screen.getByRole('button', { name: C.activating }); expect(pending).toBeDisabled(); fireEvent.click(pending)
-    expect(fetch).toHaveBeenCalledTimes(2); resolve(response({ ok: true, interval: 'weekly', firstCheck: 'requested' }))
+    expect(fetch).toHaveBeenCalledTimes(2); resolve(response({ ok: true, interval: 'weekly', nextRunAt: '2026-10-12T09:00:00Z', outcomeId: 'availability-1', firstCheck: 'requested', reused: false }))
     await waitFor(() => expect(screen.getByText(C.queued)).toBeVisible())
   })
   it('keeps a known server success when refreshing the overview fails', async () => {
     const failedRefresh = vi.fn().mockRejectedValue(new Error('offline'))
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ intervals: ['weekly'] })).mockResolvedValue(response({ ok: true, interval: 'weekly', firstCheck: 'requested' })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ intervals: ['weekly'] })).mockResolvedValue(response({ ok: true, interval: 'weekly', nextRunAt: '2026-10-12T09:00:00Z', outcomeId: 'availability-1', firstCheck: 'requested', reused: false })))
     render(<SiteMonitoringActivation siteId="site-1" view={fixture} owner checking={false} onRefresh={failedRefresh} onExploreCoverage={vi.fn()} />)
     await open(); fireEvent.click(screen.getAllByRole('button', { name: C.turnOn }).at(-1)!)
     expect(await screen.findByText(C.queued)).toBeVisible()

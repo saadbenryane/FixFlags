@@ -16,8 +16,9 @@ type IndexableMetadataInput = {
   openGraphType?: 'website' | 'article'
   openGraphTitle?: string
   publishedTime?: string
+  modifiedTime?: string
   robots?: Metadata['robots']
-  images?: readonly (typeof DEFAULT_OG_IMAGE | { url: string; width: number; height: number })[]
+  images?: readonly (typeof DEFAULT_OG_IMAGE | { url: string; width: number; height: number; alt?: string })[]
 }
 
 export function buildIndexableMetadata(input: IndexableMetadataInput): Metadata {
@@ -41,6 +42,7 @@ export function buildIndexableMetadata(input: IndexableMetadataInput): Metadata 
       siteName: BRAND.name,
       images: [...images],
       ...(input.publishedTime ? { publishedTime: input.publishedTime } : {}),
+      ...(input.modifiedTime ? { modifiedTime: input.modifiedTime } : {}),
     },
     twitter: {
       card: 'summary_large_image',
@@ -64,14 +66,20 @@ export function buildBlogPostMetadata(post: {
   title: string
   excerpt: string
   date: string
+  updatedAt?: string
+  publishedAt?: string
+  seoTitle?: string
+  cover?: { src: string; width: number; height: number; alt: string }
 }): Metadata {
   return buildIndexableMetadata({
-    title: `${post.title}: ${BRAND.name} Blog`,
+    title: post.seoTitle ?? `${post.title}: ${BRAND.name} Blog`,
     description: post.excerpt,
     path: `/blog/${post.slug}`,
     openGraphType: 'article',
     openGraphTitle: post.title,
-    publishedTime: post.date,
+    publishedTime: post.publishedAt ?? post.date,
+    modifiedTime: post.updatedAt,
+    images: post.cover ? [{ url: post.cover.src, width: post.cover.width, height: post.cover.height, alt: post.cover.alt }] : undefined,
   })
 }
 

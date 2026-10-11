@@ -57,7 +57,11 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     dependencies.logger.info('Worker starting')
 
     await dependencies.preflight()
-    await dependencies.warmBrowser()
+    await dependencies.warmBrowser().catch(error => {
+      dependencies.logger.warn('Browser unavailable; independent work and automatic browser recovery remain active', {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    })
     const browser = dependencies.readBrowserDiagnostics()
     await dependencies.touchHeartbeat({
       browserOk: browser.connected,

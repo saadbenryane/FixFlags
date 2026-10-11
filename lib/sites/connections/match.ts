@@ -54,6 +54,21 @@ export function searchPropertyMatches(siteUrl: string, host: string): boolean {
   }
 }
 
+/** Search Console URL-prefix properties are protocol-, host-, port-, and path-specific. */
+export function searchPropertyCoversUrl(property: string, pageUrl: string): boolean {
+  try {
+    const page = new URL(pageUrl)
+    if (!['http:', 'https:'].includes(page.protocol) || page.username || page.password) return false
+    if (property.startsWith('sc-domain:')) {
+      const domain = property.slice('sc-domain:'.length).toLowerCase().replace(/\.$/, '')
+      return Boolean(domain) && (page.hostname.toLowerCase() === domain || page.hostname.toLowerCase().endsWith(`.${domain}`))
+    }
+    const prefix = new URL(property)
+    return !prefix.username && !prefix.password && !prefix.search && !prefix.hash &&
+      prefix.origin === page.origin && page.pathname.startsWith(prefix.pathname)
+  } catch { return false }
+}
+
 export function chooseSearchProperty(properties: SearchProperty[], host: string): string | null {
   return properties.find((property) => searchPropertyMatches(property.siteUrl, host))?.siteUrl ?? null
 }

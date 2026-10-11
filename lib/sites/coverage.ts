@@ -2,6 +2,8 @@ import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
+import { readCheckReceipt } from '@/lib/audit/checks/receipt'
+import { CHECK_MODULES } from '@/lib/audit/check-registry'
 
 export type CoverageFact = {
   area: SiteCardArea
@@ -26,6 +28,7 @@ export function siteCoverageIsStale(checkedAt: Date | string | null, now: Date):
 }
 
 export type SiteFlagSeed = {
+  attentionPolicy?: unknown
   id: string
   sourceFlagId?: string | null
   confidence?: number | null
@@ -103,15 +106,20 @@ export const AREA_EVIDENCE_MODULE_KEYS = [
   'module:measurement',
 ] as const
 
-function completedModule(executions: Array<{ targetKey: string; status: string }>, key: string): boolean {
-  return executions.some((execution) => execution.targetKey === key && execution.status === 'COMPLETED')
+function passedAssertion(executions: Array<{ targetKey: string; status: string; detail?: unknown }>, module: string, assertion: string): boolean {
+  return executions.some(execution => {
+    if (execution.targetKey !== 'module:' + module || execution.status !== 'COMPLETED') return false
+    const receipt = readCheckReceipt(execution.detail)
+    return !receipt.legacy && 'applicable' in receipt && receipt.applicable &&
+      receipt.assertions.some(item => item.key === assertion && item.passed)
+  })
 }
 
 /** Areas that received concrete public evidence for this analysis. */
 export function evidencedAreasFromCoverage(
   evidenceCoverage: unknown,
   flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>,
-  verifierExecutions: Array<{ targetKey: string; status: string }> = []
+  verifierExecutions: Array<{ targetKey: string; status: string; detail?: unknown }> = []
 ): Set<SiteCardArea> {
   const evidenced = new Set<SiteCardArea>()
   const evidence = parseEvidence(evidenceCoverage)
@@ -120,14 +128,14 @@ export function evidencedAreasFromCoverage(
   if (evidence.metadata) evidenced.add('search')
   if (evidence.flowScan || evidence.journeyWalk) evidenced.add('conversion')
   if (evidence.desktopScreenshot && evidence.metadata) evidenced.add('uptime')
-  if (completedModule(verifierExecutions, 'module:accessibility')) evidenced.add('accessibility')
+  if (passedAssertion(verifierExecutions, 'accessibility', 'automated-accessibility')) evidenced.add('accessibility')
   if (
-    completedModule(verifierExecutions, 'module:trust') &&
-    completedModule(verifierExecutions, 'module:security')
+    passedAssertion(verifierExecutions, 'security', 'https') &&
+    passedAssertion(verifierExecutions, 'security', 'image-transport')
   ) {
     evidenced.add('security')
   }
-  if (completedModule(verifierExecutions, 'module:measurement')) evidenced.add('tracking')
+  if (passedAssertion(verifierExecutions, 'measurement', 'analytics-markup')) evidenced.add('tracking')
 
   for (const flag of flags) {
     evidenced.add(cardAreaForCheck(flag))
@@ -157,7 +165,7 @@ export function buildCoverageFacts(input: {
     impactTag: string | null
     status?: string | null
   }>
-  verifierExecutions?: Array<{ targetKey: string; status: string }>
+  verifierExecutions?: Array<{ targetKey: string; status: string; detail?: unknown }>
   /**
    * When re-checking, pass last completed facts so cards keep prior health
    * while activity shows checking.
@@ -201,6 +209,26 @@ export function buildCoverageFacts(input: {
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
 
+    // A committed failure is immediately useful even while unrelated work is
+    // still running. A previous healthy card cannot conceal this execution's Flag.
+    if (openFlagCount > 0) {
+      const important = input.flags.some(flag => cardAreaForCheck(flag) === area && ['CRITICAL', 'IMPORTANT'].includes(flag.severity))
+      return { area, state: (important ? 'problem' : 'attention') as CardHealthState,
+        label: openFlagCount === 1 ? '1 thing needs attention' : `${openFlagCount} things need attention`,
+        detail: null, checkedAt, openFlagCount, evidenced: true }
+    }
+
+    if (inFlight && evidenced.has(area) && ['security', 'tracking', 'accessibility'].includes(area)) {
+      const copy = healthyEvidenceCopy(area, evidence)
+      const collected = (input.verifierExecutions ?? []).flatMap(execution => {
+        if (CHECK_MODULES[execution.targetKey.replace(/^module:/, '')]?.area !== area) return []
+        const receipt = readCheckReceipt(execution.detail)
+        return !receipt.legacy && 'execution' in receipt && receipt.execution ? [receipt.execution.collectedAt] : []
+      }).sort().at(-1) ?? null
+      return { area, state: 'healthy' as const, label: copy.answer, detail: copy.detail,
+        checkedAt: collected, openFlagCount: 0, evidenced: true }
+    }
+
     if ((inFlight || input.auditStatus === 'FAILED') && input.retainLastKnownWhileChecking && prior) {
       if (prior.state === 'healthy' && siteCoverageIsStale(prior.checkedAt, input.now)) {
         return { ...prior, state: 'unknown' as const, label: SITE_BOARD_COPY.checkOutOfDate,
@@ -242,26 +270,6 @@ export function buildCoverageFacts(input: {
     const areaEvidenced = evidenced.has(area) || openFlagCount > 0
     const requiredCheckRan =
       area === 'conversion' ? journeyRan : area === 'performance' ? pageSpeedRan : true
-
-    if (openFlagCount > 0) {
-      const criticalish = input.flags.some(
-        (f) =>
-          cardAreaForCheck(f) === area &&
-          (f.severity === 'CRITICAL' || f.severity === 'IMPORTANT')
-      )
-      return {
-        area,
-        state: (criticalish ? 'problem' : 'attention') as CardHealthState,
-        label:
-          openFlagCount === 1
-            ? '1 thing needs attention'
-            : `${openFlagCount} things need attention`,
-        detail: null,
-        checkedAt,
-        openFlagCount,
-        evidenced: true,
-      }
-    }
 
     if (!areaEvidenced || !requiredCheckRan) {
       if (prior?.evidenced) {

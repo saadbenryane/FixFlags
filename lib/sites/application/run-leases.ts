@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 
 export const ACTIVE_RUN_STATUSES = ['QUEUED', 'RUNNING'] as const
 /**
@@ -32,7 +33,8 @@ export function activeRunWhere(projectId: string, now: Date): Prisma.RunRequestW
     status: { in: [...ACTIVE_RUN_STATUSES] },
     // Only a live lease counts as in flight. A NULL or expired lease is a run no
     // worker still owns, so it must not block the Site.
-    leaseUntil: { gt: now },
+    OR: [{ leaseUntil: { gt: now } }, { audit: { status: { notIn: ['COMPLETED', 'FAILED'] },
+      recoveryUntil: { gt: now }, executionSpec: { path: ['engine'], equals: 'progressive-v1' } } }],
   }
 }
 
@@ -75,8 +77,13 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
       try {
         const audit = await prisma.audit.findUnique({
           where: { id: run.auditId },
-          select: { status: true },
+          select: { status: true, executionSpec: true, recoveryUntil: true },
         })
+        if (audit && readExecutionSpec(audit.executionSpec)?.engine === 'progressive-v1' && !['COMPLETED', 'FAILED'].includes(audit.status)) {
+          // Physical execution, not this historical RunRequest lease, owns recovery.
+          // Keep admission serialized until its task graph has settled and reconciled.
+          continue
+        }
         auditStatus = audit?.status ?? null
       } catch (error) {
         // Falling through to failing the run is safe: it unblocks the Site, and

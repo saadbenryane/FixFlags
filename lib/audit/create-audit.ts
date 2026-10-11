@@ -1,5 +1,8 @@
 import { prisma } from '@/lib/db'
-import { getAuditQueue } from '@/lib/queue/client'
+import { dispatchAudit } from './dispatch'
+import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
+import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import type { SiteRecord } from '@/lib/sites/types'
 import { AuditStatus, Prisma } from '@prisma/client'
 import type { RecheckTrigger } from '@prisma/client'
 import {
@@ -75,6 +78,10 @@ export interface CreateAuditOptions {
   reuseActiveManual?: boolean
   /** Existing tenant-owned request attached atomically before the Audit job is enqueued. */
   runRequestId?: string
+  runRequestAdmission?: Prisma.RunRequestUncheckedCreateInput
+  executionSpec?: ExecutionSpec
+  /** Internal retry admission, authorized against this exact terminal Audit by its transport. */
+  retryParent?: boolean
 }
 
 export interface CreateAuditResult {
@@ -86,6 +93,11 @@ export interface CreateAuditResult {
   parentId: string | null
   /** Customer Site id (Project id or provisional p_…). */
   siteId: string
+}
+
+/** Internal control result for an identically admitted tenant command. */
+export class RunAdmissionReplay extends Error {
+  constructor(readonly runId: string, readonly auditId: string) { super('Run intent already admitted'); this.name = 'RunAdmissionReplay' }
 }
 
 /** Unsigned visitors reuse a public scan of the same URL instead of starting a duplicate job. */
@@ -134,28 +146,30 @@ export class ParentAuditError extends Error {
 
 async function assertParentAuditAllowed(
   parentId: string,
-  userId: string | null | undefined
-): Promise<void> {
+  userId: string | null | undefined,
+  retryParent = false,
+): Promise<{ id: string; userId: string | null; status: AuditStatus; reviewDepth: number; isPublic: boolean }> {
   const parent = await prisma.audit.findUnique({
     where: { id: parentId },
-    select: { id: true, userId: true, status: true, reviewDepth: true },
+    select: { id: true, userId: true, status: true, reviewDepth: true, isPublic: true },
   })
 
   if (!parent) {
     throw new ParentAuditError('Parent report not found', 404)
   }
-  if (parent.status !== 'COMPLETED') {
+  if (parent.status !== 'COMPLETED' && !(retryParent && parent.status === 'FAILED')) {
     throw new ParentAuditError('You can only continue from a completed report', 400)
   }
   if (!userId) {
     if (parent.userId !== null) {
       throw new ParentAuditError('Sign in to continue from an existing report', 401)
     }
-    return
+    return parent
   }
   if (parent.userId !== userId) {
     throw new ParentAuditError('You can only continue from your own reports', 403)
   }
+  return parent
 }
 
 async function resolveStoredReviewDepth(options: {
@@ -197,9 +211,7 @@ export async function createAndEnqueueAudit(
   // (web, CLI, MCP) shares one definition of "who is this anonymous visitor".
   const visitorKey = options.visitorKey ?? (isAnonTeaser ? await resolveVisitorKey() : '')
 
-  if (options.parentId) {
-    await assertParentAuditAllowed(options.parentId, userId)
-  }
+  const parentAudit = options.parentId ? await assertParentAuditAllowed(options.parentId, userId, options.retryParent) : null
 
   if (userId) {
     await refreshUserUsagePeriod(userId)
@@ -224,18 +236,12 @@ export async function createAndEnqueueAudit(
       inheritedScanAccessEncrypted = parent?.scanAccessEncrypted ?? null
     }
     if (!projectId) {
-      try {
-        const project = await ensureProductProject(userId, url)
-        projectId = project.id
-      } catch (error) {
-        if (error instanceof ProductLimitReached) {
-          throw new AuditLimitError('UPGRADE_REQUIRED', {
-            action: 'upgrade',
-            message: `Your plan supports ${error.limit} ${error.limit === 1 ? 'Product' : 'Products'}. Choose an existing Product or see the paid plans.`,
-          })
-        }
-        throw error
-      }
+      const existing = await prisma.project.findUnique({
+        where: { userId_canonicalHost: { userId, canonicalHost: new URL(url).hostname } },
+        select: { id: true, scanAccessEncrypted: true },
+      })
+      projectId = existing?.id ?? null
+      inheritedScanAccessEncrypted = existing?.scanAccessEncrypted ?? null
     }
     if (!inheritedScanAccessEncrypted && projectId) {
       const project = await prisma.project.findUnique({
@@ -252,12 +258,18 @@ export async function createAndEnqueueAudit(
       ? decryptScanAccess(inheritedScanAccessEncrypted)
       : null)
 
+  const executionSpec = options.executionSpec ?? await buildExecutionSpec({
+    projectId: projectId ?? '', targetUrl: url, environment: 'production', scope: 'SITE', outcomes: [],
+  })
+  if (executionSpec.targetUrl !== url) throw new ParentAuditError('Execution target does not match admission', 400)
+
   const data = {
     url,
     userId,
     // Anonymous analysis retains its public-report contract. Owned Site runs
     // and credentialed captures contain tenant evidence, not public shares.
-    isPublic: !options.runRequestId && !resolvedScanAccess,
+    isPublic: !options.runRequestId && !options.runRequestAdmission && !resolvedScanAccess &&
+      (!options.retryParent || parentAudit?.isPublic === true),
     projectId,
     scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,
     parentId: options.parentId ?? null,
@@ -273,6 +285,10 @@ export async function createAndEnqueueAudit(
     ...(options.parentId ? { monitoringMode: options.monitoringMode ?? ('FULL' as const) } : {}),
     status: 'QUEUED' as const,
     progress: PIPELINE_PROGRESS.QUEUED,
+    executionSpec: { ...executionSpec, reviewDepth } as Prisma.InputJsonValue,
+    recoveryUntil: new Date(Date.now() + 60 * 60_000),
+    dispatchState: 'PENDING' as const,
+    dispatchNextAt: new Date(Date.now() + Math.max(0, options.delayMs ?? 0)),
     includeAi,
     reviewDepth,
     journeyReviewIncluded: false,
@@ -295,6 +311,17 @@ export async function createAndEnqueueAudit(
     status: AuditStatus
     reused: boolean
     parentId: string | null
+    site: SiteRecord
+  }
+  async function packageAudit(tx: Prisma.TransactionClient, row: { id: string; status: AuditStatus; reused: boolean; parentId: string | null }) {
+    if (options.runRequestAdmission) {
+      if (!options.runRequestId || options.runRequestAdmission.id !== options.runRequestId || options.runRequestAdmission.projectId !== projectId)
+        throw new ParentAuditError('Run admission does not match this Site', 400)
+      if (row.reused) throw new ParentAuditError('This verification already has an execution. Inspect its recorded result.', 409)
+    }
+    const site = await ensureSiteForAudit({ url, auditId: row.id, userId, projectId, sessionKey: visitorKey || null }, tx)
+    if (!site.siteId?.trim()) throw new Error('Site board identity was empty after admission')
+    return { ...row, site }
   }
   const isWatchReview = options.recheckTrigger === 'WATCH'
   if (userId) {
@@ -303,6 +330,16 @@ export async function createAndEnqueueAudit(
       try {
         audit = await prisma.$transaction(
           async (tx) => {
+            if (!options.parentId || !projectId) {
+              try {
+                projectId = (await ensureProductProject(userId, url, tx)).id
+              } catch (error) {
+                if (error instanceof ProductLimitReached) throw new AuditLimitError('UPGRADE_REQUIRED', {
+                  action: 'upgrade', message: `Your plan supports ${error.limit} ${error.limit === 1 ? 'Product' : 'Products'}. Choose an existing Product or see the paid plans.`,
+                })
+                throw error
+              }
+            }
             const user = await rollUserUsagePeriod(tx, userId)
             if (!user) throw new Error('User not found')
 
@@ -330,7 +367,7 @@ export async function createAndEnqueueAudit(
               })
               if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
               if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
-                return { ...attempt.verificationAudit, reused: true }
+                return packageAudit(tx, { ...attempt.verificationAudit, reused: true })
               }
               if (attempt.verificationAudit?.status === 'FAILED') {
                 await tx.improvementAttempt.update({
@@ -346,6 +383,19 @@ export async function createAndEnqueueAudit(
                   hashtextextended(${`fixflags:manual-review:${projectId}`}, 0)
                 )
               `
+            }
+
+            if (options.runRequestAdmission) {
+              const intent = options.runRequestAdmission
+              const existing = await tx.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
+                projectId: intent.projectId, source: intent.source!, idempotencyKey: intent.idempotencyKey,
+              } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true } })
+              if (existing) {
+                if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== userId)
+                  throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
+                if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
+                throw new RunAdmissionReplay(existing.id, existing.auditId)
+              }
             }
 
             // A Product has one foreground/manual Review at a time. This lives
@@ -371,7 +421,7 @@ export async function createAndEnqueueAudit(
                   409,
                 )
               }
-              return { ...activeManualReview, reused: true }
+              return packageAudit(tx, { ...activeManualReview, reused: true })
             }
 
             if (
@@ -413,10 +463,16 @@ export async function createAndEnqueueAudit(
             }
 
             const created = await tx.audit.create({
-              data: { ...data, journeyReviewIncluded: true },
+              data: { ...data, projectId, journeyReviewIncluded: true },
               select: { id: true, parentId: true },
             })
-            if (options.runRequestId) {
+            if (options.runRequestAdmission) {
+              if (options.runRequestAdmission.projectId !== projectId || options.runRequestAdmission.requestedByUserId !== userId)
+                throw new ParentAuditError('Run admission does not match this Site owner', 400)
+              await tx.runRequest.create({ data: { ...options.runRequestAdmission, auditId: created.id,
+                executionSpec: data.executionSpec } })
+            }
+            if (options.runRequestId && !options.runRequestAdmission) {
               const attached = await tx.runRequest.updateMany({
                 where: {
                   id: options.runRequestId,
@@ -436,12 +492,9 @@ export async function createAndEnqueueAudit(
                 data: { verificationAuditId: created.id },
               })
             }
-            return {
-              id: created.id,
-              status: 'QUEUED' as const,
-              reused: false,
-              parentId: created.parentId,
-            }
+            return packageAudit(tx, {
+              id: created.id, status: 'QUEUED' as const, reused: false, parentId: created.parentId,
+            })
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
         )
@@ -481,11 +534,12 @@ export async function createAndEnqueueAudit(
         select: { primaryAuditId: true },
       })
       const ownedAuditId = ownedSite?.primaryAuditId
-      if (ownedAuditId) {
+      if (ownedAuditId && (!options.retryParent || ownedAuditId !== options.parentId)) {
         const owned = await tx.audit.findFirst({
           where: {
             id: ownedAuditId,
             isPublic: true,
+            ...(options.retryParent ? { parentId: options.parentId } : {}),
             AND: [
               { status: { not: 'FAILED' } },
               {
@@ -499,11 +553,11 @@ export async function createAndEnqueueAudit(
           select: { id: true, status: true, parentId: true },
         })
         if (owned) {
-          return { ...owned, reused: true }
+          return packageAudit(tx, { ...owned, reused: true })
         }
       }
 
-      const anonCheck = await checkAnonymousAuditAllowed()
+      const anonCheck = options.retryParent && options.skipUsageCount ? { allowed: true, code: undefined, action: undefined, error: undefined } : await checkAnonymousAuditAllowed()
       if (!anonCheck.allowed) {
         throw new AuditLimitError(anonCheck.code ?? 'AUTH_REQUIRED', {
           action: anonCheck.action ?? 'signup',
@@ -518,59 +572,15 @@ export async function createAndEnqueueAudit(
         data,
         select: { id: true, parentId: true },
       })
-      return {
-        id: created.id,
-        status: 'QUEUED' as const,
-        reused: false,
-        parentId: created.parentId,
-      }
+      return packageAudit(tx, {
+        id: created.id, status: 'QUEUED' as const, reused: false, parentId: created.parentId,
+      })
     })
   }
 
-  // Site packaging is part of the success contract for every check.
-  // Ensure before enqueue so a missing Site never leaves the client on report chrome.
-  let site
-  try {
-    site = await ensureSiteForAudit({
-      url,
-      auditId: audit.id,
-      userId,
-      projectId,
-      sessionKey: visitorKey || null,
-    })
-  } catch (error) {
-    if (!audit.reused) {
-      await prisma.audit.update({
-        where: { id: audit.id },
-        data: {
-          status: 'FAILED',
-          errorMsg: 'Failed to open Site board for this check',
-          failureCode: 'SITE_ENSURE_FAILED',
-          failureStage: 'create',
-        },
-      })
-    }
-    throw error instanceof Error
-      ? error
-      : new Error('Failed to open Site board for this check')
-  }
+  const site = audit.site
 
-  if (!site.siteId?.trim()) {
-    if (!audit.reused) {
-      await prisma.audit.update({
-        where: { id: audit.id },
-        data: {
-          status: 'FAILED',
-          errorMsg: 'Site board identity was empty after ensure',
-          failureCode: 'SITE_ENSURE_FAILED',
-          failureStage: 'create',
-        },
-      })
-    }
-    throw new Error('Site board identity was empty after ensure')
-  }
-
-  if (!userId && !options.parentId) {
+  if (!userId && (!options.parentId || options.retryParent)) {
     // Claimed before the reuse return: reuse is now scoped to this visitor's
     // own board, so the audit is always theirs to claim. Without this, a
     // returning visitor signed up to an account that did not contain their Site.
@@ -587,40 +597,7 @@ export async function createAndEnqueueAudit(
     }
   }
 
-  try {
-    await getAuditQueue().add(
-      'audit',
-      { auditId: audit.id },
-      {
-        jobId: audit.id,
-        attempts: 1,
-        delay: options.delayMs ?? 0,
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      }
-    )
-  } catch (error) {
-    await prisma.audit.update({
-      where: { id: audit.id },
-      data: {
-        status: 'FAILED',
-        errorMsg: 'Failed to enqueue audit job',
-        failureCode: 'QUEUE_ENQUEUE_FAILED',
-        failureStage: 'queue',
-      },
-    })
-    if (options.verificationAttemptId) {
-      await prisma.improvementAttempt.updateMany({
-        where: {
-          id: options.verificationAttemptId,
-          verificationAuditId: audit.id,
-          outcome: null,
-        },
-        data: { verificationAuditId: null },
-      })
-    }
-    throw error
-  }
+  await dispatchAudit(audit.id)
 
   await recordSiteLifecycleEvent({
     name: 'analyze_started',

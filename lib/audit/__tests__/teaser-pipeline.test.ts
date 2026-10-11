@@ -14,7 +14,8 @@ import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 
 const { prismaMock, queueAddMock, gates } = vi.hoisted(() => ({
   prismaMock: {
-    audit: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), count: vi.fn() },
+    audit: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), count: vi.fn(),
+      updateMany: vi.fn(async () => ({ count: 1 })), findUniqueOrThrow: vi.fn(async () => ({ dispatchAttempts: 1, createdAt: new Date() })) },
     user: { findUnique: vi.fn() },
     project: { findUnique: vi.fn() },
     // Anonymous reuse is resolved from the visitor's own board before any scan
