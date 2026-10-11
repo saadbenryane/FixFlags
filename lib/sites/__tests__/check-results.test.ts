@@ -28,4 +28,26 @@ describe('customer check results', () => {
     expect(projectCheckResults('audit-1', [{ ...receipt, status: 'NOT_APPLICABLE' }])[0].status).toBe('not_applicable')
     expect(projectCheckResults('audit-1', [{ ...receipt, detail: { passed: false } }], true)[0]).toMatchObject({ status: 'findings', historical: true, auditId: 'audit-1' })
   })
+  it('shows bounded keyboard evidence as incomplete while retaining an observed finding', () => {
+    const results = projectCheckResults('audit-1', [{ ...receipt, targetKey: 'module:keyboard', detail: {
+      kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: receipt.pageUrl,
+      applicable: true, passed: false, complete: false, limitation: 'The Tab step limit was reached. Unvisited controls remain unknown.',
+      assertions: [{ key: 'focus-styles', name: 'Focus styles', expected: 'Visible focus style', observed: 'Missing on Action', passed: false }],
+    } }])
+    expect(results.map(result => result.status)).toEqual(['findings', 'unknown'])
+    expect(results[1].limitation).toContain('Unvisited controls')
+    expect(results.some(result => result.status === 'passed')).toBe(false)
+  })
+  it('keeps partial popup observations visible with distinct identities and unknown outcomes', () => {
+    const assertion = { key: 'focus-styles', name: 'Options: focus styles', expected: 'Visible focus style', observed: 'Observed', passed: true, complete: true }
+    const results = projectCheckResults('audit-1', [{ ...receipt, targetKey: 'module:keyboard', detail: {
+      kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: receipt.pageUrl, applicable: true, passed: false, complete: false,
+      assertions: [{ ...assertion, context: 'menu:#one=>#popup' },
+        { ...assertion, context: 'menu:#one=>#popup', passed: false, complete: false },
+        { ...assertion, context: 'menu:#two=>#popup' }],
+    } }])
+    expect(results.map(result => result.status)).toEqual(['passed', 'unknown', 'passed', 'unknown'])
+    expect(new Set(results.map(result => result.id)).size).toBe(results.length)
+  })
+
 })

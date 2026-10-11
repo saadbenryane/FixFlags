@@ -96,12 +96,12 @@ export function PricingCTAButton({
       <Button
         className="w-full"
         variant={highlight ? 'default' : 'outline'}
-        disabled={loading || isCurrent}
+        disabled={loading || (isCurrent && isPaidPlan)}
         loading={loading}
         loadingLabel={PRICING.checkoutRedirecting}
         onClick={handleClick}
       >
-        {isCurrent
+        {isCurrent && isPaidPlan
           ? 'Current plan'
           : waitlistGated && isPaidPlan
             ? plan === 'TEAM'

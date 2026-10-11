@@ -198,7 +198,7 @@ export function MetaPreviewClient() {
         <div className="space-y-3">
           <h2 className="font-semibold">{copy.auditHeading}</h2>
           <p className="text-sm text-muted-foreground">{copy.auditSubhead}</p>
-          <AuditInput source="tool_page" idSuffix="-meta-preview" />
+          <AuditInput key={result?.url} source="tool_page" idSuffix="-meta-preview" initialUrl={result?.url} showLandingExtras={false} />
         </div>
       </Card>
     </>

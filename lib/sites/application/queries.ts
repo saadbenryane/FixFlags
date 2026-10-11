@@ -1,4 +1,5 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
+import type { Prisma } from '@prisma/client'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 import { prisma } from '@/lib/db'
@@ -6,10 +7,13 @@ import type { SiteCheckResult } from '@/lib/sites/check-results'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import { loadExecutionProgress, type ExecutionProgress } from './execution-progress'
 import { applySearchCardEvidence } from '@/lib/sites/search-view'
+import { readCheckReceipt } from '@/lib/audit/checks/receipt'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import {
   buildCoverageFacts,
   isAuditFinished,
   isAuditInFlight,
+  keyboardScopeComplete,
   type CoverageFact,
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
@@ -121,12 +125,12 @@ const auditSelect = {
   failureCode: true,
   evidenceCoverage: true,
   verifierExecutions: {
-    where: { targetKey: { startsWith: 'module:' } },
+    where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' }] },
     take: 1000,
-    select: { id: true, targetKey: true, status: true, pageUrl: true, detail: true, updatedAt: true },
+    select: { id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
   },
   url: true,
-} as const
+} satisfies Prisma.AuditSelect
 
 async function resolveLatestAudit(site: SiteRecord) {
   if (site.kind === 'project' && site.projectId) {
@@ -164,7 +168,7 @@ function factsFromAudit(
     status: string
     completedAt: Date | null
     evidenceCoverage: unknown
-    verifierExecutions?: Array<{ targetKey: string; status: string }>
+    verifierExecutions?: Array<{ targetKey: string; status: string; workKind?: string | null; pageUrl?: string | null; detail?: unknown }>
   } | null,
   flags: SiteFlagSeed[],
   now: Date,
@@ -318,6 +322,16 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       card.status = execution?.status === 'COMPLETED' ? 'Evidence recorded' : 'Waiting'
       card.answer = execution?.status === 'COMPLETED' ? `${card.name} checks completed` : `Waiting for ${card.name.toLowerCase()} evidence`
       card.detail = null
+    }
+    if (card.id === 'accessibility' && audit?.verifierExecutions.some(item => item.workKind === 'keyboard') && !keyboardScopeComplete(audit.verifierExecutions) &&
+      !card.evidenced && card.openFlagCount === 0) {
+      const copy = SITE_ACTION_COPY.execution.keyboard
+      const incomplete = audit.verifierExecutions.filter(item => item.targetKey === 'module:keyboard')
+        .map(item => readCheckReceipt(item.detail)).find(receipt => 'complete' in receipt && receipt.complete === false)
+      card.answer = inFlight ? copy.checking : copy.incomplete
+      card.status = inFlight ? SITE_ACTION_COPY.execution.states.RUNNING : copy.incomplete
+      card.detail = incomplete && 'limitation' in incomplete ? incomplete.limitation ?? copy.scope : inFlight ? copy.pending : copy.scope
+      card.activity = inFlight ? 'checking' : null
     }
     if (inFlight && card.id === 'site') {
       card.state = 'unknown'; card.status = 'Pages'; card.answer = pageCount > 0 ? `${pageCount} pages recorded` : 'Waiting for pages'; card.detail = null

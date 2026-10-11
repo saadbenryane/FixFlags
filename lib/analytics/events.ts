@@ -42,6 +42,7 @@ export type FunnelEvent =
   | 'remember_shown'
   | 'managed_subscription'
   | 'marketing_page_view'
+  | 'marketing_interaction'
   | 'waitlist_joined'
   | 'requested_demo'
   | 'shopify_install_started'
@@ -153,9 +154,16 @@ type EventParams = {
   managed_subscription: { action?: string }
   marketing_page_view: {
     page: string
+    journey_id?: string
     utm_source?: string
     utm_campaign?: string
     device?: string
+  }
+  marketing_interaction: {
+    page: string
+    journey_id?: string
+    action: 'navigate' | 'expand' | 'copy'
+    target: string
   }
   waitlist_joined: { plan: string; source?: string }
   requested_demo: { plan: string; source?: string }
@@ -286,6 +294,7 @@ export function trackLandingView() {
 export function trackMarketingPageView(page: string) {
   trackEvent('marketing_page_view', {
     page,
+    journey_id: readOrCreateAnalyticsJourneyId() ?? undefined,
     device: deviceClass(),
     ...utmParams(),
   })

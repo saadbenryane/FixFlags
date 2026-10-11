@@ -424,3 +424,9 @@ describe('incrementUsageOnCompleteForAudit', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 })
+
+// Retain post-beta subscription and quota contracts.
+vi.mock('@/lib/billing/beta-policy', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(),
+  OPEN_BETA_ACCESS: false, hasOpenBetaAccess: () => false,
+}))

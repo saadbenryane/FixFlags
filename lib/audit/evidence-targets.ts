@@ -19,6 +19,8 @@ export interface EvidenceTarget {
   selector?: string
   text?: string
   label: string
+  /** The opened component that produced this target, when applicable. */
+  context?: string
 }
 
 export interface HarvestedNode {
@@ -105,6 +107,7 @@ export function parseEvidenceTargets(value: unknown): EvidenceTarget[] {
       rect,
       selector: typeof raw.selector === 'string' ? raw.selector : undefined,
       label,
+      ...(typeof raw.context === 'string' ? { context: raw.context } : {}),
     }
     const text =
       typeof raw.text === 'string' && raw.text.trim()

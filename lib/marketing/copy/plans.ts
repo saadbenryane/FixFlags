@@ -1,271 +1,90 @@
-import { PRICING_COPY } from './terminology'
+import { OPEN_BETA_ACCESS, PLANNED_PAID_PRICING } from '@/lib/billing/beta-policy'
 import type { FaqEntry } from './faq'
 
-/**
- * Marketing plan display data. Defined here (not in lib/billing/plans) so the
- * copy barrel does not pull @prisma/client into 150+ client component bundles.
- * The billing module remains the source of truth for limits, pricing logic,
- * and Stripe price IDs. Display prices and frequencies derive from PRICING_COPY,
- * and a parity test locks those numbers to lib/billing/plans.ts display fields.
- */
-
-function proUpgradeCta(prefix = 'Join waitlist'): string {
-  return prefix
-}
+/** Planned offers are separate from persisted subscriber prices and allowances. */
+function proUpgradeCta(prefix = 'Join waitlist') { return prefix }
 
 export const PLANS = [
   {
-    name: 'Free',
-    plan: 'FREE' as const,
-    price: '$0',
-    period: '',
-    persona: 'One website',
-    outcome: 'Verified weekly',
-    audits: 'Verified weekly',
-    products: '1 website',
-    features: [
-      '1 website',
-      'Verified weekly',
-      'Flags with evidence and a next step',
-      'Verify after you publish',
-      'Connections included',
-    ],
-    cta: 'Analyze',
-    href: '/new',
-    highlight: false,
-    badge: '',
-    accountModel: 'One account for one website.',
+    name: 'Free', plan: 'FREE' as const, price: '$0', period: '',
+    persona: 'Explore the full product on one website',
+    outcome: 'All features included during open beta',
+    audits: 'No usage limits during beta', products: '1 website',
+    features: ['1 website', 'All supported features', 'Any supported monitoring schedule', 'No usage limits during beta'],
+    cta: 'Start free', href: '/new', highlight: true, badge: 'Open beta',
+    availability: 'Available now', priceLabel: 'During open beta',
+    accountModel: 'One website. Full access during open beta.',
   },
   {
-    name: 'Pro',
-    plan: 'BUILDER' as const,
-    price: PRICING_COPY.proPrice,
-    period: PRICING_COPY.proPeriod,
-    persona: 'Daily verification per website',
-    outcome: 'Verified every day, billed per website',
-    audits: 'Verified every day',
-    products: 'Pay per website',
-    features: [
-      'Billed per website',
-      'Verified every day',
-      'Flags, evidence, and verify',
-      'Connections included',
-      'We are not charging yet',
-    ],
-    cta: 'Join waitlist',
-    href: '/waitlist/pro',
-    highlight: true,
-    badge: 'Per website',
-    accountModel: 'One account. Pay per website.',
+    name: 'Pro', plan: 'BUILDER' as const, ...PLANNED_PAID_PRICING.BUILDER,
+    persona: 'Daily care for each website',
+    outcome: 'Planned daily browser verification', audits: 'Coming soon', products: 'Billed per website',
+    features: ['Billed per website', 'Daily browser verification', 'Same supported features'],
+    cta: 'Join Pro waitlist', href: '/waitlist/pro', highlight: false, badge: 'Coming soon',
+    availability: 'Join the waitlist', priceLabel: 'Planned pricing',
+    accountModel: 'Billed per website when paid plans open.',
   },
   {
-    name: 'Studio',
-    plan: 'TEAM' as const,
-    price: PRICING_COPY.studioPrice,
-    period: PRICING_COPY.studioPeriod,
-    persona: 'Several websites, billed per website',
-    outcome: 'Same product, volume quoted',
-    audits: 'Quoted',
-    products: 'Many websites, quoted',
-    features: [
-      'Several websites, billed per website',
-      'Client websites on one login',
-      'Flags, evidence, and verify',
-      'Connections included',
-      'Volume quoted on the waitlist',
-    ],
-    cta: 'Join waitlist',
-    href: '/waitlist/studio',
-    highlight: false,
-    badge: '',
-    accountModel: 'Client websites on one login, billed per website.',
+    name: 'Studio', plan: 'TEAM' as const, ...PLANNED_PAID_PRICING.TEAM,
+    persona: 'Faster availability checks for each website',
+    outcome: 'Planned daily browser verification and hourly availability', audits: 'Coming soon', products: 'Billed per website',
+    features: ['Billed per website', 'Daily browser verification', 'Hourly availability checks', 'Same supported features'],
+    cta: 'Join Studio waitlist', href: '/waitlist/studio', highlight: false, badge: 'Coming soon',
+    availability: 'Join the waitlist', priceLabel: 'Planned pricing',
+    accountModel: 'Billed per website when paid plans open.',
   },
 ] as const
 
-/** Pricing page cards. Studio is a quiet line, not a third card. */
-export const PRICING_CARDS = [PLANS[0], PLANS[1]] as const
-
-const PRO = PLANS[1]
+export const PRICING_CARDS = PLANS
 
 export const PRICING_COMPARISON = {
-  includedLabel: 'What is included',
-  caption: 'FixFlags plan comparison',
+  includedLabel: 'The offer', caption: 'FixFlags plan comparison',
   rows: [
-    {
-      feature: 'Price',
-      free: '$0',
-      pro: `${PRO.price} per website / month`,
-      studio: 'Quoted per website',
-    },
-    {
-      feature: 'Availability',
-      free: 'Available now',
-      pro: 'Join the waitlist',
-      studio: 'Join the waitlist',
-    },
-    {
-      feature: 'Websites',
-      free: '1',
-      pro: 'Each website you add',
-      studio: 'Many, quoted',
-    },
-    {
-      feature: 'Scheduled monitoring',
-      free: 'Weekly',
-      pro: 'Every day',
-      studio: 'Quoted',
-    },
-    {
-      feature: 'Site board and coverage',
-      free: 'Included',
-      pro: 'Included',
-      studio: 'Included',
-    },
-    {
-      feature: 'Flags, evidence, and fix guidance',
-      free: 'Included',
-      pro: 'Included',
-      studio: 'Included',
-    },
-    {
-      feature: 'Connections',
-      free: 'Included',
-      pro: 'Included',
-      studio: 'Included',
-    },
-    {
-      feature: 'Verify after you publish',
-      free: 'Included',
-      pro: 'Included',
-      studio: 'Included',
-    },
-    {
-      feature: 'Flag and recovery emails',
-      free: 'Choose in Site settings',
-      pro: 'Choose in Site settings',
-      studio: 'Choose in Site settings',
-    },
-    {
-      feature: 'Proof export',
-      free: 'Included when signed in',
-      pro: 'Included when signed in',
-      studio: 'Included when signed in',
-    },
+    { feature: 'Price', free: '$0 during open beta', pro: 'Planned: $49 per website / month', studio: 'Planned: $99 per website / month' },
+    { feature: 'Availability', free: 'Open beta, available now', pro: 'Join the waitlist', studio: 'Join the waitlist' },
+    { feature: 'Websites', free: '1', pro: 'Billed per website', studio: 'Billed per website' },
+    { feature: 'Monitoring', free: 'Any supported schedule during beta', pro: 'Planned daily browser verification', studio: 'Planned daily browser verification and hourly availability' },
+    { feature: 'Product access', free: 'All supported features', pro: 'Same supported features', studio: 'Same supported features' },
+    { feature: 'Usage', free: 'No usage limits during beta', pro: 'Allowances announced before launch', studio: 'Allowances announced before launch' },
   ],
 } as const
 
 export const PRICING_FAQ: readonly FaqEntry[] = [
-  {
-    question: 'Is FixFlags free?',
-    answer:
-      'Yes. One website is free, verified weekly. Pro is $49 per website per month, verified every day. We are not charging yet.',
-    learnMore: {
-      href: '/help/account-and-billing/free-and-pro',
-      label: 'Free vs Pro',
-    },
-  },
-  {
-    question: 'What does free include?',
-    answer:
-      'One website, verified weekly, Flags with evidence, a next step to fix, and verify after you publish. Connections are included.',
-    learnMore: {
-      href: '/help/watch-and-notifications/weekly-watch',
-      label: 'What the free plan includes',
-    },
-  },
-  {
-    question: 'How does paid monitoring work?',
-    answer:
-      'Pro is $49 per website per month, verified every day. That is one website looked after, not a ping. We are not charging yet. Join the waitlist to add websites. Studio is the same product for several websites, billed per website.',
-    learnMore: {
-      href: '/waitlist/pro',
-      label: 'Join the waitlist',
-    },
-  },
-  {
-    question: 'Is evidence public?',
-    answer:
-      'A completed check has a canonical link. Screenshots and captures belong to that Site. We do not invent proof or show other people\'s websites as if they were yours.',
-    learnMore: { href: '/help/privacy-and-security/privacy-and-evidence', label: 'Evidence and privacy' },
-  },
-  {
-    question: 'Do you store screenshots?',
-    answer:
-      'Yes. Evidence stays attached to the check that captured it. Retention is covered in the Privacy Policy.',
-    learnMore: {
-      href: '/help/sites-and-coverage/read-site-coverage',
-      label: 'Evidence and screenshots',
-    },
-  },
-  {
-    question: 'How do I verify a fix?',
-    answer:
-      'Publish the change, then run a fresh check on the same behavior. Absence of the old Flag is not enough. FixFlags has to see the success state.',
-    learnMore: {
-      href: '/help/flags-fix-verify/verify-a-flag',
-      label: 'Verify a fix',
-    },
-  },
-  {
-    question: 'Do you invent conversion percentages?',
-    answer:
-      'No. Connected store numbers appear only with real data after access is approved. Until then, FixFlags shows what the live website actually did.',
-    learnMore: {
-      href: '/help/sites-and-coverage/read-site-coverage',
-      label: 'Reading your Site',
-    },
-  },
+  { question: 'Why is FixFlags free during beta?', answer: 'We want to learn how people use the full product. During open beta, all supported features are included on one website, with no usage limits. You choose any supported monitoring schedule.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'The beta offer' } },
+  { question: 'What counts as one website?', answer: 'One website is one saved Site for a hostname. Pages on that hostname belong to the same Site. Separate subdomains count as separate websites; www and the main domain share one Site.', learnMore: { href: '/docs/getting-started', label: 'Getting started' } },
+  { question: 'What if I need another website?', answer: 'Join the Pro or Studio waitlist. Joining records your interest and does not add a website, start a subscription, or charge you. You can keep using your existing website during beta.', learnMore: { href: '/waitlist', label: 'Join the waitlist' } },
+  { question: 'What happens when beta ends?', answer: 'We plan to keep a useful Free plan. The full-access beta promotion is temporary, and future usage allowances will be informed by how people use FixFlags. We’ll tell you before the beta offer changes. Paid plans require you to opt in; there is no automatic charge.', learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'Free and future paid plans' } },
+  { question: 'Are Pro and Studio available now?', answer: 'Both are coming soon. Planned pricing is $49 per website per month for Pro and $99 per website per month for Studio. Features, allowances, and final terms will be confirmed before paid launch. Existing waitlist discount terms still apply.', learnMore: { href: '/waitlist', label: 'Paid plan waitlist' } },
+  { question: 'Does hourly availability verify checkout or signup?', answer: 'No. An availability check establishes whether its configured page responds. Browser verification checks a configured customer action separately. Studio is planned to include daily browser verification and hourly availability checks.', learnMore: { href: '/docs/site-care', label: 'Monitoring coverage' } },
 ] as const
 
 export const PRICING = {
-  label: 'Pricing',
-  headline: 'Website monitoring, $49 per site.',
-  subhead:
-    'One website free, verified weekly. Pro is $49 per website per month, verified every day. We are not charging yet. Join the waitlist to add sites.',
-  trustBadge: 'Flags, evidence, and a clear next step',
-  assurances: [
-    'Verified on a schedule',
-    'Evidence with every Flag',
-    'Not charging yet',
-  ] as const,
-  studioLine: 'Several websites?',
-  studioCta: 'Join the Studio waitlist',
-  studioHref: '/waitlist/studio',
-  compareTitle: 'Compare plans',
-  compareLabel: 'What you get',
-  compareBody: 'The same evidence and fix workflow on every plan. Choose how many websites you need looked after and how often they are checked.',
-  compareNote: 'Free is available today. Pro and Studio are on the waitlist, and we are not charging yet. Monitoring covers the pages and actions configured for your Site; a saved schedule does not mean every action has been verified.',
-  coverageLink: 'Understand monitoring coverage',
-  connectionsLink: 'See the included integrations',
-  faqTitle: 'Pricing questions',
-  upgradeSteps: 'Join the waitlist. We are not charging yet.',
-  upgradeStepsLoggedIn: 'Join the waitlist. We are not charging yet.',
-  checkoutRedirecting: 'Opening waitlist…',
-  allPlansInclude:
-    'Every plan includes Flags, evidence, verify, and connections.',
-  pickerEyebrow: 'Pick a plan',
-  pickerTitle: 'Choose how you want to start',
-  pickerSubtitle:
-    'Start free with one website, verified weekly. Join the waitlist for daily verification on more websites.',
-  pickerBody: 'Start free. Join the waitlist to add websites.',
-  pickerBodyWithReport:
-    'The first check can start as soon as you enter a URL.',
-  pickerCreditNote:
-    'Free is one website, verified weekly. Paid is $49 per website, verified every day.',
-  pickerReportNote: 'Choosing Free returns you to your Site.',
-  pickerFootnote: 'Need more detail?',
-  pickerCompareLink: 'See pricing.',
-  pickerCurrentPlan: 'Current plan',
-  pickerFreeCta: 'Start free',
-  pickerProCta: 'Join waitlist',
-  pickerStudioCta: 'Join waitlist',
-  pickerRecommended: 'Recommended',
-  pickerBusy: 'Working…',
+  plansTitle: 'Plans', label: 'Open beta', headline: 'The full product. Free during open beta.',
+  subhead: 'All features included on one website. Choose your monitoring schedule and use FixFlags without usage limits during the beta.',
+  trustBadge: 'Full access on one website',
+  assurances: ['No credit card.', 'No automatic charge.', 'We’ll tell you before the beta offer changes.'] as const,
+  studioLine: 'Need another website?', studioCta: 'Join the paid-plan waitlist', studioHref: '/waitlist',
+  sharedTitle: 'The complete workflow, included',
+  sharedFeatures: ['Website analysis', 'Flags and evidence', 'Fix guidance', 'Independent verification', 'Supported connections', 'Agent access'] as const,
+  sharedNote: 'Choose weekly, daily, hourly, or custom monitoring during beta. Checks apply to configured coverage and supported actions.',
+  compareTitle: 'Compare plans', compareLabel: 'Available now and coming soon',
+  compareBody: 'Start with the full product on one website. Paid plans are coming soon for more websites and ongoing care.',
+  compareNote: 'The unrestricted beta offer is temporary. Pro and Studio show planned prices and monitoring, with allowances confirmed before launch. Hourly availability checks do not verify checkout or signup.',
+  coverageLink: 'Understand monitoring coverage', connectionsLink: 'See the supported integrations', faqTitle: 'Pricing questions',
+  upgradeSteps: 'Join the waitlist. No subscription or charge.', upgradeStepsLoggedIn: 'Join the waitlist. No subscription or charge.', checkoutRedirecting: 'Opening waitlist…',
+  allPlansInclude: 'All supported features are included during open beta.',
+  pickerEyebrow: 'Open beta', pickerTitle: 'Start free on one website',
+  pickerSubtitle: 'Explore all supported features without usage limits during beta. Paid plans are coming soon.',
+  pickerBody: 'Start free. Join the waitlist if you need another website.',
+  pickerBodyWithReport: 'The first check can start as soon as you enter a URL.',
+  pickerCreditNote: 'One website. All features. No usage limits during open beta.',
+  pickerReportNote: 'Choosing Free returns you to your Site.', pickerFootnote: 'Need more detail?', pickerCompareLink: 'See pricing.',
+  pickerCurrentPlan: 'Current plan', pickerFreeCta: 'Start free', pickerProCta: 'Join Pro waitlist', pickerStudioCta: 'Join Studio waitlist', pickerRecommended: 'Available now', pickerBusy: 'Working…',
 } as const
 
 export const DEMO_PAGE = {
   eyebrow: 'Request a demo',
-  headline: 'Daily verification, billed per website.',
+  headline: 'Explore FixFlags for your websites.',
   subhead:
     'Tell us the website and the plan. We will email you to set a time. We are not charging yet.',
   nameLabel: 'Name',
@@ -294,12 +113,12 @@ export const WAITLIST_PAGE = {
   eyebrow: 'Paid plan waitlist',
   headline: 'We will email you when checkout opens',
   subhead:
-    'Pro is $49 per website per month, verified every day. We are not charging yet. Join this list and we will email you.',
+    'Open beta is free on one website. Planned paid pricing is $49 per website per month for Pro and $99 for Studio. Join the list for updates; no subscription or charge.',
   planProLabel: 'Pro',
   planStudioLabel: 'Studio',
-  planProDetail: 'Daily verification, $49 per website, when checkout opens',
+  planProDetail: 'Planned: $49 per website/month, daily browser verification',
   planStudioDetail:
-    'Several websites, billed per website, when checkout opens',
+    'Planned: $99 per website/month, daily browser verification and hourly availability',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -325,10 +144,10 @@ export const BILLING_ACTION_COPY = {
     failed: 'Could not open the waitlist. Try again.',
     success: "You're on the list. We'll email you when checkout opens.",
     description:
-      'Paid monitoring is $49 per website per month, verified every day. We are not charging yet.',
+      'Open beta includes all supported features on one website. Paid plans are coming soon.',
     gatedProCta: 'Join waitlist',
     gatedStudioCta: 'Join waitlist',
-    gatedHint: 'We are not charging yet. Join the waitlist to add websites.',
+    gatedHint: 'Join the waitlist if you need another website. Joining does not add a website or charge you.',
   },
   waitlist: {
     submitPro: 'Join Pro waitlist',
@@ -337,7 +156,7 @@ export const BILLING_ACTION_COPY = {
     failed: 'Could not join the waitlist. Try again.',
     success: "You're on the list. We'll email you when checkout opens.",
     description:
-      'Pro is $49 per website per month, verified every day. We are not charging yet.',
+      'Planned paid prices: Pro $49 and Studio $99 per website/month. Joining does not start a subscription or charge you.',
   },
   tierOffers: {
     name: 'Launch discount tiers',
@@ -352,7 +171,7 @@ export const BILLING_ACTION_COPY = {
 export const UPSELLS = {
   anon: {
     headline: 'Save this Site',
-    body: 'Create a free account to save this Site and unlock its fix prompts. Free verifies one website weekly.',
+    body: 'Create a free account to save this Site and unlock its fix prompts. Open beta includes all supported schedules on one website.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -370,7 +189,7 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You have reached this period\u2019s limit',
-    body: 'Free verifies one website weekly. Join the waitlist for daily verification on more websites.',
+    body: 'Open beta includes all supported schedules on one website. Join the waitlist if you need another website.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -379,7 +198,7 @@ export const UPGRADE_MOMENTS = {
       void scoreDelta
       return 'Update review complete'
     },
-    body: 'Join the waitlist for daily verification on more websites.',
+    body: 'Join the waitlist if you need another website.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -397,13 +216,13 @@ export const UPGRADE_MOMENTS = {
   },
   free_default: {
     headline: 'Monitoring more than one website?',
-    body: 'Paid monitoring is $49 per website per month, verified every day.',
+    body: 'Planned paid prices: Pro $49 and Studio $99 per website/month. Paid plans are coming soon.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   report_completed: {
     headline: 'Keep this website monitored',
-    body: 'Free verifies weekly. Join the waitlist for daily verification.',
+    body: 'Choose any supported schedule during beta. Join the waitlist if you need another website.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -424,7 +243,7 @@ export const USAGE_METER_COPY = {
   remainingShort: (n: number) => `${n} remaining`,
   usedThisMonthCaption: (n: number) => `${n} used`,
   panelNote:
-    'Watch and Verify are not counted here. Free verifies 1 website weekly. Join the waitlist for daily verification on more websites.',
+    'Watch and Verify are not counted here. Open beta includes one website with any supported schedule. Join the waitlist if you need another website.',
   progressLabel: (used: number, limit: number) =>
     `${used} of ${limit} used this period`,
   pending: (n: number) => `${n} in progress`,
@@ -439,12 +258,15 @@ export const USAGE_METER_COPY = {
 export const BILLING_PAGE_COPY = {
   title: 'Billing',
   description: 'Manage your plan and subscription',
-  pastDueTitle: 'Payment past due: features paused',
+  betaOffer: 'Full access during open beta. No usage limits on one website.',
+  betaCadence: 'Any supported schedule during beta',
+  cadenceLabel: 'Monitoring options',
+  pastDueTitle: OPEN_BETA_ACCESS ? 'Payment past due' : 'Payment past due: features paused',
   pastDueBody:
-    "Update your card to restore paid monitoring. We'll retry automatically. Monitoring resumes when payment succeeds.",
+    OPEN_BETA_ACCESS ? 'Your subscription payment is past due. You can update your card in the billing portal. Open beta access remains available.' : "Update your card to restore paid monitoring. We'll retry automatically. Monitoring resumes when payment succeeds.",
   planName: (name: string) => `${name} plan`,
-  pastDuePlanName: (name: string) => `${name} (payment past due: features paused)`,
-  paidFeaturesPaused: ' (paid features paused)',
+  pastDuePlanName: (name: string) => `${name} (${OPEN_BETA_ACCESS ? 'payment past due' : 'payment past due: features paused'})`,
+  paidFeaturesPaused: OPEN_BETA_ACCESS ? ' (open beta access available)' : ' (paid features paused)',
   upgradeCta: 'Join waitlist',
   changePlanCta: 'Change plan',
   compareStudio: 'Compare Studio',
@@ -452,10 +274,10 @@ export const BILLING_PAGE_COPY = {
   activatingHint: 'This usually takes a few seconds after checkout.',
   periodEnds: (date: string) => `Current period ends ${date}`,
   paymentIssueTitle: 'Payment issue',
-  canceledBody: 'Your subscription has been canceled. Features may be downgraded.',
+  canceledBody: OPEN_BETA_ACCESS ? 'Your subscription has been canceled. Open beta access remains available.' : 'Your subscription has been canceled. Features may be downgraded.',
   unpaidBody: 'Your subscription is unpaid. Check your payment method.',
   plansTitle: 'Plans',
-  plansDescription: 'Compare Free, Pro, and Studio. Join the waitlist when you want daily verification.',
+  plansDescription: 'Explore all supported features on one website during open beta. Join the waitlist if you need another website.',
   currentPlanBadge: 'Current',
   historyTitle: 'Billing history',
   historyDescription: 'Subscription invoices and receipts for this account.',

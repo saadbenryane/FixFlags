@@ -115,11 +115,24 @@ function passedAssertion(executions: Array<{ targetKey: string; status: string; 
   })
 }
 
+type CoverageExecution = { targetKey: string; status: string; detail?: unknown; workKind?: string | null; pageUrl?: string | null }
+
+/** Current task plans define the expected keyboard scope. Historical axe-only
+ * observations retain their original contract rather than acquiring new tasks. */
+export function keyboardScopeComplete(executions: CoverageExecution[]) {
+  return executions.filter(execution => execution.workKind === 'keyboard').every(task => executions.some(execution => {
+    if (execution.targetKey !== 'module:keyboard' || execution.status !== 'COMPLETED' || execution.pageUrl !== task.pageUrl) return false
+    const receipt = readCheckReceipt(execution.detail)
+    return !receipt.legacy && 'complete' in receipt && receipt.complete === true &&
+      (!receipt.applicable || ['focus-styles', 'keyboard-exit', 'tab-sequence'].every(key => receipt.assertions.some(assertion => assertion.key === key && assertion.passed)))
+  }))
+}
+
 /** Areas that received concrete public evidence for this analysis. */
 export function evidencedAreasFromCoverage(
   evidenceCoverage: unknown,
   flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>,
-  verifierExecutions: Array<{ targetKey: string; status: string; detail?: unknown }> = []
+  verifierExecutions: CoverageExecution[] = []
 ): Set<SiteCardArea> {
   const evidenced = new Set<SiteCardArea>()
   const evidence = parseEvidence(evidenceCoverage)
@@ -128,7 +141,7 @@ export function evidencedAreasFromCoverage(
   if (evidence.metadata) evidenced.add('search')
   if (evidence.flowScan || evidence.journeyWalk) evidenced.add('conversion')
   if (evidence.desktopScreenshot && evidence.metadata) evidenced.add('uptime')
-  if (passedAssertion(verifierExecutions, 'accessibility', 'automated-accessibility')) evidenced.add('accessibility')
+  if (passedAssertion(verifierExecutions, 'accessibility', 'automated-accessibility') && keyboardScopeComplete(verifierExecutions)) evidenced.add('accessibility')
   if (
     passedAssertion(verifierExecutions, 'security', 'https') &&
     passedAssertion(verifierExecutions, 'security', 'image-transport')
@@ -165,7 +178,7 @@ export function buildCoverageFacts(input: {
     impactTag: string | null
     status?: string | null
   }>
-  verifierExecutions?: Array<{ targetKey: string; status: string; detail?: unknown }>
+  verifierExecutions?: CoverageExecution[]
   /**
    * When re-checking, pass last completed facts so cards keep prior health
    * while activity shows checking.

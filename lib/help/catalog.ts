@@ -1,3 +1,4 @@
+import { PUBLIC_OFFER } from '@/lib/marketing/copy/public-offer'
 import type { HelpArticle, HelpCategory } from './types'
 
 export const HELP_CATEGORIES: readonly HelpCategory[] = [
@@ -28,7 +29,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     searchTokens: ['claim', 'sign up', 'sign in', 'anonymous'], updatedAt: '2026-09-20', estimatedReadMinutes: 2,
     body: [
       { type: 'p', text: 'After an anonymous analysis, create an account or sign in. FixFlags claims the exact provisional Site, including its pages, journeys, evidence, and Flags.' },
-      { type: 'p', text: 'Claiming is idempotent. Refreshing or returning through sign-in does not create another Site or consume another analysis.' },
+      { type: 'p', text: 'Signing in keeps the Site you just analyzed. Refreshing or returning through sign-in does not create another Site or use another analysis.' },
     ], related: ['analyze-a-website', 'sign-in-and-account-security'], relatedDocs: ['getting-started'],
   },
   {
@@ -72,17 +73,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: 'Run a fresh, comparable check against the Flag success condition.', popular: true,
     searchTokens: ['verify', 'recheck', 'fixed', 'regressed', 'inconclusive'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,
     body: [
-      { type: 'p', text: 'Verify re-runs the page or Journey relevant to that Flag. It records one durable attempt and compares fresh evidence with the source occurrence.' },
+      { type: 'p', text: 'Verify checks the page or action relevant to that Flag again. The new result stays with the original problem so you can see whether the expected result was restored.' },
       { type: 'ul', items: ['Verified: comparable evidence proves the success condition.', 'Still open: the problem remains.', 'Regressed: the behavior became worse.', 'Could not verify: the evidence was blocked, missing, skipped, removed, or incomparable.'] },
       { type: 'callout', text: 'Missing evidence never resolves a Flag.' },
     ], related: ['read-a-flag', 'check-failed-or-stuck'], relatedDocs: ['site-care'],
   },
   {
-    slug: 'weekly-watch', categoryId: 'watch-and-notifications', title: 'Weekly Watch on Free',
-    excerpt: 'Free looks after one website with weekly Watch of configured coverage.', popular: true,
+    slug: 'weekly-watch', categoryId: 'watch-and-notifications', title: 'Monitoring during open beta',
+    excerpt: 'Set a schedule for your Site and check its next run.', popular: true,
     searchTokens: ['watch', 'weekly', 'schedule', 'monitoring', 'free'], updatedAt: '2026-10-11', estimatedReadMinutes: 2,
     body: [
-      { type: 'p', text: 'Free includes one Site and weekly Watch of configured monitoring coverage. Watch is active only after FixFlags has saved a durable schedule. A schedule does not establish that every page or customer action has been checked.' },
+      { type: 'p', text: PUBLIC_OFFER.free },
+      { type: 'p', text: 'Monitoring starts after you save a schedule for the Site. It checks the configured coverage. A saved schedule does not mean every page or customer action has been checked.' },
       { type: 'p', text: 'Healthy runs stay quiet. Delays or failures remain visible on Site settings with a retry path.' },
     ], related: ['notification-preferences', 'free-and-pro'], relatedDocs: ['site-care'],
   },
@@ -92,7 +94,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     searchTokens: ['email', 'alert', 'critical', 'recovery', 'off'], updatedAt: '2026-09-20', estimatedReadMinutes: 2,
     body: [
       { type: 'p', text: 'Each Site can email you for all new customer Flags, critical Flags only, or none. Verified recovery is an independent preference.' },
-      { type: 'p', text: 'Notifications link to the exact owned Flag. Repeated delivery of the same observation is deduplicated.' },
+      { type: 'p', text: 'Notifications open the relevant Flag in your account. The same observation does not create repeated notification deliveries.' },
     ], related: ['weekly-watch', 'contact-support'], relatedDocs: ['site-care'],
   },
   {
@@ -100,8 +102,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: 'Authorize the store, then link it to an owned Site.', popular: true,
     searchTokens: ['shopify', 'install', 'connect', 'store'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
     body: [
-      { type: 'p', text: 'Shopify is a connection to the same Site, not a separate FixFlags product. Start from Site settings so the signed, single-use account link binds the installed shop to the Site you own.' },
-      { type: 'p', text: 'The embedded app verifies a Shopify ID token before it loads private shop data. A shop already linked to another account cannot be claimed.' },
+      { type: 'p', text: 'Shopify is a connection to the same Site, not a separate FixFlags product. Start from Site settings to connect the installed app to the website in your account.' },
+      { type: 'p', text: 'FixFlags confirms your Shopify session before showing private store data. A store already linked to another account cannot be added to yours.' },
       { type: 'p', text: 'If authorization expires, start again from Site settings. A store already attached elsewhere must be disconnected by its owner before it can be attached to another Site.' },
     ], related: ['shopify-access-and-removal', 'read-site-coverage'], relatedDocs: ['shopify'],
   },
@@ -121,18 +123,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: 'Understand permissions, uninstall, redaction, and relinking.',
     searchTokens: ['shopify', 'uninstall', 'privacy', 'redaction', 'revoke'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
     body: [
-      { type: 'p', text: 'FixFlags uses the minimum store data needed to walk and explain the purchase path. Background work uses the authorized offline token; embedded requests require a verified session.' },
-      { type: 'p', text: 'Uninstall revokes the connection. Privacy webhooks are signature-verified and store the request identity and processing result, not customer payloads FixFlags does not need.' },
+      { type: 'p', text: 'FixFlags uses the minimum store data needed to walk and explain the purchase path. Background checks use your store authorization. Opening private store data requires a verified Shopify session.' },
+      { type: 'p', text: 'Uninstall revokes the connection. Shopify privacy requests are verified before they are processed. FixFlags keeps the request identity and result, rather than unnecessary customer details.' },
       { type: 'p', text: 'Disconnect in FixFlags detaches the store from its Site. To remove the Shopify authorization and stop the app’s separate purchase-path checks, uninstall FixFlags in Shopify admin as well.' },
     ], related: ['connect-shopify', 'privacy-and-evidence', 'contact-support'], relatedDocs: ['shopify'],
   },
   {
-    slug: 'free-and-pro', categoryId: 'account-and-billing', title: 'Free and Pro',
-    excerpt: 'Free is available now. Pro is $49 per website per month and joins the waitlist.', popular: true,
+    slug: 'free-and-pro', categoryId: 'account-and-billing', title: 'Free, Pro, and Studio',
+    excerpt: PUBLIC_OFFER.availability, popular: true,
     searchTokens: ['price', 'pricing', 'free', 'pro', '49', 'waitlist'], updatedAt: '2026-09-20', estimatedReadMinutes: 2,
     body: [
-      { type: 'ul', items: ['Free: one website with weekly Watch.', 'Pro: $49 per website per month with daily Watch. New paid checkout is not open yet.', 'Studio: quoted per website for teams that need a tailored rollout.'] },
-      { type: 'p', text: 'Existing legitimate subscribers can still manage their subscription. New Pro and Studio customers join the waitlist while operating cost is measured.' },
+      { type: 'ul', items: [PUBLIC_OFFER.free, PUBLIC_OFFER.pro, PUBLIC_OFFER.studio, PUBLIC_OFFER.availability, PUBLIC_OFFER.usage] },
+      { type: 'p', text: 'Existing subscribers can manage their subscription in Billing. Pricing lists the current allowance for each plan; new paid access remains waitlisted.' },
     ], related: ['manage-an-existing-subscription', 'weekly-watch'], relatedDocs: ['getting-started'],
   },
   {
@@ -140,7 +142,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: 'Open the billing portal for invoices, payment methods, or cancellation.',
     searchTokens: ['billing', 'invoice', 'payment', 'cancel', 'portal'], updatedAt: '2026-09-20', estimatedReadMinutes: 2,
     body: [
-      { type: 'p', text: 'Existing subscribers can use Billing to open the secure customer portal. The subscription remains licensed per website.' },
+      { type: 'p', text: 'Existing subscribers can use Billing to open the secure customer portal. Your existing subscription keeps its billing terms.' },
       { type: 'p', text: 'A failed payment changes paid access but never deletes your Site or evidence. Contact support if the portal cannot recover the subscription.' },
     ], related: ['free-and-pro', 'contact-support'], relatedDocs: ['troubleshooting'],
   },
@@ -159,7 +161,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     searchTokens: ['privacy', 'screenshot', 'evidence', 'ai', 'retention'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,
     body: [
       { type: 'p', text: 'FixFlags visits public URLs and may retain screenshots, browser observations, and minimized summaries so you can understand and verify a Flag.' },
-      { type: 'p', text: 'Owned Site data is tenant-scoped. Internal IDs, signed grants, and verified connection principals authorize access; hostnames and opaque record IDs do not.' },
+      { type: 'p', text: 'Your owned Site and private evidence require account access. Knowing a website address or a record link does not grant access to private data.' },
       { type: 'link', text: 'Read the Privacy Policy', href: '/privacy' },
     ], related: ['shopify-access-and-removal', 'delete-your-account'], relatedDocs: ['site-care'],
   },
@@ -178,7 +180,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     searchTokens: ['failed', 'stuck', 'timeout', 'retry', 'blocked', 'unreachable'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,
     body: [
       { type: 'p', text: 'FixFlags shows a customer-safe reason and retry action when a check cannot finish. Common causes include an unreachable page, password or bot challenge, timeout, or unavailable worker.' },
-      { type: 'ol', items: ['Confirm the URL is public and opens in a signed-out browser.', 'Remove temporary password or bot restrictions if appropriate.', 'Retry from the Site. A pending Verify is deduplicated, so retrying does not create duplicate attempts.', 'Contact support with the Site and Flag if the failure repeats.'] },
+      { type: 'ol', items: ['Confirm the URL is public and opens in a signed-out browser.', 'Remove temporary password or bot restrictions if appropriate.', 'Retry from the Site. An existing verification continues rather than starting a second copy.', 'Contact support with the Site and Flag if the failure repeats.'] },
     ], related: ['coverage-limitations', 'contact-support'], relatedDocs: ['troubleshooting'],
   },
   {
@@ -186,7 +188,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     excerpt: 'Escalate from a Site or contact the FixFlags team directly.',
     searchTokens: ['support', 'help', 'email', 'agent', 'human'], updatedAt: '2026-09-20', estimatedReadMinutes: 1,
     body: [
-      { type: 'p', text: 'From an owned Site, open the FixFlags Agent and choose Talk to support. The escalation can include the Site, optional Flag, current route, and a minimized conversation summary.' },
+      { type: 'p', text: 'From your Site, open the FixFlags Agent and choose Talk to support. The request can include the Site, relevant Flag, and a short summary of the conversation.' },
       { type: 'p', text: 'You can also email hello@fixflags.com. Do not send passwords, private keys, payment details, or customer data.' },
     ], related: ['check-failed-or-stuck', 'sign-in-and-account-security'], relatedDocs: ['troubleshooting'],
   },

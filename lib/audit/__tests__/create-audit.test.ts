@@ -10,6 +10,8 @@ import {
   encryptScanAccess,
 } from '@/lib/audit/scan-access'
 
+const betaPolicy = vi.hoisted(() => ({ enabled: false }))
+
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   $executeRaw: vi.fn(),
@@ -111,8 +113,11 @@ describe('AuditLimitError contract', () => {
 
 describe('createAndEnqueueAudit', () => {
   beforeEach(() => {
+    betaPolicy.enabled = false
     process.env.TOKEN_ENCRYPTION_KEY = '0'.repeat(64)
     vi.clearAllMocks()
+    prismaMock.audit.findUnique.mockReset().mockResolvedValue(null)
+    prismaMock.project.findUnique.mockReset().mockResolvedValue(null)
 
     prismaMock.$transaction.mockImplementation(async (op: (tx: typeof prismaMock) => Promise<{ id: string }>) => {
       return op(prismaMock)
@@ -153,6 +158,21 @@ describe('createAndEnqueueAudit', () => {
     assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))
     refreshUserUsagePeriod.mockResolvedValue(signedInUser())
     rollUserUsagePeriod.mockResolvedValue(signedInUser())
+  })
+
+  it('admits a beta analysis past the old quota at full depth', async () => {
+    betaPolicy.enabled = true
+    rollUserUsagePeriod.mockResolvedValue(signedInUser({ auditsUsed: 1000 }))
+    wouldBlockNewCheckWithCredits.mockResolvedValue({ allowed: false, code: 'UPGRADE_REQUIRED' })
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    expect(wouldBlockNewCheckWithCredits).not.toHaveBeenCalled()
+    expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ reviewDepth: 3 }) }))
+  })
+
+  it('refuses using an owned parent to attach a different website', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED', projectId: 'other-project', scanAccessEncrypted: null })
+    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })).rejects.toThrow('same Site')
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
   })
 
   it('clears old fixture approval and creates its private setup Audit and request inside one admission transaction', async () => {
@@ -544,7 +564,7 @@ describe('createAndEnqueueAudit', () => {
       id: 'parent-1',
       userId: 'user-1',
       status: 'COMPLETED',
-      projectId: 'parent-project',
+      projectId: 'project-1',
       scanAccessEncrypted: null,
     })
 
@@ -555,11 +575,11 @@ describe('createAndEnqueueAudit', () => {
       recheckTrigger: 'WATCH',
     })
 
-    expect(ensureProductProject).not.toHaveBeenCalled()
+    expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL, prismaMock)
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: 'user-1',
-        projectId: 'parent-project',
+        projectId: 'project-1',
         parentId: 'parent-1',
         recheckTrigger: 'WATCH',
         watchNotificationStatus: 'PENDING',
@@ -575,7 +595,7 @@ describe('createAndEnqueueAudit', () => {
       id: 'parent-1',
       userId: 'user-1',
       status: 'COMPLETED',
-      projectId: 'parent-project',
+      projectId: 'project-1',
       scanAccessEncrypted: null,
     })
 
@@ -609,7 +629,7 @@ describe('createAndEnqueueAudit', () => {
       id: 'parent-1',
       userId: 'user-1',
       status: 'COMPLETED',
-      projectId: 'parent-project',
+      projectId: 'project-1',
       scanAccessEncrypted: encrypted,
     })
 
@@ -803,7 +823,7 @@ describe('createAndEnqueueAudit', () => {
       id: 'parent-1',
       userId: 'user-1',
       status: 'COMPLETED',
-      projectId: 'parent-project',
+      projectId: 'project-1',
       scanAccessEncrypted: null,
       reviewDepth: 3,
     })
@@ -819,3 +839,10 @@ describe('createAndEnqueueAudit', () => {
     })
   })
 })
+
+// Exercise historical allowances and beta access independently.
+vi.mock('@/lib/billing/beta-policy', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(),
+  get OPEN_BETA_ACCESS() { return betaPolicy.enabled },
+  hasOpenBetaAccess: (account: unknown) => betaPolicy.enabled && account != null,
+}))

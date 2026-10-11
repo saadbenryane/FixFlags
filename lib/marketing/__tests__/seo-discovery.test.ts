@@ -21,19 +21,21 @@ describe('pre-publish brand discovery copy', () => {
     assert.doesNotMatch(SEO.home.description, /checks your live website/i)
   })
 
-  it('names FixFlags on pricing and partners sitelinks', () => {
+  it('names FixFlags on pricing and use-case sitelinks', () => {
     assert.match(SEO.pricing.title, /FixFlags/)
-    assert.match(SEO.pricing.description, /verified weekly/i)
-    assert.match(SEO.pricing.description, /\$49/)
-    assert.match(SEO.pricing.description, /every day/i)
+    assert.match(SEO.pricing.description, /open beta/i)
+    assert.match(SEO.pricing.description, /one website/i)
+    assert.match(SEO.pricing.description, /no usage limits/i)
+    assert.match(SEO.waitlist.description, /\$49/)
+    assert.match(SEO.waitlist.description, /\$99/)
+    assert.match(SEO.pricing.description, /supported monitoring schedule/i)
     assert.doesNotMatch(SEO.pricing.title, /^Pricing$/)
     assert.doesNotMatch(SEO.pricing.description, /24\/7/i)
     assert.doesNotMatch(SEO.pricing.description, /free on shopify/i)
     assert.doesNotMatch(SEO.pricing.description, /\$69|\$199/)
 
-    assert.match(SEO.partners.title, /FixFlags/)
-    assert.match(SEO.partners.description, /studios/i)
-    assert.doesNotMatch(SEO.partners.title, /^Expert program$/i)
+    assert.match(SEO.useCases.title, /FixFlags/)
+    assert.match(SEO.useCases.description, /agencies/i)
   })
 
   it('does not advertise a roast grade or Shopify-only pricing in llms notes', () => {
@@ -41,7 +43,7 @@ describe('pre-publish brand discovery copy', () => {
     const productNotes = LLMS_SECTIONS.flatMap((section) => section.links)
       .map((link) => `${link.path} ${link.note ?? ''}`)
       .join('\n')
-    assert.match(productNotes, /\/pricing[^\n]*weekly/i)
+    assert.match(productNotes, /\/pricing[^\n]*open beta/i)
     assert.doesNotMatch(productNotes, /free on shopify/i)
   })
 })

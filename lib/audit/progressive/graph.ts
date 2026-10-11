@@ -12,9 +12,10 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     { ...make('pagespeed', [], 'pagespeed-desktop'), input: { ...input, device: 'desktop' as const } },
     { ...make('pagespeed', [], 'pagespeed-mobile'), input: { ...input, device: 'mobile' as const } }]
   const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
+  if (modules.has('keyboard')) plans.push(make('keyboard', [], 'keyboard-evidence'))
   for (const [module, definition] of Object.entries(CHECK_MODULES)) {
     if (module === 'search' || !modules.has(module)) continue
-    const inputKind = module === 'security' || definition.input === 'headers' ? 'http'
+    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     plans.push(make('check', [prefix + ':' + inputKind], module))
     if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-desktop', prefix + ':pagespeed-mobile'], 'inp-mobile'),

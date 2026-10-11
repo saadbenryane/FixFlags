@@ -14,7 +14,7 @@ describe('PlanLimitNotice', () => {
       // Exactly one primary action, and it goes somewhere.
       const actions = screen.getAllByRole('link')
       expect(actions).toHaveLength(1)
-      expect(actions[0]).toHaveAttribute('href', '/pricing')
+      expect(actions[0]).toHaveAttribute('href', kind === 'check-limit' ? '/pricing' : '/waitlist')
     }
   )
 

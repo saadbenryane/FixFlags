@@ -124,3 +124,9 @@ describe('checkout batch gate (403 BATCH_ACCESS_REQUIRED)', () => {
     expect(response.status).toBe(200)
   })
 })
+
+// Retain post-beta subscription and quota contracts.
+vi.mock('@/lib/billing/beta-policy', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(),
+  OPEN_BETA_ACCESS: false, hasOpenBetaAccess: () => false,
+}))

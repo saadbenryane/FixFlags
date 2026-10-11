@@ -73,6 +73,7 @@ export function BillingPlansSection({ currentPlan }: Props) {
               </div>
 
               <div>
+                <p className="mb-1 text-xs text-muted-foreground">{plan.priceLabel}</p>
                 <div className="flex items-end gap-1">
                   <PlanPrice price={plan.price} size="md" />
                   {plan.period ? (

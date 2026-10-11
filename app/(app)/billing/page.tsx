@@ -18,6 +18,8 @@ import { billingAccountState } from '@/lib/billing/account-state'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
 import { helpHrefForSlug, helpHrefForSurface } from '@/lib/help/contextual'
 import { TextLink } from '@/components/ui/text-link'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
+import { siteCarePolicy } from '@/lib/sites/application/care-policy'
 
 export default async function BillingPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -60,6 +62,8 @@ export default async function BillingPage() {
   const isPaid = accountState === 'active'
   const hasStripeCustomer = Boolean(user.stripeCustomerId)
   const copy = BILLING_PAGE_COPY
+  const betaAccess = hasOpenBetaAccess(user)
+  const siteLimit = siteCarePolicy(user).maxSites
 
   const displayPlanName =
     user.subscriptionStatus === 'PAST_DUE' && user.plan !== 'FREE'
@@ -95,7 +99,7 @@ export default async function BillingPage() {
               </>
             ) : (
               <>
-                {PLAN_DEFINITIONS.FREE.price || '$0'} · {PLAN_DEFINITIONS.FREE.auditLimitLabel}
+                {betaAccess ? copy.betaOffer : `${PLAN_DEFINITIONS.FREE.price || '$0'} · ${PLAN_DEFINITIONS.FREE.auditLimitLabel}`}
                 {user.plan !== 'FREE' ? copy.paidFeaturesPaused : ''}
               </>
             )}
@@ -108,8 +112,8 @@ export default async function BillingPage() {
           </Callout>
         )}
         <dl className="grid gap-3 border-t border-border/60 pt-5 text-sm sm:grid-cols-3">
-          <div><dt className="text-xs text-muted-foreground">Websites</dt><dd className="mt-1 font-medium">{siteCount}{planDef.projectLimit ? ` of ${planDef.projectLimit}` : ''}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Cadence</dt><dd className="mt-1 font-medium">{isPaid ? 'Daily monitoring' : 'Weekly monitoring'}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Websites</dt><dd className="mt-1 font-medium">{siteCount}{siteLimit !== null ? ` of ${siteLimit}` : ''}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{copy.cadenceLabel}</dt><dd className="mt-1 font-medium">{betaAccess ? copy.betaCadence : isPaid ? 'Daily monitoring' : 'Weekly monitoring'}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Billing status</dt><dd className="mt-1 font-medium">{copy.state[accountState]}</dd></div>
         </dl>
         {user.stripeCurrentPeriodEnd && isPaid && (

@@ -52,6 +52,41 @@ customer result rows. Historical aggregate receipts remain comparable through th
 same receipt adapter. Evaluator receipts, verifier proofs and findings commit with
 their owning task artifact.
 
+Keyboard navigation uses the existing guarded browser collector, deterministic
+assessment, and task ledger. Bounded Tab navigation records the page control set.
+Up to four declared menu, dialog, or disclosure triggers may then be opened with
+Enter or Space. A guarded pointer fallback can confirm a keyboard-only opening
+failure. Popup actions, submissions, and links are never selected. Requests that
+mutate, subsequent navigations, and new windows are refused; this session also
+blocks service workers and WebSockets so they cannot bypass request routing.
+
+Menu item focus includes DOM focus and valid aria-activedescendant. Orientation
+selects the tested arrow directions. Menu traversal samples items within the
+same interaction bound; unvisited items keep the scope incomplete. Modal Tab and Shift+Tab containment, Escape,
+and restoration are observed separately. Lost focus is a finding only when the
+trigger still exists and no visible workflow destination receives focus. Removed
+triggers and alternate destinations require review. Ordinary disclosures do not
+inherit modal dismissal requirements. An intentional modal boundary is not a trap
+merely because focus cycles. These expectations follow the W3C
+[menu button](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/),
+[menu](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/), and
+[dialog](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) patterns.
+
+Each assertion retains its exercised scope and can remain explicitly unknown.
+Repair verification requires every originally flagged selector and label in the
+same popup context, with conclusive evidence for that responsibility. Independent
+proved controls can verify a repair even while another popup remains incomplete.
+All failed popup scopes survive page-level finding aggregation. Geometry follows
+the normalized evidence target contract; popup controls retain selectors and scope
+without drawing rectangles over an initial-state capture that cannot show them.
+
+Sample and time limits, unsafe or unsupported triggers, frames, shadow roots,
+unresolved focus effects, and scanner refusals remain visible unknowns. Blocked
+interactions do not erase earlier independent observations. Computed focus styles
+do not certify visual contrast or every custom effect. Accessibility cards cannot
+use a completed axe receipt or successful subset to conceal unfinished keyboard
+scope in the current task plan.
+
 Safe Signup setup uses `FIXTURE_SETUP` admission through the same Site RunRequest
 and Audit transaction. The admitted intent snapshots only the fixture identity and
 version; encrypted values stay on the fixture. Admission clears previous approval
@@ -72,7 +107,18 @@ report evidence or enter report comparison and Improvement learning.
 Completion readers project metadata, media references and result artifacts in
 PostgreSQL, without transferring collected HTML, sitemap bodies or browser traces.
 Targeted and setup finalization bypass broad page reconstruction. These bounds
-still require capacity and real database/worker fault acceptance.
+still require capacity and broader real database/worker fault acceptance.
+
+`node scripts/verify-progressive-execution.mjs` applies the full migration history
+to a newly created local database, checks migration status and schema drift, and
+uses a disposable Redis container with the application worker. Representative
+Search collection and partial completion, expired Signup ownership with unsettled
+cleanup, and keyboard focus-style and menu restoration failure-to-repair verification have been exercised through
+this boundary. HTTP transport is served by controlled fixtures; keyboard evidence
+is collected in Chromium. The Signup interruption is modeled in the durable ledger
+after a fenced submission-admission fact, not by creating a real account or killing
+a production worker. Existing local databases are neither migrated nor reset by
+this command. These checks do not establish provider or production acceptance.
 
 Resource queues separate HTTP, browser, provider, evaluation and availability
 work. HTTP defaults to four concurrent requests and the shared browser semaphore
@@ -117,8 +163,9 @@ validates the complete projection and matching identity before replacing the
 recorded view; malformed responses retain visible disconnected evidence.
 
 Candidate limitations still requiring implementation or acceptance include
-working/failing/incomplete/recovery fixtures for every advertised item, exercised
-keyboard probes, remaining shared action consumers, capacity/fault coverage and real provider, private-storage, notification,
+working/failing/incomplete/recovery fixtures for every advertised item, keyboard
+coverage beyond safely exercised declared popups, nested components, embedded controls, visual focus
+assessment, remaining shared action consumers, capacity/fault coverage and real provider, private-storage, notification,
 MCP-client and observed owner sessions. Passing fixtures or the unit suite does not
 satisfy those release requirements. The integrated main checkout is not deployed
 or release accepted.

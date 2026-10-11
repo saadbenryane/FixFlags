@@ -11,6 +11,16 @@ import { auth } from '@/lib/auth'
 import * as waitlist from '@/lib/billing/waitlist'
 import { TIER_PERCENT, type DiscountTier } from '@/lib/billing/discount-tiers'
 import { logger } from '@/lib/logger'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { PLANNED_PAID_PRICING } from '@/lib/billing/beta-policy'
+
+async function recordInterest(id: string | undefined, plan: 'BUILDER' | 'TEAM', userId?: string) {
+  if (!id) return
+  await recordSiteLifecycleEvent({
+    name: 'waitlist_interest_recorded', idempotencyKey: `beta-waitlist:${id}:${plan}`,
+    userId, properties: { plan, plannedPrice: PLANNED_PAID_PRICING[plan].price, period: 'website/month', offer: 'open-beta-v1' },
+  }).catch(() => undefined)
+}
 
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <hello@fixflags.com>`
@@ -155,7 +165,8 @@ export async function POST(req: NextRequest) {
           action: 'sign_in',
         })
       }
-      await waitlist.upsertWaitlistLead({ email, plan, source, campaign })
+      const lead = await waitlist.upsertWaitlistLead({ email, plan, source, campaign })
+      await recordInterest(lead?.id, plan)
 
       if (resend) {
         const waitlistEmail = WAITLIST_EMAILS.joined(planLabel)
@@ -188,6 +199,7 @@ export async function POST(req: NextRequest) {
       source,
       campaign,
     })
+    await recordInterest(entry.id, plan, session.user.id)
 
     // Fire-and-forget: attach the entered email to the account when it differs
     // (SSO case). Never blocks the join and never leaks email existence.

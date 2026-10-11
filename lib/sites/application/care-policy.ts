@@ -37,10 +37,9 @@ function siteCapForPlan(plan: Plan): number | null {
 }
 
 /**
- * Product-level care policy. Review-credit counters never decide whether Watch or
- * Verify are available: they only defer a scheduled run and surface as a quota
- * state on the Site. The Site cap is read from the plan definition instead of
- * restated here, so billing enforcement and this policy cannot drift apart.
+ * Product-level care policy. Beta grants every supported schedule without
+ * changing stored subscriptions. The Site cap remains plan-backed so existing
+ * subscribers retain their purchased capacity and Free keeps one website.
  */
 export function siteCarePolicy(user: CareUser): SiteCarePolicy {
   if (user.role === 'admin') {

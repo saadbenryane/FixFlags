@@ -1,9 +1,10 @@
 import { BRAND } from '@/lib/marketing/copy'
 
 export const MARKETING_LINKS = [
-  { href: '/#product', label: 'Product' },
-  { href: '/pricing', label: 'Pricing' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/use-cases', label: 'Use cases' },
   { href: '/integrations', label: 'Integrations' },
+  { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
 ] as const
 
@@ -11,21 +12,31 @@ export const MARKETING_NAV = [...MARKETING_LINKS] as const
 
 export const FOOTER_COLUMNS = {
   product: [
-    { href: '/#product', label: 'Product' },
-    { href: '/integrations', label: 'Integrations' },
     { href: '/how-it-works', label: 'How it works' },
+    { href: '/coverage', label: 'What it checks' },
+    { href: '/samples', label: 'Product sample' },
+    { href: '/use-cases', label: 'Use cases' },
+    { href: '/integrations', label: 'Integrations' },
     { href: '/pricing', label: 'Pricing' },
-    { href: '/changelog', label: 'Changelog' },
   ],
   resources: [
-    { href: '/help', label: 'Help Center' },
     { href: '/docs', label: 'Docs' },
+    { href: '/docs/fix-with-ai', label: 'Fix with your AI' },
+    { href: '/help', label: 'Help Center' },
     { href: '/faq', label: 'FAQ' },
     { href: '/blog', label: 'Blog' },
-    { href: '/issues', label: 'Flag Library' },
+    { href: '/tools/meta-preview', label: 'Meta Preview Tool' },
+    { href: '/tools/placeholder-detector', label: 'Placeholder Copy Detector' },
   ],
   company: [
+    { href: '/blog/introducing-fixflags', label: 'Why we built FixFlags' },
+    { href: '/changelog', label: 'Changelog' },
     { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
+  ],
+  trust: [
+    { href: '/security', label: 'Privacy and security' },
+    { href: '/privacy', label: 'Privacy Policy' },
+    { href: '/terms', label: 'Terms' },
   ],
 } as const
 

@@ -32,7 +32,7 @@ export function PlanLimitNotice({ kind, message, onDismiss }: PlanLimitNoticePro
         {message ? <p className="text-muted-foreground">{message}</p> : null}
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="brand" size="sm">
-            <Link href="/pricing">{PLAN_LIMIT_NOTICE.upgradeCta}</Link>
+            <Link href={kind === 'site-limit' || kind === 'claim-limit' ? '/waitlist' : '/pricing'}>{PLAN_LIMIT_NOTICE.upgradeCta}</Link>
           </Button>
           {onDismiss ? (
             <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>

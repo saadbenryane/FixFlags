@@ -32,7 +32,7 @@ supersedes: []
 2. **Client ↔ Server:** All API routes validate authentication server-side. Cookie-based session. CSRF protection via same-site cookies.
 3. **Worker ↔ Queue:** BullMQ uses Redis. No additional auth on local Redis. Production Redis should require `AUTH`.
 4. **External ↔ Application:** Stripe webhooks via signature verification. Cron endpoints via `CRON_SECRET` bearer token. MCP via API key (hashed, prefixed `ff_live_`).
-5. **GitHub API:** Tokens encrypted at rest. Only used for repo scanning (Studio plan).
+5. **GitHub API:** Tokens encrypted at rest. Only used for owner-authorized repo scanning. Open beta grants this capability to every resolved account.
 6. **Public URL fetches:** Audit capture, meta preview, placeholder detection, fixture capture, and graph backfills use `safeFetchHtml()`. It validates DNS and each redirect target, rejects private/reserved networks, requires HTML, and bounds response size.
 
 ## Authentication invariants
@@ -56,7 +56,7 @@ supersedes: []
 - Repository-owned curated samples may ship versioned static Timeline fixtures because they contain no production report payload or private viewer data.
 - `/report/[id]` is the canonical public evidence URL. Copy link is the share action.
 - Legacy `/share/[token]` reads remain compatibility-only. The product no longer creates or manages protected share links. Do not treat `ShareLink.passwordHash` as a live product contract.
-- Canvas is private to the paid report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
+- Canvas is private to the report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
 
 ## Captured evidence access
 
@@ -95,7 +95,7 @@ supersedes: []
 
 ## Rate limiting
 
-`lib/security/rate-limit.ts` uses Redis counters. On Redis connection failure it **fails open** (allows the request) so a Redis outage does not take the product offline. This is an intentional availability tradeoff, not a silent bug. Product quota gates (anon teaser, Free lifetime, plan limits) remain enforced in application code independent of Redis.
+`lib/security/rate-limit.ts` uses Redis counters. On Redis connection failure it **fails open** (allows the request) so a Redis outage does not take the product offline. This is an intentional availability tradeoff, not a silent bug. Anonymous teaser limits and the one-website beta allowance remain enforced in application code independent of Redis. Open beta access removes authenticated commercial usage quotas; ownership, permissions, execution deadlines, and concurrency guards still apply.
 
 Product Signal ingestion is the explicit exception.
 

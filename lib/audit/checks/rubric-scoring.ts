@@ -32,6 +32,7 @@ const EXPERIENCE_MODULES = new Set([
   'metadata',
   'performance',
   'accessibility',
+  'keyboard',
   'seo',
   'mobile',
   'content',

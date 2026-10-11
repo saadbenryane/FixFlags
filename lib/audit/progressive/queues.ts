@@ -11,7 +11,7 @@ export const TASK_QUEUES = {
 export type TaskQueue = keyof typeof TASK_QUEUES
 export function queueForTask(kind: TaskKind, input: TaskInput): TaskQueue {
   if (kind === 'bindings' && input.module === 'HTTP_AVAILABILITY') return 'availability'
-  if (['browser', 'captures', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup'].includes(kind)) return 'browser'
+  if (['browser', 'keyboard', 'captures', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup'].includes(kind)) return 'browser'
   if (['pagespeed', 'google', 'judge'].includes(kind)) return 'provider'
   if (kind === 'search' && input.module === 'search-canonical') return 'http'
   if (['http', 'search-resources', 'discovery'].includes(kind)) return 'http'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useId, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { CheckCircle2 } from 'lucide-react'
@@ -12,7 +12,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body, Heading } from '@/components/ui/typography'
 import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { DEMO_PAGE } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { toast } from 'sonner'
@@ -26,24 +26,17 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
   const nameId = useId()
   const emailId = useId()
   const websiteId = useId()
-  const siteCountId = useId()
   const noteId = useId()
   const honeypotId = useId()
-  const [plan, setPlan] = useState<CheckoutPlan>(initialPlan)
+  const plan = initialPlan
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [website, setWebsite] = useState('')
-  const [siteCount, setSiteCount] = useState('')
   const [note, setNote] = useState('')
   const [company, setCompany] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  const isStudio = plan === 'TEAM'
-  const parsedSiteCount = useMemo(() => {
-    const value = Number.parseInt(siteCount, 10)
-    return Number.isInteger(value) && value > 0 ? value : undefined
-  }, [siteCount])
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -57,7 +50,6 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
           email: email.trim(),
           website: website.trim(),
           plan,
-          siteCount: isStudio ? parsedSiteCount : undefined,
           note: note.trim() || undefined,
           company,
         }),
@@ -84,11 +76,13 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
           as="h1"
           className="mt-4 font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
         >
-          {DEMO_PAGE.headline}
+          {PUBLIC_SITE_COPY.demo.title}
         </Heading>
         <Body className="mt-4 max-w-xl text-muted-foreground text-pretty sm:text-lg">
-          {DEMO_PAGE.subhead}
+          {PUBLIC_SITE_COPY.demo.body}
         </Body>
+
+        <p className="mt-4 text-sm text-muted-foreground">{PUBLIC_SITE_COPY.demo.sampleLead}{' '}<Link href="/samples" className="font-medium text-link underline underline-offset-4">{PUBLIC_SITE_COPY.demo.sampleAction}</Link></p>
 
         {submitted ? (
           <div
@@ -118,17 +112,6 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
           </div>
         ) : (
           <form className="mt-8 space-y-5" onSubmit={(event) => void handleSubmit(event)}>
-            <SegmentedControl
-              size="md"
-              value={plan}
-              onValueChange={(value) => setPlan(value as CheckoutPlan)}
-              items={[
-                { value: 'BUILDER', label: DEMO_PAGE.planPro },
-                { value: 'TEAM', label: DEMO_PAGE.planStudio },
-              ]}
-              aria-label={DEMO_PAGE.planLabel}
-            />
-
             <div className="space-y-2">
               <Label htmlFor={nameId}>{DEMO_PAGE.nameLabel}</Label>
               <Input
@@ -170,22 +153,6 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
                 placeholder={DEMO_PAGE.websitePlaceholder}
               />
             </div>
-
-            {isStudio ? (
-              <div className="space-y-2">
-                <Label htmlFor={siteCountId}>{DEMO_PAGE.siteCountLabel}</Label>
-                <Input
-                  id={siteCountId}
-                  name="siteCount"
-                  type="number"
-                  min={1}
-                  inputMode="numeric"
-                  value={siteCount}
-                  onChange={(event) => setSiteCount(event.target.value)}
-                  placeholder={DEMO_PAGE.siteCountPlaceholder}
-                />
-              </div>
-            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor={noteId}>{DEMO_PAGE.noteLabel}</Label>

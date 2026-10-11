@@ -73,3 +73,10 @@ describe('isBatchReleased', () => {
     expect(isBatchReleased(1)).toBe(false)
   })
 })
+
+// Preserve post-beta billing contracts alongside the explicit open-beta tests.
+vi.mock('@/lib/billing/beta-policy', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(),
+  OPEN_BETA_ACCESS: false,
+  hasOpenBetaAccess: () => false,
+}))

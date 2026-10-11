@@ -332,3 +332,10 @@ describe('getCheckUsage', () => {
     expect(usage.totalAvailable).toBe(9) // (10 - 3) + 2
   })
 })
+
+// Preserve post-beta billing contracts alongside the explicit open-beta tests.
+vi.mock('@/lib/billing/beta-policy', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(),
+  OPEN_BETA_ACCESS: false,
+  hasOpenBetaAccess: () => false,
+}))

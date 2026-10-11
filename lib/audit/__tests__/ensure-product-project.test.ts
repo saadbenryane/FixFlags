@@ -22,6 +22,13 @@ describe('ensureProductProject', () => {
     assertCanCreateProduct.mockResolvedValue(undefined)
   })
 
+  it('checks capacity before restoring a removed website', async () => {
+    prismaMock.project.findUnique.mockResolvedValue({ id: 'old-site', productIntelligence: null, deletedAt: new Date() })
+    assertCanCreateProduct.mockRejectedValue(new Error('One website during open beta'))
+    await expect(ensureProductProject('user-1', 'https://example.com')).rejects.toThrow('One website during open beta')
+    expect(prismaMock.project.update).not.toHaveBeenCalled()
+  })
+
   it('uses the unique Product identity for concurrent claims', async () => {
     prismaMock.project.upsert.mockResolvedValue({ id: 'anchor-1', productIntelligence: null })
 

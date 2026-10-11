@@ -55,7 +55,7 @@ export function canAccessBasicMcp(
   return true
 }
 
-/** Codebase (GitHub repo) scanning - Studio plan only, same tier as public sharing. */
+/** Owner-authorized repository scanning is included in beta; legacy Studio gates apply after beta. */
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
@@ -66,7 +66,7 @@ export function canScanRepositories(
   return user.plan === 'TEAM'
 }
 
-/** Scheduled Site watching. Free gets weekly care; paid accounts can choose hourly or custom care. */
+/** Scheduled Site watching. Beta includes every supported interval. */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
@@ -74,7 +74,7 @@ export function canAccessProductWatch(
   return siteCarePolicy(user as Pick<User, 'role' | 'plan' | 'subscriptionStatus'>).watchIntervals.length > 0
 }
 
-/** Allowed watch intervals by plan. Free is weekly only. */
+/** Allowed watch intervals from the shared beta and account care policy. */
 export function allowedWatchIntervals(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): Array<WatchInterval> {

@@ -110,8 +110,8 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: 'Free verifies one website weekly. Keep this Site and unlock every fix prompt.',
-    fromPricing: 'Create your free account. Free verifies one website weekly.',
+    subtitle: 'Open beta is free on one website, with all supported features and no usage limits.',
+    fromPricing: 'Create your free account. All features on one website during open beta.',
     oauthNote: 'Social sign-in is used only to identify your account.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -334,21 +334,21 @@ export const SAMPLE_FIX = {
   label: 'Example fix',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, and keep weekly verification on one website.`,
+  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, and choose any supported monitoring schedule on one website during beta.`,
   primaryCta: 'Create free account',
 } as const
 
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: 'You have already used your anonymous Site check. Create a free account for fix prompts, saved Sites, and weekly verification on one website.',
+    body: 'You have already used your anonymous Site check. Create a free account for all supported features and any supported schedule on one website during beta.',
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',
   },
   upgrade: {
     title: 'Plan limit reached',
-    body: 'You have reached this period\u2019s limit. Join the waitlist for daily verification on more websites, or wait for renewal.',
+    body: 'You have reached this period\u2019s limit. Join the waitlist if you need another website.',
     primaryCta: 'Join waitlist',
     secondaryCta: 'See plans',
     exit: 'Leave this page',
@@ -378,8 +378,8 @@ export const SCAN_HANDOFF = {
 export const PLAN_LIMIT_NOTICE = {
   copy: {
     'site-limit': {
-      title: 'This plan is at its limit',
-      body: 'FixFlags cannot start another analysis on this plan right now. Plans that cover more websites verify every day.',
+      title: 'One website during open beta',
+      body: 'Open beta includes one website. Join the paid-plan waitlist if you need another website. Your existing website keeps full beta access.',
     },
     'check-limit': {
       title: 'This period\u2019s analyses are used up',
@@ -387,14 +387,14 @@ export const PLAN_LIMIT_NOTICE = {
     },
     'claim-limit': {
       title: 'This Site could not be saved',
-      body: 'Your plan already covers as many websites as it includes, so this Site could not be added to your account. Plans that cover more websites verify every day.',
+      body: 'Open beta includes one website, so this Site could not be added. Join the paid-plan waitlist if you need another website.',
     },
     'anon-scan-limit': {
       title: 'Your next scan is next week',
       body: 'Signed out, FixFlags checks one website a week. A free account checks deeper, keeps the history, and watches for changes on its own.',
     },
   },
-  upgradeCta: 'See plans',
+  upgradeCta: 'Join the waitlist',
   dismissCta: 'Dismiss',
 } as const
 
@@ -402,7 +402,7 @@ export type PlanLimitKind = keyof typeof PLAN_LIMIT_NOTICE.copy
 
 export const REPORT_UPGRADE_GATE = {
   title: 'Upgrade to keep this website monitored',
-  body: 'You have reached this period\u2019s limit. Join the waitlist for daily verification on more websites.',
+  body: 'You have reached this period\u2019s limit. Join the waitlist if you need another website.',
   primaryCta: 'Join waitlist',
   saving: 'Opening waitlist',
   savingBody: 'Taking you to the waitlist.',

@@ -1,4 +1,5 @@
 import { SEO } from './copy'
+import { PUBLIC_OFFER } from './copy/public-offer'
 
 export type SeoPageKey = keyof typeof SEO
 
@@ -14,6 +15,9 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/', seoKey: 'home', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/integrations', seoKey: 'integrations', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/waitlist', seoKey: 'waitlist', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/coverage', seoKey: 'coverage', priority: 0.8, changeFrequency: 'monthly' },
+  { path: '/security', seoKey: 'security', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/use-cases', seoKey: 'useCases', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/request-demo', seoKey: 'requestDemo', priority: 0.5, changeFrequency: 'monthly' },
@@ -36,7 +40,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/tools/meta-preview', seoKey: 'metaPreview', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/issues', seoKey: 'issues', priority: 0.6, changeFrequency: 'weekly' },
-  { path: '/partners', seoKey: 'partners', priority: 0.5, changeFrequency: 'monthly' },
+
 ] as const
 
 export const LLMS_TXT_PATH = '/llms.txt'
@@ -53,9 +57,12 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     links: [
       { path: '/', label: 'Home', note: 'Your website, looked after' },
       { path: '/integrations', label: 'Integrations', note: 'Shopify, Analytics, and Search Console available; other sources marked as planned' },
+      { path: '/coverage', label: 'What FixFlags checks', note: 'Coverage, setup, and evidence limits' },
+      { path: '/security', label: 'Privacy and security', note: 'Evidence access, AI processing, and control' },
+      { path: '/use-cases', label: 'Use cases', note: 'For people responsible for websites' },
       { path: '/how-it-works', label: 'How it works', note: 'URL in, Site board, Flags, Verify, Watch' },
-      { path: '/pricing', label: 'Pricing', note: 'One website free, weekly. Then $49 per website, verified every day' },
-      { path: '/request-demo', label: 'Request a demo', note: 'Daily verification, billed per website. Not charging yet' },
+      { path: '/pricing', label: 'Pricing', note: PUBLIC_OFFER.free },
+      { path: '/request-demo', label: 'Request a demo', note: 'A walkthrough of checks, evidence, and next steps for your website' },
       { path: '/docs', label: 'Documentation', note: 'Site checks, Flags, Verify, and Watch' },
       {
         path: '/docs/getting-started',

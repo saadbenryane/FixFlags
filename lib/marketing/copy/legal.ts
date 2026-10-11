@@ -1,10 +1,12 @@
+import { PUBLIC_OFFER } from './public-offer'
+
 /**
  * Public legal page copy. Customer-facing terms and privacy sections.
  */
 
 export const LEGAL_PAGE_META = {
-  termsUpdated: 'September 2026',
-  privacyUpdated: 'September 2026',
+  termsUpdated: 'October 2026',
+  privacyUpdated: 'October 2026',
 } as const
 
 export const ANALYTICS_CONSENT_COPY = {
@@ -19,12 +21,12 @@ export const TERMS_SECTIONS = {
   service: {
     title: 'Service',
     body:
-      'FixFlags analyzes a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. Optional connections such as Shopify add store context to the same Site. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
+      'FixFlags analyzes a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. Optional connections add store, traffic, or search context to the same Site. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
   },
   accountsAndBilling: {
     title: 'Accounts and billing',
     body:
-      'You can Analyze a public URL without an account. Signing in lets you save the Site, Verify fixes, and keep watching. Free includes one website with weekly Watch. Pro is listed at $49 per website per month with daily Watch, but new paid checkout is closed and joins a waitlist. Existing subscribers can manage their subscription in the Stripe portal.',
+      `You can analyze a public URL without an account. Signing in lets you save the Site, verify fixes, and keep watching. ${PUBLIC_OFFER.free} ${PUBLIC_OFFER.paid} ${PUBLIC_OFFER.availability} ${PUBLIC_OFFER.usage} Existing subscribers can manage their subscription in the Stripe portal and keep their existing billing terms.`,
   },
   discountTiers: {
     title: 'Launch discount tiers',
@@ -57,7 +59,7 @@ export const PRIVACY_SECTIONS = {
   collect: {
     title: 'What we collect',
     body:
-      'When you Analyze a URL, we store that URL, the public pages our browser opened, screenshots and browser evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you connect it, we store the shop identity, authorization needed for background work, and purchase-path evidence. Privacy webhook receipts keep the request identity and processing result, not customer payloads we do not need. If you join a waitlist, we store the plan and email to notify.',
+      'When you Analyze a URL, we store that URL, the public pages our browser opened, screenshots and browser evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you connect it, we store the shop identity, authorization needed for background work, and purchase-path evidence. Shopify privacy-request records keep the request identity and processing result rather than unnecessary customer data. Authorized Google connections can store matching page-traffic and search reports. If you join a waitlist, we store the plan and email to notify.',
   },
   use: {
     title: 'How we use it',
@@ -67,7 +69,7 @@ export const PRIVACY_SECTIONS = {
   reportAccess: {
     title: 'Access and sharing',
     body:
-      'Owned Sites, Flags, verification attempts, Agent threads, support context, and connections are private to the authenticated owner. Old public report URLs show a small sanitized evidence-compatibility page and never the private Site workspace. FixFlags does not currently offer public Flag sharing.',
+      'Owned Sites, Flags, verification attempts, Agent threads, support context, and connections are private to the authenticated owner. Anonymous analysis and legacy report links can show public-safe evidence. They do not grant access to the private Site workspace. FixFlags does not currently offer public Flag sharing.',
   },
   thirdParties: {
     title: 'Third parties',
@@ -82,6 +84,6 @@ export const PRIVACY_SECTIONS = {
   safeBrowsing: {
     title: 'What the browser does not do',
     body:
-      'FixFlags normally observes public pages and safe customer journeys. It does not routinely complete payments, submit lead forms, create customer accounts, or send messages through the website being checked.',
+      'FixFlags normally observes public pages and safe customer journeys. Purchase-path checks stop before payment. It does not routinely submit lead forms, create customer accounts, or send messages through the website being checked. Signup verification requires an authorized, reversible test setup with reset and cleanup.',
   },
 } as const

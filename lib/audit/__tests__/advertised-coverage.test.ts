@@ -16,10 +16,12 @@ describe('advertised coverage registration', () => {
     expect(() => validateAdvertisedCoverage([{ ...ADVERTISED_COVERAGE[0], evaluators: ['page:invented'] }, ...ADVERTISED_COVERAGE.slice(1)])).toThrow('Missing coverage evaluator')
     expect(() => validateAdvertisedCoverage([{ ...ADVERTISED_COVERAGE[0], limitation: '' }, ...ADVERTISED_COVERAGE.slice(1)])).toThrow('Invalid advertised')
   })
-  it('keeps keyboard coverage partial and names durable setup with its integration limits', () => {
+  it('names exercised keyboard scope, focus limits, and durable setup integration limits', () => {
     const registry = validateAdvertisedCoverage()
     for (const id of ['accessibility.traps', 'accessibility.focus', 'accessibility.tab-order'])
-      expect(registry.get(id)?.extent).toBe('partial')
+      expect(registry.get(id)?.evaluators).toEqual(['page:keyboard'])
+    expect(registry.get('accessibility.focus')?.extent).toBe('partial')
+    expect(registry.get('accessibility.tab-order')?.extent).toBe('heuristic')
     expect(registry.get('signup.authorization')?.evaluators).toContain('task:fixture-setup')
     expect(registry.get('signup.authorization')?.limitation).toContain('integration verification')
     expect(registry.get('tracking.markup')?.limitation).toContain('does not verify')

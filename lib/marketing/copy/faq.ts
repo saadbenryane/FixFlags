@@ -1,3 +1,5 @@
+import { PUBLIC_OFFER } from './public-offer'
+
 export const FAQ_SECTION = {
   title: 'Common questions',
   viewAll: 'View all questions',
@@ -26,58 +28,59 @@ export function faqEntryAnchor(question: string): string {
 
 export const FAQ: readonly FaqEntry[] = [
   {
-    question: 'Is FixFlags free?',
-    answer:
-      'Yes. One website is free, verified weekly. Pro is $49 per website per month, verified every day. We are not charging yet. Shopify is an optional connection, not the only way to start.',
-    learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'Free vs Pro' },
+    question: 'How do I start?',
+    answer: 'Enter a public website URL. You can start an analysis before creating an account. Save the Site when you are ready to verify fixes and keep watching.',
+    learnMore: { href: '/docs/getting-started', label: 'Get started' },
   },
   {
     question: 'What does FixFlags actually check?',
-    answer:
-      'FixFlags opens your live website, follows important pages and actions, and records what actually happens. It is not an uptime ping, a Lighthouse score, or a recording of your visitors.',
-    learnMore: { href: '/help/sites-and-coverage/read-site-coverage', label: 'What FixFlags checks' },
+    answer: 'FixFlags checks reachable pages, public action destinations, and available evidence across eight website areas. Connections and configured journeys add coverage. Every result applies to the pages and actions actually checked.',
+    learnMore: { href: '/coverage', label: 'What FixFlags checks' },
   },
   {
     question: 'What is a Flag?',
-    answer:
-      'A Flag is something important that needs attention, with evidence. It says what happened, where it happened, and what should happen next. Healthy pages stay quiet.',
-    learnMore: { href: '/help/flags-fix-verify/read-a-flag', label: 'Reading Flags' },
-  },
-  {
-    question: 'How do I start?',
-    answer:
-      'Enter a public website URL. FixFlags checks the live site and shows Flags with evidence. You can add Shopify later if you need store context.',
-    learnMore: { href: '/help/getting-started/analyze-a-website', label: 'Start an analysis' },
-  },
-  {
-    question: 'How do I verify a fix?',
-    answer:
-      'Publish the change, then run a fresh check on the same behavior. The old Flag is not resolved just because it disappeared from a list. FixFlags has to see the success state.',
-    learnMore: { href: '/help/flags-fix-verify/verify-a-flag', label: 'Verify a fix' },
-  },
-  {
-    question: 'Do you charge or complete checkout on a store?',
-    answer:
-      'No. When FixFlags checks a purchase path, it stops before payment. It never enters card details or places an order.',
-    learnMore: { href: '/help/sites-and-coverage/read-site-coverage', label: 'How a check works' },
-  },
-  {
-    question: 'What about Shopify?',
-    answer:
-      'Shopify is a connection for the same Site. It adds product information and independent checks of selected purchase paths through checkout entry. Connect it from Site settings when that context would help.',
-    learnMore: { href: '/docs/integrations/shopify', label: 'Read integration guide' },
+    answer: 'A Flag is an important problem with evidence: what happened, where it happened, and what should happen instead. Suggestions and areas without enough evidence remain distinct.',
+    learnMore: { href: '/help/flags-fix-verify/read-a-flag', label: 'Read a Flag' },
   },
   {
     question: 'Can I see what FixFlags saw?',
-    answer:
-      'Yes. Each Flag keeps the capture, reproduction, and expected result. This is FixFlags\' own check, not session replay of your visitors.',
-    learnMore: { href: '/help/privacy-and-security/privacy-and-evidence', label: 'Evidence' },
+    answer: 'Yes. Open the recorded evidence, affected page, scope, and expected result. You can explore a recorded demo check before analyzing your own website.',
+    learnMore: { href: '/samples', label: 'Explore the product sample' },
+  },
+  {
+    question: 'How do I verify a fix?',
+    answer: 'Publish the change, then select Verify fix on the same Flag. FixFlags checks the relevant page and action again. Copying a prompt does not close a Flag, and missing evidence does not prove recovery.',
+    learnMore: { href: '/docs/fix-with-ai', label: 'Fix and verify' },
+  },
+  {
+    question: 'When does monitoring start?',
+    answer: 'Save your Site and enable monitoring. Confirm the schedule and next check in Site settings. Monitoring follows configured coverage, and notifications follow your preferences.',
+    learnMore: { href: '/docs/site-care#watch', label: 'Understand monitoring' },
+  },
+  {
+    question: 'Do you record my visitors?',
+    answer: 'FixFlags records its own website checks, including screenshots and browser observations. It does not record your visitors’ sessions. Optional connections can add store, traffic, or search context.',
+    learnMore: { href: '/security', label: 'Privacy and security' },
+  },
+  {
+    question: 'Is FixFlags free?',
+    answer: [PUBLIC_OFFER.free, PUBLIC_OFFER.availability, PUBLIC_OFFER.usage].join(' '),
+    learnMore: { href: '/pricing', label: 'See current usage allowances' },
+  },
+  {
+    question: 'Do you charge or complete checkout on a store?',
+    answer: 'No. Purchase-path checks stop before payment. FixFlags does not enter card details or place an order. Reaching checkout does not prove that payment completes.',
+    learnMore: { href: '/coverage#conversion', label: 'Purchase-path coverage' },
+  },
+  {
+    question: 'What about Shopify?',
+    answer: 'Shopify adds product information and selected purchase-path checks to the same Site. You can start with a public URL and connect your store from Site settings when that context helps.',
+    learnMore: { href: '/docs/integrations/shopify', label: 'Read the Shopify guide' },
   },
   {
     question: 'Who is FixFlags for?',
-    answer:
-      'Anyone who needs to know how their website is doing, what needs attention, and what to do next. Sell, book, collect a lead, or run a tool. FixFlags follows the pages behind that result.',
-    learnMore: { href: '/how-it-works', label: 'How it works' },
+    answer: 'People responsible for live websites: founders, ecommerce operators, agencies, and marketing teams. Start with the pages and actions that matter to the website you look after.',
+    learnMore: { href: '/use-cases', label: 'Explore use cases' },
   },
 ] as const
 
@@ -104,16 +107,16 @@ export const CHANGELOG_ENTRIES = [
     title: 'One Site, looked after',
     items: [
       'Your dashboard now shows Sites, meaningful Flags, coverage freshness, and Watch state',
-      'Every Site has durable Home, Flags, Flag detail, and Settings routes',
+      'Your Site keeps its overview, Flags, evidence, and settings together',
       'Flag verification records fresh comparable evidence as Verified, Still open, Regressed, or Couldn’t verify',
-      'The Site Agent answers from persisted evidence and can escalate to human support with Site context',
+      'The Site Agent uses your recorded evidence and can help you reach human support',
     ],
   },
   {
     date: '2026-09-19',
     title: 'Watch and Shopify join the same product',
     items: [
-      'Free Sites receive weekly Watch and paid plans are prepared for daily Watch',
+      'Monitoring starts after a schedule is saved, with the next check shown in Site settings',
       'Choose Flags, Critical only, or Off, with recovery notices controlled separately',
       'Shopify links to an owned Site and adds purchase-path context to its existing cards and Flags',
       'Watch notifications return to the exact owned Flag when one needs attention',

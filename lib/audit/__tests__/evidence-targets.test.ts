@@ -113,10 +113,12 @@ describe('evidence-targets', () => {
         selector: 'h1.hero',
         text: 'Welcome aboard',
         label: 'Hero headline',
+        context: 'dialog:#open=>#details',
       },
     ])
     assert.equal(parsed[0]?.selector, 'h1.hero')
     assert.equal(parsed[0]?.text, 'Welcome aboard')
+    assert.equal(parsed[0]?.context, 'dialog:#open=>#details')
   })
 
   it('collects unique axe targets', () => {

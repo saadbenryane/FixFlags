@@ -42,6 +42,8 @@ describe('durable bounded work contracts', () => {
     expect(byKey.get('p0:browser')!.dependencies).toEqual([])
     expect(byKey.get('p0:captures')!.dependencies).toEqual([])
     expect(byKey.get('p0:accessibility')!.dependencies).toEqual(['p0:browser'])
+    expect(byKey.get('p0:keyboard')!.dependencies).toEqual(['p0:keyboard-evidence'])
+    expect(byKey.get('p0:keyboard-evidence')!.dependencies).toEqual([])
     expect(byKey.get('p0:metadata')!.dependencies).not.toContain('p0:captures')
     expect(byKey.get('p0:security-headers')!.dependencies).toEqual(['p0:http'])
     expect(byKey.get('p0:performance')!.dependencies).toEqual(['p0:pagespeed-desktop'])
@@ -77,6 +79,8 @@ describe('durable bounded work contracts', () => {
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'title-missing' } }).map(task => task.kind))
       .toEqual(['search', 'http', 'browser', 'finalize'])
     expect(() => initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'unknown-history' } })).toThrow('not registered')
+    expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'focus-visible-missing' } }).map(task => task.kind))
+      .toEqual(['check', 'keyboard', 'finalize'])
   })
   it('admits Signup setup on the same ledger without unrelated collectors', () => {
     const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',

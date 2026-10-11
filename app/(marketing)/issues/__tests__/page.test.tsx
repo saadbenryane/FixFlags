@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { getIndexableIssueCheckIds, findMany } = vi.hoisted(() => ({ getIndexableIssueCheckIds: vi.fn(), findMany: vi.fn() }))
 vi.mock('@/lib/graph/queries', () => ({ getIndexableIssueCheckIds, MIN_SAMPLE_SIZE: 5 }))
 vi.mock('@/lib/db', () => ({ prisma: { issue: { findMany } } }))
-import IssuesIndexPage from '../page'
+import IssuesIndexPage, { generateMetadata } from '../page'
 import { FLAG_LIBRARY } from '@/lib/marketing/copy/library'
 
 describe('Flag Library', () => {
@@ -16,9 +16,10 @@ describe('Flag Library', () => {
     expect(screen.getByRole('heading', { name: FLAG_LIBRARY.emptyTitle })).toBeInTheDocument()
     expect(screen.getByText(FLAG_LIBRARY.emptyBody(5))).toBeInTheDocument()
     expect(screen.queryByText(/Real Flags from/)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: FLAG_LIBRARY.docsCta })).toHaveAttribute('href', '/docs/site-care')
+    expect(screen.getByRole('link', { name: FLAG_LIBRARY.docsCta })).toHaveAttribute('href', '/coverage')
     expect(screen.getByRole('link', { name: FLAG_LIBRARY.startCta })).toHaveAttribute('href', '/new')
     expect(findMany).not.toHaveBeenCalled()
+    expect((await generateMetadata()).robots).toMatchObject({ index: false, follow: true })
   })
 
   it('renders a useful title when a published pattern has no template', async () => {
@@ -30,5 +31,6 @@ describe('Flag Library', () => {
     expect(screen.getByText('11 occurrences across 7 sites')).toBeInTheDocument()
     const jsonLd = JSON.parse(view.container.querySelector('script[type="application/ld+json"]')!.textContent!)
     expect(JSON.stringify(jsonLd)).toContain('missing-alt-text')
+    expect((await generateMetadata()).robots).toMatchObject({ index: true, follow: true })
   })
 })

@@ -1,4 +1,5 @@
 import { renderMcpToolReference } from '@/lib/docs/mcp-tool-reference'
+import { PUBLIC_OFFER } from '@/lib/marketing/copy/public-offer'
 import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 
 /**
@@ -13,6 +14,7 @@ const GENERATED_BLOCKS: Record<string, () => string> = {
     ? '- [MCP for coding agents](/docs/mcp) for independent verification after a change.'
     : '',
   'mcp-tools': renderMcpToolReference,
+  'public-offer': () => [PUBLIC_OFFER.free, PUBLIC_OFFER.availability, PUBLIC_OFFER.usage, '[See pricing](/pricing).'].join(' '),
 }
 
 export function applyGeneratedBlocks(markdown: string, source: string): string {

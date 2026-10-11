@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
         name: parsed.data.name.trim(),
         url: canonicalUrl,
         isManaged: true,
+        deletedAt: null,
       },
     })
   })

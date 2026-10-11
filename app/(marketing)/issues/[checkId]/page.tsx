@@ -95,7 +95,7 @@ export default async function IssuePage({ params }: Props) {
               <Card variant="solid">
                 <CardContent className="p-6 space-y-3">
                   <Heading as="h2" className="text-lg">
-                    Most affected frameworks
+                    Frameworks observed in this sample
                   </Heading>
                   <div className="flex flex-wrap gap-2">
                     {data.topFrameworks.map((fw) => (

@@ -5,7 +5,7 @@ export const TASK_RECOVERY_MS = 30 * 60_000
 export const MAX_TASKS_PER_AUDIT = 1200
 export const TASK_CRASH_LIMIT = 3
 export const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024
-export const taskKindSchema = z.enum(['http', 'search-resources', 'browser', 'captures', 'pagespeed', 'check', 'search', 'google', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'judge', 'discovery', 'cross-page', 'finalize'])
+export const taskKindSchema = z.enum(['http', 'search-resources', 'browser', 'keyboard', 'captures', 'pagespeed', 'check', 'search', 'google', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'judge', 'discovery', 'cross-page', 'finalize'])
 export type TaskKind = z.infer<typeof taskKindSchema>
 export const taskInputSchema = z.object({
   pageUrl: z.string().url(), position: z.number().int().nonnegative().max(23),

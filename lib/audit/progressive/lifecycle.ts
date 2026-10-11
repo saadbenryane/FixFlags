@@ -66,7 +66,7 @@ export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<
         'pageId', "workResult"->'data'->'pageId', 'snapshot', jsonb_build_object(
           'desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl', 'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
       WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata'))
-      WHEN "workKind" IN ('search-resources', 'bindings', 'journeys', 'fixture-setup', 'finalize') THEN NULL
+      WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'journeys', 'fixture-setup', 'finalize') THEN NULL
       ELSE "workResult" END AS "workResult"
     FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" LIKE 'task:%'
       ${pageUrl ? Prisma.sql`AND "pageUrl" = ${pageUrl}` : Prisma.empty}
@@ -240,6 +240,10 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
       const tasks = await loadTaskGraph(latest.id)
       const failed = tasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task => task.workKind ?? 'unknown')
+      const incomplete = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id,
+        targetKey: { startsWith: 'module:' }, detail: { path: ['complete'], equals: false } },
+        take: MAX_TASKS_PER_AUDIT, select: { targetKey: true } })
+      failed.push(...incomplete.map(receipt => receipt.targetKey.slice('module:'.length)))
       const spec = readExecutionSpec(latest.executionSpec)
       if (spec && spec.scope !== 'SITE') {
         // A configured action does not need an unrelated page scan, screenshot,

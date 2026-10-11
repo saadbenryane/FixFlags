@@ -110,6 +110,13 @@ describe('technical discovery', () => {
       .toEqual(issue.lastSeenAt)
   })
 
+  it('keeps an empty Flag Library out of the sitemap without hiding public guides', async () => {
+    vi.mocked(getIndexableIssueCheckIds).mockResolvedValue([])
+    const urls = (await sitemap()).map(entry => entry.url)
+    expect(urls).not.toContain(`${baseUrl}/issues`)
+    for (const path of ['/coverage', '/security', '/use-cases']) expect(urls).toContain(`${baseUrl}${path}`)
+  })
+
   it('does not advertise a new content update when only the request time changes', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-11T00:00:00Z'))

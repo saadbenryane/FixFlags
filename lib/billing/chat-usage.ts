@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { chatTokenLimitForPlan } from '@/lib/billing/plans'
 import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { estimateLlmCostUsd } from '@/lib/billing/costs'
 
 const CHAT_RESERVATION_TTL_MS = 5 * 60 * 1000
 
@@ -119,11 +121,12 @@ export async function reserveChatUsage(
 
 export async function finalizeChatUsage(
   reservationId: string,
-  usage: { inputTokens: number; outputTokens: number }
+  usage: { inputTokens: number; outputTokens: number; model?: string }
 ): Promise<ChatAllowance> {
   const inputTokens = Math.max(0, Math.trunc(usage.inputTokens))
   const outputTokens = Math.max(0, Math.trunc(usage.outputTokens))
-  return prisma.$transaction(async (tx) => {
+  let recordedUserId: string | null = null
+  const allowance = await prisma.$transaction(async (tx) => {
     const identity = await tx.chatUsageReservation.findUnique({
       where: { id: reservationId },
       select: {
@@ -138,6 +141,7 @@ export async function finalizeChatUsage(
     })
     if (!reservation) throw new Error('Chat usage reservation not found')
     if (reservation.status !== 'RESERVED') return allowanceFromRow(reservation.period)
+    recordedUserId = identity.period.userId
 
     await tx.chatUsageReservation.update({
       where: { id: reservationId },
@@ -153,6 +157,13 @@ export async function finalizeChatUsage(
     })
     return allowanceFromRow(period)
   })
+  if (recordedUserId && usage.model) {
+    await recordSiteLifecycleEvent({
+      name: 'agent_usage_recorded', idempotencyKey: `agent-usage:${reservationId}`, userId: recordedUserId,
+      properties: { inputTokens, outputTokens, model: usage.model, estimatedCostUsd: estimateLlmCostUsd(usage.model, inputTokens, outputTokens) },
+    }).catch(() => undefined)
+  }
+  return allowance
 }
 
 export async function releaseChatUsage(reservationId: string): Promise<void> {

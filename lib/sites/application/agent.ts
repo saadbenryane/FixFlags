@@ -5,6 +5,7 @@ import { isCustomerFlag } from '@/lib/audit/attention'
 import {
   answerProductQuestion,
   runWorkspaceChat,
+  WorkspaceChatUnavailableError,
   workspaceChatTokenUpperBound,
   type ChatDiffSummary,
   type ChatFlagContext,
@@ -160,6 +161,12 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
       reply = result.reply
       await finalizeChatUsage(reservationId, result.usage)
       reservationId = null
+    } catch (error) {
+      if (reservationId && error instanceof WorkspaceChatUnavailableError && error.usage) {
+        await finalizeChatUsage(reservationId, error.usage)
+        reservationId = null
+      }
+      throw error
     } finally {
       if (reservationId) await releaseChatUsage(reservationId)
     }

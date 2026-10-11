@@ -36,7 +36,7 @@ export const TOOLS = {
     subhead:
       'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
     ctaCheck: 'Check preview',
-    ctaAudit: 'Install FixFlags on Shopify',
+    ctaAudit: 'Analyze this website',
     socialPreviewHeading: 'Social Preview',
     metaTagsHeading: 'Meta Tags',
     metaFieldLabels: {
@@ -54,9 +54,9 @@ export const TOOLS = {
     canonicalMissing: 'No canonical',
     robotsPresent: 'Robots meta',
     robotsMissing: 'No robots meta',
-    auditHeading: 'Watch the purchase path',
+    auditHeading: 'Check more of your website',
     auditSubhead:
-      'Install on Shopify. FixFlags walks product to checkout and alerts you if customers cannot buy.',
+      'Check public pages, action destinations, and other available coverage. Start a website analysis when you are ready.',
   },
   placeholderDetector: {
     badge: 'Free Tool',
@@ -67,7 +67,7 @@ export const TOOLS = {
     noIssuesIconAria: 'Clean page',
     noIssuesHeading: 'No placeholder content found',
     noIssuesSubhead:
-      'This page looks clean. No template artifacts, placeholder copy, or unreplaced tokens detected.',
+      'This check found no placeholder content on this page. Other website problems are outside this tool’s scope.',
     issuesFound: '{count} match{plural} found',
     typeLabels: {
       placeholder: 'Placeholder',
@@ -76,15 +76,15 @@ export const TOOLS = {
       'template-token': 'Template Token',
       'social-proof': 'Social proof',
     },
-    auditHeading: 'Watch the purchase path',
+    auditHeading: 'Check more of your website',
     auditSubhead:
-      'Install on Shopify. FixFlags walks product to checkout and alerts you if customers cannot buy.',
+      'Check public pages, action destinations, and other available coverage. Start a website analysis when you are ready.',
   },
   shared: {
-    auditHeading: 'Watch the purchase path',
+    auditHeading: 'Check more of your website',
     auditSubhead:
-      'Install on Shopify. FixFlags walks product to checkout and alerts you if customers cannot buy.',
-    ctaAudit: 'Install FixFlags on Shopify',
+      'Check public pages, action destinations, and other available coverage. Start a website analysis when you are ready.',
+    ctaAudit: 'Analyze this website',
   },
 } as const
 

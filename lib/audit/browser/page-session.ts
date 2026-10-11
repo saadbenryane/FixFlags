@@ -61,6 +61,8 @@ export interface CreateAuditPageOptions {
   settle?: boolean
   /** Extra journey guards: block payments, downloads, and unauthorized mutations. */
   journeySafe?: boolean
+  /** Local UI activation may not bypass routing through workers or sockets. */
+  readOnlyInteractions?: boolean
   onSafetyRefusal?: JourneyRouteGuardOptions['onRefusal']
   /**
    * Buy-path walks: keep payment/download blocks, but allow same-origin cart
@@ -124,6 +126,7 @@ export async function createAuditPage(
     isMobile: options.profile.isMobile ?? false,
     locale: 'en-US',
     bypassCSP: false,
+    ...(options.readOnlyInteractions ? { serviceWorkers: 'block' as const } : {}),
     recordVideo: options.recordVideoDir
       ? {
           dir: options.recordVideoDir,
@@ -167,6 +170,11 @@ export async function createAuditPage(
       }
     : undefined
   const safetyRestrictions: string[] = [], refusedUrls = new Set<string>()
+  if (options.readOnlyInteractions) await page.routeWebSocket('**', async socket => {
+    if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
+    options.onSafetyRefusal?.('protected_action_requires_fixture')
+    await socket.close().catch(() => undefined)
+  })
 
   await page.route('**', async (route) => {
     const requestUrl = route.request().url()

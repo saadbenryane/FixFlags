@@ -33,7 +33,7 @@ export function isWorkspaceChatConfigured(): boolean {
 }
 
 export class WorkspaceChatUnavailableError extends Error {
-  constructor() {
+  constructor(readonly usage?: { inputTokens: number; outputTokens: number; model?: string }) {
     super('Workspace chat is unavailable')
   }
 }
@@ -85,7 +85,7 @@ async function runOpenAIChat(
     improvements?: ChatImprovementContext[]
     signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
   }
-): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+): Promise<{ text: string; inputTokens: number; outputTokens: number; model: string }> {
   const cfg = getChatProviderConfig('openai', 15_000)
   const response = await client.chat.completions.create({
     model: cfg.model,
@@ -104,6 +104,7 @@ async function runOpenAIChat(
     text,
     inputTokens: response.usage?.prompt_tokens ?? 0,
     outputTokens: response.usage?.completion_tokens ?? 0,
+    model: response.model || cfg.model,
   }
 }
 
@@ -620,7 +621,7 @@ export async function runWorkspaceChat(input: {
 }): Promise<{
   reply: string
   mode: 'llm'
-  usage: { inputTokens: number; outputTokens: number }
+  usage: { inputTokens: number; outputTokens: number; model?: string }
 }> {
   const client = getChatOpenAIClient()
   if (!client) {
@@ -633,9 +634,10 @@ export async function runWorkspaceChat(input: {
       return {
         reply: result.text,
         mode: 'llm',
-        usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens },
+        usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, model: result.model },
       }
     }
+    throw new WorkspaceChatUnavailableError({ inputTokens: result.inputTokens, outputTokens: result.outputTokens, model: result.model })
   } catch (error) {
     if (error instanceof WorkspaceChatUnavailableError) throw error
     throw new WorkspaceChatUnavailableError()

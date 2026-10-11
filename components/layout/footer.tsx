@@ -1,10 +1,10 @@
 import type { Route } from 'next'
-import Link from 'next/link'
+import { PublicLink } from '@/components/marketing/public-site/PublicInteraction'
 import { Logo } from '@/components/brand/Logo'
 import { FooterBottom } from '@/components/layout/FooterBottom'
 import { Container } from '@/components/ui/container'
 import { BRAND } from '@/lib/marketing/copy'
-import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
+import { FOOTER_COLUMNS } from '@/lib/site/nav'
 
 export function Footer() {
   return (
@@ -24,10 +24,10 @@ export function Footer() {
           <FooterColumn title="Product" links={FOOTER_COLUMNS.product} />
           <FooterColumn
             title="Resources"
-            links={FOOTER_COLUMNS.resources.slice(0, 5)}
+            links={FOOTER_COLUMNS.resources}
           />
           <FooterColumn title="Company" links={FOOTER_COLUMNS.company} />
-          <FooterColumn title="Legal" links={LEGAL_LINKS} />
+          <FooterColumn title="Trust" links={FOOTER_COLUMNS.trust} />
 
         </div>
 
@@ -55,14 +55,15 @@ function FooterColumn({
       <ul className="min-w-0">
         {links.map((link) => (
           <li key={`${link.href}-${link.label}`}>
-            <Link
+            <PublicLink
+              target={link.label}
               href={link.href as Route}
               className="inline-flex min-h-11 min-w-11 max-w-full items-center text-xs leading-tight text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <span className="min-w-0 [overflow-wrap:anywhere]">
                 {link.label}
               </span>
-            </Link>
+            </PublicLink>
           </li>
         ))}
       </ul>

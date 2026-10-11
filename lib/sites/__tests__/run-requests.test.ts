@@ -409,17 +409,11 @@ describe('RunRequest tenant boundary and idempotency', () => {
     expect(mocks.runCreate).not.toHaveBeenCalled()
   })
 
-  it('bounds interactive verification without limiting scheduled Watch', async () => {
-    mocks.runCount.mockResolvedValue(24)
-    await expect(requestOutcomeRun({
-      projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1', source: 'MCP',
-    })).rejects.toThrow('Too many requests')
-    expect(mocks.runCreate).not.toHaveBeenCalled()
-
-    await requestOutcomeRun({
-      projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1', source: 'WATCH',
-    })
+  it.each(['WEB', 'MCP', 'API', 'WATCH'] as const)('does not apply a daily run quota during beta for %s', async (source) => {
+    mocks.runCount.mockResolvedValue(1000)
+    await requestOutcomeRun({ projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1', source })
     expect(mocks.createAudit).toHaveBeenCalledTimes(1)
+    expect(mocks.runCount).not.toHaveBeenCalled()
   })
 
   it('reads a completed worker result without reconciling or changing run state', async () => {

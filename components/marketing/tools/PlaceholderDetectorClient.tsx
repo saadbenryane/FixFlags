@@ -37,6 +37,7 @@ export function PlaceholderDetectorClient() {
   const [matches, setMatches] = useState<PlaceholderMatch[]>([])
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
+  const [submittedUrl, setSubmittedUrl] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -64,6 +65,7 @@ export function PlaceholderDetectorClient() {
       }
       const data = await res.json()
       setMatches(data.matches)
+      setSubmittedUrl(normalized)
       setSearched(true)
     } catch {
       setError(SYSTEM_COPY.errors.genericRetry)
@@ -142,7 +144,7 @@ export function PlaceholderDetectorClient() {
         <div className="space-y-3">
           <h2 className="font-semibold">{TOOLS.shared.auditHeading}</h2>
           <p className="text-sm text-muted-foreground">{TOOLS.shared.auditSubhead}</p>
-          <AuditInput source="tool_page" idSuffix="-placeholder-detector" />
+          <AuditInput key={searched ? submittedUrl : undefined} source="tool_page" idSuffix="-placeholder-detector" initialUrl={searched ? submittedUrl : undefined} showLandingExtras={false} />
         </div>
       </Card>
     </>

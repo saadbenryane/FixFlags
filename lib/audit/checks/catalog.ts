@@ -26,11 +26,14 @@ import { runConversionFrictionChecks } from './conversion-friction'
 import { runTrustPsychologyChecks } from './trust-psychology'
 import { runVisualHierarchyChecks } from './visual-hierarchy'
 import { runMobileUXQualityChecks } from './mobile-ux-quality'
+import { runKeyboardChecks } from './keyboard'
+import type { KeyboardEvidence } from '../browser/keyboard-probe'
 
 export type PageCheckContext = {
   url: string; metadata: PageMetadata; desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
   consoleErrors: Array<{ type: string; text: string }>; metrics?: CaptureMetrics | null;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
+  keyboard?: KeyboardEvidence;
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
 type Evaluator = { id: string; evaluate(input: PageCheckContext): DeterministicFlag[] | Promise<DeterministicFlag[]> }
@@ -51,6 +54,7 @@ export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'metadata', evaluate: c => runMetadataChecks(c.metadata, c.record) },
   { id: 'og-image', evaluate: c => runOgImageUrlCheck(c.url, c.metadata) },
   { id: 'accessibility', evaluate: c => runAccessibilityChecks(c.metadata, c.desktop ?? c.mobile, c.axe) },
+  { id: 'keyboard', evaluate: c => c.keyboard ? runKeyboardChecks(c.keyboard).flags : [] },
   { id: 'seo', evaluate: c => runSeoChecks(c.url, c.metadata) },
   { id: 'trust', evaluate: c => runTrustChecks(c.url, c.metadata, c.consoleErrors) },
   { id: 'content', evaluate: c => runContentChecks(c.metadata, c.purpose) },
@@ -73,7 +77,7 @@ export const PAGE_CHECKS = registerPageEvaluators([
 ])
 
 export function pageCheckApplicable(definition: PageCheckDefinition, input: PageCheckContext) {
-  return definition.input === 'performance' ? Boolean(input.desktop || input.mobile)
+  return definition.input === 'keyboard' ? Boolean(input.keyboard?.candidateCount) : definition.input === 'performance' ? Boolean(input.desktop || input.mobile)
     : definition.input === 'mobile' ? Boolean(input.mobile)
     : definition.input === 'headers' ? Boolean(input.headers)
     : definition.input === 'accessibility' ? input.axe !== undefined || Boolean(input.desktop || input.mobile)

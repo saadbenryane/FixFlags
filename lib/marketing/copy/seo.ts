@@ -1,4 +1,18 @@
+import { PUBLIC_OFFER } from './public-offer'
+
 export const SEO = {
+  coverage: {
+    title: 'What FixFlags checks | FixFlags',
+    description: 'Explore website checks across eight areas, their setup requirements, and what the evidence can establish.',
+  },
+  security: {
+    title: 'Privacy and security | FixFlags',
+    description: 'Understand what FixFlags records, who can access evidence, how AI is used, and how to control connections and deletion.',
+  },
+  useCases: {
+    title: 'Website monitoring use cases | FixFlags',
+    description: 'See how founders, ecommerce operators, agencies, and growth teams can check live websites and act on evidence.',
+  },
   home: {
     title: 'FixFlags - Your software runs. FixFlags watches.',
     description:
@@ -11,18 +25,16 @@ export const SEO = {
   },
   pricing: {
     title: 'FixFlags Pricing',
-    description:
-      'Website monitoring priced per site. One website free, verified weekly. Pro is $49 per website per month, verified every day.',
+    description: [PUBLIC_OFFER.free, PUBLIC_OFFER.availability].join(' '),
   },
   requestDemo: {
     title: 'Request a FixFlags demo',
     description:
-      'Request a demo for daily website verification, billed per website. We are not charging yet.',
+      'Request a walkthrough of the checks, evidence, and next steps for the website you look after.',
   },
   waitlist: {
     title: 'Join the waitlist',
-    description:
-      'Pro is $49 per website per month, verified every day. Join the list. We email you when checkout opens. Sign up required.',
+    description: [PUBLIC_OFFER.paid, PUBLIC_OFFER.availability].join(' '),
   },
   howItWorks: {
     title: 'How FixFlags Works',
@@ -32,7 +44,7 @@ export const SEO = {
   samples: {
     title: 'Sample Site and Flag',
     description:
-      'See DemoSite as an evidence-backed FixFlags Site, with honest coverage and one actionable Flag from a retained test fixture.',
+      'Explore a recorded demo check, its page capture, a fix prompt, and the evidence a fresh verification needs.',
   },
   faq: {
     title: 'FAQ',
@@ -82,11 +94,7 @@ export const SEO = {
     description:
       'Real Flags from reviewed sites, with frequency, affected frameworks, examples, and fixes.',
   },
-  partners: {
-    title: 'FixFlags Expert Program',
-    description:
-      'Studios handing off a live Lovable, Bolt, or MVP site can use FixFlags as the delivery review before the client sees it.',
-  },
+
 } as const
 
 /** `/roast` is live but noindex and kept off nav, footer, and INDEXABLE_ROUTES. */

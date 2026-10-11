@@ -43,9 +43,9 @@ The following apply to old routes until deliberately migrated. They are not futu
 
 ## Existing plans
 
-Plan definitions in lib/billing/plans.ts and access checks in lib/auth/entitlements.ts are authoritative for current numbers and capabilities. They use FREE / BUILDER / TEAM internally and Free / Pro / Studio publicly. Enforcement still meters completed reviews against a monthly pool (3/30/90) and Product Watch remains schedule-gated in code (Free weekly, Pro/Studio daily). Public packaging on `/pricing` sells per-site monitoring: one free website verified weekly, then `$49` per website per month verified every day. Studio is volume, billed per website, never unlimited Sites. Paid CTAs join the waitlist. Stripe stays closed.
+The workspace now applies the explicit open-beta policy in `lib/billing/beta-policy.ts`: resolved accounts receive all supported capabilities, full analysis depth, all supported monitoring schedules, and no commercial usage quotas. Free accounts can own one active website. Existing subscriber Site allowances, stored plans, Stripe prices, and purchased credits are preserved. Usage and cost records continue without consuming purchased credit packs during beta. Anonymous visitors retain the sign-in and claim boundaries.
 
-The new [strategy](knowledge/strategy.md) requires meaningful ongoing free care and paid responsibility. That is a planned entitlement and scheduling change, not something a new tagline or saved vision makes true. Preserve subscription IDs, historical usage and existing access until migration is explicit.
+Pricing displays Free, Pro, and Studio. Free is available during open beta. Planned paid prices are $49 and $99 per website per month, with waitlist actions and checkout closed throughout beta. Planned Studio hourly availability is distinct from daily browser verification. The beta promotion is temporary, and a useful Free plan is intended to remain after beta. These changes describe workspace behavior, not production release evidence.
 
 ## Existing evidence and recovery
 

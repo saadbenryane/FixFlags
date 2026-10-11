@@ -12,7 +12,8 @@ describe('integrations marketing page', () => {
   it('shows logos and specific additional checks for current and proposed connections', () => {
     render(<IntegrationsPage />)
     expect(screen.getByRole('heading', { level: 1, name: C.hero.title })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Connect today' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Available connections' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Exploring other connections' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'More signals to bring in' })).not.toBeInTheDocument()
     expect(C.items).toHaveLength(10)
     expect(C.items.filter(item => item.status === 'available')).toHaveLength(3)
@@ -21,8 +22,13 @@ describe('integrations marketing page', () => {
       expect(within(card).getByRole('heading', { name: item.title })).toBeInTheDocument()
       expect(card.querySelector('img')).toHaveAttribute('src', item.logo)
       expect(within(card).getByText(item.summary)).toBeInTheDocument()
-      expect(within(card).getByRole('heading', { name: item.status === 'available' ? C.currentListTitle : C.futureListTitle })).toBeInTheDocument()
-      for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
+      if (item.status === 'available') {
+        expect(within(card).getByRole('heading', { name: C.currentListTitle })).toBeInTheDocument()
+        for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
+      } else {
+        expect(within(card).queryByRole('heading', { name: C.futureListTitle })).not.toBeInTheDocument()
+        expect(within(card).getByText(C.proposedLabel)).toBeVisible()
+      }
       if (item.status === 'available') expect(within(card).getByRole('link', { name: item.action })).toHaveAttribute('href', item.href)
       else expect(within(card).queryByRole('link')).not.toBeInTheDocument()
     }

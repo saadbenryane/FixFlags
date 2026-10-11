@@ -16,7 +16,7 @@ Open the Flag, copy the fix into your editor, then Verify. Copying never closes 
 
 ## Keep watching
 
-Claim the Site, then choose Keep watching. Free includes weekly Watch for one Site. Watch becomes active when the schedule is saved; confirm the next check in Site settings. Use the schedule control to change or stop monitoring. Existing paid accounts can choose daily, hourly, or custom intervals where available. New Pro and Studio access remains on the [waitlist](/pricing).
+Claim the Site, then choose Keep watching. <!-- generated:public-offer --> Watch becomes active when the schedule is saved; confirm the next check in Site settings. Use the schedule control to change or stop monitoring. Choose any supported interval for your one Site during beta. New Pro and Studio access remains on the [waitlist](/pricing).
 
 ## Get help
 

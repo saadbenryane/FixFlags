@@ -31,7 +31,7 @@ describe('structured data', () => {
       '@id': `${SITE_URL}/faq#is-fixflags-free`,
       url: `${SITE_URL}/faq#is-fixflags-free`,
     })
-    expect(freeQuestion?.acceptedAnswer.text).toContain('One website is free')
+    expect(freeQuestion?.acceptedAnswer.text).toContain('Open beta includes all supported features on one website')
     expect(freeQuestion?.acceptedAnswer.text).toContain('/help/account-and-billing/free-and-pro')
   })
 
@@ -42,8 +42,8 @@ describe('structured data', () => {
       url: `${SITE_URL}/pricing`,
       name: PRICING.faqTitle,
     })
-    const paidQuestion = schema.mainEntity.find((entity) => entity.name === 'How does paid monitoring work?')
-    expect(paidQuestion?.acceptedAnswer.text).toContain('/waitlist/pro')
+    const paidQuestion = schema.mainEntity.find((entity) => entity.name === 'Are Pro and Studio available now?')
+    expect(paidQuestion?.acceptedAnswer.text).toContain('/waitlist')
   })
 
   it('emits TechArticle and BreadcrumbList for help articles', () => {

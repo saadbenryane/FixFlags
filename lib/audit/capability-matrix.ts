@@ -365,6 +365,12 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
 
     notes: 'Axe-core scan runs during browser capture; results mapped to FixFlags check IDs.',
   },
+  {
+    id: 'experience-keyboard-navigation', dimension: 'EXPERIENCE', category: 'accessibility',
+    label: 'Exercised keyboard navigation and focus styles', tool: 'browser-capture', status: 'live',
+    notes: 'Independent bounded page and declared popup probe. Menu arrows, dialog focus boundaries, Escape and restoration retain scoped repair proof. Unexercised states, computed focus styles and tab-order heuristics do not establish complete manual or assistive-technology coverage.',
+    verify: 'KEYBOARD_BROWSER_REQUIRED=true npx vitest run lib/audit/browser/keyboard-probe.test.ts lib/audit/checks/keyboard.test.ts',
+  },
 
   // EXPERIENCE - layout & mobile fold
   {

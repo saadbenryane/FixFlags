@@ -7,6 +7,7 @@ import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
 import { buildBlogPostMetadata } from '@/lib/marketing/metadata'
 import { BLOG_POSTS, BLOG_PAGE, blogDate, blogReadingMinutes } from '@/lib/marketing/copy/blog'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { BRAND } from '@/lib/marketing/copy/brand'
 import { blogPostingSchema } from '@/lib/marketing/structured-data'
 import { getDocsPage } from '@/lib/docs/catalog'
@@ -77,6 +78,7 @@ export default async function BlogPostPage({ params }: Props) {
             <h2>{section.title}</h2>
             {section.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
           </section>)}
+          <p className="mt-8"><Link href="/coverage" className="text-link underline underline-offset-4">{PUBLIC_SITE_COPY.coverage}</Link></p>
         </article>
         <div className={s.ending}>
           <section className={s.related} aria-labelledby="blog-related-guides">

@@ -1,12 +1,10 @@
 import type { Route } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
-import { Check, Flag, ShieldCheck } from 'lucide-react'
+import { Check, Flag, ShieldCheck, Users } from 'lucide-react'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
-import { MarketingCompareSection } from '@/components/marketing/MarketingCompareSection'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
 import { Container } from '@/components/ui/container'
@@ -15,157 +13,73 @@ import { Body, Heading } from '@/components/ui/typography'
 import { PRICING, PRICING_CARDS, PRICING_FAQ } from '@/lib/marketing/copy/plans'
 import { cn } from '@/lib/utils'
 
-const PLAN_ICONS = {
-  FREE: ShieldCheck,
-  BUILDER: Flag,
-} as const
+const PLAN_ICONS = { FREE: ShieldCheck, BUILDER: Flag, TEAM: Users } as const
 
 export function PricingPage() {
   return (
-    <Section spacing="tight" className="relative overflow-hidden">
+    <Section spacing="tight">
       <PricingViewTracker />
-      <Container
-        variant="marketing"
-        className="space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-12"
-      >
-        <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-10">
-          <div className="max-w-3xl">
-            <MarketingEyebrow>{PRICING.label}</MarketingEyebrow>
-            <Heading
-              as="h1"
-              className="mt-4 max-w-[18ch] font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
-            >
-              {PRICING.headline}
-            </Heading>
-            <Body className="mt-5 max-w-2xl text-muted-foreground text-pretty sm:text-lg">
-              {PRICING.subhead}
-            </Body>
-
-            <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
-              {PRICING.assurances.map((assurance) => (
-                <li key={assurance}>{assurance}</li>
-              ))}
-            </ul>
-            <Link href="#compare-plans" className="mt-5 inline-flex min-h-11 items-center text-sm font-medium text-link hover:underline">
-              {PRICING.compareTitle} &darr;
-            </Link>
-          </div>
-
-          <div className="relative mx-auto hidden w-full max-w-[29rem] lg:block">
-            <Image
-              src="/marketing/visuals/pricing-glass-mark.webp"
-              alt=""
-              width={1448}
-              height={1086}
-              priority
-              sizes="(min-width: 1280px) 34rem, 28rem"
-              className="relative h-auto w-full select-none object-contain mix-blend-multiply [-webkit-mask-image:radial-gradient(ellipse_at_center,black_56%,transparent_83%)] [mask-image:radial-gradient(ellipse_at_center,black_56%,transparent_83%)]"
-              draggable={false}
-            />
-          </div>
+      <Container variant="marketing" className="space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-12">
+        <div className="mx-auto max-w-3xl text-center">
+          <MarketingEyebrow>{PRICING.label}</MarketingEyebrow>
+          <Heading as="h1" className="mt-4 font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl">
+            {PRICING.headline}
+          </Heading>
+          <Body className="mt-5 text-pretty text-muted-foreground sm:text-lg">{PRICING.subhead}</Body>
+          <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            {PRICING.assurances.map((assurance) => <li key={assurance}>{assurance}</li>)}
+          </ul>
         </div>
 
-        <h2 className="sr-only">Plans</h2>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-          {PRICING_CARDS.map((plan) => {
-            const PlanIcon = PLAN_ICONS[plan.plan]
-            return (
-              <article
-                key={plan.name}
-                className={cn(
-                  'relative flex h-full min-h-[31rem] flex-col overflow-hidden rounded-[13px] border border-border/65 bg-background',
-                  plan.highlight && 'border-brand',
-                )}
-              >
-                <div className="space-y-4 p-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <span
-                      className={cn(
-                        'inline-flex h-11 w-11 items-center justify-center rounded-[10px] bg-muted/70 text-foreground',
-                        plan.highlight && 'bg-brand/10 text-brand',
-                      )}
-                    >
-                      <PlanIcon
-                        className="h-5 w-5"
-                        strokeWidth={1.75}
-                        aria-hidden
-                      />
-                    </span>
-                    {plan.badge ? (
-                      <span className="rounded-full border border-brand/40 px-2.5 py-1 text-xs font-semibold text-foreground">
-                        {plan.badge}
-                      </span>
-                    ) : null}
+        <section aria-labelledby="pricing-plans-heading" className="space-y-5">
+          <h2 id="pricing-plans-heading" className="sr-only">{PRICING.plansTitle}</h2>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+            {PRICING_CARDS.map((plan) => {
+              const Icon = PLAN_ICONS[plan.plan]
+              return (
+                <article key={plan.plan} aria-labelledby={`pricing-${plan.plan}`} className={cn('flex flex-col gap-6 rounded-card border border-border/65 bg-background p-5 sm:p-6', plan.highlight && 'border-brand bg-brand/[0.03]')}>
+                  <div className="flex items-center justify-between gap-3">
+                    <Icon className="h-5 w-5 text-foreground" aria-hidden />
+                    <span className={cn('rounded-full border border-border px-3 py-1 text-xs font-semibold', plan.highlight && 'border-brand/40')}>{plan.badge}</span>
                   </div>
-
-                  <div>
-                    <h3 className="font-display text-xl font-semibold tracking-tight">
-                      {plan.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {plan.persona}
-                    </p>
+                  <div className="space-y-2">
+                    <h3 id={`pricing-${plan.plan}`} className="font-display text-xl font-semibold">{plan.name}</h3>
+                    <p className="text-sm text-muted-foreground">{plan.persona}</p>
                   </div>
-
-                  <p className="text-sm font-medium leading-snug text-pretty">
-                    {plan.outcome}
-                  </p>
-
                   <div>
-                    <div className="flex items-end gap-1">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">{plan.priceLabel}</p>
+                    <div className="flex flex-wrap items-baseline gap-1">
                       <PlanPrice price={plan.price} />
-                      {plan.period ? (
-                        <span className="pb-1 text-sm text-muted-foreground">
-                          {plan.period}
-                        </span>
-                      ) : null}
+                      {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
                     </div>
-                    <p className="mt-1 text-xs font-medium text-muted-foreground">
-                      {plan.audits}
-                    </p>
                   </div>
-                </div>
-
-                <div className="flex flex-1 flex-col gap-6 p-5 pt-0 sm:p-6 sm:pt-0">
                   <ul className="flex-1 space-y-3">
                     {plan.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-2.5 text-sm leading-snug"
-                      >
-                        <Check
-                          className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
-                          aria-hidden
-                        />
-                        <span>{feature}</span>
+                      <li key={feature} className="flex items-start gap-2.5 text-sm leading-snug">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  <PricingCTAButton
-                    plan={plan.plan}
-                    cta={plan.cta}
-                    signUpHref={plan.href as Route}
-                    highlight={plan.highlight}
-                  />
-                </div>
-              </article>
-            )
-          })}
-        </div>
+                  <PricingCTAButton plan={plan.plan} cta={plan.cta} signUpHref={plan.href as Route} highlight={plan.highlight} waitlistGated />
+                </article>
+              )
+            })}
+          </div>
+          <p className="text-center text-sm text-muted-foreground">{PRICING.studioLine}{' '}<Link href={PRICING.studioHref} className="font-medium text-link underline-offset-4 hover:underline">{PRICING.studioCta}</Link></p>
+        </section>
 
-        <p className="text-sm text-muted-foreground">
-          {PRICING.studioLine}{' '}
-          <Link href={PRICING.studioHref} className="font-medium text-foreground underline-offset-4 hover:underline">
-            {PRICING.studioCta}
-          </Link>
-        </p>
+        <section aria-labelledby="pricing-shared-heading" className="rounded-card bg-muted/50 p-5 sm:p-8">
+          <Heading as="h2" id="pricing-shared-heading" className="font-display text-2xl font-semibold">{PRICING.sharedTitle}</Heading>
+          <ul className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {PRICING.sharedFeatures.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0" aria-hidden />{feature}</li>)}
+          </ul>
+          <p className="mt-5 text-sm leading-relaxed text-muted-foreground">{PRICING.sharedNote}</p>
+        </section>
 
         <section aria-labelledby="pricing-comparison-heading" className="space-y-6 scroll-mt-[var(--header-offset)]" id="compare-plans">
           <div className="max-w-2xl space-y-3">
             <MarketingEyebrow>{PRICING.compareLabel}</MarketingEyebrow>
-            <Heading as="h2" id="pricing-comparison-heading" className="font-display text-3xl font-semibold tracking-display sm:text-4xl">
-              {PRICING.compareTitle}
-            </Heading>
+            <Heading as="h2" id="pricing-comparison-heading" className="font-display text-3xl font-semibold tracking-display sm:text-4xl">{PRICING.compareTitle}</Heading>
             <Body className="text-muted-foreground">{PRICING.compareBody}</Body>
           </div>
           <PricingComparisonTable />
@@ -176,16 +90,7 @@ export function PricingPage() {
           </div>
         </section>
 
-        <MarketingCompareSection embedded />
-
-        <div className="mx-auto max-w-3xl">
-          <FaqSection
-            items={PRICING_FAQ}
-            title={PRICING.faqTitle}
-            sectionLabel={null}
-            defaultOpenFirst
-          />
-        </div>
+        <div className="mx-auto max-w-3xl"><FaqSection items={PRICING_FAQ} title={PRICING.faqTitle} sectionLabel={null} defaultOpenFirst /></div>
       </Container>
     </Section>
   )

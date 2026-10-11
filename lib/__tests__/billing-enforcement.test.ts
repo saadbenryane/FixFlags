@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterAll } from 'vitest'
+import { describe, it, beforeEach, afterAll, vi } from 'vitest'
 
 const _env = process.env as Record<string, string | undefined>
 import assert from 'node:assert/strict'
@@ -491,3 +491,10 @@ describe('canAccessPaidFeatures', () => {
     )
   })
 })
+
+// Preserve post-beta billing contracts alongside the explicit open-beta tests.
+vi.mock('@/lib/billing/beta-policy', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(),
+  OPEN_BETA_ACCESS: false,
+  hasOpenBetaAccess: () => false,
+}))

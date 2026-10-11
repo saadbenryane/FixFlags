@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { siteCarePolicy } from '@/lib/sites/application/care-policy'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { randomUUID } from 'node:crypto'
 
 export class ProductLimitReached extends Error {
   constructor(readonly limit: number) {
@@ -31,5 +33,9 @@ export async function assertCanCreateProduct(
   if (limit === null) return
 
   const count = await tx.project.count({ where: { userId, deletedAt: null } })
-  if (count >= limit) throw new ProductLimitReached(limit)
+  if (count >= limit) {
+    // Record outside the admission transaction so refusal does not erase intent.
+    await recordSiteLifecycleEvent({ name: 'site_capacity_reached', idempotencyKey: `site-capacity:${randomUUID()}`, userId, properties: { limit } }).catch(() => undefined)
+    throw new ProductLimitReached(limit)
+  }
 }

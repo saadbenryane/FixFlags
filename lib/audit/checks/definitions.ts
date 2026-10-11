@@ -3,7 +3,7 @@ import type { SiteCardArea } from '@/lib/sites/card-areas'
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
   version: 1; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
-  input: 'metadata' | 'headers' | 'performance' | 'mobile' | 'browser' | 'accessibility';
+  input: 'metadata' | 'headers' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard';
   evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
   assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only';
 }
@@ -14,7 +14,7 @@ function define(evaluator: string, area: SiteCardArea, name: string, input: Page
     resultSchema: 'site-module-check-v1', timeoutMs: 12_000, replaySafety: 'read_only',
     requiredEvidence: input === 'headers' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
       : input === 'mobile' ? ['pagespeed-mobile'] : evaluator === 'security' ? ['original-html']
-      : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe'] : ['rendered-html'] }
+      : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe'] : ['rendered-html'] }
 }
 
 /** Portable contracts. Server registration supplies the declared evaluator. */
@@ -30,6 +30,17 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   seo: define('seo', 'search', 'Search access', 'metadata'),
   accessibility: define('accessibility', 'accessibility', 'Accessibility checks', 'accessibility', {
     'automated-accessibility': assertion('accessibility'),
+  }),
+  keyboard: define('keyboard', 'accessibility', 'Keyboard navigation', 'keyboard', {
+    'focus-styles': assertion('accessibility', ['focus-visible-missing']),
+    'keyboard-exit': assertion('accessibility', ['keyboard-nav-trap']),
+    'tab-sequence': assertion('accessibility', ['keyboard-tab-order']),
+    'popup-open': assertion('accessibility', ['keyboard-popup-opening']),
+    'popup-entry': assertion('accessibility', ['keyboard-popup-focus']),
+    'menu-arrows': assertion('accessibility', ['keyboard-menu-navigation']),
+    'modal-boundary': assertion('accessibility', ['keyboard-modal-boundary']),
+    'popup-escape': assertion('accessibility', ['keyboard-popup-escape']),
+    'focus-restoration': assertion('accessibility', ['keyboard-focus-restoration']),
   }),
   trust: define('trust', 'security', 'Public trust checks', 'metadata'),
   security: define('security', 'security', 'Public security configuration', 'metadata', {

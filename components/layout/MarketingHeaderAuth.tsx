@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PublicLink } from "@/components/marketing/public-site/PublicInteraction";
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/hooks/useMe";
 import { CARE_HOME } from "@/lib/marketing/copy";
@@ -18,7 +19,7 @@ export function MarketingHeaderAuth({
 
   const analyze = (
     <Button variant="brand" size="sm" className={cn(mode === "mobileSheet" && "w-full")} asChild>
-      <Link href="/#analyze" onClick={onNavigate}>Analyze</Link>
+      <PublicLink href="/new" target="analyze" onClick={onNavigate}>Analyze</PublicLink>
     </Button>
   );
 

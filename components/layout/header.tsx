@@ -12,6 +12,7 @@ import {
   NAV_LINK_MOBILE_ACTIVE,
   NAV_LINK_MOBILE_BASE,
 } from '@/lib/site/nav-styles'
+import { trackPublicNavigation } from '@/components/marketing/public-site/PublicInteraction'
 import { NavLink } from '@/components/layout/nav-link'
 import { Logo } from '@/components/brand/Logo'
 import { Container } from '@/components/ui/container'
@@ -140,6 +141,7 @@ export function Header({
                 <NavLink
                   key={link.href}
                   href={link.href}
+                  onNavigate={() => { if (isMarketing) trackPublicNavigation(link.label) }}
                   className={isMarketing ? NAV_LINK_MARKETING : NAV_LINK_BASE}
                   activeClassName={NAV_LINK_ACTIVE}
                   inactiveClassName={NAV_LINK_INACTIVE}
@@ -198,7 +200,7 @@ export function Header({
                         <NavLink
                           key={link.href}
                           href={link.href}
-                          onNavigate={() => setOpen(false)}
+                          onNavigate={() => { if (isMarketing) trackPublicNavigation(link.label); setOpen(false) }}
                           className={NAV_LINK_MOBILE_BASE}
                           activeClassName={NAV_LINK_MOBILE_ACTIVE}
                           inactiveClassName={NAV_LINK_INACTIVE}

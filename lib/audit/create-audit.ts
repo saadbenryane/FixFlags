@@ -333,9 +333,13 @@ export async function createAndEnqueueAudit(
       try {
         audit = await prisma.$transaction(
           async (tx) => {
-            if (!options.parentId || !projectId) {
+            {
               try {
-                projectId = (await ensureProductProject(userId, url, tx)).id
+                const ownedProject = await ensureProductProject(userId, url, tx)
+                if (options.parentId && projectId && projectId !== ownedProject.id) {
+                  throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
+                }
+                projectId = ownedProject.id
               } catch (error) {
                 if (error instanceof ProductLimitReached) throw new AuditLimitError('UPGRADE_REQUIRED', {
                   action: 'upgrade', message: PLAN_LIMIT_NOTICE.copy['site-limit'].body,

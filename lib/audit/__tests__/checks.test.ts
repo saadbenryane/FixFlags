@@ -1,6 +1,15 @@
 import { describe, it, afterEach, vi } from 'vitest'
 import assert from 'node:assert/strict'
 
+function keyboardInteractionFinding(overrides: Partial<KeyboardInteraction>) {
+  const target = { selector: '#options', label: 'Options', rect: { x: 0.1, y: 0.1, width: 0.1, height: 0.1 } }
+  return runKeyboardChecks({ version: 1, pageUrl: 'https://example.com/', collectedAt: new Date().toISOString(),
+    complete: false, reason: 'interaction_scope_incomplete', candidateCount: 1, steps: [], trap: 'not_observed', limitations: [],
+    interactions: [{ kind: 'menu', trigger: target, popup: { ...target, selector: '#menu' }, openedBy: 'enter',
+      reason: 'interaction_observed', entry: 'inside', arrows: 'moved', containment: 'not_applicable', escape: 'closed',
+      restoration: 'trigger', complete: true, steps: [], ...overrides }] }).flags.map(flag => flag.checkId)
+}
+
 const searchDb = vi.hoisted(() => ({
   indexStatus: { findUnique: vi.fn() },
   searchPerformance: { count: vi.fn(), findFirst: vi.fn() },
@@ -10,6 +19,8 @@ import { runSearchPerformanceChecks } from '@/lib/audit/checks/search-performanc
 import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metadata-checks'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runAccessibilityChecks } from '@/lib/audit/checks/accessibility'
+import { runKeyboardChecks } from '@/lib/audit/checks/keyboard'
+import type { KeyboardInteraction } from '@/lib/audit/browser/keyboard-probe'
 import { runSeoChecks } from '@/lib/audit/checks/seo'
 import { evaluateSearch, searchFindings } from '@/lib/audit/search/registry'
 import { evidence as searchEvidence, document as searchDocument } from '@/lib/audit/search/__tests__/fixtures'
@@ -1407,6 +1418,18 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runAccessibilityChecks(healthyMeta(), failedA11yPs)),
     'focus-visible-missing': () =>
       checkIds(runAccessibilityChecks(healthyMeta(), failedA11yPs)),
+    'keyboard-popup-opening': () => keyboardInteractionFinding({ openedBy: 'pointer' }),
+    'keyboard-popup-focus': () => keyboardInteractionFinding({ entry: 'outside' }),
+    'keyboard-menu-navigation': () => keyboardInteractionFinding({ arrows: 'stuck' }),
+    'keyboard-modal-boundary': () => keyboardInteractionFinding({ kind: 'dialog', containment: 'escaped' }),
+    'keyboard-popup-escape': () => keyboardInteractionFinding({ escape: 'remained' }),
+    'keyboard-focus-restoration': () => keyboardInteractionFinding({ restoration: 'lost' }),
+    'keyboard-tab-order': () => checkIds(runKeyboardChecks({ version: 1, pageUrl: 'https://example.com/',
+      collectedAt: new Date().toISOString(), complete: true, reason: 'document_boundary_observed', candidateCount: 2,
+      trap: 'not_observed', limitations: [], steps: [
+        { id: 2, selector: '#second', label: 'Second', domOrder: 1, tabIndex: 1, indicator: 'styled', rect: { x: 0, y: 0, width: 20, height: 20 } },
+        { id: 1, selector: '#first', label: 'First', domOrder: 0, tabIndex: 0, indicator: 'styled', rect: { x: 0, y: 0, width: 20, height: 20 } },
+      ] }).flags),
     'axe-aria-required-children': () =>
       checkIds(runAccessibilityChecks(healthyMeta(), null, [axeV('aria-required-children')])),
     'axe-aria-required-parent': () =>

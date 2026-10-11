@@ -74,6 +74,14 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Tab through modals and overlays; focus should not become stuck and Escape should close.',
   'focus-visible-missing':
     'Tab through interactive elements; each should show a visible focus indicator.',
+  'keyboard-tab-order':
+    'Repeat the recorded Tab sequence on the same controls. Check document and visible reading order, and remove unintended positive-tabindex jumps.',
+  'keyboard-popup-opening': 'Use the recorded trigger to open the same menu or dialog with Enter, preserving keyboard reachability.',
+  'keyboard-popup-focus': 'Open the same popup from the keyboard and observe focus entering its content.',
+  'keyboard-menu-navigation': 'Open the recorded menu and exercise its orientation-appropriate arrow keys without activating items.',
+  'keyboard-modal-boundary': 'Open the recorded modal, traverse its controls with Tab and Shift+Tab, and confirm focus stays inside until dismissal.',
+  'keyboard-popup-escape': 'Open the same dismissible menu or dialog and observe Escape closing it.',
+  'keyboard-focus-restoration': 'Open and dismiss the same popup with Escape. Observe focus returning to its still-visible trigger before manually moving focus.',
   'axe-aria-required-children':
     'Run axe DevTools; ensure ARIA role elements contain the required child elements per spec.',
   'axe-aria-required-parent':

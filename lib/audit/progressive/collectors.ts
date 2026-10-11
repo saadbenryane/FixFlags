@@ -10,8 +10,27 @@ import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speed
 import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import type { TaskHandler } from './registry'
 import { parseMetadataIsolated } from './cpu'
+import { getAuditBrowser } from '../screenshot'
+import { createAuditPage } from '../browser/page-session'
+import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
+import { collectKeyboardEvidence, keyboardEvidenceSchema } from '../browser/keyboard-probe'
 
 export const collectionHandlers: TaskHandler[] = [
+  { kind: 'keyboard', replay: 'read_only', timeoutMs: 30_000,
+    validateResult: artifact => { keyboardEvidenceSchema.parse(artifact.data) },
+    async evaluate(context) {
+      let refused = 0
+      const session = await createAuditPage(await getAuditBrowser(), context.input.pageUrl, {
+        profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, readOnlyInteractions: true, deadline: context.deadline,
+        scanAccess: await resolveAuditScanAccess(context.audit.id),
+        onSafetyRefusal: () => { refused++ },
+      })
+      try {
+        const evidence = await collectKeyboardEvidence(session.page, Math.min(context.deadline, Date.now() + 8000), { refusalCount: () => refused })
+        return serializeArtifact('keyboard', keyboardEvidenceSchema.parse(evidence))
+      } finally { session.disposeNetwork(); await session.page.context().close() }
+    },
+  },
   { kind: 'search-resources', replay: 'read_only', timeoutMs: 30_000,
     validateResult: artifact => { resourceArtifactSchema.parse(artifact.data) },
     async evaluate(context) {

@@ -5,7 +5,7 @@ Enter a public website URL. FixFlags opens a Site board for that website: what i
 1. Enter a URL on the homepage or [/new](/new).
 2. Stay on the Site board while cards fill in.
 3. Open a Flag, copy the fix, then Verify the same page and action.
-4. Keep watching after you claim the Site. Free watches weekly.
+4. Keep watching after you claim the Site. Open beta includes any supported schedule on one website. Read the temporary offer on [Pricing](/pricing).
 
 Shopify is a [connection](/docs/integrations/shopify) for store and purchase-path evidence. [Analytics and Search Console](/docs/integrations) add traffic and search context to the same Site.
 
@@ -22,6 +22,9 @@ FixFlags follows one loop: **Flag. Fix. Verify.**, then Watch.
 - **Watch** only after a schedule exists.
 
 ## Choose your path
+
+[What FixFlags checks](/coverage) explains setup and limits. [Privacy and security](/security) explains evidence access and data handling.
+
 
 - [Getting started](/docs/getting-started) for a URL check and the first Site board.
 - [Site care](/docs/site-care) for Cards, Flags, evidence, Verify, and Watch.

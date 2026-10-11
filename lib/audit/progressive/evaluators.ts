@@ -18,6 +18,9 @@ import { collectSearchEvidence, missingDocument } from '../search/collect'
 import { checkReceiptSchema } from '../checks/receipt'
 import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
 import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
+import { runKeyboardChecks } from '../checks/keyboard'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
@@ -64,8 +67,21 @@ export const evaluatorHandlers: TaskHandler[] = [
       const metadata = checkModule === 'security' ? response?.metadata : browser?.metadata
       const snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       let flags: import('../flag-types').DeterministicFlag[], assertions: import('../checks/assertion').CheckAssertion[] = []
-      let applicable = true
-      if (checkModule === 'performance' || checkModule === 'mobile') {
+      let applicable = true, complete: boolean | undefined, limitation: string | undefined
+      let pageUrl = context.input.pageUrl
+      if (checkModule === 'keyboard') {
+        const task = dependency(context, 'keyboard')
+        if (!task?.workResult) throw new TaskFailure('KEYBOARD_EVIDENCE_UNAVAILABLE', false)
+        const evidence = keyboardEvidenceSchema.parse(readArtifact(task.workResult, 'keyboard').data)
+        const checked = runKeyboardChecks(evidence)
+        flags = checked.flags; assertions = checked.assertions
+        applicable = evidence.candidateCount > 0 || (evidence.interactionCount ?? 0) > 0; complete = evidence.complete; pageUrl = evidence.pageUrl
+        const copy = SITE_ACTION_COPY.execution.keyboard
+        const opened = evidence.interactions?.filter(item => item.openedBy !== 'none').length ?? 0
+        limitation = [`${evidence.steps.length} page controls exercised.`,
+          ...(evidence.interactionCount ? [`${opened} of ${evidence.interactionCount} declared popup states opened for inspection.`] : []), copy.reasons[evidence.reason as keyof typeof copy.reasons] ?? copy.incomplete,
+          ...evidence.limitations.map(key => copy.limitations[key as keyof typeof copy.limitations]).filter(Boolean), copy.scope].join(' ')
+      } else if (checkModule === 'performance' || checkModule === 'mobile') {
         if (checkModule === 'performance' && context.input.device === 'mobile' && speed?.desktop)
           throw new TaskFailure('MOBILE_INP_FALLBACK_NOT_APPLICABLE', false)
         applicable = checkModule === 'mobile' ? Boolean(speed?.mobile) : Boolean(speed?.desktop || speed?.mobile)
@@ -93,17 +109,18 @@ export const evaluatorHandlers: TaskHandler[] = [
         applicable = checked.executions[0]?.applicable === true
       }
       flags = suppressFlagsForPageRole(flags, context.input.role)
-        .map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
-      const sourceKind = checkModule === 'security' || checkModule === 'security-headers' ? 'http'
+        .map(flag => ({ ...flag, pageUrl }))
+      const sourceKind = checkModule === 'keyboard' ? 'keyboard' : checkModule === 'security' || checkModule === 'security-headers' ? 'http'
         : checkModule === 'performance' || checkModule === 'mobile' ? 'pagespeed' : 'browser'
       const sourceTask = dependency(context, sourceKind)
       if (!sourceTask?.workResult) throw new TaskFailure('ASSERTION_SOURCE_UNAVAILABLE', false)
       const source = readArtifact(sourceTask.workResult, sourceKind)
       const device = checkModule === 'mobile' || context.input.device === 'mobile' ? 'mobile' : 'desktop'
       return serializeArtifact('check', checkArtifactSchema.parse({ flags, receipt: {
-        kind: 'site-module-check', version: 1, module: checkModule, passed: flags.length === 0, applicable, pageUrl: context.input.pageUrl, assertions,
+        kind: 'site-module-check', version: 1, module: checkModule, passed: flags.length === 0 && complete !== false, applicable, pageUrl, assertions,
+        ...(complete !== undefined ? { complete, limitation } : {}),
         execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version,
-          source: checkModule === 'security' ? 'original-html' : checkModule === 'security-headers' ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+          source: checkModule === 'keyboard' ? 'keyboard' : checkModule === 'security' ? 'original-html' : checkModule === 'security-headers' ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'axe' : 'rendered-dom',
           collectedAt: source.collectedAt },
       } }))

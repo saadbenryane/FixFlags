@@ -5,14 +5,17 @@ export const checkAssertionSchema = z.object({
   key: z.string().min(1).max(160), name: z.string().min(1).max(300),
   expected: z.string().min(1).max(2000), observed: z.string().min(1).max(2000),
   passed: z.boolean(),
+  complete: z.boolean().optional(), context: z.string().min(1).max(4200).optional(),
+  targets: z.array(z.object({ selector: z.string().min(1).max(2000), label: z.string().min(1).max(160), context: z.string().min(1).max(4200).optional() }).strict()).max(200).optional(),
 })
 
 export const checkReceiptSchema = z.object({
   kind: z.literal('site-module-check'), version: z.literal(1), module: z.string().min(1),
   passed: z.boolean(), applicable: z.boolean(), failed: z.boolean().optional(),
+  complete: z.boolean().optional(), limitation: z.string().max(2000).optional(),
   pageUrl: z.string().url(), assertions: z.array(checkAssertionSchema).max(300).default([]),
   execution: z.object({ auditId: z.string().min(1), taskId: z.string().min(1), checkVersion: z.number().int().positive(),
-    source: z.enum(['http', 'original-html', 'rendered-dom', 'pagespeed-desktop', 'pagespeed-mobile', 'axe']),
+    source: z.enum(['http', 'original-html', 'rendered-dom', 'pagespeed-desktop', 'pagespeed-mobile', 'axe', 'keyboard']),
     collectedAt: z.string().datetime() }).strict().optional(),
 }).superRefine((receipt, context) => {
   if (!CHECK_MODULES[receipt.module]) context.addIssue({ code: 'custom', message: 'Unregistered execution module' })

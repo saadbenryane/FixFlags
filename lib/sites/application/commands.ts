@@ -300,10 +300,10 @@ export async function executeSiteCommand(command: SiteCommand) {
       if (result.ok && command.interval) {
         await recordSiteLifecycleEvent({
           name: 'watch_enabled',
-          idempotencyKey: `watch-enabled:${site.projectId}:${command.interval}`,
+          idempotencyKey: `watch-enabled:${site.projectId}:${command.interval}:${command.everyMinutes ?? ''}`,
           userId: command.userId,
           projectId: site.projectId,
-          properties: { interval: command.interval },
+          properties: { interval: command.interval, everyMinutes: command.everyMinutes },
         })
       }
       return result

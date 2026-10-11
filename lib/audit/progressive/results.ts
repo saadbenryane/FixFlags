@@ -18,6 +18,7 @@ export const flagSchema = z.object({
     kind: z.enum(['element', 'page']), source: z.literal('measured'), device: z.enum(['desktop', 'mobile']),
     rect: z.object({ x: z.number().finite(), y: z.number().finite(), width: z.number().finite(), height: z.number().finite() }).strict().optional(),
     selector: z.string().optional(), text: z.string().optional(), label: z.string(),
+    context: z.string().min(1).max(4200).optional(),
   }).strict()).optional(), verificationRule: z.string().optional(),
   attentionPolicy: searchAttentionSchema.optional(),
 }).strict()

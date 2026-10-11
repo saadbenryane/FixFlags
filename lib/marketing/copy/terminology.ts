@@ -318,10 +318,10 @@ export const PRICING_COPY = {
   proPrice: '$49',
   proPeriod: '/website/mo',
   proProductReviewsPerMonth: 30,
-  studioPrice: 'Volume',
-  studioPeriod: '',
+  studioPrice: '$99',
+  studioPeriod: '/website/mo',
   studioProductReviewsPerMonth: 90,
-  freeFrequency: 'weekly',
+  freeFrequency: 'any supported schedule during open beta',
   paidFrequency: 'every day',
 } as const
 

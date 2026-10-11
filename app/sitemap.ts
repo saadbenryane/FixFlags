@@ -14,7 +14,7 @@ function blogLastModified(post: { date: string; updatedAt?: string; publishedAt?
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const pages: MetadataRoute.Sitemap = INDEXABLE_ROUTES.map((route) => ({
+  const pages: MetadataRoute.Sitemap = INDEXABLE_ROUTES.filter(route => route.path !== '/issues').map((route) => ({
     url: route.path === '/' ? baseUrl : `${baseUrl}${route.path}`,
     changeFrequency: route.changeFrequency,
     priority: route.priority,
@@ -50,6 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.warn('[sitemap] Issue discovery unavailable; serving public content only')
     return []
   })
+  if (issues.length > 0) pages.push({ url: `${baseUrl}/issues`, changeFrequency: 'weekly', priority: 0.6 })
   for (const issue of issues) {
     pages.push({
       url: `${baseUrl}/issues/${issue.checkId}`,

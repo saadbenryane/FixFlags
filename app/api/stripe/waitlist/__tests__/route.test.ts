@@ -6,6 +6,8 @@ const enforceRateLimit = vi.hoisted(() => vi.fn())
 const requestClientId = vi.hoisted(() => vi.fn(() => 'client-1'))
 const upsertPaidPlanWaitlistEntry = vi.hoisted(() => vi.fn())
 const changeEmail = vi.hoisted(() => vi.fn())
+const recordSiteLifecycleEvent = vi.hoisted(() => vi.fn().mockResolvedValue({}))
+vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent }))
 
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession, changeEmail } } }))
 vi.mock('@/lib/security/rate-limit', () => ({
@@ -71,6 +73,7 @@ describe('POST /api/stripe/waitlist', () => {
     })
     const response = await POST(postReq({ plan: 'TEAM', source: 'pricing' }))
     expect(response.status).toBe(200)
+    expect(recordSiteLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ name: 'waitlist_interest_recorded', properties: expect.objectContaining({ plannedPrice: '$99', plan: 'TEAM' }) }))
     expect(upsertPaidPlanWaitlistEntry).toHaveBeenCalledWith({
       userId: 'user-1',
       plan: 'TEAM',

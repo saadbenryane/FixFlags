@@ -54,19 +54,23 @@ export function projectCheckResults(auditId: string, receipts: Array<{
     const detail = readCheckReceipt(receipt.detail)
     const status = receipt.status === 'FAILED' ? 'failed'
       : receipt.status === 'NOT_APPLICABLE' ? 'not_applicable'
+      : 'complete' in detail && detail.complete === false ? 'unknown'
+      : 'applicable' in detail && !detail.applicable ? 'not_applicable'
       : detail.passed === false ? 'findings' : 'completed'
     const assertions = receipt.status === 'COMPLETED'
-      ? detail.assertions.flatMap(assertion => {
-          return [{ id: `${receipt.id}:${assertion.key}`, auditId, ...provenance,
+      ? detail.assertions.flatMap((assertion, index) => {
+          const repeated = detail.assertions.some((other, otherIndex) => otherIndex !== index && other.key === assertion.key && other.context === assertion.context)
+          return [{ id: `${receipt.id}:${assertion.key}${assertion.context ? ':' + assertion.context : ''}${repeated ? ':' + index : ''}`, auditId, ...provenance,
             name: assertion.name, area: CHECK_ASSERTIONS[receipt.targetKey.replace(/^module:/, '')]?.[assertion.key]?.area ?? descriptor.area,
-            kind: 'assertion' as const, status: assertion.passed ? 'passed' as const : 'findings' as const,
+            kind: 'assertion' as const, status: assertion.complete === false ? 'unknown' as const : assertion.passed ? 'passed' as const : 'findings' as const,
             observation: assertion.observed, expected: assertion.expected, pageUrl: receipt.pageUrl,
             checkedAt: 'execution' in detail && detail.execution ? detail.execution.collectedAt : receipt.updatedAt.toISOString(), historical,
             limitation: 'This result establishes only the stated assertion in the recorded execution scope.' } satisfies SiteCheckResult]
         }) : []
     return [...assertions, { id: receipt.id, auditId, ...provenance, area: descriptor.area, name: descriptor.name, kind: 'execution' as const,
       status, pageUrl: receipt.pageUrl, checkedAt: receipt.updatedAt.toISOString(), historical,
-      limitation: status === 'completed'
+      limitation: 'limitation' in detail && detail.limitation ? detail.limitation : status === 'unknown'
+        ? 'Only part of this check could be inspected. Recorded findings remain available; uninspected scope is unknown.' : status === 'completed'
         ? 'This check completed. Individual successful assertions are shown only when recorded; completion does not certify the whole category.'
         : status === 'not_applicable' ? 'This check had no applicable evidence in this scope.'
         : status === 'failed' ? 'This check did not complete; its result is unknown.'

@@ -45,6 +45,12 @@ beforeEach(() => {
 })
 
 describe('runWorkspaceChat', () => {
+  it('retains provider-reported cost evidence when the reply is empty', async () => {
+    fakeCreate.mockResolvedValue({ model: 'gpt-4o-mini', choices: [{ message: { content: '' } }], usage: { prompt_tokens: 123, completion_tokens: 45 } })
+    const { runWorkspaceChat } = await loadWorkspaceChat({ openai: { chat: { completions: { create: fakeCreate } } } })
+    await expect(runWorkspaceChat({ message: 'Explain', url: 'https://example.com', status: 'COMPLETED', flags })).rejects.toMatchObject({ usage: { inputTokens: 123, outputTokens: 45, model: 'gpt-4o-mini' } })
+  })
+
   it('sends flag context and report metadata in the user message', async () => {
     const { runWorkspaceChat } = await loadWorkspaceChat({
       openai: { chat: { completions: { create: fakeCreate } } },
@@ -60,7 +66,7 @@ describe('runWorkspaceChat', () => {
 
     expect(reply).toBe('Fix the critical flag first.')
     expect(mode).toBe('llm')
-    expect(usage).toEqual({ inputTokens: 120, outputTokens: 18 })
+    expect(usage).toEqual({ inputTokens: 120, outputTokens: 18, model: expect.any(String) })
     expect(fakeCreate).toHaveBeenCalledOnce()
 
     const call = fakeCreate.mock.calls[0]![0]

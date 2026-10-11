@@ -74,10 +74,11 @@ describe('PlanPickerDialog', () => {
     expect(screen.getByText('Pro')).toBeInTheDocument()
     expect(screen.getByText('Studio')).toBeInTheDocument()
     expect(
-      screen.getByText('Free is one website, verified weekly. Paid is $49 per website, verified every day.'),
+      screen.getByText('One website. All features. No usage limits during open beta.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Current plan' })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Join waitlist' })).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Join Pro waitlist' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Join Studio waitlist' })).toBeInTheDocument()
     await waitFor(() =>
       expect(trackEvent).toHaveBeenCalledWith(
         'plan_picker_viewed',
@@ -159,7 +160,7 @@ describe('PlanPickerDialog', () => {
       <PlanPickerDialog open onOpenChange={onOpenChange} source="billing" />
     )
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Join waitlist' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Join Pro waitlist' }))
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/waitlist/pro'))
     expect(onOpenChange).toHaveBeenCalledWith(false)

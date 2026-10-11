@@ -7,16 +7,16 @@ const PRO = PLANS.find((plan) => plan.plan === "BUILDER")!;
 const STUDIO = PLANS.find((plan) => plan.plan === "TEAM")!;
 
 const COLUMNS = [
-  { key: "free" as const, name: FREE.name, price: FREE.price, highlight: false },
-  { key: "pro" as const, name: PRO.name, price: PRO.price, highlight: true },
-  { key: "studio" as const, name: STUDIO.name, price: STUDIO.price, highlight: false },
+  { key: "free" as const, name: FREE.name, price: FREE.price, priceLabel: FREE.priceLabel, highlight: true },
+  { key: "pro" as const, name: PRO.name, price: PRO.price, priceLabel: PRO.priceLabel, highlight: false },
+  { key: "studio" as const, name: STUDIO.name, price: STUDIO.price, priceLabel: STUDIO.priceLabel, highlight: false },
 ];
 
 export function PricingComparisonTable() {
   return (
     <>
       <div className="grid gap-3 md:hidden">
-        {COLUMNS.map(({ key, name, price, highlight }) => (
+        {COLUMNS.map(({ key, name, price, priceLabel, highlight }) => (
           <section
             key={key}
             aria-labelledby={`comparison-${key}`}
@@ -29,7 +29,7 @@ export function PricingComparisonTable() {
               <h3 id={`comparison-${key}`} className="font-display font-semibold">
                 {name}
               </h3>
-              <PlanPrice price={price} size="sm" className="text-muted-foreground" />
+              <span className="text-right text-xs text-muted-foreground"><span className="block">{priceLabel}</span><PlanPrice price={price} size="sm" /></span>
             </div>
             <dl className="divide-y divide-border/30">
               {PRICING_COMPARISON.rows.map((row) => (
@@ -57,7 +57,7 @@ export function PricingComparisonTable() {
               >
                 {PRICING_COMPARISON.includedLabel}
               </th>
-              {COLUMNS.map(({ key, name, price, highlight }) => (
+              {COLUMNS.map(({ key, name, price, priceLabel, highlight }) => (
                 <th
                   key={key}
                   className={cn("p-5 text-center", highlight && "bg-brand/[0.04]")}
@@ -71,6 +71,7 @@ export function PricingComparisonTable() {
                   >
                     {name}
                   </span>
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">{priceLabel}</span>
                   <PlanPrice
                     price={price}
                     size="sm"

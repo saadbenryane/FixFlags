@@ -64,6 +64,13 @@ consumers; restart the worker deliberately when worker code changes.
 | `npm run db:validate` | Validate Prisma schema |
 | `npm run db:push` | Push schema directly (dev only) |
 
+`node scripts/verify-progressive-execution.mjs` checks the full migration history,
+schema drift and representative application-to-worker execution using a newly
+created disposable local PostgreSQL database and Redis container. It requires a
+local `DATABASE_URL` with database-creation permission, Docker with `redis:7-alpine`,
+and Chromium. It drops only the database and container it creates. It does not
+migrate or reset the configured local database, deploy, or run the app E2E suite.
+
 ### Quality
 
 Follow the [agent validation policy](AGENTS.md#validation): end-to-end tests require an explicit user request, including the browser journeys bundled into `verify:release`. A routine UI edit does not authorize those commands.

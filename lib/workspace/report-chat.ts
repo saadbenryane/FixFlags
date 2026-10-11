@@ -8,6 +8,7 @@ import {
   answerProductQuestion,
   isWorkspaceChatConfigured,
   runWorkspaceChat,
+  WorkspaceChatUnavailableError,
   workspaceChatTokenUpperBound,
   type ChatDiffItem,
   type ChatDiffSummary,
@@ -337,6 +338,12 @@ export async function sendReportChatMessage(input: {
       mode = result.mode
       allowance = await finalizeChatUsage(reservationId, result.usage)
       reservationId = null
+    } catch (error) {
+      if (reservationId && error instanceof WorkspaceChatUnavailableError && error.usage) {
+        await finalizeChatUsage(reservationId, error.usage)
+        reservationId = null
+      }
+      throw error
     } finally {
       if (reservationId) await releaseChatUsage(reservationId)
     }

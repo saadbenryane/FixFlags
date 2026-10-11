@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,12 +14,17 @@ import { rubricBadgeClasses } from '@/lib/rubric-icons'
 import { prisma } from '@/lib/db'
 import { FLAG_LIBRARY } from '@/lib/marketing/copy/library'
 
-export const metadata = buildPageMetadata('issues', '/issues')
+const indexableIssues = cache(getIndexableIssueCheckIds)
+
+export async function generateMetadata(): Promise<Metadata> {
+  const issues = await indexableIssues()
+  return { ...buildPageMetadata('issues', '/issues'), robots: { index: issues.length > 0, follow: true } }
+}
 // This library is a live projection of the PostgreSQL knowledge graph.
 export const dynamic = 'force-dynamic'
 
 export default async function IssuesIndexPage() {
-  const issues = await getIndexableIssueCheckIds()
+  const issues = await indexableIssues()
 
   const checkIds = issues.map((i) => i.checkId)
 
@@ -69,7 +76,7 @@ export default async function IssuesIndexPage() {
                 {FLAG_LIBRARY.emptyBody(MIN_SAMPLE_SIZE)}
               </Muted>
               <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium">
-                <Link href="/docs/site-care" className="inline-flex min-h-11 items-center text-link hover:underline">{FLAG_LIBRARY.docsCta}</Link>
+                <Link href="/coverage" className="inline-flex min-h-11 items-center text-link hover:underline">{FLAG_LIBRARY.docsCta}</Link>
                 <Link href="/new" className="inline-flex min-h-11 items-center text-link hover:underline">{FLAG_LIBRARY.startCta}</Link>
               </div>
             </div>

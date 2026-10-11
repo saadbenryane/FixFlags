@@ -103,7 +103,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
                 isManaged: false,
               },
               update: { url: canonicalProductUrl(audit.url), deletedAt: null },
-              select: { id: true, productIntelligence: true },
+              select: { id: true, productIntelligence: true, deletedAt: true },
             })
         }
         if (!project) throw new Error(`Cannot attach Product for audit ${audit.id}`)
