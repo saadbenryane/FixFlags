@@ -28,6 +28,8 @@ import { filterToolingPathFlags } from '../tooling-path-filter'
 import { detectPagePurpose } from '../page-purpose'
 import { suppressOverlappingFlags } from '../suppression'
 import type { CheckAssertion } from './assertion'
+import { CHECK_MODULES } from '../check-registry'
+import { recordCheckObservations } from './observations'
 
 export type { DeterministicFlag } from '../flag-types'
 export type { AxeViolation } from './accessibility'
@@ -99,14 +101,18 @@ export async function runAllChecks(
       const { name, run } = checkers[i]
       try {
         const results = await run()
-        const applicable = name === 'performance' ? Boolean(desktop && mobile)
-          : name === 'mobile' ? Boolean(mobile)
-          : name === 'security-headers' ? Boolean(responseHeaders)
-          : name === 'accessibility' ? axeViolations !== undefined
-          : ['layout', 'interaction', 'cta-focus', 'visual-polish', 'visual-hierarchy', 'mobile-ux-quality'].includes(name)
-            ? Boolean(captureMetrics) : true
+        const contract = CHECK_MODULES[name]
+        if (!contract) throw new Error(`Unregistered check module: ${name}`)
+        const applicable = contract.input === 'performance' ? Boolean(desktop || mobile)
+          : contract.input === 'mobile' ? Boolean(mobile)
+          : contract.input === 'headers' ? Boolean(responseHeaders)
+          : contract.input === 'accessibility' ? axeViolations !== undefined || Boolean(desktop || mobile)
+          : contract.input === 'browser' ? Boolean(captureMetrics) : true
+        const assertions = name === 'metadata' ? metadataAssertions : recordCheckObservations(name, {
+          url, metadata, headers: responseHeaders, desktop, mobile, axe: axeViolations,
+        })
         executions.push({ module: name, passed: results.length === 0, applicable,
-          ...(name === 'metadata' ? { assertions: metadataAssertions } : {}) })
+          assertions })
         findings.push(...results)
       } catch (err) {
         logger.error(`Check module "${name}" failed`, err)

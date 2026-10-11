@@ -11,6 +11,8 @@ import { runGscPull } from '@/lib/growth/gsc-pull'
 import { runGaPull } from '@/lib/growth/ga-pull'
 import { deleteExpiredProductSignals } from '@/lib/signals/product-signals'
 import { logger } from '@/lib/logger'
+import { recoverExpiredSiteRuns } from '@/lib/sites/application/run-leases'
+import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
 
 const RECOVERY_INTERVAL_MS = 120_000 // ~2 min
 const RECOVERY_LOCK_TTL_MS = 110_000 // < interval so it re-acquires next tick
@@ -39,6 +41,8 @@ async function recoveryTick(): Promise<void> {
     if (result.requeued || result.failed) logger.info('Recovery sweep', result)
     const projections = await recoverCompletedImprovementProjections()
     if (projections.checked > 0) logger.info('Improvement projection recovery sweep', projections)
+    const runs = await recoverExpiredSiteRuns(reconcileOutcomeRunsForAudit)
+    if (runs > 0) logger.info('Recovered abandoned Site executions', { runs })
   } catch (err) {
     logger.error('Recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
   }

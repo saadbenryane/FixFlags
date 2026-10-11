@@ -9,6 +9,11 @@ supersedes: []
 
 Use the smallest amount of project context needed for the task. Explicit user direction takes precedence over repository guidance.
 
+## Writing rules
+
+- Never use em dashes in responses, product copy, documentation, or comments. Use commas, periods, or parentheses instead.
+- When the user provides exact wording, preserve it. Do not paraphrase or invent replacement copy unless asked.
+
 ## Working safely
 
 - Check `git status --short` before writing and preserve unrelated changes.
@@ -27,6 +32,7 @@ Use the smallest amount of project context needed for the task. Explicit user di
 
 ## Validation
 
+- Run end-to-end tests only when the user explicitly requests them. This includes Playwright suites, ad hoc browser test scripts, and E2E stages invoked indirectly through full or release verification commands. Routine UI work uses focused static or component checks.
 - Run the smallest focused check that exercises the changed behavior.
 - Use broader suites for shared contracts, security-sensitive work, migrations, or release boundaries.
 - Do not select a repository-wide check merely because unrelated files are dirty.

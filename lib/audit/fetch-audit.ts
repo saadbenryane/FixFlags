@@ -1,3 +1,4 @@
+import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { cookies, headers } from 'next/headers'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -409,13 +410,7 @@ export async function getGatedAuditForRequest(id: string) {
   const intentionalNotes =
     productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
   const knownRisks = productIntelligence?.knownRisks?.slice(0, 5) ?? []
-  const watchInterval = canAccessPrivateReportData
-    ? audit.project?.watchInterval === 'WEEKLY'
-      ? 'weekly'
-      : audit.project?.watchInterval === 'DAILY'
-        ? 'daily'
-        : null
-    : null
+  const watchInterval = canAccessPrivateReportData ? fromStoredWatchInterval(audit.project?.watchInterval ?? null) : null
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,

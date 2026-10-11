@@ -1,0 +1,21 @@
+.page { width: min(760px, calc(100% - 40px)); margin-inline: auto; padding: clamp(32px, 5vw, 72px) 0 96px; }
+.back { display: inline-flex; min-height: 44px; align-items: center; color: hsl(var(--muted-foreground)); font-size: 14px; }
+.back:hover { color: hsl(var(--foreground)); }
+.eyebrow { margin-top: 36px; color: hsl(var(--brand-strong)); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.page h1 { max-width: 650px; margin-top: 12px; font-family: var(--font-display), sans-serif; font-size: clamp(40px, 5vw, 64px); font-weight: 650; letter-spacing: -.045em; line-height: 1.05; text-wrap: balance; }
+.intro { max-width: 630px; margin-top: 20px; color: hsl(var(--muted-foreground)); font-size: 16px; line-height: 1.6; }
+.notice, .empty { margin-top: 30px; padding: 22px; border: 1px solid hsl(var(--border)); border-radius: 16px; background: hsl(var(--muted) / .5); font-size: 14px; line-height: 1.55; }
+.sites { display: grid; gap: 12px; margin-top: 30px; }
+.sites li a { display: flex; min-height: 84px; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 20px; border: 1px solid hsl(var(--border)); border-radius: 16px; background: hsl(var(--background)); transition: border-color .2s, transform .2s; }
+.sites li a:hover { border-color: hsl(var(--brand) / .6); transform: translateY(-2px); }
+.sites li a:focus-visible, .action:focus-visible, .back:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.sites strong, .sites small { display: block; }
+.sites strong { font-size: 16px; }
+.sites small { margin-top: 3px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.sites svg, .action svg { flex: none; color: hsl(var(--brand-strong)); }
+.empty p { color: hsl(var(--muted-foreground)); }
+.action { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; margin-top: 12px; color: hsl(var(--brand-strong)); font-weight: 650; }
+.help { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; margin-top: 20px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.help:hover { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 4px; }
+.help:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .sites li a { transition: none; } .sites li a:hover { transform: none; } }

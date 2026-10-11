@@ -22,6 +22,7 @@ const ARTICLE_CATEGORY: Record<HelpArticleSlug, HelpCategoryId> = {
   'weekly-watch': 'watch-and-notifications',
   'notification-preferences': 'watch-and-notifications',
   'connect-shopify': 'shopify',
+  'connect-google-data': 'getting-started',
   'shopify-access-and-removal': 'shopify',
   'free-and-pro': 'account-and-billing',
   'manage-an-existing-subscription': 'account-and-billing',

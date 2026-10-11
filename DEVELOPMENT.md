@@ -64,6 +64,9 @@ consumers; restart the worker deliberately when worker code changes.
 | `npm run db:push` | Push schema directly (dev only) |
 
 ### Quality
+
+Follow the [agent validation policy](AGENTS.md#validation): end-to-end tests require an explicit user request, including the browser journeys bundled into `verify:release`. A routine UI edit does not authorize those commands.
+
 | Command | Purpose |
 |---------|---------|
 | `npm run typecheck` | TypeScript type checking |

@@ -1,65 +1,64 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Route } from 'next'
-import { Logo } from '@/components/brand/Logo'
+import { EditorMark } from '@/components/brand/EditorMarks'
+import { HOMEPAGE_EDITOR_INTEGRATIONS, editorDocsHref } from '@/lib/integrations/editor-catalog'
 import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy/integrations'
-import { HomepageCheckoutExample } from './HomepageCheckoutExample'
-import { ArrowRight, Copy } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Check, Copy } from 'lucide-react'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
-import { HomepageIntro, HomepageUrlEntry } from './HomepagePrimitives'
+import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
+import { HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
+import t from './HomepageSections.module.css'
 
 export type HomepageCopySource = 'read' | 'share' | 'ai'
 export type HomepageCopyResult = { source: HomepageCopySource; message: string } | null
 
-export function HomepageWorkflowSection({ onCopy, copyResult }: {
-  onCopy: (source: HomepageCopySource) => void
-  copyResult: HomepageCopyResult
-}) {
-  const [after, setAfter] = useState(false)
-  return <section className={`${s.section} ${s.story}`} id="flag-example">
-    <HomepageIntro label={C.story.label} title={C.story.title} body={C.story.body} />
-    <div className={s.storyGrid}>
-      <div className={s.storyContent}>
-        <div className={s.storySwitch} role="group" aria-label={C.story.label}>
-          <button type="button" aria-pressed={!after} onClick={() => setAfter(false)}>{C.story.before}</button>
-          <button type="button" aria-pressed={after} onClick={() => setAfter(true)}>{C.story.after}</button>
-        </div>
-        <div aria-live="polite" className={s.storyAnswer}>
-          <h3>{after ? C.story.afterTitle : C.story.beforeTitle}</h3>
-          <p>{after ? C.story.afterBody : C.story.beforeBody}</p>
-        </div>
-        {!after ? <div className={s.storyGuidance}>
-          <h4>{C.story.guidanceTitle}</h4><p>{C.story.guidance}</p>
-          <button type="button" onClick={() => onCopy('share')}><Copy size={16} aria-hidden="true" />{C.story.copy}</button>
-          <p role="status">{copyResult?.source === 'share' ? copyResult.message : ''}</p>
-        </div> : null}
-        <details className={s.storyAbout}><summary>{C.story.about}</summary><p>{C.story.aboutBody}</p></details>
-      </div>
-      <figure className={s.storyCapture}>
-        <figcaption>{C.story.sample}</figcaption>
-        <HomepageCheckoutExample recovered={after} />
-      </figure>
-    </div>
+export function HomepageEditorTools() {
+  return <div className={t.editorTools}><p>{C.actions.editorLabel}</p><ul aria-label={C.actions.editorGuidesLabel}>{HOMEPAGE_EDITOR_INTEGRATIONS.map(editor => <li key={editor.key}><Link href={editorDocsHref(editor)}><EditorMark name={editor.label} className={t.editorMark} />{editor.label}</Link></li>)}</ul></div>
+}
 
+export function HomepageHandoffSection({ onCopy, copyResult, manualPrompt }: {
+  onCopy: (source: HomepageCopySource, prompt: string) => void
+  copyResult: HomepageCopyResult
+  manualPrompt: string | null
+}) {
+  return <section className={`${s.section} ${t.handoff}`} aria-labelledby="handoff-title">
+      <div className={t.handoffGrid}>
+        <div className={t.handoffIntro}>
+          <p className={s.eyebrow}>{C.actions.label}</p>
+          <h2 id="handoff-title">{C.story.guidanceTitle}</h2>
+          <p>{C.story.guidance}</p>
+          <Link href="/dashboard/mcp-setup" className={t.mcpAction}>{C.actions.mcpAction}<ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>
+        <article className={t.prompt} aria-labelledby="fix-prompt-title">
+          <div className={t.promptHeading}><span>{C.actions.promptLabel}</span><Copy size={16} aria-hidden="true" /></div>
+          <h3 id="fix-prompt-title">{C.actions.promptTitle}</h3>
+          <dl>{C.actions.promptFacts.map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
+          <p className={t.promptVerification}><Check size={15} aria-hidden="true" />{C.story.recoveryNote}</p>
+          <button type="button" className={t.copyButton} onClick={() => onCopy('share', S.availabilityPrompt)}><Copy size={16} aria-hidden="true" />{C.story.copy}<ArrowRight size={16} aria-hidden="true" /></button>
+          {copyResult?.source === 'share' ? <p className={t.copyStatus} role="status">{copyResult.message}</p> : null}
+          {manualPrompt && copyResult?.source === 'share' ? <div className={t.manualCopy}><label htmlFor="handoff-guidance">{S.guidanceLabel}</label><textarea id="handoff-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
+        </article>
+      </div>
   </section>
 }
 
 export function HomepageIntegrationsSection() {
-  return <section className={`${s.section} ${s.integrations}`} id="integrations">
-    <HomepageIntro label={C.integrations.label} title={C.integrations.title} body={C.integrations.body} />
-    <div className={s.orbitalField}>
-      <Image src="/marketing/visuals/integrations-orbital-field-v1.webp" alt="" fill sizes="(max-width: 767px) 100vw, 1120px" className={s.orbitalBackdrop} />
-      <div className={s.orbitalCenter}><Logo variant="mark" size="lg" /><span>FixFlags</span><small>{C.integrations.center}</small></div>
-      <div className={s.integrationOrbit}>{INTEGRATIONS_PAGE.items.map(item => <Link key={item.id} href={item.href as Route} className={s.integrationNode} data-integration={item.id}>
-        <span className={s.integrationLogo}><Image src={item.logo} alt="" width={28} height={28} /></span>
-        <span><strong>{item.title}</strong><small>{item.purpose}</small></span>
-      </Link>)}</div>
+  return <section className={`${s.section} ${t.integrations}`} id="integrations" aria-labelledby="integrations-title">
+    <div className={t.integrationPanel}>
+      <div className={t.integrationCopy}><h2 id="integrations-title">{C.integrations.title}</h2><p>{C.integrations.body}</p><Link href="/integrations" className={t.integrationLink}>{C.integrations.action}<ArrowRight size={16} aria-hidden="true" /></Link></div>
+      <ul className={t.integrationField} aria-label={C.integrations.label}>{INTEGRATIONS_PAGE.items.map(item => <li key={item.id} data-integration={item.id}>
+        <Link href={`/integrations#${item.id}` as Route} className={t.integrationCard}>
+          <ArrowUpRight className={t.cardArrow} size={15} aria-hidden="true" />
+          <span className={t.integrationLogoPlate}><Image src={item.logo} alt="" width={40} height={40} className={t.integrationLogo} /></span>
+          <strong>{item.title}</strong><span className={t.integrationPurpose}>{item.purpose}</span>
+          <small className={t.integrationState}>{item.status === 'available' ? INTEGRATIONS_PAGE.availableLabel : INTEGRATIONS_PAGE.proposedLabel}</small>
+        </Link>
+      </li>)}</ul>
     </div>
-    <Link href="/integrations" className={s.integrationLink}>{C.integrations.action}<ArrowRight size={16} aria-hidden="true" /></Link>
   </section>
 }
 

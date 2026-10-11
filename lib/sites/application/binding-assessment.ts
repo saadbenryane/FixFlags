@@ -3,12 +3,14 @@ export type BindingDispositionName = 'SUCCEEDED' | 'FAILED' | 'BLOCKED'
 export type RequiredBinding = {
   key: string
   required: boolean
+  version?: number
 }
 
 export type BindingObservation = {
   key: string
   disposition: BindingDispositionName
   reason: string
+  version?: number
 }
 
 export type BindingVerdict = {
@@ -33,7 +35,13 @@ export function assessRequiredBindings(
   observations: BindingObservation[],
 ): BindingVerdict {
   const required = bindings.filter((binding) => binding.required).map((binding) => binding.key)
-  const byKey = new Map(observations.map((observation) => [observation.key, observation]))
+  const byKey = new Map(observations.map((observation) => {
+    const binding = bindings.find(item => item.key === observation.key)
+    if (binding?.version !== undefined && binding.version !== (observation.version ?? 1)) {
+      return [observation.key, { ...observation, disposition: 'BLOCKED' as const, reason: 'binding_changed' }] as const
+    }
+    return [observation.key, observation] as const
+  }))
   const observed = required.filter((key) => {
     const observation = byKey.get(key)
     return observation?.disposition === 'SUCCEEDED' || observation?.disposition === 'FAILED'
@@ -85,6 +93,7 @@ export function assessRequiredBindings(
 }
 
 export function summaryFor(reason: string, state: BindingVerdict['state']): string {
+  if (reason === 'binding_changed') return 'The check setup changed. Verify the current setup for comparable evidence.'
   if (state === 'CLEAR') return 'FixFlags completed every required check for this Outcome.'
   if (reason === 'protected_or_irreversible') {
     return 'This flow is protected, so FixFlags did not submit it.'

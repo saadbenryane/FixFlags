@@ -1,7 +1,9 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
+import { scheduleFromWatch, scheduleLabel } from './monitoring-schedule'
 export type WatchBoardState = 'off' | 'watching' | 'paused' | 'delayed' | 'quota'
 
 export function watchBoardState(input: {
-  interval: 'weekly' | 'daily' | null
+  interval: WatchInterval | null
   nextRunAt: Date | string | null
   lastError: string | null
   consecutiveFailures: number
@@ -17,9 +19,9 @@ export function watchBoardState(input: {
   return 'off'
 }
 
-export function watchBoardLabel(state: WatchBoardState, interval: 'weekly' | 'daily' | null): string {
+export function watchBoardLabel(state: WatchBoardState, interval: WatchInterval | null, everyMinutes?: number | null): string {
   if (state === 'watching') {
-    return interval === 'daily' ? 'Daily' : 'Weekly'
+    return scheduleLabel(scheduleFromWatch(interval, everyMinutes))
   }
   if (state === 'paused') return 'Paused'
   if (state === 'delayed') return 'Delayed'

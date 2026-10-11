@@ -8,9 +8,13 @@ export type DocsPageKey =
   | 'getting-started'
   | 'site-care'
   | 'mcp'
+  | 'integrations'
+  | 'shopify'
+  | 'google-analytics'
+  | 'google-search-console'
   | 'troubleshooting'
 
-export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Reference'
+export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Integrations' | 'Reference'
 
 export interface DocsHeadingDefinition {
   id: string
@@ -28,6 +32,7 @@ export interface DocsPageDefinition {
   order: number
   headings: readonly DocsHeadingDefinition[]
   relatedHelpSlugs?: readonly HelpArticleSlug[]
+  parentKey?: DocsPageKey
 }
 
 export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
@@ -56,7 +61,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     order: 1,
     headings: [
       { id: 'before-you-start', title: 'Before you start' },
-      { id: 'check-a-website', title: 'Check a website' },
+      { id: 'analyze-a-website', title: 'Analyze a website' },
       { id: 'shopify-connection', title: 'Shopify connection' },
       { id: 'verify-a-flag', title: 'Verify a Flag' },
       { id: 'keep-watching', title: 'Keep watching' },
@@ -107,13 +112,44 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     ],
   },
   {
+    key: 'integrations', path: '/docs/integrations', group: 'Integrations',
+    title: 'Integration guides',
+    description: 'Connect store, traffic, and search data to the Site you own.',
+    source: 'integrations.md', order: 4,
+    headings: [
+      { id: 'available-integrations', title: 'Available integrations' },
+      { id: 'connect-to-a-site', title: 'Connect to a Site' },
+      { id: 'context-and-proof', title: 'Context and proof' },
+    ],
+    relatedHelpSlugs: ['connect-shopify', 'connect-google-data'],
+  },
+  ...([
+    { key: 'shopify', title: 'Shopify', description: 'Connect your store and verify selected purchase paths through checkout entry.', relatedHelpSlugs: ['connect-shopify', 'shopify-access-and-removal'], order: 5 },
+    { key: 'google-analytics', title: 'Google Analytics', description: 'Add page-session context from a matching Analytics property.', relatedHelpSlugs: ['connect-google-data'], order: 6 },
+    { key: 'google-search-console', title: 'Google Search Console', description: 'Add query, impression, and click context from a matching Search Console property.', relatedHelpSlugs: ['connect-google-data'], order: 7 },
+  ] as const).map((integration): DocsPageDefinition => ({
+    ...integration, path: `/docs/integrations/${integration.key}`, group: 'Integrations',
+    parentKey: 'integrations', source: `${integration.key}.md`,
+    headings: [
+      { id: 'what-it-adds', title: 'What it adds' },
+      { id: 'before-you-connect', title: 'Before you connect' },
+      { id: 'permissions-and-data', title: 'Permissions and data' },
+      { id: 'connect', title: 'Connect' },
+      { id: 'confirm-the-connection', title: 'Confirm the connection' },
+      { id: 'coverage-and-limitations', title: 'Coverage and limitations' },
+      { id: 'reconnect-or-disconnect', title: 'Reconnect or disconnect' },
+      { id: 'troubleshooting', title: 'Troubleshooting' },
+      { id: 'get-help', title: 'Get help' },
+    ],
+  })),
+  {
     key: 'troubleshooting',
     path: '/docs/troubleshooting',
     group: 'Reference',
     title: 'Troubleshooting',
     description: 'Recover from blocked, delayed, or failed checks and connections.',
     source: 'troubleshooting.md',
-    order: 7,
+    order: 8,
     headings: [
       { id: 'analysis-did-not-finish', title: 'Analysis did not finish' },
       { id: 'site-could-not-be-reached', title: 'Site could not be reached' },
@@ -147,6 +183,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = DOCS_PAGE_DEFINITIONS.f
 export const DOCS_GROUPS: readonly DocsNavigationGroup[] = [
   'Start',
   'Use FixFlags',
+  'Integrations',
   'Reference',
 ]
 

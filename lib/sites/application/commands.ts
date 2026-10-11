@@ -1,3 +1,4 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import {
   OutcomeFixtureRequiredError,
@@ -55,7 +56,8 @@ export type SiteCommand =
       type: 'SET_WATCH'
       siteId: string
       userId: string
-      interval: 'weekly' | 'daily' | null
+      interval: WatchInterval | null
+      everyMinutes?: number
     }
 
 export async function executeSiteCommand(command: SiteCommand) {
@@ -293,6 +295,7 @@ export async function executeSiteCommand(command: SiteCommand) {
         projectId: site.projectId,
         userId: command.userId,
         interval: command.interval,
+        ...(command.everyMinutes !== undefined ? { everyMinutes: command.everyMinutes } : {}),
       })
       if (result.ok && command.interval) {
         await recordSiteLifecycleEvent({

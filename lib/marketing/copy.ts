@@ -24,3 +24,4 @@ export * from './copy/integrations'
 export * from './copy/compare'
 
 export * from './copy/monitoring'
+export * from './copy/site-actions'

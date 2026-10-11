@@ -1,0 +1,46 @@
+.page { color: hsl(var(--foreground)); background: hsl(var(--background)); }
+.hero, .group, .close > div { width: min(1120px, calc(100% - 48px)); margin-inline: auto; }
+.hero { padding-block: clamp(36px, 4.5vw, 60px) 48px; text-align: center; }
+.eyebrow { margin-bottom: 18px; color: hsl(var(--brand-strong)); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.hero h1, .card h2, .close h2 { font-family: var(--font-display), sans-serif; font-weight: 650; letter-spacing: -.045em; text-wrap: balance; }
+.hero h1 { max-width: 800px; margin-inline: auto; font-size: clamp(44px, 6vw, 76px); line-height: 1.02; }
+.hero > p:last-child { max-width: 650px; margin: 24px auto 0; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.65; }
+.group { padding-bottom: 88px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { display: flex; flex-direction: column; min-width: 0; padding: 28px; border: 1px solid hsl(var(--border)); border-radius: 18px; background: hsl(var(--background)); scroll-margin-top: 110px; box-shadow: 0 8px 28px hsl(var(--foreground) / .025); }
+.card:target { border-color: hsl(var(--brand) / .7); box-shadow: 0 0 0 3px hsl(var(--brand) / .12); }
+.cardTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.logoPlate { display: grid; place-items: center; width: 64px; height: 64px; flex-shrink: 0; border-radius: 15px; background: hsl(0 0% 100%); box-shadow: inset 0 0 0 1px hsl(0 0% 0% / .08); }
+.logoPlate img { width: 42px; height: 42px; object-fit: contain; }
+.status { padding: 6px 9px; border-radius: 999px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 650; }
+.card[data-status='available'] .status { background: hsl(var(--brand) / .1); color: hsl(var(--brand-strong)); }
+.purpose { margin-top: 24px; color: hsl(var(--brand-strong)); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.card h2 { margin-top: 6px; font-size: clamp(24px, 2.4vw, 30px); font-weight: 620; line-height: 1.15; letter-spacing: -.035em; }
+.summary { margin-top: 12px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.55; }
+.checks { margin-top: 24px; }
+.checks h3 { font-size: 12px; font-weight: 700; }
+.checks ul { display: grid; gap: 12px; margin-top: 14px; }
+.checks li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.5; }
+.checks li svg { flex-shrink: 0; margin-top: 2px; color: hsl(var(--brand-strong)); }
+.proposedBullet { width: 7px; height: 7px; flex-shrink: 0; margin: 7px 4px 0 4px; border-radius: 50%; background: hsl(var(--muted-foreground) / .6); }
+.cardAction { display: inline-flex; align-items: center; gap: 7px; width: fit-content; min-height: 44px; margin-top: auto; padding-top: 22px; color: hsl(var(--brand-strong)); font-size: 13px; font-weight: 650; }
+.cardAction:hover { text-decoration: underline; text-underline-offset: 4px; }
+.cardAction:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }
+.close { padding-block: 100px; background: hsl(var(--muted) / .35); text-align: center; }
+.close h2 { font-size: clamp(34px, 4vw, 50px); line-height: 1.1; }
+.close p { max-width: 520px; margin: 16px auto 0; color: hsl(var(--muted-foreground)); font-size: 16px; line-height: 1.6; }
+.urlEntry { max-width: 620px; margin: 28px auto 0; }
+.pricingLink { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; margin-top: 14px; font-size: 13px; font-weight: 600; }
+.pricingLink:hover { text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 900px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .hero, .group, .close > div { width: min(calc(100% - 40px), 1120px); }
+  .hero { padding-block: 32px 42px; }
+  .hero > p:last-child { font-size: 15px; }
+  .group { padding-bottom: 64px; }
+  .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .card { padding: 22px; }
+  .close { padding-block: 72px; }
+}

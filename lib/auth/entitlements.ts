@@ -1,3 +1,4 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { User } from '@prisma/client'
 import {
   isAdminUser,
@@ -62,7 +63,7 @@ export function canScanRepositories(
   return user.plan === 'TEAM'
 }
 
-/** Scheduled Site watching. Free gets sparse weekly care; Pro daily; Studio daily denser ops. */
+/** Scheduled Site watching. Free gets weekly care; paid accounts can choose hourly or custom care. */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
@@ -73,8 +74,8 @@ export function canAccessProductWatch(
 /** Allowed watch intervals by plan. Free is weekly only. */
 export function allowedWatchIntervals(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
-): Array<'weekly' | 'daily'> {
-  if (!shouldEnforcePlanGates()) return ['weekly', 'daily']
+): Array<WatchInterval> {
+  if (!shouldEnforcePlanGates()) return ['weekly', 'daily', 'hourly', 'custom']
   return siteCarePolicy(user as Pick<User, 'role' | 'plan' | 'subscriptionStatus'>).watchIntervals
 }
 

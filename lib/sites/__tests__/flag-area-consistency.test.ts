@@ -17,7 +17,7 @@ describe('persisted Flag area', () => {
   })
   it('keeps unmatched improvements in the same area used by coverage', async () => {
     const flags = await loadSiteFlags({ kind: 'project', projectId: 'owned-site' } as SiteRecord)
-    expect(flags[0].area).toBe('performance')
+    expect(flags[0].area).toBe('site')
     expect(flags[0].area).toBe(cardAreaForCheck(flags[0]))
   })
 })

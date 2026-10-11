@@ -1,0 +1,27 @@
+.panel { min-width: 0; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header h2 { font-size: 14px; font-weight: 600; }
+.header span { font-size: 12px; color: hsl(var(--muted-foreground)); }
+.chart { padding: 4px 0 22px; border-bottom: 1px solid hsl(var(--border) / .65); }
+.chart svg { display: block; width: 100%; height: auto; margin-top: 12px; overflow: visible; }
+.area { fill: hsl(var(--brand) / .075); }
+.trend { fill: none; stroke: hsl(var(--brand)); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.point { fill: hsl(var(--background)); stroke: hsl(var(--brand)); stroke-width: 2.5; }
+.chartLabels { display: flex; justify-content: space-between; gap: 10px; margin-top: -2px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.empty { padding: 24px 0; font-size: 13px; line-height: 1.55; color: hsl(var(--muted-foreground)); }
+.timelineHeading { margin: 24px 0 16px; font-size: 14px; font-weight: 600; }
+.timeline { margin: 0; padding: 0; list-style: none; }
+.event { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 16px; padding-bottom: 26px; }
+.event:not(:last-child)::before { content: ''; position: absolute; top: 10px; bottom: -10px; left: 5px; width: 1px; background: hsl(var(--border)); }
+.event > i { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 4px; border: 2px solid hsl(var(--background)); border-radius: 50%; background: hsl(var(--success)); box-shadow: 0 0 0 1px hsl(var(--success) / .3); }
+.event > i[data-state='attention'] { background: hsl(var(--brand)); box-shadow: 0 0 0 1px hsl(var(--brand) / .3); }
+.event > i[data-state='unknown'] { background: hsl(var(--muted-foreground)); box-shadow: 0 0 0 1px hsl(var(--muted-foreground) / .3); }
+.eventHeader { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.eventHeader strong { font-size: 13px; font-weight: 600; }
+.event time { max-width: 100%; overflow-wrap: anywhere; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.count { display: block; margin-top: 5px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.flags { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.flags li :is(a, button, span) { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 32px; overflow-wrap: anywhere; font-size: 13px; line-height: 1.4; text-align: left; }
+.flags li :is(a, button):hover { text-decoration: underline; text-underline-offset: 3px; }
+.flags li :is(a, button):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: 4px; }
+.flags svg { flex-shrink: 0; color: hsl(var(--brand)); }

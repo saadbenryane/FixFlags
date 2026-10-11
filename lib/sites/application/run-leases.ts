@@ -62,7 +62,7 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
       projectId,
       status: { in: [...ACTIVE_RUN_STATUSES] },
       // Mirrors the inverse of activeRunWhere: anything without a live lease.
-      OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+      OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
     },
     select: { id: true, auditId: true },
   })
@@ -103,7 +103,7 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
       where: {
         id: run.id,
         status: { in: [...ACTIVE_RUN_STATUSES] },
-        OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+        OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
       },
       data: {
         status: 'FAILED',
@@ -119,4 +119,18 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
     }
   }
   return reclaimed
+}
+
+/** Scheduler-owned recovery also covers requests stranded before queue admission. */
+export async function recoverExpiredSiteRuns(reconcileAudit: (auditId: string) => Promise<unknown>): Promise<number> {
+  const now = new Date()
+  const sites = await prisma.runRequest.findMany({
+    where: { status: { in: [...ACTIVE_RUN_STATUSES] }, OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }] },
+    select: { projectId: true }, orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }], take: 100,
+  })
+  let recovered = 0
+  for (const projectId of new Set(sites.map(run => run.projectId))) {
+    recovered += await reclaimExpiredRuns(projectId, reconcileAudit)
+  }
+  return recovered
 }

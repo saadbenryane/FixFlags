@@ -8,6 +8,7 @@ import {
 import type { CoverageFact, SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { CHECK_MODULES } from '@/lib/audit/check-registry'
 
 export const BROWSER_SOURCE = SITE_BOARD_COPY.browserSource
 
@@ -61,19 +62,9 @@ export type BoardCardView = {
 
 /** Deterministic module failures have a known card owner. Other pipeline failures
  * cannot be assigned to an area without evidence. */
-export const FAILED_MODULE_AREAS: Partial<Record<string, SiteCardArea[]>> = {
-  metadata: ['site', 'search', 'uptime'],
-  'og-image': ['search'], seo: ['search'],
-  accessibility: ['accessibility'],
-  trust: ['security'], security: ['security'], 'security-headers': ['security'],
-  measurement: ['tracking'],
-  performance: ['performance'], mobile: ['performance'], 'mobile-ux-quality': ['performance'],
-  content: ['conversion'], slop: ['conversion'], 'auth-checkout': ['conversion'],
-  'messaging-clarity': ['conversion'], 'conversion-friction': ['conversion'],
-  'trust-psychology': ['conversion'], 'cta-focus': ['conversion'],
-  layout: ['conversion'], interaction: ['conversion'], 'visual-polish': ['conversion'],
-  'visual-hierarchy': ['conversion'],
-}
+export const FAILED_MODULE_AREAS: Partial<Record<string, SiteCardArea[]>> = Object.fromEntries(
+  Object.entries(CHECK_MODULES).map(([id, contract]) => [id, [contract.area]])
+)
 
 export function incompleteCardReason(input: {
   card: Pick<BoardCardView, 'id' | 'openFlagCount' | 'evidenced'>
@@ -149,12 +140,13 @@ export function boardCardFreshnessText(checkedAt: string | null, now = Date.now(
   const then = Date.parse(checkedAt)
   if (!Number.isFinite(then)) return SITE_BOARD_COPY.lastChecked
   const delta = now - then
-  if (delta < 60_000) return SITE_BOARD_COPY.lastChecked
+  if (delta < 60_000) return 'Just now'
   const minutes = Math.round(delta / 60_000)
-  if (minutes < 60) return `Checked ${minutes}m ago`
+  if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
   const hours = Math.round(minutes / 60)
-  if (hours < 48) return `Checked ${hours}h ago`
-  return SITE_BOARD_COPY.lastChecked
+  if (hours < 48) return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+  const days = Math.round(hours / 24)
+  return days === 1 ? '1 day ago' : `${days} days ago`
 }
 
 export function boardCardFooter(input: {
@@ -278,6 +270,7 @@ export function buildBoardCards(input: {
 
   return areas.map((area) => {
     if (area === 'site') {
+      const pageFlags = input.flags.filter((flag) => flag.area === 'site')
       const learning = input.inFlight && !input.hasLastKnown
       const answer = learning
         ? input.pageCount > 0
@@ -291,8 +284,8 @@ export function buildBoardCards(input: {
       const pages = input.pageCount > 0 ? pageCountLabel(input.pageCount) : null
       const facts = [
         pages,
-        input.flags.length
-          ? boardCardFooter({ openFlagCount: input.flags.length, checkedAt: input.checkedAt })
+        pageFlags.length
+          ? boardCardFooter({ openFlagCount: pageFlags.length, checkedAt: input.checkedAt })
           : null,
       ].filter((value): value is string => Boolean(value))
 
@@ -306,11 +299,11 @@ export function buildBoardCards(input: {
         detail: pages ?? (learning ? 'Getting to know what matters' : null),
         facts,
         coverage: null,
-        evidenced: Boolean(input.checkedAt || input.captureUrl || input.flags.length),
-        openFlagCount: input.flags.length,
+        evidenced: Boolean(input.checkedAt || input.captureUrl || pageFlags.length),
+        openFlagCount: pageFlags.length,
         checkedAt: input.checkedAt,
-        flagIds: input.flags.map((flag) => flag.id),
-        flagChips: chipsForFlags(input.siteId, input.flags),
+        flagIds: pageFlags.map((flag) => flag.id),
+        flagChips: chipsForFlags(input.siteId, pageFlags),
         sources: sourcesForArea('site', input.detected),
         activity,
         wide: true,

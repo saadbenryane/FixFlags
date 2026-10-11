@@ -56,6 +56,19 @@ describe('POST /api/sites/[siteId]/watch', () => {
     expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
+  it('saves and returns a custom duration without rewriting it', async () => {
+    const custom = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ interval: 'custom', everyMinutes: 180 }) })
+    const response = await POST(custom, context)
+    expect(await response.json()).toEqual({ ok: true, interval: 'custom', everyMinutes: 180 })
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'SET_WATCH', siteId: 'site-1', userId: 'user-1', interval: 'custom', everyMinutes: 180 })
+  })
+
+  it('rejects missing custom timing before writing', async () => {
+    const invalid = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ interval: 'custom' }) })
+    expect((await POST(invalid, context)).status).toBe(400)
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
   it('saves the requested cadence without rewriting it', async () => {
     mocks.allowedWatchIntervals.mockReturnValue(['weekly', 'daily'])
     const response = await POST(request('daily'), context)
@@ -137,7 +150,7 @@ describe('POST /api/sites/[siteId]/watch', () => {
     const invalid = new NextRequest('http://localhost/api/sites/site-1/watch', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ interval: 'hourly' }),
+      body: JSON.stringify({ interval: 'fortnightly' }),
     })
     const response = await POST(invalid, context)
 

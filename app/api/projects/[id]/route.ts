@@ -74,6 +74,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       data: {
         isManaged: false,
         watchInterval: null,
+        watchEveryMinutes: null,
         watchNextRunAt: null,
         watchLeaseUntil: null,
         watchLastError: null,

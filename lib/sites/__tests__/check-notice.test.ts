@@ -80,10 +80,12 @@ describe('site check notice', () => {
     expect(health.answer).toBe('1 Flag')
   })
 
-  it('runs stuck-check recovery when the Site home is loaded', () => {
+  it('keeps Site reads pure and exposes recovery from the worker scheduler', () => {
     const queries = readFileSync(resolve(root, 'lib/sites/application/queries.ts'), 'utf8')
     const board = readFileSync(resolve(root, 'components/sites/SiteBoard.tsx'), 'utf8')
-    expect(queries).toContain('recoverAuditJobOnPoll')
+    expect(queries).not.toContain('recoverAuditJobOnPoll')
+    const scheduler = readFileSync(resolve(root, 'lib/queue/recovery-scheduler.ts'), 'utf8')
+    expect(scheduler).toContain('recoverExpiredSiteRuns')
     expect(queries).toContain('failureCode: audit?.failureCode ?? null')
     expect(board).toContain('siteCheckNotice')
     expect(board).toContain('/api/reports/${view.audit.id}/retry')

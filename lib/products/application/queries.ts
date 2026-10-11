@@ -1,3 +1,4 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { prisma } from '@/lib/db'
 import {
   fromStoredWatchInterval,
@@ -7,7 +8,8 @@ import {
 export type ProductWatchQueryResult = {
   projectId: string
   url: string
-  watchInterval: 'weekly' | 'daily' | null
+  watchInterval: WatchInterval | null
+  watchEveryMinutes?: number | null
   watchNextRunAt: Date | null
   watchLastRunAt: Date | null
   watchLastAttemptAt: Date | null
@@ -27,6 +29,7 @@ export async function loadProductWatch(
       id: true,
       url: true,
       watchInterval: true,
+      watchEveryMinutes: true,
       watchNextRunAt: true,
       watchLastRunAt: true,
       watchLastAttemptAt: true,
@@ -40,6 +43,7 @@ export async function loadProductWatch(
     projectId: project.id,
     url: project.url,
     watchInterval: fromStoredWatchInterval(project.watchInterval),
+    watchEveryMinutes: project.watchEveryMinutes,
     watchNextRunAt: project.watchNextRunAt,
     watchLastRunAt: project.watchLastRunAt,
     watchLastAttemptAt: project.watchLastAttemptAt,

@@ -25,19 +25,37 @@ Customer chrome follows [product-architecture.md](product-architecture.md). Do n
 | -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Websites       | Which websites are mine?                            | Full-width Site rows at `/dashboard`, preceded by one persistent Analyze control                    |
 | Site Overview  | What works and what needs fixing on this website?  | Site identity, monitoring, visible recovery, and a prioritized grid of category summary cards       |
-| Flags          | What needs me?                                      | Prioritized attention; resolved history without polluting current attention                      |
+| Flags          | What needs me?                                      | An in-place view of every open Flag in the same Site dashboard                                    |
+| Monitoring     | What has changed over time?                          | Monitoring state, cadence, Flag trend, and a useful event timeline                                |
+| Integrations   | Which tools add context?                             | Supported connections with recognizable logos and plain status                                    |
 | Site settings  | How is this Site configured?                        | Outcomes and coverage, monitoring, notifications, actionable connections, and Remove Site          |
 | Ask FixFlags   | Explain this evidence                               | Contextual action at Site or Flag depth, never persistent global chrome                              |
 
 Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages, Journeys, category health and execution diagnostics are depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
 
-The selected Site uses Overview · Flags · Settings on desktop and mobile, with All websites as the return action. Production verification remains separate from local implementation. Pages, Journeys and diagnostics stay inside card depth rather than becoming permanent navigation destinations.
+The selected Site uses Overview, Flags, Monitoring, Integrations, and Settings on desktop and mobile, with All websites as the return action. Flags, Monitoring, and Integrations are views of the same Site dashboard, not separate report products. Production verification remains separate from local implementation. Pages, Journeys and diagnostics stay inside card depth rather than becoming permanent navigation destinations.
 
 ## Home hierarchy
 
-The [card-board experience](card-board-experience.md) owns the selected Site's flat grid. Show confirmed concrete visitor-action cards and scoped website-health cards together; preserve their different evidence semantics. Do not render an empty Outcomes heading or put the full Flag list above the grid. One compact Add action in the Site header offers real Outcome, coverage, and configured-connection options. Public evidence works before connections, which enrich the same product.
+The [card-board experience](card-board-experience.md) owns the selected Site's flat grid. Show confirmed concrete visitor-action cards and scoped website-health cards together; preserve their different evidence semantics. Do not render an empty Outcomes heading. One compact Add action in the Site header offers real Outcome, coverage, and configured-connection options. Public evidence works before connections, which enrich the same product.
 
-Site identity, monitoring, and one current result lead. The Flag count is that result only when Flags exist or the evidence is current and clear. Incomplete scope and its recovery action remain visible. Execution detail appears only while work is running, interrupted, partial, or failed. Completed pipeline narration does not remain on Overview. Attention appears on the related cards, with the full list on Flags; a quiet Site still supplies scope and freshness in card depth.
+Site identity, monitoring, and one current result lead. The Flag count is that result only when Flags exist or the evidence is current and clear. Incomplete scope and its recovery action remain visible. Execution detail appears only while work is running, interrupted, partial, or failed. Completed pipeline narration does not remain on Overview. Attention appears inside the related category card, where every Flag is its own action row. The Flags navigation item switches the same dashboard to the complete open list. A quiet Site still supplies scope and freshness in card depth.
+
+## Shared board rules
+
+- The homepage sample and authenticated Site use the same summary, category-row, technology, monitoring, and integration components.
+- Summary cards communicate a result or useful operating state. Never use filler counts such as “With 0 Flags,” “Still to check,” “Review areas,” or “Daily schedule.” Prefer Flags, Areas checked, and Daily monitoring active.
+- Put relative freshness, the total Flag count, and the status dot at the top right of each category card. Category rechecking belongs in the detail modal. Keep the dot farthest right and align each Flag arrow directly below its center, with no extra right padding on Flag rows. Highlight each Flag row on hover or keyboard focus.
+- Summary and clear categories stay borderless. Put a single orange outline around each flagged category, with no individual Flag outlines or orange backgrounds. Each Flag has its own right-aligned arrow and copy shortcut, visible on hover or keyboard focus and always available on touch screens.
+- Clear category rows show only the name, green icon, and status controls. Opening them reveals the complete check list. Flagged categories use orange icons.
+- Flag titles name observable failures, such as a page not loading, a measured slow page, or a missing payment form. Detection alone never establishes private integration configuration such as test keys. Flag rows use an orange dot, left indentation, and a hover surface without underlining. Areas checked opens the enabled checks and supported additions.
+- Preserve overall status and total Flags next to the Site identity. The preview menu omits the duplicate Flags destination.
+- After copying a prompt, show a temporary bottom-center confirmation with a countdown bar and a Set up MCP link to `/dashboard/mcp-setup`.
+- A detected-technology strip sits before the summary. Use the real product logo when available and pair color with a text state. “Detected” describes evidence of use, not proof that the tool works. A detected tool may become a suggested integration for more data and checks, but it is not connected until the customer connects it.
+- Monitoring owns cadence, a Flag-per-check graph when run history supports it, and a short Flag or recovery timeline. Do not fabricate trend points before two completed checks exist.
+- Monitoring and Integrations replace the board content inside the persistent Site shell. They do not open in a modal.
+- Integrations use recognizable logos and plain states such as Connected, Suggested, or Available. Connections add context and do not establish recovery.
+- Do not use horizontal or vertical divider lines. Use spacing, surface tone, type, and flagged-category outlines to establish hierarchy. A temporary countdown bar communicates confirmation duration.
 
 Do not force a green overall label when an important Outcome is unverified or stale. A Site can be reachable while Checkout fails. A security or HTTP signal can fail without proving Checkout failed. Distinguish Outcome health from raw signal/category health.
 
@@ -74,7 +92,7 @@ Verify fix shows real progress and retains prior attempts. Resolved shows fresh 
 
 ## Connections and history
 
-Offer context where its purpose is obvious: commerce inside Buy, Search Console beside a search concern, Meta beside a paid landing page. The Site settings area can manage connections but should not become a logo marketplace.
+Offer context where its purpose is obvious: commerce inside Buy, Search Console beside a search concern, Meta beside a paid landing page. The Integrations view lists supported connections and their status with real logos. Site settings manages connection configuration without becoming a logo marketplace.
 
 Show significant changes and recoveries with source/time. Avoid event-log noise in Home. Deployment correlation is phrased as timing until evidence supports causality.
 

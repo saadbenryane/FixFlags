@@ -1,5 +1,7 @@
 import type { DocsPageDefinition } from '@/lib/docs/catalog'
 import { docsStructuredData } from '@/lib/docs/catalog'
+import { getDocsPage } from '@/lib/docs/catalog'
+import type { Route } from 'next'
 import { DocsRelatedHelp } from '@/components/docs/DocsRelatedHelp'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { KnowledgePageHeader } from '@/components/knowledge/KnowledgePageHeader'
@@ -12,6 +14,7 @@ export function DocsPageFrame({
   children: React.ReactNode
 }) {
   const jsonLd = docsStructuredData(page)
+  const parent = page.parentKey ? getDocsPage(page.parentKey) : null
   return (
     <>
       <MarketingPageViewTracker page={page.path} />
@@ -26,9 +29,8 @@ export function DocsPageFrame({
               <KnowledgePageHeader
                 breadcrumbs={[
                   { href: '/docs', label: 'Docs' },
-                  ...(page.path === '/docs'
-                    ? [{ label: page.title, current: true }]
-                    : [{ label: page.title, current: true }]),
+                  ...(parent ? [{ href: parent.path as Route, label: parent.title }] : []),
+                  { label: page.title, current: true },
                 ]}
                 eyebrow={page.group}
                 title={page.title}

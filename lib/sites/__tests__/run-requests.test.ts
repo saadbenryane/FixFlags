@@ -123,7 +123,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
         legacyOutcomeId: null,
         source: 'WEB',
         selections: undefined,
-        context: { action: 'run_site_care' },
+        context: { action: 'run_site_care', bindingVersions: {} },
       }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
@@ -503,7 +503,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
         coverage: expect.objectContaining({ observedBindings: [] }),
       }),
     }))
-    expect(mocks.runUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: 'COMPLETED' }),
     }))
   })
@@ -518,8 +518,8 @@ describe('RunRequest tenant boundary and idempotency', () => {
     await reconcileOutcomeRunsForAudit('audit-care')
 
     expect(mocks.assessmentUpsert).not.toHaveBeenCalled()
-    expect(mocks.runUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'run-care' },
+    expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'run-care', status: { in: ['QUEUED', 'RUNNING'] } },
       data: expect.objectContaining({ status: 'COMPLETED', leaseUntil: null }),
     }))
   })
@@ -767,7 +767,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
         where: {
           id: 'run-stale',
           status: { in: ['QUEUED', 'RUNNING'] },
-          OR: [{ leaseUntil: null }, { leaseUntil: { lt: expect.any(Date) } }],
+          OR: [{ leaseUntil: null }, { leaseUntil: { lte: expect.any(Date) } }],
         },
         data: expect.objectContaining({
           status: 'FAILED',
@@ -807,7 +807,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
       mocks.runFindMany.mockResolvedValue([{ id: 'run-stale', auditId: null }])
       mocks.runUpdateMany.mockImplementation(async ({ where }) => {
         expect(where).toMatchObject({
-          OR: [{ leaseUntil: null }, { leaseUntil: { lt: expect.any(Date) } }],
+          OR: [{ leaseUntil: null }, { leaseUntil: { lte: expect.any(Date) } }],
         })
         return { count: 0 }
       })
@@ -864,7 +864,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
       // runs with no live lease, and nothing else.
       expect(where).toMatchObject({
         status: { in: ['QUEUED', 'RUNNING'] },
-        OR: [{ leaseUntil: null }, { leaseUntil: { lt: expect.any(Date) } }],
+        OR: [{ leaseUntil: null }, { leaseUntil: { lte: expect.any(Date) } }],
       })
     })
   })

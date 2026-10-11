@@ -10,9 +10,15 @@ import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { MONITORING_COPY as C } from '@/lib/marketing/copy'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { z } from 'zod'
+import { watchIntervalSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
+import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'
+
+const watchOptions = z.object({ intervals: z.array(watchIntervalSchema) })
+const activationResult = z.object({ ok: z.boolean(), stage: z.enum(['coverage', 'schedule']).optional(), message: z.string().optional(), interval: watchIntervalSchema.optional(), everyMinutes: z.number().int().min(60).optional(), firstCheck: z.enum(['requested', 'unavailable']).optional(), reused: z.boolean().optional() })
 
 type Cadence = 'weekly' | 'daily'
-type Result = { ok: boolean; stage?: 'coverage' | 'schedule'; message?: string; interval?: Cadence; firstCheck?: 'requested' | 'unavailable'; reused?: boolean }
+type Result = { ok: boolean; stage?: 'coverage' | 'schedule'; message?: string; interval?: WatchInterval; everyMinutes?: number; firstCheck?: 'requested' | 'unavailable'; reused?: boolean }
 
 export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefresh, onExploreCoverage, hideSettled = false }: {
   siteId: string; view: SiteHomeView; owner: boolean; checking: boolean; onRefresh: () => Promise<unknown>; onExploreCoverage: () => void
@@ -20,7 +26,7 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
 }) {
   const [open, setOpen] = useState(false)
   const [intervals, setIntervals] = useState<Cadence[] | null>(null)
-  const [cadence, setCadence] = useState<Cadence>(view.watch.interval ?? 'weekly')
+  const [cadence, setCadence] = useState<Cadence>(view.watch.interval === 'daily' ? 'daily' : 'weekly')
   const [loadError, setLoadError] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
@@ -42,10 +48,10 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
     if (!open || !owner || authRequired) return
     let active = true
     setIntervals(null); setLoadError(false)
-    void fetch(`/api/sites/${siteId}/watch`).then(async response => {
+    void fetchSiteAction(`/api/sites/${siteId}/watch`).then(async response => {
       if (response.status === 401 || response.status === 403) { if (active) setAuthRequired(true); return }
       if (!response.ok) throw new Error('Options unavailable')
-      const body = await response.json() as { intervals: Cadence[] }
+      const body = watchOptions.parse(await response.json())
       const allowed = body.intervals.filter(value => value === 'weekly' || value === 'daily')
       if (!active) return
       setIntervals(allowed)
@@ -58,19 +64,19 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
     if (busy || !intervals?.includes(cadence)) return
     setBusy(true); setResult(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/watch/activate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: cadence }) })
+      const response = await fetchSiteAction(`/api/sites/${siteId}/watch/activate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: scheduled ? view.watch.interval : cadence, ...(scheduled && view.watch.interval === 'custom' ? { everyMinutes: view.watch.everyMinutes } : {}) }) })
       if (response.status === 401 || response.status === 403) { setAuthRequired(true); return }
-      const body = await response.json().catch(() => null) as Result | null
-      setResult(body && typeof body.ok === 'boolean' ? body : { ok: false, message: C.readiness })
+      const body = activationResult.parse(await response.json())
+      setResult(response.ok ? body : { ...body, ok: false })
       // The response is authoritative even if a later overview refresh fails.
       await onRefresh().catch(() => undefined)
-    } catch { setResult({ ok: false, message: C.readiness }) }
+    } catch (error) { setResult({ ok: false, message: siteActionMessage(error) }) }
     finally { setBusy(false); requestAnimationFrame(() => resultFocus.current?.focus()) }
   }
 
   const signedInHref = `/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}` as Route
   const signUpHref = `/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}` as Route
-  const title = scheduled ? view.watch.state === 'watching' ? C.heading(view.watch.interval!) : C.needsAttention : view.watch.interval ? C.scheduleOnly : C.off
+  const title = scheduled ? view.watch.state === 'watching' ? C.heading(view.watch.interval!, view.watch.everyMinutes) : C.needsAttention : view.watch.interval ? C.scheduleOnly : C.off
 
   if (hideSettled && compact) return null
   return <>
@@ -103,7 +109,7 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
           <label className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium" htmlFor="monitoring-cadence">{C.cadence}<select id="monitoring-cadence" className="min-h-11 rounded-control border border-border bg-background px-3" value={cadence} disabled={busy || (scheduled && !needsSetup)} onChange={event => setCadence(event.target.value as Cadence)}>{intervals.map(item => <option value={item} key={item}>{item === 'daily' ? C.daily : C.weekly}</option>)}</select></label>
           <p className="text-sm leading-relaxed text-muted-foreground">{view.settings.notificationLevel === 'OFF' ? C.noEmails : view.settings.notificationLevel === 'CRITICAL_ONLY' ? C.criticalEmails : C.emails}{view.settings.notificationLevel !== 'OFF' && view.settings.notifyOnRecovery ? ` ${C.recoveryEmails}` : ''}</p>
           {status ? <p ref={resultFocus} tabIndex={-1} role="status" className="rounded-control bg-muted p-3 text-sm leading-relaxed focus-visible:outline focus-visible:outline-ring">{status}</p> : null}
-          {result?.ok && result.interval ? <p className="text-sm">{C.scheduled(result.interval)}</p> : null}
+          {result?.ok && result.interval ? <p className="text-sm">{C.scheduled(result.interval, result.everyMinutes)}</p> : null}
           {(!scheduled || needsSetup || result?.ok === false) && !(result?.ok && result.firstCheck === 'requested') ? <Button variant="brand" disabled={busy} onClick={() => void activate()}>{busy ? C.activating : result ? C.retry : scheduled ? C.checkPage : C.turnOn}</Button> : <Button variant="outline" onClick={() => setOpen(false)}>{C.return}</Button>}
         </>}
         <div className="border-t border-border pt-4">{scheduled ? <Link className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4" href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link> : null}<p className="text-xs leading-relaxed text-muted-foreground">{C.scope}</p><Button variant="link" className="mt-3 px-0 text-foreground" onClick={() => { exploring.current = true; setOpen(false); requestAnimationFrame(() => onExploreCoverage()) }}>{C.expand}</Button><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{C.protected}</p></div>

@@ -99,8 +99,8 @@ export function EvidenceSpotlight({
       />
       <span
         className={cn(
-          'absolute max-w-[12rem] truncate rounded-md px-1.5 py-0.5 text-2xs font-medium text-background',
-          isCritical ? 'bg-destructive' : 'bg-brand'
+          'absolute max-w-[12rem] truncate rounded-md px-1.5 py-0.5 text-2xs font-medium',
+          isCritical ? 'bg-destructive text-destructive-foreground' : 'bg-brand text-brand-foreground'
         )}
         style={{
           left: normalizedPercent(rect.x),

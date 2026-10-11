@@ -30,7 +30,6 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/dashboard/mcp-analytics',
   '/settings/integrations',
   '/onboarding/plans',
-  '/docs/integrations',
   '/help/mcp-and-editors',
   '/api/integrations/github',
   '/api/integrations/gsc',

@@ -1,3 +1,4 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import {
   canonicalProductHost,
   canonicalProductUrl,
@@ -42,7 +43,8 @@ export type SiteRecord = {
   projectId: string | null
   provisionalSiteId: string | null
   primaryAuditId: string | null
-  watchInterval: 'weekly' | 'daily' | null
+  watchInterval: WatchInterval | null
+  watchEveryMinutes?: number | null
   watchNextRunAt: Date | null
   watchLastRunAt: Date | null
   watchLastError: string | null

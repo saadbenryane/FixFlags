@@ -22,8 +22,8 @@ export function MinimalFooter() {
           <span>© {new Date().getFullYear()} {BRAND.name}</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <FooterThemeToggle />
           <CookiePreferencesButton className={NAV_LINK_FOOTER_BASE} />
+          <FooterThemeToggle />
           <span className="mx-1 select-none text-muted-foreground/50" aria-hidden>
             ·
           </span>

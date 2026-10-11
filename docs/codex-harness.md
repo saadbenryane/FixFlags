@@ -43,6 +43,7 @@ If a required capability is unavailable, state the missing capability and reques
 
 ## Context and validation
 
+- Follow [AGENTS.md validation policy](../AGENTS.md#validation): E2E tests, including ad hoc browser test scripts and indirect release-command stages, require an explicit user request.
 - `npm run agent -- context <area>` returns a narrow authority map; it does not require reading every source.
 - Choose focused checks from the files actually changed for the task.
 - Treat unrelated dirty files as unrelated; do not expand validation solely because they exist.

@@ -1,4 +1,4 @@
-import { type User } from '@prisma/client'
+import { type User, type Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
@@ -17,6 +17,7 @@ import {
 } from '@/lib/audit/watch-interval'
 import { WATCH_NOTIFICATION_ATTEMPT_LIMIT } from '@/lib/audit/watch-notification'
 import { outcomeFreshnessMinutes } from '@/lib/sites/application/care-policy'
+import { watchIntervalMinutes, watchScheduleSchema } from '@/lib/sites/watch-schedule'
 
 export type { WatchInterval } from '@/lib/audit/watch-interval'
 export {
@@ -52,11 +53,14 @@ export async function setProjectWatch(input: {
   projectId: string
   userId: string
   interval: WatchInterval | null
+  everyMinutes?: number
 }, dependencies: { clock?: Clock } = {}): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const clock = dependencies.clock ?? systemClock
+  const parsed = watchScheduleSchema.safeParse({ interval: input.interval, everyMinutes: input.everyMinutes })
+  if (!parsed.success) return { ok: false, error: 'Choose a valid monitoring schedule.', code: 'INVALID_INTERVAL' }
   const project = await prisma.project.findFirst({
     where: { id: input.projectId, userId: input.userId },
-    select: { id: true, user: true, watchInterval: true },
+    select: { id: true, user: true, watchInterval: true, watchEveryMinutes: true },
   })
   if (!project) return { ok: false, error: 'Site not found' }
 
@@ -87,22 +91,24 @@ export async function setProjectWatch(input: {
 
   const now = clock.now()
   const previous = fromStoredWatchInterval(project.watchInterval)
-  const tightened = input.interval === 'daily' && previous !== 'daily'
+  const tightened = Boolean(input.interval && watchIntervalMinutes(input.interval, input.everyMinutes) < (previous ? watchIntervalMinutes(previous, project.watchEveryMinutes) : 10080))
   await prisma.$transaction([
     prisma.project.update({
       where: { id: project.id },
       data: input.interval
         ? {
             watchInterval: toStoredWatchInterval(input.interval),
+            watchEveryMinutes: input.interval === 'custom' ? input.everyMinutes : null,
             // Tightening the promise cannot wait a whole daily cycle before its
             // first evidence. The scheduler claims this due row normally.
-            watchNextRunAt: tightened ? now : calcWatchNextRun(input.interval, now),
+            watchNextRunAt: tightened ? now : calcWatchNextRun(input.interval, now, input.everyMinutes),
             watchLeaseUntil: null,
             watchConsecutiveFailures: 0,
             watchLastError: null,
           }
         : {
             watchInterval: null,
+            watchEveryMinutes: null,
             watchNextRunAt: null,
             watchLeaseUntil: null,
             watchLastError: 'Paused. This Site is not on a check schedule.',
@@ -110,7 +116,7 @@ export async function setProjectWatch(input: {
     }),
     prisma.siteOutcome.updateMany({
       where: { projectId: project.id },
-      data: { staleAfterMinutes: outcomeFreshnessMinutes(input.interval) },
+      data: { staleAfterMinutes: outcomeFreshnessMinutes(input.interval, input.everyMinutes) },
     }),
   ])
   return { ok: true }
@@ -120,9 +126,9 @@ function retryAt(failures: number, now: Date): Date {
   return new Date(now.getTime() + RETRY_MS[Math.min(Math.max(failures - 1, 0), RETRY_MS.length - 1)])
 }
 
-async function recordWatchFailure(projectId: string, failures: number, error: string, now: Date) {
-  await prisma.project.update({
-    where: { id: projectId },
+async function recordWatchFailure(where: Prisma.ProjectWhereInput, failures: number, error: string, now: Date) {
+  await prisma.project.updateMany({
+    where,
     data: {
       watchLeaseUntil: null,
       watchConsecutiveFailures: failures,
@@ -154,6 +160,7 @@ export async function processDueProjectWatches(
       id: true,
       userId: true,
       watchInterval: true,
+      watchEveryMinutes: true,
       watchNextRunAt: true,
       watchConsecutiveFailures: true,
       user: true,
@@ -167,11 +174,13 @@ export async function processDueProjectWatches(
   for (const project of due) {
     const interval = fromStoredWatchInterval(project.watchInterval)
     if (!interval) continue
+    const unchangedSchedule = { id: project.id, watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null, watchNextRunAt: project.watchNextRunAt }
     if (!canAccessProductWatch(project.user as User)) {
       await prisma.project.update({
         where: { id: project.id },
         data: {
           watchInterval: null,
+          watchEveryMinutes: null,
           watchNextRunAt: null,
           watchLeaseUntil: null,
           watchLastError: 'Watching is not available on this account.',
@@ -179,10 +188,18 @@ export async function processDueProjectWatches(
       })
       continue
     }
+    if (!allowedWatchIntervals(project.user).includes(interval)) {
+      await prisma.project.updateMany({
+        where: { id: project.id, watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null },
+        data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'This schedule is not available on your plan. Choose an available monitoring schedule.' },
+      })
+      continue
+    }
     const claimed = await prisma.project.updateMany({
       where: {
         id: project.id,
         watchInterval: project.watchInterval,
+        watchEveryMinutes: project.watchEveryMinutes ?? null,
         watchNextRunAt: project.watchNextRunAt,
         OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }],
       },
@@ -204,8 +221,8 @@ export async function processDueProjectWatches(
         select: { id: true },
       })
       if (active) {
-        await prisma.project.update({
-          where: { id: project.id },
+        await prisma.project.updateMany({
+          where: unchangedSchedule,
           data: { watchLeaseUntil: null, watchNextRunAt: retryAt(1, now) },
         })
         continue
@@ -219,7 +236,7 @@ export async function processDueProjectWatches(
       if (outcomes.length === 0) {
         errors += 1
         await recordWatchFailure(
-          project.id,
+          unchangedSchedule,
           project.watchConsecutiveFailures + 1,
           'Confirm an Outcome before Watch can verify this Site.',
           now,
@@ -234,14 +251,16 @@ export async function processDueProjectWatches(
         userId: project.userId,
         source: 'WATCH',
         idempotencyKey: `watch:${project.id}:${tick}:${outcomeIds.join(',')}`,
-        context: { cadence: interval },
+        context: { cadence: interval, ...(interval === 'custom' ? { everyMinutes: project.watchEveryMinutes } : {}) },
       })
       enqueued += 1
-      await prisma.project.update({
-        where: { id: project.id },
+      // A saved schedule can change while a check is being queued. Advance
+      // only the schedule this worker claimed, preserving the owner's edit.
+      await prisma.project.updateMany({
+        where: unchangedSchedule,
         data: {
           watchLeaseUntil: null,
-          watchNextRunAt: calcWatchNextRun(interval, now),
+          watchNextRunAt: calcWatchNextRun(interval, now, project.watchEveryMinutes),
           watchConsecutiveFailures: 0,
           watchLastError: null,
         },
@@ -252,14 +271,14 @@ export async function processDueProjectWatches(
         renewalAt?: Date
       }
       if (usageLimit.code === 'UPGRADE_REQUIRED' || usageLimit.code === 'TOKEN_LIMIT') {
-        await prisma.project.update({
-          where: { id: project.id },
+        await prisma.project.updateMany({
+          where: unchangedSchedule,
           data: {
             watchLeaseUntil: null,
             watchNextRunAt:
               usageLimit.renewalAt && usageLimit.renewalAt > now
                 ? usageLimit.renewalAt
-                : calcWatchNextRun(interval, now),
+                : calcWatchNextRun(interval, now, project.watchEveryMinutes),
             watchLastError:
               'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
           },
@@ -272,7 +291,7 @@ export async function processDueProjectWatches(
         projectId: project.id,
       })
       await recordWatchFailure(
-        project.id,
+        unchangedSchedule,
         project.watchConsecutiveFailures + 1,
         message,
         now

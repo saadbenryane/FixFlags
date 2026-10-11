@@ -29,8 +29,6 @@ For experience reviews, distinguish observed defects from proposed design change
 2. `tailwind.config.ts` — Tailwind theme: font families, colors, box shadows, border radii, letter spacing, line heights, keyframes
 3. `components/ui/` — shadcn/ui primitives (34 components: button, card, dialog, accordion, etc.)
 4. `components/` — application components following the tokens
-5. `.cursor/rules/fixflags-ui.mdc` — UI craft rules (semantic tokens, anti-slop)
-6. `.ui-craft/brief.md` — Design brief with product context
 
 ## Typography
 
@@ -43,7 +41,7 @@ For experience reviews, distinguish observed defects from proposed design change
 | Score numbers                 | JetBrains Mono                 | 500–600 | tabular-nums      |
 | Code, IDs, dates, step index  | JetBrains Mono (var-font-mono) | 500     | text-xs           |
 
-- Marketing eyebrows and section labels are sentence case, muted, not uppercase, not mono
+- Marketing section labels are sentence case. The homepage eyebrow is the approved uppercase exception and uses increased letter spacing.
 - Plan prices use Inter Tight with `tabular-nums`; status words such as Waitlist use the same display face
 - JetBrains Mono is not a marketing display face
 - `text-balance` on headings, `text-pretty` on body
@@ -70,15 +68,15 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## Shapes and radius
 
-- Target board cards: thin subtle borders, approximately 13px radius and restrained shadows; see [card-board contract](docs/card-board-experience.md). Existing 24px glass/shadow cards are compatibility-only until migrated.
+- Target board cards: neutral surfaces, approximately 13px radius and restrained hover shadows; see [card-board contract](docs/card-board-experience.md). Flagged categories use a thin orange outline around the whole card; summaries and clear categories remain borderless. Existing 24px glass/shadow cards are compatibility-only until migrated.
 - Controls: `rounded-[var(--radius-control)]` (~10px)
 - Concentric radii: inner = outer minus padding (`--radius-nested-md` = `--radius-card` − `--gap-nested-md`)
 - Inputs: `--radius-input` (= control radius)
 
 ## Depth
 
-- Target board: white/neutral surfaces, subtle borders and nearly imperceptible resting shadows. Avoid glass effects, excessive gradients and loud healthy fills.
-- Borders remain appropriate on inputs, tables, controls and board cards.
+- Target board: white/neutral borderless surfaces and nearly imperceptible hover shadows. Avoid glass effects, excessive gradients and loud healthy fills.
+- Borders remain appropriate on inputs, tables, controls, and flagged category cards.
 - The dashboard has no visual sections. Library categories must not become dashboard boundaries.
 - Marketing surfaces group content with whitespace, surface tone, and type hierarchy before strokes. Do not use divider lines between marketing rows, metrics, or narrative steps. Keep borders for controls and functional data boundaries only.
 - Floating action offset: `--floating-action-offset` (1.25rem).
@@ -121,7 +119,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Layered shadow on hover
 - Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`
-- Light mode product primary: ink. Marketing accent CTAs: bright brand orange with ink labels (`variant="brand"`), approved in the October 10 quality sprint for accessible contrast. The September 8 palette replaces the former dark orange button fill.
+- Light mode product primary: ink. Marketing accent CTAs use bright brand orange with white labels. “Analyze now” and other orange buttons follow this rule at every size.
 
 ### Legacy card (`glass-surface`)
 
@@ -131,6 +129,21 @@ These rules apply to existing glass surfaces. The Site board uses `components/si
 - Inner elements use `rounded-nested-md`
 - Raised shadow (`shadow-raised`) for elevation
 - `glass-bg` variants: subtle, base, strong, elevated, nav
+
+### Site board
+
+- The homepage preview and authenticated Site reuse the same summary, category-row, technology, monitoring, and integration components.
+- Summary cards state Flags, checked scope, and monitoring state. Never spend a card on “With 0 Flags,” “Still to check,” “Review areas,” or a schedule without state.
+- The category name starts the row. The status dot and Flag total sit at the top right.
+- Summary and clear category cards remain borderless. Flagged categories have one orange outline around the whole card; individual Flag rows have no outline or orange fill. Each Flag owns its arrow and a prompt shortcut shown on hover or keyboard focus, and always available on touch screens.
+- Clear rows show their category name, green icon, and status controls. Their checks and results appear on opening. Flagged categories use orange icons.
+- Category rechecking lives in detail, not on overview rows. Each Flag arrow aligns vertically with the category status dot. Flag rows highlight on hover and keyboard focus.
+- Keep the overall Flag count and status dot beside the Site identity. The preview menu needs no duplicate Flags destination.
+- Successful prompt copying shows a short bottom-center confirmation with a countdown bar and a Set up MCP link.
+- Detected tools appear before the summary with real logos, plain labels, and green or orange status dots paired with text. Detection can suggest a matching integration, but it never means the integration is connected.
+- Monitoring shows state and cadence first, then a Flag-per-check graph and a short timeline when real history exists.
+- Monitoring and Integrations open inside the persistent board pane, not in a modal.
+- No horizontal or vertical divider lines. Use spacing, type hierarchy, surface color, and flagged-category outlines. A temporary countdown bar communicates confirmation duration.
 
 ### Input
 

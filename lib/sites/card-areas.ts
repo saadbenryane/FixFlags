@@ -1,3 +1,5 @@
+import { registeredCheck } from '@/lib/audit/check-registry'
+
 /** Card areas on the Site board. Checks and Flags project into these. */
 
 export const SITE_CARD_AREAS = [
@@ -78,50 +80,20 @@ export const CARD_CATALOG: Record<
   },
 }
 
-/**
- * Map deterministic checkId prefixes / ids into board card areas.
- * Same scan work; new packaging.
- */
-const CHECK_ID_TO_AREA: Array<{ match: RegExp; area: SiteCardArea }> = [
-  { match: /^(no-https|security-|cookie-consent|mixed-content)/, area: 'security' },
-  { match: /^(slow-3g-|flow-destination-slow-load|perf-|lcp-|cls-|inp-|render-blocking|unused-|unoptimized|mobile-perf|mobile-lcp)/, area: 'performance' },
-  {
-    match:
-      /^(title-|description-|og-|canonical-|robots-|h1-|sitemap-|structured|broken-internal|broken-page|favicon|lang-|viewport-missing|no-structured)/,
-    area: 'search',
-  },
-  {
-    match:
-      /^(journey-|funnel-|no-cta|cta-|conversion-|auth-checkout|interaction-|form-|tap-targets|heading-|h1-generic|messaging-|slop-|visual-)/,
-    area: 'conversion',
-  },
-  { match: /^(measurement-|analytics-|pixel-|meta-|gtm-|tag-)/, area: 'tracking' },
-  { match: /^(images-missing|form-inputs|buttons-no|links-no|iframe-|tabindex|color-contrast|skip-link|keyboard|focus-visible|axe-)/, area: 'accessibility' },
-  { match: /^(console-errors|broken-page)/, area: 'uptime' },
-]
-
-const RUBRIC_FALLBACK: Record<string, SiteCardArea> = {
-  MESSAGE: 'conversion',
-  EXPERIENCE: 'performance',
-  REACH: 'search',
-}
-
 export function cardAreaForCheck(input: {
   checkId: string | null | undefined
   rubric?: string | null
   impactTag?: string | null
 }): SiteCardArea {
   const checkId = (input.checkId ?? '').toLowerCase()
-  for (const rule of CHECK_ID_TO_AREA) {
-    if (rule.match.test(checkId)) return rule.area
-  }
-
+  const registered = registeredCheck(checkId)
+  if (registered) return registered.area
+  // Unknown historical identities retain their explicit impact attribution.
   const impact = (input.impactTag ?? '').toUpperCase()
   if (impact === 'CONVERSION' || impact === 'REVENUE') return 'conversion'
   if (impact === 'MEASUREMENT') return 'tracking'
   if (impact === 'SEO' || impact === 'SHARING') return 'search'
   if (impact === 'ACCESSIBILITY') return 'accessibility'
 
-  const rubric = (input.rubric ?? '').toUpperCase()
-  return RUBRIC_FALLBACK[rubric] ?? 'site'
+  return 'site'
 }

@@ -16,6 +16,7 @@ describe('MarketingHeaderAuth', () => {
     render(<MarketingHeaderAuth />)
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in')
     expect(screen.getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/#analyze')
+    expect(screen.getByRole('link', { name: 'Analyze' })).toHaveClass('bg-brand', 'text-brand-foreground')
   })
 
   it('keeps the mobile-sheet Analyze action full width', () => {

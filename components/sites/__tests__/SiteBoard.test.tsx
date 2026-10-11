@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cache } from 'swr/_internal'
 import { SiteBoard } from '../SiteBoard'
@@ -9,6 +9,7 @@ import type { BoardCardView } from '@/lib/sites/board-card'
 import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { checkoutResultCopy, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
+import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
@@ -183,6 +184,15 @@ function watchedOutcome(partial: Partial<SiteOutcomeView> & Pick<SiteOutcomeView
     flagId: null,
     latestRunId: 'run-1',
     running: false,
+    ...partial,
+  }
+}
+
+function openFlag(partial: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
+  return {
+    id: 'flag-1', sourceFlagId: null, confidence: 0.95, improvementId: 'improvement-1', checkId: 'page-availability', rubric: 'REACH', severity: 'IMPORTANT', impactTag: null,
+    problem: 'Pricing page is unavailable', evidence: 'The page returned 404.', whyItMatters: 'Customers cannot see pricing.', fix: 'Restore the pricing page.', pageUrl: 'https://example.com/pricing', status: 'OPEN', resolvedInId: null,
+    area: 'site', affectedPaths: ['/pricing'], affectedPageCount: 1, priorityBand: 'fix_first', priorityScore: 90, relatedOutcome: null, verificationState: 'unverified', latestOccurrenceAt: '2026-10-10T09:00:00.000Z',
     ...partial,
   }
 }
@@ -454,8 +464,124 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>
     )
-    expect(screen.getByRole('link', { name: '1 Flag. View Flags' })).toHaveAttribute('href', `${SITE_PATH}/flags`)
+    expect(screen.getByRole('link', { name: '1 Flag. View Flags' })).toHaveAttribute('href', `${SITE_PATH}?view=flags#flags`)
     expect(screen.queryByText('Search · Important Flag')).not.toBeInTheDocument()
+  })
+
+  it('keeps the complete Flag list inside the Site shell', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={boardView({ flags: [openFlag()] })} viewMode="flags" />
+      </MeProvider>
+    )
+    expect(screen.getByRole('heading', { name: 'Flags', level: 2 })).toBeVisible()
+    expect(screen.getByText('Pricing page is unavailable')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'View Flag' })).toHaveAttribute('href', '/sites/p_example/flags/flag-1')
+    expect(screen.queryByRole('button', { name: 'Open Pages' })).not.toBeInTheDocument()
+  })
+
+  it('opens the shared schedule editor for the owner and saves an allowed cadence', async () => {
+    const view = boardView()
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/watch')) return Response.json(options?.method === 'POST' ? { ok: true, interval: 'weekly' } : { intervals: ['daily', 'weekly'] })
+      return Response.json(view)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+      fireEvent.click(screen.getByRole('button', { name: 'Monitoring Off. No next check scheduled' }))
+      const dialog = screen.getByRole('dialog')
+      const frequency = within(dialog).getByRole('combobox', { name: 'Check frequency' })
+      await waitFor(() => expect(frequency).toBeEnabled())
+      fireEvent.change(frequency, { target: { value: 'hourly' } })
+      expect(within(dialog).getByRole('button', { name: 'Save schedule' })).toBeDisabled()
+      expect(within(dialog).getByText('This schedule is not available on your plan.')).toBeVisible()
+      fireEvent.change(frequency, { target: { value: 'weekly' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save schedule' }))
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: 'weekly' }),
+      }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('shows the affected page count without counting two Flags on one page twice', () => {
+    const flag = openFlag()
+    const initial = boardView({ flags: [{ ...flag, id: 'f1', area: 'site', pageUrl: 'https://example.com/pricing' }, { ...flag, id: 'f2', area: 'site', pageUrl: 'https://example.com/pricing' }] })
+    initial.presentation.coverage.pagesExpected = 12
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+    const summary = screen.getByRole('group', { name: 'Website status summary' })
+    expect(within(summary).getByRole('button', { name: '12 Pages. 1 needs attention' })).toBeVisible()
+  })
+
+  it('shows real monitoring history in the same Site shell', () => {
+    const view = boardView({
+      monitoringHistory: [
+        { checkedAt: '2026-10-09T09:00:00.000Z', flagCount: 0 },
+        { checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, flags: [{ id: 'flag-1', title: 'Pricing page is unavailable' }] },
+      ],
+      flags: [openFlag()],
+    })
+    view.presentation.monitoring = { state: 'daily', label: 'Daily' }
+    view.watch = { ...view.watch, state: 'watching', interval: 'daily', nextRunAt: '2026-10-11T09:00:00.000Z', covered: true, label: 'Daily' }
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="monitoring" /></MeProvider>)
+    expect(screen.getByRole('heading', { name: 'Monitoring', level: 2 })).toBeVisible()
+    expect(screen.getByText('Flags over time')).toBeVisible()
+    expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Pricing page is unavailable' })).toHaveAttribute('href', '/sites/p_example/flags/flag-1')
+    expect(screen.queryByRole('button', { name: 'Edit schedule' })).not.toBeInTheDocument()
+  })
+
+  it('restores and saves custom timing through the shared editor', async () => {
+    const initial = boardView()
+    initial.presentation.monitoring = { state: 'custom', label: 'Every 3 hours' }
+    initial.watch = { ...initial.watch, state: 'watching', interval: 'custom', everyMinutes: 180, nextRunAt: '2099-10-11T09:00:00.000Z', covered: true }
+    let current = initial
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/watch')) {
+        if (options?.method !== 'POST') return Response.json({ intervals: ['daily', 'weekly', 'hourly', 'custom'] })
+        const body = JSON.parse(String(options.body))
+        current = { ...initial, watch: { ...initial.watch, everyMinutes: body.everyMinutes } }
+        return Response.json({ ok: true, ...body })
+      }
+      return Response.json(current)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+      fireEvent.click(screen.getByRole('button', { name: /^Monitoring Every 3 hours/ }))
+      const dialog = screen.getByRole('dialog')
+      await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Check frequency' })).toBeEnabled())
+      expect(within(dialog).getByRole('spinbutton', { name: 'Every' })).toHaveValue(3)
+      expect(within(dialog).getByRole('combobox', { name: 'Time unit' })).toHaveValue('hours')
+      fireEvent.change(within(dialog).getByRole('combobox', { name: 'Time unit' }), { target: { value: 'days' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save schedule' }))
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: 'custom', everyMinutes: 4320 }) }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: /^Monitoring Every 3 days/ })).toBeVisible()
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('shows connection logos and states in the same Site shell', () => {
+    const view = boardView()
+    view.settings.shopify = { configured: true, state: 'connected', domain: 'example.myshopify.com' }
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="integrations" /></MeProvider>)
+    expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible()
+    expect(screen.getByText('Shopify')).toBeVisible()
+    expect(screen.getByText('Google Analytics')).toBeVisible()
+    expect(screen.getByText('Google Search Console')).toBeVisible()
+    expect(screen.getByText('Connected')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Settings for Shopify' })).toHaveAttribute('href', '/sites/p_example/settings#connection-shopify')
+    expect(screen.queryByText('Available')).not.toBeInTheDocument()
+  })
+
+  it('shows detected website technology before the summary', () => {
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={boardView({
+      technology: { status: 'complete', detectedAt: '2026-10-10T09:00:00.000Z', items: [{ slug: 'next-js', name: 'Next.js', category: 'framework', confidenceBand: 'verified' }] },
+    })} /></MeProvider>)
+    expect(screen.getByRole('region', { name: 'Detected technologies' })).toBeVisible()
+    expect(screen.getByText('Next.js')).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Next.js logo' })).toBeVisible()
   })
 
   it('shows Sign in with a next path for logged-out visitors', () => {
@@ -516,7 +642,7 @@ describe('SiteBoard chrome', () => {
     renderBoard(signedInUser)
     expect(screen.queryByRole('link', { name: CARE_HOME.signIn })).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /All websites/ }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Monitoring off' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
+    expect(screen.getByRole('link', { name: 'Monitoring off' })).toHaveAttribute('href', `${SITE_PATH}?view=monitoring#monitoring`)
     expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Open Security' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Tracking' })).toBeInTheDocument()

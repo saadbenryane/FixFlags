@@ -102,7 +102,7 @@ describe('/api/projects/[id]/watch', () => {
     const invalid = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',
-        body: JSON.stringify({ interval: 'hourly' }),
+        body: JSON.stringify({ interval: 'fortnightly' }),
       }),
       { params: Promise.resolve({ id: 'project-1' }) }
     )

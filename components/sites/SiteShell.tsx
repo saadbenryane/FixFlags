@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
-import { Flag, Globe2, LayoutGrid, Radio } from 'lucide-react'
+import { Clock3, Flag, Globe2, LayoutGrid, Plug, Radio, Settings2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
@@ -15,23 +15,26 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { CustomerMain, customerMobileBarClass } from '@/components/layout/customer-frame'
 import { customerAttention, type MonitoringState, type SitePresentation } from '@/lib/sites/presentation'
 
-type SiteRoute = 'home' | 'flags' | 'settings'
+type SiteRoute = 'home' | 'flags' | 'monitoring' | 'integrations' | 'settings'
 
 const routes = [
   ['home', 'Overview', LayoutGrid],
   ['flags', 'Flags', Flag],
-  ['settings', 'Settings', Globe2],
+  ['monitoring', 'Monitoring', Clock3],
+  ['integrations', 'Integrations', Plug],
+  ['settings', 'Settings', Settings2],
 ] as const
 
 function monitoringClass(state: MonitoringState | undefined, legacy: SiteHomeView['watch']['state']): string {
   const resolved = state ?? (legacy === 'watching' ? 'weekly' : legacy === 'off' ? 'not_monitored' : legacy === 'quota' ? 'quota_blocked' : legacy)
-  if (resolved === 'weekly' || resolved === 'daily') return 'border-success/60 text-foreground'
+  if (resolved === 'weekly' || resolved === 'daily' || resolved === 'hourly' || resolved === 'custom') return 'border-success/60 text-foreground'
   if (resolved === 'not_monitored') return 'border-border text-muted-foreground'
   return 'border-brand text-foreground'
 }
 
 function routeHref(siteId: string, route: SiteRoute): Route {
   if (route === 'home') return `/sites/${siteId}` as Route
+  if (route === 'flags' || route === 'monitoring' || route === 'integrations') return `/sites/${siteId}?view=${route}#${route}` as Route
   return `/sites/${siteId}/${route}` as Route
 }
 
@@ -67,9 +70,9 @@ export function SiteShell({
   const [failedPreview, setFailedPreview] = useState<string | null>(null)
   const [captureOpen, setCaptureOpen] = useState(false)
   const monitoring = presentation?.monitoring
-  const monitoringState = monitoring?.state ?? (watch.state === 'watching' ? watch.interval === 'daily' ? 'daily' : 'weekly' : watch.state === 'off' ? 'not_monitored' : watch.state === 'quota' ? 'quota_blocked' : watch.state)
+  const monitoringState = monitoring?.state ?? (watch.state === 'watching' ? watch.interval ?? 'not_monitored' : watch.state === 'off' ? 'not_monitored' : watch.state === 'quota' ? 'quota_blocked' : watch.state)
   const cadenceLabel = monitoring?.label ?? watch.label
-  const watchLabel = monitoringState === 'daily' || monitoringState === 'weekly'
+  const watchLabel = monitoringState === 'daily' || monitoringState === 'weekly' || monitoringState === 'hourly' || monitoringState === 'custom'
     ? `Monitoring on · ${cadenceLabel}`
     : monitoringState === 'not_monitored' ? 'Monitoring off' : `Monitoring · ${cadenceLabel}`
   const identity = presentation?.identity
@@ -124,11 +127,11 @@ export function SiteShell({
               <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 <h1 className="break-words text-2xl font-semibold tracking-tight">{identity?.host ?? title}</h1>
-                {attention ? <Link href={`/sites/${siteId}/flags`} className={cn('text-sm font-medium', attention.tone === 'attention' || attention.tone === 'clear' ? 'text-foreground' : 'text-muted-foreground')} aria-label={`${attention.text}. View Flags`}>
+                {attention ? <Link href={`/sites/${siteId}?view=flags#flags`} className={cn('text-sm font-medium', attention.tone === 'attention' || attention.tone === 'clear' ? 'text-foreground' : 'text-muted-foreground')} aria-label={`${attention.text}. View Flags`}>
                   {attention.tone === 'attention' ? <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-brand" /> : null}{attention.text}
                 </Link> : null}
               </div>
-              {identity && activeRoute !== 'home' ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{activeRoute === 'flags' ? 'Flags' : 'Settings'}</p> : null}
+              {identity && activeRoute !== 'home' ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{{ flags: 'Flags', monitoring: 'Monitoring', integrations: 'Integrations', settings: 'Settings' }[activeRoute]}</p> : null}
               {identity && activeRoute === 'home' ? <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                 <span>{presentation.coverage.label}</span>
               </p> : null}
@@ -137,7 +140,7 @@ export function SiteShell({
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {identity && ownsSite ? <Link href={`/sites/${siteId}/settings#watch`} className={cn('inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] border px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring', monitoringClass(monitoring?.state, watch.state))}>
+              {identity && ownsSite ? <Link href={`/sites/${siteId}?view=monitoring#monitoring`} className={cn('inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] border px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring', monitoringClass(monitoring?.state, watch.state))}>
                 <Radio className="h-4 w-4" aria-hidden />
                 {watchLabel}
               </Link> : identity ? <span className={cn('inline-flex min-h-11 items-center gap-2 px-1 text-sm font-medium', monitoringClass(monitoring?.state, watch.state))}>

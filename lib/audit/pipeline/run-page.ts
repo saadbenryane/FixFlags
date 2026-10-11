@@ -47,6 +47,7 @@ import {
 } from '@/lib/audit/evidence-targets'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 import { judgePageStage } from '@/lib/audit/pipeline/stages/judge-page'
+import { checkReceiptSchema } from '@/lib/audit/checks/receipt'
 
 interface CaptureOutage {
   failureCode: string
@@ -481,7 +482,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     const receipt = {
       source: 'DETERMINISTIC', pageUrl: normalizedUrl,
       status: execution.failed ? 'FAILED' as const : execution.applicable ? 'COMPLETED' as const : 'NOT_APPLICABLE' as const,
-      detail: { kind: 'site-module-check', ...execution, pageUrl: normalizedUrl },
+      detail: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, ...execution, pageUrl: normalizedUrl }),
       evidenceReference: { auditId: ctx.auditId, pageUrl: normalizedUrl, module: execution.module },
     }
     await prisma.auditVerifierExecution.upsert({

@@ -560,6 +560,7 @@ model Project {
   watchConsecutiveFailures    Int                   @default(0)
   watchLastError              String?
   watchInterval               ProjectWatchInterval?
+  watchEveryMinutes           Int?
   notificationLevel           SiteNotificationLevel      @default(FLAGS)
   notifyOnRecovery            Boolean                    @default(true)
   /// *
@@ -2576,6 +2577,8 @@ enum RepoFixPrStatus {
 enum ProjectWatchInterval {
   WEEKLY
   DAILY
+  HOURLY
+  CUSTOM
 }
 
 enum SiteNotificationLevel {

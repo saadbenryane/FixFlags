@@ -3,12 +3,15 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
+import { fetchSiteAction, readSiteActionResponse, siteActionMessage } from '@/lib/sites/client-actions'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy'
+import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 
 export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, onCheck, open: controlledOpen, onOpenChange }: {
   open?: boolean; onOpenChange?: (open: boolean) => void
@@ -38,12 +41,12 @@ export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, o
     if (busy) return
     setBusy(true); setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/outcomes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      const result = await response.json() as { message?: string }
-      if (!response.ok) throw new Error(result.message ?? 'Could not add this check.')
-      await onRefresh()
-      setMessage('Card added. Verify it for fresh evidence. Your Watch schedule is unchanged.')
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'Connection interrupted. Please try again.') }
+      const response = await fetchSiteAction(`/api/sites/${siteId}/outcomes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const result = await readSiteActionResponse(response)
+      if (!response.ok) { setMessage(result.error ?? 'Could not add this check.'); return }
+      try { await onRefresh() } catch { setMessage(SITE_ACTION_COPY.refreshPending); return }
+      setMessage(SITE_ACTION_COPY.added)
+    } catch (error) { setMessage(siteActionMessage(error)) }
     finally { setBusy(false) }
   }
   const checkout = view.outcomes.filter((outcome) => outcome.kind === 'CHECKOUT')
@@ -59,7 +62,7 @@ export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, o
       <Plus className="h-4 w-4" aria-hidden />
       <span>Add</span>
     </button>
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[85dvh] max-w-xl overflow-auto" onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
+    <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
       <DialogTitle>{SITE_BOARD_COPY.addCard}</DialogTitle><DialogDescription>Keep a visitor action working, inspect website health, or connect useful context. Every card explains what was checked.</DialogDescription>
       <div className="flex flex-wrap gap-2" aria-label="Card categories">{(['Visitor actions', 'Website checks', 'Connections'] as const).map((item) => <Button key={item} variant={tab === item ? 'secondary' : 'ghost'} aria-pressed={tab === item} onClick={() => setTab(item)}>{item}</Button>)}</div>
       {!owner ? <div className="space-y-3"><p>Sign in and claim this website to configure Outcomes or connections.</p><Button asChild><Link href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`}>Sign in to configure</Link></Button></div> : null}
@@ -83,6 +86,6 @@ export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, o
         ['Analytics', view.settings.analytics.status === 'connected', view.settings.analytics.configured],
       ].filter(([, connected, configured]) => Boolean(connected || configured)).map(([name, connected]) => <section key={String(name)} className="rounded-card border border-border p-4"><h3 className="font-medium">{name}</h3><p className="mt-1 text-sm text-muted-foreground">{connected ? 'Connected' : 'Ready to connect'}</p><Button className="mt-3" variant="outline" asChild><Link href={`/sites/${siteId}/settings#connections`}>{connected ? 'Manage' : 'Connect'}</Link></Button></section>)}</div>}
       {message ? <p role="status" className="text-sm">{message}</p> : null}
-    </DialogContent></Dialog>
+    </ResponsiveDepth>
   </>
 }

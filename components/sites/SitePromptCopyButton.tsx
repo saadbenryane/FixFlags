@@ -6,15 +6,18 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { showFixPromptCopied } from './FixPromptToast'
 
 export function SitePromptCopyButton({
   siteId,
   flagId,
   compact = false,
+  iconOnly = false,
 }: {
   siteId: string
   flagId: string
   compact?: boolean
+  iconOnly?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -46,6 +49,7 @@ export function SitePromptCopyButton({
       try {
         await navigator.clipboard.writeText(body.prompt)
         setCopied(true)
+        showFixPromptCopied()
         setMessage(SITE_BOARD_COPY.copyPromptCopied)
         window.setTimeout(() => setCopied(false), 2000)
       } catch {
@@ -61,11 +65,11 @@ export function SitePromptCopyButton({
   return (
     <>
       <span className="inline-flex flex-col items-start">
-        <Button type="button" size={compact ? 'sm' : 'default'} variant={compact ? 'outline' : 'default'} disabled={busy} onClick={() => void copyPrompt()}>
+        <Button type="button" size={iconOnly ? 'icon' : compact ? 'sm' : 'default'} variant={iconOnly ? 'ghost' : compact ? 'outline' : 'default'} disabled={busy} aria-label={iconOnly ? SITE_BOARD_COPY.copyPrompt : undefined} title={iconOnly ? SITE_BOARD_COPY.copyPrompt : undefined} onClick={() => void copyPrompt()}>
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-          {copied ? SITE_BOARD_COPY.copyPromptCopied : SITE_BOARD_COPY.copyPrompt}
+          {iconOnly ? null : copied ? SITE_BOARD_COPY.copyPromptCopied : SITE_BOARD_COPY.copyPrompt}
         </Button>
-        {message && !copied ? <span className="mt-2 text-sm text-muted-foreground" role="status" aria-live="polite">{message}</span> : null}
+        {message && !copied ? <span className={iconOnly ? 'sr-only' : 'mt-2 text-sm text-muted-foreground'} role="status" aria-live="polite">{message}</span> : null}
       </span>
       <Dialog open={Boolean(manualPrompt)} onOpenChange={(open) => { if (!open) setManualPrompt(null) }}>
         <DialogContent>

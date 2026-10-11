@@ -562,7 +562,7 @@ export async function confirmSiteOutcome(input: {
       include: {
         pages: true,
         bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
-        assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
+        assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
         runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
       },
     })
@@ -634,7 +634,7 @@ export async function renameSiteOutcome(input: {
     include: {
       pages: true,
       bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
-      assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
+      assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
   })
@@ -652,7 +652,7 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
     include: {
       pages: true,
       bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
-      assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
+      assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
     orderBy: { createdAt: 'asc' },

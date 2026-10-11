@@ -105,6 +105,17 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ], related: ['shopify-access-and-removal', 'read-site-coverage'], relatedDocs: ['getting-started'],
   },
   {
+    slug: 'connect-google-data', categoryId: 'getting-started', title: 'Connect Analytics or Search Console',
+    excerpt: 'Add page traffic or search context to an owned Site.',
+    searchTokens: ['analytics', 'google', 'search console', 'queries', 'sessions', 'connection'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
+    body: [
+      { type: 'p', text: 'Open Integrations, choose Analytics or Search Console, then select a website you own. In Site settings, connect the Google property for that website. FixFlags only accepts a property whose web stream or search property matches the Site host.' },
+      { type: 'ul', items: ['Analytics adds sessions for watched pages from a 28-day report.', 'Search Console adds matching page queries, impressions, and clicks from a 28-day report.', 'The last read time and connection state appear in Site settings. Reconnect if authorization expires.'] },
+      { type: 'callout', text: 'These numbers are context beside an independent website check. They do not prove that a signup, purchase, or other customer action works. FixFlags does not yet check Analytics event configuration or Search Console indexing through these connections.' },
+      { type: 'link', text: 'View integrations', href: '/integrations' },
+    ], related: ['read-site-coverage', 'connect-shopify'], relatedDocs: ['getting-started'],
+  },
+  {
     slug: 'shopify-access-and-removal', categoryId: 'shopify', title: 'Shopify access and removal',
     excerpt: 'Understand permissions, uninstall, redaction, and relinking.',
     searchTokens: ['shopify', 'uninstall', 'privacy', 'redaction', 'revoke'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,

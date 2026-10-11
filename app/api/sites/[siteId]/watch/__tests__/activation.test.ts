@@ -25,8 +25,13 @@ describe('owned Site monitoring activation API', () => {
     expect(r.status).toBe(200)
     expect(m.activate).toHaveBeenCalledWith({ siteId: 'owned-1', userId: 'owner', interval: 'weekly' })
   })
+  it('passes a custom schedule through activation with the server owner', async () => {
+    const r = await POST(req({ interval: 'custom', everyMinutes: 4320, userId: 'attacker' }), context)
+    expect(r.status).toBe(200)
+    expect(m.activate).toHaveBeenCalledWith({ siteId: 'owned-1', userId: 'owner', interval: 'custom', everyMinutes: 4320 })
+  })
   it('rejects unsupported or missing schedules', async () => {
-    expect((await POST(req({ interval: 'hourly' }), context)).status).toBe(400)
+    expect((await POST(req({ interval: 'fortnightly' }), context)).status).toBe(400)
     expect((await POST(req({}), context)).status).toBe(400)
     expect(m.activate).not.toHaveBeenCalled()
   })

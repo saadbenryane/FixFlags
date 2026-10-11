@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { usePathname } from 'next/navigation'
+import { describe, expect, it, vi } from 'vitest'
 import { Footer } from '@/components/layout/footer'
 import { BRAND } from '@/lib/marketing/copy'
 
@@ -12,12 +11,6 @@ vi.mock('next/image', () => ({
     alt: string
     src: string
   }) => <span role="img" aria-label={alt} data-src={src} />,
-}))
-
-vi.mock('next/navigation', () => ({ usePathname: vi.fn(() => '/pricing') }))
-
-vi.mock('@/components/layout/FooterNewsletter', () => ({
-  FooterNewsletter: () => <aside data-testid="footer-newsletter" />,
 }))
 
 vi.mock('@/components/layout/FooterThemeToggle', () => ({
@@ -35,28 +28,18 @@ const LEGACY_TAGLINE =
 const LEGACY_MADE_WITH = 'Built for businesses that depend on their website.'
 
 describe('Footer', () => {
-  beforeEach(() => {
-    vi.mocked(usePathname).mockReturnValue('/pricing')
-  })
-
-  it('renders the canonical brand tagline and category', () => {
+  it('renders the canonical footer description and category', () => {
     render(<Footer />)
 
-    expect(screen.getByText(BRAND.tagline)).toBeInTheDocument()
+    expect(screen.getByText(BRAND.footerDescription)).toBeInTheDocument()
     expect(screen.getByText(BRAND.category)).toBeInTheDocument()
+    expect(screen.getByText(BRAND.trademarkNotice)).toBeInTheDocument()
   })
 
-  it('keeps the newsletter section wired', () => {
+  it('does not render a newsletter signup', () => {
     render(<Footer />)
-
-    expect(screen.getByTestId('footer-newsletter')).toBeInTheDocument()
-  })
-
-  it('removes the competing newsletter conversion from the homepage only', () => {
-    vi.mocked(usePathname).mockReturnValue('/')
-    render(<Footer />)
-
-    expect(screen.queryByTestId('footer-newsletter')).not.toBeInTheDocument()
+    expect(screen.queryByText('Stay in the loop')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Email address' })).not.toBeInTheDocument()
   })
 
   it('does not render legacy marketing copy', () => {

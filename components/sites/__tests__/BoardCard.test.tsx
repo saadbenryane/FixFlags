@@ -63,6 +63,34 @@ describe('BoardCard chrome', () => {
     expect(screen.getByText('+3 more')).toBeInTheDocument()
   })
 
+  it('lists every row Flag as its own action', () => {
+    const openFirst = vi.fn()
+    const openCard = vi.fn()
+    render(
+      <BoardCard
+        name="Pages"
+        status="2 Flags"
+        state="problem"
+        answer="Pages need attention"
+        icon="site"
+        flags={[
+          { id: 'pricing', title: 'Pricing page is unavailable', href: '#pricing', onOpen: openFirst },
+          { id: 'contact', title: 'Contact page returns an error', href: '#contact' },
+        ]}
+        flagCount={2}
+        onOpen={openCard}
+        layout="row"
+      />
+    )
+
+    expect(screen.getByText('2 Flags')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Pricing page is unavailable' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Contact page returns an error' })).toHaveAttribute('href', '#contact')
+    fireEvent.click(screen.getByRole('button', { name: 'Pricing page is unavailable' }))
+    expect(openFirst).toHaveBeenCalledOnce()
+    expect(openCard).not.toHaveBeenCalled()
+  })
+
   it('shows up to three Flag titles and uses Clear instead of 0 Flags', () => {
     const { rerender } = render(
       <BoardCard

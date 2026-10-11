@@ -17,7 +17,7 @@ export const SEO = {
   integrations: {
     title: 'FixFlags Integrations',
     description:
-      'Add Shopify, Analytics, Search Console, or GitHub context beside a Flag. Connections do not mark an Outcome Clear.',
+      'Connect Shopify, Google Analytics, or Search Console for more context beside a Flag. Explore the extra checks other tools could support.',
   },
   pricing: {
     title: 'FixFlags Pricing',

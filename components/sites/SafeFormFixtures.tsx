@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
+import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'
 
 type Draft = {
   name: string
@@ -62,7 +63,7 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(editing
+      const response = await fetchSiteAction(editing
         ? `/api/sites/${siteId}/outcome-fixtures/${editing}`
         : `/api/sites/${siteId}/outcome-fixtures`, {
         method: editing ? 'PATCH' : 'POST',
@@ -82,6 +83,8 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
       setEditing(null)
       setOpen(false)
       router.refresh()
+    } catch (error) {
+      setMessage(siteActionMessage(error))
     } finally {
       setBusy(false)
     }
@@ -92,7 +95,7 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/outcome-fixtures/${fixture.id}${actionName === 'delete' ? '' : `/${actionName}`}`, {
+      const response = await fetchSiteAction(`/api/sites/${siteId}/outcome-fixtures/${fixture.id}${actionName === 'delete' ? '' : `/${actionName}`}`, {
         method: actionName === 'delete' ? 'DELETE' : 'POST',
       })
       const body = await response.json().catch(() => ({})) as { fixture?: OutcomeFixtureView; error?: string }
@@ -104,6 +107,8 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
       else if (body.fixture) setFixtures((current) => current.map((item) => item.id === body.fixture!.id ? body.fixture! : item))
       setMessage(actionName === 'dry-run' ? 'Dry run finished. Review its result before authorizing.' : actionName === 'authorize' ? 'Fixture authorized for Signup verification.' : actionName === 'revoke' ? 'Fixture authorization revoked.' : 'Fixture deleted.')
       router.refresh()
+    } catch (error) {
+      setMessage(siteActionMessage(error))
     } finally {
       setBusy(false)
     }
@@ -132,6 +137,9 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
 
   return (
     <div className="mt-5 space-y-4">
+      <ol className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-3" aria-label="Signup setup steps">
+        <li>1. Define a reversible test</li><li>2. Run it and inspect cleanup</li><li>3. Authorize this version</li>
+      </ol>
       {fixtures.map((fixture) => {
         const dryRun = fixture.lastDryRunResult as { disposition?: string; reason?: string } | null
         const authorized = Boolean(fixture.authorizedAt && fixture.lastDryRunVersion === fixture.version)

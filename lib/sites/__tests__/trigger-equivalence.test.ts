@@ -164,7 +164,7 @@ describe('trigger equivalence', () => {
         source: 'INTEGRATION',
         requestedByUserId: 'user-1',
         selections: { create: [{ outcomeId: 'outcome-1' }] },
-        context: { action: 'shopify_install', shop: 'shop.example.myshopify.com' },
+        context: expect.objectContaining({ action: 'shopify_install', shop: 'shop.example.myshopify.com' }),
       }),
     }))
   })

@@ -18,6 +18,7 @@ import {
 import { type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
 import {
   boardFindingTitle,
+  boardCardFreshnessText,
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
@@ -44,7 +45,7 @@ const SIGNAL_CLASS: Record<CardHealthState, string> = {
   unknown: styles.unknown,
 }
 
-export type BoardCardFlag = BoardCardFlagChip
+export type BoardCardFlag = BoardCardFlagChip & { onOpen?: () => void; copyAction?: React.ReactNode }
 
 function CardMedia({
   src,
@@ -77,17 +78,21 @@ function CardMedia({
 }
 
 export type BoardSummaryItem = {
+  id?: string
   label: string
   value: number | string
+  detail?: string
+  accessibleDetail?: string
   state: 'attention' | 'healthy' | 'unknown'
 }
 
-export function BoardSummaryStrip({ items, label = 'Website status summary' }: { items: readonly BoardSummaryItem[]; label?: string }) {
-  return <div role="group" aria-label={label}>
+export function BoardSummaryStrip({ items, label = 'Website status summary', onSelect }: { items: readonly BoardSummaryItem[]; label?: string; onSelect?: (item: BoardSummaryItem) => void }) {
+  return <div role="group" aria-label={label} className={styles.summaryGroup}>
     <dl className={styles.summaryStrip}>
-      {items.map(item => <div key={item.label} className={`${styles.summaryItem} ${styles[`summary-${item.state}`]}`}>
+      {items.map(item => <div key={item.id ?? item.label} className={`${styles.summaryItem} ${styles[`summary-${item.state}`]} ${item.id === 'monitoring' ? styles.summaryMonitoring : item.id === 'pages' ? styles.summaryPages : ''}`}>
         <dt>{item.label}</dt>
-        <dd>{item.value}</dd>
+        <dd>{item.value}{onSelect && <button type="button" className={styles.summaryAction} aria-label={`${item.value} ${item.label}${item.detail ? `. ${item.accessibleDetail ?? item.detail}` : ''}`} onClick={() => onSelect(item)} />}</dd>
+        {item.detail ? <dd className={styles.summaryDetail}>{item.detail}</dd> : null}
       </div>)}
     </dl>
   </div>
@@ -100,7 +105,7 @@ export function BoardGrid({ children, className, layout = 'grid' }: { children: 
 export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {
   state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void; showText?: boolean
 }) {
-  const content = <><i aria-hidden="true" />{count > 0 ? <span>{count} {count === 1 ? 'Flag' : 'Flags'}</span> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}</>
+  const content = <>{count > 0 ? <span>{count} {count === 1 ? 'Flag' : 'Flags'}</span> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
   const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
   return onOpen
     ? <button type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</button>
@@ -128,6 +133,8 @@ export function BoardCard({
   compact = false,
   showFlagPreview = false,
   layout = 'card',
+  checkedAt,
+  freshness,
 }: {
   name: string
   status: string
@@ -154,6 +161,7 @@ export function BoardCard({
   flags?: BoardCardFlag[] | null
   sources?: string[] | null
   checkedAt?: string | null
+  freshness?: string | null
 }) {
   const Icon = BOARD_CARD_ICONS[icon]
   const checking = activity === 'checking' || state === 'checking'
@@ -176,36 +184,52 @@ export function BoardCard({
   const previewFlags = flags ?? []
   const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
   const hiddenPreviewCount = Math.max(0, previewFlags.length - visiblePreviewFlags.length)
+  const freshnessLabel = freshness ?? boardCardFreshnessText(checkedAt ?? null)
 
   if (layout === 'row') {
-    const rowClassName = `${styles.boardRow} ${checking ? styles.rowChecking : ''}`
-    const rowContent = <>
-      <span className={styles.rowTitle}><Icon size={18} aria-hidden="true" />{name}</span>
-      <span className={styles.rowResult}>
+    const clear = state === 'healthy' && count === 0 && !checking
+    const rowClassName = `${styles.boardRow} ${count > 0 ? styles.rowProblem : ''} ${clear ? styles.rowClear : ''} ${checking ? styles.rowChecking : ''}`
+    const iconClass = count > 0 ? styles.iconAttention : clear ? styles.iconHealthy : undefined
+    const rowMeta = <span className={styles.rowTrailing}>
+      {freshnessLabel ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
+      <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} showText /></span>
+    </span>
+    if (previewFlags.length > 0) {
+      return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>
+        {onOpen ? <button type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</button>
+          : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
+        {rowMeta}
+        <ul className={styles.rowFlagList}>
+          {previewFlags.map(flag => <li key={flag.id}>
+            {flag.onOpen ? <button type="button" className={styles.rowFlagName} onClick={flag.onOpen}><strong>{flag.title}</strong></button>
+              : <Link className={styles.rowFlagName} href={flag.href as Route}><strong>{flag.title}</strong></Link>}
+            <span className={styles.rowFlagActions}>{flag.copyAction ? <span className={styles.rowCopyAction}>{flag.copyAction}</span> : null}
+              {flag.onOpen ? <button type="button" className={styles.rowFlagOpen} onClick={flag.onOpen} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></button>
+                : <Link className={styles.rowFlagOpen} href={flag.href as Route} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></Link>}
+            </span>
+          </li>)}
+        </ul>
+      </article>
+    }
+    const resultContent = <>
+      <span className={styles.rowResultCopy}>
         <strong>{answer}</strong>
         {detail ? <span>{detail}</span> : null}
         {incompleteReason ? <span>{incompleteReason}</span> : null}
       </span>
-      <span className={styles.rowStatus}>
-        <BoardStatus
-          state={checking ? 'checking' : state}
-          label={`${name}: ${footerLabel}`}
-          text={footerLabel}
-          count={count > 0 ? count : 0}
-          showText
-        />
-      </span>
       {(href || onOpen) ? <span className={styles.rowArrow}><ArrowRight size={17} aria-hidden="true" /></span> : null}
     </>
-
-    if (href && !onOpen) {
-      const external = href.startsWith('#') || href.startsWith('http')
-      return external
-        ? <a className={rowClassName} href={href} aria-label={name}>{rowContent}</a>
-        : <Link className={rowClassName} href={href as Route} aria-label={name}>{rowContent}</Link>
-    }
-    if (onOpen) return <button type="button" className={rowClassName} onClick={onOpen} aria-label={`Open ${name}`}>{rowContent}</button>
-    return <article className={rowClassName} aria-label={name}>{rowContent}</article>
+    return <article className={rowClassName} aria-label={name}>
+      {onOpen ? <button type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</button>
+        : href ? <Link className={styles.rowTitleButton} href={href as Route} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</Link>
+          : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
+      {rowMeta}
+      {clear ? null : href && !onOpen ? href.startsWith('#') || href.startsWith('http')
+        ? <a className={styles.rowResultAction} href={href} aria-label={`View ${name} details`}>{resultContent}</a>
+        : <Link className={styles.rowResultAction} href={href as Route} aria-label={`View ${name} details`}>{resultContent}</Link>
+        : onOpen ? <button type="button" className={styles.rowResultAction} onClick={onOpen} aria-label={`View ${name} details`}>{resultContent}</button>
+          : <span className={styles.rowResultAction}>{resultContent}</span>}
+    </article>
   }
 
   const body = (
@@ -299,11 +323,13 @@ export function BoardCard({
 export function ProductBoardCard({
   card,
   onOpen,
+  renderFlagCopy,
   compact = false,
   layout = 'card',
 }: {
   card: BoardCardView
   onOpen?: () => void
+  renderFlagCopy?: (flag: BoardCardFlagChip) => React.ReactNode
   compact?: boolean
   layout?: 'card' | 'row'
 }) {
@@ -332,7 +358,7 @@ export function ProductBoardCard({
       icon={card.id}
       onOpen={onOpen}
       flagCount={card.openFlagCount}
-      flags={card.id === 'site' ? [] : card.flagChips}
+      flags={card.flagChips.map(flag => ({ ...flag, copyAction: renderFlagCopy?.(flag) }))}
       sources={card.sources}
       checkedAt={card.checkedAt}
       layout={layout}

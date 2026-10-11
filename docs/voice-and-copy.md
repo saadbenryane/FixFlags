@@ -34,7 +34,9 @@ Avoid:
 - patronizing reassurance and fear-based urgency;
 - invented measurements, testimonials, savings, causality, or coverage;
 - claims about planned or locally implemented behavior as though it is released;
-- em dashes in newly authored customer copy.
+- em dashes anywhere. This is a hard rule for product copy, responses, documentation, and comments. Use commas, periods, or parentheses instead.
+
+When the user supplies exact wording, use that wording. Do not paraphrase it or add a new value proposition unless they request a rewrite.
 
 ## Vocabulary
 

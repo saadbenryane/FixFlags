@@ -84,7 +84,8 @@ describe('customer Flag projector on Site load', () => {
     ])
 
     const flags = await loadSiteFlags(site)
-    expect(flags.map((flag) => flag.checkId)).toEqual(['journey-first-visit-hidden-cta'])
+    expect(flags.map((flag) => flag.checkId)).toEqual([])
+    expect((await loadSiteRecommendations(site)).map(flag => flag.checkId)).toContain('journey-first-visit-hidden-cta')
   })
 
   it('keeps a slow-action Flag when a primary action was found', async () => {

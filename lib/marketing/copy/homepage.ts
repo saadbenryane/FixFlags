@@ -847,16 +847,6 @@ export const LANDING_PAGE = {
       'Start with a URL. Add context only when it makes the next decision clearer.',
     buildersCta: "See how it works",
     buildersHref: "/how-it-works",
-    newsletter: {
-      title: "Stay in the loop",
-      placeholder: "Enter your email",
-      cta: "Subscribe",
-      blurb: "Product updates and shipping tips. No spam.",
-      success: "You\u2019re on the list.",
-      alreadySubscribed: "You\u2019re already on the list.",
-      emailRequired: "Enter your email address",
-      subscribeFailed: "Could not subscribe right now. Try again later.",
-    },
     social: {
       instagram: "",
     },

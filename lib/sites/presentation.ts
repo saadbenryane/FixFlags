@@ -1,3 +1,5 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
+import { scheduleFromWatch, scheduleLabel } from './monitoring-schedule'
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 import type { WatchBoardState } from '@/lib/sites/watch-state'
@@ -14,6 +16,8 @@ export type MonitoringState =
   | 'not_monitored'
   | 'weekly'
   | 'daily'
+  | 'hourly'
+  | 'custom'
   | 'paused'
   | 'delayed'
   | 'quota_blocked'
@@ -142,16 +146,17 @@ export function freshnessLabel(checkedAt: string | null, now = new Date()): stri
 
 export function monitoringPresentation(
   state: WatchBoardState,
-  interval: 'weekly' | 'daily' | null,
+  interval: WatchInterval | null,
+  everyMinutes?: number | null,
 ): SitePresentation['monitoring'] {
   const mapped: MonitoringState = state === 'watching'
-    ? interval === 'daily' ? 'daily' : 'weekly'
+    ? interval ?? 'not_monitored'
     : state === 'quota'
       ? 'quota_blocked'
       : state === 'off'
         ? 'not_monitored'
         : state
-  return { state: mapped, label: SITE_PRESENTATION_COPY.monitoring[mapped] }
+  return { state: mapped, label: mapped === 'custom' ? scheduleLabel(scheduleFromWatch(interval, everyMinutes)) : SITE_PRESENTATION_COPY.monitoring[mapped] }
 }
 
 export function resultPresentation(input: {

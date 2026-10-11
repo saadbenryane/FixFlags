@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
+import { watchScheduleSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
@@ -8,13 +8,10 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { prisma } from '@/lib/db'
 
-const schema = z.object({
-  interval: z.enum(['weekly', 'daily']).nullable(),
-})
+const schema = watchScheduleSchema
 
 /** Richest cadence first, so a fallback always picks the best one a plan allows. */
-const CADENCE_ORDER = ['daily', 'weekly'] as const
-type WatchInterval = (typeof CADENCE_ORDER)[number]
+const CADENCE_ORDER = ['hourly', 'daily', 'weekly'] as const
 
 type WatchRejection = { ok: false; error: string; code?: string }
 
@@ -80,9 +77,10 @@ export async function POST(
       siteId: site,
       userId: session.user.id,
       interval: requested,
+      ...(body.data.everyMinutes !== undefined ? { everyMinutes: body.data.everyMinutes } : {}),
     })
 
-    if (isWatchRejection(result) && result.code === 'INTERVAL_NOT_ALLOWED') {
+    if (isWatchRejection(result) && result.code === 'INTERVAL_NOT_ALLOWED' && requested !== 'custom' && requested !== 'hourly') {
       const applied = await bestEntitledInterval(session.user.id)
       if (!applied) {
         return apiError(result.error, statusForCode(result.code), { code: result.code })
@@ -114,7 +112,7 @@ export async function POST(
       return apiError(result.error, statusForCode(result.code), { code: result.code })
     }
 
-    return NextResponse.json({ ok: true, interval: requested })
+    return NextResponse.json({ ok: true, interval: requested, ...(requested === 'custom' ? { everyMinutes: body.data.everyMinutes } : {}) })
   } catch (error) {
     return handleRouteError(error)
   }

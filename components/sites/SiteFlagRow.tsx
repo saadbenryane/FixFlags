@@ -21,7 +21,7 @@ export function SiteFlagRow({ siteId, flag }: { siteId: string; flag: SiteFlagSe
     ? `${flag.affectedPageCount} affected pages`
     : pageLabel(flag.affectedPaths[0] ?? flag.pageUrl)
   return (
-    <article className="flex min-h-20 flex-col gap-3 border-b border-border/60 bg-background px-4 py-4 last:border-b-0 sm:flex-row sm:items-center">
+    <article className="flex min-h-20 flex-col gap-3 rounded-card border border-brand/45 bg-background px-4 py-4 sm:flex-row sm:items-center">
       <CircleAlert className={cn('mt-0.5 h-5 w-5', flag.severity === 'CRITICAL' ? 'text-destructive' : 'text-brand')} aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"><span>{CARD_CATALOG[flag.area].name}</span>{scope ? <span aria-hidden="true">·</span> : null}{scope ? <span className="min-w-0 break-words">{scope}</span> : null}</p>

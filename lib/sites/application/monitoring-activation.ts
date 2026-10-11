@@ -1,3 +1,4 @@
+import { watchScheduleSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
 import { prisma } from '@/lib/db'
 import { allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
@@ -11,7 +12,8 @@ export async function monitoringOptions(userId: string) {
 }
 
 /** Coordinate existing commands. A saved schedule is never a verification result. */
-export async function activateSiteMonitoring(input: { siteId: string; userId: string; interval: 'weekly' | 'daily' }) {
+export async function activateSiteMonitoring(input: { siteId: string; userId: string; interval: WatchInterval; everyMinutes?: number }) {
+  if (!watchScheduleSchema.safeParse({ interval: input.interval, everyMinutes: input.everyMinutes }).success) return { ok: false as const, stage: 'schedule' as const, message: C.cadenceUnavailable }
   const site = await loadSiteRecord(input.siteId)
   if (!site?.projectId || site.userId !== input.userId) return { ok: false as const, stage: 'coverage' as const, message: C.coverageFailed }
   const allowed = await monitoringOptions(input.userId)
@@ -28,13 +30,13 @@ export async function activateSiteMonitoring(input: { siteId: string; userId: st
     outcome = confirmed.outcome
   }
   // Repeated activation must not move the next check or clear a live worker lease.
-  if (site.watchInterval !== input.interval || !site.watchNextRunAt) {
-    const scheduled = await executeSiteCommand({ type: 'SET_WATCH', siteId: site.siteId, userId: input.userId, interval: input.interval })
+  if (site.watchInterval !== input.interval || (input.interval === 'custom' && site.watchEveryMinutes !== input.everyMinutes) || !site.watchNextRunAt) {
+    const scheduled = await executeSiteCommand({ type: 'SET_WATCH', siteId: site.siteId, userId: input.userId, interval: input.interval, ...(input.everyMinutes !== undefined ? { everyMinutes: input.everyMinutes } : {}) })
     if (!scheduled.ok) return { ok: false as const, stage: 'schedule' as const, message: 'code' in scheduled && scheduled.code === 'WATCH_UNAVAILABLE' ? C.serviceUnavailable : C.scheduleFailed }
   }
   const persisted = await loadSiteRecord(site.siteId)
   if (!persisted?.watchInterval || !persisted.watchNextRunAt) return { ok: false as const, stage: 'schedule' as const, message: C.scheduleFailed }
-  const schedule = { interval: persisted.watchInterval, nextRunAt: persisted.watchNextRunAt.toISOString(), outcomeId: outcome.id }
+  const schedule = { interval: persisted.watchInterval, ...(persisted.watchInterval === 'custom' ? { everyMinutes: persisted.watchEveryMinutes } : {}), nextRunAt: persisted.watchNextRunAt.toISOString(), outcomeId: outcome.id }
   // Scope the first check to this confirmed public page. Failed enqueue attempts
   // get a new retry key; repeated clicks reuse the same pending/completed run.
   const prefix = `monitoring-start:${outcome.id}`

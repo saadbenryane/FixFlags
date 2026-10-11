@@ -42,6 +42,7 @@ export async function DELETE(
           deletedAt: new Date(),
           isManaged: false,
           watchInterval: null,
+          watchEveryMinutes: null,
           watchNextRunAt: null,
           watchLeaseUntil: null,
           watchLastError: null,

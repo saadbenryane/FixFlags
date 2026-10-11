@@ -1,3 +1,4 @@
+import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
@@ -41,6 +42,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       canonicalHost: true,
       updatedAt: true,
       watchInterval: true,
+      watchEveryMinutes: true,
       watchNextRunAt: true,
       watchLastError: true,
       watchConsecutiveFailures: true,
@@ -138,7 +140,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
   const now = new Date()
 
   return projects.map((project): SiteSummary => {
-    const watchInterval = project.watchInterval?.toLowerCase() as 'weekly' | 'daily' | undefined
+    const watchInterval = fromStoredWatchInterval(project.watchInterval)
     const latest = latestByProject.get(project.id) ?? null
     const completed = latest?.status === 'COMPLETED' ? latest : completedByProject.get(project.id) ?? null
     const pages = latest ? pagesByAudit.get(latest.id) ?? [] : []
@@ -197,7 +199,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         } : null,
       },
       result,
-      monitoring: monitoringPresentation(watchState, watchInterval ?? null),
+      monitoring: monitoringPresentation(watchState, watchInterval ?? null, project.watchEveryMinutes),
       coverage: {
         pagesReached,
         pagesExpected,

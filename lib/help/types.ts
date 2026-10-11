@@ -22,6 +22,7 @@ export type HelpArticleSlug =
   | 'weekly-watch'
   | 'notification-preferences'
   | 'connect-shopify'
+  | 'connect-google-data'
   | 'shopify-access-and-removal'
   | 'free-and-pro'
   | 'manage-an-existing-subscription'

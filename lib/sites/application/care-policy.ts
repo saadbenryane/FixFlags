@@ -1,3 +1,4 @@
+import { watchIntervalMinutes, type WatchInterval } from '@/lib/sites/watch-schedule'
 import type { Plan, SubscriptionStatus } from '@prisma/client'
 import { PLAN_DEFINITIONS, projectLimitForPlan } from '@/lib/billing/plans'
 
@@ -9,7 +10,7 @@ type CareUser = {
 
 export type SiteCarePolicy = {
   maxSites: number | null
-  watchIntervals: Array<'weekly' | 'daily'>
+  watchIntervals: Array<WatchInterval>
   targetedVerify: boolean
 }
 
@@ -19,7 +20,8 @@ export const OUTCOME_FRESHNESS_MINUTES = {
   manual: 8 * 24 * 60,
 } as const
 
-export function outcomeFreshnessMinutes(interval: 'weekly' | 'daily' | null): number {
+export function outcomeFreshnessMinutes(interval: WatchInterval | null, everyMinutes?: number | null): number {
+  if (interval === 'hourly' || interval === 'custom') return watchIntervalMinutes(interval, everyMinutes) + 12 * 60
   return interval ? OUTCOME_FRESHNESS_MINUTES[interval] : OUTCOME_FRESHNESS_MINUTES.manual
 }
 
@@ -41,13 +43,13 @@ function siteCapForPlan(plan: Plan): number | null {
  */
 export function siteCarePolicy(user: CareUser): SiteCarePolicy {
   if (user.role === 'admin') {
-    return { maxSites: null, watchIntervals: ['weekly', 'daily'], targetedVerify: true }
+    return { maxSites: null, watchIntervals: ['weekly', 'daily', 'hourly', 'custom'], targetedVerify: true }
   }
   const revoked = ['PAST_DUE', 'CANCELED', 'UNPAID'].includes(user.subscriptionStatus)
   const effectivePlan: Plan = revoked ? 'FREE' : user.plan
   return {
     maxSites: siteCapForPlan(effectivePlan),
-    watchIntervals: effectivePlan === 'FREE' ? ['weekly'] : ['weekly', 'daily'],
+    watchIntervals: effectivePlan === 'FREE' ? ['weekly'] : ['weekly', 'daily', 'hourly', 'custom'],
     targetedVerify: true,
   }
 }

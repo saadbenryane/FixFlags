@@ -115,7 +115,7 @@ describe('DELETE /api/projects/[id]', () => {
     expect(body.ok).toBe(true)
     expect(prismaMock.project.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ isManaged: false, watchInterval: null }),
+        data: expect.objectContaining({ isManaged: false, watchInterval: null, watchEveryMinutes: null }),
       })
     )
   })

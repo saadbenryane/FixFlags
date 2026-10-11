@@ -183,17 +183,21 @@ No Reports, raw Runs, Tests, MCP analytics, or Agent workspace in primary naviga
 ```text
 Overview
   Site identity, monitoring cadence, visible recovery
-  Prioritized category card grid: confirmed visitor actions and scoped website health
-  Compact link to open Flags, not a duplicate problem list
+  Category rows: confirmed visitor actions and scoped website health
+  Every category row lists its open Flags
 Flags
-  inbox → detail → Fix → Verify → history
+  in-place list of every open Flag → detail → Fix → Verify → history
+Monitoring
+  current state and cadence → Flags per check → Flag and recovery timeline
+Integrations
+  supported connections → logo and connection state → configuration
 Settings
   Outcomes and coverage · monitoring · notifications · connections · Remove Site
 ```
 
 Pages and category cards remain inspectable depth. Outcome detail shows expected behavior, state/freshness, related surfaces, evidence, recent runs, Flags, and diagnostics. Raw checks and steps are disclosed progressively.
 
-Websites (`/dashboard`) shows all Sites as full-width resource rows below one persistent Analyze control. A selected Site retains its URLs and uses Overview · Flags · Settings on desktop and mobile, with All websites as the return action. Outcome is the underlying responsibility model; visible cards use concrete visitor-action names. Essential progress and recovery stay visible, while completed execution detail is progressive depth. Ask FixFlags is contextual, not persistent chrome or a tab.
+Websites (`/dashboard`) shows all Sites as full-width resource rows below one persistent Analyze control. A selected Site retains its URL and uses Overview, Flags, Monitoring, Integrations, and Settings on desktop and mobile, with All websites as the return action. Flags, Monitoring, and Integrations switch the contents of the persistent Site shell. They are not separate report products. Outcome is the underlying responsibility model; visible cards use concrete visitor-action names. Essential progress and recovery stay visible, while completed execution detail is progressive depth. Ask FixFlags is contextual, not persistent chrome or a tab.
 
 ## Trigger model
 

@@ -1,7 +1,8 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
+import { isCustomerFlag } from '@/lib/audit/attention'
 import { prisma } from '@/lib/db'
-import { logger } from '@/lib/logger'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
-import { loadSiteCheckResults } from '@/lib/sites/application/check-results'
+import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import {
   buildCoverageFacts,
   isAuditFinished,
@@ -26,8 +27,7 @@ import { buildBoardCards, incompleteCardReason, type BoardCardView } from '@/lib
 import { connectionCardNotes, loadSiteConnectionViews } from '@/lib/sites/connections/read'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
-import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
-import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
+import { loadTechnologyProfile, type TechnologyProfileStatus, type VisibleTechnology } from '@/lib/audit/technology-profile'
 import { isShopifyConfigured } from '@/lib/shopify/config'
 import { projectSiteActivity, type SiteActivity } from '@/lib/sites/activity'
 import {
@@ -62,9 +62,17 @@ export type SiteHomeView = {
   resolvedFlags: SiteFlagSeed[]
   outcomes: SiteOutcomeView[]
   checkResults?: SiteCheckResult[]
+  checkResultsNextCursor?: string | null
+  technology?: {
+    status: TechnologyProfileStatus
+    detectedAt: string | null
+    items: Array<Pick<VisibleTechnology, 'slug' | 'name' | 'category' | 'confidenceBand'>>
+  }
+  monitoringHistory?: Array<{ id?: string; checkedAt: string; flagCount: number; status?: 'COMPLETED' | 'FAILED'; flags?: Array<{ id: string; title: string }> }>
   watch: {
     state: WatchBoardState
-    interval: 'weekly' | 'daily' | null
+    interval: WatchInterval | null
+    everyMinutes?: number | null
     nextRunAt: string | null
     lastRunAt: string | null
     lastError: string | null
@@ -204,17 +212,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   if (!site) return null
   const now = new Date()
 
-  let audit = await resolveLatestAudit(site)
-  let recoveryUnavailable = false
-  if (audit && isAuditInFlight(audit.status) && Date.now() - audit.updatedAt.getTime() > 15_000) {
-    try {
-      await recoverAuditJobOnPoll(audit.id, audit)
-      audit = await resolveLatestAudit(site)
-    } catch (error) {
-      recoveryUnavailable = true
-      logger.warn('Site run recovery unavailable', { siteId, error })
-    }
-  }
+  const audit = await resolveLatestAudit(site)
 
   const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings, resolvedFlags] = await Promise.all([
     loadSiteFindings(site),
@@ -254,6 +252,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
 
   const finished = isAuditFinished(audit?.status)
+  const resultPage = await loadSiteCheckResultPage(site, audit?.id ?? null)
   const health = siteCardHealth({
     inFlight,
     finished,
@@ -268,12 +267,16 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     (await latestDesktopCapture(audit?.id ?? null)) ??
     (await latestDesktopCapture(prior?.id ?? null))
 
-  const analytics =
-    audit?.id
-      ? (await loadTechnologyProfile(audit.id)).technologies
-          .filter((tech) => tech.category === 'analytics')
-          .map((tech) => tech.name)
-      : []
+  const technologyProfile = audit?.id ? await loadTechnologyProfile(audit.id) : null
+  const analytics = technologyProfile?.technologies
+    .filter((tech) => tech.category === 'analytics')
+    .map((tech) => tech.name) ?? []
+  const monitoringHistory = site.projectId ? await prisma.audit.findMany({
+    where: { projectId: site.projectId, status: { in: ['COMPLETED', 'FAILED'] } },
+    orderBy: { createdAt: 'desc' },
+    take: 8,
+    select: { id: true, status: true, completedAt: true, updatedAt: true, flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true } } },
+  }) : []
 
   const connections = site.projectId ? await loadSiteConnectionViews(site.projectId) : null
   const connectionNotes = connectionCardNotes(connections?.facts ?? [])
@@ -291,6 +294,13 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     detected: { analytics },
   })
   for (const card of cards) {
+    if (card.state === 'healthy' && card.openFlagCount === 0) {
+      const observation = resultPage.results.find(result => result.area === card.id && !result.historical && result.kind === 'assertion' && result.status === 'passed')
+      if (observation) {
+        card.answer = observation.name
+        card.detail = observation.observation ?? null
+      }
+    }
     // Category activity needs an actual method receipt, not a blanket run flag.
     const moduleKey = ({ security: 'module:security', tracking: 'module:measurement', accessibility: 'module:accessibility' } as Record<string, string>)[card.id]
     const execution = audit?.verifierExecutions.find((item) => item.targetKey === moduleKey)
@@ -341,7 +351,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     stale,
     hasCurrentEvidence: finished && evidenceFacts.some((fact) => !fact.stale),
   })
-  const monitoring = monitoringPresentation(watchState, site.watchInterval)
+  const monitoring = monitoringPresentation(watchState, site.watchInterval, site.watchEveryMinutes)
   const projectedRun = runPresentation({
     auditId: audit?.id ?? null,
     auditStatus: audit?.status ?? null,
@@ -388,8 +398,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     state: card.id === 'site' ? pagesCategory.state : card.state,
     answer: card.id === 'site' ? presentation.coverage.label : card.answer,
     status: card.id === 'site' ? pagesCategory.status : card.status,
-    flagCount: card.id === 'site' ? 0 : card.openFlagCount,
-    fixFirstCount: card.id === 'site' ? 0 : flags.filter((flag) => flag.area === card.id && flag.priorityBand === 'fix_first').length,
+    flagCount: card.openFlagCount,
+    fixFirstCount: flags.filter((flag) => flag.area === card.id && flag.priorityBand === 'fix_first').length,
     checkedAt: card.checkedAt,
     coverageLimitation: card.incompleteReason,
     siteId,
@@ -425,7 +435,6 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   return {
     site,
-    recoveryUnavailable,
     activity: projectSiteActivity({ status: audit?.status ?? null, startedAt: audit?.startedAt ?? null, failureCode: audit?.failureCode ?? null,
       pages: checkedPages, events: [...(audit?.pipelineEvents ?? [])].reverse() }),
     checkedPages: checkedPages.map((page) => ({ ...page, checkedAt: page.updatedAt.toISOString() })),
@@ -442,10 +451,22 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     recommendations,
     resolvedFlags,
     outcomes,
-    checkResults: await loadSiteCheckResults(site, audit?.id ?? null),
+    checkResults: resultPage.results,
+    checkResultsNextCursor: resultPage.nextCursor,
+    technology: technologyProfile ? {
+      status: technologyProfile.status,
+      detectedAt: technologyProfile.detectedAt,
+      items: technologyProfile.technologies.map(({ slug, name, category, confidenceBand }) => ({ slug, name, category, confidenceBand })),
+    } : undefined,
+    monitoringHistory: monitoringHistory.toReversed().map(item => {
+      // History records what each check found, including Flags resolved later.
+      const flags = item.flags.filter(isCustomerFlag).map(flag => ({ id: flag.id, title: flag.problem }))
+      return { id: item.id, checkedAt: (item.completedAt ?? item.updatedAt).toISOString(), status: item.status as 'COMPLETED' | 'FAILED', flagCount: flags.length, flags }
+    }),
     watch: {
       state: watchState,
       interval: site.watchInterval,
+      everyMinutes: site.watchEveryMinutes ?? null,
       nextRunAt: site.watchNextRunAt?.toISOString() ?? null,
       lastRunAt: site.watchLastRunAt?.toISOString() ?? null,
       lastError: site.watchLastError,

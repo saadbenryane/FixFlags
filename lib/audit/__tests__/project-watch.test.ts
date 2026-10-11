@@ -100,6 +100,55 @@ describe('Product Watch', () => {
     }))
   })
 
+  it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with its duration', async (interval, everyMinutes, stored) => {
+    expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval, ...(everyMinutes ? { everyMinutes } : {}) })).toEqual({ ok: true })
+    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchInterval: stored, watchEveryMinutes: everyMinutes ?? null }) }))
+  })
+
+  it('rejects malformed custom timing and hourly monitoring on Free', async () => {
+    expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'custom', everyMinutes: 0 })).toMatchObject({ ok: false, code: 'INVALID_INTERVAL' })
+    mocks.projectFindFirst.mockResolvedValue({ ...project, user: { ...project.user, plan: 'FREE' } })
+    expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'hourly' })).toMatchObject({ ok: false, code: 'INTERVAL_NOT_ALLOWED' })
+    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+  })
+
+  it('advances a custom worker schedule by its saved duration', async () => {
+    const now = new Date('2026-10-11T09:00:00.000Z')
+    mocks.projectFindMany.mockResolvedValue([{ ...project, watchInterval: 'CUSTOM', watchEveryMinutes: 180, watchNextRunAt: now }])
+    mocks.auditFindFirst.mockResolvedValue(null)
+    mocks.siteOutcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
+    expect(await processDueProjectWatches(20, { clock: fixedClock(now) })).toMatchObject({ enqueued: 1 })
+    expect(mocks.requestSiteRun).toHaveBeenCalledWith(expect.objectContaining({ context: { cadence: 'custom', everyMinutes: 180 } }))
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchNextRunAt: new Date('2026-10-11T12:00:00.000Z') }) }))
+  })
+
+  it('pauses hourly monitoring when the account no longer allows it', async () => {
+    mocks.projectFindMany.mockResolvedValue([{ ...project, watchInterval: 'HOURLY', user: { ...project.user, plan: 'FREE' } }])
+    expect(await processDueProjectWatches()).toEqual({ processed: 0, enqueued: 0, errors: 0 })
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchNextRunAt: null }) }))
+  })
+
+  it('preserves a schedule edited while its check is queued', async () => {
+    const now = new Date('2026-10-11T09:00:00.000Z')
+    const persisted = { everyMinutes: 180, nextRunAt: now }
+    mocks.projectFindMany.mockResolvedValue([{ ...project, watchInterval: 'CUSTOM', watchEveryMinutes: 180, watchNextRunAt: now }])
+    mocks.auditFindFirst.mockResolvedValue(null)
+    mocks.siteOutcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
+    mocks.projectUpdateMany.mockImplementation(async ({ where, data }) => {
+      if (where.watchEveryMinutes !== persisted.everyMinutes || where.watchNextRunAt !== persisted.nextRunAt) return { count: 0 }
+      if (data.watchNextRunAt) persisted.nextRunAt = data.watchNextRunAt
+      return { count: 1 }
+    })
+    mocks.requestSiteRun.mockImplementation(async () => {
+      persisted.everyMinutes = 4320
+      persisted.nextRunAt = new Date('2026-10-14T09:00:00.000Z')
+      return { runId: 'run-1', auditId: 'audit-1', reused: false }
+    })
+    await processDueProjectWatches(20, { clock: fixedClock(now) })
+    expect(persisted).toEqual({ everyMinutes: 4320, nextRunAt: new Date('2026-10-14T09:00:00.000Z') })
+  })
+
   it('limits Free Sites to weekly watching', async () => {
     mocks.projectFindFirst.mockResolvedValue({
       id: 'project-1',
@@ -129,7 +178,7 @@ describe('Product Watch', () => {
 
     expect(result).toEqual({ ok: true })
     expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'project-1' },
+      where: expect.objectContaining({ id: 'project-1' }),
       data: expect.objectContaining({
         watchNextRunAt: null,
         watchLastError: 'Paused. This Site is not on a check schedule.',
@@ -202,8 +251,8 @@ describe('Product Watch', () => {
 
     expect(result).toEqual({ processed: 1, enqueued: 0, errors: 0 })
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
-    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'project-1' },
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'project-1' }),
       data: expect.objectContaining({ watchNextRunAt: expect.any(Date) }),
     }))
   })
@@ -241,8 +290,8 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ processed: 1, enqueued: 0, errors: 0 })
-    expect(mocks.projectUpdate).toHaveBeenCalledWith({
-      where: { id: 'project-1' },
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: 'project-1' }),
       data: {
         watchLeaseUntil: null,
         watchNextRunAt: renewalAt,

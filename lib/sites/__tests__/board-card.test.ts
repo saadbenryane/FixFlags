@@ -170,9 +170,7 @@ describe('board card contract', () => {
     expect(boardCardFooter({ openFlagCount: 0, checkedAt: null })).toBe('Not checked yet')
     expect(boardCardStatusText('attention')).toBe(SITE_BOARD_COPY.flagStatus)
     expect(boardCardStatusText('problem')).toBe(SITE_BOARD_COPY.flagStatus)
-    expect(boardCardHeaderText('healthy', null, '2026-09-08T12:00:00.000Z', Date.parse('2026-09-08T12:00:20.000Z'))).toBe(
-      SITE_BOARD_COPY.lastChecked
-    )
+    expect(boardCardHeaderText('healthy', null, '2026-09-08T12:00:00.000Z', Date.parse('2026-09-08T12:00:20.000Z'))).toBe('Just now')
     expect(boardCardHeaderText('attention', null, '2026-09-08T12:00:00.000Z')).toBeNull()
     expect(boardFlagPrompt({
       problem: conversionFlag.problem,

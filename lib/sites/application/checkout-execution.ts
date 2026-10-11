@@ -31,6 +31,7 @@ type BoundSelection = {
     kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'
     bindings: Array<{
       key: string
+      version: number
       mechanism: OutcomeExecutionMechanism
       required: boolean
       config: Prisma.JsonValue
@@ -48,6 +49,7 @@ async function recordBindingEvidence(input: {
   auditId: string
   outcomeId: string
   bindingKey: string
+  bindingVersion?: number
   mechanism: OutcomeExecutionMechanism
   attempts: BindingObservation[]
   conclusive: BindingObservation
@@ -62,13 +64,13 @@ async function recordBindingEvidence(input: {
       mechanism,
       disposition: conclusive.disposition,
       reason: conclusive.reason,
-      detail: conclusive.detail,
+      detail: { ...conclusive.detail, bindingVersion: input.bindingVersion ?? 1 },
     },
     update: {
       mechanism,
       disposition: conclusive.disposition,
       reason: conclusive.reason,
-      detail: conclusive.detail,
+      detail: { ...conclusive.detail, bindingVersion: input.bindingVersion ?? 1 },
     },
   })
   // Continue the existing sequence so a restarted worker never reuses an attempt number.
@@ -104,6 +106,7 @@ async function recordExecution(input: {
   auditId: string
   outcomeId: string
   bindingKey: string
+  bindingVersion?: number
   mechanism: OutcomeExecutionMechanism
   disposition: BindingDispositionName
   reason: string
@@ -118,6 +121,7 @@ async function recordExecution(input: {
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
+    bindingVersion: input.bindingVersion,
     mechanism: input.mechanism,
     attempts: [observation],
     conclusive: observation,
@@ -129,6 +133,7 @@ async function runCheckoutBinding(input: {
   runId: string
   outcomeId: string
   bindingKey: string
+  bindingVersion?: number
   startUrl: string
   allowLocalhost: boolean
 }): Promise<void> {
@@ -198,6 +203,7 @@ async function runCheckoutBinding(input: {
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
+    bindingVersion: input.bindingVersion,
     mechanism: 'BROWSER_JOURNEY',
     attempts: result.attempts.map((attempt): BindingObservation => {
       const observation = checkoutAttemptObservation(attempt)
@@ -221,6 +227,7 @@ async function runGenericBrowserJourneyBinding(input: {
   runId: string
   outcomeId: string
   bindingKey: string
+  bindingVersion?: number
   config: BrowserJourneyConfig
 }): Promise<void> {
   const result = await runGoalProbe({
@@ -233,6 +240,7 @@ async function runGenericBrowserJourneyBinding(input: {
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
+    bindingVersion: input.bindingVersion,
     mechanism: 'BROWSER_JOURNEY',
     attempts: result.attempts.map((attempt): BindingObservation => {
       const classified = classifyWalk(attempt.outcome)
@@ -298,6 +306,7 @@ async function runAvailabilityBinding(input: {
   auditId: string
   outcomeId: string
   bindingKey: string
+  bindingVersion?: number
   startUrl: string
   config: AvailabilityBindingConfig
 }): Promise<void> {
@@ -307,6 +316,7 @@ async function runAvailabilityBinding(input: {
       auditId: input.auditId,
       outcomeId: input.outcomeId,
       bindingKey: input.bindingKey,
+    bindingVersion: input.bindingVersion,
       mechanism: 'HTTP_AVAILABILITY',
       disposition: 'BLOCKED',
       reason: 'not_public',
@@ -350,6 +360,7 @@ async function runAvailabilityBinding(input: {
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
+    bindingVersion: input.bindingVersion,
     mechanism: 'HTTP_AVAILABILITY',
     attempts,
     conclusive,
@@ -360,6 +371,7 @@ async function runSignupBinding(input: {
   auditId: string
   outcomeId: string
   bindingKey: string
+  bindingVersion?: number
   projectId: string
   config: SafeFormBindingConfig
   allowLocalhost: boolean
@@ -377,6 +389,7 @@ async function runSignupBinding(input: {
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
+    bindingVersion: input.bindingVersion,
     mechanism: 'SAFE_FORM',
     disposition: result.disposition,
     reason: result.reason,
@@ -434,12 +447,24 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         select: { id: true },
       })
       if (existing) continue
+      const snapshot = request.context && typeof request.context === 'object' && !Array.isArray(request.context)
+        ? (request.context as Record<string, unknown>).bindingVersions : null
+      const expectedVersions = snapshot && typeof snapshot === 'object'
+        ? (snapshot as Record<string, unknown>)[selection.outcome.id] : null
+      const expectedVersion = expectedVersions && typeof expectedVersions === 'object'
+        ? (expectedVersions as Record<string, unknown>)[binding.key] : undefined
+      if (typeof expectedVersion === 'number' && expectedVersion !== binding.version) {
+        await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key,
+          bindingVersion: binding.version, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_changed' })
+        continue
+      }
       const validated = validateBindingForOutcome(selection.outcome.kind, binding.mechanism, binding.config)
       if (!validated.success) {
         await recordExecution({
           auditId,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
+          bindingVersion: binding.version,
           mechanism: binding.mechanism,
           disposition: 'BLOCKED',
           reason: validated.reason,
@@ -457,6 +482,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
           auditId,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
+          bindingVersion: binding.version,
           startUrl,
           config: validated.data.config,
         })
@@ -471,6 +497,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
           auditId,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
+          bindingVersion: binding.version,
           projectId: request.projectId,
           config: validated.data.config,
           allowLocalhost,
@@ -499,6 +526,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
             auditId,
             outcomeId: selection.outcome.id,
             bindingKey: binding.key,
+            bindingVersion: binding.version,
             mechanism: 'BROWSER_JOURNEY',
             disposition: purchased ? 'SUCCEEDED' : priorJourney.blockedReason ? 'BLOCKED' : 'FAILED',
             reason: priorJourney.blockedReason ?? (purchased ? 'checkout_reached' : 'checkout_failed'),
@@ -510,6 +538,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
           runId: request.id,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
+          bindingVersion: binding.version,
           startUrl,
           allowLocalhost,
         })

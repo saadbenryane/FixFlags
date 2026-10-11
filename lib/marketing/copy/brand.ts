@@ -4,6 +4,10 @@ export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
   tagline: 'Your software runs. FixFlags watches.',
+  footerDescription:
+    'FixFlags monitors your customer journeys, flags critical issues, and helps your AI fix them.',
+  trademarkNotice:
+    'Third-party trademarks and logos belong to their respective owners. Their use does not imply affiliation with or endorsement of FixFlags.',
   category: 'Independent monitoring for the outcomes that matter.',
   oneLiner:
     'FixFlags independently checks important outcomes on your live website and shows evidence when something breaks.',

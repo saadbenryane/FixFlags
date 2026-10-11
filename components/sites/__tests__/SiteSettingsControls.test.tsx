@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
 import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
@@ -46,11 +46,16 @@ function renderControls() {
   )
 }
 
-/** Click a cadence and wait for the confirmation the control renders for it. */
-async function choose(label: 'Weekly' | 'Daily', confirmation: string) {
-  fireEvent.change(screen.getByRole('combobox', { name: 'Schedule' }), { target: { value: label.toLowerCase() } })
-  fireEvent.click(screen.getByRole('button', { name: 'Save monitoring' }))
-  return screen.findByText(confirmation)
+async function choose(label: 'Weekly' | 'Daily') {
+  if (!screen.queryByRole('dialog')) fireEvent.click(screen.getByRole('button', { name: 'Edit schedule' }))
+  const frequency = await screen.findByRole('combobox', { name: 'Check frequency' })
+  await waitFor(() => expect(frequency).toBeEnabled())
+  fireEvent.change(frequency, { target: { value: label.toLowerCase() } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save schedule' }))
+}
+
+function mockOptions(save: (url: string, options?: RequestInit) => unknown) {
+  return vi.fn(async (url: string, options?: RequestInit) => options?.method === 'POST' ? save(url, options) : respond({ intervals: ['weekly', 'daily'] }))
 }
 
 describe('SiteSettingsControls Watch', () => {
@@ -59,11 +64,12 @@ describe('SiteSettingsControls Watch', () => {
   })
 
   it('does not claim a different cadence than the one clicked', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(respond({ ok: true, interval: 'daily' }))
+    const fetchMock = mockOptions(() => respond({ ok: true, interval: 'daily' }))
     vi.stubGlobal('fetch', fetchMock)
 
     renderControls()
-    await choose('Daily', 'Daily monitoring is active.')
+    await choose('Daily')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/sites/site-1/watch',
@@ -75,7 +81,7 @@ describe('SiteSettingsControls Watch', () => {
   it('shows why a cadence above the plan was not applied, with a route to it', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      mockOptions(() =>
         respond({
           ok: true,
           interval: 'weekly',
@@ -88,7 +94,8 @@ describe('SiteSettingsControls Watch', () => {
 
     renderControls()
     // The applied cadence is stated, and the reason is stated next to it.
-    await choose('Daily', 'Weekly monitoring is active.')
+    await choose('Daily')
+    await screen.findByText(DAILY_ON_FREE)
 
     expect(screen.getByText(DAILY_ON_FREE)).toBeInTheDocument()
     expect(
@@ -97,9 +104,7 @@ describe('SiteSettingsControls Watch', () => {
   })
 
   it('clears the notice once an allowed cadence is saved', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
+    const save = vi.fn().mockResolvedValueOnce(
         respond({
           ok: true,
           interval: 'weekly',
@@ -109,13 +114,15 @@ describe('SiteSettingsControls Watch', () => {
         })
       )
       .mockResolvedValueOnce(respond({ ok: true, interval: 'weekly' }))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', mockOptions(save))
 
     renderControls()
-    await choose('Daily', 'Weekly monitoring is active.')
+    await choose('Daily')
+    await screen.findByText(DAILY_ON_FREE)
     expect(screen.getByText(DAILY_ON_FREE)).toBeInTheDocument()
 
-    await choose('Weekly', 'Weekly monitoring is active.')
+    await choose('Weekly')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.queryByText(DAILY_ON_FREE)).not.toBeInTheDocument()
     expect(refresh).toHaveBeenCalled()
   })
@@ -123,7 +130,7 @@ describe('SiteSettingsControls Watch', () => {
   it('shows the server reason for a rejected save', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      mockOptions(() =>
         respond(
           { code: 'WATCH_UNAVAILABLE', message: 'WATCH_UNAVAILABLE: Redis is not configured' },
           503
@@ -132,18 +139,21 @@ describe('SiteSettingsControls Watch', () => {
     )
 
     renderControls()
-    await choose('Daily', 'WATCH_UNAVAILABLE: Redis is not configured')
+    await choose('Daily')
+    expect(await screen.findByText('WATCH_UNAVAILABLE: Redis is not configured')).toBeVisible()
   })
 
   it('keeps the sign-in prompt when the session is gone', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      mockOptions(() =>
         respond({ error: 'Sign in to keep watching this Site.', signup: true }, 401)
       )
     )
 
     renderControls()
-    await choose('Daily', 'Sign in to keep watching this Site.')
+    await choose('Daily')
+    expect(await screen.findByText('Sign in to keep watching this Site.')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1')
   })
 })

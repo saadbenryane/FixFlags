@@ -6,7 +6,9 @@ import { toast } from 'sonner'
 import { PRODUCT_WATCH_COPY, REPORT_COPY } from '@/lib/marketing/copy'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 
-type Interval = 'weekly' | 'daily' | null
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
+
+type Interval = WatchInterval | null
 type WatchState = {
   watchInterval: Interval
   watchNextRunAt: string | null

@@ -1,17 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import { SiteMonitoringSchedule } from './SiteMonitoringSchedule'
+import { MONITORING_SCHEDULE_COPY as M } from '@/lib/marketing/copy/monitoring'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Input } from '@/components/ui/input'
-import { SCAN_LIMIT_GATE, SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { formatAlertDate, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+import { fetchSiteAction, readSiteActionResponse, siteActionMessage, SiteActionError } from '@/lib/sites/client-actions'
 
 type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
 type GoogleProvider = 'SEARCH_CONSOLE' | 'ANALYTICS'
@@ -39,22 +42,28 @@ export function SiteSettingsControls({
   const [analytics, setAnalytics] = useState(initial.analytics)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const [watchNotice, setWatchNotice] = useState<string | null>(null)
-  const [cadence, setCadence] = useState<'weekly' | 'daily' | 'off'>(watch.interval ?? 'off')
+  const [authRequired, setAuthRequired] = useState(false)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
   const alertNotice = watch.alert ? siteWatchAlertNotice(watch.alert) : null
+  function reportError(error: unknown) {
+    setMessage(siteActionMessage(error))
+    if (error instanceof SiteActionError && error.status === 401) setAuthRequired(true)
+  }
 
   async function saveNotifications() {
     if (!level || recovery == null) return
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/settings`, {
+      const response = await fetchSiteAction(`/api/sites/${siteId}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationLevel: level, notifyOnRecovery: recovery }),
       })
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      const body = await readSiteActionResponse(response)
       setMessage(response.ok ? 'Notification preferences saved.' : body.error ?? 'Could not save preferences.')
+    } catch (error) {
+      reportError(error)
     } finally {
       setBusy(false)
     }
@@ -64,17 +73,19 @@ export function SiteSettingsControls({
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/connections/shopify`, {
+      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/shopify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop }),
       })
-      const body = await response.json().catch(() => ({})) as { authorizeUrl?: string; error?: string }
+      const body = await readSiteActionResponse(response)
       if (response.ok && body.authorizeUrl) {
         window.location.assign(body.authorizeUrl)
         return
       }
       setMessage(body.error ?? 'Could not connect Shopify.')
+    } catch (error) {
+      reportError(error)
     } finally {
       setBusy(false)
     }
@@ -83,8 +94,8 @@ export function SiteSettingsControls({
   async function disconnectShopify() {
     setBusy(true)
     try {
-      const response = await fetch(`/api/sites/${siteId}/connections/shopify`, { method: 'DELETE' })
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/shopify`, { method: 'DELETE' })
+      const body = await readSiteActionResponse(response)
       if (response.ok) {
         setShop('')
         setMessage('Shopify disconnected from this Site.')
@@ -92,6 +103,8 @@ export function SiteSettingsControls({
       } else {
         setMessage(body.error ?? 'Could not disconnect Shopify.')
       }
+    } catch (error) {
+      reportError(error)
     } finally {
       setBusy(false)
     }
@@ -101,17 +114,19 @@ export function SiteSettingsControls({
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/connections/google`, {
+      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, action: 'connect' }),
       })
-      const body = await response.json().catch(() => ({})) as { authorizeUrl?: string; error?: string }
+      const body = await readSiteActionResponse(response)
       if (response.ok && body.authorizeUrl) {
         window.location.assign(body.authorizeUrl)
         return
       }
       setMessage(body.error ?? 'Could not start the Google connection.')
+    } catch (error) {
+      reportError(error)
     } finally {
       setBusy(false)
     }
@@ -121,12 +136,12 @@ export function SiteSettingsControls({
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}/connections/google`, {
+      const response = await fetchSiteAction(`/api/sites/${siteId}/connections/google`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider }),
       })
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      const body = await readSiteActionResponse(response)
       if (!response.ok) {
         setMessage(body.error ?? 'Could not disconnect this provider.')
         return
@@ -138,6 +153,8 @@ export function SiteSettingsControls({
       else setAnalytics(next)
       setMessage(provider === 'SEARCH_CONSOLE' ? 'Search Console disconnected from this Site.' : 'Analytics disconnected from this Site.')
       router.refresh()
+    } catch (error) {
+      reportError(error)
     } finally {
       setBusy(false)
     }
@@ -148,44 +165,16 @@ export function SiteSettingsControls({
     setBusy(true)
     setMessage(null)
     try {
-      const response = await fetch(`/api/sites/${siteId}`, { method: 'DELETE' })
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      const response = await fetchSiteAction(`/api/sites/${siteId}`, { method: 'DELETE' })
+      const body = await readSiteActionResponse(response)
       if (!response.ok) {
         setMessage(body.error ?? 'Could not remove this Site.')
         return
       }
       router.push('/dashboard')
       router.refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function setWatch(interval: 'weekly' | 'daily' | null) {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/watch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interval }),
-      })
-      const body = await response.json().catch(() => ({})) as {
-        error?: string
-        message?: string
-        interval?: 'weekly' | 'daily' | null
-        code?: string
-      }
-      if (!response.ok) {
-        setMessage(body.message ?? body.error ?? 'Could not update monitoring.')
-        return
-      }
-      // A cadence the plan does not include is never saved quietly. The route
-      // answers with the cadence it did apply plus the reason, and both are
-      // shown: the confirmation names what is live, the notice says why.
-      setWatchNotice(body.code === 'INTERVAL_NOT_ALLOWED' ? body.message ?? null : null)
-      setMessage(interval ? `${body.interval === 'daily' ? 'Daily' : 'Weekly'} monitoring is active.` : 'Monitoring is not active.')
-      router.refresh()
+    } catch (error) {
+      reportError(error)
     } finally {
       setBusy(false)
     }
@@ -212,24 +201,8 @@ export function SiteSettingsControls({
             </Callout>
           </div>
         ) : null}
-        {watchNotice ? (
-          <div className="mt-3">
-            <Callout variant="info">
-              <p>{watchNotice}</p>
-              <Button asChild size="sm" variant="outline" className="mt-2">
-                <Link href="/pricing">{SCAN_LIMIT_GATE.upgrade.secondaryCta}</Link>
-              </Button>
-            </Callout>
-          </div>
-        ) : null}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <label className="text-sm">Schedule
-            <select className="ml-3 min-h-11 rounded-md border border-border bg-background px-3" value={cadence} onChange={(event) => setCadence(event.target.value as typeof cadence)} disabled={busy}>
-              <option value="off">Not monitored</option><option value="weekly">Weekly</option><option value="daily">Daily</option>
-            </select>
-          </label>
-          <Button variant="outline" disabled={busy || (cadence === 'off' && !watch.covered && !watch.interval)} onClick={() => void setWatch(cadence === 'off' ? null : cadence)}>{busy ? 'Saving…' : 'Save monitoring'}</Button>
-        </div>
+        <Button variant="outline" className="mt-4" onClick={() => setScheduleOpen(true)}>{M.edit}</Button>
+        {scheduleOpen ? <SiteMonitoringSchedule siteId={siteId} interval={watch.interval} everyMinutes={watch.everyMinutes} onClose={() => setScheduleOpen(false)} onRefresh={async () => { router.refresh() }} /> : null}
       </section>
       <section className="rounded-2xl border border-border/80 bg-background p-5">
         <h2 className="text-lg font-semibold">Notifications</h2>
@@ -257,7 +230,7 @@ export function SiteSettingsControls({
       </section>
 
       <h2 id="connections" className="text-lg font-semibold">Connections</h2>
-      {initial.shopify.configured === false ? null : <section className="rounded-2xl border border-border/80 bg-background p-5">
+      {initial.shopify.configured === false ? null : <section id="connection-shopify" className="rounded-2xl border border-border/80 bg-background p-5">
         <h3 className="text-lg font-semibold">Shopify</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Add purchase-path evidence to this Site’s Conversion card and Flags.
@@ -294,6 +267,7 @@ export function SiteSettingsControls({
         onDisconnect={() => void disconnectGoogle('ANALYTICS')}
       /> : null}
       {message ? <p className="text-sm text-muted-foreground" role="status">{message}</p> : null}
+      {authRequired ? <Button variant="outline" asChild><Link href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}/settings`)}`}>Sign in again</Link></Button> : null}
       <section className="rounded-2xl border border-destructive/30 bg-background p-5">
         <h2 className="text-lg font-semibold">Remove Site</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -325,7 +299,7 @@ function GoogleConnectionCard({
   const linked = connection.status === 'connected'
   const reconnect = connection.status === 'mismatch' || connection.status === 'needs_reauth' || connection.status === 'revoked'
   return (
-    <section className="rounded-2xl border border-border/80 bg-background p-5">
+    <section id={title === 'Search Console' ? 'connection-search-console' : 'connection-analytics'} className="rounded-2xl border border-border/80 bg-background p-5">
       <h3 className="text-lg font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       {connection.propertyLabel ? (

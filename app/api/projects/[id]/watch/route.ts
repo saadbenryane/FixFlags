@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { z } from 'zod'
+import { watchScheduleSchema } from '@/lib/sites/watch-schedule'
 import { auth } from '@/lib/auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import { loadProductWatch } from '@/lib/products/application/queries'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
-const bodySchema = z.object({
-  interval: z.enum(['weekly', 'daily']).nullable(),
-})
+const bodySchema = watchScheduleSchema
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -45,7 +43,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     const body = bodySchema.safeParse(await req.json().catch(() => null))
     if (!body.success) {
-      return apiError('interval must be weekly, daily, or null', 400)
+      return apiError('Choose a valid monitoring schedule.', 400)
     }
 
     const result = await executeProductCommand({
@@ -53,6 +51,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       projectId: id,
       userId: session.user.id,
       interval: body.data.interval,
+      ...(body.data.everyMinutes !== undefined ? { everyMinutes: body.data.everyMinutes } : {}),
     })
     if (!result.ok) {
       const status = result.code === 'WATCH_UNAVAILABLE'

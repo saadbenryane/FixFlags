@@ -1,0 +1,12 @@
+.confirmation { position: relative; display: flex; align-items: center; gap: 12px; width: min(356px, calc(100vw - 32px)); overflow: hidden; padding: 16px 18px 18px; border-radius: 14px; background: hsl(var(--foreground)); color: hsl(var(--background)); box-shadow: 0 8px 30px hsl(var(--foreground) / .18); }
+.confirmation > svg { flex-shrink: 0; }
+.confirmation > div { display: grid; flex: 1; gap: 4px; }
+.confirmation strong { font-size: 14px; font-weight: 600; }
+.confirmation a { width: fit-content; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.confirmation button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; }
+.confirmation button:hover { background: hsl(var(--background) / .12); }
+.confirmation :is(a, button):focus-visible { outline: 2px solid hsl(var(--background)); outline-offset: 3px; }
+.countdown { position: absolute; inset: auto 0 0; height: 3px; background: hsl(var(--brand)); transform-origin: left; animation: prompt-countdown 5s linear forwards; }
+.confirmation:hover .countdown { animation-play-state: paused; }
+@keyframes prompt-countdown { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .countdown { animation: none; } }

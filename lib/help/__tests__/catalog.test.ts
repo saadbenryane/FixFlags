@@ -14,7 +14,7 @@ import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 describe('help catalog', () => {
   it('keeps public help focused on URL-first Site care', () => {
     expect(HELP_CATEGORIES).toHaveLength(8)
-    expect(HELP_ARTICLES).toHaveLength(18)
+    expect(HELP_ARTICLES).toHaveLength(19)
     expect(getHelpArticle('analyze-a-website')?.title).toBe('Analyze a website')
   })
 
@@ -30,6 +30,12 @@ describe('help catalog', () => {
 
     expect(searchHelpArticles('cursor mcp')).toEqual([])
     expect(searchHelpArticles('credit pack')).toEqual([])
+  })
+
+  it('explains the Google connections without claiming event or indexing checks', () => {
+    const article = getHelpArticle('connect-google-data')
+    expect(article?.title).toBe('Connect Analytics or Search Console')
+    expect(JSON.stringify(article?.body)).toContain('does not yet check Analytics event configuration or Search Console indexing')
   })
 
   it('maps failure and limit surfaces to help hrefs', () => {

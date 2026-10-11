@@ -32,4 +32,7 @@ describe('required binding assessment', () => {
   it('does not treat an unbound Outcome as Clear', () => {
     expect(assessRequiredBindings([{ key: 'notes', required: false }], []).state).toBe('COULD_NOT_VERIFY')
   })
+  it('never certifies a changed binding from an earlier version', () => {
+    expect(assessRequiredBindings([{ key: 'checkout', required: true, version: 2 }], [{ key: 'checkout', disposition: 'SUCCEEDED', reason: 'checkout_reached', version: 1 }])).toMatchObject({ state: 'COULD_NOT_VERIFY', reason: 'binding_changed' })
+  })
 })

@@ -1,3 +1,5 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
+
 /** Monitoring speaks about the customer's website; execution mechanics stay in evidence. */
 export const MONITORING_COPY = {
   off: 'Monitoring is off.',
@@ -58,6 +60,36 @@ export const MONITORING_COPY = {
   recoveryEmails: 'We’ll also tell you when a check verifies recovery.',
   readiness: 'We couldn’t turn on monitoring. Your results are saved.',
   cadenceUnavailable: 'That schedule isn’t available on your account. Choose one of the options shown.',
-  scheduled: (interval: 'weekly' | 'daily') => interval === 'daily' ? 'We’ll check these pages and actions every day.' : 'We’ll check these pages and actions every week.',
-  heading: (interval: 'weekly' | 'daily') => interval === 'daily' ? 'Daily monitoring' : 'Weekly monitoring',
+  scheduled: (interval: WatchInterval, everyMinutes?: number | null) => interval === 'daily' ? 'We’ll check these pages and actions every day.' : interval === 'weekly' ? 'We’ll check these pages and actions every week.' : interval === 'hourly' ? 'We’ll check these pages and actions every hour.' : `We’ll check these pages and actions every ${(everyMinutes ?? 60) / 60} hours.`,
+  heading: (interval: WatchInterval, everyMinutes?: number | null) => interval === 'daily' ? 'Daily monitoring' : interval === 'weekly' ? 'Weekly monitoring' : interval === 'hourly' ? 'Hourly monitoring' : `Monitoring every ${(everyMinutes ?? 60) / 60} hours`,
+} as const
+
+export const MONITORING_SCHEDULE_COPY = {
+  title: 'Monitoring',
+  signIn: 'Sign in',
+  lastCheck: 'Last check',
+  historyBody: 'Monitoring for the journeys customers rely on.',
+  description: 'Choose how often FixFlags checks your website.',
+  sample: 'This is a sample schedule. Changes only affect this preview.',
+  frequency: 'Check frequency',
+  daily: 'Daily', hourly: 'Hourly', weekly: 'Weekly', custom: 'Custom', off: 'Off',
+  every: 'Every', unit: 'Time unit', hours: 'Hours', days: 'Days', weeks: 'Weeks',
+  loading: 'Loading available schedules…',
+  retry: 'Try again',
+  invalid: 'Choose a whole number between 1 and 365.',
+  unavailable: 'This schedule is not available on your plan.',
+  paused: 'Scheduled checks are paused.',
+  cancel: 'Cancel', saving: 'Saving…', updateSample: 'Update sample schedule', save: 'Save schedule', edit: 'Edit schedule',
+  loadFailed: 'Could not load available schedules.',
+  saveFailed: 'Could not save this schedule.',
+  differentSchedule: 'The saved schedule differs from your selection.',
+  notScheduled: 'No next check scheduled',
+  due: 'Next check due now',
+  scheduled: 'Next check scheduled',
+  checks: (cadence: string) => `${cadence} checks.`,
+  everyInterval: (every: number, unit: string) => `Every ${every} ${unit}`,
+  nextIn: (time: string) => `Next check in ${time}`,
+  nextCompact: (time: string) => `Next in ${time}`,
+  nextDue: 'Due now',
+  noNext: 'Not scheduled',
 } as const

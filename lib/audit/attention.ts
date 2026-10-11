@@ -6,6 +6,8 @@
  * not POLISH = Recommendation.
  */
 
+import { registeredCheck } from './check-registry'
+
 export const MIN_ATTENTION_CONFIDENCE = 0.65
 export const MAX_ATTENTION_ITEMS = 3
 
@@ -47,6 +49,8 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
     return false
   }
   if (isJourneyCritical(flag)) return true
+  const registered = registeredCheck(flag.checkId)
+  if (registered) return registered.materialFailure && !isPolishSeverity(flag.severity)
   if (flag.severity === 'CRITICAL') return true
   if (isPolishSeverity(flag.severity)) return false
   if (/^(title-too-long|description-too-long|og-|favicon)/.test(checkBaseId(flag.checkId))) return false

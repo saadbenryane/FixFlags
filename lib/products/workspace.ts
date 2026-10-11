@@ -1,3 +1,4 @@
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import type {
   AuditStatus,
   ImprovementStatus,
@@ -127,7 +128,8 @@ export type ProductAttemptDTO = {
 export type ProductWatchDTO = {
   eligible: boolean
   canDaily: boolean
-  interval: 'weekly' | 'daily' | null
+  interval: WatchInterval | null
+  everyMinutes?: number | null
   nextRunAt: string | null
   lastRunAt: string | null
   lastAttemptAt: string | null
@@ -590,6 +592,7 @@ export async function loadProductOverview(
       url: true,
       productIntelligence: true,
       watchInterval: true,
+      watchEveryMinutes: true,
       audits: {
         where: manualReviewWhere(),
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -689,6 +692,7 @@ export async function loadProductWorkspace(
       url: true,
       productIntelligence: true,
       watchInterval: true,
+      watchEveryMinutes: true,
       watchLastRunAt: true,
       watchNextRunAt: true,
       watchLastAttemptAt: true,
@@ -1041,6 +1045,7 @@ export async function loadProductWorkspace(
       eligible: options.signalsEligible,
       canDaily: options.canDailyWatch ?? false,
       interval: watchInterval(product.watchInterval),
+      everyMinutes: product.watchEveryMinutes,
       nextRunAt: product.watchNextRunAt?.toISOString() ?? null,
       lastRunAt: product.watchLastRunAt?.toISOString() ?? null,
       lastAttemptAt: product.watchLastAttemptAt?.toISOString() ?? null,
@@ -1102,8 +1107,10 @@ export async function loadProductWorkspace(
 
 function watchInterval(
   value: ProjectWatchInterval | null
-): 'weekly' | 'daily' | null {
+): WatchInterval | null {
   if (value === 'WEEKLY') return 'weekly'
   if (value === 'DAILY') return 'daily'
+  if (value === 'HOURLY') return 'hourly'
+  if (value === 'CUSTOM') return 'custom'
   return null
 }
