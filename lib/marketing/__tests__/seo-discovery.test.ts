@@ -3,7 +3,6 @@ import { describe, it } from 'vitest'
 import { ROAST_SEO, SEO } from '@/lib/marketing/copy/seo'
 import { LLMS_SECTIONS } from '@/lib/marketing/seo-routes'
 
-const RETIRED_TAGLINE = /finish what your ai started/i
 const FEATURE_FLAG_INFRA = /feature[- ]flags? infra|openfeature/i
 
 describe('pre-publish brand discovery copy', () => {
