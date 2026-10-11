@@ -469,6 +469,13 @@ export async function createAndEnqueueAudit(
             if (options.runRequestAdmission) {
               if (options.runRequestAdmission.projectId !== projectId || options.runRequestAdmission.requestedByUserId !== userId)
                 throw new ParentAuditError('Run admission does not match this Site owner', 400)
+              if (executionSpec.fixtureSetup) {
+                const setup = executionSpec.fixtureSetup
+                const admitted = await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: projectId!,
+                  version: setup.version, enabled: true }, data: { authorizedAt: null, lastDryRunVersion: null,
+                  lastDryRunAt: null, lastDryRunResult: Prisma.DbNull } })
+                if (admitted.count !== 1) throw new ParentAuditError('Signup configuration changed before admission. Run it again.', 409)
+              }
               await tx.runRequest.create({ data: { ...options.runRequestAdmission, auditId: created.id,
                 executionSpec: data.executionSpec } })
             }

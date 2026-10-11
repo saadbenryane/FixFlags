@@ -68,6 +68,11 @@ export async function persistImprovementCycle(
   try {
     await projectSiteAnalysis(auditId)
     const scope = readExecutionSpec(audit.executionSpec)?.scope
+    if (scope === 'FIXTURE_SETUP') {
+      await reconcileOutcomeRunsForAudit(auditId)
+      await executionWrite(tx => tx.audit.update({ where: { id: auditId }, data: { improvementProjectedAt: new Date() } }))
+      return
+    }
     if (parentId && scope !== 'OUTCOMES' && scope !== 'DIAGNOSTIC') await diffFlagsAgainstParent(auditId, parentId)
     await executeProductCommand({ type: 'MATERIALIZE_ATTENTION', auditId })
     // Targeted recovery consumes the persisted binding assessment, rather than

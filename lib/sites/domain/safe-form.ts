@@ -25,5 +25,8 @@ export const outcomeFixtureViewSchema = z.object({
   lastDryRunVersion: z.number().int().positive().nullable(), lastDryRunAt: z.string().datetime().nullable(),
   // Historical dry runs remain their recorded JSON, not invented newer receipts.
   lastDryRunResult: z.json().nullable(), authorizedAt: z.string().datetime().nullable(), enabled: z.boolean(),
+  setupRun: z.object({ runId: z.string().min(1), auditId: z.string().min(1).nullable(), version: z.number().int().positive(),
+    state: z.enum(['QUEUED', 'RUNNING', 'WAITING', 'READY', 'RETRY_WAIT', 'COMPLETED', 'BLOCKED', 'EXHAUSTED', 'FAILED']),
+    reason: z.string().nullable() }).strict().nullable().optional(),
   hasValues: z.literal(true), hasHookSecret: z.boolean(),
 }).strict()

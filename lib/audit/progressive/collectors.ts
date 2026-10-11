@@ -2,12 +2,12 @@ import { Prisma } from '@prisma/client'
 import { executionTransaction } from '../execution-ownership'
 import { captureScreenshots } from '../screenshot'
 import { mergeRuntimeHeadMetadata, trimMetadataForStorage } from '../metadata'
-import { collectDocument, collectSiteResources } from '../search/collect'
+import { collectDocument, collectSiteResources, missingDocument } from '../search/collect'
 import { resolveAuditScanAccess } from '../scan-access-store'
 import { fetchPageSpeedData, toStoredPageSpeedResult } from '../pagespeed'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
-import { serializeArtifact, TaskFailure } from './contracts'
+import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import type { TaskHandler } from './registry'
 import { parseMetadataIsolated } from './cpu'
 
@@ -15,7 +15,14 @@ export const collectionHandlers: TaskHandler[] = [
   { kind: 'search-resources', replay: 'read_only', timeoutMs: 30_000,
     validateResult: artifact => { resourceArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
-      const resources = await collectSiteResources(new URL(context.input.pageUrl).origin, context.deadline)
+      const origin = new URL(context.input.pageUrl).origin
+      const robotsTask = [...context.dependencies.values()].find(task => task.workKind === 'search-resources' && task.workState === 'COMPLETED')
+      const robots = robotsTask?.workResult ? resourceArtifactSchema.parse(readArtifact(robotsTask.workResult, 'search-resources').data).robots : undefined
+      const resources = context.input.module === 'robots'
+        ? { robots: await collectDocument(new URL('/robots.txt', origin).toString(), context.deadline, 512_000),
+          sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [] }
+        : await collectSiteResources(origin, context.deadline,
+          robots ?? missingDocument(new URL('/robots.txt', origin).toString(), 'resource_collection_incomplete'))
       return serializeArtifact('search-resources', resourceArtifactSchema.parse(resources))
     },
   },

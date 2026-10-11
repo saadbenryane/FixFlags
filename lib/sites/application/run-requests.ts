@@ -12,7 +12,9 @@ import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
 import { normalizeAuditUrl } from '@/lib/audit/url'
+import { siteAnalysisAuditWhere } from './analysis-scope'
 import { buildExecutionSpec, executionIntentHash } from './execution-spec'
+import { readExecutionSpec } from '../domain/execution-spec'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
@@ -70,7 +72,8 @@ export type RunInput = {
   userId: string
   source: RunRequestSource
   /** Broad Site care has no Outcome selection but still uses this same durable command. */
-  scope?: 'OUTCOMES' | 'SITE'
+  scope?: 'OUTCOMES' | 'SITE' | 'FIXTURE_SETUP'
+  fixtureId?: string
   environment?: string
   idempotencyKey?: string
   context?: Record<string, string | number | boolean | null | undefined>
@@ -136,7 +139,7 @@ function sameExecutionScope(
  * was unmetered, so the allowance only applied to the legacy new-URL path and a
  * Free Site could be re-checked without limit.
  */
-function consumesScanAllowance(scope: 'OUTCOMES' | 'SITE', source: RunRequestSource): boolean {
+function consumesScanAllowance(scope: 'OUTCOMES' | 'SITE' | 'FIXTURE_SETUP', source: RunRequestSource): boolean {
   return scope === 'SITE' && source !== 'WATCH'
 }
 
@@ -148,10 +151,13 @@ export async function requestSiteRun(input: RunInput): Promise<{
 }> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
   const scope = input.scope ?? 'OUTCOMES'
+  if ((scope === 'FIXTURE_SETUP') !== Boolean(input.fixtureId) ||
+    scope === 'FIXTURE_SETUP' && (selectedIds.length > 0 || input.verificationTarget))
+    throw new SiteRunRefusal('Invalid Signup setup selection', 400)
   if (scope === 'SITE' && (selectedIds.length > 0 || input.verificationTarget)) {
     throw new SiteRunRefusal('Site care cannot select an Outcome or Flag verification target', 400)
   }
-  if (scope !== 'SITE' && selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
+  if (scope === 'OUTCOMES' && selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
     throw new SiteRunRefusal('Select at least one Outcome', 400)
   }
   if (
@@ -187,18 +193,24 @@ export async function requestSiteRun(input: RunInput): Promise<{
   })
   if (!project) throw new SiteRunRefusal('Site not found', 404)
 
+  const fixture = input.fixtureId ? await prisma.outcomeFixture.findFirst({
+    where: { id: input.fixtureId, projectId: input.projectId, enabled: true }, select: { id: true, version: true, targetUrl: true },
+  }) : null
+  if (input.fixtureId && !fixture) throw new SiteRunRefusal('Signup fixture not found', 404)
+
   const single = outcomes.length === 1 ? outcomes[0] : null
   const singleRequired = single?.bindings.filter((binding) => binding.required) ?? []
   const singleConfig = singleRequired.length === 1 ? singleRequired[0]!.config as Record<string, unknown> : null
   const singleStart = typeof singleConfig?.startUrl === 'string' ? singleConfig.startUrl : null
   // Watch and multi-Outcome runs enter at the Site. One bound Outcome can
   // start at its own page. Each binding still executes from its own config.
-  const requestedUrl = input.verificationTarget?.kind === 'DIAGNOSTIC'
+  const requestedUrl = fixture?.targetUrl ?? (input.verificationTarget?.kind === 'DIAGNOSTIC'
     ? input.verificationTarget.pageUrl
-    : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart)
+    : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart))
   const normalized = normalizeAuditUrl(requestedUrl)
   const auditUrl = normalized.ok ? normalized.url : requestedUrl
-  const executionSpec = await buildExecutionSpec({
+  const executionSpec = fixture ? { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: auditUrl, environment,
+    scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: fixture.id, version: fixture.version }, checks: {}, outcomes: [], verificationTarget: null } : await buildExecutionSpec({
     projectId: input.projectId, targetUrl: auditUrl, environment,
     scope: input.verificationTarget?.kind === 'DIAGNOSTIC' ? 'DIAGNOSTIC' : scope,
     outcomes, verificationTarget: input.verificationTarget,
@@ -283,7 +295,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       }
 
   try {
-    const parentAuditId = input.verificationTarget?.parentAuditId ?? input.parentAuditId
+    const parentAuditId = fixture ? undefined : input.verificationTarget?.parentAuditId ?? input.parentAuditId
     const parent = parentAuditId
       ? await prisma.audit.findFirst({
           where: {
@@ -293,8 +305,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
           },
           select: { id: true },
         })
-      : await prisma.audit.findFirst({
-          where: { projectId: input.projectId, status: 'COMPLETED', url: auditUrl },
+      : fixture ? null : await prisma.audit.findFirst({
+          where: { projectId: input.projectId, status: 'COMPLETED', url: auditUrl, ...siteAnalysisAuditWhere },
           orderBy: { completedAt: 'desc' },
           select: { id: true },
         })
@@ -308,7 +320,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       auditMode: input.source === 'WATCH' ? 'CRITICAL_PATH' : 'SINGLE',
       monitoringMode: input.source === 'WATCH' ? 'FULL' : undefined,
       skipUsageCount: !consumesScanAllowance(scope, input.source),
-      useProjectScanAccess: true,
+      useProjectScanAccess: !fixture,
       verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
       reuseActiveManual: false,
       runRequestId: run.id,
@@ -410,6 +422,12 @@ export async function retryFailedExecution(auditId: string): Promise<
     : null
   if (run && audit.userId && audit.projectId) {
     const outcomeIds = run.selections.map((selection) => selection.outcomeId)
+    const setup = readExecutionSpec(run.executionSpec)?.fixtureSetup
+    if (setup) {
+      const started = await requestSiteRun({ projectId: audit.projectId, userId: audit.userId, outcomeIds: [], source: 'INTERNAL',
+        scope: 'FIXTURE_SETUP', fixtureId: setup.id, idempotencyKey: `internal-retry:${audit.id}:${run.id}` })
+      return { ok: true, auditId: started.auditId, runId: started.runId }
+    }
     if (outcomeIds.length > 0 || !run.verificationTarget) {
       const started = await requestSiteRun({
         projectId: audit.projectId,

@@ -50,6 +50,13 @@ describe('durable bounded work contracts', () => {
     expect(byKey.get('p0:search')!.dependencies).not.toContain('p0:pagespeed')
     expect(byKey.get('p0:search')!.dependencies).not.toContain('p0:google')
     expect(byKey.get('p0:search')!.dependencies).not.toContain('p0:captures')
+    expect(byKey.get('robots')!.dependencies).toEqual([])
+    expect(byKey.get('resources')!.dependencies).toEqual(['robots'])
+    expect(byKey.get('p0:search-crawl')!.dependencies).toEqual(['p0:http', 'robots'])
+    expect(byKey.get('p0:search-canonical')!.dependencies).toEqual(['p0:http', 'p0:browser'])
+    expect(byKey.get('p0:search-structured-data')!.dependencies).toEqual(['p0:http', 'p0:browser'])
+    expect(byKey.get('p0:google-index')!.dependencies).toEqual(['p0:search-indexing'])
+    expect(byKey.get('p0:google-performance')!.dependencies).toEqual([])
     expect(byKey.get('p0:judge')!.dependencies).toContain('p0:captures')
     expect(byKey.get('p0:judge')!.dependencies).toContain('p0:security-headers')
   })
@@ -68,7 +75,16 @@ describe('durable bounded work contracts', () => {
       verificationTarget: { kind: 'DIAGNOSTIC' as const, pageUrl: input.pageUrl, checkId: 'security-csp-missing', attemptId: 'attempt', parentAuditId: 'before' } }
     expect(initialTaskPlan(spec).map(task => task.kind)).toEqual(['check', 'http', 'finalize'])
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'title-missing' } }).map(task => task.kind))
-      .toEqual(['search', 'http', 'browser', 'search-resources', 'finalize'])
+      .toEqual(['search', 'http', 'browser', 'finalize'])
     expect(() => initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'unknown-history' } })).toThrow('not registered')
   })
+  it('admits Signup setup on the same ledger without unrelated collectors', () => {
+    const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+      scope: 'FIXTURE_SETUP', fixtureSetup: { id: 'fixture', version: 3 }, checks: {}, outcomes: [], verificationTarget: null })
+    expect(graph.map(task => task.kind)).toEqual(['fixture-setup', 'finalize'])
+    expect(graph[0].input.fixtureId).toBe('fixture')
+    expect(graph[1].dependencies).toEqual(['fixture-setup'])
+    validateTaskGraph(graph)
+  })
+
 })

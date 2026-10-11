@@ -1,3 +1,4 @@
+import { siteAnalysisAuditWhere } from './application/analysis-scope'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { encodeSiteId, siteUrlParts, type SiteRecord } from '@/lib/sites/types'
@@ -161,6 +162,7 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
         watchConsecutiveFailures: true,
         deletedAt: true,
         audits: {
+          where: siteAnalysisAuditWhere,
           orderBy: { createdAt: 'desc' },
           take: 1,
           select: { id: true },

@@ -14,6 +14,14 @@ describe('Search responsibilities and classification', () => {
     }
     expect(searchFindings(result).some(item => ['title-missing', 'no-structured-data'].includes(item.checkId))).toBe(false)
   })
+  it('separate evaluator execution preserves every original observation and finding', async () => {
+    const input = evidence('<title>Page</title><meta name="robots" content="noindex"><link rel="canonical" href="https://example.com/">', { sitemapUrls: [PAGE] })
+    const full = await evaluateSearch(input)
+    const parts = (await Promise.all(SEARCH_CHECK_DEFINITIONS.map(definition => evaluateSearch(input, null, [definition.id.slice(7)])))).flat()
+    expect(parts).toEqual(full)
+    expect(searchFindings(parts)).toEqual(searchFindings(full))
+  })
+
   it('rejects duplicate registrations and missing evaluators', () => {
     expect(() => validateSearchRegistration([SEARCH_CHECK_DEFINITIONS[0], SEARCH_CHECK_DEFINITIONS[0]])).toThrow()
     expect(() => validateSearchRegistration([{ ...SEARCH_CHECK_DEFINITIONS[0], evaluate: undefined } as never])).toThrow()

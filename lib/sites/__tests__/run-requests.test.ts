@@ -3,7 +3,7 @@ vi.mock('node:crypto', async () => ({ ...await vi.importActual('node:crypto'), r
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 const mocks = vi.hoisted(() => ({
-  outcomeFindMany: vi.fn(),
+  fixtureFindFirst: vi.fn(), taskFindFirst: vi.fn(), outcomeFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
   runFindUnique: vi.fn(),
   runFindFirst: vi.fn(),
@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    outcomeFixture: { findFirst: mocks.fixtureFindFirst }, auditVerifierExecution: { findFirst: mocks.taskFindFirst },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
     runRequest: {
@@ -87,7 +88,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
   it('matches the persisted root URL when Watch starts from a canonical Site host', async () => {
     mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example' })
     await requestSiteRun({ projectId: 'project-1', outcomeIds: ['outcome-1'], userId: 'user-1', source: 'WATCH' })
-    expect(mocks.auditFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'project-1', status: 'COMPLETED', url: 'https://shop.example/' } }))
+    expect(mocks.auditFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'project-1', status: 'COMPLETED', url: 'https://shop.example/', OR: expect.any(Array) } }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://shop.example/', parentId: 'audit-parent', recheckTrigger: 'WATCH' }))
   })
 
@@ -102,6 +103,16 @@ describe('RunRequest tenant boundary and idempotency', () => {
     ).rejects.toThrow('Select at least one Outcome')
     expect(mocks.runCreate).not.toHaveBeenCalled()
     expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+
+  it('snapshots owner-scoped Signup setup without a report parent, broad checks, or scan charge', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.fixtureFindFirst.mockResolvedValue({ id: 'fixture', version: 4, targetUrl: 'https://shop.example/signup' })
+    await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WEB', scope: 'FIXTURE_SETUP', fixtureId: 'fixture', idempotencyKey: 'setup' })
+    expect(mocks.fixtureFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'fixture', projectId: 'project-1', enabled: true } }))
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({ parentId: undefined, skipUsageCount: true, useProjectScanAccess: false,
+      executionSpec: expect.objectContaining({ scope: 'FIXTURE_SETUP', fixtureSetup: { id: 'fixture', version: 4 }, checks: {}, outcomes: [] }) }))
+    expect(mocks.auditFindFirst).not.toHaveBeenCalled()
   })
 
   it('runs broad Site care through the same durable request and Audit ledger', async () => {

@@ -1,4 +1,5 @@
 import type { Prisma, AuditVerifierExecution } from '@prisma/client'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { taskInputSchema } from './contracts'
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
@@ -15,6 +16,13 @@ export async function settleFailedFinalization(tx: Prisma.TransactionClient, tas
 /** Exhaustion is a recorded coverage gap, not disappearance of a failed check. */
 export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, task: CoverageTask, reason: string) {
   const input = taskInputSchema.parse(task.workInput)
+  if (task.workKind === 'fixture-setup') {
+    const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { projectId: true, executionSpec: true } })
+    const setup = readExecutionSpec(audit?.executionSpec)?.fixtureSetup
+    if (setup && audit?.projectId) await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: audit.projectId, version: setup.version },
+      data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(), authorizedAt: null,
+        lastDryRunResult: { disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'unknown' } } } })
+  }
   if (task.workKind === 'check' && input.module) {
     const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: input.module,
       pageUrl: input.pageUrl, passed: false, applicable: true, failed: true, assertions: [] })

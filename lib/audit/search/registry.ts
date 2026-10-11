@@ -359,9 +359,10 @@ export function validateSearchRegistration(definitions: readonly Definition[]) {
 }
 validateSearchRegistration(SEARCH_CHECK_DEFINITIONS)
 
-export async function evaluateSearch(evidence: SearchPageEvidence, previous?: SearchReceipt | null) {
+export async function evaluateSearch(evidence: SearchPageEvidence, previous?: SearchReceipt | null, evaluators?: readonly string[]) {
   const observations: SearchObservation[] = []
   for (const definition of SEARCH_CHECK_DEFINITIONS) {
+    if (evaluators && !evaluators.includes(definition.id.slice(7))) continue
     if (!evidence.public) {
       observations.push(unknown(evidence, definition.checkIds[0], definition.responsibility, definition.guidance, 'http')); continue
     }

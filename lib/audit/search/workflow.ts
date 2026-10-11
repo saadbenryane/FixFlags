@@ -1,10 +1,29 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { executionWrite } from '@/lib/audit/execution-ownership'
+import { SEARCH_DEFINITIONS } from './definitions'
 import { collectSearchEvidence, type SearchResourceCache } from './collect'
 import { evaluateSearch, evaluateCheckedPageTitles, searchFindings } from './registry'
 import { searchReceiptSchema, searchAttentionSchema, searchVerifierSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { recordVerifierExecution } from '@/lib/improvements/verifier-provenance'
+
+export const SEARCH_LOCAL_MODULES = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
+  .map(item => 'module:search-' + item.evaluator)
+
+/** Aggregate receipts are bounded views. Source tasks retain every committed part. */
+export function combineSearchReceipts(input: { auditId: string; pageUrl: string; receipts: SearchReceipt[]; expected: number }): SearchReceipt {
+  let observations = input.receipts.flatMap(receipt => receipt.observations)
+  let complete = input.receipts.length === input.expected && input.receipts.every(receipt => receipt.complete)
+  if (observations.length > 499) {
+    observations = observations.slice(0, 499)
+    observations.push({ ...observations[0], id: 'search-observation-coverage:summary', checkId: 'search-observation-coverage',
+      disposition: 'unknown', reason: 'observation_limit', observed: 'The summary observation limit was reached. Source results remain recorded.',
+      attention: { policy: 'search', version: 1, kind: 'observation', reason: 'observation_limit' } })
+    complete = false
+  }
+  return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: input.auditId, pageUrl: input.pageUrl,
+    collectedAt: input.receipts.map(receipt => receipt.collectedAt).sort().at(-1) ?? new Date().toISOString(), complete, observations })
+}
 
 /** Compatibility adapters keep historical module receipts distinct from Search assertions. */
 export async function priorSearchReceipt(auditId: string, pageUrl: string): Promise<SearchReceipt | null> {
@@ -15,7 +34,11 @@ export async function priorSearchReceipt(auditId: string, pageUrl: string): Prom
     select: { detail: true },
   })
   const parsed = searchReceiptSchema.safeParse(previous?.detail)
-  return parsed.success && parsed.data.pageUrl === pageUrl ? parsed.data : null
+  if (parsed.success && parsed.data.pageUrl === pageUrl) return parsed.data
+  const parts = await prisma.auditVerifierExecution.findMany({ where: { auditId: audit.parentId,
+    pageUrl, targetKey: { in: SEARCH_LOCAL_MODULES } }, select: { detail: true } })
+  const receipts = parts.flatMap(part => { const result = searchReceiptSchema.safeParse(part.detail); return result.success ? [result.data] : [] })
+  return receipts.length ? combineSearchReceipts({ auditId: audit.parentId, pageUrl, receipts, expected: SEARCH_LOCAL_MODULES.length }) : null
 }
 
 export async function persistSearchReceipt(receipt: SearchReceipt, module: 'search' | 'search-google' | 'search-cross-page' = 'search'): Promise<SearchReceipt> {
@@ -33,10 +56,10 @@ export async function persistSearchReceipt(receipt: SearchReceipt, module: 'sear
 }
 
 /** A verifier is recorded only for the actual responsibility and comparable entity types. */
-export async function recordSearchVerifiers(receipt: SearchReceipt): Promise<void> {
-  const audit = await prisma.audit.findUnique({ where: { id: receipt.auditId }, select: { parentId: true } })
+export async function recordSearchVerifiers(receipt: SearchReceipt, db: typeof prisma | Prisma.TransactionClient = prisma): Promise<void> {
+  const audit = await db.audit.findUnique({ where: { id: receipt.auditId }, select: { parentId: true } })
   if (!audit?.parentId) return
-  const attempts = await prisma.improvementAttempt.findMany({
+  const attempts = await db.improvementAttempt.findMany({
     where: { sourceAuditId: audit.parentId, outcome: null },
     select: { improvement: { select: { occurrences: {
       where: { auditId: audit.parentId },
@@ -54,7 +77,7 @@ export async function recordSearchVerifiers(receipt: SearchReceipt): Promise<voi
     if (!observations.length) continue
     const expectedTypes = policy.success ? policy.data.entityTypes ?? [] : []
     const typesObserved = new Set(observations.flatMap(item => item.entityTypes ?? []))
-    const comparable = observations.every(item => item.disposition !== 'unknown' && item.disposition !== 'not_applicable') &&
+    const comparable = !receipt.observations.some(item => item.reason === 'observation_limit') && observations.every(item => item.disposition !== 'unknown' && item.disposition !== 'not_applicable') &&
       sources.every(source => observations.some(item => item.source === source)) &&
       expectedTypes.every(type => typesObserved.has(type))
     const googleComparable = observations.every(item => {
@@ -78,7 +101,7 @@ export async function recordSearchVerifiers(receipt: SearchReceipt): Promise<voi
       evidenceReference: { auditId: receipt.auditId, module: 'search', pageUrl: receipt.pageUrl },
       detail: searchVerifierSchema.parse({ kind: 'search-verifier', version: 1, auditId: receipt.auditId, pageUrl: receipt.pageUrl,
         checkId, verdict, comparable: established,
-        observationIds: observations.map(item => item.id), reason: established ? 'responsibility_evaluated' : 'search_coverage_incomplete' }) })
+        observationIds: observations.map(item => item.id), reason: established ? 'responsibility_evaluated' : 'search_coverage_incomplete' }) }, db)
   }
 }
 

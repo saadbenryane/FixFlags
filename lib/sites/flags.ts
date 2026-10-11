@@ -1,3 +1,4 @@
+import { siteAnalysisAuditWhere } from './application/analysis-scope'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { searchAttentionDecision } from '@/lib/audit/search/policy'
@@ -125,7 +126,7 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
     })
 
     const latestAudit = await prisma.audit.findFirst({
-      where: { projectId: site.projectId },
+      where: { projectId: site.projectId, ...siteAnalysisAuditWhere },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     })

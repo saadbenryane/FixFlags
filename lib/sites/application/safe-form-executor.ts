@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
+import { readExecutionSpec } from '../domain/execution-spec'
+import { publicHttpCapacity } from '@/lib/audit/progressive/capacity'
 import { prisma } from '@/lib/db'
 import { decryptSecret } from '@/lib/security/crypto'
 import { normalizeAuditUrl, assertPublicAuditUrl } from '@/lib/audit/url'
@@ -13,10 +16,10 @@ export type { AccessibleTarget } from '../domain/safe-form'
 
 /** Retry is allowed only after the admitted fixture's cleanup is proved, using
  * current authorization. No secret values or external effects are replayed here. */
-export async function reconcileSafeFixtureCleanup(input: { projectId: string; fixtureId: string; version: number; auditId?: string }) {
+export async function reconcileSafeFixtureCleanup(input: { projectId: string; fixtureId: string; version: number; auditId?: string; requireAuthorization?: boolean }) {
   const fixture = await prisma.outcomeFixture.findFirst({ where: {
     id: input.fixtureId, projectId: input.projectId, enabled: true, version: input.version,
-    authorizedAt: { not: null }, lastDryRunVersion: input.version,
+    ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: input.version }),
   } })
   if (!fixture) return false
   const target = normalizeAuditUrl(fixture.targetUrl)
@@ -26,21 +29,50 @@ export async function reconcileSafeFixtureCleanup(input: { projectId: string; fi
   try {
     const secret = fixture.encryptedHookSecret ? decryptSecret(fixture.encryptedHookSecret) : null
     await executionWrite(tx => tx.outcomeFixture.findUniqueOrThrow({ where: { id: fixture.id } }))
-    const submission = input.auditId ? await prisma.auditPipelineEvent.findFirst({
-      where: { auditId: input.auditId, event: 'protected_submission_admitted',
+    const submission = await prisma.auditPipelineEvent.findFirst({
+      where: { audit: { projectId: input.projectId }, event: 'protected_submission_admitted',
         detail: { path: ['fixtureId'], equals: fixture.id } }, orderBy: { sequence: 'desc' }, select: { detail: true },
-    }) : null
-    const operation = submission ? z.object({ operationId: z.string(), fixtureId: z.literal(fixture.id), fixtureVersion: z.literal(fixture.version) }).safeParse(submission.detail) : null
-    if (submission && !operation?.success) return false
-    return await callHook(cleanup, secret, fixture.id,
-      operation?.success ? { operationId: operation.data.operationId, requireSettled: true } : undefined)
+    })
+    if (!submission) return true
+    const operation = z.object({ operationId: z.string(), fixtureId: z.literal(fixture.id), fixtureVersion: z.number().int().positive() }).safeParse(submission.detail)
+    if (!operation?.success) return false
+    const completed = await prisma.auditPipelineEvent.findFirst({ where: { audit: { projectId: input.projectId },
+      executionId: operation.data.operationId, event: 'protected_cleanup_completed' }, select: { id: true } })
+    if (completed) return true
+    if (operation.data.fixtureVersion !== fixture.version) return false
+    if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version)) return false
+    const cleaned = await callHook(cleanup, secret, fixture.id, { operationId: operation.data.operationId, requireSettled: true })
+    if (cleaned) await recordFixtureCleanup(operation.data.operationId, fixture.id, operation.data.fixtureVersion)
+    return cleaned
   } catch { return false }
+}
+
+async function recordFixtureCleanup(operationId: string, fixtureId: string, fixtureVersion: number) {
+  const owner = currentExecutionOwnership()
+  if (!owner) return
+  await executionWrite(tx => tx.auditPipelineEvent.create({ data: { auditId: owner.auditId, executionId: operationId,
+    traceId: owner.auditId, attempt: owner.generation, stage: 'checking', event: 'protected_cleanup_completed', status: 'completed',
+    detail: { operationId, fixtureId, fixtureVersion } } }))
+}
+
+export const safeFormExecutionResultSchema = z.object({
+  disposition: z.enum(['SUCCEEDED', 'FAILED', 'BLOCKED']), reason: z.string().min(1),
+  detail: z.object({ fieldCount: z.number().int().nonnegative(), cleanupStatus: z.enum(['succeeded', 'failed', 'not_started', 'unknown']) }).strict(),
+}).strict()
+
+async function setupConsent(projectId: string, fixtureId: string, version: number, db: typeof prisma | Prisma.TransactionClient = prisma) {
+  const owner = currentExecutionOwnership()
+  if (!owner?.taskId) return false
+  const admitted = await db.audit.findFirst({ where: { id: owner.auditId, projectId, runRequests: { some: { status: { in: ['QUEUED', 'RUNNING'] } } } },
+    select: { executionSpec: true } })
+  const spec = readExecutionSpec(admitted?.executionSpec)
+  return spec?.scope === 'FIXTURE_SETUP' && spec.fixtureSetup?.id === fixtureId && spec.fixtureSetup.version === version
 }
 
 export type SafeFormExecutionResult = {
   disposition: 'SUCCEEDED' | 'FAILED' | 'BLOCKED'
   reason: string
-  detail: { fieldCount: number; cleanupStatus: 'succeeded' | 'failed' | 'not_started' }
+  detail: { fieldCount: number; cleanupStatus: 'succeeded' | 'failed' | 'not_started' | 'unknown' }
 }
 
 export function safeExactOrigin(url: string, origin: string): string | null {
@@ -52,10 +84,14 @@ export function safeExactOrigin(url: string, origin: string): string | null {
 async function callHook(url: string, secret: string | null, fixtureId: string,
   operation?: { operationId: string; requireSettled?: boolean }): Promise<boolean> {
   try { await assertPublicAuditUrl(url) } catch { return false }
+  const signal = AbortSignal.timeout(8000)
+  const release = await publicHttpCapacity.acquire(signal).catch(() => null)
+  if (!release) return false
+  try {
   const response = await fetch(url, {
     method: 'POST',
     redirect: 'error',
-    signal: AbortSignal.timeout(8_000),
+    signal,
     headers: {
       'content-type': 'application/json',
       ...(secret ? { authorization: `Bearer ${secret}` } : {}),
@@ -79,6 +115,7 @@ async function callHook(url: string, secret: string | null, fixtureId: string,
       .safeParse(JSON.parse(Buffer.concat(chunks).toString('utf8')))
     return result.success && (!operation?.requireSettled || result.data.operationId === operation.operationId && result.data.settled === true)
   } catch { return false } finally { reader.releaseLock() }
+  } finally { release() }
 }
 
 export async function executeSafeFormFixture(input: {
@@ -88,6 +125,7 @@ export async function executeSafeFormFixture(input: {
   allowLocalhost: boolean
   requireAuthorization?: boolean
   expectedVersion?: number
+  deadline?: number
 }): Promise<SafeFormExecutionResult> {
   const fixture = await prisma.outcomeFixture.findFirst({
     where: { id: input.fixtureId, projectId: input.projectId, enabled: true },
@@ -95,6 +133,8 @@ export async function executeSafeFormFixture(input: {
   if (!fixture || (input.requireAuthorization !== false && (!fixture.authorizedAt || fixture.lastDryRunVersion !== fixture.version))) {
     return { disposition: 'BLOCKED', reason: 'fixture_not_authorized', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
+  if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version))
+    return { disposition: 'BLOCKED', reason: 'fixture_setup_not_admitted', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   if (input.expectedVersion !== undefined && fixture.version !== input.expectedVersion) {
     return { disposition: 'BLOCKED', reason: 'fixture_changed', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
@@ -124,6 +164,15 @@ export async function executeSafeFormFixture(input: {
   if (!mapping.success || !success.success || !Object.keys(mapping.data.fields).length || Object.keys(mapping.data.fields).some((key) => values[key] == null)) {
     return { disposition: 'BLOCKED', reason: 'fixture_configuration_invalid', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
+  const owner = currentExecutionOwnership()
+  if (owner) {
+    const current = await executionWrite(tx => tx.outcomeFixture.findFirst({ where: {
+      id: fixture.id, projectId: input.projectId, version: fixture.version, enabled: true,
+    } }))
+    if (!current || !await reconcileSafeFixtureCleanup({ projectId: input.projectId, fixtureId: fixture.id,
+      version: fixture.version, auditId: owner.auditId, requireAuthorization: input.requireAuthorization }))
+      return { disposition: 'BLOCKED', reason: 'protected_effect_unresolved', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
+  }
   if (!await callHook(resetUrl, hookSecret, fixture.id)) {
     return { disposition: 'BLOCKED', reason: 'fixture_reset_unproven', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
@@ -132,9 +181,8 @@ export async function executeSafeFormFixture(input: {
   let reason = 'form_execution_failed'
   let cleanupStatus: SafeFormExecutionResult['detail']['cleanupStatus'] = 'not_started'
   let session: Awaited<ReturnType<typeof createAuditPage>> | undefined
-  const owner = currentExecutionOwnership()
   const operationId = owner ? `${owner.taskId ?? owner.auditId}:g${owner.generation}` : null
-  const deadline = Date.now() + 45_000
+  const deadline = Math.min(input.deadline ?? Infinity, Date.now() + 45_000)
   let requestRefused = false
   try {
     const browser = await getBrowser()
@@ -160,6 +208,7 @@ export async function executeSafeFormFixture(input: {
       where: { id: fixture.id, projectId: input.projectId, enabled: true, version: fixture.version },
       select: { authorizedAt: true, lastDryRunVersion: true },
     })
+    if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version, tx)) return null
     if (authorized && (input.requireAuthorization === false || authorized.authorizedAt && authorized.lastDryRunVersion === fixture.version) && owner && operationId)
       await tx.auditPipelineEvent.create({ data: { auditId: owner.auditId, executionId: operationId, traceId: owner.auditId,
         attempt: owner.generation, stage: 'checking', event: 'protected_submission_admitted', status: 'started',
@@ -195,6 +244,8 @@ export async function executeSafeFormFixture(input: {
     await session?.page.context().close().catch(() => undefined)
     cleanupStatus = await callHook(cleanupUrl, hookSecret, fixture.id, operationId ? { operationId } : undefined) ? 'succeeded' : 'failed'
   }
+  if (cleanupStatus === 'succeeded' && disposition !== 'BLOCKED' && operationId)
+    await recordFixtureCleanup(operationId, fixture.id, fixture.version)
   if (cleanupStatus !== 'succeeded') {
     return { disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus } }
   }

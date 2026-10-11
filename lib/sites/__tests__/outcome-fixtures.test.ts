@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), delete: vi.fn(),
-  bindingFindMany: vi.fn(), bindingUpdateMany: vi.fn(), transaction: vi.fn(), execute: vi.fn(), encrypt: vi.fn(),
+  bindingFindMany: vi.fn(), bindingUpdateMany: vi.fn(), runFindMany: vi.fn(), requestRun: vi.fn(), transaction: vi.fn(), execute: vi.fn(), encrypt: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -12,9 +12,10 @@ vi.mock('@/lib/db', () => ({
       update: mocks.update, updateMany: mocks.updateMany, delete: mocks.delete,
     },
     outcomeExecutionBinding: { findMany: mocks.bindingFindMany, updateMany: mocks.bindingUpdateMany },
-    $transaction: mocks.transaction,
+    $transaction: mocks.transaction, runRequest: { findMany: mocks.runFindMany },
   },
 }))
+vi.mock('@/lib/sites/application/run-requests', () => ({ requestSiteRun: mocks.requestRun }))
 vi.mock('@/lib/security/crypto', () => ({ encryptSecret: mocks.encrypt }))
 vi.mock('@/lib/sites/application/safe-form-executor', async (original) => {
   const actual = await original<typeof import('@/lib/sites/application/safe-form-executor')>()
@@ -49,7 +50,7 @@ const input = {
 
 describe('Outcome fixture lifecycle', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.encrypt.mockImplementation((value: string) => `encrypted:${value}`)
     mocks.create.mockResolvedValue(stored)
     mocks.updateMany.mockResolvedValue({ count: 1 })
@@ -75,17 +76,16 @@ describe('Outcome fixture lifecycle', () => {
     expect(mocks.create).not.toHaveBeenCalled()
   })
 
-  it('records the dry run against the exact version and keeps authorization revoked', async () => {
-    mocks.findFirst.mockResolvedValueOnce(stored).mockResolvedValueOnce({
-      ...stored, lastDryRunVersion: 1, lastDryRunAt: new Date(), lastDryRunResult: { disposition: 'SUCCEEDED' },
-    })
-    mocks.execute.mockResolvedValue({ disposition: 'SUCCEEDED', reason: 'success_criterion_observed', detail: { fieldCount: 1, cleanupStatus: 'succeeded' } })
-    const fixture = await dryRunOutcomeFixture({ projectId: 'project-1', fixtureId: stored.id })
-    expect(fixture.lastDryRunVersion).toBe(1)
-    expect(mocks.execute).toHaveBeenCalledWith(expect.objectContaining({ requireAuthorization: false }))
-    expect(mocks.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ version: 1 }), data: expect.objectContaining({ authorizedAt: null }),
-    }))
+  it('admits a durable dry run without executing a browser in the request', async () => {
+    mocks.findFirst.mockResolvedValue(stored)
+    mocks.findMany.mockResolvedValue([stored])
+    mocks.runFindMany.mockResolvedValue([])
+    mocks.requestRun.mockResolvedValue({ runId: 'setup-run', auditId: 'setup-audit', reused: false, outcomeIds: [] })
+    const fixture = await dryRunOutcomeFixture({ projectId: 'project-1', fixtureId: stored.id, userId: 'owner', idempotencyKey: 'intent' })
+    expect(fixture.setupRun).toMatchObject({ runId: 'setup-run', auditId: 'setup-audit', state: 'QUEUED' })
+    expect(mocks.requestRun).toHaveBeenCalledWith(expect.objectContaining({ scope: 'FIXTURE_SETUP', fixtureId: stored.id, idempotencyKey: 'intent' }))
+    expect(mocks.execute).not.toHaveBeenCalled()
+    expect(mocks.updateMany).not.toHaveBeenCalled()
   })
 
   it('authorizes only a successful dry run of the current version', async () => {
@@ -95,7 +95,7 @@ describe('Outcome fixture lifecycle', () => {
   })
 
   it('authorizes with a version-scoped write so a concurrent edit cannot inherit approval', async () => {
-    const exercised = { ...stored, lastDryRunVersion: 1, lastDryRunResult: { disposition: 'SUCCEEDED' } }
+    const exercised = { ...stored, lastDryRunVersion: 1, lastDryRunResult: { disposition: 'SUCCEEDED', reason: 'success_criterion_observed', detail: { fieldCount: 1, cleanupStatus: 'succeeded' } } }
     mocks.findFirst.mockResolvedValueOnce(exercised).mockResolvedValueOnce({
       ...exercised, authorizedAt: new Date('2026-10-04T12:00:00Z'),
     })

@@ -11,12 +11,12 @@ const evidenceSchema = z.object({ auditId: z.string(), pageUrl: z.string().url()
   sitemapsComplete: z.boolean(), declaredSitemaps: z.array(z.string()).max(10_000), canonicalTargets: z.array(publicDocumentSchema).max(3) }).strict()
 const inputSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('metadata'), html: z.string().max(1_000_000), url: z.string().url() }).strict(),
-  z.object({ operation: z.literal('search'), evidence: evidenceSchema, previous: searchReceiptSchema.nullish() }).strict(),
+  z.object({ operation: z.literal('search'), evidence: evidenceSchema, previous: searchReceiptSchema.nullish(), evaluators: z.array(z.string()).max(6).optional() }).strict(),
 ])
 async function main() {
   const input = inputSchema.parse(workerData.input)
   const result = input.operation === 'metadata' ? parseMetadataFromHtml(input.html, input.url)
-    : await evaluateSearch(input.evidence as SearchPageEvidence, input.previous)
+    : await evaluateSearch(input.evidence as SearchPageEvidence, input.previous, input.evaluators)
   parentPort!.postMessage(result)
 }
 void main()

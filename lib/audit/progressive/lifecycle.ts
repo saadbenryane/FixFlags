@@ -14,7 +14,7 @@ import { canonicalizeDestination } from '../url-identity'
 import { runCheckedPageSearch } from '../search/workflow'
 import { runCorridorConsistencyChecks } from '../checks/corridor-consistency'
 import { runBoundOutcomeExecutions } from '@/lib/sites/application/checkout-execution'
-import { reconcileSafeFixtureCleanup } from '@/lib/sites/application/safe-form-executor'
+import { reconcileSafeFixtureCleanup, executeSafeFormFixture, safeFormExecutionResultSchema } from '@/lib/sites/application/safe-form-executor'
 import { runJourneyReviewsForAudit } from '../journey/run-journey-reviews'
 import { resolveAuditScanAccess } from '../scan-access-store'
 import { systemClock } from '@/lib/time/clock'
@@ -63,7 +63,8 @@ export async function recordedPages(auditId: string, pageUrl?: string): Promise<
   for (const position of positions) {
     const pageTasks = tasks.filter(task => (task.workInput as { position?: number })?.position === position)
     const find = (kind: string) => pageTasks.find(task => task.workKind === kind && task.workState === 'COMPLETED')
-    const browserTask = find('browser'), httpTask = find('http'), searchTask = find('search'), judgeTask = find('judge')
+    const browserTask = find('browser'), httpTask = find('http'), searchTask = pageTasks.find(task => task.workKind === 'search' && task.workState === 'COMPLETED' &&
+      (!((task.workInput as { module?: string })?.module) || (task.workInput as { module?: string })?.module === 'summary')), judgeTask = find('judge')
     const browser = browserTask?.workResult ? browserArtifactSchema.parse(readArtifact(browserTask.workResult, 'browser').data) : null
     const captureTask = find('captures')
     const captures = captureTask?.workResult ? captureArtifactSchema.parse(readArtifact(captureTask.workResult, 'captures').data) : null
@@ -95,6 +96,31 @@ export async function recordedPages(auditId: string, pageUrl?: string): Promise<
 }
 
 export const lifecycleHandlers: TaskHandler[] = [
+  { kind: 'fixture-setup', replay: 'protected', timeoutMs: 70_000,
+    validateResult: artifact => { safeFormExecutionResultSchema.parse(artifact.data) },
+    async reconcile(context) {
+      const setup = readExecutionSpec(context.audit.executionSpec)?.fixtureSetup
+      return Boolean(setup && context.audit.projectId && await reconcileSafeFixtureCleanup({
+        projectId: context.audit.projectId, fixtureId: setup.id, version: setup.version, auditId: context.audit.id,
+        requireAuthorization: false,
+      }))
+    },
+    async evaluate(context) {
+      const spec = readExecutionSpec(context.audit.executionSpec), setup = spec?.fixtureSetup
+      if (spec?.scope !== 'FIXTURE_SETUP' || !setup || setup.id !== context.input.fixtureId || !context.audit.projectId)
+        throw new TaskFailure('FIXTURE_SETUP_INTENT_INVALID', false)
+      const result = await executeSafeFormFixture({ projectId: context.audit.projectId, fixtureId: setup.id,
+        expectedVersion: setup.version, startUrl: spec.targetUrl, allowLocalhost: false, requireAuthorization: false,
+        deadline: context.deadline })
+      return serializeArtifact('fixture-setup', safeFormExecutionResultSchema.parse(result))
+    },
+    async commit(context, artifact, tx) {
+      const setup = readExecutionSpec(context.audit.executionSpec)!.fixtureSetup!
+      const result = safeFormExecutionResultSchema.parse(artifact.data)
+      await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: context.audit.projectId!, version: setup.version },
+        data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(artifact.collectedAt), lastDryRunResult: result, authorizedAt: null } })
+    },
+  },
   { kind: 'discovery', replay: 'read_only', timeoutMs: 45_000,
     validateResult: artifact => { discoverySchema.parse(artifact.data) }, commit: commitFindings,
     async evaluate(context) {
@@ -197,7 +223,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const pages = await recordedPages(latest.id), tasks = await loadTaskGraph(latest.id), ctx = await pipelineContext(context)
       const failed = tasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task => task.workKind ?? 'unknown')
       const spec = readExecutionSpec(latest.executionSpec)
-      if (spec?.scope === 'OUTCOMES' || spec?.scope === 'DIAGNOSTIC') {
+      if (spec && spec.scope !== 'SITE') {
         // A configured action does not need an unrelated page scan, screenshot,
         // PageSpeed measurement or AI explanation to complete its own assessment.
         await persistAuditRunCost(latest.id, { durationMs: Date.now() - ctx.startedAt.getTime(),

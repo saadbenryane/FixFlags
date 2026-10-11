@@ -2,9 +2,11 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
+import { requestSiteRun } from './run-requests'
+import { readExecutionSpec } from '../domain/execution-spec'
 import { encryptSecret } from '@/lib/security/crypto'
 import {
-  executeSafeFormFixture,
+  safeFormExecutionResultSchema,
   safeFormMappingSchema,
   safeFormSuccessSchema,
   safeFormValuesSchema,
@@ -39,6 +41,7 @@ export type OutcomeFixtureView = {
   enabled: boolean
   hasValues: true
   hasHookSecret: boolean
+  setupRun?: { runId: string; auditId: string | null; version: number; state: string; reason: string | null } | null
 }
 
 export class OutcomeFixtureError extends Error {
@@ -128,7 +131,18 @@ export async function listOutcomeFixtures(projectId: string): Promise<OutcomeFix
     orderBy: { createdAt: 'asc' },
     select: fixtureSelect,
   })
-  return rows.map((row) => toView(row))
+  const runs = await prisma.runRequest.findMany({ where: { projectId, executionSpec: { path: ['scope'], equals: 'FIXTURE_SETUP' } },
+    orderBy: [{ requestedAt: 'desc' }, { id: 'desc' }], take: 1000,
+    select: { id: true, auditId: true, executionSpec: true, status: true, errorCode: true,
+      audit: { select: { status: true, verifierExecutions: { where: { workKind: 'fixture-setup' }, take: 1,
+        select: { workState: true, workErrorCode: true } } } } } })
+  return rows.map(row => {
+    const run = runs.find(run => readExecutionSpec(run.executionSpec)?.fixtureSetup?.id === row.id &&
+      readExecutionSpec(run.executionSpec)?.fixtureSetup?.version === row.version)
+    const task = run?.audit?.verifierExecutions[0]
+    return { ...toView(row), setupRun: run ? { runId: run.id, auditId: run.auditId, version: row.version,
+      state: task?.workState ?? run.status, reason: task?.workErrorCode ?? run.errorCode } : null }
+  })
 }
 
 export async function createOutcomeFixture(input: {
@@ -169,38 +183,25 @@ export async function updateOutcomeFixture(input: {
   return toView(row)
 }
 
+/** Setup is admitted durably. A disconnected HTTP caller does not own execution. */
 export async function dryRunOutcomeFixture(input: {
-  projectId: string
-  fixtureId: string
+  projectId: string; fixtureId: string; userId: string; idempotencyKey?: string;
 }): Promise<OutcomeFixtureView> {
   const fixture = await findFixture(input.projectId, input.fixtureId)
   if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
-  const result = await executeSafeFormFixture({
-    projectId: input.projectId,
-    fixtureId: input.fixtureId,
-    startUrl: fixture.targetUrl,
-    allowLocalhost: false,
-    requireAuthorization: false,
-  })
-  const now = new Date()
-  const updated = await prisma.outcomeFixture.updateMany({
-    where: { id: fixture.id, projectId: input.projectId, version: fixture.version },
-    data: {
-      lastDryRunVersion: fixture.version,
-      lastDryRunAt: now,
-      lastDryRunResult: result,
-      authorizedAt: null,
-    },
-  })
-  if (updated.count !== 1) throw new OutcomeFixtureError('FIXTURE_CHANGED', 'The fixture changed during its dry run. Run it again.', 409)
-  return toView(await findFixture(input.projectId, input.fixtureId))
+  const run = await requestSiteRun({ projectId: input.projectId, userId: input.userId, outcomeIds: [], source: 'WEB',
+    scope: 'FIXTURE_SETUP', fixtureId: input.fixtureId, idempotencyKey: input.idempotencyKey })
+  const views = await listOutcomeFixtures(input.projectId)
+  const view = views.find(item => item.id === input.fixtureId)
+  if (!view) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
+  return { ...view, setupRun: view.setupRun ?? { runId: run.runId, auditId: run.auditId, version: fixture.version, state: 'QUEUED', reason: null } }
 }
 
 export async function authorizeOutcomeFixture(projectId: string, fixtureId: string): Promise<OutcomeFixtureView> {
   const fixture = await findFixture(projectId, fixtureId)
   if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
-  const result = fixture.lastDryRunResult as { disposition?: unknown } | null
-  if (fixture.lastDryRunVersion !== fixture.version || result?.disposition !== 'SUCCEEDED') {
+  const result = safeFormExecutionResultSchema.safeParse(fixture.lastDryRunResult)
+  if (fixture.lastDryRunVersion !== fixture.version || !result.success || result.data.disposition !== 'SUCCEEDED' || result.data.detail.cleanupStatus !== 'succeeded') {
     throw new OutcomeFixtureError('FIXTURE_DRY_RUN_REQUIRED', 'Complete a successful dry run of this exact fixture version before authorizing it.', 409)
   }
   const changed = await prisma.outcomeFixture.updateMany({
@@ -209,6 +210,7 @@ export async function authorizeOutcomeFixture(projectId: string, fixtureId: stri
       projectId,
       version: fixture.version,
       lastDryRunVersion: fixture.version,
+      lastDryRunResult: { path: ['disposition'], equals: 'SUCCEEDED' },
     },
     data: { authorizedAt: new Date(), enabled: true },
   })
@@ -223,7 +225,8 @@ export async function revokeOutcomeFixture(projectId: string, fixtureId: string)
   if (!fixture) throw new OutcomeFixtureError('FIXTURE_NOT_FOUND', 'Safe Form fixture not found.', 404)
   const row = await prisma.outcomeFixture.update({
     where: { id: fixture.id },
-    data: { authorizedAt: null },
+    // Revocation invalidates pending setup consent as well as bound verification.
+    data: { authorizedAt: null, version: { increment: 1 }, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: Prisma.DbNull },
     select: fixtureSelect,
   })
   return toView(row)

@@ -29,6 +29,14 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
   for (const request of requests) {
     const specification = readExecutionSpec(request.executionSpec)
     if (request.executionSpec != null && !specification) throw new Error('Invalid admitted execution specification')
+    if (specification?.scope === 'FIXTURE_SETUP') {
+      const task = await prisma.auditVerifierExecution.findFirst({ where: { auditId, workKind: 'fixture-setup' },
+        select: { workState: true, workErrorCode: true } })
+      await executionWrite(tx => tx.runRequest.updateMany({ where: { id: request.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
+        data: { status: task?.workState === 'COMPLETED' ? 'COMPLETED' : 'FAILED', completedAt: new Date(), leaseUntil: null,
+          errorCode: task?.workErrorCode ?? null } }))
+      continue
+    }
     for (const selection of request.selections) {
       const outcome = selection.outcome
       const admitted = specification?.outcomes.find(item => item.id === outcome.id)

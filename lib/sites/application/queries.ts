@@ -1,5 +1,6 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { isCustomerFlag } from '@/lib/audit/attention'
+import { siteAnalysisAuditWhere } from './analysis-scope'
 import { prisma } from '@/lib/db'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
@@ -130,7 +131,7 @@ const auditSelect = {
 async function resolveLatestAudit(site: SiteRecord) {
   if (site.kind === 'project' && site.projectId) {
     return prisma.audit.findFirst({
-      where: { projectId: site.projectId },
+      where: { projectId: site.projectId, ...siteAnalysisAuditWhere },
       orderBy: { createdAt: 'desc' },
       select: auditSelect,
     })
@@ -148,6 +149,7 @@ async function resolvePriorCompletedAudit(site: SiteRecord, currentId: string | 
       where: {
         projectId: site.projectId,
         status: 'COMPLETED',
+        ...siteAnalysisAuditWhere,
         ...(currentId ? { id: { not: currentId } } : {}),
       },
       orderBy: { completedAt: 'desc' },
@@ -276,7 +278,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     .filter((tech) => tech.category === 'analytics')
     .map((tech) => tech.name) ?? []
   const monitoringHistory = site.projectId ? await prisma.audit.findMany({
-    where: { projectId: site.projectId, status: { in: ['COMPLETED', 'FAILED'] } },
+    where: { projectId: site.projectId, status: { in: ['COMPLETED', 'FAILED'] },
+      ...siteAnalysisAuditWhere },
     orderBy: { createdAt: 'desc' },
     take: 8,
     select: { id: true, status: true, completedAt: true, updatedAt: true, flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true } } },

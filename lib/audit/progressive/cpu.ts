@@ -34,7 +34,7 @@ export async function parseMetadataIsolated(html: string, url: string, deadline:
   if (Buffer.byteLength(html) > 1_000_000) throw new TaskFailure('HTML_BODY_LIMIT', false)
   return pageMetadataSchema.parse(await isolated({ operation: 'metadata', html, url }, deadline))
 }
-export async function evaluateSearchIsolated(evidence: SearchPageEvidence, previous: SearchReceipt | null | undefined, deadline: number) {
-  const observations = await isolated({ operation: 'search', evidence, previous }, deadline)
+export async function evaluateSearchIsolated(evidence: SearchPageEvidence, previous: SearchReceipt | null | undefined, deadline: number, evaluators?: readonly string[]) {
+  const observations = await isolated({ operation: 'search', evidence, previous, evaluators }, deadline)
   return searchObservationSchema.array().parse(observations)
 }

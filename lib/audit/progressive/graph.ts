@@ -20,8 +20,17 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-desktop', prefix + ':pagespeed-mobile'], 'inp-mobile'),
       input: { ...input, module: 'performance', device: 'mobile' } })
   }
-  plans.push(make('search', [prefix + ':http', prefix + ':browser', 'resources']))
-  plans.push(make('google', [prefix + ':search'], 'google-index'))
+  for (const [evaluator, dependencies] of Object.entries({
+    presentation: [prefix + ':http', prefix + ':browser'],
+    indexing: [prefix + ':http', prefix + ':browser', 'resources'],
+    crawl: [prefix + ':http', 'robots'],
+    canonical: [prefix + ':http', prefix + ':browser'],
+    discovery: [prefix + ':http', prefix + ':browser', 'resources'],
+    'structured-data': [prefix + ':http', prefix + ':browser'],
+  })) plans.push(make('search', dependencies, 'search-' + evaluator))
+  plans.push({ ...make('search', plans.filter(task => task.kind === 'search').map(task => task.key)),
+    input: { ...input, module: 'summary' } })
+  plans.push(make('google', [prefix + ':search-indexing'], 'google-index'))
   plans.push(make('google', [], 'google-performance'))
   if (input.primary) {
     plans.push(make('flow', [prefix + ':browser']))
@@ -40,6 +49,14 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
 
 export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
   const input: TaskInput = { pageUrl: spec.targetUrl, position: 0, primary: true, role: 'primary' }
+  if (spec.scope === 'FIXTURE_SETUP') {
+    if (!spec.fixtureSetup) throw new Error('Signup setup is missing its fixture')
+    return [
+      { kind: 'fixture-setup', key: 'fixture-setup', scope: 'fixture:' + spec.fixtureSetup.id,
+        input: { ...input, fixtureId: spec.fixtureSetup.id }, dependencies: [] },
+      { kind: 'finalize', key: 'finalize', scope: 'fixture-setup', input, dependencies: ['fixture-setup'] },
+    ]
+  }
   if (spec.scope === 'OUTCOMES') {
     const bindings: TaskPlan[] = spec.outcomes.flatMap(outcome => outcome.bindings.filter(binding => binding.required).map(binding => ({
       kind: 'bindings', key: 'binding:' + outcome.id + ':' + binding.key, scope: 'outcome:' + outcome.id,
@@ -56,10 +73,10 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     const search = SEARCH_CHECK_REGISTRY[checkId as keyof typeof SEARCH_CHECK_REGISTRY]
     const checkModule = CHECK_REGISTRY[checkId]?.module
     const pages = pageTaskPlan(input, spec)
-    const resource: TaskPlan = { kind: 'search-resources', key: 'resources', scope: 'origin:' + new URL(input.pageUrl).origin, input, dependencies: [] }
-    const available = new Map([resource, ...pages].map(task => [task.key, task]))
+    const resources = siteResourcePlans(input)
+    const available = new Map([...resources, ...pages].map(task => [task.key, task]))
     const target = search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
-      : 'p0:search' : checkModule && available.has('p0:' + checkModule) ? 'p0:' + checkModule : null
+      : search.evaluator === 'cross-page' ? null : 'p0:search-' + search.evaluator : checkModule && available.has('p0:' + checkModule) ? 'p0:' + checkModule : null
     // Unknown historical targets remain an explicit limitation, not a made-up
     // successful execution or a broad scan substituted for the named verifier.
     if (!target) throw new Error('Diagnostic verifier is not registered: ' + checkId)
@@ -78,7 +95,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
   }
   const pages = pageTaskPlan(input, spec)
   const plans: TaskPlan[] = [
-    { kind: 'search-resources', key: 'resources', scope: 'origin:' + new URL(spec.targetUrl).origin, input, dependencies: [] },
+    ...siteResourcePlans(input),
     ...pages,
     { kind: 'discovery', key: 'discovery', scope: 'site', input, dependencies: ['p0:browser', 'p0:http'] },
     { kind: 'cross-page', key: 'cross-page', scope: 'site', input, dependencies: ['discovery', 'p0:search'] },
@@ -91,4 +108,12 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
 export function availabilityOnly(spec: ExecutionSpec) {
   const bindings = spec.outcomes.flatMap(outcome => outcome.bindings.filter(binding => binding.required))
   return spec.scope === 'OUTCOMES' && bindings.length > 0 && bindings.every(binding => binding.mechanism === 'HTTP_AVAILABILITY')
+}
+
+function siteResourcePlans(input: TaskInput): TaskPlan[] {
+  const scope = 'origin:' + new URL(input.pageUrl).origin
+  return [
+    { kind: 'search-resources', key: 'robots', scope, input: { ...input, module: 'robots' }, dependencies: [] },
+    { kind: 'search-resources', key: 'resources', scope, input, dependencies: ['robots'] },
+  ]
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const safeFetchDocument = vi.hoisted(() => vi.fn())
 vi.mock('../../url', () => ({ safeFetchDocument }))
-import { collectDocument, collectSearchEvidence, parseSitemap, SITEMAP_DOCUMENT_LIMIT } from '../collect'
+import { collectDocument, collectSearchEvidence, collectSiteResources, parseSitemap, SITEMAP_DOCUMENT_LIMIT } from '../collect'
 import { document, PAGE } from './fixtures'
 
 beforeEach(() => vi.clearAllMocks())
@@ -18,6 +18,23 @@ describe('bounded Search resource collection', () => {
     expect(safeFetchDocument).toHaveBeenCalledTimes(2)
     expect(first.sitemapUrls).toEqual([PAGE])
     expect(first.declaredSitemaps).toEqual([PAGE + 'custom.xml'])
+  })
+  it('only canonical evaluation performs declared-target requests', async () => {
+    safeFetchDocument.mockImplementation(async (url: string) => ({ body: '<title>Target</title>', finalUrl: url, statusCode: 200, headers: {}, complete: true, redirects: [] }))
+    const cache = new Map([[new URL(PAGE).origin, Promise.resolve({ robots: document('User-agent: *'), sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [] })]])
+    const input = { auditId: 'a', pageUrl: PAGE, renderedHtml: '<link rel="canonical" href="https://example.com/target">',
+      original: document('<title>Page</title>'), cache, deadline: Date.now() + 10_000 }
+    const local = await collectSearchEvidence({ ...input, collectCanonicalTargets: false })
+    expect(local.canonicalTargets).toEqual([])
+    expect(safeFetchDocument).not.toHaveBeenCalled()
+    await collectSearchEvidence(input)
+    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+  })
+  it('sitemap collection reuses the committed robots response', async () => {
+    safeFetchDocument.mockImplementation(async (url: string) => ({ body: '<urlset/>', finalUrl: url, statusCode: 200, headers: {}, complete: true, redirects: [] }))
+    await collectSiteResources(new URL(PAGE).origin, Date.now() + 10_000, document('User-agent: *\nSitemap: https://example.com/custom.xml'))
+    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+    expect(safeFetchDocument.mock.calls[0][0]).toBe('https://example.com/custom.xml')
   })
   it('does not treat truncated XML as a missing or valid sitemap', () => {
     expect(parseSitemap(document('<urlset></urlset>', { complete: false }))).toMatchObject({ valid: false, reason: 'sitemap_unavailable' })

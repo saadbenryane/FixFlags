@@ -10,12 +10,13 @@ import { readScreenshotSnapshot, browserArtifactSchema, captureArtifactSchema, h
 import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import { checkArtifactSchema, commitFindings, flagSchema } from './results'
 import type { TaskContext, TaskHandler } from './registry'
-import { runSearchWorkflow } from '../search/workflow'
+import { runSearchWorkflow, priorSearchReceipt, recordSearchVerifiers, combineSearchReceipts } from '../search/workflow'
 import { runGoogleSearchForAudit } from '../search/google'
 import { searchReceiptSchema } from '../search/contracts'
 import { searchFindings } from '../search/registry'
-import { missingDocument } from '../search/collect'
+import { collectSearchEvidence, missingDocument } from '../search/collect'
 import { checkReceiptSchema } from '../checks/receipt'
+import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
 import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
@@ -109,8 +110,30 @@ export const evaluatorHandlers: TaskHandler[] = [
     },
   },
   { kind: 'search', replay: 'read_only', timeoutMs: 35_000,
-    validateResult: artifact => { searchArtifactSchema.parse(artifact.data) }, commit: commitFindings,
+    validateResult: artifact => { searchArtifactSchema.parse(artifact.data) },
+    async commit(context, artifact, tx) {
+      const { receipt } = searchArtifactSchema.parse(artifact.data)
+      const module = !context.input.module || context.input.module === 'summary' ? 'search' : context.input.module
+      if (context.input.module !== 'summary') await tx.auditVerifierExecution.upsert({
+        where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + module, scopeKey: 'page:' + receipt.pageUrl } },
+        create: { auditId: context.audit.id, targetKey: 'module:' + module, scopeKey: 'page:' + receipt.pageUrl,
+          pageUrl: receipt.pageUrl, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
+          evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module, pageUrl: receipt.pageUrl } }, update: {},
+      })
+      await recordSearchVerifiers(receipt, tx)
+      await commitFindings(context, artifact, tx)
+    },
     async evaluate(context) {
+      if (context.input.module === 'summary') {
+        const results = [...context.dependencies.values()].filter(task => task.workState === 'COMPLETED' && task.workResult)
+          .map(task => searchArtifactSchema.parse(readArtifact(task.workResult, 'search').data))
+        const receipt = combineSearchReceipts({ auditId: context.audit.id, pageUrl: context.input.pageUrl,
+          receipts: results.map(result => result.receipt), expected: context.task.workDependencies.length })
+        return serializeArtifact('search', { receipt, flags: searchFindings(results.flatMap(result => result.receipt.observations)) })
+      }
+      const evaluator = context.input.module?.replace(/^search-/, '')
+      if (evaluator && !SEARCH_CHECK_DEFINITIONS.some(definition => definition.id === 'search.' + evaluator))
+        throw new TaskFailure('SEARCH_EVALUATOR_NOT_REGISTERED', false)
       const response = httpEvidence(context), browser = browserEvidence(context), snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       const resourceTask = dependency(context, 'search-resources')
       const cache = new Map()
@@ -120,13 +143,30 @@ export const evaluatorHandlers: TaskHandler[] = [
         robots: missingDocument(new URL('/robots.txt', context.input.pageUrl).toString(), 'resource_collection_incomplete'),
         sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [],
       }))
-      const result = await runSearchWorkflow({ auditId: context.audit.id, pageUrl: context.input.pageUrl,
+      const input = { auditId: context.audit.id, pageUrl: context.input.pageUrl,
         original: response?.document, renderedHtml: snapshot?.desktopHtml ?? null,
         renderedCollectedAt: dependency(context, 'browser')?.workResult ? readArtifact(dependency(context, 'browser')!.workResult, 'browser').collectedAt : undefined,
         renderedComplete: Boolean(snapshot?.desktopHtml) && !snapshot?.collectionRestrictions?.length, headers: snapshot?.responseHeaders ?? undefined,
         finalUrl: snapshot?.desktopFinalUrl, status: snapshot?.desktopHttpStatus, deadline: context.deadline, cache,
-        privateCapture: Boolean(context.audit.scanAccessEncrypted),
-        evaluate: (evidence, previous) => evaluateSearchIsolated(evidence, previous, context.deadline) })
+        privateCapture: Boolean(context.audit.scanAccessEncrypted), collectCanonicalTargets: !evaluator || evaluator === 'canonical' }
+      if (!evaluator) {
+        const result = await runSearchWorkflow({ ...input,
+          evaluate: (evidence, previous) => evaluateSearchIsolated(evidence, previous, context.deadline) })
+        return serializeArtifact('search', searchArtifactSchema.parse({ receipt: result.receipt, flags: result.findings }))
+      }
+      const evidence = await collectSearchEvidence(input)
+      const previous = await priorSearchReceipt(context.audit.id, context.input.pageUrl)
+      let observations = await evaluateSearchIsolated(evidence, previous, context.deadline, [evaluator])
+      let complete = !observations.some(item => item.disposition === 'unknown') &&
+        (!['indexing', 'discovery'].includes(evaluator) || evidence.sitemapsComplete)
+      if (observations.length > 499) {
+        observations = observations.slice(0, 499)
+        observations.push({ ...observations[0], id: 'search-observation-coverage:' + evaluator, checkId: 'search-observation-coverage',
+          disposition: 'unknown', reason: 'observation_limit', attention: { policy: 'search', version: 1, kind: 'observation', reason: 'observation_limit' } })
+        complete = false
+      }
+      const result = { receipt: searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: context.audit.id,
+        pageUrl: context.input.pageUrl, collectedAt: evidence.collectedAt, complete, observations }), findings: searchFindings(observations) }
       return serializeArtifact('search', searchArtifactSchema.parse({ receipt: result.receipt, flags: result.findings }))
     },
   },

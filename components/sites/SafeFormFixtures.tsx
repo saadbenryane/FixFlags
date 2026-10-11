@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,23 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const submission = useRef(createSiteActionController()).current
+  const setupKeys = useRef(new Map<string, string>()).current
+  const pendingSetup = fixtures.some(fixture => fixture.setupRun && ['QUEUED', 'WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'].includes(fixture.setupRun.state))
+  useEffect(() => {
+    if (!pendingSetup) return
+    const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout>
+    async function poll() {
+      try {
+        const result = await executeSiteAction(`/api/sites/${siteId}/outcome-fixtures`, { cache: 'no-store', signal: controller.signal }, 'fixtures')
+        if (!controller.signal.aborted) setFixtures(result.fixtures)
+      } catch { if (!controller.signal.aborted) setMessage(C.refreshPending) }
+      if (!controller.signal.aborted) timer = setTimeout(() => void poll(), 3000)
+    }
+    timer = setTimeout(() => void poll(), 1500)
+    return () => { controller.abort(); clearTimeout(timer) }
+  }, [pendingSetup, siteId])
+
   const [authRequired, setAuthRequired] = useState(false)
 
   async function refresh() {
@@ -105,7 +122,10 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
         await executeSiteAction(url, { method: 'DELETE' }, 'acknowledgement')
         setFixtures(current => current.filter(item => item.id !== fixture.id))
       } else {
-        const body = await executeSiteAction(url, { method: 'POST' }, 'fixture')
+        if (actionName === 'dry-run' && !setupKeys.has(fixture.id)) setupKeys.set(fixture.id, crypto.randomUUID())
+        const body = await executeSiteAction(url, { method: 'POST',
+          ...(actionName === 'dry-run' ? { headers: { 'Idempotency-Key': setupKeys.get(fixture.id)! } } : {}) }, 'fixture')
+        if (actionName === 'dry-run') setupKeys.delete(fixture.id)
         setFixtures(current => current.map(item => item.id === body.fixture.id ? body.fixture : item))
       }
     }, refresh)
@@ -146,6 +166,7 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
       </ol>
       {fixtures.map((fixture) => {
         const dryRun = fixture.lastDryRunResult as { disposition?: string; reason?: string } | null
+        const setupPending = fixture.setupRun && ['QUEUED', 'WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'].includes(fixture.setupRun.state)
         const authorized = Boolean(fixture.authorizedAt && fixture.lastDryRunVersion === fixture.version)
         return (
           <article key={fixture.id} className="rounded-card border border-border/70 p-4">
@@ -153,13 +174,13 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
               <div>
                 <h3 className="font-medium">{fixture.name}</h3>
                 <p className="mt-1 break-all text-xs text-muted-foreground">{fixture.targetUrl}</p>
-                <p className="mt-2 text-sm">{authorized ? 'Authorized' : dryRun?.disposition === 'SUCCEEDED' ? 'Dry run passed. Authorization required.' : dryRun ? `Dry run ${dryRun.disposition?.toLowerCase()}: ${dryRun.reason ?? 'No reason recorded'}` : 'Not exercised yet'}</p>
+                <p className="mt-2 text-sm">{setupPending ? fixture.setupRun?.state === 'RETRY_WAIT' ? C.fixtures.recovering : C.fixtures.pending : authorized ? 'Authorized' : dryRun?.disposition === 'SUCCEEDED' ? 'Dry run passed. Authorization required.' : dryRun ? `Dry run ${dryRun.disposition?.toLowerCase()}: ${dryRun.reason ?? 'No reason recorded'}` : 'Not exercised yet'}</p>
               </div>
               <span className="text-xs text-muted-foreground">Version {fixture.version}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void action(fixture, 'dry-run')}>Dry run</Button>
-              {!authorized ? <Button size="sm" variant="brand" disabled={busy || dryRun?.disposition !== 'SUCCEEDED' || fixture.lastDryRunVersion !== fixture.version} onClick={() => void action(fixture, 'authorize')}>Authorize</Button> : <Button size="sm" variant="outline" disabled={busy} onClick={() => void action(fixture, 'revoke')}>Revoke</Button>}
+              <Button size="sm" variant="outline" disabled={busy || Boolean(setupPending)} onClick={() => void action(fixture, 'dry-run')}>Dry run</Button>
+              {!authorized ? <Button size="sm" variant="brand" disabled={busy || Boolean(setupPending) || dryRun?.disposition !== 'SUCCEEDED' || fixture.lastDryRunVersion !== fixture.version} onClick={() => void action(fixture, 'authorize')}>Authorize</Button> : <Button size="sm" variant="outline" disabled={busy} onClick={() => void action(fixture, 'revoke')}>Revoke</Button>}
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => edit(fixture)}>Replace configuration</Button>
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => void action(fixture, 'delete')}>Delete</Button>
             </div>

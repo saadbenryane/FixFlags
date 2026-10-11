@@ -52,8 +52,8 @@ export function parseSitemap(document: PublicDocument): { urls: string[]; childr
   return { urls: parsed.urlset ? urls : [], children: parsed.sitemapindex ? urls : [], valid: !invalid, reason: invalid ? 'sitemap_invalid_location' : 'sitemap_parsed' }
 }
 
-export async function collectSiteResources(origin: string, deadline: number): Promise<SearchSiteResources> {
-  const robots = await collectDocument(new URL('/robots.txt', origin).toString(), deadline, 512_000)
+export async function collectSiteResources(origin: string, deadline: number, collectedRobots?: PublicDocument): Promise<SearchSiteResources> {
+  const robots = collectedRobots ?? await collectDocument(new URL('/robots.txt', origin).toString(), deadline, 512_000)
   const isText = robots.complete && robots.status === 200 && !/<(?:!doctype|html)\b/i.test(robots.body ?? '')
   const declaredSitemaps = isText ? [...new Set((robots.body ?? '').split(/\r?\n/).flatMap(line => {
     const match = line.replace(/#.*$/, '').match(/^\s*sitemap\s*:\s*(\S+)\s*$/i)
@@ -82,7 +82,7 @@ export async function collectSearchEvidence(input: {
   auditId: string; pageUrl: string; original?: PublicDocument;
   renderedHtml: string | null; renderedComplete?: boolean; renderedCollectedAt?: string;
   headers?: Record<string, string> | null; finalUrl?: string; status?: number | null;
-  deadline: number; cache: SearchResourceCache; privateCapture?: boolean;
+  deadline: number; cache: SearchResourceCache; privateCapture?: boolean; collectCanonicalTargets?: boolean;
 }): Promise<SearchPageEvidence> {
   const collectedAt = new Date().toISOString()
   const origin = new URL(input.pageUrl).origin
@@ -100,7 +100,7 @@ export async function collectSearchEvidence(input: {
     : collectSiteResources(origin, input.deadline))
   const site = await input.cache.get(origin)!
   const canonicalUrls = new Set<string>()
-  for (const document of [original, rendered]) {
+  for (const document of input.collectCanonicalTargets === false ? [] : [original, rendered]) {
     if (!document.complete || !document.body) continue
     const $ = cheerio.load(document.body)
     $('link[rel]').each((_, node) => {

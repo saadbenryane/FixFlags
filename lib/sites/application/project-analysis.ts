@@ -11,7 +11,7 @@ export async function projectSiteAnalysis(auditId: string): Promise<void> {
     select: { projectId: true, userId: true, url: true, executionSpec: true },
   })
   const scope = readExecutionSpec(audit.executionSpec)?.scope
-  if (scope === 'OUTCOMES' || scope === 'DIAGNOSTIC') return
+  if (scope && scope !== 'SITE') return
   const provisional = audit.projectId ? null : await prisma.provisionalSite.findFirst({
     where: { primaryAuditId: auditId },
     select: { id: true },
