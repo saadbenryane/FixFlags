@@ -1,0 +1,10 @@
+.header { padding-block: clamp(36px, 4.5vw, 60px) 48px; text-align: center; }
+.eyebrow { margin-bottom: 18px; color: hsl(var(--foreground)); }
+.title { max-width: 800px; margin-inline: auto; font-family: var(--font-display), sans-serif; font-size: clamp(44px, 6vw, 76px); font-weight: 650; line-height: 1.02; letter-spacing: -.045em; text-wrap: balance; overflow-wrap: anywhere; }
+.description { max-width: 650px; margin: 24px auto 0; color: hsl(var(--muted-foreground)); font-size: 17px; line-height: 1.65; text-wrap: pretty; }
+.actions { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 28px; }
+.actions > div { justify-content: center; margin-top: 0; }
+@media (max-width: 600px) {
+  .header { padding-block: 32px 42px; }
+  .description { font-size: 15px; }
+}

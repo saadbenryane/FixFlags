@@ -8,6 +8,8 @@ const sectionVariants = cva("", {
       default: 'py-[var(--space-section-default)]',
       tight: 'py-8 sm:py-11 lg:py-14',
       compact: 'py-6 sm:py-8',
+      /** Overview headers own their top spacing. */
+      overview: 'pb-8 sm:pb-11 lg:pb-14',
       /** Homepage hero fold. Keep this authoritative; pages do not add padding overrides. */
       hero: 'pt-[var(--space-hero-start)] pb-[var(--space-hero-end)]',
       /** Report-style marketing pages (samples) - minimal top chrome */

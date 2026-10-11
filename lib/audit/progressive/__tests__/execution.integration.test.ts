@@ -19,6 +19,7 @@ import * as pageSessions from '@/lib/audit/browser/page-session'
 import { applyJourneyRouteGuards } from '@/lib/audit/browser/journey-safety'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
+import { classifyTrackingEndpoint } from '@/lib/audit/tracking/endpoints'
 import { projectCheckResults } from '@/lib/sites/check-results'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
@@ -33,6 +34,7 @@ run('migrated progressive execution', () => {
   const requests: string[] = []
   let focusRepaired = false
   let restorationRepaired = false
+  let trackingRepaired = false
   const server = createServer(async (req, res) => {
     requests.push(req.url!)
     if (req.url === '/sitemap.xml' || req.url === '/canonical') await resources
@@ -51,6 +53,14 @@ run('migrated progressive execution', () => {
       res.end(JSON.stringify({ ok: true, operationId, settled: false }))
     } else if (req.url === '/canonical') {
       res.writeHead(404); res.end('Missing canonical destination')
+    } else if (req.url?.startsWith('/_vercel/insights/script.js')) {
+      res.setHeader('content-type', 'application/javascript')
+      res.writeHead(trackingRepaired ? 200 : 503)
+      res.end(trackingRepaired ? 'navigator.sendBeacon("/_vercel/insights/view", "PRIVATE_TRACKING_PAYLOAD")' : 'Library unavailable')
+    } else if (req.url === '/tracking') {
+      res.setHeader('content-type', 'text/html')
+      res.end('<!doctype html><html lang="en"><head><title>Tracking fixture</title><script src="/_vercel/insights/script.js"></script></head>' +
+        '<body><main><h1>Tracking fixture</h1><a href="#details" onclick="const s=document.createElement(\'script\');s.src=\'/_vercel/insights/script.js?phase=action\';document.head.append(s)">Get started</a><section id="details">Useful details</section></main></body></html>')
     } else if (req.url === '/keyboard') {
       res.setHeader('content-type', 'text/html')
       res.end('<!doctype html><html lang="en"><head><title>Keyboard fixture</title><style>#first:focus-visible,#second:focus-visible {' +
@@ -68,6 +78,24 @@ run('migrated progressive execution', () => {
     }
   })
   let worker: ReturnType<typeof startWorker> | undefined
+
+  function fixtureTransport() {
+    const originalSession = pageSessions.createAuditPage
+    return vi.spyOn(pageSessions, 'createAuditPage').mockImplementation((browser, url, options) => originalSession(browser, url, {
+      ...options, configurePage: async page => {
+        await options.configurePage?.(page)
+        // Serve controlled HTML through real Chromium. Retain the production
+        // mutation guard rather than granting the fixture implicit submission consent.
+        await page.route(origin + '/**', async route => {
+          if (classifyTrackingEndpoint(route.request().url(), route.request().resourceType(), origin)?.role === 'event') return route.fallback()
+          await applyJourneyRouteGuards(route, async () => {
+          const response = await fetch(route.request().url())
+          await route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers.entries()), body: await response.text() })
+          })
+        })
+      },
+    }))
+  }
 
   beforeAll(async () => {
     const url = new URL(process.env.DATABASE_URL!)
@@ -206,18 +234,7 @@ run('migrated progressive execution', () => {
   })
 
   it('collects a real keyboard failure and verifies the repaired controls through targeted application admission', async () => {
-    const originalSession = pageSessions.createAuditPage
-    const transport = vi.spyOn(pageSessions, 'createAuditPage').mockImplementation((browser, url, options) => originalSession(browser, url, {
-      ...options, configurePage: async page => {
-        await options.configurePage?.(page)
-        // Serve controlled HTML through real Chromium. Retain the production
-        // mutation guard rather than granting the fixture implicit submission consent.
-        await page.route(origin + '/**', route => applyJourneyRouteGuards(route, async () => {
-          const response = await fetch(route.request().url())
-          await route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers.entries()), body: await response.text() })
-        }))
-      },
-    }))
+    const transport = fixtureTransport()
     try {
       await getAuditTaskQueue('browser').pause()
       await getAuditTaskQueue('provider').pause()
@@ -278,4 +295,51 @@ run('migrated progressive execution', () => {
       expect(await prisma.improvementAttempt.findUnique({ where: { id: popupFix.attemptId } })).toMatchObject({ outcome: 'IMPROVED', comparable: true })
     } finally { transport.mockRestore() }
   })
+  it('observes Tracking library failures in loading and the public walk, then verifies both repaired scopes without delivering events', async () => {
+    const transport = fixtureTransport()
+    try {
+      await getAuditTaskQueue('browser').pause(); await getAuditTaskQueue('provider').pause()
+      const admitted = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', url: origin + '/tracking', idempotencyKey: 'tracking-source' })
+      const beforeId = admitted.auditId!
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'browser' } })).not.toBeNull()
+      }, { timeout: 10_000, interval: 100 })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: beforeId,
+        workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(beforeId))
+      await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'finalize' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 30_000, interval: 100 })
+      const walk = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: beforeId, workKind: 'flow' } })
+      expect(walk).toMatchObject({ workState: 'COMPLETED' })
+      expect((readArtifact(walk.workResult, 'flow').data as { tracking: { requests: unknown[] } }).tracking.requests).toMatchObject([{ role: 'library', status: 503 }])
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: beforeId, checkId: 'tracking-library-http-error' } })
+      const targets = flag.evidenceTargets as Array<{ context: string }>
+      expect(targets.some(target => target.context.startsWith('tracking:page_load:'))).toBe(true)
+      expect(targets.some(target => target.context.startsWith('tracking:public_action:'))).toBe(true)
+      const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'tracking-fix', changeSummary: 'Restore the requested tracking library endpoint' })
+      trackingRepaired = true
+      const verified = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', idempotencyKey: 'tracking-verification',
+        verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: flag.pageUrl!, checkId: flag.checkId!, attemptId: fix.attemptId, parentAuditId: beforeId } })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: verified.auditId!, workKind: 'finalize' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 30_000, interval: 100 })
+      const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: verified.auditId!, workKind: { not: null } } })
+      expect(tasks.map(task => task.workKind).sort()).toEqual(['browser', 'check', 'finalize', 'flow'])
+      const proof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: verified.auditId!, targetKey: 'check:tracking-library-http-error' } })
+      expect(checkVerifierSchema.parse(proof.detail)).toMatchObject({ verdict: 'passed', source: 'browser-network' })
+      expect((proof.evidenceReference as { supportingTasks: unknown[] }).supportingTasks).toHaveLength(2)
+      expect(await prisma.improvementAttempt.findUnique({ where: { id: fix.attemptId } })).toMatchObject({ outcome: 'IMPROVED', comparable: true })
+      const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: verified.auditId!, targetKey: 'module:measurement' } })
+      const results = projectCheckResults(verified.auditId!, receipts)
+      expect(results.some(result => result.assertionKey === 'tracking-initiation' && result.status === 'observed')).toBe(true)
+      expect(results.filter(result => result.assertionKey === 'tracking-http-response' || result.assertionKey === 'tracking-provider-recording').every(result => result.status === 'unknown')).toBe(true)
+      expect(JSON.stringify(receipts)).not.toContain('PRIVATE_TRACKING_PAYLOAD')
+      expect(requests.some(path => path.startsWith('/_vercel/insights/view'))).toBe(false)
+      const site = await loadSiteHome(projectId)
+      expect(site!.cards.find(card => card.id === 'tracking')?.state).not.toBe('healthy')
+    } finally { transport.mockRestore() }
+  })
+
 })

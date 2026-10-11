@@ -8,15 +8,8 @@ import { registeredCheck } from '@/lib/audit/check-registry'
 
 type DbClient = typeof prisma | Prisma.TransactionClient
 
-function normalizeUrl(value: string): string {
-  try {
-    const url = new URL(value)
-    url.hash = ''
-    return url.toString().replace(/\/$/, '')
-  } catch {
-    return value.replace(/\/$/, '')
-  }
-}
+import { normalizeVerifierUrl as normalizeUrl, verifierScopeKey } from './verifier-scope'
+export { verifierScopeKey } from './verifier-scope'
 
 export function verifierTargetKey(input: {
   source: string
@@ -29,10 +22,6 @@ export function verifierTargetKey(input: {
     return `ai:${input.fingerprint.trim()}`
   }
   return null
-}
-
-export function verifierScopeKey(pageUrl: string | null): string {
-  return pageUrl ? `page:${normalizeUrl(pageUrl)}` : 'product'
 }
 
 export async function recordVerifierExecution(input: {

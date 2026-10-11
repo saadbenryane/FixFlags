@@ -12,7 +12,7 @@ const C = PUBLIC_SITE_COPY.securityPage
 export default function SecurityPage() {
   return <>
     <PublicPageIntro page="/security" label={C.label} title={C.title} body={C.body} />
-    <Section spacing="tight"><Container variant="marketing">
+    <Section spacing="overview"><Container variant="marketing">
       <div className="grid gap-x-14 gap-y-12 md:grid-cols-2">
         {C.sections.map(section => <section key={section.title} className="max-w-xl">
           <h2 className="text-balance font-display text-2xl font-semibold tracking-heading">{section.title}</h2>

@@ -48,7 +48,7 @@ export function SiteCheckResults({ results, siteId, area, nextCursor = null }: {
           <details className="mt-2"><summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{C.verificationLimits}</summary>
             {result.expected ? <p className="mb-2">{A.expected}: {result.expected}</p> : null}
             <p className="text-muted-foreground">{result.limitation}</p>
-            <dl className="mt-2 space-y-1 break-all text-xs text-muted-foreground"><div><dt>Source</dt><dd>{result.source}</dd></div><div><dt>Recorded execution</dt><dd>{result.evidenceReference.executionId}</dd></div><div><dt>Analysis</dt><dd>{result.auditId}</dd></div></dl>
+            <dl className="mt-2 space-y-1 break-all text-xs text-muted-foreground"><div><dt>Source</dt><dd>{result.source === 'browser-network' ? A.execution.tracking.source : result.source}</dd></div><div><dt>Recorded execution</dt><dd>{result.evidenceReference.executionId}</dd></div><div><dt>Analysis</dt><dd>{result.auditId}</dd></div></dl>
           </details>
         </li>)}</ul>
       </div>

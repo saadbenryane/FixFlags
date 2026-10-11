@@ -1,9 +1,8 @@
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
+import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Body } from '@/components/ui/typography'
 import { TextLink } from '@/components/ui/text-link'
 import { FAQ, FAQ_PAGE, FAQ_SECTION, HELP_CENTER } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
@@ -21,17 +20,12 @@ export default function FaqPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <MarketingPageViewTracker page="/faq" />
-      <Section spacing="marketing">
+      <Section spacing="overview">
         <Container>
-          <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
-            <div className="text-center">
-              <LandingSectionHeader label={FAQ_SECTION.label} headline={FAQ_PAGE.title} as="h1" />
-              <Body className="mt-4 text-muted-foreground text-pretty">{FAQ_PAGE.subhead}</Body>
-              <Body className="mt-2 text-sm text-muted-foreground">
-                Prefer step-by-step guides?{' '}
-                <TextLink variant="brand" href="/help">{HELP_CENTER.label}</TextLink>
-              </Body>
-            </div>
+          <div className="mx-auto max-w-3xl">
+            <MarketingPageHeader eyebrow={FAQ_SECTION.label} title={FAQ_PAGE.title} description={FAQ_PAGE.subhead}>
+              <p className="text-sm text-muted-foreground">{FAQ_PAGE.guidesLead}{' '}<TextLink href="/help">{HELP_CENTER.label}</TextLink></p>
+            </MarketingPageHeader>
 
             <FaqSection
               items={FAQ}

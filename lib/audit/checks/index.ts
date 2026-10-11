@@ -17,7 +17,7 @@ export type { AxeViolation } from './accessibility'
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]
   failedModules: string[]
-  executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; assertions?: CheckAssertion[] }>
+  executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; complete?: boolean; limitation?: string; assertions?: CheckAssertion[] }>
 }
 
 /** Legacy adapter and progressive tasks invoke the same validated registrations. */
@@ -26,6 +26,7 @@ export async function runAllChecks(
   consoleErrors: Array<{ type: string; text: string }>, onAreaComplete?: (index: number) => void,
   captureMetrics?: CaptureMetrics | null, responseHeaders?: Record<string, string> | null,
   axeViolations?: AxeViolation[], searchHandled = false, selectedModules?: readonly string[],
+  runtimeEvidence?: { tracking?: import('../tracking/contracts').TrackingEvidence },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
@@ -33,13 +34,13 @@ export async function runAllChecks(
   const results = await Promise.all(selected.map(async (check, index) => {
     const assertions: CheckAssertion[] = []
     const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
-      metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => assertions.push(assertion) }
+      scope: {}, tracking: runtimeEvidence?.tracking, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => assertions.push(assertion) }
     try {
       const flags = await check.evaluate(input)
-      if (check.id !== 'metadata') assertions.push(...recordCheckObservations(check.id, {
+      if (check.id !== 'metadata' && check.id !== 'measurement') assertions.push(...recordCheckObservations(check.id, {
         url, metadata, desktop, mobile, headers: responseHeaders, axe: axeViolations,
       }))
-      return { flags, execution: { module: check.id, passed: flags.length === 0,
+      return { flags, execution: { module: check.id, passed: flags.length === 0 && input.scope.complete !== false, ...input.scope,
         applicable: pageCheckApplicable(check.definition, input), assertions } }
     } catch (error) {
       logger.error(`Check module "${check.id}" failed`, error)

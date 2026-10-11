@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { trackingPageKey } from '@/lib/audit/tracking/identity'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { validateBindingForOutcome } from './binding-config'
 import { canonicalIntent, executionSpecSchema, type ExecutionSpec } from '../domain/execution-spec'
@@ -26,14 +27,28 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     const fixture = await prisma.outcomeFixture.findFirst({ where: { id: config.fixtureId, projectId: input.projectId }, select: { id: true, version: true } })
     if (fixture) Object.assign(binding, { fixture: { id: fixture.id, version: fixture.version } })
   }
+  let verificationScopes: ExecutionSpec['verificationScopes']
+  if (input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId.split('::page:')[0].startsWith('tracking-')) {
+    const flags = await prisma.flag.findMany({ where: { auditId: input.verificationTarget.parentAuditId,
+      audit: { projectId: input.projectId }, pageUrl: input.verificationTarget.pageUrl,
+      checkId: input.verificationTarget.checkId }, take: 100, select: { evidenceTargets: true, affectedPaths: true } })
+    const contexts = flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
+      const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
+      return typeof context === 'string' && context.startsWith('tracking:') && context.length <= 4200 ? [context] : []
+    }) : [])
+    const pages = [...new Map([input.verificationTarget.pageUrl, ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])].map(page => [trackingPageKey(page), page])).values()]
+    verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: (['page_load', 'public_action'] as const).filter(phase =>
+      contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
+
+  }
   return executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', targetUrl: input.targetUrl, environment: input.environment,
     scope: input.scope, checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).map(([id, definition]) => [id, definition.version])),
-    outcomes, verificationTarget: input.verificationTarget ?? null })
+    outcomes, verificationTarget: input.verificationTarget ?? null, ...(verificationScopes ? { verificationScopes } : {}) })
 }
 
 export function executionIntentHash(spec: ExecutionSpec) {
-  // Depth is selected by the existing access policy at admission, not by this
+  // Depth and verification scopes are derived at admission, not by this
   // command's caller. Both ledgers retain that snapshot; replay identity remains
   // the requested target, checks, bindings, revisions and verification intent.
-  return createHash('sha256').update(canonicalIntent({ ...spec, reviewDepth: undefined })).digest('hex')
+  return createHash('sha256').update(canonicalIntent({ ...spec, reviewDepth: undefined, verificationScopes: undefined })).digest('hex')
 }

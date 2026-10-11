@@ -8,6 +8,7 @@ export const FAQ_SECTION = {
 
 export const FAQ_PAGE = {
   title: 'Frequently asked questions',
+  guidesLead: 'Prefer step-by-step guides?',
   subhead:
     'How FixFlags checks a live website, what a Flag means, and what is free.',
 } as const
@@ -29,7 +30,7 @@ export function faqEntryAnchor(question: string): string {
 export const FAQ: readonly FaqEntry[] = [
   {
     question: 'How do I start?',
-    answer: 'Enter a public website URL. You can start an analysis before creating an account. Save the Site when you are ready to verify fixes and keep watching.',
+    answer: 'Enter a public website URL for your first analysis. Save your Site and turn on monitoring to keep checking what matters.',
     learnMore: { href: '/docs/getting-started', label: 'Get started' },
   },
   {
@@ -49,7 +50,7 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'How do I verify a fix?',
-    answer: 'Publish the change, then select Verify fix on the same Flag. FixFlags checks the relevant page and action again. Copying a prompt does not close a Flag, and missing evidence does not prove recovery.',
+    answer: 'Publish the change, then select Check now on the same Flag. This returns to Monitor: FixFlags checks the same live behavior again. The Flag closes only when fresh evidence confirms recovery. Your saved monitoring schedule continues independently.',
     learnMore: { href: '/docs/fix-with-ai', label: 'Fix and verify' },
   },
   {

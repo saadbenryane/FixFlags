@@ -5,7 +5,8 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Heading, Lead, Muted } from '@/components/ui/typography'
+import { Heading, Muted } from '@/components/ui/typography'
+import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { getIndexableIssueCheckIds, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { issueIndexStructuredData } from '@/lib/marketing/structured-data'
@@ -57,17 +58,10 @@ export default async function IssuesIndexPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(issueIndexJsonLd) }}
       />
-      <Section spacing="marketing">
+      <Section spacing="overview">
       <Container variant="default">
-        <main className="space-y-8 sm:space-y-10">
-          <div className="text-center space-y-3">
-            <Heading as="h1" className="text-3xl sm:text-4xl font-bold">
-              {FLAG_LIBRARY.title}
-            </Heading>
-            <Lead className="max-w-xl mx-auto text-muted-foreground">
-              {FLAG_LIBRARY.body}
-            </Lead>
-          </div>
+        <main>
+          <MarketingPageHeader title={FLAG_LIBRARY.title} description={FLAG_LIBRARY.body} />
 
           {issuesWithMeta.length === 0 ? (
             <div className="space-y-4 text-center py-12">

@@ -11,6 +11,10 @@ type CoverageArea = {
 
 /** Customer-facing coverage, grouped from the public check modules and journey probes. */
 const AREAS = [
+  { id: 'uptime', name: CARD_CATALOG.uptime.name, benefit: 'Know when your website can’t be reached.', groups: [
+    { title: 'Availability', items: [item('uptime.response', 'Watched-page response'), item('uptime.errors', 'Unavailable pages and response errors'), item('uptime.provenance', 'Checked URL, time, and failure evidence')] },
+    { title: 'Incidents and repeat checks', items: [item('uptime.console', 'Browser console errors'), item('uptime.schedule', 'Scheduled availability checks'), item('uptime.incidents', 'Incidents in the last 24 hours'), item('uptime.history', 'Check history'), item('uptime.recovery', 'Recovery confirmation')] },
+  ] },
   { id: 'site', name: CARD_CATALOG.site.name, benefit: 'Find the pages your customers can’t open.', groups: [
     { title: 'Pages and navigation', items: [item('pages.discovery', 'Public page discovery'), item('pages.internal-links', 'Internal links'), item('pages.responses', 'Page availability and response errors'), item('pages.pricing-contact', 'Pricing and contact-page navigation'), item('pages.section-links', 'Broken page-section links')] },
     { title: 'Destinations', items: [item('pages.action-destinations', 'Main action destinations'), item('pages.blank-dead-end', 'Blank pages and dead ends'), item('pages.loading', 'Stuck loading'), item('pages.destination-content', 'Destination headlines and next actions'), item('pages.promise-consistency', 'Consistency between the original promise and destination')] },
@@ -41,10 +45,6 @@ const AREAS = [
   { id: 'accessibility', name: CARD_CATALOG.accessibility.name, benefit: 'Catch barriers to using your website.', groups: [
     { title: 'Controls and keyboard access', items: [item('accessibility.names', 'Accessible names for buttons, links, and controls'), item('accessibility.labels', 'Form labels and embedded-frame titles'), item('accessibility.traps', 'Keyboard traps'), item('accessibility.focus', 'Visible focus indicators'), item('accessibility.tab-order', 'Tab order'), item('accessibility.skip-links', 'Skip links'), item('accessibility.targets', 'Mobile tap-target sizes')] },
     { title: 'Content and structure', items: [item('accessibility.alt', 'Image alternative text'), item('accessibility.contrast', 'Color contrast'), item('accessibility.language', 'Page language'), item('accessibility.structure', 'Headings and list structure'), item('accessibility.aria', 'ARIA parent and child relationships'), item('accessibility.identifiers', 'Duplicate control and ARIA identifiers'), item('accessibility.landmarks', 'Page landmarks and main-content region'), item('accessibility.viewport', 'Mobile viewport configuration')] },
-  ] },
-  { id: 'uptime', name: CARD_CATALOG.uptime.name, benefit: 'Know when your website can’t be reached.', groups: [
-    { title: 'Availability', items: [item('uptime.response', 'Watched-page response'), item('uptime.errors', 'Unavailable pages and response errors'), item('uptime.provenance', 'Checked URL, time, and failure evidence')] },
-    { title: 'Incidents and repeat checks', items: [item('uptime.console', 'Browser console errors'), item('uptime.schedule', 'Scheduled availability checks'), item('uptime.incidents', 'Incidents in the last 24 hours'), item('uptime.history', 'Check history'), item('uptime.recovery', 'Recovery confirmation')] },
   ] },
 ] as const satisfies readonly CoverageArea[]
 

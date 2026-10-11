@@ -1,11 +1,12 @@
 import * as cheerio from 'cheerio'
-import { isDeadHref, isNonPageActionHref, resolveSameOrigin, scoreCtaLink } from './link-scoring'
+import { classifyCtaHref, isNonPageActionHref, resolveSameOrigin, scoreCtaLink } from './link-scoring'
 
 export interface RawCtaElement {
   idx: number
   tag: string
   text: string
   href: string | null
+  hashTargetExists?: boolean
 }
 
 export interface ScoredCtaCandidate {
@@ -30,7 +31,7 @@ export function scoreCtaCandidates(
     const href = item.href ?? ''
     // mailto:/tel:/sms: links are intentional but never navigate the page, so
     // the flow scan must not select them as a page-navigation CTA candidate.
-    if ((isDeadHref(href) || isNonPageActionHref(href)) && item.tag !== 'button') continue
+    if ((classifyCtaHref(href, { hashTargetExists: item.hashTargetExists }).isPlaceholder || isNonPageActionHref(href)) && item.tag !== 'button') continue
 
     let score = scoreCtaLink(href, item.text)
     if (score === 0 && item.tag === 'button') {
@@ -46,7 +47,7 @@ export function scoreCtaCandidates(
     candidates.push({
       idx: item.idx,
       text: item.text,
-      href: resolved ?? href ?? null,
+      href: href.startsWith('#') ? href : resolved ?? href ?? null,
       score: href && href.startsWith('http') && !resolved ? score - 10 : score,
     })
   }
@@ -80,7 +81,15 @@ export function extractCtaElementsFromHtml(html: string): RawCtaElement[] {
       $(el).attr('aria-label')?.trim() ||
       $(el).attr('title')?.trim() ||
       ''
-    elements.push({ idx: idx++, tag, text, href })
+    let hashTargetExists: boolean | undefined
+    if (href?.startsWith('#')) {
+      hashTargetExists = false
+      try {
+        const id = decodeURIComponent(href.slice(1))
+        hashTargetExists = Boolean(id && $('[id],a[name]').toArray().some(node => $(node).attr('id') === id || node.tagName === 'a' && $(node).attr('name') === id))
+      } catch { /* Invalid fragments cannot establish a destination. */ }
+    }
+    elements.push({ idx: idx++, tag, text, href, ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
   })
 
   return elements

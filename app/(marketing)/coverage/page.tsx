@@ -15,7 +15,7 @@ const C = PUBLIC_SITE_COPY.coveragePage
 export default function CoveragePage() {
   return <>
     <PublicPageIntro page="/coverage" label={C.label} title={C.title} body={C.body}><PublicPageActions /></PublicPageIntro>
-    <Section spacing="tight"><Container variant="marketing">
+    <Section spacing="overview"><Container variant="marketing">
       <nav aria-label={C.title} className="mb-10 flex flex-wrap gap-x-6 gap-y-2">
         {HOMEPAGE_CHECK_COVERAGE.areas.map(area => <Link key={area.id} href={`#${area.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-link underline underline-offset-4">{area.name}</Link>)}
       </nav>

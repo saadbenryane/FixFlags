@@ -15,7 +15,8 @@ import { runContentChecks } from './content'
 import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
-import { runMeasurementChecks } from './measurement'
+import { runTrackingChecks } from './tracking'
+import type { TrackingEvidence } from '../tracking/contracts'
 import { runSecurityBasicsChecks } from './security'
 import { runSecurityHeaderChecks } from './security-headers'
 import { runVisualPolishChecks } from './visual-polish'
@@ -33,7 +34,8 @@ export type PageCheckContext = {
   url: string; metadata: PageMetadata; desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
   consoleErrors: Array<{ type: string; text: string }>; metrics?: CaptureMetrics | null;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
-  keyboard?: KeyboardEvidence;
+  keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
+  scope: { complete?: boolean; limitation?: string };
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
 type Evaluator = { id: string; evaluate(input: PageCheckContext): DeterministicFlag[] | Promise<DeterministicFlag[]> }
@@ -59,7 +61,8 @@ export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'trust', evaluate: c => runTrustChecks(c.url, c.metadata, c.consoleErrors) },
   { id: 'content', evaluate: c => runContentChecks(c.metadata, c.purpose) },
   { id: 'slop', evaluate: c => runSlopChecks(c.metadata) },
-  { id: 'measurement', evaluate: c => runMeasurementChecks(c.metadata) },
+  { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
+    checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
   { id: 'auth-checkout', evaluate: c => runAuthCheckoutChecks(c.url, c.metadata) },
   { id: 'security', evaluate: c => runSecurityBasicsChecks(c.url, c.metadata) },
   { id: 'security-headers', evaluate: c => runSecurityHeaderChecks(c.url, c.headers ?? null) },

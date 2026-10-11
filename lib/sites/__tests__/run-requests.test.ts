@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   runCount: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
-  flagFindFirst: vi.fn(),
+  flagFindFirst: vi.fn(), flagFindMany: vi.fn(),
   improvementFindFirst: vi.fn(),
   assessmentUpsert: vi.fn(),
   executionFindMany: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock('@/lib/db', () => ({
       count: mocks.runCount,
     },
     audit: { findFirst: mocks.auditFindFirst, findUnique: mocks.auditFindUnique },
-    flag: { findFirst: mocks.flagFindFirst },
+    flag: { findFirst: mocks.flagFindFirst, findMany: mocks.flagFindMany },
     improvement: { findFirst: mocks.improvementFindFirst },
     outcomeAssessment: { upsert: mocks.assessmentUpsert },
     outcomeBindingExecution: { findMany: mocks.executionFindMany },
@@ -50,6 +50,8 @@ vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
 }))
 
+import { buildExecutionSpec, executionIntentHash } from '@/lib/sites/application/execution-spec'
+import { trackingPageKey } from '@/lib/audit/tracking/identity'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun, retryFailedExecution } from '@/lib/sites/application/run-requests'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
@@ -869,5 +871,21 @@ describe('RunRequest tenant boundary and idempotency', () => {
         OR: [{ leaseUntil: null }, { leaseUntil: { lte: expect.any(Date) } }],
       })
     })
+  })
+})
+
+
+describe('Tracking verification admission', () => {
+  it('derives only tenant-owned recorded page and phase scopes and keeps replay identity stable', async () => {
+    const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'
+    mocks.flagFindMany.mockResolvedValue([{ affectedPaths: [pageUrl, other], evidenceTargets: [
+      { context: 'tracking:page_load:library:page:' + trackingPageKey(pageUrl) },
+      { context: 'tracking:public_action:library:page:' + trackingPageKey(other) },
+    ] }])
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'DIAGNOSTIC', outcomes: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'tracking-library-http-error', pageUrl, parentAuditId: 'before', attemptId: 'attempt' } })
+    expect(mocks.flagFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ auditId: 'before', audit: { projectId: 'project-1' }, pageUrl }) }))
+    expect(spec.verificationScopes).toEqual([{ pageUrl, phases: ['page_load'] }, { pageUrl: other, phases: ['public_action'] }])
+    expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, verificationScopes: [{ pageUrl, phases: ['page_load'] }] }))
   })
 })

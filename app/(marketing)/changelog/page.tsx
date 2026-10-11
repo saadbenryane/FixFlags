@@ -1,6 +1,7 @@
+import Link from 'next/link'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
+import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { CHANGELOG_ENTRIES, CHANGELOG_PAGE } from '@/lib/marketing/copy'
 import { blogDate } from '@/lib/marketing/copy/blog'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
@@ -10,19 +11,12 @@ export const metadata = buildPageMetadata('changelog', '/changelog')
 
 export default function ChangelogPage() {
   return (
-    <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]">
+    <Section spacing="overview" className="scroll-mt-[var(--header-offset)]">
       <MarketingPageViewTracker page="/changelog" />
-      <Container className="mx-auto max-w-3xl space-y-8 sm:space-y-10 lg:space-y-12">
-        <div className="space-y-4">
-          <LandingSectionHeader
-          label={CHANGELOG_PAGE.label}
-          headline={CHANGELOG_PAGE.headline}
-          align="left"
-          as="h1"
-          />
-          <p className="text-base leading-relaxed text-muted-foreground">{CHANGELOG_PAGE.body}</p>
+      <Container className="mx-auto max-w-3xl">
+        <MarketingPageHeader eyebrow={CHANGELOG_PAGE.label} title={CHANGELOG_PAGE.headline} description={CHANGELOG_PAGE.body}>
           <Link href="/docs" className="inline-flex min-h-11 items-center text-sm font-medium text-link hover:underline">{CHANGELOG_PAGE.docsCta}</Link>
-        </div>
+        </MarketingPageHeader>
 
         <ol className="space-y-8">
           {CHANGELOG_ENTRIES.map((entry) => (
@@ -48,4 +42,3 @@ export default function ChangelogPage() {
     </Section>
   )
 }
-import Link from 'next/link'

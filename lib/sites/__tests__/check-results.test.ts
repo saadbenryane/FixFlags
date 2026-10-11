@@ -50,4 +50,14 @@ describe('customer check results', () => {
     expect(new Set(results.map(result => result.id)).size).toBe(results.length)
   })
 
+  it('shows initiated Tracking requests as observations while delivery and provider recording remain unknown', () => {
+    const results = projectCheckResults('audit-1', [{ ...receipt, targetKey: 'module:measurement', detail: {
+      kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: receipt.pageUrl, applicable: true, passed: true,
+      assertions: [{ key: 'tracking-initiation', name: 'Attempt', expected: 'Request initiated', observed: 'Suppressed by FixFlags', passed: true, complete: true, disposition: 'observed' },
+        { key: 'tracking-http-response', name: 'Destination', expected: 'Response', observed: 'Suppressed', passed: false, complete: false }],
+    } }])
+    expect(results.map(result => result.status)).toEqual(['observed', 'unknown', 'completed'])
+    expect(results[0].assertionKey).toBe('tracking-initiation')
+  })
+
 })

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+export const MAX_TRACKING_REQUESTS = 64
 export const trackingProviderSchema = z.enum(['google-analytics', 'google-tag-manager', 'posthog', 'plausible', 'segment', 'vercel', 'cloudflare'])
 export type TrackingProvider = z.infer<typeof trackingProviderSchema>
 export const TRACKING_PROVIDERS: Record<TrackingProvider, string> = {
@@ -15,7 +16,7 @@ export const trackingRequestSchema = z.object({
 }).strict()
 export type TrackingRequest = z.infer<typeof trackingRequestSchema>
 export const trackingEvidenceSchema = z.object({
-  version: z.literal(1), phase: z.enum(['page_load', 'public_action']), requests: z.array(trackingRequestSchema).max(100),
+  version: z.literal(1), phase: z.enum(['page_load', 'public_action']), requests: z.array(trackingRequestSchema).max(MAX_TRACKING_REQUESTS),
   truncated: z.boolean(), durationMs: z.number().int().nonnegative(),
   consentInteraction: z.enum(['none', 'existing_flow']),
 }).strict()

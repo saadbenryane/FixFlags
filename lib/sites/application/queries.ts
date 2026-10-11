@@ -4,6 +4,7 @@ import { isCustomerFlag } from '@/lib/audit/attention'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 import { prisma } from '@/lib/db'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
+import { monitoringHistoryMetadata, type MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import { loadExecutionProgress, type ExecutionProgress } from './execution-progress'
 import { applySearchCardEvidence } from '@/lib/sites/search-view'
@@ -76,7 +77,7 @@ export type SiteHomeView = {
     detectedAt: string | null
     items: Array<Pick<VisibleTechnology, 'slug' | 'name' | 'category' | 'confidenceBand'>>
   }
-  monitoringHistory?: Array<{ id?: string; checkedAt: string; flagCount: number; status?: 'COMPLETED' | 'FAILED'; flags?: Array<{ id: string; title: string }> }>
+  monitoringHistory?: MonitoringHistoryEntry[]
   watch: {
     state: WatchBoardState
     interval: WatchInterval | null
@@ -286,7 +287,11 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       ...siteAnalysisAuditWhere },
     orderBy: { createdAt: 'desc' },
     take: 8,
-    select: { id: true, status: true, completedAt: true, updatedAt: true, flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true } } },
+    select: { id: true, status: true, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
+      runRequests: { where: { projectId: site.projectId }, orderBy: { requestedAt: 'desc' }, take: 1,
+        select: { source: true, verificationTarget: true, selections: { select: { outcome: { select: { name: true } } } }, assessments: { select: { state: true } } } },
+      verificationAttempts: { where: { improvement: { projectId: site.projectId } }, select: { id: true, outcome: true, comparable: true } },
+      flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true } } },
   }) : []
 
   const connections = site.projectId ? await loadSiteConnectionViews(site.projectId) : null
@@ -338,6 +343,19 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     }
     if (audit?.status === 'FAILED' && !audit.startedAt && !card.evidenced) {
       card.answer = 'Not checked'; card.status = 'Not checked'; card.detail = 'The check did not start.'
+    }
+    if (card.id === 'tracking' && card.openFlagCount === 0) {
+      const runtime = resultPage.results.filter(result => result.area === 'tracking' && !result.historical && result.source === 'browser-network')
+      if (runtime.length) {
+        const copy = SITE_ACTION_COPY.execution.tracking
+        const attempts = runtime.find(result => result.assertionKey === 'tracking-initiation' && result.status === 'observed')
+        const library = runtime.find(result => result.assertionKey === 'tracking-library' && result.status === 'passed')
+        card.state = 'unknown'; card.evidenced = false; card.status = copy.partial
+        card.answer = attempts ? copy.requestsObserved : library ? copy.libraryObserved : copy.runtimeUnknown
+        card.detail = attempts?.observation ?? library?.observation ?? runtime.find(result => result.status === 'unknown')?.observation ?? copy.deliveryLimit
+        card.facts = [...card.facts, copy.deliveryLimit, copy.consentLimit].slice(-4)
+        card.activity = null
+      }
     }
     applySearchCardEvidence(card, audit?.verifierExecutions ?? [], inFlight, now)
     if (card.id === 'search' && connectionNotes.search) card.facts = [...card.facts, connectionNotes.search].slice(0, 4)
@@ -485,7 +503,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     monitoringHistory: monitoringHistory.toReversed().map(item => {
       // History records what each check found, including Flags resolved later.
       const flags = item.flags.filter(isCustomerFlag).map(flag => ({ id: flag.id, title: flag.problem }))
-      return { id: item.id, checkedAt: (item.completedAt ?? item.updatedAt).toISOString(), status: item.status as 'COMPLETED' | 'FAILED', flagCount: flags.length, flags }
+      return { id: item.id, checkedAt: (item.completedAt ?? item.updatedAt).toISOString(), status: item.status as 'COMPLETED' | 'FAILED', flagCount: flags.length, flags,
+        ...monitoringHistoryMetadata({ ...item, flagCount: flags.length }) }
     }),
     watch: {
       state: watchState,

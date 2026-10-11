@@ -16,12 +16,12 @@ export const SEO = {
   home: {
     title: 'FixFlags - Your software runs. FixFlags watches.',
     description:
-      'FixFlags independently checks the important outcomes on your live website. See Clear or a Flag with evidence, verify a fix, and keep watching.',
+      'Monitor. Flag. Fix. FixFlags checks your live website, shows problems with evidence, and checks again after you publish a fix.',
   },
   integrations: {
     title: 'FixFlags Integrations',
     description:
-      'Connect Shopify, Google Analytics, or Search Console for more context beside a Flag. Explore the extra checks other tools could support.',
+      'Connect Shopify, Google Analytics, or Search Console for more context beside a Flag. See available integrations and connections coming soon.',
   },
   pricing: {
     title: 'FixFlags Pricing',
@@ -39,7 +39,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Enter a website URL, inspect evidence-backed Flags, verify improvements, and add context only when it makes the next decision clearer.',
+      'Monitor. Flag. Fix. Repeat. Start with your website URL, see what needs attention, publish a fix, and check the same live behavior again.',
   },
   samples: {
     title: 'Sample Site and Flag',

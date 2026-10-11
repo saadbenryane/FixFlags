@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -10,6 +10,30 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  it('groups Fix and Monitor and submits one scoped check with the optional change summary', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 202, json: async () => ({
+      ok: true, accepted: true, runRequestId: 'run-1', runId: 'run-1', verificationAuditId: 'audit-1',
+      siteId: 'p_site', flagId: 'flag-1', attemptId: 'attempt-1', parentAuditId: 'parent-1', expectedBehavior: 'The product appears in the cart',
+    }) })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    expect(screen.getByRole('heading', { name: 'Fix' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Monitor' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Updated the cart handler' } })
+    const check = within(dialog).getByRole('button', { name: 'Check now' })
+    fireEvent.click(check)
+    fireEvent.click(check)
+    expect(await screen.findByText(SITE_BOARD_COPY.verificationStarted)).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_site/flags/flag-1/verify', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ changeSummary: 'Updated the cart handler' }),
+      headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+    }))
+    expect(screen.getByRole('button', { name: 'Checking…' })).toBeDisabled()
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
   })

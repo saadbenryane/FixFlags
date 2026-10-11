@@ -16,6 +16,7 @@ import { SiteCheckLibrary } from '@/components/sites/SiteCheckLibrary'
 import { BoardDetails } from '@/components/sites/BoardDetails'
 import { MONITORING_COPY } from '@/lib/marketing/copy'
 import { MONITORING_SCHEDULE_COPY as M } from '@/lib/marketing/copy/monitoring'
+import { siteTrendChecks } from '@/lib/sites/monitoring-history'
 import { SiteMonitoringActivation } from '@/components/sites/SiteMonitoringActivation'
 import { SiteMonitoringHistory } from '@/components/sites/SiteMonitoringHistory'
 import { SiteMonitoringSchedule } from '@/components/sites/SiteMonitoringSchedule'
@@ -179,17 +180,21 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
     connectionItem('Google Analytics', view.settings.analytics.status, view.settings.analytics.propertyLabel ?? 'Audience context', view.settings.analytics.configured, 'connection-analytics'),
     connectionItem('Google Search Console', view.settings.searchConsole.status, view.settings.searchConsole.propertyLabel ?? 'Search performance context', view.settings.searchConsole.configured, 'connection-search-console'),
   ]
-  const monitoringPoints = (view.monitoringHistory ?? []).map(item => ({
+  const monitoringPoints = siteTrendChecks(view.monitoringHistory ?? []).map(item => ({
     label: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(item.checkedAt)),
     flagCount: item.flagCount,
   }))
   const monitoringEvents = (view.monitoringHistory ?? []).toReversed().map(item => ({
     id: item.id ?? item.checkedAt,
-    title: item.status === 'FAILED' ? B.incomplete : B.complete,
+    title: item.afterFix ? B.history.afterFix : item.status === 'FAILED' ? B.incomplete : B.complete,
+    detail: item.scope ? [item.trigger === 'SCHEDULED' ? B.history.scheduled : item.trigger === 'MANUAL' ? B.history.manual : item.trigger === 'OTHER' ? B.history.other : null,
+      item.scope === 'SITE' ? B.history.site : item.scope === 'OUTCOMES' ? B.history.outcomes : item.scope === 'DIAGNOSTIC' ? B.history.diagnostic : B.history.unknown,
+      item.targetLabel].filter(Boolean).join(' · ') : undefined,
+    resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
     time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
     dateTime: item.checkedAt,
-    state: item.status === 'FAILED' ? 'unknown' as const : item.flagCount > 0 ? 'attention' as const : 'healthy' as const,
-    flagCount: item.flagCount,
+    state: item.status === 'FAILED' || item.result === 'COULD_NOT_VERIFY' ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
+    flagCount: item.scope && item.scope !== 'SITE' ? undefined : item.flagCount,
     flags: (item.flags ?? []).map(flag => ({ ...flag, href: `/sites/${siteId}/flags/${flag.id}` })),
   }))
   const banner = runBanner({

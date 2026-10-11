@@ -95,6 +95,8 @@ const LEGACY_CHECK_DEFINITIONS = {
   'cta-dead-link': { version: 1, area: 'conversion', module: 'slop', capabilities: ["copy-dead-cta-links"] },
   'social-proof-unverifiable': { version: 1, area: 'conversion', module: 'slop', capabilities: ["copy-social-proof-quality"] },
   'form-missing-validation': { version: 1, area: 'conversion', module: 'content', capabilities: ["experience-form-feedback"] },
+  'tracking-library-http-error': { version: 1, area: 'tracking', module: 'measurement', capabilities: ['measurement-analytics-scan'] },
+  'tracking-endpoint-http-error': { version: 1, area: 'tracking', module: 'measurement', capabilities: ['measurement-analytics-scan'] },
   'measurement-ga-gtm-posthog-missing': { version: 1, area: 'tracking', module: 'measurement', capabilities: ["measurement-analytics-scan"] },
   'checkout-link-dead': { version: 1, area: 'conversion', module: 'auth-checkout', capabilities: ["experience-auth-checkout"] },
   'auth-page-broken': { version: 1, area: 'conversion', module: 'auth-checkout', capabilities: ["experience-auth-checkout"] },

@@ -10,8 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Body, Heading } from '@/components/ui/typography'
-import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
+import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { DEMO_PAGE } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
@@ -69,24 +68,15 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
   }
 
   return (
-    <Section spacing="tight" className="relative overflow-hidden">
-      <Container variant="marketing" className="mx-auto max-w-2xl px-4 py-14 sm:px-6 sm:py-20">
-        <MarketingEyebrow>{DEMO_PAGE.eyebrow}</MarketingEyebrow>
-        <Heading
-          as="h1"
-          className="mt-4 font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
-        >
-          {PUBLIC_SITE_COPY.demo.title}
-        </Heading>
-        <Body className="mt-4 max-w-xl text-muted-foreground text-pretty sm:text-lg">
-          {PUBLIC_SITE_COPY.demo.body}
-        </Body>
-
-        <p className="mt-4 text-sm text-muted-foreground">{PUBLIC_SITE_COPY.demo.sampleLead}{' '}<Link href="/samples" className="font-medium text-link underline underline-offset-4">{PUBLIC_SITE_COPY.demo.sampleAction}</Link></p>
+    <Section spacing="overview" className="relative overflow-hidden">
+      <Container variant="marketing" className="mx-auto max-w-3xl">
+        <MarketingPageHeader eyebrow={DEMO_PAGE.eyebrow} title={PUBLIC_SITE_COPY.demo.title} description={PUBLIC_SITE_COPY.demo.body}>
+          <p className="text-sm text-muted-foreground">{PUBLIC_SITE_COPY.demo.sampleLead}{' '}<Link href="/samples" className="font-medium text-link underline underline-offset-4">{PUBLIC_SITE_COPY.demo.sampleAction}</Link></p>
+        </MarketingPageHeader>
 
         {submitted ? (
           <div
-            className="mt-8 space-y-4 rounded-card border border-border/60 bg-background/80 px-4 py-6 text-foreground shadow-sm"
+            className="mx-auto max-w-2xl space-y-4 rounded-card border border-border/60 bg-background/80 px-4 py-6 text-foreground shadow-sm"
             role="status"
           >
             <p className="flex items-center gap-2 text-sm font-medium">
@@ -111,7 +101,7 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
             </div>
           </div>
         ) : (
-          <form className="mt-8 space-y-5" onSubmit={(event) => void handleSubmit(event)}>
+          <form className="mx-auto max-w-2xl space-y-5" onSubmit={(event) => void handleSubmit(event)}>
             <div className="space-y-2">
               <Label htmlFor={nameId}>{DEMO_PAGE.nameLabel}</Label>
               <Input

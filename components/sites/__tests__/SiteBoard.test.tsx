@@ -533,6 +533,20 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByRole('button', { name: 'Edit schedule' })).not.toBeInTheDocument()
   })
 
+  it('shows a manual recovery check by scope without including it in the Site-wide trend', () => {
+    const view = boardView({ monitoringHistory: [
+      { id: 'site-1', checkedAt: '2026-10-09T09:00:00.000Z', flagCount: 2, scope: 'SITE', trigger: 'SCHEDULED' },
+      { id: 'site-2', checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, scope: 'SITE', trigger: 'SCHEDULED' },
+      { id: 'fix-1', checkedAt: '2026-10-11T09:00:00.000Z', flagCount: 0, scope: 'OUTCOMES', trigger: 'MANUAL', afterFix: true, targetLabel: 'Reach checkout', result: 'CLEAR' },
+    ] })
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="monitoring" /></MeProvider>)
+    expect(screen.getByRole('img', { name: 'Flag count across 2 checks' })).toBeVisible()
+    const event = screen.getByText('Check after a fix').closest('li')!
+    expect(within(event).getByText('Manual check · Selected visitor actions · Reach checkout')).toBeVisible()
+    expect(within(event).getByText('Recovery verified for this scope')).toBeVisible()
+    expect(within(event).queryByText('0 Flags')).not.toBeInTheDocument()
+  })
+
   it('restores and saves custom timing through the shared editor', async () => {
     const initial = boardView()
     initial.presentation.monitoring = { state: 'custom', label: 'Every 3 hours' }

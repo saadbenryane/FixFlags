@@ -18,7 +18,8 @@
   0%, 100% { box-shadow: 0 0 0 1px hsl(var(--brand) / .06), 0 8px 26px hsl(var(--brand) / .05); }
   50% { box-shadow: 0 0 0 3px hsl(var(--brand) / .12), 0 12px 32px hsl(var(--brand) / .14); }
 }
-.entry button[type='submit'] { height: 44px; min-height: 44px; min-width: 132px; padding-inline: 14px; gap: 8px; font-size: 16px; font-weight: 600; color: hsl(var(--primary-foreground)); }
+.entry :global([data-audit-entry] input) { height: 44px; min-height: 44px; }
+.entry button[type='submit'] { height: 44px; min-height: 44px; min-width: 132px; padding-inline: 14px; gap: 8px; border-radius: calc(var(--radius-inner) - .375rem - 1px); font-size: 15.2px; font-weight: 600; color: hsl(var(--primary-foreground)); }
 .entry button[type='submit']:hover { background: hsl(var(--brand)); }
 .heroBenefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; width: 100%; max-width: 740px; margin: 24px auto 30px; padding: 0; list-style: none; }
 .heroBenefits li { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; }

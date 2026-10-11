@@ -17,6 +17,8 @@ FixFlags is for people responsible for live websites and software. They may be d
 
 FixFlags independently observes important live behavior, raises meaningful Flags, supports a fix, and verifies the result with fresh evidence. It reduces uncertainty; it does not promise omniscience, guaranteed revenue, or prevention of every failure.
 
+The customer loop is Monitor → Flag → Fix → Monitor. Monitor includes initial analysis, configured scheduled checks, and post-fix verification. Verification remains the proof required for recovery. An immediate check does not turn on scheduled monitoring or alter its cadence.
+
 ## Voice
 
 Use language that is:

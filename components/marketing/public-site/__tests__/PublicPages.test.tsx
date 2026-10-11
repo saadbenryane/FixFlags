@@ -48,11 +48,16 @@ describe('public supporting pages', () => {
     expect(screen.getByRole('link', { name: C.securityPage.terms })).toHaveAttribute('href', '/terms')
   })
 
-  it('explains the full workflow once and provides a public sample before signup', () => {
+  it('shows the three-part loop with recovery inside Monitor and a public sample before signup', () => {
     render(<HowItWorksPage />)
     expect(screen.getAllByRole('heading', { name: C.howItWorks.title })).toHaveLength(1)
-    expect(screen.getAllByRole('listitem')).toHaveLength(7)
-    expect(screen.getByRole('heading', { name: 'Publish the fix' })).toBeVisible()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(C.howItWorks.steps.map(step => step.label)).toEqual(['Monitor', 'Flag', 'Fix'])
+    expect(screen.getByRole('heading', { name: C.howItWorks.steps[0].title })).toBeVisible()
+    expect(screen.getByText(C.howItWorks.example.recovery)).toBeVisible()
+    expect(screen.getByText(C.howItWorks.example.recovery).closest('li')).toHaveTextContent('Monitor')
+    expect(screen.getByText(C.howItWorks.example.label)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: C.howItWorks.setupLink })).toHaveAttribute('href', '/coverage')
     expect(screen.getAllByRole('link', { name: C.sample }).every(link => link.getAttribute('href') === '/samples')).toBe(true)
   })

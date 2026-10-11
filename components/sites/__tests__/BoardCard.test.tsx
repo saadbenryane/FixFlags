@@ -89,6 +89,10 @@ describe('BoardCard chrome', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pricing page is unavailable' }))
     expect(openFirst).toHaveBeenCalledOnce()
     expect(openCard).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Pages: 2 Flags' }))
+    expect(openCard).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pricing page is unavailable' }))
+    expect(openFirst).toHaveBeenCalledTimes(2)
   })
 
   it('shows up to three Flag titles and uses Clear instead of 0 Flags', () => {

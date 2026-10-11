@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { checkReceiptSchema } from '../checks/receipt'
+import { recordAssertionVerifiers } from '../checks/verification'
 import { searchAttentionSchema } from '../search/contracts'
 import { persistDeterministicFlags } from '../persist'
 import { collapseFlagsWithAffectedPaths } from '../flag-identity'
@@ -41,4 +42,16 @@ export async function commitFindings(context: TaskContext, artifact: TaskArtifac
   // Existing overlap policy remains unchanged. Each source receipt retains its findings.
   const projected = collapseFlagsWithAffectedPaths(suppressOverlappingFlags(flags as import('../flag-types').DeterministicFlag[]))
   await persistDeterministicFlags(context.audit.id, projected, { MESSAGE: null, EXPERIENCE: null, REACH: null }, tx)
+}
+
+/** Module observations and repair proofs share their originating task's commit. */
+export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<typeof checkReceiptSchema>, tx: Prisma.TransactionClient, scopeSuffix = '') {
+  const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix
+  await tx.auditVerifierExecution.upsert({
+    where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey } },
+    create: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey,
+      source: 'DETERMINISTIC', pageUrl: receipt.pageUrl, status: 'COMPLETED', checkVersion: 1,
+      detail: receipt as Prisma.InputJsonValue, evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receipt.module, pageUrl: receipt.pageUrl } }, update: {},
+  })
+  await recordAssertionVerifiers({ auditId: context.audit.id, parentId: context.audit.parentId, primary: context.input.primary, receipt }, tx)
 }

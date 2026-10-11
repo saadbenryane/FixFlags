@@ -46,9 +46,11 @@ Under those answers, FixFlags may use deterministic checks, real browsers, HTTP/
 
 The core loop is:
 
-# Flag → Fix → Verify
+# Monitor → Flag → Fix → Monitor
 
-FixFlags keeps watching after verification. It works when a human opens the app, when a coding agent asks through MCP, after a deployment, when an integration emits a relevant event, and on its own schedule.
+Monitor includes the initial analysis, configured scheduled checks, and fresh verification after a fix. Verification is the evidence requirement for recovery, not a separate fourth step. After publishing, the customer can select Check now to return to Monitor without changing the saved schedule.
+
+The monitoring architecture supports a human opening the app, a coding agent asking through MCP, deployment and integration triggers, and its own schedule. Public claims remain bounded by the implemented adapters and configured coverage.
 
 ## The independent boundary
 

@@ -33,8 +33,9 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     input: { ...input, module: 'summary' } })
   plans.push(make('google', [prefix + ':search-indexing'], 'google-index'))
   plans.push(make('google', [], 'google-performance'))
-  if (input.primary) {
+  if (input.primary || spec.scope === 'DIAGNOSTIC' && spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))
     plans.push(make('flow', [prefix + ':browser']))
+  if (input.primary) {
     plans.push(make('slow-replay', [prefix + ':browser']))
     plans.push(make('journeys', [prefix + ':browser']))
     for (const outcome of spec.outcomes) for (const binding of outcome.bindings.filter(item => item.required)) {
@@ -73,7 +74,10 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     const checkId = spec.verificationTarget.checkId.split('::page:')[0]
     const search = SEARCH_CHECK_REGISTRY[checkId as keyof typeof SEARCH_CHECK_REGISTRY]
     const checkModule = CHECK_REGISTRY[checkId]?.module
-    const pages = pageTaskPlan(input, spec)
+    const scopes = checkModule === 'measurement' ? spec.verificationScopes ?? [] : []
+    const extraPages = scopes.filter(scope => scope.pageUrl !== input.pageUrl)
+    const pages = [ ...pageTaskPlan(input, spec), ...extraPages.flatMap((scope, index) =>
+      pageTaskPlan({ ...input, pageUrl: scope.pageUrl, position: index + 1, primary: false, role: 'linked' }, spec)) ]
     const resources = siteResourcePlans(input)
     const available = new Map([...resources, ...pages].map(task => [task.key, task]))
     const target = search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
@@ -89,6 +93,13 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       selected.add(key); task.dependencies.forEach(include)
     }
     include(target)
+    if (checkModule === 'measurement') {
+      if (scopes.find(scope => scope.pageUrl === input.pageUrl)?.phases.includes('public_action')) include('p0:flow')
+      for (const [index, scope] of extraPages.entries()) {
+        include('p' + (index + 1) + ':measurement')
+        if (scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
+      }
+    }
     const plans: TaskPlan[] = [...selected].map(key => available.get(key)!)
     plans.push({ kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: [...selected] })
     validateTaskGraph(plans)

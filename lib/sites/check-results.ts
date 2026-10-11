@@ -18,6 +18,7 @@ export type SiteCheckResult = {
   limitation: string
   source: string
   evidenceReference: { auditId: string; executionId: string; pageUrl: string | null }
+  assertionKey?: string
   observation?: string
   expected?: string
   search?: SearchObservation
@@ -47,11 +48,11 @@ export function projectCheckResults(auditId: string, receipts: Array<{
       limitation: SITE_ACTION_COPY.historicalCheck,
       source: receipt.source ?? 'HISTORICAL', evidenceReference: { auditId, executionId: receipt.id, pageUrl: receipt.pageUrl } }]
     if (!['COMPLETED', 'FAILED', 'NOT_APPLICABLE'].includes(receipt.status)) return []
+    const detail = readCheckReceipt(receipt.detail)
     const provenance = {
-      source: receipt.source ?? 'DETERMINISTIC',
+      source: 'execution' in detail && detail.execution ? detail.execution.source : receipt.source ?? 'DETERMINISTIC',
       evidenceReference: { auditId, executionId: receipt.id, pageUrl: receipt.pageUrl },
     }
-    const detail = readCheckReceipt(receipt.detail)
     const status = receipt.status === 'FAILED' ? 'failed'
       : receipt.status === 'NOT_APPLICABLE' ? 'not_applicable'
       : 'complete' in detail && detail.complete === false ? 'unknown'
@@ -62,8 +63,8 @@ export function projectCheckResults(auditId: string, receipts: Array<{
           const repeated = detail.assertions.some((other, otherIndex) => otherIndex !== index && other.key === assertion.key && other.context === assertion.context)
           return [{ id: `${receipt.id}:${assertion.key}${assertion.context ? ':' + assertion.context : ''}${repeated ? ':' + index : ''}`, auditId, ...provenance,
             name: assertion.name, area: CHECK_ASSERTIONS[receipt.targetKey.replace(/^module:/, '')]?.[assertion.key]?.area ?? descriptor.area,
-            kind: 'assertion' as const, status: assertion.complete === false ? 'unknown' as const : assertion.passed ? 'passed' as const : 'findings' as const,
-            observation: assertion.observed, expected: assertion.expected, pageUrl: receipt.pageUrl,
+            kind: 'assertion' as const, status: assertion.complete === false ? 'unknown' as const : assertion.disposition === 'observed' ? 'observed' as const : assertion.passed ? 'passed' as const : 'findings' as const,
+            assertionKey: assertion.key, observation: assertion.observed, expected: assertion.expected, pageUrl: receipt.pageUrl,
             checkedAt: 'execution' in detail && detail.execution ? detail.execution.collectedAt : receipt.updatedAt.toISOString(), historical,
             limitation: 'This result establishes only the stated assertion in the recorded execution scope.' } satisfies SiteCheckResult]
         }) : []
@@ -83,7 +84,7 @@ export const siteCheckResultSchema = z.object({
   name: z.string(), kind: z.enum(['execution', 'assertion']), status: z.enum(['passed', 'completed', 'findings', 'failed', 'not_applicable', 'observed', 'unknown']),
   pageUrl: z.string().nullable(), checkedAt: z.string(), historical: z.boolean(), limitation: z.string(), source: z.string(),
   evidenceReference: z.object({ auditId: z.string(), executionId: z.string(), pageUrl: z.string().nullable() }),
-  observation: z.string().optional(), expected: z.string().optional(),
+  assertionKey: z.string().optional(), observation: z.string().optional(), expected: z.string().optional(),
   search: searchObservationSchema.optional(),
 })
 export const siteCheckPageSchema = z.object({ results: z.array(siteCheckResultSchema), nextCursor: z.string().nullable() })

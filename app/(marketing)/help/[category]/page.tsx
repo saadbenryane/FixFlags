@@ -36,13 +36,15 @@ export default async function HelpCategoryPage({ params }: Props) {
   const articles = getArticlesForCategory(category.id)
 
   return (
-    <Section spacing="marketing">
+    <Section spacing="overview">
       <Container>
-        <div className="mx-auto max-w-3xl space-y-8">
-          <HelpKnowledgeSearch compact />
+        <div className="mx-auto max-w-3xl">
           <HelpPageFrame kind="category" category={category} />
-          <HelpArticleList articles={articles} showHeading={false} />
-          <HelpChatEscalate className="rounded-card glass-surface shadow-card p-5" />
+          <div className="space-y-8">
+            <HelpKnowledgeSearch compact />
+            <HelpArticleList articles={articles} showHeading={false} />
+            <HelpChatEscalate className="rounded-card glass-surface shadow-card p-5" />
+          </div>
         </div>
       </Container>
     </Section>

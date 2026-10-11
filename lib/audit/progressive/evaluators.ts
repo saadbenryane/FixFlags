@@ -8,7 +8,7 @@ import { recordCheckObservations } from '../checks/observations'
 import { parseMetadataFromHtml } from '../metadata'
 import { readScreenshotSnapshot, browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
 import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
-import { checkArtifactSchema, commitFindings, flagSchema } from './results'
+import { checkArtifactSchema, commitFindings, commitCheckReceipt, flagSchema } from './results'
 import type { TaskContext, TaskHandler } from './registry'
 import { runSearchWorkflow, priorSearchReceipt, recordSearchVerifiers, combineSearchReceipts } from '../search/workflow'
 import { runGoogleSearchForAudit } from '../search/google'
@@ -20,12 +20,12 @@ import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
 import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { runKeyboardChecks } from '../checks/keyboard'
+import { runTrackingChecks } from '../checks/tracking'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
-import { recordAssertionVerifiers } from '../checks/verification'
 
 function dependency(context: TaskContext, kind: string) {
   return [...context.dependencies.values()].find(item => item.workKind === kind && item.workState === 'COMPLETED')
@@ -81,6 +81,11 @@ export const evaluatorHandlers: TaskHandler[] = [
         limitation = [`${evidence.steps.length} page controls exercised.`,
           ...(evidence.interactionCount ? [`${opened} of ${evidence.interactionCount} declared popup states opened for inspection.`] : []), copy.reasons[evidence.reason as keyof typeof copy.reasons] ?? copy.incomplete,
           ...evidence.limitations.map(key => copy.limitations[key as keyof typeof copy.limitations]).filter(Boolean), copy.scope].join(' ')
+      } else if (checkModule === 'measurement') {
+        if (!metadata) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
+        pageUrl = snapshot?.desktopFinalUrl ?? context.input.pageUrl
+        const checked = runTrackingChecks(metadata, snapshot?.tracking, pageUrl)
+        flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
       } else if (checkModule === 'performance' || checkModule === 'mobile') {
         if (checkModule === 'performance' && context.input.device === 'mobile' && speed?.desktop)
           throw new TaskFailure('MOBILE_INP_FALLBACK_NOT_APPLICABLE', false)
@@ -120,7 +125,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         kind: 'site-module-check', version: 1, module: checkModule, passed: flags.length === 0 && complete !== false, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
         execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version,
-          source: checkModule === 'keyboard' ? 'keyboard' : checkModule === 'security' ? 'original-html' : checkModule === 'security-headers' ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+          source: checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : checkModule === 'security' ? 'original-html' : checkModule === 'security-headers' ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'axe' : 'rendered-dom',
           collectedAt: source.collectedAt },
       } }))
@@ -214,15 +219,6 @@ export const evaluatorHandlers: TaskHandler[] = [
 const commitChecks = evaluatorHandlers.find(handler => handler.kind === 'check')!
 commitChecks.commit = async (context, artifact, tx: Prisma.TransactionClient) => {
   const result = checkArtifactSchema.parse(artifact.data), receipt = checkReceiptSchema.parse(result.receipt)
-  await tx.auditVerifierExecution.upsert({
-    where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receipt.module,
-      scopeKey: 'page:' + receipt.pageUrl + (context.input.device ? ':device:' + context.input.device : '') } },
-    create: { auditId: context.audit.id, targetKey: 'module:' + receipt.module,
-      scopeKey: 'page:' + receipt.pageUrl + (context.input.device ? ':device:' + context.input.device : ''),
-      source: 'DETERMINISTIC', pageUrl: receipt.pageUrl, status: 'COMPLETED', checkVersion: 1,
-      detail: receipt as Prisma.InputJsonValue, evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receipt.module, pageUrl: receipt.pageUrl } }, update: {},
-  })
-  await recordAssertionVerifiers({ auditId: context.audit.id, parentId: context.audit.parentId,
-    primary: context.input.primary, receipt }, tx)
+  await commitCheckReceipt(context, receipt, tx, context.input.device ? ':device:' + context.input.device : '')
   await commitFindings(context, artifact, tx)
 }

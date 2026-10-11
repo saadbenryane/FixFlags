@@ -62,6 +62,14 @@ describe('flow CTA discovery scoring', () => {
     assert.equal(scored[0].text, 'Start free trial')
   })
 
+  it('keeps observed in-page destinations actionable while rejecting missing and malformed targets', () => {
+    const html = '<a href="#details">Get started</a><section id="details">Details</section>' +
+      '<a href="#missing">Try this</a><a href="#%FF">Explore</a>'
+    const scored = scoreCtaCandidates('https://example.com/', extractCtaElementsFromHtml(html))
+    assert.equal(scored.length, 1)
+    assert.equal(scored[0].href, '#details')
+  })
+
   it('builds stable data attribute selector', () => {
     assert.equal(flowCtaSelector(2), '[data-fixflags-flow-idx="2"]')
   })

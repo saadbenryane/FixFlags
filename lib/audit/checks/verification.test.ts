@@ -72,4 +72,30 @@ describe('exact assertion verification', () => {
     expect(upsert).not.toHaveBeenCalled()
   })
 
+  it('requires the original Tracking endpoint and phase, retaining unknown for suppressed or unobserved scopes', async () => {
+    const context = 'tracking:page_load:google-analytics:library:www.googletagmanager.com/gtag/js'
+    const assertion = { key: 'tracking-library', name: 'Library transfer', expected: 'Resource completes', observed: 'HTTP 200, transfer completed', passed: true, complete: true, context }
+    const measurement = checkReceiptSchema.parse({ ...receipt, module: 'measurement', complete: true, passed: true,
+      assertions: [assertion], execution: { ...receipt.execution!, source: 'browser-network' } })
+    const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'tracking-library-http-error', pageUrl: receipt.pageUrl,
+      verificationRule: 'Tracking observation: repeat the same endpoint', evidenceTargets: [{ kind: 'page', context }] }
+    const upsert = vi.fn()
+    const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
+    await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: measurement }, tx as never)
+    expect(upsert).toHaveBeenCalledOnce()
+    upsert.mockClear()
+    for (const observation of [
+      { ...assertion, context: context.replace('page_load', 'public_action') },
+      { ...assertion, context: context.replace('google-analytics', 'plausible') },
+      { ...assertion, context: context.replace('/gtag/js', '/analytics.js') },
+      { ...assertion, complete: false, passed: false },
+      { ...assertion, disposition: 'observed' as const },
+      { key: 'analytics-markup', name: 'Markup', expected: 'Snippet present', observed: 'Present', passed: true },
+    ]) await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: { ...measurement, assertions: [observation] } }, tx as never)
+    expect(upsert).not.toHaveBeenCalled()
+    tx.improvementAttempt.findMany.mockResolvedValue([{ improvement: { occurrences: [{ flag: { ...flag, evidenceTargets: [{ kind: 'page', context }, { kind: 'page', context: 'unobserved' }] } }] } }])
+    await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: measurement }, tx as never)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+
 })

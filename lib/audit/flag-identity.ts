@@ -1,3 +1,4 @@
+import type { EvidenceTarget } from './evidence-targets'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 
 export function baseCheckId(checkId: string | null | undefined): string | null {
@@ -89,6 +90,7 @@ export function collapseFlagsWithAffectedPaths<
     rubric: string
     severity: string
     evidence?: string
+    evidenceTargets?: EvidenceTarget[]
     affectedPaths?: string[]
   },
 >(flags: T[]): Array<T & { affectedPaths: string[] }> {
@@ -112,11 +114,18 @@ export function collapseFlagsWithAffectedPaths<
         ])
       ),
     ]
+    const pageUrl = affectedPaths[0] ?? representative.pageUrl
+    const scoped = group.some(flag => flag.evidenceTargets?.some(target => target.context))
+    const scopedTargets = scoped ? [...new Map(group.flatMap(flag => (flag.evidenceTargets ?? []).map(target => {
+      const measured = { ...target }
+      if (flag.pageUrl !== pageUrl) delete measured.rect
+      return [JSON.stringify([target.context, target.selector, target.label, target.device]), measured] as const
+    }))).values()] : undefined
     const evidence =
       group.length === 1
         ? representative.evidence
         : [
-            representative.evidence,
+            ...(scoped ? [...new Set(group.map(flag => flag.evidence))] : [representative.evidence]),
             `Observed on ${affectedPaths.length} pages.`,
           ]
             .filter(Boolean)
@@ -125,8 +134,9 @@ export function collapseFlagsWithAffectedPaths<
       ...representative,
       checkId: durableCheckId(representative.checkId) ?? representative.checkId,
       evidence,
+      ...(scopedTargets ? { evidenceTargets: scopedTargets } : {}),
       affectedPaths,
-      pageUrl: affectedPaths[0] ?? representative.pageUrl,
+      pageUrl,
     }
   })
 }

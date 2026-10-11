@@ -78,6 +78,14 @@ describe('durable bounded work contracts', () => {
     expect(initialTaskPlan(spec).map(task => task.kind)).toEqual(['check', 'http', 'finalize'])
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'title-missing' } }).map(task => task.kind))
       .toEqual(['search', 'http', 'browser', 'finalize'])
+    const tracking = { ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'tracking-library-http-error' } }
+    expect(initialTaskPlan(tracking).map(task => task.kind)).toEqual(['check', 'browser', 'finalize'])
+    expect(initialTaskPlan({ ...tracking, verificationScopes: [{ pageUrl: input.pageUrl, phases: ['public_action'] }] }).map(task => task.kind)).toEqual(['check', 'browser', 'flow', 'finalize'])
+    const multiPage = initialTaskPlan({ ...tracking, verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'] },
+      { pageUrl: 'https://example.com/second', phases: ['public_action'] }] })
+    expect(multiPage.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
+    expect(multiPage.find(task => task.kind === 'flow')?.input.pageUrl).toBe('https://example.com/second')
+    expect(multiPage.some(task => ['captures', 'pagespeed', 'google', 'search'].includes(task.kind))).toBe(false)
     expect(() => initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'unknown-history' } })).toThrow('not registered')
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'focus-visible-missing' } }).map(task => task.kind))
       .toEqual(['check', 'keyboard', 'finalize'])

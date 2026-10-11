@@ -486,7 +486,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.captureMetrics ?? null,
     screenshots?.responseHeaders ?? null,
     screenshots?.axeViolations,
-    true,
+    true, undefined, { tracking: screenshots.tracking },
   )
 
   for (const execution of executions) {

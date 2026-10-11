@@ -10,7 +10,7 @@ const RULES: Rule[] = [
   { provider: 'google-tag-manager', role: 'library', host: 'googletagmanager.com', path: /^\/gtm\.js$/, endpoint: '/gtm.js' },
   { provider: 'google-analytics', role: 'library', host: 'google-analytics.com', path: /^\/(?:analytics|ga)\.js$/, endpoint: '/analytics.js' },
   { provider: 'google-analytics', role: 'event', host: 'google-analytics.com', path: /^\/(?:g\/|j\/|mp\/)?collect\/?$/, endpoint: '/collect' },
-  { provider: 'posthog', role: 'library', host: 'posthog.com', path: /^\/(?:static|array)\/.*\.js$/, endpoint: '/static/library.js' },
+  { provider: 'posthog', role: 'library', host: 'posthog.com', path: /^\/static\/array(?:\.full)?\.js$/, endpoint: '/static/library.js' },
   { provider: 'posthog', role: 'event', host: 'posthog.com', path: /^\/(?:i\/v0\/)?(?:e|s|batch|capture)\/?$/, endpoint: '/capture' },
   { provider: 'plausible', role: 'library', host: 'plausible.io', path: /^\/js\/[^/]+\.js$/, endpoint: '/js/script.js' },
   { provider: 'plausible', role: 'event', host: 'plausible.io', path: /^\/api\/event\/?$/, endpoint: '/api/event' },
@@ -32,7 +32,7 @@ export function classifyTrackingEndpoint(url: string, resourceType: string, page
       if (!matchesHost || !rule.path.test(parsed.pathname)) continue
       if (rule.role === 'library' && resourceType !== 'script') continue
       if (rule.role === 'event' && ['document', 'script', 'stylesheet', 'font'].includes(resourceType)) continue
-      return { provider: rule.provider, role: rule.role, hostname: host, endpoint: rule.endpoint }
+      return { provider: rule.provider, role: rule.role, hostname: host, endpoint: rule.provider === 'segment' && rule.role === 'library' || rule.provider === 'cloudflare' && rule.role === 'library' ? rule.endpoint : parsed.pathname }
     }
   } catch { /* Invalid URLs are not tracking evidence. */ }
   return null

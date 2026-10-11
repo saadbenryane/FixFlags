@@ -147,6 +147,8 @@ The requester may provide commit, deployment, changed areas, environment, and a 
 
 ## Flags and verification
 
+The customer loop is Monitor → Flag → Fix → Monitor. Monitor includes initial, scheduled, and post-fix checks through the shared run command. Check now requests immediate scoped verification without changing the Watch policy. Recovery still requires fresh comparable evidence.
+
 A durable Flag answers: an important Outcome or Product responsibility is not behaving as expected.
 
 ```text

@@ -184,10 +184,11 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     dimension: 'REACH',
     category: 'loading',
     label: 'Web analytics (GA4, GTM, PostHog)',
-    tool: 'html-parse',
+    tool: 'browser-capture',
     status: 'live',
 
-    verify: 'npm run demo:audit:offline',
+    notes: 'Markup, recognized library transfers and event attempts retain distinct evidence. Event requests are suppressed; endpoint responses never certify ingestion. Phase-scoped HTTP findings require matching repair evidence.',
+    verify: 'TRACKING_BROWSER_REQUIRED=true npx vitest run lib/audit/tracking/',
   },
   {
     id: 'ai-measurement-review',

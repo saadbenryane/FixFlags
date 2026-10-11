@@ -22,6 +22,7 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
         canonical: null, lang: 'en', viewport: null, robots: null, hasFavicon: false }
     },
   }, navigationStartedAt: Date.now(), disposeNetwork: vi.fn(), responseHeaders: { 'content-type': 'text/html' }, httpStatus: 200,
+  tracking: () => ({ version: 1, phase: 'page_load', requests: [], truncated: false, durationMs: 10, consentInteraction: 'none' }),
   networkFailures: [], technologyResources: [], technologyResourcesTruncated: () => false, formProbe: null,
 }) }))
 

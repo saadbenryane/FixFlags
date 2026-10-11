@@ -41,9 +41,10 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
     if (category) onOpenFlag(category, flag.id as SampleFlagId)
   } })) : [] }))
   const summaryItems = S.summaryItems.map(item => 'id' in item && item.id === 'monitoring' ? { ...item, label: scheduleLabel(schedule), detail: nextCheck, accessibleDetail: nextCheckLabel(nextRunAt, 0), state: schedule ? 'healthy' as const : 'unknown' as const } : item)
-  const attention = S.categories.filter(card => card.flagCount > 0)
-  const other = S.categories.filter(card => card.flagCount === 0).sort((a, b) => Number(a.state === 'unknown') - Number(b.state === 'unknown'))
-  const ordered = [...attention, ...other]
+  const uptime = S.categories.filter(card => card.id === 'uptime')
+  const attention = S.categories.filter(card => card.id !== 'uptime' && card.flagCount > 0)
+  const other = S.categories.filter(card => card.id !== 'uptime' && card.flagCount === 0).sort((a, b) => Number(a.state === 'unknown') - Number(b.state === 'unknown'))
+  const ordered = [...uptime, ...attention, ...other]
   const renderCard = (card: SampleCategory) => <BoardCard key={card.id} name={card.name} status={card.status} state={card.state} answer={card.answer} detail={card.context} icon={card.id} flagCount={card.flagCount} freshness={S.freshness} flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, href: '#product', onOpen: () => onOpenFlag(card, flag), copyAction: <button type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden="true" /></button> }))} onOpen={() => onOpen(card.id)} layout="row" />
   return <>
     <section className={s.hero}>
@@ -51,18 +52,18 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
         <p className={s.heroEyebrow}>{C.hero.eyebrow}</p>
         <h1><span className={s.headlineLead}><span className={s.headlineAccent}>{C.headlineAccent}</span>{' '}{C.headlineLines[0]}</span><br /><span className={s.headlineLead}>{C.headlineLines[1]}<span className={s.headlineAccent}>{C.headlinePunctuation}</span></span></h1>
         <p className={s.heroBody}>{C.hero.bodyLines[0]}{' '}<br />{C.hero.bodyLines[1]}</p>
-        <ul className={s.heroBenefits} aria-label="What FixFlags does">
-          {C.hero.benefits.map((benefit, index) => {
-            const Icon = BENEFIT_ICONS[index]
-            return <li key={benefit.title}><Icon size={20} aria-hidden="true" /><strong>{benefit.title}</strong></li>
-          })}
-        </ul>
         <HomepageUrlEntry />
         <HomepageEditorTools />
       </div>
     </section>
     <section className={`${s.section} ${s.sampleSection}`} id="product" tabIndex={-1}>
       <HomepageIntro title={S.title} body={<>{S.subtitle} {S.mcpLead} <Link className={s.introMcpLink} href="/docs/fix-with-ai#what-is-mcp">{S.mcpLabel}</Link>{S.mcpBody}</>} />
+      <ul className={s.heroBenefits} aria-label="What FixFlags does">
+        {C.hero.benefits.map((benefit, index) => {
+          const Icon = BENEFIT_ICONS[index]
+          return <li key={benefit.title}><Icon size={20} aria-hidden="true" /><strong>{benefit.title}</strong></li>
+        })}
+      </ul>
       <div className={s.board} role="region" aria-label={C.boardAria}>
         <div className={s.browserBar} aria-hidden="true"><span /><span /><span /></div>
         <aside className={s.boardSidebar}>
@@ -83,7 +84,7 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
           <div className={s.boardSummary}>
             <span className={s.boardHeaderFreshness}>{S.freshness}</span>
             <a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden="true" /></a>
-            <BoardStatus state="problem" label={`${S.summary} on this website`} count={S.summaryItems[0].value} />
+            <BoardStatus state="problem" label={`${S.summary} on this website`} count={S.summaryItems[0].value} onOpen={() => setView('flags')} />
           </div>
         </div>
         {view === 'site' ? <>

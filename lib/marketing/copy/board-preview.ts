@@ -15,6 +15,11 @@ export const BOARD_PREVIEW_COPY = {
   flagTrend: 'Flags over time',
   complete: 'Check completed',
   incomplete: 'Check incomplete',
+  history: {
+    scheduled: 'Scheduled check', manual: 'Manual check', other: 'Triggered check', afterFix: 'Check after a fix',
+    site: 'Site-wide analysis', outcomes: 'Selected visitor actions', diagnostic: 'Targeted page check', unknown: 'Scope unavailable',
+    clear: 'Clear for this scope', recovered: 'Recovery verified for this scope', flagged: 'Flag found in this scope', uncertain: 'Couldn’t verify',
+  },
   noFlags: '0 Flags',
   noHistory: 'Check history appears after the first check.',
   connect: 'Connect', connected: 'Connected', settings: 'Settings',

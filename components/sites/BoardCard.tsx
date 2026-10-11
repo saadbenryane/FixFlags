@@ -192,7 +192,7 @@ export function BoardCard({
     const iconClass = count > 0 ? styles.iconAttention : clear ? styles.iconHealthy : undefined
     const rowMeta = <span className={styles.rowTrailing}>
       {freshnessLabel ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
-      <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} showText /></span>
+      <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /></span>
     </span>
     if (previewFlags.length > 0) {
       return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>

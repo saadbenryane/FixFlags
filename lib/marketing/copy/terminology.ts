@@ -1,7 +1,7 @@
 /**
  * Canonical customer-facing terminology. Wire marketing, product UI, and help from here.
  * Internal code may still use re-check, scan, audit, journey enums.
- * Needs attention is wrong as customer face copy. Flag. Fix. Verify. is the loop.
+ * Monitor. Flag. Fix. is the customer loop. Verification supplies recovery proof.
  */
 
 export const ANALYZE_CTA = 'Analyze'
@@ -79,13 +79,13 @@ export const SITE_BOARD_COPY = {
   flagExpected: 'Expected after the fix',
   flagScope: 'Checked scope',
   fixThis: 'Fix this',
-  fixAndVerify: 'Fix and verify',
-  fixStep: 'Fix the problem',
+  fixAndVerify: 'Fix and monitor',
+  fixStep: 'Fix',
   fixStepBody: 'Use the guidance yourself, or give it to your developer or AI.',
-  verifyStep: 'Verify on the live Site',
+  verifyStep: 'Monitor',
   verifyStepBody: 'Published the fix? Let FixFlags check the same page and action again.',
-  copyDoesNotResolve: 'Copying is a handoff. Only Verify can close this Flag.',
-  verifyFix: 'Verify fix',
+  copyDoesNotResolve: 'Copying is a handoff. Only a fresh comparable check can close this Flag.',
+  verifyFix: 'Check now',
   copyPrompt: 'Copy fix prompt',
   copyPromptCopied: 'Fix prompt copied',
   useFixPrompt: 'How to use this prompt',
@@ -99,11 +99,11 @@ export const SITE_BOARD_COPY = {
   changeHint: 'Optional. Saved with this verification attempt.',
   changePlaceholder: 'For example: moved the buy button above the fold',
   changeUndescribed: 'No change described',
-  verificationStarted: 'Verification started. This Flag stays open until the same page and action pass.',
+  verificationStarted: 'Check started. This Flag stays open until the same page and action pass.',
   verificationHistory: 'Verification history',
   noVerificationYet: 'No verification yet',
   noVerificationBody: 'Independent results and change notes will appear here.',
-  verifying: 'Verifying…',
+  verifying: 'Checking…',
   verificationFailed: 'Could not start verification',
   verificationConnectionLost: 'We lost the connection. Refresh to see whether the check started.',
   verifyDescription: 'FixFlags checks the same page and action again. The Flag stays open until a fresh check proves recovery.',
@@ -123,8 +123,8 @@ export const SITE_BOARD_COPY = {
   recoveredBody: 'A fresh check verified recovery. The earlier problem and recovery proof remain below.',
   previousFailure: 'Before the fix',
   captureRecorded: 'Evidence recorded',
-  flagProofMissingBody: 'The recovery proof is not a completed check on this Site. Verify looks at the same page again.',
-  flagResolvedList: 'Flags recorded as fixed. Open one for the completed check. If that check is missing, the Flag says so and offers Verify.',
+  flagProofMissingBody: 'The recovery proof is not a completed check on this Site. Check now looks at the same page again.',
+  flagResolvedList: 'Flags recorded as fixed. Open one for the completed check. If that check is missing, the Flag says so and offers Check now.',
   flagProofLastCheck: 'Last completed check',
   flagProofRunning: 'A new verification is still running. This note is the last completed check, not the current result.',
   needsAttention: 'Needs attention',
@@ -286,7 +286,7 @@ export const API_KEY_COPY = {
   createTitle: 'Create API key',
   createDescription: 'Keys can read evidence and use the Fix → Verify workflow for Sites owned by this account. The secret is shown once.',
   accessName: 'Fix and verify',
-  accessDescription: 'Read Site evidence, start checks, and use the Flag → Fix → Verify workflow for Sites you own.',
+  accessDescription: 'Read Site evidence, start checks, and use the Monitor → Flag → Fix loop for Sites you own.',
 } as const
 
 export const CUSTOMER_TERMS = {
@@ -325,7 +325,7 @@ export const PRICING_COPY = {
   paidFrequency: 'every day',
 } as const
 
-export const CORE_LOOP_LABEL = 'Flag. Fix. Verify.'
+export const CORE_LOOP_LABEL = 'Monitor. Flag. Fix.'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
 export const BANNED_CUSTOMER_PHRASES = [/\bre-checks?\b/i, /\bunlimited re-checks?\b/i, /\bnew URL checks?\b/i, /\bjourneys per month\b/i, /\bjourneys \/ month\b/i, /\bpolish pass\b/i, /\bpolish scan\b/i] as const

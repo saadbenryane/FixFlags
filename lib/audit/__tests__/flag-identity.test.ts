@@ -93,4 +93,14 @@ describe('Flag identity', () => {
       'https://example.com/pricing',
     ])
   })
+  it('preserves scoped evidence across phases without drawing another page over the representative capture', () => {
+    const target = { kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const, label: 'Library', context: 'tracking:page_load:library:page:one' }
+    const flag = { checkId: 'tracking-library-http-error', problem: 'Library error', rubric: 'REACH', severity: 'IMPORTANT', pageUrl: 'https://example.com/', evidence: 'Initial error', evidenceTargets: [target] }
+    const collapsed = collapseFlagsWithAffectedPaths([flag, { ...flag, evidence: 'Later error', evidenceTargets: [{ ...target, context: 'tracking:public_action:library:page:one' }] },
+      { ...flag, pageUrl: 'https://example.com/other', evidenceTargets: [{ ...target, context: 'tracking:page_load:library:page:two', rect: { x: 0.1, y: 0.1, width: 0.1, height: 0.1 } }] }])
+    expect(collapsed[0].evidenceTargets).toHaveLength(3)
+    expect(collapsed[0].evidence).toContain('Later error')
+    expect(collapsed[0].evidenceTargets![2].rect).toBeUndefined()
+  })
+
 })

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { trackingEvidenceSchema } from '../tracking/contracts'
 import { jsonValueSchema } from './contracts'
 import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
@@ -46,6 +47,7 @@ export const screenshotSnapshotSchema = z.object({
   captureStatus: z.object({ desktop: z.enum(['ok', 'failed', 'pending']), mobile: z.enum(['ok', 'failed', 'pending']) }).strict(),
   captureFailures: z.array(object).max(10), captureMetrics: object.nullable().optional(), loadExperience: object.nullable().optional(),
   runtimeHeadMetadata: object.nullable().optional(), responseHeaders: z.record(z.string(), text).nullable().optional(),
+  tracking: trackingEvidenceSchema.optional(),
   networkFailures: z.array(object).max(500).optional(), technologyResources: z.array(object).max(500).optional(),
   technologyResourcesTruncated: z.boolean().optional(), technologyRuntimeMarkers: strings.optional(), actionTimeline: z.array(object).max(500).optional(),
   formProbe: object.nullable().optional(), axeViolations: z.array(object).max(500).optional(), evidenceHarvest: z.array(object).max(500).optional(),

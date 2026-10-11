@@ -1,0 +1,26 @@
+.surface {
+  background: transparent;
+  box-shadow: none;
+  /* autoprefixer: ignore next */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: background-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+.surface[data-surface='frosted'] {
+  background: hsl(var(--background) / .88);
+  box-shadow: var(--glass-shadow);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .surface[data-surface='frosted'] {
+    background: var(--glass-bg-nav);
+    /* autoprefixer: ignore next */
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface { transition: none; }
+}

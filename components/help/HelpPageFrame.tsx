@@ -2,6 +2,7 @@ import type { Route } from 'next'
 import type { HelpArticle, HelpCategory } from '@/lib/help/types'
 import { helpCategoryPath } from '@/lib/help/types'
 import { KnowledgePageHeader } from '@/components/knowledge/KnowledgePageHeader'
+import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import {
   helpArticleStructuredData,
   helpCategoryStructuredData,
@@ -65,13 +66,10 @@ export function HelpPageFrame(props: HelpPageFrameProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <KnowledgePageHeader
-        breadcrumbs={breadcrumbs}
-        meta={meta}
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
-      />
+      {props.kind === 'category' ? <>
+        <div className="pt-6"><KnowledgePageHeader breadcrumbs={breadcrumbs} /></div>
+        <MarketingPageHeader title={title} description={description} />
+      </> : <KnowledgePageHeader breadcrumbs={breadcrumbs} meta={meta} eyebrow={eyebrow} title={title} description={description} />}
       {props.children}
     </>
   )

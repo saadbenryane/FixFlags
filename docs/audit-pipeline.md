@@ -87,6 +87,46 @@ do not certify visual contrast or every custom effect. Accessibility cards canno
 use a completed axe receipt or successful subset to conceal unfinished keyboard
 scope in the current task plan.
 
+Tracking uses the shared browser network monitor, without a new collector queue or
+additional interaction campaign. Initial rendered evidence snapshots page-loading
+requests before the action walk. The existing public-action task records its own
+phase. The bounded HTTP endpoint inventory covers Google Analytics, Google Tag
+Manager, PostHog, Plausible, Segment, Vercel Analytics and Cloudflare Web Analytics.
+Unknown providers and proxies remain explicit limits. Valid in-page CTA targets
+are checked before selection; missing fragments remain non-actionable.
+
+Markup, library-resource transfer, event initiation, endpoint HTTP response and
+provider recording are separate assertions. Request, response, finished and failed
+events retain actual browser facts. No request body, query, cookies, headers, event
+values or visitor identifiers enter the Tracking artifact; project-bearing resource
+paths use canonical templates. Page scopes use the shared pure verifier URL identity
+and a hash rather than duplicating a sensitive page URL in each network context.
+
+Recognized event collection is intercepted before transmission in Audit page
+sessions, independently of the protected-action guard. These intentional refusals
+do not fail unrelated customer flows. Library transfers still execute. Service
+workers are blocked to maintain route ownership; worker-mediated and embedded-frame
+behavior remains outside the observed scope. Tracking tests do not accept consent.
+Existing action walks may dismiss consent UI, so their consent state is not inferred.
+Absent attempts and browser blocking never manufacture missing-event failures.
+
+HTTP library failures produce scoped findings and repair guidance. Repair proof
+requires every originally failed page, provider, endpoint and phase. Finding collapse
+retains all contextual targets. Only conclusive assertion receipts committed in the
+same Run can contribute to combined proof, with their supporting task references.
+Diagnostic admission selects the recorded failed pages and adds the existing
+action walk only for phases that require it. Derived scope selection does not
+change retry identity; the admitted execution snapshot owns the actual work. Unsupported or unobserved scopes remain unverified.
+
+Successful HTTP responses do not establish provider ingestion. Google explicitly
+[separates receipt from processing](https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference);
+Plausible documents [events dropped by bot filtering](https://plausible.io/docs/custom-event-goals),
+and PostHog documents [successful capture responses when a quota prevents capture](https://posthog.com/docs/api).
+Normal audits suppress recognized event traffic, so destination availability and
+provider recording remain unknown for those attempts. Connected aggregate Analytics
+reports are separate audience evidence. Authorized event-level provider confirmation,
+consent-controlled scenarios and configured first-party proxies still require implementation.
+
 Safe Signup setup uses `FIXTURE_SETUP` admission through the same Site RunRequest
 and Audit transaction. The admitted intent snapshots only the fixture identity and
 version; encrypted values stay on the fixture. Admission clears previous approval
@@ -113,7 +153,7 @@ still require capacity and broader real database/worker fault acceptance.
 to a newly created local database, checks migration status and schema drift, and
 uses a disposable Redis container with the application worker. Representative
 Search collection and partial completion, expired Signup ownership with unsettled
-cleanup, and keyboard focus-style and menu restoration failure-to-repair verification have been exercised through
+cleanup, and keyboard focus-style, menu restoration and Tracking library failure-to-repair verification have been exercised through
 this boundary. HTTP transport is served by controlled fixtures; keyboard evidence
 is collected in Chromium. The Signup interruption is modeled in the durable ledger
 after a fenced submission-admission fact, not by creating a real account or killing

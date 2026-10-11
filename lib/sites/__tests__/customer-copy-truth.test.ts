@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
 import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
+import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy/integrations'
 
 const root = resolve(__dirname, '../../..')
 
@@ -44,7 +45,10 @@ describe('customer-visible truth', () => {
     expect(homepage).not.toMatch(/paid checkout is open|Analytics marked this Clear|guaranteed recovery/i)
     expect(homepage).not.toContain('Coming later')
     expect(homepage).toContain('They do not mark an Outcome Clear.')
-    expect(source('lib/marketing/copy/integrations.ts')).toContain('does not scan the repository')
+    const github = INTEGRATIONS_PAGE.items.find(item => item.id === 'github')!
+    expect(github.status).toBe('planned')
+    expect(github.summary).toMatch(/^Planned:/)
+    expect('href' in github).toBe(false)
     expect(source('lib/marketing/copy/compare.ts')).not.toContain('values: { psi: false')
   })
 })

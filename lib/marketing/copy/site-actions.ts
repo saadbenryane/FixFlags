@@ -14,7 +14,7 @@ export const SITE_ACTION_COPY = {
   refreshPending: 'The action was saved. Refresh to see the latest state.',
   updatesDisconnected: 'Updates disconnected. Your last recorded evidence is still shown.',
   outcome: {
-    verifying: 'Verifying…', verify: 'Verify', started: 'Verification started',
+    verifying: 'Checking…', verify: 'Check now', started: 'Check started',
     pausedRunning: 'Paused. The active verification will finish.', paused: 'Outcome paused.',
     enabled: 'Outcome enabled.', enabledVerifying: 'Outcome enabled. Fresh verification started.',
   },
@@ -46,6 +46,11 @@ export const SITE_ACTION_COPY = {
       flow: 'Main action', 'slow-replay': 'Slow-connection evidence', journeys: 'Customer journeys', 'fixture-setup': 'Signup setup dry run', bindings: 'Configured responsibility',
       judge: 'Evidence explanation', discovery: 'Page discovery', 'cross-page': 'Checked-page comparison', finalize: 'Execution summary' },
     devices: { desktop: 'Desktop', mobile: 'Mobile' },
+    tracking: {
+      source: 'Browser network observation', partial: 'Tracking partially checked', requestsObserved: 'Tracking requests observed', libraryObserved: 'Tracking library resource loaded', runtimeUnknown: 'Tracking behavior remains unverified',
+      deliveryLimit: 'Observed attempts do not prove delivery or provider recording. FixFlags suppresses recognized event requests to avoid adding audit traffic.',
+      consentLimit: 'Consent, intentional blocking, browser limits and unrecognized proxies can affect this scope.',
+    },
     keyboard: {
       checking: 'Checking keyboard access', incomplete: 'Keyboard checks incomplete', pending: 'Keyboard navigation evidence is still pending.',
       scope: 'Checks cover the recorded page controls and safely exercised declared popups. Other interaction states, visual focus contrast, and assistive technology require separate review.',

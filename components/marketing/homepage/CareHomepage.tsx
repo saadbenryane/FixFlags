@@ -13,7 +13,7 @@ import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
 import { HomepageCheckCoverage } from './HomepageCheckCoverage'
-import { HomepageFinalSection, HomepageHandoffSection, HomepageIntegrationsSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
+import { HomepageFinalSection, HomepageHandoffSection, HomepageIntegrationsSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
 import s from './CareHomepage.module.css'
 
 export function CareHomepage() {
@@ -59,6 +59,7 @@ export function CareHomepage() {
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} onOpenFlag={openSampleFlag} onCopyFlag={(card, id) => void copyFlag('read', SAMPLE_FLAGS[id].prompt, card, id)} />
     <HomepageCheckCoverage />
+    <HomepageLoopSection />
     <HomepageHandoffSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
     <HomepageIntegrationsSection />
     <HomepageFinalSection />

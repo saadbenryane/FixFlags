@@ -17,6 +17,43 @@ function openCategory(name: string) {
 }
 
 describe('comprehensive homepage experience', () => {
+  it('puts Uptime first in the sample and the presentation of check areas', () => {
+    render(<CareHomepage />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    expect(within(board).getAllByRole('article')[0]).toHaveAccessibleName('Uptime')
+    const coverage = screen.getByRole('region', { name: C.checks.title })
+    expect(within(coverage).getAllByRole('button')[0]).toHaveAccessibleName(C.checks.explore('Uptime'))
+    expect(SITE_CARD_AREAS[0]).toBe('uptime')
+  })
+
+  it('opens every sample Flag from its title and arrow and restores focus on close', async () => {
+    render(<CareHomepage />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    for (const flag of Object.values(SAMPLE_FLAGS)) {
+      for (const name of [flag.title, `Open ${flag.title}`]) {
+        const trigger = within(board).getByRole('button', { name, exact: true })
+        trigger.focus()
+        fireEvent.click(trigger)
+        const dialog = screen.getByRole('dialog')
+        expect(within(dialog).getByRole('heading', { name: flag.title })).toBeVisible()
+        expect(within(dialog).getByText(flag.observed)).toBeVisible()
+        fireEvent.keyDown(dialog, { key: 'Escape' })
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        await waitFor(() => expect(trigger).toHaveFocus())
+      }
+    }
+  })
+
+  it('opens the Flag list from the website count and category details from category counts', () => {
+    render(<CareHomepage />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    fireEvent.click(within(board).getByRole('button', { name: 'Pages: 2 Flags' }))
+    expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Pages' })).toBeVisible()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    fireEvent.click(within(board).getByRole('button', { name: '3 Flags on this website' }))
+    for (const flag of Object.values(SAMPLE_FLAGS)) expect(within(board).getByRole('button', { name: `Open ${flag.title}` })).toBeVisible()
+  })
+
   it('edits custom sample schedules from the monitoring summary and preserves the selection', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -380,19 +417,28 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('places benefits above the hero entry and AI tools below it', () => {
+  it('places AI tools below the hero entry and benefits below the dashboard introduction', () => {
     render(<CareHomepage />)
     const guides = screen.getByRole('list', { name: C.actions.editorGuidesLabel })
     expect(within(guides).getAllByRole('link')).toHaveLength(8)
     expect(within(guides).getByRole('link', { name: 'Cursor' })).toHaveAttribute('href', '/docs/integrations#cursor')
     expect(within(guides).getByRole('link', { name: 'Codex' })).toHaveAttribute('href', '/docs/integrations#codex')
-    const hero = guides.closest('section')!
-    const entry = hero.querySelector('#analyze')!
+    const entry = document.getElementById('analyze')!
+    const hero = entry.closest('section')!
+    const product = document.getElementById('product')!
+    const intro = within(product).getByRole('heading', { name: S.title }).parentElement!
+    expect(guides.closest('section')).toBe(hero)
+    expect(intro).toHaveTextContent(S.subtitle)
+    expect(intro).toHaveTextContent(S.mcpLead)
+    expect(within(intro).getByRole('link', { name: S.mcpLabel })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
+    expect(entry.nextElementSibling).toBe(guides.parentElement)
     expect(entry.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.queryByText('No credit card required')).not.toBeInTheDocument()
     const benefits = screen.getByRole('list', { name: 'What FixFlags does' })
-    expect(benefits.closest('section')).toBe(hero)
-    expect(benefits.compareDocumentPosition(entry)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(benefits.closest('section')).toBe(product)
+    expect(intro.nextElementSibling).toBe(benefits)
+    expect(benefits.nextElementSibling).toBe(screen.getByRole('region', { name: C.boardAria }))
+    expect(guides.compareDocumentPosition(benefits)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(benefits.compareDocumentPosition(screen.getByRole('region', { name: C.boardAria }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 

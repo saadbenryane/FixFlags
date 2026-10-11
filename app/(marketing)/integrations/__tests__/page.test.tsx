@@ -9,24 +9,31 @@ vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-te
 vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPageViewTracker: () => null }))
 
 describe('integrations marketing page', () => {
-  it('shows logos and specific additional checks for current and proposed connections', () => {
+  it('uses matching detailed cards for available and coming-soon connections', () => {
     render(<IntegrationsPage />)
     expect(screen.getByRole('heading', { level: 1, name: C.hero.title })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Available connections' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Exploring other connections' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Available connections' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Exploring other connections')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(10)
+    expect(screen.getAllByText('Coming soon')).toHaveLength(7)
+    expect(screen.getAllByRole('article').slice(0, 3).every(card => card.dataset.status === 'available')).toBe(true)
     expect(screen.queryByRole('heading', { name: 'More signals to bring in' })).not.toBeInTheDocument()
     expect(C.items).toHaveLength(10)
     expect(C.items.filter(item => item.status === 'available')).toHaveLength(3)
     for (const item of C.items) {
       const card = document.getElementById(item.id)!
       expect(within(card).getByRole('heading', { name: item.title })).toBeInTheDocument()
+      expect(card.tagName).toBe('ARTICLE')
+      expect(card.className).toBe(document.getElementById('shopify')!.className)
       expect(card.querySelector('img')).toHaveAttribute('src', item.logo)
       expect(within(card).getByText(item.summary)).toBeInTheDocument()
       if (item.status === 'available') {
         expect(within(card).getByRole('heading', { name: C.currentListTitle })).toBeInTheDocument()
         for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
       } else {
-        expect(within(card).queryByRole('heading', { name: C.futureListTitle })).not.toBeInTheDocument()
+        expect(within(card).getByRole('heading', { name: C.futureListTitle })).toBeVisible()
+        for (const check of item.checks) expect(within(card).getByText(check)).toBeInTheDocument()
+        expect(within(card).getByText(item.summary)).toHaveTextContent(/^Planned:/)
         expect(within(card).getByText(C.proposedLabel)).toBeVisible()
       }
       if (item.status === 'available') expect(within(card).getByRole('link', { name: item.action })).toHaveAttribute('href', item.href)

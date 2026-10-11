@@ -3,12 +3,12 @@ import { ANALYZE_CTA, CORE_LOOP_LABEL, SITE_BOARD_COPY } from '@/lib/marketing/c
 import { FLAG_STATUS_LABELS } from '@/lib/marketing/copy/flags'
 import { plannedWatchJobs } from '@/lib/audit/project-watch'
 
-describe('Flag. Fix. Verify. loop contract', () => {
+describe('Monitor. Flag. Fix. loop contract', () => {
   it('locks Analyze, the core loop, Copy fix prompt, and independent Verify', () => {
     expect(ANALYZE_CTA).toBe('Analyze')
-    expect(CORE_LOOP_LABEL).toBe('Flag. Fix. Verify.')
+    expect(CORE_LOOP_LABEL).toBe('Monitor. Flag. Fix.')
     expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix prompt')
-    expect(SITE_BOARD_COPY.verifyFix).toBe('Verify fix')
+    expect(SITE_BOARD_COPY.verifyFix).toBe('Check now')
     expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Verified')
     expect(FLAG_STATUS_LABELS.FIXED.description).toMatch(/Independent check/)
     expect(FLAG_STATUS_LABELS.FIXED.description).not.toMatch(/no longer observes|not observed/i)

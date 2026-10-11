@@ -55,11 +55,13 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
   return (
     <div className="space-y-6">
       <div>
+        <h3 className="mb-3 text-sm font-semibold">{SITE_BOARD_COPY.fixStep}</h3>
         <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={flagId} /></div>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.fixStepBody}</p>
       </div>
 
       <div className="border-t border-border/80 pt-5">
+        <h3 className="mb-3 text-sm font-semibold">{SITE_BOARD_COPY.verifyStep}</h3>
         <p className="text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.verifyStepBody}</p>
         <Button className="mt-3 w-full" variant="brand" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
           <ShieldCheck aria-hidden="true" />

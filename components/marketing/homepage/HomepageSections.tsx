@@ -20,6 +20,17 @@ export function HomepageEditorTools() {
   return <div className={t.editorTools}><p>{C.actions.editorLabel}</p><ul aria-label={C.actions.editorGuidesLabel}>{HOMEPAGE_EDITOR_INTEGRATIONS.map(editor => <li key={editor.key}><Link href={editorDocsHref(editor)}><EditorMark name={editor.label} className={t.editorMark} />{editor.label}</Link></li>)}</ul></div>
 }
 
+export function HomepageLoopSection() {
+  return <section className={`${s.section} ${t.loopSection}`} aria-labelledby="homepage-loop-heading">
+    <p className={s.eyebrow}>{C.workflow.label}</p>
+    <h2 id="homepage-loop-heading">{C.workflow.title}</h2>
+    <ol className={t.loop}>
+      {C.workflow.steps.map(step => <li key={step.id}><p className={t.loopLabel}>{step.label}</p><h3>{step.title}</h3><p>{step.body}</p></li>)}
+    </ol>
+    <Link href="/how-it-works" className={t.loopLink}>{C.workflow.action}<ArrowRight size={16} aria-hidden="true" /></Link>
+  </section>
+}
+
 export function HomepageHandoffSection({ onCopy, copyResult, manualPrompt }: {
   onCopy: (source: HomepageCopySource, prompt: string) => void
   copyResult: HomepageCopyResult

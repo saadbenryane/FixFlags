@@ -11,6 +11,7 @@ export const executionSpecSchema = z.object({
   reviewDepth: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   version: z.literal(1), targetUrl: z.string().url(), environment: z.string().min(1),
   scope: z.enum(['SITE', 'OUTCOMES', 'DIAGNOSTIC', 'FIXTURE_SETUP']),
+  verificationScopes: z.array(z.object({ pageUrl: z.string().url(), phases: z.array(z.enum(['page_load', 'public_action'])).max(2) }).strict()).max(100).optional(),
   fixtureSetup: z.object({ id: z.string().min(1), version: z.number().int().positive() }).strict().optional(),
   checks: z.record(z.string(), z.number().int().positive()),
   outcomes: z.array(z.object({ id: z.string().min(1), kind: z.string().min(1), expectation: z.string().nullable(),

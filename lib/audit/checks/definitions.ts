@@ -52,6 +52,10 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   }),
   measurement: define('measurement', 'tracking', 'Measurement configuration', 'metadata', {
     'analytics-markup': assertion('tracking', ['measurement-ga-gtm-posthog-missing']),
+    'tracking-library': assertion('tracking', ['tracking-library-http-error']),
+    'tracking-initiation': assertion('tracking'),
+    'tracking-http-response': assertion('tracking', ['tracking-endpoint-http-error']),
+    'tracking-provider-recording': assertion('tracking'),
   }),
   performance: define('performance', 'performance', 'Page speed', 'performance', {
     lcp: assertion('performance', ['lcp-critical', 'lcp-poor']), cls: assertion('performance', ['cls-critical', 'cls-poor']),

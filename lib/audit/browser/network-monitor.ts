@@ -1,4 +1,6 @@
-import type { Page, Response } from 'playwright'
+import type { Page, Request, Response } from 'playwright'
+import { classifyTrackingEndpoint } from '../tracking/endpoints'
+import { MAX_TRACKING_REQUESTS, type TrackingEvidence, type TrackingRequest } from '../tracking/contracts'
 
 export interface NetworkFailureRecord {
   url: string
@@ -14,6 +16,9 @@ export interface NetworkMonitor {
   failures: NetworkFailureRecord[]
   resources: TechnologyResourceRecord[]
   resourcesTruncated: () => boolean
+  tracking: (phase?: TrackingRequest['phase']) => TrackingEvidence
+  setTrackingPhase: (phase: TrackingRequest['phase']) => void
+  suppressTracking: (request: Request) => void
   dispose: () => void
 }
 
@@ -67,6 +72,31 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
   const resources: TechnologyResourceRecord[] = []
   const resourceKeys = new Set<string>()
   let technologyResourcesTruncated = false
+  const startedAt = Date.now(), trackingRequests: TrackingRequest[] = []
+  const tracked = new WeakMap<Request, TrackingRequest>()
+  let phase: TrackingRequest['phase'] = 'page_load', trackingTruncated = false
+  const phaseStarts: Partial<Record<TrackingRequest['phase'], number>> = { page_load: startedAt }
+  const onRequest = (request: Request) => {
+    const endpoint = classifyTrackingEndpoint(request.url(), request.resourceType(), pageOrigin)
+    if (!endpoint || endpoint.role === 'event' && ['HEAD', 'OPTIONS'].includes(request.method())) return
+    try { if (request.frame() !== page.mainFrame()) return } catch { return }
+    if (trackingRequests.length >= MAX_TRACKING_REQUESTS) { trackingTruncated = true; return }
+    const method = request.method().toUpperCase()
+    const record: TrackingRequest = { ...endpoint, method: ['GET', 'HEAD', 'OPTIONS', 'POST'].includes(method) ? method as TrackingRequest['method'] : 'OTHER',
+      phase, state: 'pending', status: null, reason: null, atMs: Math.max(0, Date.now() - (phaseStarts[phase] ?? startedAt)) }
+    tracked.set(request, record); trackingRequests.push(record)
+  }
+  const onFinished = (request: Request) => {
+    const record = tracked.get(request)
+    if (record && record.state !== 'suppressed') record.state = 'completed'
+  }
+  const onFailed = (request: Request) => {
+    const record = tracked.get(request)
+    if (!record || record.state === 'suppressed') return
+    record.state = 'failed'
+    // Browser errors can contain sensitive URLs. Only retain a coarse cause.
+    record.reason = /ERR_BLOCKED_BY_CLIENT|ERR_FAILED/i.test(request.failure()?.errorText ?? '') ? 'browser_blocked' : 'transport_failed'
+  }
   let originHost = ''
   try {
     originHost = new URL(pageOrigin).hostname
@@ -77,8 +107,12 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
   const onResponse = (response: Response) => {
     const request = response.request()
     const resourceType = request.resourceType()
+    const tracking = tracked.get(request)
+    if (tracking && tracking.state !== 'suppressed') { tracking.status = response.status(); tracking.state = 'response' }
     const resource = sanitizeTechnologyResource(response.url(), resourceType, response.status())
     if (resource) {
+      const endpoint = classifyTrackingEndpoint(response.url(), resourceType, pageOrigin)
+      if (endpoint) resource.pathname = endpoint.endpoint
       const key = `${resource.resourceType}:${resource.hostname}${resource.pathname}`
       if (!resourceKeys.has(key) && resources.length < MAX_TECHNOLOGY_RESOURCES) {
         resourceKeys.add(key)
@@ -88,7 +122,7 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
       }
     }
 
-    if (failures.length >= MAX_FAILURES) return
+    if (tracking || classifyTrackingEndpoint(response.url(), resourceType, pageOrigin) || failures.length >= MAX_FAILURES) return
     const status = response.status()
     if (status < 400) return
 
@@ -120,14 +154,30 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     })
   }
 
+  page.on('request', onRequest)
   page.on('response', onResponse)
+  page.on('requestfinished', onFinished)
+  page.on('requestfailed', onFailed)
 
   return {
     failures,
     resources,
     resourcesTruncated: () => technologyResourcesTruncated,
+    tracking: (selected = phase) => ({ version: 1, phase: selected,
+      requests: trackingRequests.filter(record => record.phase === selected).map(record => ({ ...record })),
+      truncated: trackingTruncated, durationMs: Math.max(0, Date.now() - (phaseStarts[selected] ?? Date.now())),
+      consentInteraction: selected === 'page_load' ? 'none' : 'existing_flow' }),
+    setTrackingPhase: value => { phase = value; phaseStarts[value] ??= Date.now() },
+    suppressTracking: request => {
+      if (!tracked.has(request)) onRequest(request)
+      const record = tracked.get(request)
+      if (record) { record.state = 'suppressed'; record.reason = 'scanner_suppressed' }
+    },
     dispose: () => {
+      page.off('request', onRequest)
       page.off('response', onResponse)
+      page.off('requestfinished', onFinished)
+      page.off('requestfailed', onFailed)
     },
   }
 }

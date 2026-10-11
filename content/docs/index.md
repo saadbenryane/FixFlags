@@ -4,7 +4,7 @@ Enter a public website URL. FixFlags opens a Site board for that website: what i
 
 1. Enter a URL on the homepage or [/new](/new).
 2. Stay on the Site board while cards fill in.
-3. Open a Flag, copy the fix, then Verify the same page and action.
+3. Open a Flag, copy the fix, then select Check now after publishing to check the same page and action.
 4. Keep watching after you claim the Site. Open beta includes any supported schedule on one website. Read the temporary offer on [Pricing](/pricing).
 
 Shopify is a [connection](/docs/integrations/shopify) for store and purchase-path evidence. [Analytics and Search Console](/docs/integrations) add traffic and search context to the same Site.
@@ -13,13 +13,11 @@ Shopify is a [connection](/docs/integrations/shopify) for store and purchase-pat
 
 ## The product loop
 
-FixFlags follows one loop: **Flag. Fix. Verify.**, then Watch.
+FixFlags follows one loop: **Monitor. Flag. Fix.**, then return to Monitor. Monitoring includes fresh verification after a fix and configured scheduled checks.
 
-- **Analyze** the live website broadly.
+- **Monitor** the live website, starting with an analysis. Turn on scheduled checks when you save your Site, and select Check now after a fix for fresh verification.
 - **Flag** what is important enough to act on.
 - **Fix** in the tools you already use, or send the Flag to your AI.
-- **Verify** with a fresh independent check of the same behavior.
-- **Watch** only after a schedule exists.
 
 ## Choose your path
 

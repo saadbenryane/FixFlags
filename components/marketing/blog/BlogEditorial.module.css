@@ -3,6 +3,9 @@
   background: hsl(var(--background));
 }
 
+.page[data-page="index"] { padding-top: 0; }
+.page[data-page="index"] .posts { margin-top: 0; }
+
 .container {
   padding-inline: clamp(1.25rem, 4vw, 3rem);
 }

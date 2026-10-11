@@ -17,6 +17,8 @@ export type MonitoringTimelineEvent = {
   flagCount?: number
   flags?: readonly { id: string; title: string; href?: string; onOpen?: () => void }[]
   dateTime?: string
+  detail?: string
+  resultLabel?: string
 }
 
 function chartGeometry(points: readonly MonitoringHistoryPoint[]) {
@@ -55,6 +57,8 @@ export function SiteMonitoringHistory({ points, events, emptyMessage }: {
     {events.length > 0 ? <><h2 className={styles.timelineHeading}>{C.checkHistory}</h2><ol className={styles.timeline} aria-label={C.checkHistory}>
       {events.map(event => <li key={event.id} className={styles.event}><i data-state={event.state} aria-hidden="true" /><div>
         <div className={styles.eventHeader}><strong>{event.title}</strong><time dateTime={event.dateTime}>{event.time}</time></div>
+        {event.detail ? <p className={styles.count}>{event.detail}</p> : null}
+        {event.resultLabel ? <p className={styles.count}>{event.resultLabel}</p> : null}
         {event.flagCount !== undefined && (event.state !== 'unknown' || event.flagCount > 0) ? <span className={styles.count}>{C.flags(event.flagCount)}</span> : null}
         {event.flags?.length ? <ul className={styles.flags}>{event.flags.map(flag => <li key={flag.id}>
           {flag.onOpen ? <button type="button" onClick={flag.onOpen}>{flag.title}<ArrowUpRight size={14} aria-hidden /></button> : flag.href ? <Link href={flag.href as Route}>{flag.title}<ArrowUpRight size={14} aria-hidden /></Link> : <span>{flag.title}</span>}

@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/ui/container'
@@ -10,14 +11,10 @@ import s from '@/components/marketing/blog/BlogEditorial.module.css'
 export const metadata = buildPageMetadata('blog', '/blog')
 
 export default function BlogPage() {
-  return <div className={s.page}>
+  return <div className={s.page} data-page="index">
     <MarketingPageViewTracker page="/blog" />
     <Container variant="marketing" className={s.container}>
-      <header>
-        <p className={s.kicker}>{BLOG_PAGE.label}</p>
-        <h1 className={s.indexTitle}>{BLOG_PAGE.headline}</h1>
-        <p className={s.deck}>{BLOG_PAGE.body}</p>
-      </header>
+      <MarketingPageHeader eyebrow={BLOG_PAGE.label} title={BLOG_PAGE.headline} description={BLOG_PAGE.body} />
       <ol className={s.posts}>
         {BLOG_POSTS.map((post, position) => <li key={post.slug}>
           <article className={position === 0 ? s.featured : s.post}>

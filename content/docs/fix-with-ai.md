@@ -12,7 +12,7 @@ The homepage prompts are examples. Analyze your own website to get Flags for you
 
 ## Verify the fix
 
-After publishing, return to the same Flag in FixFlags and select **Verify fix**. FixFlags checks the same page and action again.
+After publishing, return to the same Flag in FixFlags and select **Check now**. This returns to Monitor: FixFlags checks the same page and action again. The saved monitoring schedule continues independently.
 
 Copying a prompt or making a code change does not close the Flag. A fresh check must show that the problem is fixed. If FixFlags cannot complete the check, it says **Couldn't verify**.
 

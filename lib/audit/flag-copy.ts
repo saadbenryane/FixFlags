@@ -100,6 +100,8 @@ export function isGenericWhyItMatters(
 }
 
 const WHY_IT_MATTERS: Record<string, string> = {
+  'tracking-library-http-error': 'A requested tracking library could not be downloaded successfully in this browser scope, so measurements may never start for affected visitors. Consent and deliberate access restrictions must be checked before changing configuration.',
+  'tracking-endpoint-http-error': 'The observed tracking destination returned an HTTP error. Measurements can be lost even when a script is present; successful provider ingestion still needs independent confirmation.',
   'measurement-ga-gtm-posthog-missing':
     'Without analytics you are shipping blind - you cannot tell whether a change increased signups or quietly broke them.',
   'security-mixed-content':

@@ -145,6 +145,7 @@ export interface ScreenshotResult {
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
+  tracking?: import('./tracking/contracts').TrackingEvidence
   networkFailures?: NetworkFailureRecord[]
   technologyResources?: TechnologyResourceRecord[]
   technologyResourcesTruncated?: boolean
@@ -169,6 +170,7 @@ interface ViewportCapture {
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
+  tracking?: import('./tracking/contracts').TrackingEvidence
   networkFailures?: NetworkFailureRecord[]
   technologyResources?: TechnologyResourceRecord[]
   technologyResourcesTruncated?: boolean
@@ -419,6 +421,7 @@ async function captureDesktopWithFlow(
       Date.now() - captureStartedAt,
       initial
     )
+    result.tracking = session.tracking('page_load')
     // Snapshot after the initial page has settled and before the CTA flow so
     // destination resources cannot contaminate the landing-page stack.
     result.technologyResources = [...session.technologyResources]
@@ -698,6 +701,7 @@ export async function captureScreenshots(
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     responseHeaders: desktop.responseHeaders ?? null,
     networkFailures: mergedNetworkFailures,
+    tracking: desktop.tracking,
     technologyResources: desktop.technologyResources ?? [],
     technologyResourcesTruncated: desktop.technologyResourcesTruncated ?? false,
     technologyRuntimeMarkers: desktop.technologyRuntimeMarkers ?? [],

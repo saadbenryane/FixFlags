@@ -229,6 +229,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
  * Verification rule for measurement scan
  */
 export const MEASUREMENT_VERIFICATION_RULES = {
+  'tracking-library-http-error': 'Observe the same library endpoint completing its transfer without an HTTP error in the recorded browser phase. Markup presence does not verify resource loading.',
+  'tracking-endpoint-http-error': 'Observe a successful HTTP response from the same event destination in the recorded browser phase. A suppressed attempt or a different endpoint does not prove the repair; provider ingestion requires separate confirmation.',
   'measurement-ga-gtm-posthog-missing':
     'Check Google Analytics 4, Google Tag Manager, or PostHog presence. Install one of them for conversion tracking and business intelligence.',
 }

@@ -3,13 +3,13 @@ import { registeredCheck } from '@/lib/audit/check-registry'
 /** Card areas on the Site board. Checks and Flags project into these. */
 
 export const SITE_CARD_AREAS = [
+  'uptime',
   'site',
   'security',
   'search',
   'performance',
   'conversion',
   'tracking',
-  'uptime',
   'accessibility',
 ] as const
 

@@ -14,7 +14,7 @@ vi.mock('../journey-safety', () => ({
   }),
 }))
 vi.mock('../network-monitor', () => ({
-  attachNetworkMonitor: () => ({ failures: [], resources: [], resourcesTruncated: () => false, dispose: vi.fn() }),
+  attachNetworkMonitor: () => ({ failures: [], resources: [], resourcesTruncated: () => false, tracking: vi.fn(), setTrackingPhase: vi.fn(), suppressTracking: vi.fn(), dispose: vi.fn() }),
 }))
 import { createAuditPage } from '../page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '../capture-profile'
@@ -34,7 +34,7 @@ describe('audit page session form evidence', () => {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, settle: false,
     })
     expect(session.formProbe).toBeNull()
-    await intercept({ request: () => ({ url: () => 'http://localhost:4100/api/subscribe' }) } as unknown as Route)
+    await intercept({ request: () => ({ url: () => 'http://localhost:4100/api/subscribe', resourceType: () => 'fetch', method: () => 'POST' }) } as unknown as Route)
     expect(session.formProbe?.status).toBe(500)
     expect(runNetworkEngagementChecks([], session.formProbe).map(flag => flag.checkId))
       .toEqual(['form-submit-api-server-error'])

@@ -19,6 +19,7 @@ import {
   type TechnologyResourceRecord,
 } from './network-monitor'
 import { isBotInterstitialPage, PageCaptureError } from './page-capture'
+import { classifyTrackingEndpoint } from '../tracking/endpoints'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -44,6 +45,8 @@ export interface AuditPageSession {
   /** Sanitized, bounded initial resource inventory for deterministic technology detection. */
   technologyResources: TechnologyResourceRecord[]
   technologyResourcesTruncated: () => boolean
+  tracking: NetworkMonitor['tracking']
+  setTrackingPhase: NetworkMonitor['setTrackingPhase']
   /** Optional form probe result when journeySafe engagement POST was observed. */
   formProbe: FormProbeResult | null
   /** Scanner-imposed restrictions, not customer failures. */
@@ -126,7 +129,7 @@ export async function createAuditPage(
     isMobile: options.profile.isMobile ?? false,
     locale: 'en-US',
     bypassCSP: false,
-    ...(options.readOnlyInteractions ? { serviceWorkers: 'block' as const } : {}),
+    serviceWorkers: 'block',
     recordVideo: options.recordVideoDir
       ? {
           dir: options.recordVideoDir,
@@ -170,6 +173,7 @@ export async function createAuditPage(
       }
     : undefined
   const safetyRestrictions: string[] = [], refusedUrls = new Set<string>()
+  const network: NetworkMonitor = attachNetworkMonitor(page, targetUrl)
   if (options.readOnlyInteractions) await page.routeWebSocket('**', async socket => {
     if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
     options.onSafetyRefusal?.('protected_action_requires_fixture')
@@ -178,6 +182,14 @@ export async function createAuditPage(
 
   await page.route('**', async (route) => {
     const requestUrl = route.request().url()
+    // Observe the browser's own attempts without replaying or manufacturing
+    // events. These refusals do not make an unrelated customer action fail.
+    if (classifyTrackingEndpoint(requestUrl, route.request().resourceType(), targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(route.request().method())) {
+      network.suppressTracking(route.request())
+      refusedUrls.add(requestUrl)
+      await route.abort('blockedbyclient')
+      return
+    }
     const routeGuards = guardOptions ? { ...guardOptions, onRefusal: (reason: 'protected_action_requires_fixture' | 'payment_or_download_blocked') => {
       refusedUrls.add(requestUrl)
       if (!safetyRestrictions.includes(reason) && safetyRestrictions.length < 16) safetyRestrictions.push(reason)
@@ -215,7 +227,6 @@ export async function createAuditPage(
     }
   })
 
-  const network: NetworkMonitor = attachNetworkMonitor(page, targetUrl)
   await options.configurePage?.(page)
 
   const navigationTimeout = options.deadline
@@ -305,6 +316,8 @@ export async function createAuditPage(
     networkFailures: network.failures,
     technologyResources: network.resources,
     technologyResourcesTruncated: network.resourcesTruncated,
+    tracking: network.tracking,
+    setTrackingPhase: network.setTrackingPhase,
     // The interaction happens after navigation; expose the current probe,
     // rather than freezing its initial null value in the returned session.
     get formProbe() { return formProbeState?.result ?? null },

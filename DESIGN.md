@@ -54,6 +54,8 @@ Marketing and Site narrative hierarchy uses spacing, tone and type before divide
 
 ## Layout and motion
 
+Marketing overview pages share `MarketingPageHeader`: centered Inter Tight display title, a constrained description, sentence-case neutral eyebrow with a bright orange dot, and centered actions. The header owns its top and bottom spacing; enclosing Sections use `overview` spacing. Avoid repeating the page introduction above its first content section. Homepage heroes, articles, docs, legal reading pages, tools, and connection flows retain their own compositions.
+
 - Keep responsive containers and spacing in the shared Container and Section primitives where they apply. Their variants intentionally use different widths and rhythms.
 - Reflow real-length names, answers and status controls without overlap. Preserve mobile access to the same content and actions; do not impose fixed card heights to hide wrapping.
 - Marketing uses its existing canvas and section tints. The shared shell's minimal grid is an app/admin treatment, not a marketing hero background.

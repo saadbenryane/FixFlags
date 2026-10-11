@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import styles from './Header.module.css'
 
 export type HeaderVariant = 'marketing' | 'app' | 'admin'
 
@@ -71,15 +72,19 @@ export function Header({
     const onScroll = () => setScrolled(window.scrollY > 12)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener('pageshow', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('pageshow', onScroll)
+    }
   }, [isMarketing])
 
   return (
     <header
+      data-surface={isMarketing && !scrolled ? 'clear' : 'frosted'}
       className={cn(
-        'sticky top-0 z-navbar border-0 transition-[background-color,box-shadow,backdrop-filter] duration-200 ease-out',
-        isMarketing && !scrolled && 'bg-transparent shadow-none backdrop-blur-none',
-        (!isMarketing || scrolled || compact) && 'glass-nav',
+        'sticky top-0 z-navbar border-0',
+        styles.surface,
         className
       )}
     >

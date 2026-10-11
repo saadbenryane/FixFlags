@@ -19,6 +19,7 @@ import { runSearchPerformanceChecks } from '@/lib/audit/checks/search-performanc
 import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metadata-checks'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runAccessibilityChecks } from '@/lib/audit/checks/accessibility'
+import { runTrackingChecks } from '@/lib/audit/checks/tracking'
 import { runKeyboardChecks } from '@/lib/audit/checks/keyboard'
 import type { KeyboardInteraction } from '@/lib/audit/browser/keyboard-probe'
 import { runSeoChecks } from '@/lib/audit/checks/seo'
@@ -1545,6 +1546,14 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
+    'tracking-library-http-error': () => checkIds(runTrackingChecks(healthyMeta({ hasAnalytics: true }), {
+      version: 1, phase: 'page_load', durationMs: 100, truncated: false, consentInteraction: 'none', requests: [{ provider: 'google-analytics', role: 'library',
+        hostname: 'www.googletagmanager.com', endpoint: '/gtag/js', method: 'GET', phase: 'page_load', state: 'completed', status: 404, reason: null, atMs: 1 }],
+    }, 'https://example.com/').flags),
+    'tracking-endpoint-http-error': () => checkIds(runTrackingChecks(healthyMeta({ hasAnalytics: true }), {
+      version: 1, phase: 'page_load', durationMs: 100, truncated: false, consentInteraction: 'none', requests: [{ provider: 'google-analytics', role: 'event',
+        hostname: 'www.google-analytics.com', endpoint: '/g/collect', method: 'POST', phase: 'page_load', state: 'completed', status: 400, reason: null, atMs: 1 }],
+    }, 'https://example.com/').flags),
     'measurement-ga-gtm-posthog-missing': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
     'form-missing-validation': () =>

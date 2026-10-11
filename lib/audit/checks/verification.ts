@@ -15,7 +15,7 @@ export const checkVerifierSchema = z.object({
 
 /** Presence assertions cannot verify a different, stricter responsibility. */
 export function assertionForTarget(receipt: z.infer<typeof checkReceiptSchema>, checkId: string) {
-  return receipt.assertions.find(assertion => assertion.complete !== false && PAGE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId))
+  return receipt.assertions.find(assertion => assertion.complete !== false && assertion.disposition !== 'observed' && PAGE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId))
 }
 
 /** Called inside the task's fenced observation transaction, never from a read. */
@@ -36,9 +36,11 @@ export async function recordAssertionVerifiers(input: {
     const checkId = baseCheckId(flag.checkId)
     if (!checkId || flag.source !== 'DETERMINISTIC') continue
     // Unscoped historical page findings may only use the primary page adapter.
-    if (flag.pageUrl ? verifierScopeKey(flag.pageUrl) !== verifierScopeKey(receipt.pageUrl) : !input.primary) continue
+    const tracking = receipt.module === 'measurement' && checkId.startsWith('tracking-')
+    if (!tracking && (flag.pageUrl ? verifierScopeKey(flag.pageUrl) !== verifierScopeKey(receipt.pageUrl) : !input.primary)) continue
     let assertion = assertionForTarget(receipt, checkId)
-    if (!assertion) continue
+    if (!assertion && !tracking) continue
+    let supportingTasks: Array<{ taskId: string; pageUrl: string; collectedAt: string }> = []
     if (receipt.module === 'keyboard') {
       const selectors = z.array(z.object({ selector: z.string().min(1), label: z.string().min(1), context: z.string().optional() }).passthrough()).safeParse(flag.evidenceTargets)
       const priorTargets = selectors.success ? selectors.data : []
@@ -53,8 +55,28 @@ export async function recordAssertionVerifiers(input: {
         targets: priorTargets.map(({ selector, label, context }) => ({ selector, label, ...(context ? { context } : {}) })),
         observed: observed.map(item => item.observed).join(' ').slice(0, 2000) }
     }
+    if (tracking) {
+      if (receipt.execution.source !== 'browser-network') continue
+      const contexts = z.array(z.object({ context: z.string().min(1) }).passthrough()).safeParse(flag.evidenceTargets)
+      if (!flag.verificationRule?.startsWith('Tracking observation:') || !contexts.success || !contexts.data.length) continue
+      const rows = await tx.auditVerifierExecution.findMany({ where: { auditId: input.auditId, targetKey: 'module:measurement', status: 'COMPLETED' },
+        take: 300, select: { detail: true } })
+      const sources = [receipt, ...rows.flatMap(row => {
+        const parsed = checkReceiptSchema.safeParse(row.detail)
+        return parsed.success && parsed.data.execution?.auditId === input.auditId && parsed.data.execution.source === 'browser-network' && parsed.data.execution.checkVersion === receipt.execution!.checkVersion && parsed.data.applicable ? [parsed.data] : []
+      })]
+      const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
+        PAGE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
+      const matched = contexts.data.map(prior => candidates.find(candidate => candidate.item.context === prior.context))
+      if (matched.some(item => !item)) continue
+      const observed = [...new Set(matched.flatMap(candidate => candidate ? [candidate.item] : []))]
+      supportingTasks = matched.flatMap(candidate => candidate?.source.execution ? [{ taskId: candidate.source.execution.taskId, pageUrl: candidate.source.pageUrl, collectedAt: candidate.source.execution.collectedAt }] : [])
+      assertion = { ...observed[0], passed: observed.every(item => item.passed), complete: true,
+        observed: observed.map(item => item.observed).join(' ').slice(0, 2000) }
+    }
+    if (!assertion) continue
     const detail = checkVerifierSchema.parse({ kind: 'check-verifier', version: 1,
-      ...receipt.execution, checkId, pageUrl: receipt.pageUrl, comparable: true,
+      ...receipt.execution, checkId, pageUrl: tracking ? flag.pageUrl ?? receipt.pageUrl : receipt.pageUrl, comparable: true,
       verdict: assertion.passed ? 'passed' : 'failed', assertion })
     const targetKey = verifierTargetKey(flag)!
     const scopeKey = verifierScopeKey(flag.pageUrl)
@@ -63,7 +85,7 @@ export async function recordAssertionVerifiers(input: {
       create: { auditId: input.auditId, targetKey, scopeKey, checkId, source: flag.source, pageUrl: flag.pageUrl,
         status: 'COMPLETED', checkVersion: detail.checkVersion, detail: detail as Prisma.InputJsonValue,
         evidenceReference: { auditId: input.auditId, taskId: detail.taskId, pageUrl: detail.pageUrl,
-          assertion: assertion.key, source: detail.source, collectedAt: detail.collectedAt } },
+          assertion: assertion.key, source: detail.source, collectedAt: detail.collectedAt, ...(supportingTasks.length ? { supportingTasks } : {}) } },
       update: {},
     })
   }
