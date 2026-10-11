@@ -1,5 +1,6 @@
 import { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
+import { runLabVitalsChecks } from './performance'
 
 export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
@@ -50,18 +51,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
     })
   }
 
-  if (mobile.lcp !== null && mobile.lcp / 1000 > 4) {
-    findings.push({
-      checkId: 'mobile-lcp-critical',
-      rubric: 'EXPERIENCE',
-      severity: 'CRITICAL',
-      problem: `Mobile LCP is critically slow (${(mobile.lcp / 1000).toFixed(1)}s)`,
-      evidence: `Mobile Largest Contentful Paint: ${(mobile.lcp / 1000).toFixed(2)}s`,
-      fix: '1. Serve different image sizes for mobile viewports (srcset + sizes)\n2. Convert the hero image to WebP or AVIF format\n3. Preload the hero image with <link rel="preload"> as image',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
+  findings.push(...runLabVitalsChecks(mobile))
 
   return findings
 }

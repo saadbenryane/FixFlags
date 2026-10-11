@@ -1532,6 +1532,9 @@ describe('trigger matrix - one failing signal per checkId', () => {
       ),
     'mobile-lcp-critical': () =>
       checkIds(runMobileChecks(healthyMobilePs({ lcp: 4500 }))),
+    'mobile-lcp-poor': () => checkIds(runMobileChecks(healthyMobilePs({ lcp: 3000 }))),
+    'mobile-cls-critical': () => checkIds(runMobileChecks(healthyMobilePs({ cls: 0.3 }))),
+    'mobile-cls-poor': () => checkIds(runMobileChecks(healthyMobilePs({ cls: 0.15 }))),
     'h1-generic': () =>
       checkIds(runContentChecks(healthyMeta({ h1s: ['Welcome home'] }))),
     'no-cta-detected': () =>

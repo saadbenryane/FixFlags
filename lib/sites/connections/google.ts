@@ -13,6 +13,14 @@ import {
   searchPropertyCoversUrl,
 } from '@/lib/sites/connections/match'
 
+export type ReportingPeriod = { startDate: string; endDate: string }
+
+function reportingPeriod(now = new Date()): ReportingPeriod {
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
+  const start = new Date(end.getTime() - 27 * 24 * 60 * 60 * 1000)
+  return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) }
+}
+
 const STATE_TTL_MS = 10 * 60 * 1000
 const REFRESH_BUFFER_MS = 5 * 60 * 1000
 const SEARCH_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
@@ -27,9 +35,9 @@ export type GoogleTokens = {
 export type GoogleConnectionClient = {
   exchangeCode(code: string): Promise<GoogleTokens>
   listSearchSites(accessToken: string): Promise<Array<{ siteUrl: string }>>
-  querySearch(accessToken: string, property: string): Promise<Array<{ keys?: string[]; clicks?: number; impressions?: number; position?: number }>>
+  querySearch(accessToken: string, property: string, period: ReportingPeriod): Promise<Array<{ keys?: string[]; clicks?: number; impressions?: number; position?: number }>>
   listAnalyticsProperties(accessToken: string): Promise<AnalyticsProperty[]>
-  queryAnalytics(accessToken: string, propertyId: string): Promise<Array<{ pagePath?: string; sessions?: number }>>
+  queryAnalytics(accessToken: string, propertyId: string, period: ReportingPeriod): Promise<Array<{ pagePath?: string; sessions?: number }>>
   revoke(token: string): Promise<void>
 }
 
@@ -105,8 +113,12 @@ export function buildGoogleAuthorizeUrl(state: string, provider: SiteConnectionP
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 
+function googleFetch(url: string, options: RequestInit = {}) {
+  return fetch(url, { ...options, signal: options.signal ?? AbortSignal.timeout(10_000) })
+}
+
 async function googlePost(url: string, body: URLSearchParams): Promise<Record<string, unknown>> {
-  const response = await fetch(url, {
+  const response = await googleFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
@@ -117,6 +129,8 @@ async function googlePost(url: string, body: URLSearchParams): Promise<Record<st
 }
 
 export function liveGoogleClient(): GoogleConnectionClient {
+  const signal = AbortSignal.timeout(20_000)
+  const request = (url: string, options: RequestInit = {}) => googleFetch(url, { ...options, signal })
   return {
     async exchangeCode(code) {
       const data = await googlePost('https://oauth2.googleapis.com/token', new URLSearchParams({
@@ -136,22 +150,20 @@ export function liveGoogleClient(): GoogleConnectionClient {
       }
     },
     async listSearchSites(accessToken) {
-      const response = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
+      const response = await request('https://www.googleapis.com/webmasters/v3/sites', {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!response.ok) throw new Error(`Search Console list failed (${response.status})`)
       const data = await response.json() as { siteEntry?: Array<{ siteUrl: string }> }
       return data.siteEntry ?? []
     },
-    async querySearch(accessToken, property) {
-      const end = new Date()
-      const start = new Date(end.getTime() - 28 * 24 * 60 * 60 * 1000)
-      const response = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`, {
+    async querySearch(accessToken, property, period) {
+      const response = await request(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          startDate: start.toISOString().slice(0, 10),
-          endDate: end.toISOString().slice(0, 10),
+          startDate: period.startDate,
+          endDate: period.endDate,
           dimensions: ['page', 'query'],
           rowLimit: 25,
         }),
@@ -161,7 +173,7 @@ export function liveGoogleClient(): GoogleConnectionClient {
       return data.rows ?? []
     },
     async listAnalyticsProperties(accessToken) {
-      const response = await fetch('https://analyticsadmin.googleapis.com/v1beta/accountSummaries', {
+      const response = await request('https://analyticsadmin.googleapis.com/v1beta/accountSummaries', {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!response.ok) throw new Error(`Analytics properties failed (${response.status})`)
@@ -173,12 +185,11 @@ export function liveGoogleClient(): GoogleConnectionClient {
         for (const property of account.propertySummaries ?? []) {
           if (properties.length >= 20) return properties
           if (!property.property) continue
-          const streams = await fetch(`https://analyticsadmin.googleapis.com/v1beta/${property.property}/dataStreams`, {
+          const streams = await request(`https://analyticsadmin.googleapis.com/v1beta/${property.property}/dataStreams`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           })
-          const streamBody = streams.ok
-            ? await streams.json() as { dataStreams?: Array<{ webStreamData?: { defaultUri?: string } }> }
-            : { dataStreams: [] }
+          if (!streams.ok) throw new Error(`Analytics streams failed (${streams.status})`)
+          const streamBody = await streams.json() as { dataStreams?: Array<{ webStreamData?: { defaultUri?: string } }> }
           properties.push({
             propertyId: property.property,
             label: property.displayName ?? property.property,
@@ -188,12 +199,12 @@ export function liveGoogleClient(): GoogleConnectionClient {
       }
       return properties
     },
-    async queryAnalytics(accessToken, propertyId) {
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/${propertyId}:runReport`, {
+    async queryAnalytics(accessToken, propertyId, period) {
+      const response = await request(`https://analyticsdata.googleapis.com/v1beta/${propertyId}:runReport`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dateRanges: [{ startDate: '28daysAgo', endDate: 'yesterday' }],
+          dateRanges: [period],
           dimensions: [{ name: 'pagePath' }],
           metrics: [{ name: 'sessions' }],
           limit: 25,
@@ -207,7 +218,7 @@ export function liveGoogleClient(): GoogleConnectionClient {
       }))
     },
     async revoke(token) {
-      await fetch('https://oauth2.googleapis.com/revoke', {
+      await request('https://oauth2.googleapis.com/revoke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ token }),
@@ -216,25 +227,40 @@ export function liveGoogleClient(): GoogleConnectionClient {
   }
 }
 
-async function saveFacts(connectionId: string, projectId: string, facts: ConnectionFact[]) {
-  await prisma.siteConnectionFact.deleteMany({ where: { connectionId } })
-  if (facts.length === 0) return
-  await prisma.siteConnectionFact.createMany({
-    data: facts.map((fact) => ({ ...fact, connectionId, projectId })),
+type SyncResult = { status: 'CONNECTED' | 'MISMATCH' | 'NEEDS_REAUTH' | 'UNAVAILABLE'; detail: string; propertyId: string | null; propertyLabel: string | null }
+
+async function commitSync(input: { connectionId: string; projectId: string }, result: SyncResult,
+  facts: ConnectionFact[] | null, observedAt: Date, period: ReportingPeriod) {
+  await prisma.$transaction(async tx => {
+    const admitted = await tx.siteConnection.updateMany({
+      where: { id: input.connectionId, projectId: input.projectId, status: { not: 'REVOKED' },
+        OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: observedAt } }] },
+      data: { lastSyncAttemptAt: observedAt, status: result.status, statusDetail: result.detail,
+        ...(['CONNECTED', 'MISMATCH'].includes(result.status) ? { propertyId: result.propertyId, propertyLabel: result.propertyLabel } : {}), ...(result.status === 'CONNECTED' ? { lastSyncedAt: observedAt } : {}) },
+    })
+    if (admitted.count !== 1) throw new Error('Connection changed while refreshing; refresh again from settings.')
+    if (facts !== null) {
+      await tx.siteConnectionFact.deleteMany({ where: { connectionId: input.connectionId } })
+      if (facts.length) await tx.siteConnectionFact.createMany({ data: facts.map(fact => ({
+        kind: fact.kind, pagePath: fact.pagePath, subject: fact.subject, clicks: fact.clicks,
+        impressions: fact.impressions, sessions: fact.sessions, position: fact.position,
+        connectionId: input.connectionId, projectId: input.projectId, observedAt,
+        periodStart: new Date(period.startDate), periodEnd: new Date(period.endDate),
+      })) })
+    }
   })
+  return result
 }
 
 export async function syncGoogleConnection(input: {
-  connectionId: string
-  projectId: string
-  provider: SiteConnectionProvider
-  host: string
-  siteUrl?: string
-  accessToken: string
-  propertyId?: string | null
-  client?: GoogleConnectionClient
-}): Promise<{ status: 'CONNECTED' | 'MISMATCH' | 'NEEDS_REAUTH'; detail: string; propertyId: string | null; propertyLabel: string | null }> {
+  connectionId: string; projectId: string; provider: SiteConnectionProvider; host: string; siteUrl?: string;
+  accessToken: string; propertyId?: string | null; client?: GoogleConnectionClient
+}): Promise<SyncResult> {
   const client = input.client ?? liveGoogleClient()
+  const observedAt = new Date()
+  const period = reportingPeriod(observedAt)
+  let result: SyncResult
+  let facts: ConnectionFact[] | null = null
   try {
     if (input.provider === 'SEARCH_CONSOLE') {
       const properties = input.propertyId ? [] : await client.listSearchSites(input.accessToken)
@@ -242,31 +268,30 @@ export async function syncGoogleConnection(input: {
         ? properties.find(property => searchPropertyCoversUrl(property.siteUrl, input.siteUrl!))?.siteUrl ?? null
         : chooseSearchProperty(properties, input.host))
       if (!property || input.siteUrl && !searchPropertyCoversUrl(property, input.siteUrl)) {
-        await saveFacts(input.connectionId, input.projectId, [])
-        return { status: 'MISMATCH', detail: 'No Search Console property matches this Site.', propertyId: null, propertyLabel: null }
+        result = { status: 'MISMATCH', detail: 'No Search Console property matches this Site.', propertyId: null, propertyLabel: null }
+      } else {
+        facts = factsFromSearchRows(await client.querySearch(input.accessToken, property, period))
+        result = { status: 'CONNECTED', detail: 'Search Console numbers are available as context.', propertyId: property, propertyLabel: property }
       }
-      const facts = factsFromSearchRows(await client.querySearch(input.accessToken, property))
-      await saveFacts(input.connectionId, input.projectId, facts)
-      return { status: 'CONNECTED', detail: 'Search Console numbers are available as context.', propertyId: property, propertyLabel: property }
+    } else {
+      const properties = await client.listAnalyticsProperties(input.accessToken)
+      const property = input.propertyId ? properties.find(item => item.propertyId === input.propertyId &&
+        chooseAnalyticsProperty([item], input.host)) ?? null : chooseAnalyticsProperty(properties, input.host)
+      if (!property) result = { status: 'MISMATCH', detail: 'No Analytics property matches this Site.', propertyId: null, propertyLabel: null }
+      else {
+        facts = factsFromAnalyticsRows(await client.queryAnalytics(input.accessToken, property.propertyId, period))
+        result = { status: 'CONNECTED', detail: 'Analytics session counts are available as context.', propertyId: property.propertyId, propertyLabel: property.label }
+      }
     }
-    const properties = await client.listAnalyticsProperties(input.accessToken)
-    const property = input.propertyId
-      ? properties.find((item) => item.propertyId === input.propertyId) ?? null
-      : chooseAnalyticsProperty(properties, input.host)
-    if (!property) {
-      await saveFacts(input.connectionId, input.projectId, [])
-      return { status: 'MISMATCH', detail: 'No Analytics property matches this Site.', propertyId: null, propertyLabel: null }
-    }
-    const facts = factsFromAnalyticsRows(await client.queryAnalytics(input.accessToken, property.propertyId))
-    await saveFacts(input.connectionId, input.projectId, facts)
-    return { status: 'CONNECTED', detail: 'Analytics session counts are available as context.', propertyId: property.propertyId, propertyLabel: property.label }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Google could not be read'
-    if (/401|403|auth/i.test(message)) {
-      return { status: 'NEEDS_REAUTH', detail: 'Reconnect this Google account to keep reading it.', propertyId: input.propertyId ?? null, propertyLabel: null }
-    }
-    throw error
+    const message = error instanceof Error ? error.message : ''
+    result = { status: /401|403|auth/i.test(message) ? 'NEEDS_REAUTH' : 'UNAVAILABLE',
+      detail: /401|403|auth/i.test(message) ? 'Reconnect this Google account to keep reading it.'
+        : 'Google is unavailable. Earlier context retains its original observation date.',
+      propertyId: input.propertyId ?? null, propertyLabel: null }
   }
+  // Write failures roll back both state and facts; they cannot claim a successful sync.
+  return commitSync(input, result, facts, observedAt, period)
 }
 
 export async function completeGoogleConnection(input: {
@@ -298,9 +323,10 @@ export async function completeGoogleConnection(input: {
       encryptedRefreshToken: tokens.refreshToken ? encryptSecret(tokens.refreshToken) : undefined,
       tokenExpiresAt: new Date(Date.now() + tokens.expiresInSeconds * 1000),
       scopes: parsed.provider === 'SEARCH_CONSOLE' ? SEARCH_SCOPE : ANALYTICS_SCOPE,
+      status: 'NEEDS_REAUTH',
     },
   })
-  const synced = await syncGoogleConnection({
+  await syncGoogleConnection({
     connectionId: connection.id,
     projectId: parsed.projectId,
     provider: parsed.provider,
@@ -308,16 +334,6 @@ export async function completeGoogleConnection(input: {
     siteUrl: host.includes('://') ? host : undefined,
     accessToken: tokens.accessToken,
     client,
-  })
-  await prisma.siteConnection.update({
-    where: { id: connection.id },
-    data: {
-      status: synced.status,
-      statusDetail: synced.detail,
-      propertyId: synced.propertyId,
-      propertyLabel: synced.propertyLabel,
-      lastSyncedAt: synced.status === 'CONNECTED' ? new Date() : null,
-    },
   })
   return { projectId: parsed.projectId }
 }
@@ -348,4 +364,37 @@ export async function accessTokenForConnection(connection: {
     },
   })
   return data.access_token
+}
+
+/** Refresh retained provider context independently of website-check admission. */
+export async function refreshStaleGoogleContext(projectId: string, now = new Date(), dependencies: { client?: GoogleConnectionClient } = {}) {
+  if (!googleConnectionConfigured()) return
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const rows = await prisma.siteConnection.findMany({
+    where: { projectId, status: { in: ['CONNECTED', 'UNAVAILABLE'] },
+      AND: [{ OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: cutoff } }] },
+        { OR: [{ lastSyncAttemptAt: null }, { lastSyncAttemptAt: { lte: cutoff } }] }] },
+    include: { project: { select: { url: true, canonicalHost: true } } },
+  })
+  await Promise.all(rows.map(async connection => {
+    const claimed = await prisma.siteConnection.updateMany({
+      where: { id: connection.id, status: { in: ['CONNECTED', 'UNAVAILABLE'] },
+        OR: [{ lastSyncAttemptAt: null }, { lastSyncAttemptAt: { lte: cutoff } }] },
+      data: { lastSyncAttemptAt: now },
+    })
+    if (claimed.count !== 1) return
+    try {
+      const token = await accessTokenForConnection(connection)
+      if (!token) {
+        await prisma.siteConnection.updateMany({ where: { id: connection.id, status: { not: 'REVOKED' } },
+          data: { status: 'NEEDS_REAUTH', statusDetail: 'Reconnect this Google account to keep reading it.' } })
+        return
+      }
+      await syncGoogleConnection({ connectionId: connection.id, projectId, provider: connection.provider,
+        host: connection.project.canonicalHost, siteUrl: connection.project.url, propertyId: connection.propertyId, accessToken: token, client: dependencies.client })
+    } catch {
+      await prisma.siteConnection.updateMany({ where: { id: connection.id, status: { not: 'REVOKED' } },
+        data: { status: 'UNAVAILABLE', statusDetail: 'Google is unavailable. Earlier context retains its original observation date.' } })
+    }
+  }))
 }

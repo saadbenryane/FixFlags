@@ -1,3 +1,5 @@
+import { SiteSettingsSection } from './SiteSettingsSection'
+import { SITE_SETTINGS_COPY as S } from '@/lib/marketing/copy/site-settings'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteOutcomeConfirmList } from '@/components/sites/SiteOutcomeConfirm'
@@ -14,27 +16,29 @@ export function SiteSettingsView({ siteId, view, fixtures = [] }: { siteId: stri
       siteId={siteId}
       ownerId={view.site.userId}
       activeRoute="settings"
-      title="Site settings"
-      description="Choose what this Site must keep doing, then decide how FixFlags should watch and notify you."
+      title={S.title}
+      description={S.description}
       presentation={view.presentation}
       watch={view.watch}
     >
-      <section className="rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="settings-outcomes-heading">
-        <h2 id="settings-outcomes-heading" className="text-lg font-semibold">Outcomes and coverage</h2>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <SiteSettingsSection aria-labelledby="settings-outcomes-heading">
+        <h2 id="settings-outcomes-heading" className="text-lg font-semibold">{S.outcomes}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {SITE_BOARD_COPY.settingsActionsBody}
         </p>
         <SiteOutcomeConfirmList siteId={siteId} outcomes={view.outcomes} fixtures={fixtures} />
         {view.site.projectId ? (
-          <details id="signup-setup" className="mt-6 border-t border-border/60 pt-3">
-            <summary className="min-h-11 cursor-pointer py-3 font-semibold">Signup test setup</summary>
-            <p className="mt-1 text-sm text-muted-foreground">Use synthetic data and same-origin reset and cleanup hooks so FixFlags can submit a Signup form without leaving accounts behind.</p>
+          <details id="signup-setup" className="mt-6 rounded-nested-md bg-muted/20 p-4">
+            <summary className="min-h-11 cursor-pointer py-3 font-semibold">{S.signupSetup}</summary>
+            <p className="mt-1 text-sm text-muted-foreground">{S.signupBody}</p>
             <SafeFormFixtures siteId={siteId} initial={fixtures} />
           </details>
         ) : null}
-      </section>
+      </SiteSettingsSection>
 
       <SiteSettingsControls siteId={siteId} watch={view.watch} initial={settings} />
+      </div>
     </SiteShell>
   )
 }

@@ -6,6 +6,7 @@ import { cardContext, contextLinesForPage, type ConnectionFact, type PublicConne
 export type { PublicConnection }
 
 function present(status: SiteConnectionStatus): PublicConnection['status'] {
+  if (status === 'UNAVAILABLE') return 'unavailable'
   if (status === 'CONNECTED') return 'connected'
   if (status === 'MISMATCH') return 'mismatch'
   if (status === 'REVOKED') return 'revoked'
@@ -38,7 +39,7 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
     return {
       provider,
       configured,
-      status: present(row.status),
+      status: configured ? present(row.status) : 'unavailable',
       propertyLabel: row.propertyLabel,
       detail: row.statusDetail,
       lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
@@ -47,7 +48,7 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
   return {
     searchConsole: view('SEARCH_CONSOLE'),
     analytics: view('ANALYTICS'),
-    facts: rows.flatMap((row) => row.status === 'CONNECTED'
+    facts: rows.flatMap((row) => ['CONNECTED', 'UNAVAILABLE', 'NEEDS_REAUTH', 'REVOKED'].includes(row.status)
       ? row.facts.map((fact) => ({
           kind: fact.kind === 'analytics_page' ? 'analytics_page' as const : 'search_query' as const,
           pagePath: fact.pagePath,
@@ -56,6 +57,12 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
           impressions: fact.impressions,
           sessions: fact.sessions,
           position: fact.position,
+          observedAt: fact.observedAt.toISOString(),
+          lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
+          periodStart: fact.periodStart?.toISOString() ?? null,
+          periodEnd: fact.periodEnd?.toISOString() ?? null,
+          contextState: row.status !== 'CONNECTED' || !configured ? 'unavailable' as const
+            : Date.now() - fact.observedAt.getTime() >= 24 * 60 * 60 * 1000 ? 'stale' as const : 'current' as const,
         }))
       : []),
   }

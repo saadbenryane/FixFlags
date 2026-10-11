@@ -24,6 +24,12 @@ describe('monitoring history scope and evidence', () => {
     expect(monitoringHistoryMetadata({ ...base, executionSpec: { scope: 'DIAGNOSTIC', verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: 'https://example.com/cart?private=value' } } })).toMatchObject({ scope: 'DIAGNOSTIC', targetLabel: '/cart', afterFix: true, result: 'COULD_NOT_VERIFY' })
   })
 
+  it('never guesses legacy broad scope from an absent target', () => {
+    expect(monitoringHistoryMetadata({ ...base, executionSpec: null }).scope).toBe('UNKNOWN')
+    expect(monitoringHistoryMetadata({ ...base, executionSpec: null, runRequests: [run] }).scope).toBe('OUTCOMES')
+    expect(monitoringHistoryMetadata({ ...base, executionSpec: null, runRequests: [{ ...run, selections: [], executionSpec: { scope: 'SITE' } }] }).scope).toBe('SITE')
+  })
+
   it('requires evidence for every selected Outcome before showing Clear', () => {
     const input = { ...base, executionSpec: { scope: 'OUTCOMES' }, runRequests: [run] }
     expect(monitoringHistoryMetadata(input).result).toBe('CLEAR')
@@ -31,13 +37,13 @@ describe('monitoring history scope and evidence', () => {
     expect(monitoringHistoryMetadata({ ...input, runRequests: [{ ...run, assessments: [{ state: 'COULD_NOT_VERIFY' }] }] }).result).toBe('COULD_NOT_VERIFY')
   })
 
-  it('keeps targeted, unknown and failed checks out of the Site-wide trend', () => {
+  it('keeps unknown checks out and preserves failed broad checks as gaps', () => {
     const entry = { checkedAt: '2026-10-11T09:00:00Z', flagCount: 0, status: 'COMPLETED' as const }
     const entries: MonitoringHistoryEntry[] = [
       { ...entry, id: 'site', scope: 'SITE' }, { ...entry, id: 'outcome', scope: 'OUTCOMES' },
       { ...entry, id: 'page', scope: 'DIAGNOSTIC' }, { ...entry, id: 'unknown', scope: 'UNKNOWN' },
       { ...entry, id: 'failed', scope: 'SITE', status: 'FAILED' }, { ...entry, id: 'legacy' },
     ]
-    expect(siteTrendChecks(entries).map(item => item.id)).toEqual(['site', 'legacy'])
+    expect(siteTrendChecks(entries).map(item => item.id)).toEqual(['site', 'failed'])
   })
 })

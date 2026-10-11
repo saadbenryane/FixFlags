@@ -18,7 +18,7 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     plans.push(make('check', [prefix + ':' + inputKind], module))
-    if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-desktop', prefix + ':pagespeed-mobile'], 'inp-mobile'),
+    if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'),
       input: { ...input, module: 'performance', device: 'mobile' } })
   }
   for (const [evaluator, dependencies] of Object.entries({
@@ -80,7 +80,8 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       pageTaskPlan({ ...input, pageUrl: scope.pageUrl, position: index + 1, primary: false, role: 'linked' }, spec)) ]
     const resources = siteResourcePlans(input)
     const available = new Map([...resources, ...pages].map(task => [task.key, task]))
-    const target = search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
+    const target = checkId === 'inp-critical' || checkId === 'inp-poor' ? 'p0:inp-mobile'
+      : search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
       : search.evaluator === 'cross-page' ? null : 'p0:search-' + search.evaluator : checkModule && available.has('p0:' + checkModule) ? 'p0:' + checkModule : null
     // Unknown historical targets remain an explicit limitation, not a made-up
     // successful execution or a broad scan substituted for the named verifier.

@@ -1,4 +1,4 @@
-import { BRAND, HERO } from '@/lib/marketing/copy'
+import { BRAND, CARE_HOME } from '@/lib/marketing/copy'
 import { getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
 import { LogoMarkSvg, getOfficialLogoMarkDataUrl } from '@/lib/design/logo-mark'
@@ -69,7 +69,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             letterSpacing: '-0.01em',
           }}
         >
-          {HERO.headlineDisplay}
+          {[CARE_HOME.headlineAccent, ...CARE_HOME.headlineLines].join(' ')}
           <span style={{ color: p.brand }}>.</span>
         </div>
         <div

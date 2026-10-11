@@ -76,16 +76,6 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
       accessToken: token,
       propertyId: connection.propertyId,
     })
-    await prisma.siteConnection.update({
-      where: { id: connection.id },
-      data: {
-        status: synced.status,
-        statusDetail: synced.detail,
-        propertyId: synced.propertyId,
-        propertyLabel: synced.propertyLabel,
-        lastSyncedAt: synced.status === 'CONNECTED' ? new Date() : connection.lastSyncedAt,
-      },
-    })
     return NextResponse.json({ status: synced.status.toLowerCase(), detail: synced.detail })
   } catch (error) {
     return handleRouteError(error, 'Could not update this connection')

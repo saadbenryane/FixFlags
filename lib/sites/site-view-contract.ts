@@ -9,7 +9,7 @@ const date = z.union([z.date(), time]).transform(value => new Date(value)).nulla
 const area = z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility'])
 const health = z.enum(['healthy', 'attention', 'problem', 'unknown', 'checking'])
 const connection = z.object({ provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']), configured: z.boolean(),
-  status: z.enum(['not_connected', 'connected', 'mismatch', 'needs_reauth', 'revoked']),
+  status: z.enum(['not_connected', 'connected', 'mismatch', 'needs_reauth', 'revoked', 'unavailable']),
   propertyLabel: nullableText, detail: nullableText, lastSyncedAt: nullableTime })
 const flag = z.object({
   attentionPolicy: z.unknown().optional(), id: text, sourceFlagId: nullableText.optional(), confidence: z.number().nullable().optional(),
@@ -20,8 +20,21 @@ const flag = z.object({
   verificationState: z.enum(['unverified', 'verifying', 'verified', 'still_open', 'could_not_verify', 'regressed']), latestOccurrenceAt: nullableTime,
 })
 
+const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableTime, completionState: z.enum(['COMPLETED', 'PARTIAL', 'FAILED']), flagCount: count,
+    status: z.enum(['COMPLETED', 'FAILED']), flags: z.array(z.object({ id: text, title: text })),
+
+    scope: z.enum(['SITE', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']), targetLabel: nullableText,
+    trigger: z.enum(['MANUAL', 'SCHEDULED', 'OTHER', 'UNKNOWN']), afterFix: z.boolean(),
+    result: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY']).nullable() })
+
+
 /** Full client projection contract. A malformed refresh cannot replace recorded evidence. */
 export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
+  schemaVersion: z.literal(2),
+  inventoryPageCount: count,
+  activeRuns: z.array(z.object({ id: text, auditId: nullableText, scope: z.enum(['SITE', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']),
+    targetLabel: nullableText, trigger: z.enum(['MANUAL', 'SCHEDULED', 'OTHER', 'UNKNOWN']), status: z.enum(['QUEUED', 'RUNNING', 'INTERRUPTED']),
+    requestedAt: time, progress: z.number().min(0).max(100) })),
   site: z.object({ siteId: text, kind: z.enum(['project', 'provisional']), url: text, canonicalHost: text, name: text,
     projectId: nullableText, provisionalSiteId: nullableText, primaryAuditId: nullableText,
     watchInterval: watchIntervalSchema.nullable(), watchEveryMinutes: count.nullable().optional(),
@@ -68,11 +81,8 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   checkResults: z.array(siteCheckResultSchema).max(100).optional(), checkResultsNextCursor: nullableText.optional(),
   technology: z.object({ status: z.enum(['complete', 'partial', 'unavailable', 'not_captured']), detectedAt: nullableTime,
     items: z.array(z.object({ slug: text, name: text, category: z.enum(['framework', 'builder', 'hosting', 'analytics', 'monitoring', 'cms', 'commerce', 'payments', 'support', 'security', 'form']), confidenceBand: z.enum(['verified', 'supported']) })) }).optional(),
-  monitoringHistory: z.array(z.object({ id: text.optional(), checkedAt: time, flagCount: count,
-    status: z.enum(['COMPLETED', 'FAILED']).optional(), flags: z.array(z.object({ id: text, title: text })).optional(),
-    scope: z.enum(['SITE', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']).optional(), targetLabel: nullableText.optional(),
-    trigger: z.enum(['MANUAL', 'SCHEDULED', 'OTHER', 'UNKNOWN']).optional(), afterFix: z.boolean().optional(),
-    result: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY']).nullable().optional() })).optional(),
+  monitoringHistory: z.array(historyEntry),
+  monitoringTrend: z.array(historyEntry),
   watch: z.object({ state: z.enum(['off', 'watching', 'paused', 'delayed', 'quota']), interval: watchIntervalSchema.nullable(),
     everyMinutes: count.nullable().optional(), nextRunAt: nullableTime, lastRunAt: nullableTime, lastError: nullableText,
     covered: z.boolean(), label: text, alert: z.object({ state: z.enum(['none', 'delivering', 'delivered', 'undelivered']),

@@ -30,7 +30,7 @@ function lighthouseBody(overrides: Record<string, unknown> = {}): Record<string,
     'unused-javascript': {
       score: 0.5,
       title: 'Remove unused JavaScript',
-      details: { overallSavingsMs: 800 },
+      details: { overallSavingsMs: 800, overallSavingsBytes: 150_000 },
     },
   }
   return {
@@ -75,7 +75,7 @@ describe('fetchPageSpeedData', () => {
     assert.equal(result.desktop?.cls, 0.12)
     assert.equal(result.desktop?.fcp, 1200)
     assert.equal(result.desktop?.tbt, 210)
-    assert.equal(result.desktop?.inp, 150)
+    assert.equal(result.desktop?.inp, 160)
 
     assert.equal(result.desktop?.opportunities.length, 2)
     assert.ok(result.desktop?.opportunities.some((o) => o.id === 'render-blocking-resources'))
@@ -102,6 +102,69 @@ describe('fetchPageSpeedData', () => {
     assert.ok(result.mobile?.opportunities.some((o) => o.id === 'target-size'))
     assert.ok(result.desktop !== null)
     assert.ok(!result.desktop?.opportunities.some((o) => o.id === 'target-size'))
+  })
+
+  it('normalizes current Lighthouse insights and feeds actual byte savings into findings', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ lighthouseResult: {
+      categories: { performance: { score: 0.95 } }, audits: {
+        'render-blocking-insight': { score: 0, title: 'Render blocking', metricSavings: { FCP: 850, LCP: 1200 }, details: { type: 'table' } },
+        'image-delivery-insight': { score: 0, title: 'Improve image delivery', details: { debugData: { wastedBytes: 180_000 } } },
+        'unused-javascript': { score: 0, title: 'Unused JS', details: { overallSavingsMs: 300, overallSavingsBytes: 200_000 } },
+        'unused-css-rules': { score: 0, title: 'Unused CSS', details: { overallSavingsMs: 50, overallSavingsBytes: 80_000 } },
+      },
+    } })), { status: 200 }))
+    const result = await fetchPageSpeedData('https://insights.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop?.opportunities).toEqual([
+      { id: 'render-blocking-resources', title: 'Render blocking', savings: 850 },
+      { id: 'unused-javascript', title: 'Unused JS', savings: 200_000 },
+      { id: 'unused-css-rules', title: 'Unused CSS', savings: 80_000 },
+      { id: 'uses-optimized-images', title: 'Improve image delivery', savings: 180_000 },
+    ])
+    const { runPerformanceChecks } = await import('../checks/performance')
+    expect(runPerformanceChecks(result.desktop, null).map(flag => flag.checkId)).toEqual([
+      'render-blocking', 'unused-js-large', 'unused-css-large', 'unoptimized-images',
+    ])
+  })
+
+  it('preserves all supported opportunities and never substitutes time savings for bytes', async () => {
+    const byteIds = ['unused-javascript', 'unused-css-rules', 'uses-optimized-images', 'modern-image-formats', 'uses-responsive-images', 'efficient-animated-content', 'uses-text-compression']
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ lighthouseResult: {
+      categories: { performance: { score: 0.9 } }, audits: Object.fromEntries(byteIds.map(id => [id, {
+        score: 0, title: id, details: { overallSavingsMs: 900_000, ...(id === 'unused-javascript' ? {} : { overallSavingsBytes: 65_000 }) },
+      }])),
+    } })), { status: 200 }))
+    const result = await fetchPageSpeedData('https://opportunities.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop?.opportunities).toHaveLength(6)
+    expect(result.desktop?.opportunities.some(o => o.id === 'unused-javascript')).toBe(false)
+    expect(result.desktop?.opportunities.every(o => o.savings === 65_000)).toBe(true)
+  })
+
+  it('prefers a consolidated image insight without duplicating replaced audit savings', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ lighthouseResult: {
+      categories: { performance: { score: 0.9 } }, audits: {
+        'image-delivery-insight': { score: 0, details: { debugData: { wastedBytes: 100_000 } } },
+        'uses-optimized-images': { score: 0, details: { overallSavingsBytes: 60_000 } },
+        'modern-image-formats': { score: 0, details: { overallSavingsBytes: 90_000 } },
+      },
+    } })), { status: 200 }))
+    const result = await fetchPageSpeedData('https://overlap.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop?.opportunities).toEqual([{ id: 'uses-optimized-images', title: 'image-delivery-insight', savings: 100_000 }])
+  })
+
+  it('keeps INP unknown when field data is absent, even if a lab-shaped INP audit is supplied', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ loadingExperience: undefined })), { status: 200 }))
+    const result = await fetchPageSpeedData('https://no-field.example', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile?.inp).toBeNull()
+  })
+
+  it('retains field INP scope and does not attribute origin data to the checked page', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ loadingExperience: undefined,
+      originLoadingExperience: { id: 'https://example.com/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 650 } } },
+    })), { status: 200 }))
+    const result = await fetchPageSpeedData('https://example.com/pricing', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    const { runPerformanceChecks } = await import('../checks/performance')
+    expect(runPerformanceChecks(null, result.mobile)).toMatchObject([{ checkId: 'inp-critical',
+      problem: expect.stringContaining('Origin-level'), evidence: expect.stringContaining('origin scope (https://example.com/), trailing 28 days') }])
   })
 
   it('uses cached results without re-fetching', async () => {

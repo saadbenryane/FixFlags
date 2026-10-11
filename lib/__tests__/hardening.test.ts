@@ -80,10 +80,10 @@ describe('getEntitlements', () => {
 })
 
 describe('canScanRepositories', () => {
-  it('blocks FREE and BUILDER plans', () => {
+  it('includes repository scanning for resolved FREE and BUILDER accounts during beta', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), false)
-    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), false)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), true)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 

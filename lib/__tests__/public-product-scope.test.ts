@@ -13,7 +13,6 @@ describe('URL-first public product scope', () => {
     '/settings/integrations',
     '/onboarding/plans',
     '/report/repo/scan-1',
-    '/docs/integrations',
     '/help/mcp-and-editors/mcp-setup',
     '/api/integrations/github/connect',
     '/api/integrations/gsc/connect',
@@ -76,6 +75,11 @@ describe('URL-first public product scope', () => {
       '/docs',
       '/docs/getting-started',
       '/docs/site-care',
+      '/docs/fix-with-ai',
+      '/docs/integrations',
+      '/docs/integrations/shopify',
+      '/docs/integrations/google-analytics',
+      '/docs/integrations/google-search-console',
       '/docs/troubleshooting',
     ])
     expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/mcp')

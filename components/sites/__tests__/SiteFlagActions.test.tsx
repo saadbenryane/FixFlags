@@ -1,3 +1,4 @@
+import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
@@ -5,6 +6,8 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 const refresh = vi.fn()
+vi.mock('@/hooks/useSiteResource', () => ({ useSiteResource: (_siteId: string, initial: unknown) => ({ view: initial, refresh: vi.fn().mockResolvedValue(undefined), disconnected: false }) }))
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh }),
 }))
@@ -16,7 +19,7 @@ describe('SiteFlagActions', () => {
       siteId: 'p_site', flagId: 'flag-1', attemptId: 'attempt-1', parentAuditId: 'parent-1', expectedBehavior: 'The product appears in the cart',
     }) })
     vi.stubGlobal('fetch', fetchMock)
-    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    render(<SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     expect(screen.getByRole('heading', { name: 'Fix' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Monitor' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
@@ -49,7 +52,7 @@ describe('SiteFlagActions', () => {
   it('copies the fix prompt without treating copy as verification', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'FixFlags Flag: Show a confirmation.', handoff: null }) })
     vi.stubGlobal('fetch', fetchMock)
-    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    render(<SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeInTheDocument()
     await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()
@@ -73,7 +76,7 @@ describe('SiteFlagActions', () => {
     vi.stubGlobal('fetch', fetchMock)
     const writeText = vi.mocked(navigator.clipboard.writeText)
     render(
-      <SiteFlagActions siteId="p_site" flagId="flag-1" />
+      <SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />
     )
     await screen.getByRole('button', { name: SITE_BOARD_COPY.sendFlagToAi }).click()
     expect(await screen.findByText('Fix prompt copied')).toBeInTheDocument()
@@ -94,7 +97,7 @@ describe('SiteFlagActions', () => {
       ok: true,
       json: async () => ({ ok: true, prompt: 'FixFlags Flag: Manual copy prompt', handoff: null }),
     }))
-    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    render(<SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
 
     await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()
 
@@ -111,7 +114,7 @@ describe('SiteFlagActions', () => {
       status: 400,
       json: async () => ({ message: reason, code: 'HTTP_400' }),
     }))
-    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    render(<SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
 
     await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
     const dialog = await screen.findByRole('dialog')
@@ -130,7 +133,7 @@ describe('SiteFlagActions', () => {
       status: 400,
       json: async () => ({ error: reason }),
     }))
-    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    render(<SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
 
     await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
     await screen.getAllByRole('button', { name: SITE_BOARD_COPY.verifyFix }).at(-1)!.click()
@@ -141,7 +144,7 @@ describe('SiteFlagActions', () => {
 
   it('keeps connection uncertainty visible inside the verification dialog', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
-    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    render(<SiteFlagActions initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
     const dialog = screen.getByRole('dialog')
     await within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()

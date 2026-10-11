@@ -4,13 +4,13 @@ import {
   CUSTOMER_TERMS,
   FLAG_STATUS_LABELS,
   HERO,
-  LANDING_PAGE,
+  SAMPLE_RUBRIC_COPY,
   RECHECK_DIFF_COPY,
   REPORT_COPY,
 } from '@/lib/marketing/copy'
 import {
   HERO as HOMEPAGE_HERO,
-  LANDING_PAGE as HOMEPAGE_LANDING_PAGE,
+  SAMPLE_RUBRIC_COPY as HOMEPAGE_SAMPLE_RUBRIC_COPY,
 } from '@/lib/marketing/copy/homepage'
 import { REPORT_COPY as WORKSPACE_REPORT_COPY } from '@/lib/marketing/copy/report-workspace'
 
@@ -32,7 +32,7 @@ function collectStrings(value: unknown, output: string[] = []): string[] {
 describe('customer copy contract', () => {
   it('keeps the compatibility barrel aligned with the split modules', () => {
     expect(HERO).toBe(HOMEPAGE_HERO)
-    expect(LANDING_PAGE).toBe(HOMEPAGE_LANDING_PAGE)
+    expect(SAMPLE_RUBRIC_COPY).toBe(HOMEPAGE_SAMPLE_RUBRIC_COPY)
     expect(REPORT_COPY).toBe(WORKSPACE_REPORT_COPY)
   })
 
@@ -41,7 +41,7 @@ describe('customer copy contract', () => {
     expect(CUSTOMER_TERMS.updateReviews).toBe('Update reviews')
     expect(REPORT_COPY.recheck.label).toBe('Update review')
 
-    const visibleCopy = collectStrings({ HERO, LANDING_PAGE, REPORT_COPY }).filter(
+    const visibleCopy = collectStrings({ HERO, SAMPLE_RUBRIC_COPY, REPORT_COPY }).filter(
       (value) => value !== 'recheck',
     )
     expect(visibleCopy.join('\n')).not.toMatch(/\bre-?checks?\b/i)

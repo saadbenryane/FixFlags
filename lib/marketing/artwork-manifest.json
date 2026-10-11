@@ -2,41 +2,6 @@
   "schemaVersion": 1,
   "assets": [
     {
-      "id": "homepage-how-it-works-workflow",
-      "src": "/marketing/visuals/how-it-works-workflow-v4.webp",
-      "classification": "approved",
-      "width": 1942,
-      "height": 809,
-      "requiresAlpha": true,
-      "contentBearing": false,
-      "requiredTerms": [],
-      "consumers": [
-        "components/marketing/landing/LandingHowItWorksSection.tsx"
-      ],
-      "replaces": []
-    },
-    {
-      "id": "homepage-final-cta",
-      "src": "/marketing/visuals/how-it-works-review-v3.webp",
-      "classification": "approved",
-      "width": 1254,
-      "height": 1254,
-      "requiresAlpha": true,
-      "contentBearing": true,
-      "requiredTerms": [
-        "Reviewing the live product",
-        "Message",
-        "Experience",
-        "Reach"
-      ],
-      "consumers": [
-        "components/marketing/landing/LandingFinalCtaSection.tsx"
-      ],
-      "replaces": [
-        "/marketing/visuals/final-cta-gateway-v2.webp"
-      ]
-    },
-    {
       "id": "site-open-graph",
       "src": "/og.jpg",
       "classification": "approved",

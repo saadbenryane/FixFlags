@@ -1,3 +1,9 @@
+import { authorizeAgentCitations } from './agent-citations'
+import { SiteAgentError, type AgentCitation } from '@/lib/sites/agent-contract'
+import { admitAgentMessage, completeAgentMessage, replayAgentMessage, saveAgentReply, recoverAgentReplies } from './agent-intents'
+import { siteWideAnalysisAuditWhere } from './analysis-scope'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
+import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { prisma } from '@/lib/db'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadProjectIntelligence } from '@/lib/audit/ensure-product-project'
@@ -23,20 +29,8 @@ function minimizeStoredMessage(message: string): string {
     .slice(0, 2000)
 }
 
-export type AgentCitation = {
-  type: 'flag' | 'attempt' | 'watch'
-  id: string
-  label: string
-  href: string
-}
-
-export class SiteAgentError extends Error {
-  constructor(message: string, readonly status: number, readonly code?: string) {
-    super(message)
-    this.name = 'SiteAgentError'
-  }
-}
-
+export { SiteAgentError } from '@/lib/sites/agent-contract'
+export type { AgentCitation } from '@/lib/sites/agent-contract'
 async function requireOwnedSite(siteId: string, userId: string) {
   const project = await prisma.project.findFirst({
     where: { id: siteId, userId, deletedAt: null },
@@ -49,7 +43,7 @@ async function requireOwnedSite(siteId: string, userId: string) {
       watchLastError: true,
       user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } },
       audits: {
-        where: { status: 'COMPLETED' },
+        where: { status: 'COMPLETED', ...siteWideAnalysisAuditWhere },
         orderBy: { completedAt: 'desc' },
         take: 1,
         select: { id: true, parentId: true, status: true },
@@ -68,35 +62,38 @@ async function requireOwnedSite(siteId: string, userId: string) {
   return project
 }
 
-async function getOrCreateThread(projectId: string, userId: string) {
-  const existing = await prisma.siteAgentThread.findFirst({
-    where: { projectId, userId },
-    orderBy: { updatedAt: 'desc' },
-  })
-  return existing ?? prisma.siteAgentThread.create({ data: { projectId, userId } })
-}
-
 export async function getSiteAgentHistory(input: { siteId: string; userId: string }) {
   await requireOwnedSite(input.siteId, input.userId)
+  await recoverAgentReplies(input.siteId, input.userId)
   const thread = await prisma.siteAgentThread.findFirst({
     where: { projectId: input.siteId, userId: input.userId },
     orderBy: { updatedAt: 'desc' },
-    include: { messages: { orderBy: { createdAt: 'asc' }, take: MAX_MESSAGES } },
+    include: { messages: { orderBy: { createdAt: 'desc' }, take: MAX_MESSAGES, include: { intent: { select: { flagId: true } } } } },
   })
+  const citations = await authorizeAgentCitations(input.siteId, (thread?.messages ?? []).map(message => message.citations))
   return {
     threadId: thread?.id ?? null,
-    messages: (thread?.messages ?? []).map((message) => ({
+    messages: (thread?.messages ?? []).toReversed().map((message) => ({
       id: message.id,
       role: message.role === 'USER' ? 'user' as const : 'assistant' as const,
       content: message.content,
-      citations: (message.citations ?? []) as unknown as AgentCitation[],
+      citations: citations(message.citations),
+      flagId: message.intent?.flagId ?? null,
       createdAt: message.createdAt.toISOString(),
     })),
   }
 }
 
-export async function sendSiteAgentMessage(input: { siteId: string; userId: string; message: string }) {
+export async function sendSiteAgentMessage(input: { siteId: string; userId: string; message: string; requestKey: string; flagId?: string }) {
   const project = await requireOwnedSite(input.siteId, input.userId)
+  await recoverAgentReplies(project.id, input.userId)
+  const selectedFlag = input.flagId ? await loadSiteRecord(input.siteId).then(site => site ? loadSiteFlagDetail(site, input.flagId!) : null) : null
+  if (input.flagId && !selectedFlag) throw new SiteAgentError('Flag not found', 404)
+  const admitted = await admitAgentMessage({ ...input, projectId: project.id, storedMessage: minimizeStoredMessage(input.message) })
+  if (!admitted.created) return replayAgentMessage(admitted.intent, input.userId)
+  try {
+  const priorMessages = await prisma.siteAgentMessage.findMany({ where: { threadId: admitted.intent.threadId, intentId: { not: admitted.intent.id } },
+    orderBy: { createdAt: 'desc' }, take: 6, select: { role: true, content: true } })
   const latest = project.audits[0] ?? null
   const flags: ChatFlagContext[] = project.improvements.flatMap((improvement) => {
     const flag = improvement.occurrences[0]?.flag
@@ -113,7 +110,11 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
       position: flag.position,
     }]
   })
-  const improvements: ChatImprovementContext[] = project.improvements.map((improvement) => ({
+  if (selectedFlag) {
+    flags.splice(0, flags.length, { id: selectedFlag.id, checkId: selectedFlag.checkId, rubric: selectedFlag.rubric, severity: selectedFlag.severity,
+      problem: selectedFlag.problem, evidence: selectedFlag.evidence, fix: selectedFlag.fix, status: selectedFlag.status, position: 0 })
+  }
+  const improvements: ChatImprovementContext[] = project.improvements.filter(improvement => !selectedFlag || improvement.id === selectedFlag.improvementId).map((improvement) => ({
     id: improvement.id,
     title: improvement.title,
     judgment: improvement.judgment,
@@ -141,6 +142,7 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
   })
 
   let reply: string
+  let usage: { inputTokens: number; outputTokens: number; model?: string } | null = null
   if (deterministic) {
     reply = deterministic.reply
   } else {
@@ -150,16 +152,18 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
       status: latest?.status ?? 'No completed check',
       flags,
       improvements,
+      conversation: priorMessages.toReversed().map(message => ({ role: message.role === 'USER' ? 'user' as const : 'assistant' as const, content: message.content })),
     }
     const reservation = await reserveChatUsage(project.user, workspaceChatTokenUpperBound(context))
     if (!reservation.reservationId) {
       throw new SiteAgentError('Agent allowance exhausted for this month.', 429, 'AGENT_ALLOWANCE_EXHAUSTED')
     }
+    await prisma.siteAgentIntent.update({ where: { id: admitted.intent.id }, data: { reservationId: reservation.reservationId } })
     let reservationId: string | null = reservation.reservationId
     try {
       const result = await runWorkspaceChat(context)
       reply = result.reply
-      await finalizeChatUsage(reservationId, result.usage)
+      usage = result.usage
       reservationId = null
     } catch (error) {
       if (reservationId && error instanceof WorkspaceChatUnavailableError && error.usage) {
@@ -179,27 +183,24 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
     href: `/sites/${project.id}/flags/${flag.id}`,
   }))
   if (project.watchLastRunAt || project.watchLastError) {
-    citations.push({ type: 'watch', id: project.id, label: 'Watch status', href: `/sites/${project.id}/settings` })
+    citations.push({ type: 'watch', id: project.id, label: 'Watch status', href: `/sites/${project.id}?view=monitoring#monitoring` })
   }
 
-  const thread = await getOrCreateThread(project.id, input.userId)
-  const storedMessage = minimizeStoredMessage(input.message)
-  const [, assistant] = await prisma.$transaction([
-    prisma.siteAgentMessage.create({
-      data: { threadId: thread.id, userId: input.userId, role: 'USER', content: storedMessage },
-    }),
-    prisma.siteAgentMessage.create({
-      data: { threadId: thread.id, userId: input.userId, role: 'ASSISTANT', content: reply, citations },
-    }),
-    prisma.siteAgentThread.update({ where: { id: thread.id }, data: { updatedAt: new Date() } }),
-  ])
+  const ready = await saveAgentReply(admitted.intent.id, { reply, citations, usage })
+  const response = await completeAgentMessage(ready, input.userId)
   await recordSiteLifecycleEvent({
     name: 'agent_answered',
-    idempotencyKey: `agent-answered:${assistant.id}`,
+    idempotencyKey: `agent-answered:${response.messageId}`,
     userId: input.userId,
     projectId: project.id,
     properties: { deterministic: Boolean(deterministic), citationCount: citations.length },
-  })
+  }).catch(() => undefined)
 
-  return { reply, citations, messageId: assistant.id, threadId: thread.id }
+  return response
+  } catch (error) {
+    // READY responses remain recoverable if only accounting or message persistence failed.
+    await prisma.siteAgentIntent.updateMany({ where: { id: admitted.intent.id, status: 'PENDING' },
+      data: { status: 'FAILED', errorCode: error instanceof SiteAgentError ? error.code ?? 'AGENT_UNAVAILABLE' : 'AGENT_UNAVAILABLE', completedAt: new Date() } })
+    throw error
+  }
 }

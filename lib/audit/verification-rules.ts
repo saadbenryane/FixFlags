@@ -54,8 +54,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Chrome DevTools Coverage tab, unused CSS should be materially reduced.',
   'unoptimized-images':
     'Lighthouse should no longer flag unoptimized or non-modern image formats.',
-  'inp-critical': 'PageSpeed Insights mobile INP should be 200ms or lower.',
-  'inp-poor': 'PageSpeed Insights mobile INP should be 200ms or lower.',
+  'inp-critical': 'CrUX mobile p75 INP should be 200ms or lower in the same page or origin scope. Its trailing 28-day window cannot confirm an immediate repair.',
+  'inp-poor': 'CrUX mobile p75 INP should be 200ms or lower in the same page or origin scope. Its trailing 28-day window cannot confirm an immediate repair.',
   'images-missing-alt':
     'DevTools Elements, every informational img has a non-empty alt attribute.',
   'form-inputs-no-label':
@@ -135,6 +135,9 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'At 375px width, tap targets should be at least 48x48px with adequate spacing.',
   'mobile-lcp-critical':
     'PageSpeed Insights mobile LCP should be under 2.5s.',
+  'mobile-lcp-poor': 'PageSpeed Insights mobile LCP should be under 2.5s.',
+  'mobile-cls-critical': 'Lighthouse mobile CLS should be 0.1 or lower.',
+  'mobile-cls-poor': 'Lighthouse mobile CLS should be 0.1 or lower.',
   'h1-generic':
     'H1 should describe a specific product outcome, not a generic welcome or AI-builder category headline.',
   'heading-hierarchy-missing':

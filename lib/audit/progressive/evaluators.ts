@@ -1,10 +1,10 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { runAllChecks } from '../checks'
-import { runPerformanceChecks } from '../checks/performance'
+import { runPerformanceChecks, runInpChecks } from '../checks/performance'
 import { runMobileChecks } from '../checks/mobile'
 import { runSecurityHeaderChecks } from '../checks/security-headers'
-import { recordCheckObservations } from '../checks/observations'
+import { recordCheckObservations, recordInpObservation } from '../checks/observations'
 import { parseMetadataFromHtml } from '../metadata'
 import { readScreenshotSnapshot, browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
 import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
@@ -87,14 +87,16 @@ export const evaluatorHandlers: TaskHandler[] = [
         const checked = runTrackingChecks(metadata, snapshot?.tracking, pageUrl)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
       } else if (checkModule === 'performance' || checkModule === 'mobile') {
-        if (checkModule === 'performance' && context.input.device === 'mobile' && speed?.desktop)
-          throw new TaskFailure('MOBILE_INP_FALLBACK_NOT_APPLICABLE', false)
-        applicable = checkModule === 'mobile' ? Boolean(speed?.mobile) : Boolean(speed?.desktop || speed?.mobile)
+        const inpOnly = checkModule === 'performance' && context.input.device === 'mobile'
+        const measurement = checkModule === 'mobile' || inpOnly ? speed?.mobile : speed?.desktop
+        applicable = Boolean(measurement)
         if (!applicable) throw new TaskFailure('PERFORMANCE_EVIDENCE_UNAVAILABLE', false)
-        flags = checkModule === 'mobile' ? runMobileChecks(speed!.mobile) : runPerformanceChecks(speed!.desktop, speed!.mobile)
-        // The unused metadata argument is confined to this legacy observation adapter.
-        assertions = recordCheckObservations(checkModule, { url: context.input.pageUrl,
-          metadata: parseMetadataFromHtml('', context.input.pageUrl), desktop: speed!.desktop, mobile: speed!.mobile })
+        flags = inpOnly ? runInpChecks(measurement!) : checkModule === 'mobile' ? runMobileChecks(measurement!) : runPerformanceChecks(measurement!, null)
+        // Each receipt describes only its own device and responsibility.
+        assertions = inpOnly ? [recordInpObservation(measurement!)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
+          metadata: parseMetadataFromHtml('', context.input.pageUrl), desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
+        complete = inpOnly ? assertions[0].complete === true : measurement!.score !== null && measurement!.lcp !== null && measurement!.cls !== null
+        if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required score, LCP and CLS measurements. Missing measurements remain unknown.'
       } else if (checkModule === 'security-headers') {
         if (!response?.document.status) throw new TaskFailure('RESPONSE_EVIDENCE_UNAVAILABLE', false)
         flags = runSecurityHeaderChecks(response.document.finalUrl, response.document.headers)

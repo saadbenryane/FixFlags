@@ -16,6 +16,10 @@ export async function projectSiteAnalysis(auditId: string): Promise<void> {
     where: { primaryAuditId: auditId },
     select: { id: true },
   })
+  if (!scope && !provisional) {
+    const recorded = await prisma.provisionalSite.findFirst({ where: { primaryAuditId: auditId, claimedProjectId: audit.projectId }, select: { id: true } })
+    if (!recorded) return
+  }
   // Historical analyses without a customer Site have no Site projection to maintain.
   if (!audit.projectId && !provisional) return
   const site = await loadSiteRecord(audit.projectId ?? `p_${provisional!.id}`)

@@ -3,6 +3,8 @@ export type MonitoringHistoryEntry = {
   checkedAt: string
   flagCount: number
   status?: 'COMPLETED' | 'FAILED'
+  evidenceAt?: string | null
+  completionState?: 'COMPLETED' | 'PARTIAL' | 'FAILED'
   flags?: Array<{ id: string; title: string }>
   scope?: 'SITE' | 'OUTCOMES' | 'DIAGNOSTIC' | 'UNKNOWN'
   targetLabel?: string | null
@@ -13,6 +15,7 @@ export type MonitoringHistoryEntry = {
 
 type HistoryRun = {
   source: string
+  executionSpec?: unknown
   verificationTarget: unknown
   selections: Array<{ outcome: { name: string } }>
   assessments: Array<{ state: string }>
@@ -25,19 +28,20 @@ function record(value: unknown): Record<string, unknown> | null {
 /** Scope comes from the recorded execution, never from its Flag count. */
 export function monitoringHistoryMetadata(input: {
   executionSpec: unknown
+  legacySiteAnalysis?: boolean
   recheckTrigger?: string | null
   status: string
   flagCount: number
   runRequests?: HistoryRun[]
   verificationAttempts?: Array<{ id?: string; outcome: string | null; comparable: boolean | null }>
 }): Pick<MonitoringHistoryEntry, 'scope' | 'targetLabel' | 'trigger' | 'afterFix' | 'result'> {
-  const spec = record(input.executionSpec)
   const run = input.runRequests?.[0]
+  const spec = record(input.executionSpec) ?? record(run?.executionSpec)
   const target = record(run?.verificationTarget) ?? record(spec?.verificationTarget)
   const afterFix = target?.kind === 'OUTCOME' || target?.kind === 'DIAGNOSTIC'
   const scope = target?.kind === 'DIAGNOSTIC' ? 'DIAGNOSTIC' : target?.kind === 'OUTCOME' ? 'OUTCOMES'
     : spec?.scope === 'SITE' || spec?.scope === 'OUTCOMES' || spec?.scope === 'DIAGNOSTIC' ? spec.scope
-      : !spec && !run?.selections.length ? 'SITE' : 'UNKNOWN'
+      : run?.selections.length ? 'OUTCOMES' : input.legacySiteAnalysis === true ? 'SITE' : 'UNKNOWN'
   const source = run?.source
   const trigger = source === 'WATCH' ? 'SCHEDULED' : source === 'WEB' ? 'MANUAL'
     : source ? 'OTHER' : input.recheckTrigger === 'WATCH' ? 'SCHEDULED'
@@ -62,7 +66,7 @@ export function monitoringHistoryMetadata(input: {
   return { scope, targetLabel, trigger, afterFix, result }
 }
 
-/** Older payloads predate scope metadata and describe the historical Site trend. */
+/** Failed broad executions remain gaps. Unknown legacy scope never implies broad evidence. */
 export function siteTrendChecks(entries: readonly MonitoringHistoryEntry[]): MonitoringHistoryEntry[] {
-  return entries.filter(item => (item.scope === 'SITE' || item.scope === undefined) && item.status !== 'FAILED')
+  return entries.filter(item => item.scope === 'SITE')
 }

@@ -10,7 +10,7 @@ export function SiteActionFeedback({ message, error, siteId }: {
   const next = typeof window === 'undefined' ? `/sites/${siteId}`
     : window.location.pathname + window.location.search + window.location.hash
   return <>
-    {message ? <p className="mt-2 text-sm text-muted-foreground" role="status">{message}</p> : null}
+    {message ? <p className="mt-2 text-sm text-muted-foreground" role={error ? 'alert' : 'status'}>{message}</p> : null}
     {error?.status === 401 ? <Button asChild variant="outline" className="mt-2">
       <a target="_blank" rel="noopener noreferrer" href={`/sign-in?next=${encodeURIComponent(next)}`}>{SITE_ACTION_COPY.signInAction}</a>
     </Button> : null}

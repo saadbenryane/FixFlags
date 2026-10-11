@@ -34,7 +34,7 @@ export function NotFoundContent() {
           <Link href="/dashboard">Dashboard</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/#audit">{HERO.primaryCta}</Link>
+          <Link href={HERO.primaryHref}>{HERO.primaryCta}</Link>
         </Button>
       </div>
     </Container>

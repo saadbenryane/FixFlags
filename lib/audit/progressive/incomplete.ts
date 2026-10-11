@@ -24,11 +24,12 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
         lastDryRunResult: { disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'unknown' } } } })
   }
   if (task.workKind === 'check' && input.module) {
+    const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '')
     const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: input.module,
       pageUrl: input.pageUrl, passed: false, applicable: true, failed: true, assertions: [] })
     await tx.auditVerifierExecution.upsert({ where: { auditId_targetKey_scopeKey: {
-      auditId: task.auditId, targetKey: 'module:' + input.module, scopeKey: 'page:' + input.pageUrl } },
-      create: { auditId: task.auditId, targetKey: 'module:' + input.module, scopeKey: 'page:' + input.pageUrl,
+      auditId: task.auditId, targetKey: 'module:' + input.module, scopeKey } },
+      create: { auditId: task.auditId, targetKey: 'module:' + input.module, scopeKey,
         pageUrl: input.pageUrl, source: 'DETERMINISTIC', status: 'FAILED', checkVersion: 1, detail: receipt,
         evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
   }

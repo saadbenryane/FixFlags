@@ -5,8 +5,8 @@ import { createSiteActionController, type SiteActionError } from '@/lib/sites/cl
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 /** Submission ownership is synchronous, not dependent on the next React render. */
-export function useSiteAction() {
-  const [controller] = useState(createSiteActionController)
+export function useSiteAction(namespace?: string) {
+  const [controller] = useState(() => createSiteActionController(namespace))
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<SiteActionError | null>(null)
@@ -23,5 +23,5 @@ export function useSiteAction() {
       return result
     } finally { setBusy(false) }
   }
-  return { submit, busy, message, error, clearFeedback: () => { setMessage(null); setError(null) } }
+  return { submit, busy, message, error, isPending: () => controller.pending, requestKey: controller.requestKey, completeIntent: controller.completeIntent, clearFeedback: () => { setMessage(null); setError(null) } }
 }

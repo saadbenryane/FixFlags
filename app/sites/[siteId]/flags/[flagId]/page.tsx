@@ -6,6 +6,7 @@ import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
+import { SiteAgent } from '@/components/sites/SiteAgent'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -109,7 +110,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     : flag.problem
 
   return (
-    <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="flags" title={flag.problem} description={flag.whyItMatters} presentation={home.presentation} watch={home.watch} checking={flag.verifying}>
+    <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="flags" title={flag.problem} description={flag.whyItMatters} presentation={home.presentation} watch={home.watch} checking={flag.verifying} headerAction={access.decision.role === 'owner' ? <SiteAgent siteId={resolvedId} flagId={flag.id} /> : null}>
       <div className="mx-auto w-full max-w-5xl lg:pr-24 2xl:pr-0">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="-ml-4 text-muted-foreground" asChild>
@@ -209,7 +210,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </h2>
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flag.fix}</p>
                 <div className="mt-6">
-                  <SiteFlagActions siteId={resolvedId} flagId={flag.id} verifying={flag.verifying} />
+                  <SiteFlagActions siteId={resolvedId} flagId={flag.id} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.outcome === null && attempt.verificationAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
                 </div>
               </aside>
             ) : null}
@@ -231,7 +232,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   {flag.attempts.map((attempt) => {
                     const when = formatEvidenceTimestamp(attempt.createdAt)
                     return (
-                      <li key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 border-b border-border/70 pb-5 last:border-b-0 last:pb-0">
+                      <li id={`attempt-${attempt.id}`} key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 border-b border-border/70 pb-5 last:border-b-0 last:pb-0">
                         <AttemptIcon outcome={attempt.outcome} />
                         <div className="min-w-0">
                           <p className="font-medium">{attemptLabel(attempt)}</p>

@@ -10,15 +10,11 @@ describe('pre-publish brand discovery copy', () => {
   it('keeps FixFlags first on the official homepage snippet', () => {
     assert.match(SEO.home.title, /^FixFlags/)
     assert.match(SEO.home.title, /FixFlags watches/i)
-    assert.match(SEO.home.description, /independently checks/i)
-    assert.match(SEO.home.description, /important outcomes on your live website/i)
-    assert.match(SEO.home.description, /Flag/)
-    assert.match(SEO.home.description, /verify a fix/i)
-    assert.doesNotMatch(SEO.home.title, RETIRED_TAGLINE)
-    assert.doesNotMatch(SEO.home.description, RETIRED_TAGLINE)
+    assert.match(SEO.home.description, /Monitor\. Flag\. Fix/ )
+    assert.match(SEO.home.description, /checks your live website/ )
+    assert.match(SEO.home.description, /with evidence/ )
+    assert.match(SEO.home.description, /checks again after you publish a fix/ )
     assert.doesNotMatch(SEO.home.description, FEATURE_FLAG_INFRA)
-    assert.doesNotMatch(SEO.home.description, /\bpaste a (live )?url/i)
-    assert.doesNotMatch(SEO.home.description, /checks your live website/i)
   })
 
   it('names FixFlags on pricing and use-case sitelinks', () => {

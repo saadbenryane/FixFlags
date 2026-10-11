@@ -8,14 +8,18 @@ import { Textarea } from '@/components/ui/textarea'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { useSiteResource } from '@/hooks/useSiteResource'
+import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 
-export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId: string; flagId: string; verifying?: boolean }) {
+export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAuditId = null, verifying = false }: { siteId: string; flagId: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean }) {
   const router = useRouter()
-  const { busy, message, error, submit, clearFeedback } = useSiteAction()
+  const { busy, message, error, submit, clearFeedback, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
+  const { view, refresh, disconnected } = useSiteResource(siteId, initial)
+  const [verificationAuditId, setVerificationAuditId] = useState(initialVerificationAuditId)
   const [verificationRunning, setVerificationRunning] = useState(verifying)
   const [changeSummary, setChangeSummary] = useState('')
   const [verifyOpen, setVerifyOpen] = useState(false)
@@ -26,13 +30,12 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
   }, [verifying])
 
   useEffect(() => {
-    if (!verificationRunning) return
-    const timer = window.setInterval(() => router.refresh(), 4000)
-    return () => window.clearInterval(timer)
-  }, [router, verificationRunning])
+    if (!verificationAuditId || !view.monitoringHistory.some(entry => entry.id === verificationAuditId)) return
+    setVerificationRunning(false); setVerificationAuditId(null); router.refresh()
+  }, [verificationAuditId, view.monitoringHistory, router])
 
   async function verify() {
-    if (intent.current?.flagId !== flagId) intent.current = { flagId, key: `web:verify:${flagId}:${crypto.randomUUID()}` }
+    if (intent.current?.flagId !== flagId) intent.current = { flagId, key: requestKey(`flag:${flagId}`) }
     const result = await submit(async () => {
       const body = await executeSiteAction(`/api/sites/${siteId}/flags/${flagId}/verify`, {
         method: 'POST',
@@ -44,12 +47,13 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
       }, 'flagVerify')
       if (body.siteId !== siteId || body.flagId !== flagId) throw new SiteActionError(SITE_ACTION_COPY.invalidResponse)
       return body
-    }, () => {
+    }, body => {
+      setVerificationAuditId(body.verificationAuditId)
       setVerificationRunning(true)
       setVerifyOpen(false)
       return SITE_BOARD_COPY.verificationStarted
-    }, () => router.refresh())
-    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') intent.current = null
+    }, async () => { await refresh(); router.refresh() })
+    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') { completeIntent(`flag:${flagId}`); intent.current = null }
   }
 
   return (
@@ -73,6 +77,7 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
           </p>
         ) : null}
       </div>
+      {disconnected ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.updatesDisconnected}</p> : null}
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
         <DialogContent>
           <DialogTitle>{SITE_BOARD_COPY.verifyFix}</DialogTitle>
@@ -84,7 +89,7 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
           </div>
           <SiteActionFeedback message={message} error={error} siteId={siteId} />
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>Cancel</Button>
+            <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>{SITE_ACTION_COPY.cancel}</Button>
             <Button type="button" variant="brand" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
           </DialogFooter>
         </DialogContent>

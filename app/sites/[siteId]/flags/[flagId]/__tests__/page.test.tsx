@@ -125,9 +125,9 @@ describe('Flag verification attempts', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Fix and verify' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Fix' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Copy fix prompt' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Verify fix' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Check now' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
     expect(
       screen.getByRole('link', {

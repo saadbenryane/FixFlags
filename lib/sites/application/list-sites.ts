@@ -1,4 +1,6 @@
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
+import { loadLegacySiteAnalysisIds } from './legacy-analysis'
+import { includeLegacySiteAnalyses } from './analysis-scope'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
@@ -51,9 +53,10 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
   if (projects.length === 0) return []
 
   const projectIds = projects.map((project) => project.id)
+  const siteWideWhere = includeLegacySiteAnalyses(await loadLegacySiteAnalysisIds(projectIds))
   const [latestAudits, latestCompletedAudits, improvements] = await Promise.all([
     prisma.audit.findMany({
-      where: { projectId: { in: projectIds } },
+      where: { projectId: { in: projectIds }, ...siteWideWhere },
       orderBy: [{ projectId: 'asc' }, { createdAt: 'desc' }],
       distinct: ['projectId'],
       select: {
@@ -68,7 +71,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       },
     }),
     prisma.audit.findMany({
-      where: { projectId: { in: projectIds }, status: 'COMPLETED' },
+      where: { projectId: { in: projectIds }, status: 'COMPLETED', ...siteWideWhere },
       orderBy: [{ projectId: 'asc' }, { completedAt: 'desc' }],
       distinct: ['projectId'],
       select: { id: true, projectId: true, status: true, completedAt: true, evidenceCoverage: true },

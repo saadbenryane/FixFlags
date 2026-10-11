@@ -46,6 +46,7 @@ export type ToolItem = {
   state: ToolState
   status: string
   suggested?: boolean
+  actionLabel?: string
   actionHref?: string
   actionDisabled?: boolean
 }
@@ -123,13 +124,13 @@ export function IntegrationList({ items, label = 'Integrations', onAction }: { i
     <ul className={styles.integrationList}>
       {group.map(item => {
         const isConnected = item.status === C.connected
-        const action = <>{isConnected ? <Settings2 size={14} aria-hidden /> : null}{isConnected ? C.settings : C.connect}</>
-        const aria = isConnected ? C.settingsFor(item.name) : C.connectTool(item.name)
+        const action = <>{isConnected ? <Settings2 size={14} aria-hidden /> : null}{item.actionLabel ?? (isConnected ? C.settings : C.connect)}</>
+        const aria = isConnected ? C.settingsFor(item.name) : item.actionLabel ? `${item.actionLabel}: ${item.name}` : isConnected ? C.settingsFor(item.name) : C.connectTool(item.name)
         return <li key={item.name} className={styles.integrationItem}>
         <ToolLogo name={item.name} />
         <span className={styles.integrationCopy}><strong>{item.name}</strong>{item.detail ? <span>{item.detail}</span> : null}</span>
         <span className={styles.integrationActions}>
-          {isConnected ? <span className={styles.integrationStatus}><i className={styles.statusDot} aria-hidden />{C.connected}</span> : null}
+          <span className={styles.integrationStatus}>{isConnected ? <i className={styles.statusDot} aria-hidden /> : null}{item.status}</span>
           {item.actionHref && !item.actionDisabled && !onAction ? <Button size="sm" variant="outline" className="min-h-11" asChild><Link href={item.actionHref as Route} aria-label={aria}>{action}</Link></Button>
             : <Button type="button" size="sm" variant="outline" className="min-h-11" aria-label={aria} disabled={item.actionDisabled || (!onAction && !item.actionHref)} onClick={() => onAction?.(item)}>{action}</Button>}
         </span>

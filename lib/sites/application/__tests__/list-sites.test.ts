@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
+  provisionalFindMany: vi.fn(),
   auditFindMany: vi.fn(),
   improvementFindMany: vi.fn(),
   auditPageFindMany: vi.fn(),
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    provisionalSite: { findMany: mocks.provisionalFindMany },
     project: { findMany: mocks.projectFindMany },
     audit: { findMany: mocks.auditFindMany },
     improvement: { findMany: mocks.improvementFindMany },
@@ -25,6 +27,7 @@ import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 describe('loadSiteSummaries', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.provisionalFindMany.mockResolvedValue([])
     mocks.projectFindMany.mockResolvedValue([
       { id: 'site-1', name: 'One', canonicalHost: 'one.example', updatedAt: new Date('2026-10-01'), watchInterval: null, watchNextRunAt: null, watchLastError: null, watchConsecutiveFailures: 0 },
       { id: 'site-2', name: 'Two', canonicalHost: 'two.example', updatedAt: new Date('2026-10-02'), watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-10'), watchLastError: null, watchConsecutiveFailures: 0 },

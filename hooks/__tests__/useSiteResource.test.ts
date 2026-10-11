@@ -31,3 +31,45 @@ it('retains the recorded view when a successful HTTP response has malformed stat
   unmount()
 })
 afterEach(() => { vi.unstubAllGlobals() })
+
+it('catches up after SSE reconnect while retaining dated evidence during a disconnect', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  let current = initial
+  const listeners = new Map<string, () => void>()
+  const close = vi.fn()
+  vi.stubGlobal('EventSource', class {
+    addEventListener(name: string, listener: () => void) { listeners.set(name, listener) }
+    close = close
+  })
+  const fetch = vi.fn(async () => ({ ok: true, json: async () => current }))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0, shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource('fixture-site', initial), { wrapper })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  listeners.get('error')?.()
+  await waitFor(() => expect(result.current.disconnected).toBe(true))
+  expect(result.current.view).toEqual(initial)
+  current = { ...initial, inventoryPageCount: 12 }
+  listeners.get('open')?.()
+  await waitFor(() => expect(result.current.view.inventoryPageCount).toBe(12))
+  expect(result.current.disconnected).toBe(false)
+  listeners.get('access-expired')?.()
+  await waitFor(() => expect(result.current.disconnected).toBe(true))
+  expect(close).toHaveBeenCalled()
+  unmount()
+})
+
+it('observes an active diagnostic run even when the broad analysis and Outcomes are idle', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  initial.activeRuns = [{ id: 'diagnostic-run', auditId: 'diagnostic-audit', scope: 'DIAGNOSTIC', targetLabel: '/cart',
+    trigger: 'MANUAL', status: 'RUNNING', requestedAt: '2026-10-11T09:00:00Z', progress: 10 }]
+  const finished = { ...initial, activeRuns: [] }
+  const fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => initial }).mockResolvedValue({ ok: true, json: async () => finished })
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0, isVisible: () => true, isOnline: () => true } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource('fixture-site', initial), { wrapper })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(result.current.view.activeRuns).toEqual([]), { timeout: 5000 })
+  expect(result.current.view.audit.id).toBe('audit-1')
+  unmount()
+})

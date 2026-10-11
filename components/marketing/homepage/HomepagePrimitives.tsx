@@ -26,13 +26,13 @@ export function HomepageUrlEntry({ final = false }: { final?: boolean }) {
       window.requestAnimationFrame(() => field.focus({ preventScroll: true }))
     }
     const focusFromHash = () => {
-      if (window.location.hash === '#analyze') focusField()
+      if (['#analyze', '#audit'].includes(window.location.hash)) focusField()
     }
     const focusFromLink = (event: MouseEvent) => {
       const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[href]')
       if (!link) return
       const destination = new URL(link.href, window.location.href)
-      if (destination.origin !== window.location.origin || destination.pathname !== window.location.pathname || destination.hash !== '#analyze') return
+      if (destination.origin !== window.location.origin || destination.pathname !== window.location.pathname || !['#analyze', '#audit'].includes(destination.hash)) return
       window.requestAnimationFrame(focusField)
     }
     focusFromHash()
@@ -45,6 +45,7 @@ export function HomepageUrlEntry({ final = false }: { final?: boolean }) {
   }, [final])
 
   return <div className={s.entry} id={final ? undefined : 'analyze'}>
+    {final ? null : <span id="audit" aria-hidden />}
     <AuditInput variant="landing" idSuffix={final ? '-care-final' : '-care-hero'} ctaPlacement={final ? 'final' : 'hero'} showLandingExtras={false} submitLabel={C.hero.cta} urlPlaceholder={C.hero.placeholder} />
   </div>
 }

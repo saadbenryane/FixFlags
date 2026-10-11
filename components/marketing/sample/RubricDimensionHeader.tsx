@@ -1,6 +1,6 @@
 'use client'
 
-import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { SAMPLE_RUBRIC_COPY } from '@/lib/marketing/copy'
 import { rubricIcon, rubricTint } from '@/lib/rubric-icons'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +14,7 @@ type RubricKey = keyof typeof RUBRIC_WASH
 
 function dimensionCopy(rubric: string) {
   const id = rubric.toLowerCase() as 'message' | 'experience' | 'reach'
-  return LANDING_PAGE.checkDimensions.cards.find((c) => c.id === id)
+  return SAMPLE_RUBRIC_COPY.find((c) => c.id === id)
 }
 
 interface RubricDimensionHeaderProps {

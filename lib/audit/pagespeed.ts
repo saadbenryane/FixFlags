@@ -47,7 +47,8 @@ export interface PageSpeedResult {
   cls: number | null
   fcp: number | null
   tbt: number | null
-  inp: number | null
+  inp: number | null // CrUX p75 over the reported field-data window, not a lab measurement
+  // Savings use milliseconds for render blocking and bytes for resource opportunities.
   opportunities: Array<{ id: string; title: string; savings: number; itemsCount?: number }>
   failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
@@ -87,6 +88,40 @@ const ACCESSIBILITY_AUDIT_IDS = [
   'focus-traps',
   'focus-visible',
 ] as const
+
+function nonnegativeNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
+}
+
+/** Normalize provider versions once so checks consume stable identities and units. */
+function extractOpportunities(audits: Record<string, Record<string, unknown>>): PageSpeedResult['opportunities'] {
+  const definitions = [
+    { id: 'render-blocking-resources', aliases: ['render-blocking-insight', 'render-blocking-resources'], unit: 'ms' },
+    { id: 'unused-javascript', aliases: ['unused-javascript'], unit: 'bytes' },
+    { id: 'unused-css-rules', aliases: ['unused-css-rules'], unit: 'bytes' },
+    { id: 'uses-optimized-images', aliases: ['image-delivery-insight', 'uses-optimized-images'], unit: 'bytes' },
+    { id: 'uses-webp-images', aliases: ['modern-image-formats', 'uses-webp-images'], unit: 'bytes' },
+    { id: 'uses-responsive-images', aliases: ['uses-responsive-images'], unit: 'bytes' },
+    { id: 'efficient-animated-content', aliases: ['efficient-animated-content'], unit: 'bytes' },
+    { id: 'uses-text-compression', aliases: ['uses-text-compression'], unit: 'bytes' },
+  ] as const
+  return definitions.flatMap(({ id, aliases, unit }) => {
+    // Prefer the current insight when both it and its predecessor are returned.
+    const providerId = aliases.find(alias => audits[alias])
+    const audit = providerId ? audits[providerId] : undefined
+    if (!audit || typeof audit.score !== 'number' || audit.score >= 1) return []
+    const details = audit.details as Record<string, unknown> | undefined
+    const debug = details?.debugData as Record<string, unknown> | undefined
+    const metrics = audit.metricSavings as Record<string, unknown> | undefined
+    const savings = unit === 'ms'
+      ? nonnegativeNumber(metrics?.FCP) ?? nonnegativeNumber(details?.overallSavingsMs)
+      : nonnegativeNumber(details?.overallSavingsBytes) ?? nonnegativeNumber(debug?.wastedBytes)
+    if (savings === null) return []
+    // The consolidated image insight already includes the older image responsibilities.
+    if (['uses-webp-images', 'uses-responsive-images', 'efficient-animated-content'].includes(id) && audits['image-delivery-insight']) return []
+    return [{ id, title: typeof audit.title === 'string' ? audit.title : providerId!, savings: Math.round(savings) }]
+  })
+}
 
 export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeedResult, 'raw'> {
   const { raw, ...stored } = result
@@ -177,7 +212,6 @@ async function runPageSpeed(
     const cls = audits['cumulative-layout-shift']?.numericValue as number | undefined ?? null
     const fcp = audits['first-contentful-paint']?.numericValue as number | undefined ?? null
     const tbt = audits['total-blocking-time']?.numericValue as number | undefined ?? null
-    const inp = audits['interaction-to-next-paint']?.numericValue as number | undefined ?? null
 
     const failedAccessibilityAudits: LighthouseAuditSummary[] = []
     for (const id of ACCESSIBILITY_AUDIT_IDS) {
@@ -191,28 +225,7 @@ async function runPageSpeed(
       }
     }
 
-    const opportunities: Array<{ id: string; title: string; savings: number; itemsCount?: number }> = []
-    const opportunityIds = [
-      'render-blocking-resources',
-      'unused-javascript',
-      'unused-css-rules',
-      'uses-optimized-images',
-      'uses-webp-images',
-      'uses-responsive-images',
-      'efficient-animated-content',
-      'uses-text-compression',
-    ]
-    for (const id of opportunityIds) {
-      const audit = audits[id]
-      if (audit && audit.score !== null && (audit.score as number) < 0.9) {
-        const savings = (audit.details as Record<string, unknown>)?.overallSavingsMs as number || 0
-        opportunities.push({
-          id,
-          title: audit.title as string,
-          savings: Math.round(savings),
-        })
-      }
-    }
+    const opportunities = extractOpportunities(audits)
 
     if (strategy === 'mobile') {
       const tapTargetIds = ['target-size', 'tap-targets', 'tap-targets-too-small']
@@ -241,8 +254,8 @@ async function runPageSpeed(
       cls: cls !== null ? Math.round(cls * 1000) / 1000 : null,
       fcp: fcp !== null ? Math.round(fcp) : null,
       tbt: tbt !== null ? Math.round(tbt) : null,
-      inp: inp !== null ? Math.round(inp) : null,
-      opportunities: opportunities.slice(0, 5),
+      inp: crux?.inp ?? null,
+      opportunities,
       failedAccessibilityAudits,
       diagnostics: {},
       raw: data,

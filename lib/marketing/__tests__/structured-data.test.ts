@@ -31,8 +31,9 @@ describe('structured data', () => {
       '@id': `${SITE_URL}/faq#is-fixflags-free`,
       url: `${SITE_URL}/faq#is-fixflags-free`,
     })
-    expect(freeQuestion?.acceptedAnswer.text).toContain('Open beta includes all supported features on one website')
-    expect(freeQuestion?.acceptedAnswer.text).toContain('/help/account-and-billing/free-and-pro')
+    const visible = FAQ.find(entry => entry.question === 'Is FixFlags free?')!
+    expect(freeQuestion?.acceptedAnswer.text).toBe(`${visible.answer} ${visible.learnMore!.label}: ${SITE_URL}${visible.learnMore!.href}`)
+    expect(freeQuestion?.acceptedAnswer.text).toMatch(/one website/)
   })
 
   it('emits FAQPage schema for pricing questions', () => {

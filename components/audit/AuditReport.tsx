@@ -246,14 +246,14 @@ export function AuditReport({
             {REPORT_COPY.sampleCta.body}
           </p>
           <Button asChild variant="brand">
-            <Link href="/#audit">{HERO.primaryCta}</Link>
+            <Link href={HERO.primaryHref}>{HERO.primaryCta}</Link>
           </Button>
         </div>
       ) : null}
       {showRunYourOwn ? (
         <p className="text-center text-sm text-muted-foreground">
           <Link
-            href="/#audit"
+            href={HERO.primaryHref}
             className="text-link font-medium underline-offset-2 hover:underline"
           >
             {REPORT_COPY.runYourOwnAudit}

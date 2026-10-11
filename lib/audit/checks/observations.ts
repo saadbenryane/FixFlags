@@ -3,6 +3,14 @@ import type { PageSpeedResult } from '../pagespeed'
 import type { CheckAssertion } from './assertion'
 import { filterOutIframeAxeViolations, type AxeViolation } from './accessibility'
 
+export function recordInpObservation(mobile: PageSpeedResult): CheckAssertion {
+  const complete = mobile.crux?.inp !== null && mobile.crux?.inp !== undefined
+  return { key: 'inp', name: 'Mobile field responsiveness', expected: 'CrUX p75 INP is at most 200ms',
+    observed: complete ? `CrUX p75 INP ${mobile.crux!.inp}ms, ${mobile.crux!.scope ?? 'unknown scope'} scope${mobile.crux!.url ? ` (${mobile.crux!.url})` : ''}, trailing ${mobile.crux!.reportingWindowDays ?? 28} days. This window does not verify an immediate repair.`
+      : 'No CrUX INP measurement is available. Current responsiveness remains unknown.',
+    passed: complete && mobile.crux!.inp! <= 200, complete, disposition: 'observed' }
+}
+
 /** Positive observations come from inspected inputs, never from missing Flags. */
 export function recordCheckObservations(module: string, input: {
   url: string; metadata: PageMetadata; headers?: Record<string, string> | null;
@@ -38,6 +46,7 @@ export function recordCheckObservations(module: string, input: {
       `${violations.length} automated rule violations recorded; manual accessibility was not evaluated`, violations.length === 0)
   }
   if (module === 'performance' || module === 'mobile') {
+    if (module === 'performance' && input.mobile) result.push(recordInpObservation(input.mobile))
     const data = module === 'mobile' ? input.mobile : input.desktop
     if (data) {
       if (typeof data.lcp === 'number' && Number.isFinite(data.lcp)) record('lcp', `${module === 'mobile' ? 'Mobile' : 'Desktop'} largest contentful paint`,

@@ -52,8 +52,8 @@ describe('demo identity', () => {
     assert.ok(!RETIRED_IDENTITIES.test(JSON.stringify(sample)))
   })
 
-  it('describes DemoSite in samples SEO', () => {
-    assert.match(SEO.samples.description, /DemoSite/i)
+  it('labels the public samples as demo evidence', () => {
+    assert.match(SEO.samples.description, /recorded demo check/i)
     assert.ok(!RETIRED_IDENTITIES.test(SEO.samples.description))
   })
 })

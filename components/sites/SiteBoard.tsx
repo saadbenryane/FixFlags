@@ -1,5 +1,8 @@
 'use client'
 
+import { connectionPresentation } from '@/lib/sites/connection-presentation'
+import { SITE_CONNECTION_COPY } from '@/lib/marketing/copy/site-connections'
+
 import Link from 'next/link'
 import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
@@ -25,6 +28,7 @@ import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { IntegrationList, TechnologyStrip, type ToolItem } from '@/components/sites/SiteTooling'
 import { SiteFlagRow } from '@/components/sites/SiteFlagRow'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { SiteAgent } from '@/components/sites/SiteAgent'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { Button } from '@/components/ui/button'
@@ -77,7 +81,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const action = useRef(createSiteActionController()).current
+  const action = useRef(createSiteActionController(`site:${siteId}`)).current
   const [authRequired, setAuthRequired] = useState(false)
   const opener = useRef<HTMLElement | null>(null)
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
@@ -100,8 +104,8 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
 
   async function verifyOutcome(outcomeId: string) {
     await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
-        method: 'POST', headers: { 'Idempotency-Key': `web:${outcomeId}:${Date.now()}` },
-      }, 'run'))
+        method: 'POST', headers: { 'Idempotency-Key': action.requestKey(`outcome:${outcomeId}`) },
+      }, 'run'), `outcome:${outcomeId}`)
   }
 
   async function refreshSiteEvidence() {
@@ -109,16 +113,16 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': `web:site-care:${siteId}:${Date.now()}`,
+          'Idempotency-Key': action.requestKey(`site:${siteId}`),
         },
         body: JSON.stringify({ scope: 'site', outcomeIds: [] }),
-      }, 'run'))
+      }, 'run'), `site:${siteId}`)
   }
 
-  async function submit(mutation: () => Promise<unknown>) {
+  async function submit(mutation: () => Promise<unknown>, intent?: string) {
     if (action.pending) return
     setBusy(true); setToast(null)
-    const completed = await action.submit(mutation, () => refresh(), () => { setToast(SITE_BOARD_COPY.checkStarted); setAuthRequired(false) })
+    const completed = await action.submit(mutation, () => refresh(), () => { if (intent) action.completeIntent(intent); setToast(SITE_BOARD_COPY.checkStarted); setAuthRequired(false) })
     if (completed.kind === 'refused') { setToast(completed.error.message); setAuthRequired(completed.error.status === 401) }
     else if (completed.kind === 'saved_refresh_pending') setToast(SITE_ACTION_COPY.refreshPending)
     else if (completed.kind === 'saved') { setToast(SITE_BOARD_COPY.checkStarted); setAuthRequired(false) }
@@ -145,7 +149,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
     return rank[left.state] - rank[right.state]
   })
   const pagesNeedingAttention = new Set(view.flags.filter(flag => flag.area === 'site').map(flag => flag.pageUrl ?? view.site.url)).size
-  const pageCount = view.checkedPages?.length ?? view.presentation.coverage.pagesExpected
+  const pageCount = view.inventoryPageCount
   const pageEvidence = Boolean(pageCount && cardsById.get('site')?.evidenced && cardsById.get('site')?.state === 'healthy')
   const monitoringActive = view.watch.state === 'watching'
   const monitoringCadence = scheduleLabel(scheduleFromWatch(view.watch.interval, view.watch.everyMinutes))
@@ -162,13 +166,15 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
   const detectedTechnologies = new Set((view.technology?.items ?? []).map(item => item.name))
   const framework = ['Next.js', 'React', 'WordPress', 'Webflow', 'Shopify'].find(name => detectedTechnologies.has(name))
   const connectionItem = (name: string, status: string, detail: string, configured: boolean, anchor: string): ToolItem => {
-    const connected = status === 'connected'
+    const presentation = connectionPresentation(status, configured)
+    const connected = presentation.healthy
     const detected = detectedTechnologies.has(name) ? name : name === 'Google Search Console' ? framework : undefined
     const href = `/sites/${siteId}/settings#${anchor}`
     return {
       name,
       detail: connected ? detail : `${detected ? `${B.detected(detected)} ` : ''}${configured ? detail : B.connectionUnavailable}`,
-      status: connected ? B.connected : B.connect,
+      status: presentation.label,
+      actionLabel: presentation.action,
       state: connected ? 'healthy' : 'attention',
       suggested: !connected && Boolean(detected),
       actionHref: ownsSite ? href : `/sign-in?next=${encodeURIComponent(href)}`,
@@ -176,24 +182,24 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
     }
   }
   const integrations: ToolItem[] = [
-    connectionItem('Shopify', view.settings.shopify.state, view.settings.shopify.domain ?? 'Store and product context', view.settings.shopify.configured !== false, 'connection-shopify'),
-    connectionItem('Google Analytics', view.settings.analytics.status, view.settings.analytics.propertyLabel ?? 'Audience context', view.settings.analytics.configured, 'connection-analytics'),
-    connectionItem('Google Search Console', view.settings.searchConsole.status, view.settings.searchConsole.propertyLabel ?? 'Search performance context', view.settings.searchConsole.configured, 'connection-search-console'),
+    connectionItem('Shopify', view.settings.shopify.state, view.settings.shopify.domain ?? SITE_CONNECTION_COPY.descriptions.shopify, view.settings.shopify.configured !== false, 'connection-shopify'),
+    connectionItem('Google Analytics', view.settings.analytics.status, view.settings.analytics.propertyLabel ?? SITE_CONNECTION_COPY.descriptions.analytics, view.settings.analytics.configured, 'connection-analytics'),
+    connectionItem('Google Search Console', view.settings.searchConsole.status, view.settings.searchConsole.propertyLabel ?? SITE_CONNECTION_COPY.descriptions.search, view.settings.searchConsole.configured, 'connection-search-console'),
   ]
-  const monitoringPoints = siteTrendChecks(view.monitoringHistory ?? []).map(item => ({
+  const monitoringPoints = siteTrendChecks(view.monitoringTrend).map(item => ({
     label: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(item.checkedAt)),
-    flagCount: item.flagCount,
+    flagCount: item.status === 'FAILED' || item.completionState === 'PARTIAL' || !item.evidenceAt ? null : item.flagCount,
   }))
   const monitoringEvents = (view.monitoringHistory ?? []).toReversed().map(item => ({
     id: item.id ?? item.checkedAt,
-    title: item.afterFix ? B.history.afterFix : item.status === 'FAILED' ? B.incomplete : B.complete,
+    title: item.afterFix ? B.history.afterFix : item.status === 'FAILED' || item.completionState === 'PARTIAL' ? B.incomplete : B.complete,
     detail: item.scope ? [item.trigger === 'SCHEDULED' ? B.history.scheduled : item.trigger === 'MANUAL' ? B.history.manual : item.trigger === 'OTHER' ? B.history.other : null,
       item.scope === 'SITE' ? B.history.site : item.scope === 'OUTCOMES' ? B.history.outcomes : item.scope === 'DIAGNOSTIC' ? B.history.diagnostic : B.history.unknown,
       item.targetLabel].filter(Boolean).join(' · ') : undefined,
     resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
     time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
     dateTime: item.checkedAt,
-    state: item.status === 'FAILED' || item.result === 'COULD_NOT_VERIFY' ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
+    state: item.status === 'FAILED' || item.completionState === 'PARTIAL' || item.result === 'COULD_NOT_VERIFY' ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
     flagCount: item.scope && item.scope !== 'SITE' ? undefined : item.flagCount,
     flags: (item.flags ?? []).map(flag => ({ ...flag, href: `/sites/${siteId}/flags/${flag.id}` })),
   }))
@@ -207,12 +213,20 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} activeRoute={viewMode} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       headerAction={<>
+        {ownsSite ? <SiteAgent siteId={siteId} /> : null}
         {ownsSite ? <span className="text-xs text-muted-foreground sm:text-sm">{view.presentation.freshness.label.replace(/^Checked\s+/, '')}</span> : null}
         {ownsSite ? <Button variant="outline" size="sm" className="min-h-11" disabled={busy || checking || disconnected} onClick={() => void refreshSiteEvidence()}>
-          <RefreshCw className="h-4 w-4" aria-hidden />{checking ? SITE_BOARD_COPY.checking : 'Recheck'}
+          <RefreshCw className="h-4 w-4" aria-hidden />{checking ? SITE_BOARD_COPY.checking : SITE_BOARD_COPY.verifyFix}
         </Button> : null}
         <SiteCheckLibrary open={libraryOpen} onOpenChange={setLibraryOpen} siteId={siteId} view={view} owner={ownsSite} onRefresh={refresh} onOpenCard={setSelectedCard} onCheck={refreshSiteEvidence} />
       </>}>
+      {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
+        <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
+        <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
+          {run.status === 'INTERRUPTED' ? SITE_ACTION_COPY.scopedRun.interrupted : run.status === 'RUNNING' ? SITE_ACTION_COPY.scopedRun.running : SITE_ACTION_COPY.scopedRun.queued}: {run.targetLabel ?? SITE_ACTION_COPY.scopedRun.unknown}
+        </li>)}</ul>
+        <p className="mt-2 text-sm text-muted-foreground">{SITE_ACTION_COPY.scopedRun.retained}</p>
+      </section> : null}
       {authRequired ? <Button asChild variant="outline"><a target="_blank" rel="noopener noreferrer" href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`}>{SITE_ACTION_COPY.signInAction}</a></Button> : null}
       {viewMode === 'home' && showActivityPanel ? <SiteActivityPanel banner={banner} activity={view.activity} disconnected={disconnected} onRetry={ownsSite ? refreshSiteEvidence : undefined} retryBusy={busy}>
       {notice ? (
@@ -312,7 +326,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
         }}>
           <DialogTitle className="flex items-center gap-3 pr-12 text-2xl">{SelectedIcon ? <span className="inline-flex h-10 w-10 items-center justify-center rounded-control bg-muted"><SelectedIcon className="h-5 w-5" aria-hidden /></span> : null}{selected?.name}</DialogTitle>
           <DialogDescription>{selectedFlags.length ? `${selectedFlags.length} open Flags` : selected?.answer}</DialogDescription>
-          {selected && ownsSite ? <Button variant="outline" size="sm" className="w-fit" disabled={busy || checking || disconnected} onClick={() => void refreshSiteEvidence()}><RefreshCw size={15} aria-hidden="true" />{checking ? SITE_BOARD_COPY.checking : 'Recheck'}</Button> : null}
+          {selected && ownsSite ? <Button variant="outline" size="sm" className="w-fit" disabled={busy || checking || disconnected} onClick={() => void refreshSiteEvidence()}><RefreshCw size={15} aria-hidden="true" />{checking ? SITE_BOARD_COPY.checking : SITE_BOARD_COPY.verifyFix}</Button> : null}
           {selected ? (
             <>
               <SiteCardFindings key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={[]} />

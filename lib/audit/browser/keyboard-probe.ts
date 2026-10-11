@@ -1,5 +1,6 @@
 import type { Page } from 'playwright'
 import { z } from 'zod'
+import { classifyTrackingEndpoint } from '../tracking/endpoints'
 
 export const KEYBOARD_STEP_LIMIT = 40
 export const KEYBOARD_INTERACTION_LIMIT = 4
@@ -45,6 +46,9 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
     const request = route.request()
     let ownPage = false
     try { ownPage = request.frame().page() === page } catch { /* Requests without an owning frame are outside this probe. */ }
+    if (ownPage && classifyTrackingEndpoint(request.url(), request.resourceType(), pageUrl)?.role === 'event') {
+      await route.fallback(); return
+    }
     if (!ownPage || request.isNavigationRequest() || !['GET', 'HEAD', 'OPTIONS'].includes(request.method().toUpperCase())) {
       refused++; await route.abort('blockedbyclient')
     } else await route.fallback()

@@ -180,6 +180,8 @@ export async function createAuditPage(
     await socket.close().catch(() => undefined)
   })
 
+  await options.configurePage?.(page)
+
   await page.route('**', async (route) => {
     const requestUrl = route.request().url()
     // Observe the browser's own attempts without replaying or manufacturing
@@ -197,24 +199,24 @@ export async function createAuditPage(
     } } : undefined
     const protocol = new URL(requestUrl).protocol
     if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
-      await route.continue()
+      await route.fallback()
       return
     }
     if (options.allowLocalhost && isLocalhostAuditUrl(requestUrl)) {
       if (journeyGuards) {
-        await applyJourneyRouteGuards(route, () => route.continue(), routeGuards)
+        await applyJourneyRouteGuards(route, () => route.fallback(), routeGuards)
         return
       }
-      await route.continue()
+      await route.fallback()
       return
     }
     try {
       await assertPublicAuditUrl(requestUrl)
       if (journeyGuards) {
-        await applyJourneyRouteGuards(route, () => route.continue(), routeGuards)
+        await applyJourneyRouteGuards(route, () => route.fallback(), routeGuards)
         return
       }
-      await route.continue()
+      await route.fallback()
     } catch {
       await route.abort('blockedbyclient')
     }
@@ -226,8 +228,6 @@ export async function createAuditPage(
       consoleErrors.push({ type: msg.type(), text: msg.text() })
     }
   })
-
-  await options.configurePage?.(page)
 
   const navigationTimeout = options.deadline
     ? Math.max(1, Math.min(PAGE_TIMEOUT_MS, options.deadline - Date.now()))

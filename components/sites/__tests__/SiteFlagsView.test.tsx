@@ -63,6 +63,7 @@ function flag(overrides: Partial<SiteFlagSeed> & Pick<SiteFlagSeed, 'id' | 'prob
 
 function flagsView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
   const base: SiteHomeView = {
+    schemaVersion: 2, inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
     site: {
       siteId: 'p_example',
       kind: 'provisional',

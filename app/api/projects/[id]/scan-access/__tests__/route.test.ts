@@ -54,12 +54,14 @@ describe('/api/projects/[id]/scan-access', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 402 for non-Studio users', async () => {
+  it('returns only redacted scan access to beta owners on Builder', async () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser('BUILDER'))
     const res = await GET({} as NextRequest, { params })
-    expect(res.status).toBe(402)
+    expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
+    expect(body.configured).toBe(true)
+    expect(JSON.stringify(body)).not.toContain('password')
+    expect(JSON.stringify(body)).not.toContain('enc')
   })
 
   it('returns redacted summary for Studio owners', async () => {

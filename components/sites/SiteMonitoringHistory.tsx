@@ -6,7 +6,7 @@ import styles from './SiteMonitoringHistory.module.css'
 
 export type MonitoringHistoryPoint = {
   label: string
-  flagCount: number
+  flagCount: number | null
 }
 
 export type MonitoringTimelineEvent = {
@@ -25,17 +25,21 @@ function chartGeometry(points: readonly MonitoringHistoryPoint[]) {
   const width = 520
   const height = 132
   const inset = 10
-  const max = Math.max(1, ...points.map(point => point.flagCount))
+  const max = Math.max(1, ...points.map(point => point.flagCount ?? 0))
   const positions = points.map((point, index) => {
     const x = points.length === 1 ? width / 2 : inset + index * ((width - inset * 2) / (points.length - 1))
+    if (point.flagCount === null) return null
     const y = height - inset - (point.flagCount / max) * (height - inset * 2)
     return { x, y }
   })
-  const line = positions.map(point => `${point.x},${point.y}`).join(' ')
-  const area = positions.length > 0
-    ? `M ${positions[0].x} ${height - inset} L ${positions.map(point => `${point.x} ${point.y}`).join(' L ')} L ${positions.at(-1)!.x} ${height - inset} Z`
-    : ''
-  return { width, height, positions, line, area }
+  const segments: Array<Array<{ x: number; y: number }>> = []
+  let current: Array<{ x: number; y: number }> = []
+  for (const point of positions) {
+    if (point) current.push(point)
+    else if (current.length) { segments.push(current); current = [] }
+  }
+  if (current.length) segments.push(current)
+  return { width, height, positions, segments }
 }
 
 export function SiteMonitoringHistory({ points, events, emptyMessage }: {
@@ -46,11 +50,10 @@ export function SiteMonitoringHistory({ points, events, emptyMessage }: {
   const geometry = chartGeometry(points)
   return <section className={styles.panel} aria-label={C.checkHistory}>
     {points.length > 1 ? <div className={styles.chart}>
-      <div className={styles.header}><h2>{C.flagTrend}</h2><span>{C.flags(points.at(-1)?.flagCount ?? 0)}</span></div>
+      <div className={styles.header}><h2>{C.flagTrend}</h2><span>{points.at(-1)?.flagCount == null ? C.incomplete : C.flags(points.at(-1)!.flagCount!)}</span></div>
       <svg viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-label={`Flag count across ${points.length} checks`}>
-        <path className={styles.area} d={geometry.area} />
-        <polyline className={styles.trend} points={geometry.line} />
-        {geometry.positions.map((point, index) => <circle key={`${points[index].label}-${index}`} className={styles.point} cx={point.x} cy={point.y} r="4" />)}
+        {geometry.segments.map((segment, index) => <polyline key={index} className={styles.trend} points={segment.map(point => `${point.x},${point.y}`).join(' ')} />)}
+        {geometry.positions.map((point, index) => point ? <circle key={`${points[index].label}-${index}`} className={styles.point} cx={point.x} cy={point.y} r="4" /> : null)}
       </svg>
       <div className={styles.chartLabels}><span>{points[0].label}</span><span>{points.at(-1)?.label}</span></div>
     </div> : <p className={styles.empty}>{emptyMessage}</p>}

@@ -11,7 +11,7 @@ function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string
       ? value.toString()
       : `${(Math.round((value as number) / 100) / 10).toFixed(1)}s`
 
-  return `. CrUX (p75): ${display}`
+  return `. CrUX ${crux.scope ?? 'unknown scope'} (p75, ${crux.reportingWindowDays ?? 28} days): ${display}`
 }
 
 export function runPerformanceChecks(
@@ -51,6 +51,74 @@ export function runPerformanceChecks(
     })
   }
 
+  findings.push(...runLabVitalsChecks(ps))
+
+  const renderBlocking = ps.opportunities.find((o) => o.id === 'render-blocking-resources')
+  if (renderBlocking && renderBlocking.savings > 500) {
+    findings.push({
+      checkId: 'render-blocking',
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      problem: `Render-blocking resources delay page load (${Math.round(renderBlocking.savings / 1000 * 10) / 10}s savings)`,
+      evidence: `Render-blocking resources identified: ${Math.round(renderBlocking.savings)}ms potential savings`,
+      fix: '1. Add defer to non-critical script tags\n2. Move critical CSS inline for above-the-fold content\n3. Use <link rel="preload"> for fonts and hero images',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  const unusedJs = ps.opportunities.find((o) => o.id === 'unused-javascript')
+  if (unusedJs && unusedJs.savings > 100_000) {
+    findings.push({
+      checkId: 'unused-js-large',
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      problem: `Large amount of unused JavaScript (${Math.round(unusedJs.savings / 1024)}KB savings)`,
+      evidence: `Unused JS: ~${Math.round(unusedJs.savings / 1024)}KB could be removed`,
+      fix: '1. Enable code splitting at the route level (dynamic imports)\n2. Add lazy loading for below-the-fold components\n3. Run tree shaking and remove unused npm packages',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  const unusedCss = ps.opportunities.find((o) => o.id === 'unused-css-rules')
+  if (unusedCss && unusedCss.savings > 50_000) {
+    findings.push({
+      checkId: 'unused-css-large',
+      rubric: 'EXPERIENCE',
+      severity: 'POLISH',
+      problem: `Large amount of unused CSS (${Math.round(unusedCss.savings / 1024)}KB savings)`,
+      evidence: `Unused CSS: ~${Math.round(unusedCss.savings / 1024)}KB could be removed`,
+      fix: '1. Configure content paths for PurgeCSS or Tailwind content purging\n2. Run the purge step in your build process\n3. Verify no styles are missing after purging',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  const unoptImages = ps.opportunities.filter(o => ['uses-optimized-images', 'uses-webp-images',
+    'uses-responsive-images', 'efficient-animated-content'].includes(o.id))
+    .sort((a, b) => b.savings - a.savings)[0]
+  if (unoptImages && unoptImages.savings > 50_000) {
+    findings.push({
+      checkId: 'unoptimized-images',
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      problem: `Images are not optimized (${Math.round(unoptImages.savings / 1024)}KB savings)`,
+      evidence: `Image optimization could save ~${Math.round(unoptImages.savings / 1024)}KB`,
+      fix: '1. Convert images to WebP or AVIF format\n2. Compress to reduce file size without visible quality loss\n3. Use Next.js <Image> component or a similar optimizer for automatic optimization',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (mobile) findings.push(...runInpChecks(mobile))
+
+  return findings
+}
+
+/** Lab LCP and CLS share thresholds while retaining device-specific finding identities. */
+export function runLabVitalsChecks(ps: PageSpeedResult): DeterministicFlag[] {
+  const findings: DeterministicFlag[] = []
   if (ps.lcp !== null) {
     const lcpSeconds = ps.lcp / 1000
     if (lcpSeconds > 4) {
@@ -104,80 +172,27 @@ export function runPerformanceChecks(
     }
   }
 
-  const renderBlocking = ps.opportunities.find((o) => o.id === 'render-blocking-resources')
-  if (renderBlocking && renderBlocking.savings > 500) {
-    findings.push({
-      checkId: 'render-blocking',
-      rubric: 'EXPERIENCE',
-      severity: 'IMPORTANT',
-      problem: `Render-blocking resources delay page load (${Math.round(renderBlocking.savings / 1000 * 10) / 10}s savings)`,
-      evidence: `Render-blocking resources identified: ${Math.round(renderBlocking.savings)}ms potential savings`,
-      fix: '1. Add defer to non-critical script tags\n2. Move critical CSS inline for above-the-fold content\n3. Use <link rel="preload"> for fonts and hero images',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  const unusedJs = ps.opportunities.find((o) => o.id === 'unused-javascript')
-  if (unusedJs && unusedJs.savings > 100_000) {
-    findings.push({
-      checkId: 'unused-js-large',
-      rubric: 'EXPERIENCE',
-      severity: 'IMPORTANT',
-      problem: `Large amount of unused JavaScript (${Math.round(unusedJs.savings / 1024)}KB savings)`,
-      evidence: `Unused JS: ~${Math.round(unusedJs.savings / 1024)}KB could be removed`,
-      fix: '1. Enable code splitting at the route level (dynamic imports)\n2. Add lazy loading for below-the-fold components\n3. Run tree shaking and remove unused npm packages',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  const unusedCss = ps.opportunities.find((o) => o.id === 'unused-css-rules')
-  if (unusedCss && unusedCss.savings > 50_000) {
-    findings.push({
-      checkId: 'unused-css-large',
-      rubric: 'EXPERIENCE',
-      severity: 'POLISH',
-      problem: `Large amount of unused CSS (${Math.round(unusedCss.savings / 1024)}KB savings)`,
-      evidence: `Unused CSS: ~${Math.round(unusedCss.savings / 1024)}KB could be removed`,
-      fix: '1. Configure content paths for PurgeCSS or Tailwind content purging\n2. Run the purge step in your build process\n3. Verify no styles are missing after purging',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  const unoptImages = ps.opportunities.find(
-    (o) => o.id === 'uses-optimized-images' || o.id === 'uses-webp-images'
-  )
-  if (unoptImages && unoptImages.savings > 50_000) {
-    findings.push({
-      checkId: 'unoptimized-images',
-      rubric: 'EXPERIENCE',
-      severity: 'IMPORTANT',
-      problem: `Images are not optimized (${Math.round(unoptImages.savings / 1024)}KB savings)`,
-      evidence: `Image optimization could save ~${Math.round(unoptImages.savings / 1024)}KB`,
-      fix: '1. Convert images to WebP or AVIF format\n2. Compress to reduce file size without visible quality loss\n3. Use Next.js <Image> component or a similar optimizer for automatic optimization',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  if (mobile) findings.push(...runInpChecks(mobile))
-
-  return findings
+  return ps.strategy === 'mobile' ? findings.map(flag => ({ ...flag,
+    checkId: 'mobile-' + flag.checkId, problem: 'Mobile ' + flag.problem,
+    evidence: 'Mobile ' + flag.evidence,
+  })) : findings
 }
 
-function runInpChecks(mobile: PageSpeedResult): DeterministicFlag[] {
+export function runInpChecks(mobile: PageSpeedResult): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   if (mobile.inp === null) return findings
+  const scope = mobile.crux?.scope === 'origin' ? 'Origin-level mobile' : 'Mobile'
+  const evidence = mobile.crux?.inp !== null && mobile.crux?.inp !== undefined
+    ? `CrUX INP p75: ${mobile.inp}ms on mobile, ${mobile.crux.scope ?? 'unknown scope'} scope${mobile.crux.url ? ` (${mobile.crux.url})` : ''}, trailing ${mobile.crux.reportingWindowDays ?? 28} days. This is field data, not a measurement of the current audit interaction.`
+    : `Recorded INP: ${mobile.inp}ms on mobile. Reporting scope and collection window are unavailable.`
 
   if (mobile.inp > 500) {
     findings.push({
       checkId: 'inp-critical',
       rubric: 'EXPERIENCE',
       severity: 'CRITICAL',
-      problem: `Interaction to Next Paint is critically slow (${mobile.inp}ms, target <= 200ms)`,
-      evidence: `INP: ${mobile.inp}ms on mobile${cruxSuffix(mobile.crux, 'inp')}`,
+      problem: `${scope} Interaction to Next Paint is critically slow (${mobile.inp}ms, target <= 200ms)`,
+      evidence,
       fix: '1. Defer non-critical JavaScript to reduce main-thread work\n2. Split long tasks (over 50ms) with setTimeout or scheduler.yield\n3. Optimize event handlers to avoid heavy DOM operations',
       confidence: 1.0,
       source: 'DETERMINISTIC',
@@ -187,8 +202,8 @@ function runInpChecks(mobile: PageSpeedResult): DeterministicFlag[] {
       checkId: 'inp-poor',
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
-      problem: `Interaction to Next Paint needs improvement (${mobile.inp}ms, target <= 200ms)`,
-      evidence: `INP: ${mobile.inp}ms on mobile${cruxSuffix(mobile.crux, 'inp')}`,
+      problem: `${scope} Interaction to Next Paint needs improvement (${mobile.inp}ms, target <= 200ms)`,
+      evidence,
       fix: '1. Open Chrome DevTools Performance panel and record an interaction\n2. Identify long tasks and JavaScript execution during the interaction\n3. Reduce or defer non-essential work to keep INP under 200ms',
       confidence: 1.0,
       source: 'DETERMINISTIC',

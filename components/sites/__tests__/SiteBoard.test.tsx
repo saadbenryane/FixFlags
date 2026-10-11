@@ -56,6 +56,7 @@ function card(partial: Partial<BoardCardView> & Pick<BoardCardView, 'id' | 'name
 
 function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
   const view: SiteHomeView = {
+    schemaVersion: 2, inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
     site: {
       siteId: 'p_example',
       kind: 'project',
@@ -509,6 +510,7 @@ describe('SiteBoard chrome', () => {
   it('shows the affected page count without counting two Flags on one page twice', () => {
     const flag = openFlag()
     const initial = boardView({ flags: [{ ...flag, id: 'f1', area: 'site', pageUrl: 'https://example.com/pricing' }, { ...flag, id: 'f2', area: 'site', pageUrl: 'https://example.com/pricing' }] })
+    initial.inventoryPageCount = 12
     initial.presentation.coverage.pagesExpected = 12
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
     const summary = screen.getByRole('group', { name: 'Website status summary' })
@@ -523,6 +525,7 @@ describe('SiteBoard chrome', () => {
       ],
       flags: [openFlag()],
     })
+    view.monitoringTrend = view.monitoringHistory.map(entry => ({ ...entry, scope: 'SITE', status: 'COMPLETED', evidenceAt: entry.checkedAt }))
     view.presentation.monitoring = { state: 'daily', label: 'Daily' }
     view.watch = { ...view.watch, state: 'watching', interval: 'daily', nextRunAt: '2026-10-11T09:00:00.000Z', covered: true, label: 'Daily' }
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="monitoring" /></MeProvider>)
@@ -539,6 +542,7 @@ describe('SiteBoard chrome', () => {
       { id: 'site-2', checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, scope: 'SITE', trigger: 'SCHEDULED' },
       { id: 'fix-1', checkedAt: '2026-10-11T09:00:00.000Z', flagCount: 0, scope: 'OUTCOMES', trigger: 'MANUAL', afterFix: true, targetLabel: 'Reach checkout', result: 'CLEAR' },
     ] })
+    view.monitoringTrend = view.monitoringHistory.filter(entry => entry.scope === 'SITE').map(entry => ({ ...entry, status: 'COMPLETED', evidenceAt: entry.checkedAt }))
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="monitoring" /></MeProvider>)
     expect(screen.getByRole('img', { name: 'Flag count across 2 checks' })).toBeVisible()
     const event = screen.getByText('Check after a fix').closest('li')!

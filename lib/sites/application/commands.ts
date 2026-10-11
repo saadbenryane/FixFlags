@@ -1,3 +1,5 @@
+import { prisma } from '@/lib/db'
+import { SiteRunRefusal } from './run-refusal'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import {
@@ -163,27 +165,36 @@ export async function executeSiteCommand(command: SiteCommand) {
     }
     case 'VERIFY_FLAG': {
       const initialSite = await loadSiteRecord(command.siteId)
-      if (!initialSite?.projectId) return { ok: false as const, error: 'Claim this Site before verifying a fix.' }
+      if (!initialSite?.projectId || initialSite.userId !== command.userId) return { ok: false as const, error: 'Claim this Site before verifying a fix.' }
       const initialFlag = await loadSiteFlagDetail(initialSite, command.flagId)
       if (!initialFlag) return { ok: false as const, error: 'Flag not found' }
       const source = command.source ?? 'WEB'
-      if (command.idempotencyKey && initialFlag.outcomeId) {
+      if (command.idempotencyKey) {
         const reusable = await findReusableRun({
           projectId: initialSite.projectId,
           source,
           idempotencyKey: command.idempotencyKey,
-          outcomeIds: [initialFlag.outcomeId],
-          verificationTargetKind: 'OUTCOME',
+          outcomeIds: initialFlag.outcomeId ? [initialFlag.outcomeId] : [],
+          verificationTargetKind: initialFlag.outcomeId ? 'OUTCOME' : 'DIAGNOSTIC',
+          verificationIdentity: initialFlag.outcomeId
+            ? { outcomeId: initialFlag.outcomeId, attemptId: command.attemptId }
+            : { pageUrl: initialFlag.pageUrl ?? initialSite.url, checkId: initialFlag.checkId ?? undefined, attemptId: command.attemptId },
         })
-        if (reusable) {
+        if (reusable?.auditId && reusable.verificationTarget) {
+          const attempt = initialFlag.improvementId ? await prisma.improvementAttempt.findFirst({
+            where: { id: reusable.verificationTarget.attemptId, improvementId: initialFlag.improvementId,
+              sourceAuditId: reusable.verificationTarget.parentAuditId, improvement: { projectId: initialSite.projectId } },
+            select: { id: true },
+          }) : null
+          if (!attempt) throw new SiteRunRefusal('This request key belongs to another Flag attempt.', 409)
           return {
             ok: true as const,
             runId: reusable.runId,
             verificationAuditId: reusable.auditId,
             siteId: initialSite.siteId,
-            parentAuditId: initialFlag.sourceAuditId,
+            parentAuditId: reusable.verificationTarget.parentAuditId,
             flagId: initialFlag.id,
-            attemptId: null,
+            attemptId: reusable.verificationTarget.attemptId,
             expectedBehavior: initialFlag.expectedBehavior,
           }
         }

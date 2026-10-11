@@ -148,7 +148,7 @@ describe('claim limit signal', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: PLAN_LIMIT_NOTICE.upgradeCta })).toHaveAttribute(
       'href',
-      '/pricing'
+      '/waitlist'
     )
   })
 

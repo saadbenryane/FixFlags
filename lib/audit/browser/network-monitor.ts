@@ -77,6 +77,7 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
   let phase: TrackingRequest['phase'] = 'page_load', trackingTruncated = false
   const phaseStarts: Partial<Record<TrackingRequest['phase'], number>> = { page_load: startedAt }
   const onRequest = (request: Request) => {
+    if (tracked.has(request)) return
     const endpoint = classifyTrackingEndpoint(request.url(), request.resourceType(), pageOrigin)
     if (!endpoint || endpoint.role === 'event' && ['HEAD', 'OPTIONS'].includes(request.method())) return
     try { if (request.frame() !== page.mainFrame()) return } catch { return }

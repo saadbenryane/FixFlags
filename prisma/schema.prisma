@@ -504,6 +504,7 @@ model SiteConnection {
   status                SiteConnectionStatus   @default(NEEDS_REAUTH)
   statusDetail          String?
   lastSyncedAt          DateTime?
+  lastSyncAttemptAt     DateTime?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -526,6 +527,8 @@ model SiteConnectionFact {
   sessions     Int?
   position     Float?
   observedAt   DateTime       @default(now())
+  periodStart  DateTime?
+  periodEnd    DateTime?
   connection   SiteConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@index([projectId, kind])
@@ -1036,6 +1039,7 @@ model SiteAgentThread {
   project   Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  SiteAgentMessage[]
+  intents   SiteAgentIntent[]
 
   @@index([projectId, updatedAt(sort: Desc)])
   @@index([userId, updatedAt(sort: Desc)])
@@ -1049,13 +1053,37 @@ model SiteAgentMessage {
   role      SiteAgentMessageRole
   content   String
   citations Json?
+  intentId  String?
+  intent    SiteAgentIntent? @relation(fields: [intentId], references: [id], onDelete: SetNull)
   createdAt DateTime             @default(now())
   thread    SiteAgentThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([intentId, role])
   @@index([threadId, createdAt])
   @@index([userId, createdAt(sort: Desc)])
   @@map("site_agent_messages")
+}
+
+/// Durable customer message intent. A replay never calls the model again.
+model SiteAgentIntent {
+  id            String          @id @default(cuid())
+  threadId      String
+  requestKey    String
+  requestHash   String
+  flagId        String?
+  status        String          @default("PENDING")
+  response      Json?
+  reservationId String?
+  errorCode     String?
+  createdAt     DateTime        @default(now())
+  completedAt   DateTime?
+  thread        SiteAgentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  messages      SiteAgentMessage[]
+
+  @@unique([threadId, requestKey])
+  @@index([threadId, status, createdAt])
+  @@map("site_agent_intents")
 }
 
 model SiteLifecycleEvent {
@@ -2249,6 +2277,7 @@ enum SiteConnectionProvider {
 }
 
 enum SiteConnectionStatus {
+  UNAVAILABLE
   CONNECTED
   MISMATCH
   NEEDS_REAUTH

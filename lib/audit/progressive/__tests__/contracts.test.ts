@@ -47,6 +47,7 @@ describe('durable bounded work contracts', () => {
     expect(byKey.get('p0:metadata')!.dependencies).not.toContain('p0:captures')
     expect(byKey.get('p0:security-headers')!.dependencies).toEqual(['p0:http'])
     expect(byKey.get('p0:performance')!.dependencies).toEqual(['p0:pagespeed-desktop'])
+    expect(byKey.get('p0:inp-mobile')!.dependencies).toEqual(['p0:pagespeed-mobile'])
     expect(byKey.get('p0:mobile')!.dependencies).toEqual(['p0:pagespeed-mobile'])
     expect(byKey.get('binding:availability:http')!.dependencies).toEqual([])
     expect(byKey.get('p0:search')!.dependencies).not.toContain('p0:pagespeed')
@@ -76,6 +77,8 @@ describe('durable bounded work contracts', () => {
       checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).map(([id, value]) => [id, value.version])), outcomes: [],
       verificationTarget: { kind: 'DIAGNOSTIC' as const, pageUrl: input.pageUrl, checkId: 'security-csp-missing', attemptId: 'attempt', parentAuditId: 'before' } }
     expect(initialTaskPlan(spec).map(task => task.kind)).toEqual(['check', 'http', 'finalize'])
+    const inp = initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'inp-critical' } })
+    expect(inp.map(task => task.key)).toEqual(['p0:inp-mobile', 'p0:pagespeed-mobile', 'finalize'])
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'title-missing' } }).map(task => task.kind))
       .toEqual(['search', 'http', 'browser', 'finalize'])
     const tracking = { ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'tracking-library-http-error' } }

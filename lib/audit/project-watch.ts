@@ -1,3 +1,4 @@
+import { refreshStaleGoogleContext } from '@/lib/sites/connections/google'
 import { type User, type Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
@@ -254,6 +255,9 @@ export async function processDueProjectWatches(
         context: { cadence: interval, ...(interval === 'custom' ? { everyMinutes: project.watchEveryMinutes } : {}) },
       })
       enqueued += 1
+      await refreshStaleGoogleContext(project.id, now).catch(error => {
+        logger.warn('Provider context refresh failed; website check remains queued', { projectId: project.id, error })
+      })
       // A saved schedule can change while a check is being queued. Advance
       // only the schedule this worker claimed, preserving the owner's edit.
       await prisma.project.updateMany({

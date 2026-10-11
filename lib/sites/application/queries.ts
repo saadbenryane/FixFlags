@@ -1,20 +1,17 @@
+import { loadSiteAnalysisSelection } from './legacy-analysis'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
-import type { Prisma } from '@prisma/client'
-import { isCustomerFlag } from '@/lib/audit/attention'
-import { siteAnalysisAuditWhere } from './analysis-scope'
+import { resolveLatestAudit, resolvePriorCompletedAudit } from './site-execution'
 import { prisma } from '@/lib/db'
-import type { SiteCheckResult } from '@/lib/sites/check-results'
-import { monitoringHistoryMetadata, type MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
+import { projectCheckResults, type SiteCheckResult } from '@/lib/sites/check-results'
+import type { MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
+import { loadMonitoringHistory } from './monitoring-history'
+import { loadActiveSiteRuns, type ActiveSiteRun } from './site-execution'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import { loadExecutionProgress, type ExecutionProgress } from './execution-progress'
-import { applySearchCardEvidence } from '@/lib/sites/search-view'
-import { readCheckReceipt } from '@/lib/audit/checks/receipt'
-import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import {
   buildCoverageFacts,
   isAuditFinished,
   isAuditInFlight,
-  keyboardScopeComplete,
   type CoverageFact,
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
@@ -31,7 +28,8 @@ import {
   type WatchBoardState,
 } from '@/lib/sites/watch-state'
 import { watchAlertDelivery, type WatchAlertDeliveryState } from '@/lib/audit/watch-notification'
-import { buildBoardCards, incompleteCardReason, type BoardCardView } from '@/lib/sites/board-card'
+import { applyCardEvidence } from './card-evidence'
+import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
 import { connectionCardNotes, loadSiteConnectionViews } from '@/lib/sites/connections/read'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
@@ -53,6 +51,10 @@ import {
 export type { BoardCardView }
 
 export type SiteHomeView = {
+  schemaVersion: 2
+  inventoryPageCount: number
+  activeRuns: ActiveSiteRun[]
+  monitoringTrend: MonitoringHistoryEntry[]
   site: SiteRecord
   presentation: SitePresentation
   activity?: SiteActivity
@@ -77,7 +79,7 @@ export type SiteHomeView = {
     detectedAt: string | null
     items: Array<Pick<VisibleTechnology, 'slug' | 'name' | 'category' | 'confidenceBand'>>
   }
-  monitoringHistory?: MonitoringHistoryEntry[]
+  monitoringHistory: MonitoringHistoryEntry[]
   watch: {
     state: WatchBoardState
     interval: WatchInterval | null
@@ -110,59 +112,6 @@ export type SiteHomeView = {
   }
 }
 
-const auditSelect = {
-  id: true,
-  status: true,
-  progress: true,
-  reviewDepth: true,
-  triageAt: true,
-  aiReviewAt: true,
-  failedModules: true,
-  completedAt: true,
-  createdAt: true,
-  updatedAt: true,
-  startedAt: true,
-  pipelineEvents: { orderBy: { occurredAt: 'desc' }, take: 100, select: { stage: true, event: true, status: true, occurredAt: true } },
-  failureCode: true,
-  evidenceCoverage: true,
-  verifierExecutions: {
-    where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' }] },
-    take: 1000,
-    select: { id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
-  },
-  url: true,
-} satisfies Prisma.AuditSelect
-
-async function resolveLatestAudit(site: SiteRecord) {
-  if (site.kind === 'project' && site.projectId) {
-    return prisma.audit.findFirst({
-      where: { projectId: site.projectId, ...siteAnalysisAuditWhere },
-      orderBy: { createdAt: 'desc' },
-      select: auditSelect,
-    })
-  }
-  if (!site.primaryAuditId) return null
-  return prisma.audit.findUnique({
-    where: { id: site.primaryAuditId },
-    select: auditSelect,
-  })
-}
-
-async function resolvePriorCompletedAudit(site: SiteRecord, currentId: string | null) {
-  if (site.kind === 'project' && site.projectId) {
-    return prisma.audit.findFirst({
-      where: {
-        projectId: site.projectId,
-        status: 'COMPLETED',
-        ...siteAnalysisAuditWhere,
-        ...(currentId ? { id: { not: currentId } } : {}),
-      },
-      orderBy: { completedAt: 'desc' },
-      select: auditSelect,
-    })
-  }
-  return null
-}
 
 function factsFromAudit(
   audit: {
@@ -223,7 +172,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   if (!site) return null
   const now = new Date()
 
-  const audit = await resolveLatestAudit(site)
+  const selection = await loadSiteAnalysisSelection(site)
+  const audit = await resolveLatestAudit(site, selection)
 
   const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings, resolvedFlags] = await Promise.all([
     loadSiteFindings(site),
@@ -244,7 +194,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const inFlight = isAuditInFlight(audit?.status)
   const prior =
     site.kind === 'project'
-      ? await resolvePriorCompletedAudit(site, audit?.id ?? null)
+      ? await resolvePriorCompletedAudit(site, audit?.id ?? null, selection)
       : null
 
   const lastKnownFacts =
@@ -264,6 +214,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   const finished = isAuditFinished(audit?.status)
   const resultPage = await loadSiteCheckResultPage(site, audit?.id ?? null)
+  const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
   const health = siteCardHealth({
     inFlight,
     finished,
@@ -282,17 +233,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const analytics = technologyProfile?.technologies
     .filter((tech) => tech.category === 'analytics')
     .map((tech) => tech.name) ?? []
-  const monitoringHistory = site.projectId ? await prisma.audit.findMany({
-    where: { projectId: site.projectId, status: { in: ['COMPLETED', 'FAILED'] },
-      ...siteAnalysisAuditWhere },
-    orderBy: { createdAt: 'desc' },
-    take: 8,
-    select: { id: true, status: true, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
-      runRequests: { where: { projectId: site.projectId }, orderBy: { requestedAt: 'desc' }, take: 1,
-        select: { source: true, verificationTarget: true, selections: { select: { outcome: { select: { name: true } } } }, assessments: { select: { state: true } } } },
-      verificationAttempts: { where: { improvement: { projectId: site.projectId } }, select: { id: true, outcome: true, comparable: true } },
-      flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true } } },
-  }) : []
+  const { timeline: monitoringHistory, trend: monitoringTrend } = await loadMonitoringHistory(site, selection)
+  const activeRuns = await loadActiveSiteRuns(site, now)
 
   const connections = site.projectId ? await loadSiteConnectionViews(site.projectId) : null
   const connectionNotes = connectionCardNotes(connections?.facts ?? [])
@@ -306,72 +248,10 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     outcomes,
     pageCount,
     captureUrl: capture?.url ?? null,
-    checkedAt: (prior ?? audit)?.completedAt?.toISOString() ?? null,
+    checkedAt: (finished ? audit : prior)?.completedAt?.toISOString() ?? null,
     detected: { analytics },
   })
-  for (const card of cards) {
-    if (card.state === 'healthy' && card.openFlagCount === 0) {
-      const observation = resultPage.results.find(result => result.area === card.id && !result.historical && result.kind === 'assertion' && result.status === 'passed')
-      if (observation) {
-        card.answer = observation.name
-        card.detail = observation.observation ?? null
-        card.checkedAt = observation.checkedAt
-      }
-    }
-    // Category activity needs an actual method receipt, not a blanket run flag.
-    const moduleKey = ({ security: 'module:security', tracking: 'module:measurement', accessibility: 'module:accessibility' } as Record<string, string>)[card.id]
-    const execution = audit?.verifierExecutions.find((item) => item.targetKey === moduleKey)
-    card.activity = card.id === 'site' && audit?.status === 'CAPTURING' ? 'checking' : null
-    if (!card.evidenced && card.openFlagCount === 0 && inFlight) {
-      card.state = 'unknown'
-      card.status = execution?.status === 'COMPLETED' ? 'Evidence recorded' : 'Waiting'
-      card.answer = execution?.status === 'COMPLETED' ? `${card.name} checks completed` : `Waiting for ${card.name.toLowerCase()} evidence`
-      card.detail = null
-    }
-    if (card.id === 'accessibility' && audit?.verifierExecutions.some(item => item.workKind === 'keyboard') && !keyboardScopeComplete(audit.verifierExecutions) &&
-      !card.evidenced && card.openFlagCount === 0) {
-      const copy = SITE_ACTION_COPY.execution.keyboard
-      const incomplete = audit.verifierExecutions.filter(item => item.targetKey === 'module:keyboard')
-        .map(item => readCheckReceipt(item.detail)).find(receipt => 'complete' in receipt && receipt.complete === false)
-      card.answer = inFlight ? copy.checking : copy.incomplete
-      card.status = inFlight ? SITE_ACTION_COPY.execution.states.RUNNING : copy.incomplete
-      card.detail = incomplete && 'limitation' in incomplete ? incomplete.limitation ?? copy.scope : inFlight ? copy.pending : copy.scope
-      card.activity = inFlight ? 'checking' : null
-    }
-    if (inFlight && card.id === 'site') {
-      card.state = 'unknown'; card.status = 'Pages'; card.answer = pageCount > 0 ? `${pageCount} pages recorded` : 'Waiting for pages'; card.detail = null
-    }
-    if (audit?.status === 'FAILED' && !audit.startedAt && !card.evidenced) {
-      card.answer = 'Not checked'; card.status = 'Not checked'; card.detail = 'The check did not start.'
-    }
-    if (card.id === 'tracking' && card.openFlagCount === 0) {
-      const runtime = resultPage.results.filter(result => result.area === 'tracking' && !result.historical && result.source === 'browser-network')
-      if (runtime.length) {
-        const copy = SITE_ACTION_COPY.execution.tracking
-        const attempts = runtime.find(result => result.assertionKey === 'tracking-initiation' && result.status === 'observed')
-        const library = runtime.find(result => result.assertionKey === 'tracking-library' && result.status === 'passed')
-        card.state = 'unknown'; card.evidenced = false; card.status = copy.partial
-        card.answer = attempts ? copy.requestsObserved : library ? copy.libraryObserved : copy.runtimeUnknown
-        card.detail = attempts?.observation ?? library?.observation ?? runtime.find(result => result.status === 'unknown')?.observation ?? copy.deliveryLimit
-        card.facts = [...card.facts, copy.deliveryLimit, copy.consentLimit].slice(-4)
-        card.activity = null
-      }
-    }
-    applySearchCardEvidence(card, audit?.verifierExecutions ?? [], inFlight, now)
-    if (card.id === 'search' && connectionNotes.search) card.facts = [...card.facts, connectionNotes.search].slice(0, 4)
-    if (card.id === 'tracking' && connectionNotes.tracking) card.facts = [...card.facts, connectionNotes.tracking].slice(0, 4)
-    if (card.id === 'search' && connections?.searchConsole.status === 'connected') card.sources = [...card.sources, 'Search Console']
-    if (card.id === 'tracking' && connections?.analytics.status === 'connected') card.sources = [...card.sources, 'Google Analytics']
-    card.incompleteReason = incompleteCardReason({
-      card,
-      auditStatus: audit?.status ?? null,
-      failureCode: audit?.failureCode ?? null,
-      failedModules: Array.isArray(audit?.failedModules) ? audit.failedModules.filter((item): item is string => typeof item === 'string') : [],
-      triageCompleted: Boolean(audit?.triageAt),
-      extraReviewCompleted: Boolean(audit?.aiReviewAt),
-    })
-    if (card.incompleteReason && card.state === 'healthy') card.state = 'unknown'
-  }
+  applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now })
 
   const watchState = watchBoardState({
     interval: site.watchInterval,
@@ -475,6 +355,9 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   })
 
   return {
+    schemaVersion: 2,
+    inventoryPageCount: pageCount,
+    activeRuns,
     site,
     executionProgress: await loadExecutionProgress(site, audit?.id ?? null),
     activity: projectSiteActivity({ status: audit?.status ?? null, startedAt: audit?.startedAt ?? null, failureCode: audit?.failureCode ?? null,
@@ -500,12 +383,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       detectedAt: technologyProfile.detectedAt,
       items: technologyProfile.technologies.map(({ slug, name, category, confidenceBand }) => ({ slug, name, category, confidenceBand })),
     } : undefined,
-    monitoringHistory: monitoringHistory.toReversed().map(item => {
-      // History records what each check found, including Flags resolved later.
-      const flags = item.flags.filter(isCustomerFlag).map(flag => ({ id: flag.id, title: flag.problem }))
-      return { id: item.id, checkedAt: (item.completedAt ?? item.updatedAt).toISOString(), status: item.status as 'COMPLETED' | 'FAILED', flagCount: flags.length, flags,
-        ...monitoringHistoryMetadata({ ...item, flagCount: flags.length }) }
-    }),
+    monitoringHistory,
+    monitoringTrend,
     watch: {
       state: watchState,
       interval: site.watchInterval,

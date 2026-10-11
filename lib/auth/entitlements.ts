@@ -66,6 +66,14 @@ export function canScanRepositories(
   return user.plan === 'TEAM'
 }
 
+/** Permission to provide temporary scan credentials, independent of repository access. */
+export function canUseAuthenticatedScanAccess(user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>): boolean {
+  if (hasOpenBetaAccess(user)) return true
+  if (!shouldEnforcePlanGates()) return true
+  if (user.role === 'admin' || isAdminUser(user)) return true
+  return !hasRevokedSubscriptionStatus(user.subscriptionStatus) && user.plan === 'TEAM'
+}
+
 /** Scheduled Site watching. Beta includes every supported interval. */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>

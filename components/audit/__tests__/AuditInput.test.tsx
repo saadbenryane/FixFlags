@@ -303,7 +303,7 @@ describe('AuditInput plan limits', () => {
     expect(screen.getByText('Your plan supports 1 Product.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: PLAN_LIMIT_NOTICE.upgradeCta })).toHaveAttribute(
       'href',
-      '/pricing'
+      '/waitlist'
     )
     // Not a dead end: the field stays usable so the customer is not stuck.
     expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeEnabled()

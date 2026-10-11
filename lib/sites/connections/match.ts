@@ -3,7 +3,7 @@ export type ConnectionProviderName = 'SEARCH_CONSOLE' | 'ANALYTICS'
 export type PublicConnection = {
   provider: ConnectionProviderName
   configured: boolean
-  status: 'not_connected' | 'connected' | 'mismatch' | 'needs_reauth' | 'revoked'
+  status: 'not_connected' | 'connected' | 'mismatch' | 'needs_reauth' | 'revoked' | 'unavailable'
   propertyLabel: string | null
   detail: string | null
   lastSyncedAt: string | null
@@ -25,6 +25,11 @@ export type ConnectionFact = {
   impressions: number | null
   sessions: number | null
   position: number | null
+  observedAt?: string | null
+  lastSyncedAt?: string | null
+  periodStart?: string | null
+  periodEnd?: string | null
+  contextState?: 'current' | 'stale' | 'unavailable'
 }
 
 export function canonicalHost(value: string): string {
@@ -134,14 +139,15 @@ export function contextLinesForPage(facts: ConnectionFact[], pageUrl: string | n
     .slice(0, 2)
   for (const query of queries) {
     lines.push(
-      `Search Console: "${query.subject}" had ${query.impressions ?? 0} impressions and ${query.clicks ?? 0} clicks on this page over the last 28 days.`,
+      `Search Console: "${query.subject}" had ${query.impressions ?? 0} impressions and ${query.clicks ?? 0} clicks on this page ${factPeriod(query)}. ${factAge(query)}`,
     )
   }
   const sessions = onPage
     .filter((fact) => fact.kind === 'analytics_page')
     .reduce((sum, fact) => sum + (fact.sessions ?? 0), 0)
   if (onPage.some((fact) => fact.kind === 'analytics_page')) {
-    lines.push(`Analytics: this page had ${sessions} sessions over the last 28 days.`)
+    const observation = onPage.find(fact => fact.kind === 'analytics_page')!
+    lines.push(`Analytics: this page had ${sessions} sessions ${factPeriod(observation)}. ${factAge(observation)}`)
   }
   return lines
 }
@@ -154,11 +160,20 @@ export function cardContext(facts: ConnectionFact[]): { search: string | null; t
     .filter((fact) => fact.kind === 'analytics_page')
     .reduce((sum, fact) => sum + (fact.sessions ?? 0), 0)
   return {
-    search: top ? `Search Console: "${top.subject}" had ${top.impressions ?? 0} impressions in the last 28 days.` : null,
+    search: top ? `Search Console: "${top.subject}" had ${top.impressions ?? 0} impressions ${factPeriod(top)}. ${factAge(top)}` : null,
     tracking: facts.some((fact) => fact.kind === 'analytics_page')
-      ? `Analytics counted ${sessions} sessions on watched pages in the last 28 days.`
+      ? `Analytics counted ${sessions} sessions on recorded pages ${factPeriod(facts.find(fact => fact.kind === 'analytics_page')!)}. ${factAge(facts.find(fact => fact.kind === 'analytics_page')!)}`
       : null,
   }
+}
+
+function factPeriod(fact: ConnectionFact): string {
+  return fact.periodStart && fact.periodEnd ? `from ${fact.periodStart.slice(0, 10)} to ${fact.periodEnd.slice(0, 10)}` : 'for an unknown reporting period'
+}
+
+function factAge(fact: ConnectionFact): string {
+  const date = fact.observedAt ? `Read ${fact.observedAt.slice(0, 10)}.` : 'Observation date unknown.'
+  return `${date}${fact.contextState === 'unavailable' ? ' Provider unavailable; retained context.' : fact.contextState === 'stale' ? ' Retained context is stale.' : ''}`
 }
 
 function numberOrNull(value: number | undefined): number | null {

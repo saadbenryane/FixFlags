@@ -1,8 +1,8 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { MARKETING_LINKS, FOOTER_COLUMNS, ADMIN_NAV } from '@/lib/site/nav'
 import { LEGAL_LINKS } from '@/lib/site/nav'
+import { BLOG_POSTS } from '@/lib/marketing/copy/blog'
 import { INDEXABLE_ROUTES } from '@/lib/marketing/seo-routes'
 
 describe('marketing nav labels', () => {
@@ -10,16 +10,17 @@ describe('marketing nav labels', () => {
     assert.deepEqual(
       MARKETING_LINKS.map((link) => [link.label, link.href]),
       [
-        ['Product', '/#product'],
-        ['Pricing', '/pricing'],
+        ['How it works', '/how-it-works'],
+        ['Use cases', '/use-cases'],
         ['Integrations', '/integrations'],
+        ['Pricing', '/pricing'],
         ['Docs', '/docs'],
       ]
     )
   })
 
   it('keeps changelog in the footer', () => {
-    const changelog = FOOTER_COLUMNS.product.find((link) => link.label === 'Changelog')
+    const changelog = FOOTER_COLUMNS.company.find((link) => link.label === 'Changelog')
     assert.ok(changelog)
     assert.equal(changelog.href, '/changelog')
   })
@@ -37,7 +38,7 @@ describe('marketing nav labels', () => {
   })
 
   it('leads the product footer with the Site product', () => {
-    assert.equal(FOOTER_COLUMNS.product[0]?.href, '/#product')
+    assert.equal(FOOTER_COLUMNS.product[0]?.href, '/how-it-works')
   })
 
   it('keeps footer destinations distinct and points only to published pages or contact', () => {
@@ -45,13 +46,13 @@ describe('marketing nav labels', () => {
     const hrefs = links.map(link => link.href)
     assert.equal(new Set(hrefs).size, hrefs.length)
     assert.ok(hrefs.includes('/blog'))
-    const published = new Set(INDEXABLE_ROUTES.map(route => route.path))
+    const published = new Set([...INDEXABLE_ROUTES.map(route => route.path), ...BLOG_POSTS.map(post => `/blog/${post.slug}`)])
     for (const href of hrefs) {
       if (href.startsWith('mailto:')) continue
       const [path] = href.split('#')
       assert.ok(published.has(path), href)
     }
-    assert.match(readFileSync('components/marketing/homepage/HomepageHero.tsx', 'utf8'), /id="product"/)
+    for (const link of MARKETING_LINKS) assert.ok(published.has(link.href), link.href)
   })
 })
 

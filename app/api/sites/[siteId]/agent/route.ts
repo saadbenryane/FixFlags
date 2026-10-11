@@ -7,7 +7,7 @@ import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { WorkspaceChatUnavailableError } from '@/lib/workspace/chat'
 import { getSiteAgentHistory, sendSiteAgentMessage, SiteAgentError } from '@/lib/sites/application/agent'
 
-const schema = z.object({ message: z.string().trim().min(1).max(2000) })
+const schema = z.object({ message: z.string().trim().min(1).max(2000), flagId: z.string().min(1).max(200).optional() }).strict()
 
 async function userId() {
   return (await auth.api.getSession({ headers: await headers() }).catch(() => null))?.user?.id ?? null
@@ -45,8 +45,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ si
     if (!actor) return apiError('Sign in to use the Site Agent.', 401)
     const parsed = schema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) return apiError('Message required.', 400)
+    const requestKey = request.headers.get('Idempotency-Key')?.trim()
+    if (!requestKey || requestKey.length > 200) return apiError('A message request key is required.', 400)
     const { siteId } = await context.params
-    return NextResponse.json(await sendSiteAgentMessage({ siteId, userId: actor, message: parsed.data.message }))
+    return NextResponse.json(await sendSiteAgentMessage({ siteId, userId: actor, ...parsed.data, requestKey }))
   } catch (error) {
     return agentError(error)
   }

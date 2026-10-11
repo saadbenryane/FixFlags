@@ -1,6 +1,9 @@
 import { SITE_BOARD_COPY } from './terminology'
 
 export const SITE_ACTION_COPY = {
+  cancel: 'Cancel',
+  scopedRun: { title: 'Checking selected evidence', retained: 'Site-wide evidence keeps its original date. This check updates only the selected scope.',
+    queued: 'Waiting to start', running: 'Checking', interrupted: 'Check interrupted', unknown: 'Scope unavailable' },
   interrupted: SITE_BOARD_COPY.connectionInterrupted,
   signIn: 'Your session expired. Sign in again to continue.',
   signInAction: 'Sign in again',

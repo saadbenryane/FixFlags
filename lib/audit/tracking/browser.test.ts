@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
+import { collectKeyboardEvidence } from '../browser/keyboard-probe'
 import { attachNetworkMonitor } from '../browser/network-monitor'
 import { classifyTrackingEndpoint } from './endpoints'
 import { runTrackingChecks } from '../checks/tracking'
@@ -62,6 +63,14 @@ runBrowser('shared Tracking collector in Chromium', () => {
     expect(session.tracking('page_load').requests).toEqual([])
     expect(session.tracking('public_action').requests).toMatchObject([{ phase: 'public_action', role: 'event', state: 'suppressed' }])
     expect(session.safetyRestrictions).toEqual([])
+    session.disposeNetwork()
+  })
+  it('keeps recognized telemetry from invalidating independent keyboard navigation', async () => {
+    const session = await fixture('<button onfocus="navigator.sendBeacon(\'https://www.google-analytics.com/g/collect\',\'PRIVATE_PAYLOAD\')">Details</button><button>Next</button>')
+    const keyboard = await collectKeyboardEvidence(page, Date.now() + 8000)
+    expect(keyboard.navigationComplete).toBe(true)
+    expect(keyboard.limitations).not.toContain('protected_action_refused')
+    expect(session.tracking().requests.some(request => request.role === 'event' && request.state === 'suppressed')).toBe(true)
     session.disposeNetwork()
   })
   it('captures endpoint responses independently of ingestion using controlled transport', async () => {

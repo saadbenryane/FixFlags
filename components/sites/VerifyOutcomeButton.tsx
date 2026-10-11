@@ -1,6 +1,5 @@
 'use client'
 
-import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useSiteAction } from '@/hooks/useSiteAction'
@@ -18,16 +17,15 @@ export function VerifyOutcomeButton({
   disabled?: boolean
 }) {
   const router = useRouter()
-  const { busy, message, error, submit } = useSiteAction()
-  const intent = useRef<{ outcomeId: string; key: string } | null>(null)
+  const { busy, message, error, submit, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
 
   async function verify() {
-    if (intent.current?.outcomeId !== outcomeId) intent.current = { outcomeId, key: `web:${outcomeId}:${crypto.randomUUID()}` }
+    const intent = `outcome:${outcomeId}`
     const result = await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
         method: 'POST',
-        headers: { 'Idempotency-Key': intent.current!.key },
+        headers: { 'Idempotency-Key': requestKey(intent) },
       }, 'run'), () => C.outcome.started, () => router.refresh())
-    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') intent.current = null
+    if (result.kind === 'saved' || result.kind === 'saved_refresh_pending') completeIntent(intent)
   }
 
   return (

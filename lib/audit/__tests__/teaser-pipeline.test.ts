@@ -174,12 +174,12 @@ describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
 })
 
 describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
-  it('stores full capture and plan reviewDepth for a signed-in new-URL audit', async () => {
+  it('stores full capture and supported beta review depth for a signed-in new-URL audit', async () => {
     await createAndEnqueueAudit({ url: 'https://example.com', userId: 'user-1' })
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('CRITICAL_PATH')
-    expect(data.reviewDepth).toBe(1)
+    expect(data.reviewDepth).toBe(3)
     expect(data.userId).toBe('user-1')
     expect(data.parentId).toBeNull()
     // The anonymous teaser gates must not run for signed-in creates.
@@ -188,7 +188,7 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
     expect(gates.trackAnonymousAuditId).not.toHaveBeenCalled()
   })
 
-  it('keeps full capture and copies stored reviewDepth for re-checks', async () => {
+  it('keeps full capture and applies beta breadth while retaining parent identity for re-checks', async () => {
     prismaMock.audit.findUnique
       .mockResolvedValueOnce({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED', reviewDepth: 2 })
       .mockResolvedValueOnce({ reviewDepth: 2 })
@@ -204,7 +204,7 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('CRITICAL_PATH')
-    expect(data.reviewDepth).toBe(2)
+    expect(data.reviewDepth).toBe(3)
     expect(data.parentId).toBe('parent-1')
     expect(data.monitoringMode).toBe('FULL')
   })

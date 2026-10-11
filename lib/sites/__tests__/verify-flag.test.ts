@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   requireSiteFlagAttempt: vi.fn(),
   outcomeFindMany: vi.fn(),
   assessmentUpsert: vi.fn(),
+  attemptFindFirst: vi.fn(),
 }))
 
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.loadSiteRecord }))
@@ -24,6 +25,7 @@ vi.mock('@/lib/audit/create-audit', () => ({
 }))
 vi.mock('@/lib/db', () => ({
   prisma: {
+    improvementAttempt: { findFirst: mocks.attemptFindFirst },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     outcomeAssessment: { upsert: mocks.assessmentUpsert },
   },
@@ -46,13 +48,14 @@ describe('VERIFY_FLAG', () => {
     vi.clearAllMocks()
     mocks.loadSiteRecord.mockResolvedValue({
       siteId: 'proj_1',
+      userId: 'user_1',
       kind: 'project',
       projectId: 'proj_1',
       url: 'https://example.com',
       canonicalHost: 'example.com',
     })
     mocks.loadSiteFlagDetail.mockResolvedValue({
-      id: 'flag_1',
+      id: 'flag_1', improvementId: 'improvement-1',
       sourceAuditId: 'parent_1',
       checkId: 'form-feedback',
       pageUrl: 'https://example.com/contact',
@@ -68,6 +71,7 @@ describe('VERIFY_FLAG', () => {
     mocks.outcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
     mocks.requestSiteRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: ['outcome-1'], reused: false })
     mocks.findReusableRun.mockResolvedValue(null)
+    mocks.attemptFindFirst.mockResolvedValue({ id: 'att_1' })
     mocks.requestOutcomeRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', reused: false })
   })
 
@@ -115,6 +119,26 @@ describe('VERIFY_FLAG', () => {
    * were the change, which is the one thing an independent verification record must
    * never contain. Verifying must still work when nobody describes the change.
    */
+  it('returns the exact completed diagnostic receipt without creating another attempt', async () => {
+    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1' } })
+    const result = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'same-intent' })
+    expect(result).toMatchObject({ runId: 'run_1', verificationAuditId: 'child_1', attemptId: 'att_1', parentAuditId: 'parent_1' })
+    expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+    expect(mocks.findReusableRun).toHaveBeenCalledWith(expect.objectContaining({ verificationTargetKind: 'DIAGNOSTIC', outcomeIds: [],
+      verificationIdentity: expect.objectContaining({ checkId: 'form-feedback', pageUrl: 'https://example.com/contact' }) }))
+  })
+
+  it('refuses a receipt whose attempt does not belong to this exact Flag', async () => {
+    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'other-attempt' } })
+    mocks.attemptFindFirst.mockResolvedValue(null)
+    await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'wrong-intent' })).rejects.toMatchObject({ status: 409 })
+    expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+  })
+
   it('never records the expected behaviour as if it were the change', async () => {
     await executeSiteCommand({
       type: 'VERIFY_FLAG',

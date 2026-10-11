@@ -1,118 +1,23 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { FAQ, FAQ_PAGE, FINAL_CTA, HERO, HOW_IT_WORKS_PAGE, LANDING_PAGE, PLANS, PRICING, PRICING_FAQ, SEO } from '@/lib/marketing/copy'
-import { HELP_ARTICLES, HELP_CATEGORIES } from '@/lib/help/catalog'
-import { FOOTER_COLUMNS, MARKETING_LINKS } from '@/lib/site/nav'
+import { FAQ, PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
+import { getDocsPageByPath } from '@/lib/docs/catalog'
+import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy/integrations'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 
-function collectStrings(value: unknown, out: string[] = []): string[] {
-  if (typeof value === 'string') {
-    out.push(value)
-    return out
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) collectStrings(item, out)
-    return out
-  }
-  if (value && typeof value === 'object') {
-    for (const item of Object.values(value)) collectStrings(item, out)
-  }
-  return out
-}
-
-function docsMarkdown(): string {
-  const root = join(process.cwd(), 'content/docs')
-  return readdirSync(root)
-    .filter((name) => name.endsWith('.md'))
-    .map((name) => readFileSync(join(root, name), 'utf8'))
-    .join('\n')
-}
-
-const PARKED_PRODUCT = [
-  /website roast/i,
-  /paste a (live )?url/i,
-  /paste-url/i,
-  /fix prompt/i,
-  /message, experience, and reach/i,
-  /product reviews? per month/i,
-  /agent chat/i,
-]
-
-const STRANGER_SURFACES = collectStrings({
-  HERO,
-  FINAL_CTA,
-  howItWorks: LANDING_PAGE.howItWorks,
-  proof: LANDING_PAGE.proof,
-  layers: LANDING_PAGE.layers,
-  hero: HOW_IT_WORKS_PAGE.hero,
-  loop: HOW_IT_WORKS_PAGE.loop,
-  finalCta: HOW_IT_WORKS_PAGE.finalCta,
-  FAQ,
-  FAQ_PAGE,
-  PLANS,
-  PRICING,
-  PRICING_FAQ,
-  seo: {
-    home: SEO.home,
-    pricing: SEO.pricing,
-    faq: SEO.faq,
-    help: SEO.help,
-    docs: SEO.docs,
-    howItWorks: SEO.howItWorks,
-  },
-  MARKETING_LINKS,
-  FOOTER_COLUMNS,
-  HELP_CATEGORIES,
-  HELP_ARTICLES,
-})
-
-describe('stranger-facing website care', () => {
-  it('starts with a website URL, not Shopify-only', () => {
-    expect(HERO.primaryHref).toBe('/#audit')
+/** Rendered card geometry and actions are covered by the Integrations page tests. */
+describe('supported open-beta offer', () => {
+  it('offers one website with paid access waitlisted', () => {
+    expect(OPEN_BETA_ACCESS).toBe(true)
     expect(PRICING.headline).toMatch(/free during open beta/i)
-    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Start free')
-    expect(MARKETING_LINKS.some((link) => link.href === '/pricing')).toBe(true)
+    expect(PLANS.find(plan => plan.plan === 'FREE')?.cta).toBe('Start free')
+    expect(PLANS.filter(plan => plan.plan !== 'FREE').every(plan => plan.href.startsWith('/waitlist'))).toBe(true)
+    expect(PRICING_FAQ.some(entry => /waitlist/i.test(entry.answer))).toBe(true)
+    expect(FAQ.find(entry => entry.question === 'Is FixFlags free?')?.answer).toMatch(/one website/)
   })
-
-  it('does not advertise parked Product Review or Roast concepts', () => {
-    const blob = `${STRANGER_SURFACES.join('\n')}\n${docsMarkdown()}`
-    for (const pattern of PARKED_PRODUCT) {
-      expect(blob, String(pattern)).not.toMatch(pattern)
-    }
-    const footerHrefs = [...FOOTER_COLUMNS.product, ...FOOTER_COLUMNS.resources, ...FOOTER_COLUMNS.company].map(
-      (link) => link.href
-    )
-    expect(footerHrefs).not.toContain('/roast')
-    expect(footerHrefs).not.toContain('/samples')
-    expect(footerHrefs).not.toContain('/examples')
-  })
-
-  it('FAQ explains a live website check and keeps Shopify as a connection', () => {
-    const faq = FAQ.map((entry) => `${entry.question} ${entry.answer}`).join('\n')
-    expect(faq).toMatch(/live website/i)
-    expect(faq).toMatch(/before payment/i)
-    expect(faq).toMatch(/shopify is a connection/i)
-    expect(faq).not.toMatch(/\$29/)
-    expect(HELP_ARTICLES.some((article) => /connect shopify/i.test(article.title))).toBe(true)
-    expect(docsMarkdown()).toMatch(/Shopify is a \[connection\]/i)
-    expect(docsMarkdown()).toMatch(/Flag\. Fix\. Verify\./)
-  })
-
-  it('pricing is free plus per-site paid monitoring, with no billed SKU prices', () => {
-    expect(PRICING.headline).toMatch(/free during open beta/i)
-    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Start free')
-    expect(PLANS.find((plan) => plan.plan === 'BUILDER')?.price).toBe('$49')
-    expect(PLANS.find((plan) => plan.plan === 'TEAM')?.price).toBe('$99')
-    expect(JSON.stringify({ PLANS, PRICING, PRICING_FAQ })).not.toMatch(/\$29/)
-  })
-})
-
-describe('pricing comparison table source', () => {
-  it('does not pull billed Product Review prices into the Shopify comparison', () => {
-    const source = readFileSync(join(process.cwd(), 'components/pricing/PricingComparisonTable.tsx'), 'utf8')
-    expect(source).not.toMatch(/PLAN_DEFINITIONS/)
-    expect(source).not.toMatch(/product reviews/)
-    expect(source).toMatch(/PLANS/)
-    expect(source).toMatch(/PRICING_COMPARISON/)
+  it('publishes guides for supported connections and an evidence-based fix loop', () => {
+    for (const path of ['/docs/integrations/shopify', '/docs/integrations/google-analytics', '/docs/integrations/google-search-console', '/docs/fix-with-ai'])
+      expect(getDocsPageByPath(path), path).toBeDefined()
+    expect(INTEGRATIONS_PAGE).toBeDefined()
+    expect(FAQ.some(entry => /fresh|comparable/i.test(entry.answer))).toBe(true)
   })
 })

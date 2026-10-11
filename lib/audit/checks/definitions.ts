@@ -12,7 +12,7 @@ function define(evaluator: string, area: SiteCardArea, name: string, input: Page
   assertions: Record<string, AssertionDefinition> = {}): PageCheckDefinition {
   return { version: 1, area, name, input, evaluator, source: 'DETERMINISTIC', assertions,
     resultSchema: 'site-module-check-v1', timeoutMs: 12_000, replaySafety: 'read_only',
-    requiredEvidence: input === 'headers' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
+    requiredEvidence: evaluator === 'measurement' ? ['rendered-html', 'browser-network'] : input === 'headers' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
       : input === 'mobile' ? ['pagespeed-mobile'] : evaluator === 'security' ? ['original-html']
       : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe'] : ['rendered-html'] }
 }
@@ -59,8 +59,12 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   }),
   performance: define('performance', 'performance', 'Page speed', 'performance', {
     lcp: assertion('performance', ['lcp-critical', 'lcp-poor']), cls: assertion('performance', ['cls-critical', 'cls-poor']),
+    inp: assertion('performance'),
   }),
-  mobile: define('mobile', 'performance', 'Mobile page speed', 'mobile', { lcp: assertion('performance', ['mobile-lcp-critical']), cls: assertion('performance') }),
+  mobile: define('mobile', 'performance', 'Mobile page speed', 'mobile', {
+    lcp: assertion('performance', ['mobile-lcp-critical', 'mobile-lcp-poor']),
+    cls: assertion('performance', ['mobile-cls-critical', 'mobile-cls-poor']),
+  }),
   'mobile-ux-quality': define('mobile-ux-quality', 'performance', 'Mobile layout', 'browser'),
   content: define('content', 'conversion', 'Page content', 'metadata'),
   slop: define('slop', 'conversion', 'Content quality', 'metadata'),

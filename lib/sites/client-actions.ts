@@ -1,3 +1,4 @@
+import { agentReplySchema } from './agent-contract'
 import { z } from 'zod'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { MAX_WATCH_MINUTES, watchIntervalSchema } from './watch-schedule'
@@ -15,6 +16,8 @@ const watchWrite = z.object({
   if (body.interval === 'custom' && body.everyMinutes === undefined) context.addIssue({ code: 'custom', message: 'Missing custom schedule timing', path: ['everyMinutes'] })
 })
 export const siteActionSchemas = {
+  agentReply: agentReplySchema,
+  connectionSync: z.object({ status: z.enum(['connected', 'mismatch', 'needs_reauth', 'unavailable']), detail: z.string() }).strict(),
   acknowledgement: z.object({ ok: z.literal(true) }).strict(),
   authorize: z.object({ authorizeUrl: z.string().url().refine(url => new URL(url).protocol === 'https:') }).strict(),
   settings: z.object({ ok: z.literal(true), notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']), notifyOnRecovery: z.boolean() }).strict(),
@@ -65,10 +68,26 @@ export type SiteActionCompletion<T> = { kind: 'saved' | 'saved_refresh_pending';
   | { kind: 'refused'; error: SiteActionError } | { kind: 'busy' }
 
 /** One synchronous submission owner, including the gap before React renders pending state. */
-export function createSiteActionController() {
+export function createSiteActionController(namespace?: string) {
   let pending = false
+  const intents = new Map<string, string>()
   return {
     get pending() { return pending },
+    requestKey(intent: string) {
+      const storageKey = namespace ? `fixflags:intent:${namespace}:${intent}` : null
+      let persisted: string | null = null
+      try { if (storageKey && typeof sessionStorage !== 'undefined') persisted = sessionStorage.getItem(storageKey) } catch { /* In-memory ownership remains available. */ }
+      const existing = intents.get(intent) ?? persisted
+      if (existing) return existing
+      const key = `web:${crypto.randomUUID()}`
+      intents.set(intent, key)
+      try { if (storageKey && typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, key) } catch { /* Retain the key in this controller. */ }
+      return key
+    },
+    completeIntent(intent: string) {
+      intents.delete(intent)
+      try { if (namespace && typeof sessionStorage !== 'undefined') sessionStorage.removeItem(`fixflags:intent:${namespace}:${intent}`) } catch { /* The committed receipt remains authoritative. */ }
+    },
     async submit<T>(mutation: () => Promise<T>, refresh?: () => Promise<unknown>, onCommitted?: (data: T) => void): Promise<SiteActionCompletion<T>> {
       if (pending) return { kind: 'busy' }
       pending = true

@@ -331,7 +331,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     id: 'experience-mobile-perf',
     dimension: 'EXPERIENCE',
     category: 'mobile',
-    label: 'Mobile PageSpeed & LCP',
+    label: 'Mobile PageSpeed, LCP & CLS',
     tool: 'pagespeed',
     status: 'live',
 

@@ -258,7 +258,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(checkAndPlan).not.toHaveBeenCalled()
   })
 
-  it('returns 402 when scanAccess is sent on a non-Studio plan', async () => {
+  it('accepts authenticated beta scanAccess independently of repository scanning', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'BUILDER' }))
 
@@ -269,10 +269,8 @@ describe('POST /api/checks - billing gating enforcement', () => {
       })
     )
 
-    expect(res.status).toBe(402)
-    const body = await res.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
-    expect(checkAndPlan).not.toHaveBeenCalled()
+    expect(res.status).toBe(201)
+    expect(checkAndPlan).toHaveBeenCalledWith(expect.objectContaining({ scanAccess: { httpBasic: { username: 'user', password: 'pass' } } }))
   })
 
   it('passes scanAccess to checkAndPlan for Studio users', async () => {

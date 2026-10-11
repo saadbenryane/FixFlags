@@ -5,11 +5,16 @@ import { siteViewFixture } from './site-view-fixture'
 describe('authoritative Site refresh contract', () => {
   it('preserves scoped check history and rejects invalid scope metadata', () => {
     const fixture = siteViewFixture()
-    const entry = { id: 'check-1', checkedAt: '2026-10-11T09:00:00Z', flagCount: 0, status: 'COMPLETED' as const,
+    const entry = { evidenceAt: '2026-10-11T09:00:00Z', flags: [], completionState: 'COMPLETED' as const, id: 'check-1', checkedAt: '2026-10-11T09:00:00Z', flagCount: 0, status: 'COMPLETED' as const,
       scope: 'OUTCOMES' as const, targetLabel: 'Reach checkout', trigger: 'MANUAL' as const, afterFix: true, result: 'CLEAR' as const }
     fixture.monitoringHistory = [entry]
     expect(readSiteHomeView(fixture, 'fixture-site').monitoringHistory).toEqual([entry])
     expect(() => readSiteHomeView({ ...fixture, monitoringHistory: [{ ...entry, scope: 'everything' }] }, 'fixture-site')).toThrow()
+  })
+  it('requires the current version and complete scope metadata on new history entries', () => {
+    const fixture = siteViewFixture()
+    expect(() => readSiteHomeView({ ...fixture, schemaVersion: 1 }, 'fixture-site')).toThrow()
+    expect(() => readSiteHomeView({ ...fixture, monitoringHistory: [{ checkedAt: '2026-10-11T09:00:00Z', flagCount: 0 }] }, 'fixture-site')).toThrow()
   })
   it('accepts a complete view and restores Site schedule dates from the wire', () => {
     const fixture = siteViewFixture()

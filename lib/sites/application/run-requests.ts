@@ -15,7 +15,7 @@ import { logger } from '@/lib/logger'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 import { buildExecutionSpec, executionIntentHash } from './execution-spec'
-import { readExecutionSpec } from '../domain/execution-spec'
+import { readExecutionSpec, readVerificationTarget } from '../domain/execution-spec'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
@@ -380,7 +380,8 @@ export async function findReusableRun(input: {
   outcomeIds: string[]
   environment?: string
   verificationTargetKind?: SiteRunVerificationTarget['kind']
-}): Promise<{ runId: string; auditId: string | null; outcomeIds: string[] } | null> {
+  verificationIdentity?: { outcomeId?: string; pageUrl?: string; checkId?: string; attemptId?: string }
+}): Promise<{ runId: string; auditId: string | null; outcomeIds: string[]; verificationTarget: SiteRunVerificationTarget | null } | null> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
   const environment = input.environment ?? 'production'
   const existing = await prisma.runRequest.findUnique({
@@ -394,14 +395,17 @@ export async function findReusableRun(input: {
     include: { selections: { select: { outcomeId: true } } },
   })
   if (!existing) return null
+  const target = readVerificationTarget(existing.verificationTarget)
   if (
     existing.environment !== environment ||
     !sameSelection(existing, selectedIds) ||
-    verificationTargetKind(existing.verificationTarget) !== (input.verificationTargetKind ?? null)
+    verificationTargetKind(existing.verificationTarget) !== (input.verificationTargetKind ?? null) ||
+    (input.verificationIdentity && (!target || Object.entries(input.verificationIdentity).some(([key, value]) =>
+      value !== undefined && target[key as keyof typeof target] !== value)))
   ) {
     throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
   }
-  return { runId: existing.id, auditId: existing.auditId, outcomeIds: selectedIds }
+  return { runId: existing.id, auditId: existing.auditId, outcomeIds: selectedIds, verificationTarget: target }
 }
 
 /** Retry a failed Outcome run without changing its Outcome set, or a legacy check when no run exists. */
