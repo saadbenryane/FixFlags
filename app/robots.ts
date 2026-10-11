@@ -14,6 +14,13 @@ const PRIVATE_PREFIXES = [
   '/forgot-password',
   '/reset-password',
   '/post-login',
+  '/two-factor',
+  '/onboarding',
+  '/cli',
+  '/sites',
+  '/products',
+  '/shopify',
+  '/integrations/connect',
 ] as const
 
 // AI crawlers we explicitly welcome onto the public site. A named user-agent
@@ -24,6 +31,8 @@ const AI_CRAWLERS = [
   'OAI-SearchBot',
   'ChatGPT-User',
   'ClaudeBot',
+  'Claude-SearchBot',
+  'Claude-User',
   'Claude-Web',
   'anthropic-ai',
   'PerplexityBot',

@@ -97,6 +97,13 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     ],
   },
   {
+    title: 'Updates',
+    links: [
+      { path: '/blog', label: 'Blog' },
+      { path: '/changelog', label: 'Changelog' },
+    ],
+  },
+  {
     title: 'Optional',
     optional: true,
     links: [

@@ -1,15 +1,33 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy'
 import {
   ANALYTICS_CONSENT_COOKIE,
   ANALYTICS_PREFERENCES_EVENT,
 } from '@/lib/analytics/consent'
+import { CLICK_IDS_COOKIE } from '@/lib/analytics/click-ids'
+
+vi.mock('next/script', () => ({
+  default: ({ id, src }: { id?: string; src?: string }) => (
+    <span data-testid="analytics-script" data-id={id} data-src={src} />
+  ),
+}))
 
 describe('ConversionScripts consent', () => {
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', 'AW-test')
+    vi.stubEnv('NEXT_PUBLIC_META_PIXEL_ID', 'pixel-test')
+  })
+
   afterEach(() => {
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=; Max-Age=0; Path=/`
+    document.cookie = `${CLICK_IDS_COOKIE}=; Max-Age=0; Path=/`
+    window.history.replaceState({}, '', '/')
+    document.documentElement.style.paddingTop = ''
+    document.documentElement.style.paddingBottom = ''
+    vi.unstubAllEnvs()
   })
 
   it('explains the choice without calling the work a product journey', async () => {
@@ -24,25 +42,15 @@ describe('ConversionScripts consent', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Choose your analytics settings' })
     expect(dialog).toBeVisible()
-    expect(dialog.className).toContain('top-3')
-    expect(dialog.className).not.toContain('bottom-3')
-    expect(document.documentElement.style.paddingTop).toBe('192px')
-    dialog.getBoundingClientRect = () =>
-      ({
-        x: 0,
-        y: 12,
-        top: 12,
-        left: 0,
-        right: 576,
-        bottom: 280,
-        width: 576,
-        height: 268,
-        toJSON() {
-          return {}
-        },
-      }) as DOMRect
+    expect(dialog.className).toContain('bottom-[')
+    expect(dialog.className).not.toContain('top-3')
+    expect(dialog).toHaveAccessibleDescription(ANALYTICS_CONSENT_COPY.body)
+    expect(document.documentElement.style.paddingTop).toBe('')
+    expect(document.documentElement.style.paddingBottom).toBe('')
     fireEvent(window, new Event('resize'))
-    expect(document.documentElement.style.paddingTop).toBe('296px')
+    expect(document.documentElement.style.paddingTop).toBe('')
+    expect(document.documentElement.style.paddingBottom).toBe('')
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Only necessary' }))
 
     await waitFor(() => {
@@ -50,6 +58,42 @@ describe('ConversionScripts consent', () => {
     })
     expect(document.documentElement.style.paddingTop).toBe('')
     expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=denied`)
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+  })
+
+  it('keeps visitor-specific consent out of the prerendered HTML', () => {
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    expect(renderToString(<ConversionScripts />)).toBe('')
+  })
+
+  it.each(['granted', 'denied'])('does not flash the prompt for a remembered %s choice', async (choice) => {
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=${choice}; Path=/`
+    render(<ConversionScripts />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryAllByTestId('analytics-script').length > 0).toBe(choice === 'granted')
+    })
+  })
+
+  it('requests an explicit choice when the stored value is invalid', async () => {
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=invalid; Path=/`
+    render(<ConversionScripts />)
+    expect(await screen.findByRole('dialog')).toBeVisible()
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+  })
+
+  it('loads analytics and captures attribution only after allowing analytics', async () => {
+    window.history.replaceState({}, '', '/?gclid=test-click')
+    render(<ConversionScripts />)
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+    expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Allow analytics' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('analytics-script')).toHaveLength(3)
+    expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=granted`)
+    expect(document.cookie).toContain(CLICK_IDS_COOKIE)
   })
 
   it('reopens preferences so an earlier choice can be changed', async () => {
@@ -57,10 +101,26 @@ describe('ConversionScripts consent', () => {
     render(<ConversionScripts />)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-    window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT))
+    act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
     expect(await screen.findByRole('dialog', { name: 'Choose your analytics settings' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }))
 
     expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=granted`)
+  })
+
+  it('preserves page spacing when preferences reopen or are dismissed', async () => {
+    document.documentElement.style.paddingTop = '17px'
+    document.documentElement.style.paddingBottom = '23px'
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    render(<ConversionScripts />)
+
+    act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
+    expect(await screen.findByRole('dialog')).toBeVisible()
+    fireEvent(window, new Event('resize'))
+    fireEvent.click(screen.getByRole('button', { name: 'Only necessary' }))
+
+    expect(document.documentElement.style.paddingTop).toBe('17px')
+    expect(document.documentElement.style.paddingBottom).toBe('23px')
+    expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
   })
 })

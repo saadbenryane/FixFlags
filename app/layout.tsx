@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { cookies } from 'next/headers'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter-tight/wght.css'
 import '@fontsource-variable/jetbrains-mono/wght.css'
@@ -10,7 +9,6 @@ import { Providers } from '@/components/providers'
 import { BRAND, SITE_URL, SEO } from '@/lib/marketing/copy'
 import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
-import { ANALYTICS_CONSENT_COOKIE, consentPagePadding } from '@/lib/analytics/consent'
 
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
 
@@ -56,15 +54,16 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const consent = (await cookies()).get(ANALYTICS_CONSENT_COOKIE)?.value
-  const reserved = consentPagePadding(consent)
   return (
-    <html lang="en" suppressHydrationWarning style={reserved ? { paddingTop: reserved } : undefined}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="describedby" href="/llms.txt" type="text/plain" />
+      </head>
       {/* Fontsource assets are bundled into the build; no font network request is required. */}
       <body className={`${fontVariables} font-sans antialiased`}>
         <Providers>

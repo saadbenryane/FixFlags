@@ -43,6 +43,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: '/icon',
+        destination: '/icon-512.png',
+        permanent: true,
+      },
+      {
         source: '/help/mcp',
         destination: '/help',
         permanent: true,

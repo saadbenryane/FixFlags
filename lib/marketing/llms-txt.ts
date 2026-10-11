@@ -1,22 +1,29 @@
-import { BRAND, SITE_URL } from './copy'
+import { BLOG_POSTS, BRAND, SITE_URL } from './copy'
 import { INDEXABLE_ROUTES, LLMS_SECTIONS, LLMS_TXT_PATH } from './seo-routes'
 
 export function buildLlmsTxt(): string {
+  const baseUrl = SITE_URL.replace(/\/$/, '')
   const lines: string[] = [
     `# ${BRAND.name}`,
     '',
-    `> ${BRAND.category} Paste a URL, get evidence-backed Flags with fix prompts.`,
+    `> ${BRAND.oneLiner}`,
     '',
   ]
 
   for (const section of LLMS_SECTIONS) {
     lines.push(`## ${section.title}`, '')
     for (const link of section.links) {
-      const url = `${SITE_URL}${link.path}`
+      const url = `${baseUrl}${link.path}`
       const suffix = link.note ? `: ${link.note}` : ''
       lines.push(`- [${link.label}](${url})${suffix}`)
     }
     lines.push('')
+    if (section.title === 'Updates') {
+      for (const post of BLOG_POSTS) {
+        lines.push(`- [${post.title}](${baseUrl}/blog/${post.slug}): ${post.excerpt}`)
+      }
+      lines.push('')
+    }
   }
 
   return lines.join('\n').trimEnd() + '\n'

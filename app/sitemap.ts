@@ -9,12 +9,13 @@ const baseUrl = SITE_URL.replace(/\/$/, '')
 
 export const dynamic = 'force-dynamic'
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date()
+function blogLastModified(post: { date: string; updatedAt?: string; publishedAt?: string }): Date {
+  return new Date(post.updatedAt ?? post.publishedAt ?? post.date)
+}
 
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages: MetadataRoute.Sitemap = INDEXABLE_ROUTES.map((route) => ({
     url: route.path === '/' ? baseUrl : `${baseUrl}${route.path}`,
-    lastModified: now,
     changeFrequency: route.changeFrequency,
     priority: route.priority,
   }))
@@ -22,7 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const category of HELP_CATEGORIES) {
     pages.push({
       url: `${baseUrl}/help/${category.id}`,
-      lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.6,
     })
@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const article of HELP_ARTICLES) {
     pages.push({
       url: `${baseUrl}${helpArticlePath(article.categoryId, article.slug)}`,
-      lastModified: article.updatedAt ? new Date(article.updatedAt) : now,
+      ...(article.updatedAt ? { lastModified: new Date(article.updatedAt) } : {}),
       changeFrequency: 'monthly',
       priority: 0.55,
     })
@@ -40,13 +40,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const post of BLOG_POSTS) {
     pages.push({
       url: `${baseUrl}/blog/${post.slug}`,
-      lastModified: new Date(post.date),
+      lastModified: blogLastModified(post),
       changeFrequency: 'monthly',
       priority: 0.5,
     })
   }
 
-  const issues = await getIndexableIssueCheckIds()
+  const issues = await getIndexableIssueCheckIds().catch(() => {
+    console.warn('[sitemap] Issue discovery unavailable; serving public content only')
+    return []
+  })
   for (const issue of issues) {
     pages.push({
       url: `${baseUrl}/issues/${issue.checkId}`,
@@ -58,7 +61,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   pages.push({
     url: `${baseUrl}${LLMS_TXT_PATH}`,
-    lastModified: now,
     changeFrequency: 'monthly',
     priority: 0.4,
   })
