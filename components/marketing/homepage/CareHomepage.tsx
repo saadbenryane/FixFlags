@@ -78,7 +78,7 @@ export function CareHomepage() {
         </section>
         <section className={s.fixGuidance}><h3>{S.fixTitle}</h3><p>{S.fixBody}</p><p className={s.promptSummary}>{selectedFlag.fix}</p>
           <button type="button" onClick={() => void copyFlag('read', prompt)}><Copy size={16} aria-hidden="true" />{S.sampleCopy}</button>
-          <Link href="/dashboard/mcp-setup">{S.mcpAction}<ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link href="/docs/fix-with-ai#what-is-mcp">{S.mcpAction}<ArrowRight size={16} aria-hidden="true" /></Link>
           {manualPrompt ? <p className={s.copyStatus} role="status">{copyResult?.source === 'read' ? copyResult.message : ''}</p> : null}
         </section>
       </> : selectedCard ? <>

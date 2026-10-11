@@ -25,6 +25,7 @@ FixFlags follows one loop: **Flag. Fix. Verify.**, then Watch.
 
 - [Getting started](/docs/getting-started) for a URL check and the first Site board.
 - [Site care](/docs/site-care) for Cards, Flags, evidence, Verify, and Watch.
+- [Fix with your AI](/docs/fix-with-ai) for using a fix prompt and understanding MCP.
 - [Integration guides](/docs/integrations) for Shopify, Google Analytics, and Google Search Console setup and recovery.
 <!-- generated:mcp-guide-link -->
 - [Troubleshooting](/docs/troubleshooting) for blocked pages and incomplete coverage.

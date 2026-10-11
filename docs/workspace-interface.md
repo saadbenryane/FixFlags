@@ -50,7 +50,7 @@ Site identity, monitoring, and one current result lead. The Flag count is that r
 - Clear category rows show only the name, green icon, and status controls. Opening them reveals the complete check list. Flagged categories use orange icons.
 - Flag titles name observable failures, such as a page not loading, a measured slow page, or a missing payment form. Detection alone never establishes private integration configuration such as test keys. Flag rows use an orange dot, left indentation, and a hover surface without underlining. Areas checked opens the enabled checks and supported additions.
 - Preserve overall status and total Flags next to the Site identity. The preview menu omits the duplicate Flags destination.
-- After copying a prompt, show a temporary bottom-center confirmation with a countdown bar and a Set up MCP link to `/dashboard/mcp-setup`.
+- After copying a prompt, show a temporary bottom-center confirmation with a countdown bar and a link to the public guide at `/docs/fix-with-ai`.
 - A detected-technology strip sits before the summary. Use the real product logo when available and pair color with a text state. “Detected” describes evidence of use, not proof that the tool works. A detected tool may become a suggested integration for more data and checks, but it is not connected until the customer connects it.
 - Monitoring owns cadence, a Flag-per-check graph when run history supports it, and a short Flag or recovery timeline. Do not fabricate trend points before two completed checks exist.
 - Monitoring and Integrations replace the board content inside the persistent Site shell. They do not open in a modal.

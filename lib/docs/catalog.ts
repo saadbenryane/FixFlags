@@ -7,6 +7,7 @@ export type DocsPageKey =
   | 'home'
   | 'getting-started'
   | 'site-care'
+  | 'fix-with-ai'
   | 'mcp'
   | 'integrations'
   | 'shopify'
@@ -94,6 +95,22 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
       'verify-a-flag',
       'weekly-watch',
     ],
+  },
+  {
+    key: 'fix-with-ai',
+    path: '/docs/fix-with-ai',
+    group: 'Use FixFlags',
+    title: 'Fix with your AI',
+    description: 'Use a fix prompt, publish the change, and verify it. Learn what MCP does.',
+    source: 'fix-with-ai.md',
+    order: 2.5,
+    headings: [
+      { id: 'use-your-fix-prompt', title: 'Use your fix prompt' },
+      { id: 'verify-the-fix', title: 'Verify the fix' },
+      { id: 'what-is-mcp', title: 'What is MCP?' },
+      { id: 'get-started', title: 'Get started' },
+    ],
+    relatedHelpSlugs: ['save-your-site', 'verify-a-flag'],
   },
   {
     key: 'mcp',

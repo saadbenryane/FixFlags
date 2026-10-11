@@ -62,7 +62,7 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
       </div>
     </section>
     <section className={`${s.section} ${s.sampleSection}`} id="product" tabIndex={-1}>
-      <HomepageIntro title={S.title} body={<>{S.subtitle} {S.mcpLead} <Link className={s.introMcpLink} href="/dashboard/mcp-setup">{S.mcpLabel}</Link> {S.mcpBody}</>} />
+      <HomepageIntro title={S.title} body={<>{S.subtitle} {S.mcpLead} <Link className={s.introMcpLink} href="/docs/fix-with-ai#what-is-mcp">{S.mcpLabel}</Link>{S.mcpBody}</>} />
       <div className={s.board} role="region" aria-label={C.boardAria}>
         <div className={s.browserBar} aria-hidden="true"><span /><span /><span /></div>
         <aside className={s.boardSidebar}>

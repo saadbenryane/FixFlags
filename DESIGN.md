@@ -139,7 +139,7 @@ These rules apply to existing glass surfaces. The Site board uses `components/si
 - Clear rows show their category name, green icon, and status controls. Their checks and results appear on opening. Flagged categories use orange icons.
 - Category rechecking lives in detail, not on overview rows. Each Flag arrow aligns vertically with the category status dot. Flag rows highlight on hover and keyboard focus.
 - Keep the overall Flag count and status dot beside the Site identity. The preview menu needs no duplicate Flags destination.
-- Successful prompt copying shows a short bottom-center confirmation with a countdown bar and a Set up MCP link.
+- Successful prompt copying shows a short bottom-center confirmation with a countdown bar and a link to the public fix-prompt guide.
 - Detected tools appear before the summary with real logos, plain labels, and green or orange status dots paired with text. Detection can suggest a matching integration, but it never means the integration is connected.
 - Monitoring shows state and cadence first, then a Flag-per-check graph and a short timeline when real history exists.
 - Monitoring and Integrations open inside the persistent board pane, not in a modal.

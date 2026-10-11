@@ -88,7 +88,7 @@ export const SITE_BOARD_COPY = {
   verifyFix: 'Verify fix',
   copyPrompt: 'Copy fix prompt',
   copyPromptCopied: 'Fix prompt copied',
-  setupMcp: 'Set up MCP',
+  useFixPrompt: 'How to use this prompt',
   copyPromptFailed: 'Could not load the fix prompt. Try again.',
   manualCopyTitle: 'Copy fix prompt manually',
   manualCopyBody: 'Clipboard access is unavailable. The complete prompt is selected below.',

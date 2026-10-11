@@ -10,7 +10,7 @@ export function showFixPromptCopied() {
   const copiedAt = Date.now()
   toast.custom(id => <div key={copiedAt} className={styles.confirmation} role="status">
     <Check size={18} aria-hidden="true" />
-    <div><strong>{SITE_BOARD_COPY.copyPromptCopied}</strong><Link href="/dashboard/mcp-setup">{SITE_BOARD_COPY.setupMcp}</Link></div>
+    <div><strong>{SITE_BOARD_COPY.copyPromptCopied}</strong><Link href="/docs/fix-with-ai">{SITE_BOARD_COPY.useFixPrompt}</Link></div>
     <button type="button" aria-label="Dismiss confirmation" onClick={() => toast.dismiss(id)}><X size={16} aria-hidden="true" /></button>
     <span className={styles.countdown} aria-hidden="true" />
   </div>, { id: 'fix-prompt-copied', position: 'bottom-center', duration: 5000 })
