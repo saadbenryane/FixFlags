@@ -15,6 +15,32 @@ New admissions snapshot `ExecutionSpec` with `engine: progressive-v1` on the exi
 Audit ledger. This describes the local implementation candidate, not deployed or
 release-accepted behavior. Historical Audits retain the legacy adapter below.
 
+Owned Site admission persists automatic public availability through the existing
+Outcome and binding contract. Free defaults to weekly checks; eligible paid
+accounts default to daily checks. The first check is due immediately. Claiming
+migrates provisional identity and bindings before adding a missing default.
+Worker upkeep initializes untouched existing Sites and retains explicit pauses,
+custom schedules, names and historical evidence. These defaults do not depend on
+email delivery configuration or an active customer browser session.
+
+Progressive recovery requires the original responsibility's committed assertion
+or comparable Search receipt, rather than an absent Flag or a completed page.
+Scope, source and admitted version must match. Keyboard and Tracking use the
+same scoped proof logic for automatic recovery and explicit fix verification.
+Rolling field INP does not prove an immediate repair. Unsupported proof stays
+inconclusive even when the surrounding module succeeds.
+
+Mixed-content observations retain bounded, redacted HTTP resource declarations
+from collected HTML, including scripts, stylesheets, responsive images, frames
+and media. Inert fallback and template content are excluded. These observations
+do not assert actual browser delivery, external CSS contents or later dynamic
+requests. Incomplete collection cannot certify recovery.
+
+Delivered task jobs rotate behind undispatched work between bounded queue
+rechecks. Lost queue deliveries remain reconstructible. Dispatch responses are
+fenced by ready state, generation and dispatch lease, so late acknowledgements
+cannot replace a worker's newer retry or completion state.
+
 `lib/sites/application/run-requests.ts` is the Site command boundary. Admission
 creates identity, quota admission, Audit, RunRequest and durable dispatch intent in
 one transaction. Redis and provider availability cannot manufacture a successful
