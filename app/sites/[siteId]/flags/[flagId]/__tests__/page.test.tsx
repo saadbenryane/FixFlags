@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import SiteFlagPage from '../page'
+import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
 const ATTEMPTED = '2026-09-23T22:57:11.000Z'
 
@@ -65,6 +66,7 @@ describe('Flag verification attempts', () => {
       decision: { role: 'viewer', site: { siteId: 'site-1' } },
     })
     mocks.loadSiteHome.mockResolvedValue({
+      ...siteViewFixture(),
       flags: [],
       watch: { state: 'off', label: 'Off' },
     })

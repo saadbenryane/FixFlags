@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { flagResolutionView, siteFlagDetailStatus } from '@/lib/sites/flag-resolution'
+import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -21,6 +22,7 @@ function panel(status: string, proof: { id: string; status: string; completedAt:
   })
   return render(
     <FlagResolutionPanel
+      initial={siteViewFixture()}
       resolution={resolution}
       siteId="p_example"
       flagId="flag-1"
@@ -93,6 +95,7 @@ describe('Flag resolution panel', () => {
     })
     const view = render(
       <FlagResolutionPanel
+        initial={siteViewFixture()}
         resolution={resolution}
         siteId="p_example"
         flagId="flag-1"
@@ -119,6 +122,7 @@ describe('Flag resolution panel', () => {
     })
     render(
       <FlagResolutionPanel
+        initial={siteViewFixture()}
         resolution={resolution}
         siteId="p_example"
         flagId="flag-1"

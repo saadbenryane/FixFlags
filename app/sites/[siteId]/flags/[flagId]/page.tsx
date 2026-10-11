@@ -123,7 +123,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
-        <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={flag.id}>
+        <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={flag.id} initial={home}>
           <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
           <p className="mt-3 max-w-2xl text-base text-muted-foreground">{resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters}</p>
           {relatedOutcome ? (
