@@ -1,5 +1,6 @@
 import { Plan } from '@prisma/client'
 import { envPriceId, envPriceIds } from '@/lib/billing/env'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 
 export type PaidPlan = Exclude<Plan, 'FREE'>
 
@@ -180,6 +181,7 @@ export function proUpgradeCta(prefix = 'Join waitlist'): string {
 }
 
 export function reviewDepthForPlan(plan: Plan): 1 | 2 | 3 {
+  if (OPEN_BETA_ACCESS && plan in PLAN_DEFINITIONS) return 3
   return PLAN_DEFINITIONS[plan]?.reviewDepth ?? 1
 }
 

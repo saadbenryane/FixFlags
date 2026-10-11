@@ -30,6 +30,7 @@ export const SITE_ACTION_COPY = {
     dryRun: 'Dry run queued. Its result and cleanup will appear here.',
     pending: 'Dry run in progress. Authorization waits for a recorded result and successful cleanup.',
     recovering: 'Dry run interrupted. Checking cleanup before retrying safely.',
+    incomplete: 'The dry run could not establish a result. Authorization remains unavailable.',
     authorized: 'Fixture authorized for Signup verification.', revoked: 'Fixture authorization revoked.', deleted: 'Fixture deleted.',
     deleteConfirmation: 'Delete this fixture and disable the Outcome method that uses it?',
   },

@@ -6,10 +6,10 @@ import { evidence, markup, PAGE, document } from './fixtures'
 const db = vi.hoisted(() => ({
   audit: { findUnique: vi.fn() },
   improvementAttempt: { findMany: vi.fn() },
-  auditVerifierExecution: { findUnique: vi.fn(), upsert: vi.fn() },
+  auditVerifierExecution: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
 }))
 vi.mock('@/lib/db', () => ({ prisma: db }))
-import { recordSearchVerifiers, persistSearchReceipt } from '../workflow'
+import { combineSearchReceipts, priorSearchReceipt, recordSearchVerifiers, persistSearchReceipt } from '../workflow'
 
 async function receipt(body?: string, previous?: SearchReceipt, overrides = {}) {
   const input = evidence(body, overrides)
@@ -31,6 +31,27 @@ beforeEach(() => {
   db.auditVerifierExecution.upsert.mockImplementation(async ({ create }) => ({ detail: create.detail }))
 })
 describe('fresh Search verification and history', () => {
+  it('preserves previous progressive evaluator receipts for policy regression checks', async () => {
+    const before = await receipt()
+    db.auditVerifierExecution.findUnique.mockResolvedValue(null)
+    db.auditVerifierExecution.findMany.mockResolvedValue([{ detail: before }])
+    const saved = await priorSearchReceipt('verification', PAGE)
+    expect(saved?.observations).toEqual(before.observations)
+    expect(saved?.complete).toBe(false)
+    const after = await receipt('<title>Page</title><meta name="robots" content="noindex">', saved ?? undefined)
+    expect(after.observations.find(item => item.checkId === 'robots-blocks-indexing')?.reason).toBe('indexing_policy_regressed')
+  })
+  it('bounds aggregate observations without erasing the source receipts or claiming completeness', async () => {
+    const source = await receipt()
+    const template = source.observations[0]
+    const parts = [0, 1].map(part => ({ ...source, observations: Array.from({ length: 300 }, (_, index) => ({ ...template, id: `part:${part}:${index}` })) }))
+    const summary = combineSearchReceipts({ auditId: source.auditId, pageUrl: PAGE, receipts: parts, expected: 2 })
+    expect(summary.observations).toHaveLength(500)
+    expect(summary.complete).toBe(false)
+    expect(summary.observations.at(-1)?.reason).toBe('observation_limit')
+    expect(parts[1].observations).toHaveLength(300)
+  })
+
   it('does not replace a rendered title failure with original-HTML success when rendered collection fails', async () => {
     const broken = await receipt('<html><head></head><body>Page</body></html>')
     const flag = searchFindings(broken.observations).find(item => item.checkId === 'title-missing')!

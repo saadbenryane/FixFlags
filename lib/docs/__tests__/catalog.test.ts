@@ -13,6 +13,7 @@ describe('documentation catalog', () => {
       '/docs',
       '/docs/getting-started',
       '/docs/site-care',
+      '/docs/fix-with-ai',
       '/docs/mcp',
       '/docs/integrations',
       '/docs/integrations/shopify',

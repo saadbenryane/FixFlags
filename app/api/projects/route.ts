@@ -10,7 +10,8 @@ import {
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { canonicalProductHost, canonicalProductUrl } from '@/lib/audit/product-intelligence'
-import { Prisma } from '@prisma/client'
+import { productTransaction } from '@/lib/billing/product-transaction'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -65,11 +66,11 @@ export async function POST(req: NextRequest) {
 
   const canonicalHost = canonicalProductHost(parsed.data.url)
   const canonicalUrl = canonicalProductUrl(parsed.data.url)
-  const project = await prisma.$transaction(async (tx) => {
+  const project = await productTransaction(async (tx) => {
     const existing = await tx.project.findUnique({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
     })
-    if (!existing) await assertCanCreateProduct(tx, user.id)
+    if (!existing || existing.deletedAt) await assertCanCreateProduct(tx, user.id)
 
     return tx.project.upsert({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
         url: canonicalUrl,
         canonicalHost,
         isManaged: true,
+        deletedAt: null,
       },
       update: {
         name: parsed.data.name.trim(),
@@ -86,13 +88,14 @@ export async function POST(req: NextRequest) {
         isManaged: true,
       },
     })
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  })
 
     return NextResponse.json(project, { status: 201 })
   } catch (error) {
     if (error instanceof ProductLimitReached) {
-      return apiError(`Product limit reached (${error.limit})`, 409, {
+      return apiError(PLAN_LIMIT_NOTICE.copy['site-limit'].body, 409, {
         code: 'PROJECT_LIMIT',
+        action: 'join_waitlist',
       })
     }
     return handleRouteError(error, 'Could not create project')

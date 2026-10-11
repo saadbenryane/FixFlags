@@ -10,6 +10,7 @@ import { buildAttribution } from '@/lib/leads/attribution'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { RateLimitError } from '@/lib/security/rate-limit'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { logger } from '@/lib/logger'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { siteAnalysisAuditWhere } from './analysis-scope'
@@ -260,7 +261,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   }
 
 
-  if (input.source === 'WEB' || input.source === 'MCP' || input.source === 'API') {
+  if (!OPEN_BETA_ACCESS && (input.source === 'WEB' || input.source === 'MCP' || input.source === 'API')) {
     const recentRuns = await prisma.runRequest.count({
       where: {
         projectId: input.projectId,

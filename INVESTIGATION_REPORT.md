@@ -1,3 +1,12 @@
+---
+status: historical
+authority: evidence
+reviewed_at: 2026-10-11
+supersedes: []
+---
+
+This August 4 snapshot preserves investigation evidence. Its architecture, readiness and proposed work are historical, not current instructions or proof of shipped behavior. Use [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [PRODUCT.md](PRODUCT.md) and [QUALITY.md](QUALITY.md) for current authority and release evidence.
+
 # FixFlags (qewos) Investigation Report
 
 **Date:** August 4, 2026
@@ -24,7 +33,7 @@ FixFlags is a mature, production-ready **Product Intelligence System for AI-buil
 | **Audit Worker** | Shipped | Dedicated process (`FIXFLAGS_PROCESS_ROLE=worker`) owning Playwright Chromium |
 | **FixFlags CLI** | Shipped (beta) | Thin MCP client over cloud API (`npx fixflags check/recheck/status`) |
 | **MCP Server** | Shipped | 17 public tools for editor integration (Cursor, Claude Code, Lovable, Bolt, Windsurf) |
-| **Knowledge Graph** | Phase 1 | Internal growth graph (Site, Issue, FixPrompt, BenchmarkSnapshot) — separate from customer PI |
+| **Knowledge Graph** | Phase 1 | Internal growth graph (Site, Issue, FixPrompt, BenchmarkSnapshot), separate from customer PI |
 
 ### 2.2 Directory Structure (Key Areas)
 
@@ -65,15 +74,15 @@ qewos/
 
 ### 2.3 Audit Pipeline (Core Engine)
 
-Full pipeline stages, per-page behavior, and recovery are canonical in [docs/audit-pipeline.md](../docs/audit-pipeline.md) — see there for the authoritative stage chain and failure handling.
+Full pipeline stages, per-page behavior, and recovery are canonical in [docs/audit-pipeline.md](docs/audit-pipeline.md), see there for the authoritative stage chain and failure handling.
 
 **Key Files:**
-- `lib/audit/runner.ts` — Top-level `runAudit()` orchestrator
-- `lib/audit/pipeline/run-page.ts` — Per-page processing
-- `lib/audit/checks/index.ts` — 22 check modules via `runAllChecks()`
-- `lib/audit/judge-triage.ts` / `judge-prescription.ts` — AI phases
-- `lib/audit/screenshot.ts` — Playwright capture singleton
-- `lib/audit/task-contracts.ts` — Canonical `checkAndPlan` / `recheckAndDiff` outcomes
+- `lib/audit/runner.ts`, Top-level `runAudit()` orchestrator
+- `lib/audit/pipeline/run-page.ts`, Per-page processing
+- `lib/audit/checks/index.ts`, 22 check modules via `runAllChecks()`
+- `lib/audit/judge-triage.ts` / `judge-prescription.ts`, AI phases
+- `lib/audit/screenshot.ts`, Playwright capture singleton
+- `lib/audit/task-contracts.ts`, Canonical `checkAndPlan` / `recheckAndDiff` outcomes
 
 ### 2.4 Queue & Worker System
 
@@ -133,7 +142,7 @@ Full pipeline stages, per-page behavior, and recovery are canonical in [docs/aud
 - **Right:** Browser view ↔ Report view toggle (dominant panel)
 - **Bottom:** Playback strip (timeline/scrub for path replay)
 
-### 3.2 CLI (`fixflags-cli`) — Thin MCP Client
+### 3.2 CLI (`fixflags-cli`), Thin MCP Client
 
 **Commands:**
 ```bash
@@ -149,17 +158,17 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 ```
 
 **MCP Tools Used:**
-- `ff_check_and_plan` — Check URL → ranked Fix List
-- `ff_get_check_status` — Poll completion
-- `ff_get_report` / `ff_get_rubric` / `ff_get_flag` — Report data
-- `ff_get_all_fixes` / `ff_get_current_finish_plan` — Complete fix bundles
-- `ff_recheck_and_compare` — Update review + verification diff
-- `ff_compare` — Compare two reports
-- `ff_plan_mode_prompt` — Agent-ready prompt with all fixes
-- `ff_get_product_context` — Product Contract + PI
-- `ff_start_repo_scan` / `ff_list_repo_scans` / `ff_get_repo_scan` / `ff_get_repo_finding` — Studio repo scanning
-- `ff_mark_fix_attempted` — Record that a change is ready for independent verification, or reject an Improvement
-- `ff_get_connection_info` — Contract version, readiness, capabilities, and canonical workflow
+- `ff_check_and_plan`, Check URL → ranked Fix List
+- `ff_get_check_status`, Poll completion
+- `ff_get_report` / `ff_get_rubric` / `ff_get_flag`, Report data
+- `ff_get_all_fixes` / `ff_get_current_finish_plan`, Complete fix bundles
+- `ff_recheck_and_compare`, Update review + verification diff
+- `ff_compare`, Compare two reports
+- `ff_plan_mode_prompt`, Agent-ready prompt with all fixes
+- `ff_get_product_context`, Product Contract + PI
+- `ff_start_repo_scan` / `ff_list_repo_scans` / `ff_get_repo_scan` / `ff_get_repo_finding`, Studio repo scanning
+- `ff_mark_fix_attempted`, Record that a change is ready for independent verification, or reject an Improvement
+- `ff_get_connection_info`, Contract version, readiness, capabilities, and canonical workflow
 
 **Integration Flow:**
 1. CLI calls `/api/mcp` with JSON-RPC 2.0 + Bearer authentication (or a stored credential)
@@ -208,11 +217,11 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 
 | Area | Gap | Source |
 |------|-----|--------|
-| **Deep Review Browser** | Agent-class autonomous browsing (multi-step journeys, funnel traversal) — only journey capture in pipeline today | ROADMAP: "Live Review Workspace (UI)" |
+| **Deep Review Browser** | Agent-class autonomous browsing (multi-step journeys, funnel traversal), only journey capture in pipeline today | ROADMAP: "Live Review Workspace (UI)" |
 | **Mobile Full-Screen Path Replay** | Bottom strip shipped; full-screen takeover open | product-prd.md open questions |
-| **Free Deep Review Teaser** | One journey playback vs summary-only — unresolved | product-prd.md open questions |
+| **Free Deep Review Teaser** | One journey playback vs summary-only, unresolved | product-prd.md open questions |
 | **Public API Rename** | `/re-check` → `/update-review` migration pending | product-prd.md §43, DECISIONS 2026-07-28 |
-| **Repo Connect → Implementation Integrity** | Optional repo connect feeding into Fix List — entitlement expansion after thesis | ROADMAP: Next |
+| **Repo Connect → Implementation Integrity** | Optional repo connect feeding into Fix List, entitlement expansion after thesis | ROADMAP: Next |
 | **CLI Local Runtime** | Cloud-backed only; local runtime later | knowledge/open-source.md |
 | **Evolution Tracking** | Trend quality over time per Product/URL | ROADMAP: Next |
 | **Open Community Skills** | Extract in-repo loop skill to standalone OSS repo | ROADMAP: Next |
@@ -244,7 +253,7 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 
 ## 5. Prioritized Next Steps
 
-### P0 — Launch Readiness (Must Complete Before Broad Launch)
+### P0, Launch Readiness (Must Complete Before Broad Launch)
 
 1. **Complete npm Trusted Publisher Release**
    - Configure GitHub OIDC trusted publisher for `fixflags` package
@@ -271,7 +280,7 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
    - Update CLI, MCP tools, documentation
    - Maintain backward compatibility during transition
 
-### P1 — Product Completion (First 30 Days Post-Launch)
+### P1, Product Completion (First 30 Days Post-Launch)
 
 6. **Deep Review Browser Mode**
    - Implement agent-class autonomous navigation in workspace browser panel
@@ -294,7 +303,7 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
     - Per-Product/URL quality trends over time
     - Dashboard widget + MCP tool exposure
 
-### P2 — Distribution & Scale (Month 2-3)
+### P2, Distribution & Scale (Month 2-3)
 
 11. **CLI Local Runtime**
     - Offline check capability (subset of checks)
@@ -323,34 +332,34 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 ## 6. Key Files Reference (For Future Work)
 
 ### Canonical Documentation
-- `AGENTS.md` — Agent operating instructions
-- `ROADMAP.md` — Now/Next/Later/Not planned
-- `DECISIONS.md` — Durable decisions with rationale
-- `ARCHITECTURE.md` — System overview, data flows, invariants
-- `DESIGN.md` — Visual/interaction standards, tokens
-- `PRODUCT.md` — Shipped truth only
-- `CANONICAL-SOURCES.md` — Master index of concept → source file
-- `knowledge/report-contract.md` — Report hierarchy (canonical)
-- `docs/product-prd.md` — Product requirements (merged live review + workspace)
-- `docs/workspace-interface.md` — Layout, modes, playback, mobile spec
-- `docs/audit-pipeline.md` — Pipeline stages, AI phases, degradation, recovery
-- `knowledge/vision.md` — North star, Product Intelligence layers
-- `knowledge/product-intelligence.md` — PI model, Product Contract, Finish Plan
+- `AGENTS.md`, Agent operating instructions
+- `ROADMAP.md`, Now/Next/Later/Not planned
+- `DECISIONS.md`, Durable decisions with rationale
+- `ARCHITECTURE.md`, System overview, data flows, invariants
+- `DESIGN.md`, Visual/interaction standards, tokens
+- `PRODUCT.md`, Shipped truth only
+- `CANONICAL-SOURCES.md`, Master index of concept → source file
+- `knowledge/report-contract.md`, Report hierarchy (canonical)
+- `docs/product-prd.md`, Product requirements (merged live review + workspace)
+- `docs/workspace-interface.md`, Layout, modes, playback, mobile spec
+- `docs/audit-pipeline.md`, Pipeline stages, AI phases, degradation, recovery
+- `knowledge/vision.md`, North star, Product Intelligence layers
+- `knowledge/product-intelligence.md`, PI model, Product Contract, Finish Plan
 
 ### Core Implementation
-- `lib/audit/runner.ts` — Audit orchestrator
-- `lib/audit/checks/index.ts` — 22 deterministic check modules
-- `lib/audit/judge-triage.ts` / `judge-prescription.ts` — AI phases
-- `lib/audit/screenshot.ts` — Playwright capture
-- `lib/audit/finish-plan.ts` — Canonical Fix List builder
-- `lib/audit/task-contracts.ts` — `checkAndPlan` / `recheckAndDiff` (shared web/CLI/MCP)
-- `lib/report/explorer-model.ts` — ReportExplorerModel (unified across surfaces)
-- `lib/mcp/tool-manifest.ts` — Canonical MCP tool registry
-- `lib/marketing/copy/terminology.ts` — Customer terminology (single source)
-- `components/report/ReportWorkspaceSplitShell.tsx` — Interactive split workspace
-- `components/audit/AuditReportProgressive.tsx` — Progressive report parity
-- `fixflags-cli/src/workflows.ts` — CLI MCP workflows
-- `worker/index.ts` — Dedicated worker runtime
+- `lib/audit/runner.ts`, Audit orchestrator
+- `lib/audit/checks/index.ts`, 22 deterministic check modules
+- `lib/audit/judge-triage.ts` / `judge-prescription.ts`, AI phases
+- `lib/audit/screenshot.ts`, Playwright capture
+- `lib/audit/finish-plan.ts`, Canonical Fix List builder
+- `lib/audit/task-contracts.ts`, `checkAndPlan` / `recheckAndDiff` (shared web/CLI/MCP)
+- `lib/report/explorer-model.ts`, ReportExplorerModel (unified across surfaces)
+- `lib/mcp/tool-manifest.ts`, Canonical MCP tool registry
+- `lib/marketing/copy/terminology.ts`, Customer terminology (single source)
+- `components/report/ReportWorkspaceSplitShell.tsx`, Interactive split workspace
+- `components/audit/AuditReportProgressive.tsx`, Progressive report parity
+- `fixflags-cli/src/workflows.ts`, CLI MCP workflows
+- `worker/index.ts`, Dedicated worker runtime
 
 ### Verification Commands
 ```bash
@@ -391,6 +400,6 @@ npm run dev:all                   # App + worker
 
 **This week:** Complete P0 items 1-5 (npm release, editor smokes, accuracy freeze, API tests, API rename). These are the only hard blockers for a credible public launch.
 
-**Next week:** Begin P1 item 6 (Deep Review browser mode) — this is the major differentiator for Product QA positioning vs. "just another Lighthouse wrapper."
+**Next week:** Begin P1 item 6 (Deep Review browser mode), this is the major differentiator for Product QA positioning vs. "just another Lighthouse wrapper."
 
-The codebase is in excellent shape: canonical sources enforced, dead code removed, architecture clean, documentation current. The remaining work is **polish, distribution hardening, and the deep review differentiator** — not structural fixes.
+The codebase is in excellent shape: canonical sources enforced, dead code removed, architecture clean, documentation current. The remaining work is **polish, distribution hardening, and the deep review differentiator**, not structural fixes.

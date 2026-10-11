@@ -36,7 +36,7 @@ For the prompt-row Copy action, prefer exposing a Button variant through `Prompt
 
 5. Canonical wording and small-width fit need to stay synchronized.
 Per-Flag wording belongs in `lib/marketing/copy/report-workspace.ts`; add/use an explorer `Fix Prompt` label rather than hardcoding it in JSX.
-Update `knowledge/report-contract.md`, `DESIGN.md`, and the two stale `Preview prompt` references in `design-qa.md` if they describe the per-Flag row.
+Update `knowledge/report-contract.md`, `DESIGN.md`, and the two stale `Preview prompt` references in `.agents/history/design/launch-visual-qa.md` if they describe the per-Flag row.
 Do not rename `REPORT_COPY.finishPlan.previewToggle` unless the aggregate Finish Plan surface is intentionally included; it is a separate component and is not the Flag detail shown here.
 At 320px the current one-row prompt header can wrap `Fix Prompt` onto two lines because Copy consumes most of the row.
 Recheck 320/375px after styling; compact padding or a narrow-label treatment is preferable to horizontal overflow or a two-line control label.
@@ -44,7 +44,7 @@ Recheck 320/375px after styling; compact padding or a narrow-label treatment is 
 ## Exact implementation and verification surface
 
 - Primary components: `components/report/ReportExplorer.tsx`, `components/report/ReportExplorerDetail.tsx`, `components/report/FlagDetailPanel.tsx`, `components/audit/FixPromptBlock.tsx`, `components/audit/PromptCopyButton.tsx`, `components/audit/AuditReport.tsx`.
-- Canonical copy/docs: `lib/marketing/copy/report-workspace.ts`, `knowledge/report-contract.md`, `DESIGN.md`, `design-qa.md`.
+- Canonical copy/docs: `lib/marketing/copy/report-workspace.ts`, `knowledge/report-contract.md`, `DESIGN.md`, `.agents/history/design/launch-visual-qa.md`.
 - Focused tests: `components/report/__tests__/ReportExplorerDetail.test.tsx`, `components/report/__tests__/ReportExplorer.test.tsx`, `components/report/__tests__/FlagDetailPanel.test.tsx`, `components/report/__tests__/ReportPane.test.tsx`, `components/report/__tests__/workspace-geometry.test.ts`.
 - Browser proof: `scripts/report-pane-proof.mjs`; include expanded prompt plus open Review Context and 320, 375, 768, and 1280px widths.
 

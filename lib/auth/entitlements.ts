@@ -5,6 +5,7 @@ import {
   isDevUnlimitedScans,
 } from '@/lib/auth/permissions'
 import { siteCarePolicy } from '@/lib/sites/application/care-policy'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 
 /** When true, plan gates (share, compare) behave like production. */
 export function shouldEnforcePlanGates(): boolean {
@@ -23,6 +24,7 @@ export function hasRevokedSubscriptionStatus(subscriptionStatus: string): boolea
 export function canAccessPaidFeatures(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
+  if (hasOpenBetaAccess(user)) return true
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
   if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
@@ -57,6 +59,7 @@ export function canAccessBasicMcp(
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
+  if (hasOpenBetaAccess(user)) return true
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
   if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false

@@ -1,11 +1,12 @@
+import { Prisma, type AuditVerifierExecution } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { executionWrite } from '../execution-ownership'
 import { loadTaskGraph, persistTaskPlan } from './engine'
-import { serializeArtifact, readArtifact, TaskFailure, type TaskPlan, type TaskArtifact } from './contracts'
+import { serializeArtifact, readArtifact, TaskFailure, type TaskPlan, type TaskArtifact, MAX_TASKS_PER_AUDIT } from './contracts'
 import { pageTaskPlan } from './graph'
-import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema } from './snapshots'
+import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, screenshotSnapshotSchema } from './snapshots'
 import { browserEvidence, captureEvidence, searchArtifactSchema } from './evaluators'
 import { flagSchema, commitFindings } from './results'
 import { asReviewDepth, planReviewTargets, openCheckCeilingForDepth, buildReviewCoverage } from '../review-depth'
@@ -52,9 +53,25 @@ async function pipelineContext(context: TaskContext): Promise<PipelineContext> {
 
 /** All scope is recovered from admitted tasks and their committed collectors, never
  * rediscovered during finalization. Missing input remains missing. */
-export async function recordedPages(auditId: string, pageUrl?: string): Promise<PageRun[]> {
-  const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId, targetKey: { startsWith: 'task:' },
-    ...(pageUrl ? { pageUrl } : {}) }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 1200 })
+export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma): Promise<PageRun[]> {
+  // Project metadata, media references and observations in PostgreSQL. Summary
+  // readers never transfer collected HTML, network traces or sitemap bodies.
+  const tasks = await db.$queryRaw<Array<Pick<AuditVerifierExecution, 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
+    SELECT "workKind", "workState", "status", "workInput",
+      CASE WHEN "workKind" = 'browser' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
+        'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata',
+        'snapshot', jsonb_build_object('desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl',
+          'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
+      WHEN "workKind" = 'captures' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
+        'pageId', "workResult"->'data'->'pageId', 'snapshot', jsonb_build_object(
+          'desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl', 'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
+      WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata'))
+      WHEN "workKind" IN ('search-resources', 'bindings', 'journeys', 'fixture-setup', 'finalize') THEN NULL
+      ELSE "workResult" END AS "workResult"
+    FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" LIKE 'task:%'
+      ${pageUrl ? Prisma.sql`AND "pageUrl" = ${pageUrl}` : Prisma.empty}
+    ORDER BY "createdAt", "id" LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
+  if (tasks.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
   const positions = [...new Set(tasks.flatMap(task => {
     const input = task.workInput as { position?: number } | null
     return typeof input?.position === 'number' ? [input.position] : []
@@ -65,10 +82,10 @@ export async function recordedPages(auditId: string, pageUrl?: string): Promise<
     const find = (kind: string) => pageTasks.find(task => task.workKind === kind && task.workState === 'COMPLETED')
     const browserTask = find('browser'), httpTask = find('http'), searchTask = pageTasks.find(task => task.workKind === 'search' && task.workState === 'COMPLETED' &&
       (!((task.workInput as { module?: string })?.module) || (task.workInput as { module?: string })?.module === 'summary')), judgeTask = find('judge')
-    const browser = browserTask?.workResult ? browserArtifactSchema.parse(readArtifact(browserTask.workResult, 'browser').data) : null
+    const browser = browserTask?.workResult ? browserArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true }) }).parse(readArtifact(browserTask.workResult, 'browser').data) : null
     const captureTask = find('captures')
-    const captures = captureTask?.workResult ? captureArtifactSchema.parse(readArtifact(captureTask.workResult, 'captures').data) : null
-    const response = httpTask?.workResult ? httpArtifactSchema.parse(readArtifact(httpTask.workResult, 'http').data) : null
+    const captures = captureTask?.workResult ? captureArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true }) }).parse(readArtifact(captureTask.workResult, 'captures').data) : null
+    const response = httpTask?.workResult ? httpArtifactSchema.pick({ metadata: true }).parse(readArtifact(httpTask.workResult, 'http').data) : null
     const metadata = browser?.metadata ?? response?.metadata
     if (!metadata) continue
     const speedResults = pageTasks.filter(task => task.workKind === 'pagespeed' && task.workState === 'COMPLETED' && task.workResult)
@@ -215,18 +232,19 @@ export const lifecycleHandlers: TaskHandler[] = [
   { kind: 'finalize', replay: 'idempotent', timeoutMs: 90_000,
     validateResult: artifact => { finalSchema.parse(artifact.data) },
     async evaluate(context) {
-      const latest = await prisma.audit.findUniqueOrThrow({ where: { id: context.audit.id } })
+      const latest = await prisma.audit.findUniqueOrThrow({ where: { id: context.audit.id }, select: { id: true, status: true, parentId: true,
+        reportCompleteness: true, executionSpec: true, completedAt: true, startedAt: true, createdAt: true, url: true } })
       if (latest.status === 'COMPLETED') {
         await persistImprovementCycle(latest.id, latest.parentId)
         return serializeArtifact('finalize', { status: 'COMPLETED', partial: latest.reportCompleteness !== 'FULL' })
       }
-      const pages = await recordedPages(latest.id), tasks = await loadTaskGraph(latest.id), ctx = await pipelineContext(context)
+      const tasks = await loadTaskGraph(latest.id)
       const failed = tasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task => task.workKind ?? 'unknown')
       const spec = readExecutionSpec(latest.executionSpec)
       if (spec && spec.scope !== 'SITE') {
         // A configured action does not need an unrelated page scan, screenshot,
         // PageSpeed measurement or AI explanation to complete its own assessment.
-        await persistAuditRunCost(latest.id, { durationMs: Date.now() - ctx.startedAt.getTime(),
+        await persistAuditRunCost(latest.id, { durationMs: Date.now() - (latest.startedAt ?? latest.createdAt).getTime(),
           llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'none', pagespeedCalls: 0, pagesReviewed: 0 })
         await executionWrite(tx => tx.audit.update({ where: { id: latest.id }, data: {
           status: 'COMPLETED', progress: 100, verdict: null,
@@ -238,6 +256,8 @@ export const lifecycleHandlers: TaskHandler[] = [
         await persistImprovementCycle(latest.id, latest.parentId)
         return serializeArtifact('finalize', { status: 'COMPLETED', partial: failed.length > 0 })
       }
+      const pages = await recordedPages(latest.id), ctx = await pipelineContext(context)
+      if (pages.some(page => page.searchReceipt?.complete === false)) failed.push('search')
       ctx.pagespeedCalls = pages.reduce((count, page) => count + Number(Boolean(page.desktop)) + Number(Boolean(page.mobile)), 0)
       for (const page of pages) if (page.triage) {
         ctx.usage.inputTokens += page.triage.usage.inputTokens; ctx.usage.outputTokens += page.triage.usage.outputTokens

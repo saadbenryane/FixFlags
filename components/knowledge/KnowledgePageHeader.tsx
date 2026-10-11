@@ -44,7 +44,7 @@ export function KnowledgePageHeader({
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="font-serif text-3xl font-semibold leading-display tracking-display text-foreground sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold leading-display tracking-display text-foreground sm:text-4xl">
             {title}
           </h1>
           {description ? (

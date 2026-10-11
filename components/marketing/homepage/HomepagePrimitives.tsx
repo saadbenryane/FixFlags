@@ -11,10 +11,6 @@ export const HOMEPAGE_EVIDENCE = {
   site: '/marketing/evidence/site-home.png',
 } as const
 
-export function Signal({ tone, children }: { tone: 'good' | 'warn' | 'bad'; children: React.ReactNode }) {
-  return <span className={`${s.signal} ${s[tone]}`}><i aria-hidden="true" />{children}</span>
-}
-
 export function HomepageIntro({ label, title, body }: { label?: string; title: string; body?: React.ReactNode }) {
   return <div className={s.intro}>{label && <p className={s.eyebrow}>{label}</p>}<h2>{title}</h2>{body && <p>{body}</p>}</div>
 }

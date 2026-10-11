@@ -1,201 +1,71 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-10
-supersedes: []
+reviewed_at: 2026-10-11
+supersedes: [lib/design/brand-rules.md]
 ---
 
-# Design Standards
+# Design system
 
-_Validated visual and interaction standards. Code-enforced where possible, documented where not._
+This document owns reusable visual and interaction conventions. Preserve the current appearance of each surface when refactoring shared styles.
 
-**Target experience:** [docs/product-architecture.md](docs/product-architecture.md) owns objects and navigation. [docs/workspace-interface.md](docs/workspace-interface.md) owns states. [docs/product-prd.md](docs/product-prd.md) owns behavior. [knowledge/vision.md](knowledge/vision.md) owns direction. [docs/voice-and-copy.md](docs/voice-and-copy.md) owns customer-facing language. Current report layout rules are compatibility-only in [knowledge/report-contract.md](knowledge/report-contract.md).
+Product objects and navigation belong to [product architecture](docs/product-architecture.md), Site behavior and states to [the interface contract](docs/workspace-interface.md), and acceptance requirements to [the PRD](docs/product-prd.md). Personality lives in [SOUL.md](SOUL.md). Vocabulary lives in [voice and copy](docs/voice-and-copy.md); exact rendered strings live in `lib/marketing/copy/`. Current report routes retain their [compatibility contract](knowledge/report-contract.md).
 
-## Design principles
+## Executable sources
 
-1. Calm, clear care for the website. Human status and evidence lead. Prioritize useful results without suppressing breadth. Public workflow framing is under review; keep the underlying fix and independent-verification responsibilities precise.
-2. Preserve FixFlags' brand identity and approved orange through canonical tokens.
-3. Mobile-first simplicity. Desktop shares the same mental model.
-4. Progressive depth: understandable Flag first, technical detail when needed.
-5. Coverage and freshness make healthy states trustworthy; scores remain secondary.
+| Source | Responsibility |
+| --- | --- |
+| `lib/design/tokens.css` | CSS colors, type scale, radii, shadows, spacing, motion timing and stacking layers |
+| `tailwind.config.ts` | Utility mappings to tokens, font families and animation definitions |
+| `lib/design/brand-spec.ts` | Brand values for OG images, email, badges and manifest consumers that cannot use CSS |
+| `components/ui/` | Shared controls, typography, surfaces and interaction primitives |
+| `components/sites/BoardCard.tsx` and its CSS module | Flat Site cards and rows, also reused by the homepage sample |
 
-For experience reviews, distinguish observed defects from proposed design changes. Equivalent answers should use equivalent type hierarchy and alignment; media, metrics, and lists may vary when their information warrants it. A narrow card must reflow its category and status without overlap. Evaluate the shared component with real-length content before imposing fixed heights. Current evidence and proposed first improvements: [experience review](docs/experience-review.md).
+Use existing semantic tokens before adding values. Add a shared token for a repeated role, not every local layout measurement. Non-CSS brand values must agree with the approved identity; contextual status and grade palettes may differ by consumer. Do not maintain palette tables in Markdown.
 
-**Founder correction, October 10:** comprehensive underneath, effortless on the surface. Prioritization must not suppress useful results to create a signup teaser. The overview gives bounded current health, coverage, freshness, monitoring, and important attention; category depth exposes all available results and scope; a Flag owns its observation, evidence, fix guidance, and recovery proof. Keep successful, failed, incomplete, stale, not applicable, and unchecked states distinguishable. Use measured execution receipts rather than inventing a pass ledger from absent Flags. Tile taxonomy and the public loop remain design questions, not fixed marketing requirements.
+## Identity and typography
 
-## Authoritative sources (in priority order)
+- Keep the official folded-F mark. `components/brand/Logo.tsx` combines transparent runtime PNGs with the Inter Tight wordmark, with Fix heavier than Flags. Do not invent replacement SVG geometry.
+- Original owner sources and asset provenance live in [the reference index](docs/brand/reference/README.md). Use `npm run brand:icons` to derive runtime logo sizes.
+- Inter is the product UI and body face. Inter Tight is used for marketing display, prices, wordmarks and editorial Help/Docs headings. JetBrains Mono is used for code, IDs and numeric evidence, not marketing display.
+- Preserve the existing responsive heading sizes and weights. Use `text-balance` for headings, `text-pretty` for body, and `tabular-nums` for comparable numbers.
+- Marketing section labels use sentence case. The current homepage hero eyebrow and prompt-card metadata retain their approved uppercase treatment. Functional metadata may use mono uppercase labels.
 
-1. `lib/design/tokens.css` — CSS custom properties for all colors, shadows, radii, type scale, glass effects, animations
-2. `tailwind.config.ts` — Tailwind theme: font families, colors, box shadows, border radii, letter spacing, line heights, keyframes
-3. `components/ui/` — shadcn/ui primitives (34 components: button, card, dialog, accordion, etc.)
-4. `components/` — application components following the tokens
+## Color and controls
 
-## Typography
+- Bright Flag Orange is the shared brand signal in both themes. Orange buttons use white labels at every existing size. Do not enlarge text or darken the approved fill to change this treatment.
+- Product primary controls retain their current ink light-theme and orange dark-theme treatments. Use the shared Button variants instead of recreating them.
+- Brand and evidence state are separate roles. Pair status colors with text; retain warning for billing/quota caution and grades for report scores. Evidence rules belong to [the evidence contract](knowledge/evidence-rules.md).
+- Dark mode uses its authored tokens, not a blanket inversion. Third-party logo plates that need white retain a fixed white semantic surface in both themes.
+- Controls and inputs use `--radius-control` and `--radius-input`. Focus uses `--focus-ring` through `--ring`; error styling uses `--destructive`.
 
-| Role                          | Font                           | Weight  | Size              |
-| ----------------------------- | ------------------------------ | ------- | ----------------- |
-| Display (marketing hero only) | Inter Tight (var-font-display) | 600–700 | text-5xl (3.5rem) |
-| Heading                       | Inter Tight                    | 600     | text-2xl/3xl/4xl  |
-| Body                          | Inter (var-font-sans)          | 400     | text-base         |
-| Marketing labels / eyebrows   | Inter                          | 600     | text-xs           |
-| Score numbers                 | JetBrains Mono                 | 500–600 | tabular-nums      |
-| Code, IDs, dates, step index  | JetBrains Mono (var-font-mono) | 500     | text-xs           |
+## Surface families
 
-- Marketing section labels are sentence case. The homepage eyebrow is the approved uppercase exception and uses increased letter spacing.
-- Plan prices use Inter Tight with `tabular-nums`; status words such as Waitlist use the same display face
-- JetBrains Mono is not a marketing display face
-- `text-balance` on headings, `text-pretty` on body
-- `tabular-nums` on all numeric scores
-- Inter is UI font everywhere; Inter Tight reserved for marketing headings and display
+| Surface | Current treatment |
+| --- | --- |
+| Marketing | Whitespace, display hierarchy and section tone; existing special illustrations and connection panels retain their local composition |
+| Site board and homepage sample | Neutral flat cards, restrained hover shadows, board-specific radii, and orange outlines for flagged categories |
+| Existing report and glass surfaces | Shared Card/Surface variants, glass tokens and nested radii; these do not define the Site board recipe |
+| Controls and functional data | Borders where needed for inputs, tables, dialogs and progress/detail panels |
 
-## Color system (60/30/10)
+Shared identity does not require identical card sizes, backgrounds or typography across these families. Keep board card and panel radii separate from the glass-card radius. Inner glass radii use the existing outer-radius-minus-gap tokens.
 
-| Proportion | Role                  | Token values                                          |
-| ---------- | --------------------- | ----------------------------------------------------- |
-| 60%        | Background / canvas   | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
-| 30%        | Foreground / ink      | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
-| 10%        | Brand orange (signal) | `--brand` Flag Orange `#FF5A00` in both themes; CTA label policy below |
+Marketing and Site narrative hierarchy uses spacing, tone and type before divider lines. Keep existing functional borders and approved special compositions. Interaction placement and category anatomy belong to the Site interface contract.
 
-- Dark mode: fully re-authored, not inverted. Graphite canvas, charcoal glass, warm orbs.
-- One accent per surface. Do not layer multiple accent colors.
-- Grade colors (A-F) used only in report score contexts, not marketing.
+## Layout and motion
 
-### Status and evidence
+- Keep responsive containers and spacing in the shared Container and Section primitives where they apply. Their variants intentionally use different widths and rhythms.
+- Reflow real-length names, answers and status controls without overlap. Preserve mobile access to the same content and actions; do not impose fixed card heights to hide wrapping.
+- Marketing uses its existing canvas and section tints. The shared shell's minimal grid is an app/admin treatment, not a marketing hero background.
+- Motion communicates state, expansion or feedback. Preserve current homepage connection-card motion and its reduced-motion/mobile behavior; do not reintroduce unused ambient orb animations.
+- App, report, dashboard and admin surfaces idle without decorative animation. Loading indicators may animate while work is running.
+- Use specific transition properties, `--motion-fast` and `--ease-out` where applicable. Never use `transition: all`.
+- Captured evidence uses opacity-only entry effects that do not move layout. Respect `prefers-reduced-motion` for transitions, animation and scrolling.
 
-Site status, Outcome state and Flag certainty follow [knowledge/evidence-rules.md](knowledge/evidence-rules.md). Brand and severity are different roles; include text with status color. Board attention and problem dots use `--brand`. Keep `--warning` amber for billing and quota caution. Keep evidence matched to source, viewport and time. Never invent a healthy twin capture or guess an overlay rectangle.
+## Interaction and validation
 
-See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
-
-## Shapes and radius
-
-- Target board cards: neutral surfaces, approximately 13px radius and restrained hover shadows; see [card-board contract](docs/card-board-experience.md). Flagged categories use a thin orange outline around the whole card; summaries and clear categories remain borderless. Existing 24px glass/shadow cards are compatibility-only until migrated.
-- Controls: `rounded-[var(--radius-control)]` (~10px)
-- Concentric radii: inner = outer minus padding (`--radius-nested-md` = `--radius-card` − `--gap-nested-md`)
-- Inputs: `--radius-input` (= control radius)
-
-## Depth
-
-- Target board: white/neutral borderless surfaces and nearly imperceptible hover shadows. Avoid glass effects, excessive gradients and loud healthy fills.
-- Borders remain appropriate on inputs, tables, controls, and flagged category cards.
-- The dashboard has no visual sections. Library categories must not become dashboard boundaries.
-- Marketing surfaces group content with whitespace, surface tone, and type hierarchy before strokes. Do not use divider lines between marketing rows, metrics, or narrative steps. Keep borders for controls and functional data boundaries only.
-- Floating action offset: `--floating-action-offset` (1.25rem).
-
-## Motion
-
-- `--motion-fast`: 200ms base duration
-- `--ease-out`: cubic-bezier(0, 0, 0.2, 1)
-- `active:scale-[0.98]` on buttons for press feedback
-- `prefers-reduced-motion` respected globally — no motion if user prefers reduced
-- Entry animations: `fade-in-up` (0.4s), `scale-in` (0.3s), `soft-reveal` (0.2s), `capture-fade` (0.25s, opacity only, for captured evidence that must not move layout)
-- Flag overlay on Preview is an inspect spotlight on a capture-time rectangle. Page-scope and unmeasured Flags use a chip. Never paint a guessed hero box.
-- List/accordion: `accordion-down/up` (0.2s)
-- No `transition: all`. Be specific about what animates.
-- Marketing uses a quiet static canvas with restrained section tints.
-- App, report, dashboard, and admin surfaces idle at zero running animations.
-  Motion communicates state, expansion, or feedback.
-
-## Spacing
-
-| Token                       | Value                                 | Used for                                            |
-| --------------------------- | ------------------------------------- | --------------------------------------------------- |
-| `--space-card`              | 1.25rem                               | Card padding                                        |
-| `--space-section-inner`     | 2.125rem                              | Section internal spacing                            |
-| `--space-section-y`         | 2.75rem                               | Legacy compact section rhythm                       |
-| `--space-section-default`   | clamp(3rem, 5vw, 4.5rem)              | General page sections                               |
-| `--space-section-marketing` | clamp(4rem, 7vw, 7rem)                | Marketing narrative sections                        |
-| `--space-hero-start/end`    | clamp(2rem–4.5rem) / clamp(3rem–6rem) | Responsive homepage hero breathing room             |
-| `--space-block`             | 2rem                                  | Block-level spacing within sections                 |
-| `--header-offset`           | 6.5rem                                | Top offset for page content below fixed header      |
-| `--gap-nested-sm/md/lg`     | 0.5/0.75/1rem                         | Nested element gaps                                 |
-| `--container-max-marketing` | 88rem                                 | Wider container for marketing hero/feature sections |
-
-## Components
-
-### Button
-
-- Control radius (`--radius-control` ~10px)
-- `active:scale-[0.98]` press effect
-- Layered shadow on hover
-- Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
-- Focus ring on `--ring`
-- Light mode product primary: ink. Marketing accent CTAs use bright brand orange with white labels. “Analyze now” and other orange buttons follow this rule at every size.
-
-### Legacy card (`glass-surface`)
-
-These rules apply to existing glass surfaces. The Site board uses `components/sites/BoardCard.tsx` and its CSS module, with the flat-card contract above. Do not introduce glass styling into the board merely to satisfy this legacy recipe.
-
-- `border-0 shadow-card`
-- Inner elements use `rounded-nested-md`
-- Raised shadow (`shadow-raised`) for elevation
-- `glass-bg` variants: subtle, base, strong, elevated, nav
-
-### Site board
-
-- The homepage preview and authenticated Site reuse the same summary, category-row, technology, monitoring, and integration components.
-- Summary cards state Flags, checked scope, and monitoring state. Never spend a card on “With 0 Flags,” “Still to check,” “Review areas,” or a schedule without state.
-- The category name starts the row. The status dot and Flag total sit at the top right.
-- Summary and clear category cards remain borderless. Flagged categories have one orange outline around the whole card; individual Flag rows have no outline or orange fill. Each Flag owns its arrow and a prompt shortcut shown on hover or keyboard focus, and always available on touch screens.
-- Clear rows show their category name, green icon, and status controls. Their checks and results appear on opening. Flagged categories use orange icons.
-- Category rechecking lives in detail, not on overview rows. Each Flag arrow aligns vertically with the category status dot. Flag rows highlight on hover and keyboard focus.
-- Keep the overall Flag count and status dot beside the Site identity. The preview menu needs no duplicate Flags destination.
-- Successful prompt copying shows a short bottom-center confirmation with a countdown bar and a link to the public fix-prompt guide.
-- Detected tools appear before the summary with real logos, plain labels, and green or orange status dots paired with text. Detection can suggest a matching integration, but it never means the integration is connected.
-- Monitoring shows state and cadence first, then a Flag-per-check graph and a short timeline when real history exists.
-- Monitoring and Integrations open inside the persistent board pane, not in a modal.
-- No horizontal or vertical divider lines. Use spacing, type hierarchy, surface color, and flagged-category outlines. A temporary countdown bar communicates confirmation duration.
-
-### Input
-
-- Control radius (`--radius-input` / `--radius-control` ~10px)
-- Border from `--input` / `--border`
-- Focus ring from `--ring`
-
-## Responsive behavior
-
-- Default container max-width: 1280px (`max-w-5xl` / report `max-w-6xl`)
-- Marketing hero / feature sections: `--container-max-marketing` (88rem) via `Container variant="marketing"`
-- Marketing header height: `--header-height-marketing` (4.75rem); app header: `--header-height` (3.5rem); `--header-offset` (6.5rem) for `scroll-mt`
-- Section tinting: Use `Section tint="subtle"` for consistent `bg-muted/20` background on alternating sections
-- Padding: 1.25rem (default), 1.5rem (sm), 2rem (lg)
-- Screenshots: 1280x900 desktop, 375x812 mobile aspect ratios
-- Mobile frame width in UI: 240px
-
-## States
-
-The Site state matrix is in [docs/workspace-interface.md](docs/workspace-interface.md). The first analysis and completed Site share one persistent shell. Healthy, partial, unverified, stale, failed and paused states need truthful coverage and useful recovery actions.
-
-Every interactive element must define: rest, hover, focus, active, disabled.
-
-- Focus: `--focus-ring` (Flag Orange)
-- Disabled: muted opacity, no shadow
-- Error: `--destructive` color
-- Loading: the same Site shell with persisted discoveries and skeletons for unavailable captures.
-- Empty: EmptyState component with clear message + next action
-
-## Icons
-
-- Library: lucide-react (via `optimizePackageImports`)
-- Sentence case labels. No all-caps on marketing eyebrows or section labels.
-- No zap/lightning badge icons. No checkmark pill rows.
-
-## Accessibility
-
-- Focus rings on all interactive elements
-- `prefers-reduced-motion` respected
-- 44×44px minimum hit targets (`min-h-11 min-w-11`)
-- Screen reader support in shadcn primitives (Radix)
-- Heading hierarchy (h1 > h2 > h3) enforced by lint rules
-- Color contrast: brand orange on backgrounds at WCAG AA minimum
-
-## What to avoid
-
-- Grid/dot backgrounds or decorative glow behind the hero
-- Rotated cards with blur halos
-- Traffic-light window chrome (unless showing real product UI)
-- Staggered translate-y on grid items for fake depth
-- Default blue/inter font stacks
-- `transition: all`
-- Raw hex values except `grade.*`
-- Heavy or redundant borders; thin board-card borders follow the Shapes and Depth rules above
-- Default gray backgrounds (use white canvas / ink)
+- Preserve rest, hover, keyboard focus, active, disabled and loading states. Keep Button loading/slot behavior and existing dialog focus trapping, Escape dismissal and focus restoration.
+- Use 44px hit targets for shared controls. Keep icon actions accessible by name and preserve touch access to actions otherwise revealed on hover.
+- Preserve semantic heading order, form labels, status announcements and Radix screen-reader behavior. Use the existing EmptyState and RouteErrorPage primitives.
+- Use lucide-react for interface icons and approved assets for brand and third-party marks. Decorative media must not become fabricated customer evidence.
+- Run the focused component checks and existing brand/UI guards for changed surfaces. Follow [AGENTS.md](AGENTS.md) for validation scope; browser and E2E tests require an explicit request.

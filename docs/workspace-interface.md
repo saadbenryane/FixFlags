@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-11
 supersedes: []
 ---
 
@@ -10,6 +10,10 @@ supersedes: []
 **TARGET.** Behavior: [PRD](product-prd.md). IA: [product-architecture.md](product-architecture.md). Intent: [vision](../knowledge/vision.md). Language: [voice-and-copy.md](voice-and-copy.md). Plan: [product-masterplan.md](product-masterplan.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.
 
 This file owns progressive states, Flag detail, and interaction quality. If navigation or object names disagree with [product-architecture.md](product-architecture.md), the architecture wins.
+
+## Experience principle
+
+**Founder correction, October 10:** comprehensive underneath, effortless on the surface. Prioritization must not suppress useful results to create a signup teaser. The overview gives bounded current health, coverage, freshness, monitoring, and important attention; category depth exposes all available results and scope; a Flag owns its observation, evidence, fix guidance, and recovery proof. Keep successful, failed, incomplete, stale, not applicable, and unchecked states distinguishable. Use measured execution receipts rather than inventing a pass ledger from absent Flags. Tile taxonomy and the public loop remain design questions, not fixed marketing requirements.
 
 ## One persistent place
 

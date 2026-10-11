@@ -9,13 +9,15 @@
  * bypassed by a batch value.
  */
 
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+
 export function isPaidOpenServer(): boolean {
-  return process.env.STRIPE_PAID_OPEN === 'true'
+  return !OPEN_BETA_ACCESS && process.env.STRIPE_PAID_OPEN === 'true'
 }
 
 /** Client bundle: must match STRIPE_PAID_OPEN on the server. */
 export function isPaidOpenClient(): boolean {
-  return process.env.NEXT_PUBLIC_PAID_OPEN === 'true'
+  return !OPEN_BETA_ACCESS && process.env.NEXT_PUBLIC_PAID_OPEN === 'true'
 }
 
 export function isPaidCheckoutGatedClient(): boolean {

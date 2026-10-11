@@ -8,6 +8,7 @@ import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { getAppUrl } from '@/lib/get-app-url'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 
 const PACK_IDS = CREDIT_PACKS.map((p) => p.id) as [string, ...string[]]
 const schema = z.object({
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     })
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to purchase credits', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+    if (OPEN_BETA_ACCESS) return apiError('Usage is included during open beta. Credit purchases are closed.', 403, { code: 'PAID_CHECKOUT_CLOSED', action: 'view_pricing' })
 
     const body = await req.json().catch(() => ({}))
     const parsed = schema.safeParse(body)

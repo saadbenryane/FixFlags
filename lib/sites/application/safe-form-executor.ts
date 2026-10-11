@@ -69,11 +69,7 @@ async function setupConsent(projectId: string, fixtureId: string, version: numbe
   return spec?.scope === 'FIXTURE_SETUP' && spec.fixtureSetup?.id === fixtureId && spec.fixtureSetup.version === version
 }
 
-export type SafeFormExecutionResult = {
-  disposition: 'SUCCEEDED' | 'FAILED' | 'BLOCKED'
-  reason: string
-  detail: { fieldCount: number; cleanupStatus: 'succeeded' | 'failed' | 'not_started' | 'unknown' }
-}
+export type SafeFormExecutionResult = z.infer<typeof safeFormExecutionResultSchema>
 
 export function safeExactOrigin(url: string, origin: string): string | null {
   const normalized = normalizeAuditUrl(url)
@@ -82,39 +78,48 @@ export function safeExactOrigin(url: string, origin: string): string | null {
 }
 
 async function callHook(url: string, secret: string | null, fixtureId: string,
-  operation?: { operationId: string; requireSettled?: boolean }): Promise<boolean> {
-  try { await assertPublicAuditUrl(url) } catch { return false }
+  operation?: { operationId?: string; requireSettled?: boolean; beforeRequest?: () => Promise<boolean> }): Promise<boolean> {
   const signal = AbortSignal.timeout(8000)
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => reject(signal.reason)
+      signal.addEventListener('abort', abort, { once: true })
+      void assertPublicAuditUrl(url).then(() => resolve(), reject)
+        .finally(() => signal.removeEventListener('abort', abort))
+    })
+  } catch { return false }
   const release = await publicHttpCapacity.acquire(signal).catch(() => null)
   if (!release) return false
   try {
-  const response = await fetch(url, {
-    method: 'POST',
-    redirect: 'error',
-    signal,
-    headers: {
-      'content-type': 'application/json',
-      ...(secret ? { authorization: `Bearer ${secret}` } : {}),
-    },
-    body: JSON.stringify({ fixtureId, ...(operation ? { operationId: operation.operationId } : {}) }),
-  }).catch(() => null)
-  if (!response?.ok) return false
-  const reader = response.body?.getReader()
-  if (!reader) return false
-  const chunks: Uint8Array[] = []
-  let size = 0
-  try {
-    while (true) {
-      const chunk = await reader.read()
-      if (chunk.done) break
-      size += chunk.value.byteLength
-      if (size > 16_384) { await reader.cancel(); return false }
-      chunks.push(chunk.value)
-    }
-    const result = z.object({ ok: z.literal(true), operationId: z.string().optional(), settled: z.boolean().optional() })
-      .safeParse(JSON.parse(Buffer.concat(chunks).toString('utf8')))
-    return result.success && (!operation?.requireSettled || result.data.operationId === operation.operationId && result.data.settled === true)
-  } catch { return false } finally { reader.releaseLock() }
+    if (operation?.beforeRequest && !await operation.beforeRequest()) return false
+    if (signal.aborted) return false
+    const response = await fetch(url, {
+      method: 'POST',
+      redirect: 'error',
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        ...(secret ? { authorization: `Bearer ${secret}` } : {}),
+      },
+      body: JSON.stringify({ fixtureId, ...(operation?.operationId ? { operationId: operation.operationId } : {}) }),
+    }).catch(() => null)
+    if (!response?.ok) { await response?.body?.cancel().catch(() => undefined); return false }
+    const reader = response.body?.getReader()
+    if (!reader) return false
+    const chunks: Uint8Array[] = []
+    let size = 0
+    try {
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        size += chunk.value.byteLength
+        if (size > 16_384) { await reader.cancel(); return false }
+        chunks.push(chunk.value)
+      }
+      const result = z.object({ ok: z.literal(true), operationId: z.string().optional(), settled: z.boolean().optional() })
+        .safeParse(JSON.parse(Buffer.concat(chunks).toString('utf8')))
+      return result.success && (!operation?.requireSettled || result.data.operationId === operation.operationId && result.data.settled === true)
+    } catch { return false } finally { reader.releaseLock() }
   } finally { release() }
 }
 
@@ -173,7 +178,15 @@ export async function executeSafeFormFixture(input: {
       version: fixture.version, auditId: owner.auditId, requireAuthorization: input.requireAuthorization }))
       return { disposition: 'BLOCKED', reason: 'protected_effect_unresolved', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
-  if (!await callHook(resetUrl, hookSecret, fixture.id)) {
+  if (!await callHook(resetUrl, hookSecret, fixture.id, { beforeRequest: async () => {
+    return executionTransaction(async tx => {
+      const current = await tx.outcomeFixture.findFirst({ where: {
+        id: fixture.id, projectId: input.projectId, version: fixture.version, enabled: true,
+        ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: fixture.version }),
+      } })
+      return Boolean(current) && (input.requireAuthorization !== false || await setupConsent(input.projectId, fixture.id, fixture.version, tx))
+    })
+  } })) {
     return { disposition: 'BLOCKED', reason: 'fixture_reset_unproven', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
 
@@ -204,9 +217,9 @@ export async function executeSafeFormFixture(input: {
       await targetLocator(session.page, target).first().fill(values[key]!, { timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
     }
     const current = await executionTransaction(async tx => {
-    const authorized = await tx.outcomeFixture.findFirst({
-      where: { id: fixture.id, projectId: input.projectId, enabled: true, version: fixture.version },
-      select: { authorizedAt: true, lastDryRunVersion: true },
+      const authorized = await tx.outcomeFixture.findFirst({
+        where: { id: fixture.id, projectId: input.projectId, enabled: true, version: fixture.version },
+        select: { authorizedAt: true, lastDryRunVersion: true },
     })
     if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version, tx)) return null
     if (authorized && (input.requireAuthorization === false || authorized.authorizedAt && authorized.lastDryRunVersion === fixture.version) && owner && operationId)
@@ -218,24 +231,24 @@ export async function executeSafeFormFixture(input: {
     if (!current || (input.requireAuthorization !== false && (!current.authorizedAt || current.lastDryRunVersion !== fixture.version))) {
       reason = 'fixture_not_authorized'
     } else {
-    if (Date.now() >= deadline) throw new Error('Fixture execution deadline exhausted')
-    await targetLocator(session.page, mapping.data.submit).first().click({ timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
-    const observedOrigin = new URL(session.page.url()).origin
-    if (observedOrigin !== origin) {
-      reason = 'form_left_authorized_origin'
-    } else if (success.data.type === 'text') {
-      const found = await session.page.getByText(success.data.value, { exact: false }).first().isVisible().catch(() => false)
-      disposition = found ? 'SUCCEEDED' : 'FAILED'
-      reason = found ? 'success_criterion_observed' : 'success_text_missing'
-    } else if (success.data.type === 'target') {
-      const found = await targetLocator(session.page, success.data.target).first().isVisible().catch(() => false)
-      disposition = found ? 'SUCCEEDED' : 'FAILED'
-      reason = found ? 'success_criterion_observed' : 'success_target_missing'
-    } else {
-      const found = new URL(session.page.url()).href === new URL(success.data.value).href
-      disposition = found ? 'SUCCEEDED' : 'FAILED'
-      reason = found ? 'success_criterion_observed' : 'success_url_missing'
-    }
+      if (Date.now() >= deadline) throw new Error('Fixture execution deadline exhausted')
+      await targetLocator(session.page, mapping.data.submit).first().click({ timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
+      const observedOrigin = new URL(session.page.url()).origin
+      if (observedOrigin !== origin) {
+        reason = 'form_left_authorized_origin'
+      } else if (success.data.type === 'text') {
+        const found = await session.page.getByText(success.data.value, { exact: false }).first().isVisible().catch(() => false)
+        disposition = found ? 'SUCCEEDED' : 'FAILED'
+        reason = found ? 'success_criterion_observed' : 'success_text_missing'
+      } else if (success.data.type === 'target') {
+        const found = await targetLocator(session.page, success.data.target).first().isVisible().catch(() => false)
+        disposition = found ? 'SUCCEEDED' : 'FAILED'
+        reason = found ? 'success_criterion_observed' : 'success_target_missing'
+      } else {
+        const found = new URL(session.page.url()).href === new URL(success.data.value).href
+        disposition = found ? 'SUCCEEDED' : 'FAILED'
+        reason = found ? 'success_criterion_observed' : 'success_url_missing'
+      }
     }
   } catch {
     disposition = 'BLOCKED'

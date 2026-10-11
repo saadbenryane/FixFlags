@@ -42,9 +42,9 @@ describe('published documentation', () => {
     }
   })
 
-  it('publishes and indexes every available integration guide', async () => {
+  it('publishes and indexes the public fix guide and every available integration guide', async () => {
     const entries = await buildDocsSearchIndex()
-    for (const key of ['integrations', 'shopify', 'google-analytics', 'google-search-console'] as const) {
+    for (const key of ['fix-with-ai', 'integrations', 'shopify', 'google-analytics', 'google-search-console'] as const) {
       const page = getDocsPage(key)
       expect(isParkedPowerToolPath(page.path)).toBe(false)
       expect(INDEXABLE_ROUTES.some(route => route.path === page.path)).toBe(true)

@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-10
+reviewed_at: 2026-10-11
 supersedes: []
 ---
 
@@ -9,7 +9,7 @@ supersedes: []
 
 FixFlags is the calm, capable teammate who looks after the website and speaks up when something matters.
 
-**Your website, looked after.**
+Exact brand lines live in `lib/marketing/copy/brand.ts`; do not maintain a separate campaign line here.
 
 The [vision](knowledge/vision.md) owns the full promise and product direction. [Messaging](docs/voice-and-copy.md) owns customer-facing vocabulary and voice. This file owns personality. The brand name, original approved identity and reusable visual foundation stay; this is a new experience, not a rebrand.
 
@@ -33,4 +33,4 @@ Brand orange identifies FixFlags and useful actions. Status colors communicate e
 
 ## Writing and design
 
-Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual tokens. Marketing copy comes from lib/marketing/copy.ts. Remaining public copy is sequenced in [docs/product-masterplan.md](docs/product-masterplan.md). Do not invent a new orange, logo or separate Shopify identity while building the new experience.
+Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual conventions. Exact rendered copy lives in `lib/marketing/copy/`, exported through `lib/marketing/copy.ts`. Remaining public copy is sequenced in [docs/product-masterplan.md](docs/product-masterplan.md). Do not invent a new orange, logo or separate Shopify identity while building the new experience.

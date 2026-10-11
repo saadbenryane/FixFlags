@@ -1,38 +1,17 @@
 #!/usr/bin/env node
 /**
  * Flags design-system drift in app and product components:
- * - font-display outside marketing/pricing surfaces
+ * - font-display outside marketing, brand and editorial surfaces
  * - rounded-xl / rounded-lg on panel-like shells (border + bg/padding combos)
  * - arbitrary micro font sizes (use text-2xs/text-3xs or .section-label/.meta-label)
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { uiStyleFailures } from './ui-style-rules.mjs'
 
 const ROOT = process.cwd()
 const SCAN_DIRS = ['app', 'components']
 const SKIP = new Set(['node_modules', '.next', 'dist', 'marketing'])
-
-const FONT_DISPLAY_ALLOW = [
-  /^app\/\(marketing\)\//,
-  /^app\/opengraph-image/,
-  /^components\/marketing\//,
-  /^components\/pricing\//,
-  /^components\/brand\//,
-  /^components\/help\//,
-]
-
-const PANEL_RE =
-  /className=(?:"[^"]*rounded-(xl|lg)[^"]*(?:border|bg-|shadow|\sp-\d)[^"]*"|'[^']*rounded-(xl|lg)[^']*(?:border|bg-|shadow|\sp-\d)[^']*')/
-
-const CN_PANEL_RE =
-  /cn\([^)]*['"`][^'"`]*rounded-(xl|lg)[^'"`]*(?:\sborder|\sbg-)/
-
-const MICRO_TEXT_RE = /text-\[1[012]px\]/
-
-function hasPanelDrift(content) {
-  if (PANEL_RE.test(content)) return true
-  return CN_PANEL_RE.test(content)
-}
 
 function walk(dir, files = []) {
   for (const name of readdirSync(dir)) {
@@ -53,17 +32,7 @@ for (const dir of SCAN_DIRS) {
     const rel = relative(ROOT, file)
     const content = readFileSync(file, 'utf8')
 
-    if (content.includes('font-display') && !FONT_DISPLAY_ALLOW.some((re) => re.test(rel))) {
-      violations.push(`${rel}: font-display outside marketing/pricing surfaces`)
-    }
-
-    if (hasPanelDrift(content)) {
-      violations.push(`${rel}: rounded-xl/lg panel shell (use Card/Surface + rounded-card)`)
-    }
-
-    if (MICRO_TEXT_RE.test(content)) {
-      violations.push(`${rel}: arbitrary micro font size (use text-2xs/text-3xs or .section-label/.meta-label)`)
-    }
+    violations.push(...uiStyleFailures(rel, content))
 
     if (/fetch\(['"]\/api\/stripe\/(?:checkout|waitlist)['"]/.test(content)) {
       violations.push(
@@ -213,14 +182,6 @@ for (const [pattern, reason] of [
   if (pattern.test(outcomeHeader)) {
     violations.push(`components/report/ReportOutcomeBar.tsx: ${reason}`)
   }
-}
-
-const homepagePreview = readFileSync(
-  join(ROOT, 'components/marketing/landing/HomepageReportPreview.tsx'),
-  'utf8'
-)
-if (!homepagePreview.includes('ReportWorkspaceSplitShell')) {
-  violations.push('components/marketing/landing/HomepageReportPreview.tsx: homepage forked the Review shell')
 }
 
 const sampleRoute = readFileSync(join(ROOT, 'app/(marketing)/samples/page.tsx'), 'utf8')

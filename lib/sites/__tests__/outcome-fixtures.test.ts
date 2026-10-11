@@ -28,7 +28,7 @@ import {
   deleteOutcomeFixture,
   dryRunOutcomeFixture,
   OutcomeFixtureError,
-  updateOutcomeFixture,
+  updateOutcomeFixture, revokeOutcomeFixture,
 } from '@/lib/sites/application/outcome-fixtures'
 
 const stored = {
@@ -109,6 +109,22 @@ describe('Outcome fixture lifecycle', () => {
     mocks.findFirst.mockResolvedValueOnce(exercised)
     mocks.updateMany.mockResolvedValueOnce({ count: 0 })
     await expect(authorizeOutcomeFixture('project-1', stored.id)).rejects.toMatchObject({ code: 'FIXTURE_CHANGED' })
+  })
+
+  it('requires proved cleanup as well as a successful form criterion before authorization', async () => {
+    mocks.findFirst.mockResolvedValue({ ...stored, lastDryRunVersion: 1, lastDryRunResult: {
+      disposition: 'SUCCEEDED', reason: 'success_criterion_observed', detail: { fieldCount: 1, cleanupStatus: 'unknown' },
+    } })
+    await expect(authorizeOutcomeFixture('project-1', stored.id)).rejects.toMatchObject({ code: 'FIXTURE_DRY_RUN_REQUIRED' })
+    expect(mocks.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('revocation advances the version so pending setup consent cannot still submit', async () => {
+    mocks.findFirst.mockResolvedValue(stored)
+    mocks.update.mockResolvedValue({ ...stored, version: 2 })
+    await revokeOutcomeFixture('project-1', stored.id)
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ version: { increment: 1 },
+      authorizedAt: null, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: expect.anything() }) }))
   })
 
   it('increments the fixture version and revokes proof when executable configuration changes', async () => {

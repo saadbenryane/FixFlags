@@ -4,7 +4,6 @@ import { Footer } from '@/components/layout/footer'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
 import { LandingLayersSection } from '@/components/marketing/landing/LandingLayersSection'
-import { LandingProofSection } from '@/components/marketing/landing/LandingProofSection'
 
 vi.mock('@/components/audit/AuditInput', () => ({
   AuditInput: () => <div data-testid="audit-input" />,
@@ -41,18 +40,7 @@ afterAll(() => {
   vi.unstubAllGlobals()
 })
 
-describe('homepage lean sections', () => {
-  it('explains Observe, Verify, and Connect without invented percentages', () => {
-    render(<LandingProofSection />)
-    expect(
-      screen.getByRole('heading', { name: /Evidence that gets smarter over time/ }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Observe' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Verify' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Connect' })).toBeInTheDocument()
-    expect(screen.queryByText(/%/)).not.toBeInTheDocument()
-  })
-
+describe('shared marketing sections', () => {
   it('presents How it works as Check, Flag, Fix, Verify', () => {
     render(<LandingHowItWorksSection />)
     expect(

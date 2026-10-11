@@ -141,7 +141,7 @@ export async function listOutcomeFixtures(projectId: string): Promise<OutcomeFix
       readExecutionSpec(run.executionSpec)?.fixtureSetup?.version === row.version)
     const task = run?.audit?.verifierExecutions[0]
     return { ...toView(row), setupRun: run ? { runId: run.id, auditId: run.auditId, version: row.version,
-      state: task?.workState ?? run.status, reason: task?.workErrorCode ?? run.errorCode } : null }
+      state: run.status === 'FAILED' || run.audit?.status === 'FAILED' ? 'FAILED' : task?.workState ?? run.status, reason: task?.workErrorCode ?? run.errorCode } : null }
   })
 }
 

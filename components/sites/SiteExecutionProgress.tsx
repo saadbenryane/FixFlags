@@ -5,7 +5,7 @@ export function SiteExecutionProgress({ progress }: { progress: ExecutionProgres
   const copy = SITE_ACTION_COPY.execution
   const state = (value: string) => copy.states[value as keyof typeof copy.states] ?? value
   const kind = (value: string) => copy.kinds[value as keyof typeof copy.kinds] ?? value
-  return <section className="rounded-xl border border-border p-4" aria-label={copy.title}>
+  return <section className="rounded-board-panel border border-border p-4" aria-label={copy.title}>
     <p className="text-sm font-medium" role="status" aria-live="polite" aria-atomic="true">
       {copy.completed(progress.completed, progress.total)}
       {progress.running > 0 && ` · ${copy.running(progress.running)}`}

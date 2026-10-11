@@ -44,6 +44,9 @@ next-env.d.ts
 /playwright-report/
 /.playwright-cli/
 
+# retired tracked claim workspace; live leases use the Git common directory
+/.agent-work/
+
 # generated agent evaluation reports
 /scripts/agent-evals/reports/*.json
 .agent-runs/

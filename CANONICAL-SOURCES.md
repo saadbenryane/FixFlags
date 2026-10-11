@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: operations
-reviewed_at: 2026-10-10
+reviewed_at: 2026-10-11
 supersedes: []
 ---
 
@@ -39,8 +39,8 @@ Document status and metadata rules are defined in [docs/document-status-policy.m
 | Integrity engine | [knowledge/integrity-engine.md](knowledge/integrity-engine.md) | Target evidence role |
 | Privacy and security | [knowledge/privacy.md](knowledge/privacy.md), [SECURITY.md](SECURITY.md) | Collection policy and enforced boundaries |
 | Quality and release proof | [QUALITY.md](QUALITY.md) | Proportional checks and real-path evidence |
-| Visual system | [DESIGN.md](DESIGN.md) | Principles; code owns exact token values |
-| Brand identity | [SOUL.md](SOUL.md) | Personality and enduring promise |
+| Visual system | [DESIGN.md](DESIGN.md) | Shared conventions and intentional surface families; tokens and components own exact styling |
+| Brand personality | [SOUL.md](SOUL.md) | Character and enduring promise; rendered brand lines live in `lib/marketing/copy/brand.ts` |
 | Durable decisions | [DECISIONS.md](DECISIONS.md) | Active decisions and explicitly scoped historical records |
 | Agent operations | [AGENTS.md](AGENTS.md), [.agents/README.md](.agents/README.md) | Stable entrypoint and coordination contract |
 
@@ -57,9 +57,11 @@ Document status and metadata rules are defined in [docs/document-status-policy.m
 These files can explain previous work but cannot override current direction:
 
 - [NOW.md](NOW.md) and [GOAL_BRIEF.md](GOAL_BRIEF.md): retained snapshots and migration pointers.
+- [INVESTIGATION_REPORT.md](INVESTIGATION_REPORT.md) and [test-strategy.md](test-strategy.md): dated investigation and hardening evidence, not current release instructions.
 - `.agents/sessions/*`, `.agents/handoffs/*`, `.agents/learnings/*`: evidence with local scope, never default instructions.
 - [docs/experience-review.md](docs/experience-review.md) and [.agents/handoffs/homepage-experience.md](.agents/handoffs/homepage-experience.md): dated product-experience evidence, not active implementation instructions.
-- [docs/messaging-migration.md](docs/messaging-migration.md), [docs/product-ui-intent.md](docs/product-ui-intent.md), [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md), and [docs/launch-kit.md](docs/launch-kit.md): pointers or retired plans.
+- [docs/messaging-migration.md](docs/messaging-migration.md), [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md), and [docs/launch-kit.md](docs/launch-kit.md): pointers or retired plans.
+- [.agents/history/design/launch-visual-qa.md](.agents/history/design/launch-visual-qa.md) and [docs/design-rams-review.md](docs/design-rams-review.md): historical visual evidence, not current design rules.
 - [knowledge/site-intelligence.md](knowledge/site-intelligence.md), [docs/live-review-and-product-intelligence-prd.md](docs/live-review-and-product-intelligence-prd.md), and [docs/offering.md](docs/offering.md): superseded drafts or stubs.
 - [docs/unified-audit-tool-architecture.md](docs/unified-audit-tool-architecture.md), [docs/scan-roadmap.md](docs/scan-roadmap.md), and [docs/journey-review-architecture.md](docs/journey-review-architecture.md): historical research.
 - [docs/year-1-operating-plan.md](docs/year-1-operating-plan.md) and [knowledge/finish-plan.md](knowledge/finish-plan.md): retired operating assumptions and legacy compatibility.

@@ -198,10 +198,10 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByText('Just now')).not.toBeInTheDocument()
   })
 
-  it('links the intro to MCP setup and provides settings in the sample navigation', () => {
+  it('links the intro to public MCP guidance and provides settings in the sample navigation', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('link', { name: 'MCP', exact: true }).closest('p')).toHaveTextContent(`${S.subtitle} Use the MCP to work directly from your AI.`)
-    expect(screen.getByRole('link', { name: 'MCP', exact: true })).toHaveAttribute('href', '/dashboard/mcp-setup')
+    expect(screen.getByRole('link', { name: 'MCP', exact: true }).closest('p')).toHaveTextContent(`${S.subtitle} Copy a fix prompt into your AI. Learn about MCP.`)
+    expect(screen.getByRole('link', { name: 'MCP', exact: true })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
     const board = screen.getByRole('region', { name: C.boardAria })
     const nav = within(board).getByRole('navigation', { name: S.navigationLabel })
     expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Site', 'Monitoring', 'Integrations', 'Settings'])
@@ -262,20 +262,32 @@ describe('comprehensive homepage experience', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
     expect(within(dialog).queryByText(S.unresolved)).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'Set up MCP' })).toHaveAttribute('href', '/dashboard/mcp-setup')
+    expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(within(dialog).getByRole('link', { name: 'Learn about MCP' })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
-  it('copies directly from a Flag shortcut and offers MCP setup in the confirmation', async () => {
+  it('copies directly from a Flag shortcut and offers the public prompt guide', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
     fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt for Pricing page is not loading' }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
     await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'Set up MCP' })).toHaveAttribute('href', '/dashboard/mcp-setup')
+    expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('copies from Beyond the Flags and links to public guidance without requiring sign-in', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    render(<><CareHomepage /><Toaster /></>)
+    const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
+    expect(within(handoff).getByRole('link', { name: 'Learn about MCP' })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
+    fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
+    expect(await screen.findByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
   })
 
   it('provides readable guidance if clipboard access fails', async () => {

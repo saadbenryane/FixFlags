@@ -1,32 +1,33 @@
-Reference images for the FixFlags brand (logo mockups, UI kit, brand sheet).
+---
+status: supporting
+authority: interface
+reviewed_at: 2026-10-11
+supersedes: []
+---
 
-These are **design references only** — not served at runtime. Production assets live in `public/brand/` and `lib/design/`.
+# Brand reference assets
 
-## Current sheet (2026-07)
+These files preserve original owner artwork and historical visual references. They are not served at runtime and do not define current product styling. [DESIGN.md](../../../DESIGN.md) owns visual conventions; [SOUL.md](../../../SOUL.md) owns personality.
 
-- `brand-sheet-2026-07.png` — full brand guidelines (logo, palette, type, UI, dark mode)
-- `logo-mark-source.jpg` — owner hi-res mark (square). Do not edit; derive runtime sizes with `npm run brand:icons`.
-- `logo-lockup-source.jpg` — owner hi-res mark + wordmark lockup. Same rule.
-- `logo-lockup-on-ink.png` — earlier mark + wordmark on ink (historical)
+## Original identity sources
 
-## Homepage mockups (2026-07)
+- `logo-mark-source.jpg` is the owner's high-resolution folded-F mark. Preserve it and derive runtime sizes with `npm run brand:icons`.
+- `logo-lockup-source.jpg` preserves the owner's flattened lockup. It is source artwork, not a logo for light surfaces.
+- `brand-sheet-2026-07.png` and `ui-kit-v2.png` preserve the original identity and historical UI treatment. Their palette and layout recipes do not override current tokens or components.
+- `logo-lockup-on-ink.png` is an earlier identity reference.
 
-- `homepage-hero-mockup.png` / `homepage-hero-mockup-v2.png` — hero composition reference
-- `homepage-sample-report-mockup.png` — sample report section reference
-- `home-hero-glass-rgba-master.png` — true RGBA export (preferred). `home-hero-glass-png-master.png` is the runtime-cropped/despilled plate.
-- Do not rely on chat image uploads for hero art; they often flatten to JPEG-on-black.
+## Historical homepage artwork
 
-Runtime hero glass: `public/marketing/visuals/home-hero-glass.webp` (RGBA).
+The July homepage mockups and glass-hero exports record earlier compositions. Preserve the original `home-hero-glass-rgba-master.png` with its transparency; flattened chat/JPEG exports are not substitutes for an alpha source. The current homepage renders shared Site components and captured sample evidence, not the old glass hero.
 
-## Production mapping
+## Production sources
 
-| Reference | Production |
-|-----------|------------|
-| Logo mark/wordmark | `public/brand/logo-mark.png` plus sm/md/lg retina PNGs with alpha, `components/brand/Logo.tsx` (transparent mark + Inter Tight wordmark) |
-| Mark source files | `docs/brand/reference/logo-mark-source.jpg` (JPEG on black), `logo-lockup-source.jpg` (source only; not served on light UI) |
-| Palette | `lib/design/tokens.css` + `lib/design/brand-spec.ts` |
-| Typography | Inter Tight display + Inter + JetBrains Mono (`lib/design/fonts.ts`) |
+| Role | Source |
+| --- | --- |
+| Runtime mark and wordmark | `public/brand/logo-mark*.png` and `components/brand/Logo.tsx` |
+| OG mark | `lib/design/logo-mark.tsx`, which embeds the official PNG for Node/Satori consumers |
+| CSS palette and visual values | `lib/design/tokens.css` |
+| Non-CSS brand palette | `lib/design/brand-spec.ts` |
+| Fonts | `lib/design/fonts.ts` and self-hosted font imports in `app/layout.tsx` |
 
-## Canonical hexes
-
-Primary `#C24400`, Accent Light `#CC4A00`, Ink `#0B0B0D`, White `#FFFFFF`, Stone `#F5F6F7`, Gray 200 `#E6E6E8`, Gray 400 `#A7A8B2`, Gray 600 `#61646B`, Gray 800 `#1D2024`, Success `#22C55E`, Warning `#FACC15`, Error `#FF4444`, Info `#3B82F6`.
+Use executable sources for exact values. Do not copy historical hex tables into new documentation or components.

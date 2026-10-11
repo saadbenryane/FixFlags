@@ -174,7 +174,7 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
               <div>
                 <h3 className="font-medium">{fixture.name}</h3>
                 <p className="mt-1 break-all text-xs text-muted-foreground">{fixture.targetUrl}</p>
-                <p className="mt-2 text-sm">{setupPending ? fixture.setupRun?.state === 'RETRY_WAIT' ? C.fixtures.recovering : C.fixtures.pending : authorized ? 'Authorized' : dryRun?.disposition === 'SUCCEEDED' ? 'Dry run passed. Authorization required.' : dryRun ? `Dry run ${dryRun.disposition?.toLowerCase()}: ${dryRun.reason ?? 'No reason recorded'}` : 'Not exercised yet'}</p>
+                <p className="mt-2 text-sm">{setupPending ? fixture.setupRun?.state === 'RETRY_WAIT' ? C.fixtures.recovering : C.fixtures.pending : authorized ? 'Authorized' : dryRun?.disposition === 'SUCCEEDED' ? 'Dry run passed. Authorization required.' : dryRun ? `Dry run ${dryRun.disposition?.toLowerCase()}: ${dryRun.reason ?? 'No reason recorded'}` : fixture.setupRun && ['FAILED', 'BLOCKED', 'EXHAUSTED'].includes(fixture.setupRun.state) ? C.fixtures.incomplete : 'Not exercised yet'}</p>
               </div>
               <span className="text-xs text-muted-foreground">Version {fixture.version}</span>
             </div>

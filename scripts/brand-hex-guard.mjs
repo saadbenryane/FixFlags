@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Fails if raw hex colors appear outside allowed brand files.
- * Allowed: lib/design/tokens.css, lib/design/brand-spec.ts (hslToHex output only in spec)
+ * Canonical palettes: lib/design/tokens.css and lib/design/brand-spec.ts.
+ * Intentional third-party examples and generated artwork are exempt below.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -25,7 +26,7 @@ const ALLOWED_PREFIXES = [
   'app/demo/',
   'lib/prompts/',
   'lib/audit/capture/',
-  // Generated SVG badge/roast artwork (AGENTS: raw hex allowed only inside SVG artwork)
+  // Generated SVG badge and roast artwork uses non-CSS rendering values.
   'app/api/badge/',
   'app/api/tools/roast/',
 ]

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import type { User, Prisma } from '@prisma/client'
 import { envPriceId } from '@/lib/billing/env'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 
 export interface CreditPack {
   id: string
@@ -79,6 +80,7 @@ export async function wouldBlockNewCheckWithCredits(
   action?: 'upgrade' | 'buy_credits'
   error?: string
 }> {
+  if (hasOpenBetaAccess(user)) return { allowed: true }
   const limit = user.auditsLimit
   const planAvailable = limit - user.auditsUsed
   if (planAvailable > pending) return { allowed: true }

@@ -39,7 +39,7 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['conversion.hierarchy', 'conversion.density'], ['page:visual-hierarchy'], 'public', 'heuristic', heuristic),
   ...entries(['conversion.visual-consistency'], ['page:visual-polish'], 'public', 'heuristic', heuristic),
   ...entries(['signup.confirmation', 'signup.fixture', 'signup.cleanup'], ['task:bindings'], 'signup_fixture', 'checked_scope', 'Requires a current reversible fixture and authorization. Confirmation is limited to its configured success criterion.'),
-  ...entries(['signup.authorization'], ['task:bindings'], 'signup_fixture', 'partial', 'Setup dry-run admission still needs durable worker execution; its HTTP result is not interruption-safe.'),
+  ...entries(['signup.authorization'], ['task:fixture-setup', 'task:bindings'], 'signup_fixture', 'checked_scope', 'Setup runs on the durable task ledger. Authorization requires a recorded successful dry run and cleanup of the exact current fixture version. Real hook and account behavior still requires integration verification.'),
   ...entries(['security.https', 'security.mixed-content'], ['page:security']),
   ...entries(['security.privacy', 'security.contact', 'security.consent'], ['page:trust'], 'public', 'heuristic', 'Published trust signals are not legal-compliance verification.'),
   ...entries(['security.csp', 'security.hsts', 'security.framing', 'security.content-type', 'security.referrer', 'security.cross-origin', 'security.permissions', 'security.cross-domain'], ['page:security-headers'], 'public', 'checked_scope', 'Published response configuration, not penetration testing or comprehensive security assurance.'),

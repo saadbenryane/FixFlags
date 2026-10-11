@@ -26,9 +26,15 @@ export function combineSearchReceipts(input: { auditId: string; pageUrl: string;
 }
 
 /** Compatibility adapters keep historical module receipts distinct from Search assertions. */
-export async function priorSearchReceipt(auditId: string, pageUrl: string): Promise<SearchReceipt | null> {
+export async function priorSearchReceipt(auditId: string, pageUrl: string, evaluator?: string): Promise<SearchReceipt | null> {
   const audit = await prisma.audit.findUnique({ where: { id: auditId }, select: { parentId: true } })
   if (!audit?.parentId) return null
+  if (evaluator) {
+    const part = await prisma.auditVerifierExecution.findUnique({ where: { auditId_targetKey_scopeKey: {
+      auditId: audit.parentId, targetKey: 'module:search-' + evaluator, scopeKey: `page:${pageUrl}` } }, select: { detail: true } })
+    const parsed = searchReceiptSchema.safeParse(part?.detail)
+    if (parsed.success && parsed.data.pageUrl === pageUrl) return parsed.data
+  }
   const previous = await prisma.auditVerifierExecution.findUnique({
     where: { auditId_targetKey_scopeKey: { auditId: audit.parentId, targetKey: 'module:search', scopeKey: `page:${pageUrl}` } },
     select: { detail: true },
@@ -36,7 +42,7 @@ export async function priorSearchReceipt(auditId: string, pageUrl: string): Prom
   const parsed = searchReceiptSchema.safeParse(previous?.detail)
   if (parsed.success && parsed.data.pageUrl === pageUrl) return parsed.data
   const parts = await prisma.auditVerifierExecution.findMany({ where: { auditId: audit.parentId,
-    pageUrl, targetKey: { in: SEARCH_LOCAL_MODULES } }, select: { detail: true } })
+    pageUrl, targetKey: { in: SEARCH_LOCAL_MODULES } }, take: SEARCH_LOCAL_MODULES.length, select: { detail: true } })
   const receipts = parts.flatMap(part => { const result = searchReceiptSchema.safeParse(part.detail); return result.success ? [result.data] : [] })
   return receipts.length ? combineSearchReceipts({ auditId: audit.parentId, pageUrl, receipts, expected: SEARCH_LOCAL_MODULES.length }) : null
 }

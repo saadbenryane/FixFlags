@@ -8,6 +8,7 @@ import {
   type ProductIntelligence,
 } from '@/lib/audit/product-intelligence'
 import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
+import { productTransaction } from '@/lib/billing/product-transaction'
 
 const MAX_PI_MUTATION_ATTEMPTS = 5
 
@@ -29,9 +30,10 @@ export async function ensureProductProject(
   const resolve = async (tx: Prisma.TransactionClient) => {
     const existing = await tx.project.findUnique({
       where: { userId_canonicalHost: { userId, canonicalHost } },
-      select: { id: true, productIntelligence: true },
+      select: { id: true, productIntelligence: true, deletedAt: true },
     })
     if (existing) {
+      if (existing.deletedAt) await assertCanCreateProduct(tx, userId)
       return tx.project.update({
         where: { id: existing.id },
         data: { deletedAt: null },
@@ -55,7 +57,7 @@ export async function ensureProductProject(
   }
   const project = transaction
     ? await resolve(transaction)
-    : await executionTransaction(resolve, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    : await productTransaction(resolve)
 
   return {
     id: project.id,

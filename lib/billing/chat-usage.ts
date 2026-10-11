@@ -2,14 +2,15 @@ import { Prisma, type Plan } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { chatTokenLimitForPlan } from '@/lib/billing/plans'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 
 const CHAT_RESERVATION_TTL_MS = 5 * 60 * 1000
 
 export type ChatAllowance = {
-  limit: number
+  limit: number | null
   used: number
   reserved: number
-  remaining: number
+  remaining: number | null
   resetAt: string
 }
 
@@ -38,10 +39,10 @@ function allowanceFromRow(
 ): ChatAllowance {
   const used = row.inputTokens + row.outputTokens
   return {
-    limit: row.limitTokens,
+    limit: row.limitTokens < 0 ? null : row.limitTokens,
     used,
     reserved: row.reservedTokens,
-    remaining: Math.max(0, row.limitTokens - used - row.reservedTokens),
+    remaining: row.limitTokens < 0 ? null : Math.max(0, row.limitTokens - used - row.reservedTokens),
     resetAt: row.periodEnd.toISOString(),
   }
 }
@@ -62,11 +63,11 @@ async function ensurePeriod(tx: Prisma.TransactionClient, user: ChatUsageUser, n
       userId: user.id,
       periodStart: start,
       periodEnd: end,
-      limitTokens: chatTokenLimitForPlan(effectiveChatPlan(user)),
+      limitTokens: hasOpenBetaAccess(user) ? -1 : chatTokenLimitForPlan(effectiveChatPlan(user)),
     },
     update: {
       periodEnd: end,
-      limitTokens: chatTokenLimitForPlan(effectiveChatPlan(user)),
+      limitTokens: hasOpenBetaAccess(user) ? -1 : chatTokenLimitForPlan(effectiveChatPlan(user)),
     },
   })
   const stale = await tx.chatUsageReservation.aggregate({
@@ -99,7 +100,7 @@ export async function reserveChatUsage(
   return prisma.$transaction(async (tx) => {
     const period = await ensurePeriod(tx, user, now)
     const allowance = allowanceFromRow(period)
-    if (allowance.remaining < requestedTokens) return { reservationId: null, allowance }
+    if (allowance.remaining !== null && allowance.remaining < requestedTokens) return { reservationId: null, allowance }
 
     const reservation = await tx.chatUsageReservation.create({
       data: {

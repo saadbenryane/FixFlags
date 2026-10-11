@@ -2,6 +2,7 @@ import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { getEnv } from '@/lib/env'
 import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 
 export const UNLIMITED_SCAN_LIMIT = -1
 
@@ -18,6 +19,7 @@ export function isAdminUser(user: AdminUser): boolean {
 }
 
 export function hasUnlimitedScans(user: Pick<User, 'role'>): boolean {
+  if (hasOpenBetaAccess(user)) return true
   if (isDevUnlimitedScans()) return true
   return user.role === 'admin'
 }
@@ -35,7 +37,7 @@ export function getEffectiveScanLimit(user: Pick<User, 'role' | 'auditsLimit'>):
 export function getPlanDisplayLimit(
   user: Pick<User, 'role' | 'auditsLimit'>
 ): number | null {
-  if (user.role === 'admin' || isUnlimitedScanLimit(user.auditsLimit)) return null
+  if (hasOpenBetaAccess(user) || user.role === 'admin' || isUnlimitedScanLimit(user.auditsLimit)) return null
   return user.auditsLimit
 }
 

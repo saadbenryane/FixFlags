@@ -10,20 +10,8 @@
       "requiresAlpha": true,
       "contentBearing": false,
       "requiredTerms": [],
-      "consumers": [],
-      "replaces": []
-    },
-    {
-      "id": "homepage-review-rubrics",
-      "src": "/marketing/visuals/review-rubrics-v4.webp",
-      "classification": "approved",
-      "width": 1586,
-      "height": 992,
-      "requiresAlpha": true,
-      "contentBearing": false,
-      "requiredTerms": [],
       "consumers": [
-        "components/marketing/landing/LandingRubricsSection.tsx"
+        "components/marketing/landing/LandingHowItWorksSection.tsx"
       ],
       "replaces": []
     },
@@ -90,11 +78,15 @@
       "height": 800,
       "requiresAlpha": false,
       "contentBearing": true,
-      "requiredTerms": ["FixFlags"],
+      "requiredTerms": [
+        "FixFlags"
+      ],
       "consumers": [
         "lib/marketing/copy/blog.ts"
       ],
-      "replaces": ["/marketing/blog/website-quality-cover-v1.webp"]
+      "replaces": [
+        "/marketing/blog/website-quality-cover-v1.webp"
+      ]
     }
   ]
 }

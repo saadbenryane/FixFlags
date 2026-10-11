@@ -1,6 +1,7 @@
 import { watchIntervalMinutes, type WatchInterval } from '@/lib/sites/watch-schedule'
 import type { Plan, SubscriptionStatus } from '@prisma/client'
 import { PLAN_DEFINITIONS, projectLimitForPlan } from '@/lib/billing/plans'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 
 type CareUser = {
   role: string
@@ -49,7 +50,7 @@ export function siteCarePolicy(user: CareUser): SiteCarePolicy {
   const effectivePlan: Plan = revoked ? 'FREE' : user.plan
   return {
     maxSites: siteCapForPlan(effectivePlan),
-    watchIntervals: effectivePlan === 'FREE' ? ['weekly'] : ['weekly', 'daily', 'hourly', 'custom'],
+    watchIntervals: hasOpenBetaAccess(user) || effectivePlan !== 'FREE' ? ['weekly', 'daily', 'hourly', 'custom'] : ['weekly'],
     targetedVerify: true,
   }
 }

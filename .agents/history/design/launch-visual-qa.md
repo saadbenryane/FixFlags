@@ -1,3 +1,14 @@
+---
+status: historical
+authority: evidence
+reviewed_at: 2026-10-11
+supersedes: []
+---
+
+# Historical launch visual comparisons
+
+These comparisons describe earlier homepage/report implementations and local artifacts. They do not establish current visual authority or release readiness. Current conventions live in [DESIGN.md](../../../DESIGN.md). Historical artifact paths below are preserved for provenance and may no longer exist.
+
 # Launch design QA
 
 ## Comparison target

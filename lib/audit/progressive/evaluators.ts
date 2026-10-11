@@ -113,14 +113,14 @@ export const evaluatorHandlers: TaskHandler[] = [
     validateResult: artifact => { searchArtifactSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
       const { receipt } = searchArtifactSchema.parse(artifact.data)
-      const module = !context.input.module || context.input.module === 'summary' ? 'search' : context.input.module
+      const receiptModule = !context.input.module || context.input.module === 'summary' ? 'search' : context.input.module
       if (context.input.module !== 'summary') await tx.auditVerifierExecution.upsert({
-        where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + module, scopeKey: 'page:' + receipt.pageUrl } },
-        create: { auditId: context.audit.id, targetKey: 'module:' + module, scopeKey: 'page:' + receipt.pageUrl,
+        where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl } },
+        create: { auditId: context.audit.id, targetKey: 'module:' + receiptModule, scopeKey: 'page:' + receipt.pageUrl,
           pageUrl: receipt.pageUrl, source: 'SEARCH', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
-          evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module, pageUrl: receipt.pageUrl } }, update: {},
+          evidenceReference: { auditId: context.audit.id, taskId: context.task.id, module: receiptModule, pageUrl: receipt.pageUrl } }, update: {},
       })
-      await recordSearchVerifiers(receipt, tx)
+      if (context.input.module !== 'summary') await recordSearchVerifiers(receipt, tx)
       await commitFindings(context, artifact, tx)
     },
     async evaluate(context) {
@@ -155,7 +155,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         return serializeArtifact('search', searchArtifactSchema.parse({ receipt: result.receipt, flags: result.findings }))
       }
       const evidence = await collectSearchEvidence(input)
-      const previous = await priorSearchReceipt(context.audit.id, context.input.pageUrl)
+      const previous = await priorSearchReceipt(context.audit.id, context.input.pageUrl, evaluator)
       let observations = await evaluateSearchIsolated(evidence, previous, context.deadline, [evaluator])
       let complete = !observations.some(item => item.disposition === 'unknown') &&
         (!['indexing', 'discovery'].includes(evaluator) || evidence.sitemapsComplete)

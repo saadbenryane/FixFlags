@@ -40,6 +40,40 @@ their own task, source and time; they are not a pixel-perfect claim about a sepa
 DOM observation. AI explanation consumes committed results and captures downstream
 and cannot establish an assertion or recovery.
 
+Local Search responsibilities have separate task checkpoints and receipts.
+Robots collection settles before sitemap expansion; crawl checks depend on HTTP
+and robots only. Presentation and markup use original and rendered page sources;
+canonical checks additionally fetch only their declared targets on the HTTP queue.
+Indexing and discovery consume sitemap evidence for their policy comparisons.
+Google indexed-version evaluation consumes the indexing receipt, independently of
+canonical targets, markup parsing and the Search summary. Analytics remains independent.
+The summary combines recorded parts, retains honest limits and does not duplicate
+customer result rows. Historical aggregate receipts remain comparable through the
+same receipt adapter. Evaluator receipts, verifier proofs and findings commit with
+their owning task artifact.
+
+Safe Signup setup uses `FIXTURE_SETUP` admission through the same Site RunRequest
+and Audit transaction. The admitted intent snapshots only the fixture identity and
+version; encrypted values stay on the fixture. Admission clears previous approval
+and dry-run proof atomically. The request returns acceptance; the browser worker
+owns reset, one submission, configured confirmation and cleanup. Task retries and
+new runs check previous fixture submission facts across Audits before resetting or
+submitting again. Hook resolution, capacity admission and responses share a bounded
+call budget; reset rechecks current ownership and consent after waiting for resources.
+An uncertain operation requires a cleanup response acknowledging
+its exact operation ID with `settled: true`. Configuration changes cannot redirect
+that reconciliation through replacement hooks. Recorded completed cleanup remains
+usable after an edit. Revocation advances the fixture version, invalidating pending
+setup consent. Authorization requires a successful exact-version receipt with proved
+cleanup. Settings show pending, recovery and incomplete states from recorded work;
+reads do not initiate execution or cleanup. Setup-only Audits do not replace Site
+report evidence or enter report comparison and Improvement learning.
+
+Completion readers project metadata, media references and result artifacts in
+PostgreSQL, without transferring collected HTML, sitemap bodies or browser traces.
+Targeted and setup finalization bypass broad page reconstruction. These bounds
+still require capacity and real database/worker fault acceptance.
+
 Resource queues separate HTTP, browser, provider, evaluation and availability
 work. HTTP defaults to four concurrent requests and the shared browser semaphore
 to two contexts per worker, prioritizing queued availability. CPU-heavy metadata
@@ -84,9 +118,7 @@ recorded view; malformed responses retain visible disconnected evidence.
 
 Candidate limitations still requiring implementation or acceptance include
 working/failing/incomplete/recovery fixtures for every advertised item, exercised
-keyboard probes, durable Safe Signup setup runs, remaining shared action consumers,
-Search evaluators split by their minimal source dependencies, bounded finalization
-reads, capacity/fault coverage and real provider, private-storage, notification,
+keyboard probes, remaining shared action consumers, capacity/fault coverage and real provider, private-storage, notification,
 MCP-client and observed owner sessions. Passing fixtures or the unit suite does not
 satisfy those release requirements. The integrated main checkout is not deployed
 or release accepted.

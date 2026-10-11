@@ -1,3 +1,4 @@
+import { ParentAuditError } from '@/lib/audit/create-audit'
 import { NextResponse } from 'next/server'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { dryRunOutcomeFixture, OutcomeFixtureError } from '@/lib/sites/application/outcome-fixtures'
@@ -11,6 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     return NextResponse.json({ fixture: await dryRunOutcomeFixture({ projectId: owner.projectId, fixtureId,
       userId: owner.decision.site.userId!, idempotencyKey: request.headers.get('Idempotency-Key') ?? undefined }) }, { status: 202 })
   } catch (error) {
+    if (error instanceof ParentAuditError) return apiError(error.message, error.status, { code: 'FIXTURE_ADMISSION_REFUSED' })
     if (error instanceof OutcomeFixtureError) return apiError(error.message, error.status, { code: error.code })
     return handleRouteError(error, 'Could not exercise this Safe Form fixture')
   }

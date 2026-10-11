@@ -20,12 +20,13 @@
       "commands": ["npm run product:contract-guard"]
     },
     "ui": {
-      "description": "Change interface behavior or customer language without importing historical proposals.",
+      "description": "Change shared visual conventions, surface styling or customer language without importing historical proposals.",
       "sources": [
-        { "path": "DESIGN.md", "status": "canonical", "authority": "interface", "reason": "Visual and interaction principles." },
+        { "path": "DESIGN.md", "status": "canonical", "authority": "interface", "reason": "Shared visual conventions and intentional surface families." },
         { "path": "docs/workspace-interface.md", "status": "canonical", "authority": "interface", "reason": "Current Site interface contract." },
         { "path": "docs/voice-and-copy.md", "status": "canonical", "authority": "interface", "reason": "Voice, vocabulary, and claim boundaries." },
-        { "path": "lib/design/tokens.css", "status": "supporting", "authority": "interface", "reason": "Executable design tokens." }
+        { "path": "lib/design/tokens.css", "status": "supporting", "authority": "interface", "reason": "Executable design tokens." },
+        { "path": "SOUL.md", "status": "canonical", "authority": "interface", "reason": "Brand personality; rendered brand lines remain in copy modules." }
       ],
       "commands": ["npm run ui:drift-guard"]
     },

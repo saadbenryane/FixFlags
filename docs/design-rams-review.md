@@ -1,9 +1,16 @@
+---
+status: historical
+authority: evidence
+reviewed_at: 2026-10-11
+supersedes: []
+---
+
 # Good Design, Reviewed: Dieter Rams' Ten Principles Applied to FixFlags
 
-**HISTORICAL PLAN / IMPLEMENTATION REFERENCE, superseded as direction on 2026-09-08.** The complete vision at knowledge/vision.md and phased ROADMAP.md govern new work. Old scope, hero, commercial-loop, rubric and layout decisions below are not active instructions. Reuse technical evidence through docs/site-v2-migration.md; do not treat historical readiness as current release proof.
+This July review preserves historical decisions and implementation evidence. Current visual conventions live in [DESIGN.md](../DESIGN.md); the accepted [vision](../knowledge/vision.md) and [authority map](../CANONICAL-SOURCES.md) govern product direction. The old scope, hero, rubric, layout and readiness statements below are not current instructions or release proof.
 
 
-*A standing design review of FixFlags against Dieter Rams' ten principles of good design. Reference tier: `DESIGN.md` remains the constitution; this doc is the audit of how well we live up to it, and the rules we adopted as a result. Last full pass: 2026-07.*
+*Historical design review against Dieter Rams' ten principles, recorded in July 2026.*
 
 FixFlags sells design judgment. The product audits AI-built sites for the exact failures Rams warned about: noise, dishonesty, arbitrariness, decoration without purpose. That makes this review load-bearing: the product must survive its own audit.
 
@@ -39,7 +46,7 @@ The gap this review found is not in the principles. It is in principle 8: execut
 
 **For FixFlags:** usefulness is measured at the fix prompt. A flag the user cannot act on is decoration. Rams includes psychological criteria in usefulness: the ~60s audit wait and the report's first screen carry most of the product's perceived value.
 
-**Assessment:** the report page is structured around action (Top Priorities with compact fix prompts, then the explorer). Report altitude is deliberate: hero identity (`ScoreDot`), explorer working score (`sm` ring), sticky hostname when stuck — not three competing score dashboards. Share status and status callouts each appear once. The weakest usefulness surfaces were the least-tested ones: empty, error, and progress states (`ROADMAP.md` had Touch-tier coverage at ~10%). This review added component tests for all of them so they cannot silently regress.
+**Assessment:** the report page is structured around action (Top Priorities with compact fix prompts, then the explorer). Report altitude is deliberate: hero identity (`ScoreDot`), explorer working score (`sm` ring), sticky hostname when stuck, not three competing score dashboards. Share status and status callouts each appear once. The weakest usefulness surfaces were the least-tested ones: empty, error, and progress states (`ROADMAP.md` had Touch-tier coverage at ~10%). This review added component tests for all of them so they cannot silently regress.
 
 ### 3. Good design is aesthetic
 

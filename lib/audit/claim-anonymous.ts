@@ -19,6 +19,7 @@ import { parseProductContract } from '@/lib/audit/product-contract'
 import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
 import { claimProvisionalSitesForProject, migrateProvisionalSiteDataToProject } from '@/lib/sites/ensure-site'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { productTransaction } from '@/lib/billing/product-transaction'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -55,7 +56,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
   const ids = await readClaimedAnonymousIds()
   if (ids.length === 0) return 0
 
-  const audits = await prisma.$transaction(
+  const audits = await productTransaction(
     async (tx) => {
       const claimable = await tx.audit.findMany({
         where: {
@@ -80,12 +81,16 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         let project = audit.projectId
           ? await tx.project.findUnique({
               where: { id: audit.projectId },
-              select: { id: true, productIntelligence: true },
+              select: { id: true, productIntelligence: true, deletedAt: true },
             })
           : await tx.project.findUnique({
               where: { userId_canonicalHost: { userId, canonicalHost } },
-              select: { id: true, productIntelligence: true },
+              select: { id: true, productIntelligence: true, deletedAt: true },
             })
+        if (project?.deletedAt) {
+          await assertCanCreateProduct(tx, userId)
+          await tx.project.update({ where: { id: project.id }, data: { deletedAt: null } })
+        }
         if (!project) {
           await assertCanCreateProduct(tx, userId)
           project = await tx.project.upsert({
@@ -124,8 +129,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         })
       }
       return claimable
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    }
   )
 
   for (const audit of audits) {

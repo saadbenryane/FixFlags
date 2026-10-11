@@ -37,6 +37,8 @@ import {
 } from '@/lib/billing/usage-period'
 import { ProductLimitReached } from '@/lib/billing/product-capacity'
 import { reviewDepthForPlan } from '@/lib/billing/plans'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
 import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
@@ -178,6 +180,7 @@ async function resolveStoredReviewDepth(options: {
   userId?: string | null
 }): Promise<ReviewDepth> {
   if (options.isAnonTeaser) return 1
+  if (OPEN_BETA_ACCESS && options.userId) return 3
   if (options.parentId) {
     const parent = await prisma.audit.findUnique({
       where: { id: options.parentId },
@@ -335,7 +338,7 @@ export async function createAndEnqueueAudit(
                 projectId = (await ensureProductProject(userId, url, tx)).id
               } catch (error) {
                 if (error instanceof ProductLimitReached) throw new AuditLimitError('UPGRADE_REQUIRED', {
-                  action: 'upgrade', message: `Your plan supports ${error.limit} ${error.limit === 1 ? 'Product' : 'Products'}. Choose an existing Product or see the paid plans.`,
+                  action: 'upgrade', message: PLAN_LIMIT_NOTICE.copy['site-limit'].body,
                 })
                 throw error
               }

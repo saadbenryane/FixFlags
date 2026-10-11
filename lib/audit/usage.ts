@@ -8,6 +8,7 @@ import { createAnonymousClaims, readAnonymousClaimIds } from '@/lib/security/ano
 import { sharedCookieDomain } from '@/lib/http/site-host'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import { rollUserUsagePeriod } from '@/lib/billing/usage-period'
+import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
 
 type CookieReader = {
   get: (name: string) => { value: string } | undefined
@@ -205,6 +206,14 @@ export async function incrementUsageOnCompleteForAudit(
       select: { usageCountedAt: true, userId: true, skipUsageCount: true },
     })
     if (!audit || audit.userId !== userId || audit.usageCountedAt) return
+
+    if (user && hasOpenBetaAccess(user)) {
+      if (!audit.skipUsageCount) {
+        await tx.user.update({ where: { id: userId }, data: { auditsUsed: { increment: 1 } } })
+      }
+      await tx.audit.update({ where: { id: auditId }, data: { usageCountedAt: new Date() } })
+      return
+    }
 
     if (user && hasUnlimitedScans(user)) {
       await tx.audit.update({

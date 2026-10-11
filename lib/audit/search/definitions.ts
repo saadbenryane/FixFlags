@@ -5,7 +5,7 @@ export const SEARCH_DEFINITIONS = [
   { evaluator: 'presentation', responsibility: 'presentation', requiredEvidence: ['original-html', 'rendered-dom'],
     checkIds: ['title-missing', 'description-missing', 'h1-missing', 'h1-multiple', 'search-original-title', 'search-page-language'],
     assertions: ['title', 'description', 'headings'], guidance: 'title' },
-  { evaluator: 'indexing', responsibility: 'indexing', requiredEvidence: ['original-html', 'rendered-dom', 'headers'],
+  { evaluator: 'indexing', responsibility: 'indexing', requiredEvidence: ['original-html', 'rendered-dom', 'headers', 'sitemap'],
     checkIds: ['robots-blocks-indexing', 'search-indexing-source'], assertions: ['directives', 'conflicts', 'regression'], guidance: 'indexing' },
   { evaluator: 'crawl', responsibility: 'crawl', requiredEvidence: ['http', 'robots-txt'],
     checkIds: ['search-http-access', 'search-crawl-access', 'robots-txt-missing'], assertions: ['response', 'applicable-rules'], guidance: 'robots' },

@@ -306,9 +306,9 @@ export function WorkspaceChatPanel({
       if (usage && typeof usage === 'object') {
         setMeta((current) => ({
           ...current,
-          limit: typeof usage.limit === 'number' ? usage.limit : current.limit,
+          limit: usage.limit === null ? null : typeof usage.limit === 'number' ? usage.limit : current.limit,
           used: typeof usage.used === 'number' ? usage.used : current.used,
-          remaining: typeof usage.remaining === 'number' ? usage.remaining : current.remaining,
+          remaining: usage.remaining === null ? null : typeof usage.remaining === 'number' ? usage.remaining : current.remaining,
           resetAt: typeof usage.resetAt === 'string' ? usage.resetAt : current.resetAt,
           exhausted: usage.exhausted === true || usage.remaining === 0,
         }))

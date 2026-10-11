@@ -7,6 +7,7 @@ import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { meUserSelect, serializeMeUser } from '@/lib/auth/me-user'
 import { ProductLimitReached } from '@/lib/billing/product-capacity'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 export async function POST() {
   try {
@@ -34,7 +35,7 @@ export async function POST() {
   } catch (error) {
     if (error instanceof ProductLimitReached) {
       return apiError(
-        `Your plan supports ${error.limit} ${error.limit === 1 ? 'Product' : 'Products'}. Choose an existing Product or see the paid plans.`,
+        PLAN_LIMIT_NOTICE.copy['claim-limit'].body,
         409,
         { code: 'PROJECT_LIMIT', action: 'upgrade' }
       )

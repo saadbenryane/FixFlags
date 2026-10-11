@@ -1,8 +1,9 @@
 /**
- * FixFlags design tokens - Brand sheet 2026-07
+ * FixFlags design tokens. Visual conventions live in DESIGN.md.
  *
  * Palette: white canvas, stone surfaces, ink structure, orange accent (signal only)
- * Primary CTA fill: bright Flag Orange with ink labels | Type: Inter Tight (display) + Inter (UI) | Controls: 10px | Cards: glass
+ * Brand CTA: bright Flag Orange with white labels | Type: Inter Tight (display) + Inter (UI)
+ * Flat Site cards and existing glass surfaces retain separate geometry.
  */
 
 :root {
@@ -16,6 +17,8 @@
   --muted-foreground: 220 5% 40%;
   --border: 240 4% 90%;
   --border-subtle: 210 14% 96%;
+  /* Fixed white plates preserve third-party logo artwork in either theme. */
+  --logo-tile-background: 0 0% 100%;
 
   /* Bright Flag Orange with white labels. */
   --brand: 21.1765 100% 50%;
@@ -25,60 +28,13 @@
   --brand-muted: 21 100% 96%;
   --brand-border: 21 90% 88%;
 
-  /* Quiet orange accents (marketing) — cooler than warm-paper era */
-  --peach-gold: 32 90% 62%;
-  --peach-warm: 24 90% 68%;
-  --peach-coral: 18 95% 58%;
+  /* Captured-evidence spotlight accent. */
   --peach-glow: 21 95% 62%;
-  --peach-ember: 14 92% 48%;
-  --peach-muted: 21 100% 97%;
-  --gradient-score: linear-gradient(
-    105deg,
-    hsl(var(--peach-gold)) 0%,
-    hsl(28 100% 60%) 18%,
-    hsl(var(--peach-coral)) 45%,
-    hsl(var(--brand)) 75%,
-    hsl(var(--peach-ember)) 100%
-  );
   --gradient-surface: radial-gradient(
     130% 90% at 50% -20%,
     hsl(0 0% 100%) 0%,
     hsl(210 14% 98%) 50%,
     hsl(210 14% 96%) 100%
-  );
-  --gradient-accent-text: linear-gradient(
-    110deg,
-    hsl(28 100% 52%) 0%,
-    hsl(24 98% 52%) 35%,
-    hsl(var(--brand)) 68%,
-    hsl(14 100% 48%) 100%
-  );
-  --gradient-score-bar: linear-gradient(
-    to right,
-    hsl(var(--brand)) 0%,
-    hsl(var(--warning)) 48%,
-    hsl(var(--grade-B)) 72%,
-    hsl(var(--success)) 100%
-  );
-  --gradient-orb-peach: radial-gradient(
-    circle,
-    hsl(var(--brand) / 0.08) 0%,
-    transparent 68%
-  );
-  --gradient-orb-brand: radial-gradient(
-    circle,
-    hsl(var(--brand) / 0.1) 0%,
-    transparent 70%
-  );
-  --gradient-orb-warm: radial-gradient(
-    circle,
-    hsl(21 90% 55% / 0.06) 0%,
-    transparent 70%
-  );
-  --gradient-orb-coral: radial-gradient(
-    circle,
-    hsl(var(--brand) / 0.07) 0%,
-    transparent 72%
   );
 
   /* Product primary = ink; marketing accent CTAs use brand */
@@ -120,8 +76,10 @@
   --grade-D: 25 95% 53%;
   --grade-F: 0 100% 63%;
 
-  /* ── Radius (10px controls, soft glass cards) ── */
+  /* Controls, flat board surfaces and existing glass cards. */
   --radius-control: 0.625rem;
+  --radius-board-card: 13px;
+  --radius-board-panel: 12px;
   --radius-pill: 9999px;
   --radius-input: var(--radius-control);
   --radius-card: 1.5rem;
@@ -162,16 +120,15 @@
   --shadow-card: inset 0 0 0 1px hsl(240 4% 90% / 0.9), 0 1px 2px hsl(240 8% 5% / 0.04), 0 8px 26px -14px hsl(240 8% 5% / 0.14);
   --shadow-card-hover: inset 0 0 0 1px hsl(240 4% 86% / 0.95), 0 2px 8px hsl(240 8% 5% / 0.06), 0 18px 36px -18px hsl(240 8% 5% / 0.18);
   --shadow-raised: 0 16px 44px -24px hsl(240 8% 5% / 0.22);
+  --shadow-board-hover: 0 4px 16px hsl(var(--foreground) / .04);
   --shadow-glass-subtle: 0 1px 2px hsl(240 8% 5% / 0.04), 0 8px 20px -12px hsl(240 8% 5% / 0.14);
   --shadow-glass-deep: 0 2px 4px hsl(240 8% 5% / 0.03), 0 24px 48px -18px hsl(240 8% 5% / 0.18);
-  --shadow-glass-hero: 0 2px 4px hsl(240 8% 5% / 0.03), 0 24px 48px -18px hsl(240 8% 5% / 0.18), 0 56px 112px -40px hsl(240 8% 5% / 0.22);
-  --shadow-drop-hero: 0 28px 56px -18px hsl(240 8% 5% / 0.14);
   --glass-shadow: inset 0 0 0 1px hsl(240 4% 90% / 0.8), inset 0 1px 0 hsl(0 0% 100% / 0.85), 0 1px 3px hsl(240 8% 5% / 0.04), 0 14px 34px -22px hsl(240 8% 5% / 0.16);
 
   --motion-fast: 200ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
 
-  /* ── Z-index layers (mirrors tailwind.config.ts extend.zIndex) ── */
+  /* Stacking layers, mapped by tailwind.config.ts. */
   --z-background: -1;
   --z-content: 10;
   --z-skip-link: 100;
@@ -219,24 +176,6 @@
   --terminal-border: 240 4% 90%;
 }
 
-.workflow-glass-tile {
-  background: hsl(var(--background) / 0.82);
-  box-shadow:
-    inset 0 0 0 1px hsl(var(--border) / 0.8),
-    inset 0 1px 0 hsl(0 0% 100% / 0.9),
-    0 1px 2px hsl(var(--foreground) / 0.04),
-    0 18px 34px -18px hsl(var(--foreground) / 0.2);
-  backdrop-filter: blur(18px);
-}
-
-.workflow-note {
-  background: hsl(var(--background) / 0.72);
-  box-shadow:
-    inset 0 0 0 1px hsl(var(--border) / 0.52),
-    0 8px 18px -16px hsl(var(--foreground) / 0.28);
-  backdrop-filter: blur(12px);
-}
-
 .dark {
   /* ── Surfaces: ink canvas, charcoal panels ── */
   --background: 240 8% 5%;
@@ -254,60 +193,12 @@
   --brand-hover: 21 100% 40%;
   --brand-muted: 21 30% 12%;
   --brand-border: 21 35% 24%;
-
-  --peach-gold: 32 70% 56%;
-  --peach-warm: 20 55% 54%;
-  --peach-coral: 16 50% 50%;
   --peach-glow: 16 45% 48%;
-  --peach-ember: 6 55% 44%;
-  --peach-muted: 240 5% 12%;
-  --gradient-score: linear-gradient(
-    105deg,
-    hsl(var(--peach-gold)) 0%,
-    hsl(28 65% 52%) 20%,
-    hsl(var(--peach-coral)) 48%,
-    hsl(var(--brand)) 76%,
-    hsl(var(--peach-ember)) 100%
-  );
   --gradient-surface: radial-gradient(
     130% 90% at 50% -20%,
     hsl(220 7% 10%) 0%,
     hsl(240 8% 6%) 48%,
     hsl(240 8% 4%) 100%
-  );
-  --gradient-accent-text: linear-gradient(
-    110deg,
-    hsl(34 96% 64%) 0%,
-    hsl(20 96% 60%) 40%,
-    hsl(var(--brand)) 72%,
-    hsl(6 98% 58%) 100%
-  );
-  --gradient-score-bar: linear-gradient(
-    to right,
-    hsl(var(--brand)) 0%,
-    hsl(var(--warning)) 48%,
-    hsl(var(--grade-B)) 72%,
-    hsl(var(--success)) 100%
-  );
-  --gradient-orb-peach: radial-gradient(
-    circle,
-    hsl(var(--brand) / 0.1) 0%,
-    transparent 68%
-  );
-  --gradient-orb-brand: radial-gradient(
-    circle,
-    hsl(var(--brand) / 0.12) 0%,
-    transparent 70%
-  );
-  --gradient-orb-warm: radial-gradient(
-    circle,
-    hsl(21 60% 50% / 0.07) 0%,
-    transparent 70%
-  );
-  --gradient-orb-coral: radial-gradient(
-    circle,
-    hsl(var(--brand) / 0.08) 0%,
-    transparent 72%
   );
 
   --primary: 18 100% 38%;
@@ -350,8 +241,6 @@
   --shadow-raised: 0 12px 40px -10px rgb(0 0 0 / 0.55);
   --shadow-glass-subtle: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 16px -4px rgb(0 0 0 / 0.36);
   --shadow-glass-deep: 0 2px 4px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.45);
-  --shadow-glass-hero: 0 2px 4px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.45), 0 40px 80px -28px rgb(0 0 0 / 0.55);
-  --shadow-drop-hero: 0 20px 48px -12px rgb(0 0 0 / 0.5);
   --glass-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.06), 0 1px 3px rgb(0 0 0 / 0.24), 0 10px 28px -6px rgb(0 0 0 / 0.4);
 
   --glass-bg-subtle: rgba(255, 255, 255, 0.04);

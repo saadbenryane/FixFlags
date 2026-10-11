@@ -13,7 +13,8 @@ import {
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   $executeRaw: vi.fn(),
-  runRequest: { updateMany: vi.fn() },
+  runRequest: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
+  outcomeFixture: { updateMany: vi.fn() },
   audit: {
     create: vi.fn(),
     findFirst: vi.fn(),
@@ -116,6 +117,9 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.$transaction.mockImplementation(async (op: (tx: typeof prismaMock) => Promise<{ id: string }>) => {
       return op(prismaMock)
     })
+    prismaMock.runRequest.findUnique.mockResolvedValue(null)
+    prismaMock.runRequest.create.mockResolvedValue({ id: 'setup-run' })
+    prismaMock.outcomeFixture.updateMany.mockResolvedValue({ count: 1 })
     prismaMock.audit.create.mockResolvedValue({ id: 'audit-1', parentId: null })
     prismaMock.audit.findFirst.mockResolvedValue(null)
     prismaMock.audit.count.mockResolvedValue(0)
@@ -149,6 +153,28 @@ describe('createAndEnqueueAudit', () => {
     assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))
     refreshUserUsagePeriod.mockResolvedValue(signedInUser())
     rollUserUsagePeriod.mockResolvedValue(signedInUser())
+  })
+
+  it('clears old fixture approval and creates its private setup Audit and request inside one admission transaction', async () => {
+    const executionSpec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: AUDIT_URL, environment: 'production',
+      scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: 'fixture', version: 2 }, checks: {}, outcomes: [], verificationTarget: null }
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', skipUsageCount: true, reuseActiveManual: false, executionSpec,
+      runRequestId: 'setup-run', runRequestAdmission: { id: 'setup-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'setup' } })
+    expect(prismaMock.outcomeFixture.updateMany).toHaveBeenCalledWith({ where: { id: 'fixture', projectId: 'project-1', version: 2, enabled: true },
+      data: { authorizedAt: null, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: Prisma.DbNull } })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isPublic: false, skipUsageCount: true }) }))
+    expect(prismaMock.runRequest.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ auditId: 'audit-1', executionSpec: expect.objectContaining({ fixtureSetup: { id: 'fixture', version: 2 } }) }) }))
+  })
+
+  it('refuses a changed fixture before creating its durable RunRequest or dispatching work', async () => {
+    prismaMock.outcomeFixture.updateMany.mockResolvedValue({ count: 0 })
+    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', skipUsageCount: true, reuseActiveManual: false,
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: AUDIT_URL, environment: 'production', scope: 'FIXTURE_SETUP',
+        fixtureSetup: { id: 'fixture', version: 2 }, checks: {}, outcomes: [], verificationTarget: null },
+      runRequestId: 'setup-run', runRequestAdmission: { id: 'setup-run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'setup' },
+    })).rejects.toMatchObject({ status: 409 })
+    expect(prismaMock.runRequest.create).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
   })
 
   it('creates a reduced single-page teaser for anonymous visitors and tracks the cookie', async () => {

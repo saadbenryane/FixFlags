@@ -1,3 +1,12 @@
+---
+status: historical
+authority: evidence
+reviewed_at: 2026-10-11
+supersedes: []
+---
+
+This July hardening snapshot preserves earlier testing goals and ratings. Current validation policy and release evidence live in [AGENTS.md](AGENTS.md) and [QUALITY.md](QUALITY.md). Historical readiness statements below do not establish current launch gates.
+
 # FixFlags Testing Strategy
 
 *Last updated: 2026-07-23*
@@ -6,13 +15,13 @@
 
 ## The 3 Categories
 
-### 1. Truth — audits are accurate
+### 1. Truth, audits are accurate
 *"Does the report find real issues and skip fake ones?"*
 
-### 2. Strength — the platform works  
+### 2. Strength, the platform works
 *"Does every scan complete? Does data stay intact?"*
 
-### 3. Touch — the product feels world-class
+### 3. Touch, the product feels world-class
 *"Is it fast, clear, and beautiful?"*
 
 ---
@@ -24,11 +33,11 @@
 | 🚫 **BLOCKER** | Would lose a customer in their first session | No |
 | ⚠️ **CRITICAL** | Would cause churn within 30 days | Not yet |
 | 🔶 **IMPORTANT** | Affects satisfaction, not retention | Yes, but fix next |
-| 🔵 **POLISH** | Nice to have — affects perception | Yes |
+| 🔵 **POLISH** | Nice to have, affects perception | Yes |
 
 ---
 
-## Tier 1 — Truth (accuracy)
+## Tier 1, Truth (accuracy)
 
 *What must be true for a paying customer to trust a single flag?*
 
@@ -48,14 +57,14 @@
 
 ---
 
-## Tier 2 — Strength (reliability)
+## Tier 2, Strength (reliability)
 
 *What must be true for a paying customer to trust the platform with their URL and their time?*
 
 | Issue | Rating | What we need |
 |-------|--------|-------------|
-| Persist layer (no data corruption) | ✅ DONE | `persistDeterministicFlags` / `persistTriageResults` — `persist-functions.test.ts` |
-| Pipeline state machine | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED — `run-audit.test.ts` |
+| Persist layer (no data corruption) | ✅ DONE | `persistDeterministicFlags` / `persistTriageResults`, `persist-functions.test.ts` |
+| Pipeline state machine | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED, `run-audit.test.ts` |
 | Billing gating enforcement | ✅ DONE | Route tests: `/api/checks`, api-keys, projects assert 402/allow |
 | API route contracts | 🔶 IMPORTANT | Critical path covered (checks, status, re-check, api-keys, projects); remaining routes pending |
 | Rate limiting | 🔶 IMPORTANT | Anon 1 teaser + Free 3 lifetime + plan limits. Redis fail-open is intentional. Partial coverage |
@@ -67,11 +76,11 @@
 
 ### Ready for monetization when:
 
-> We can simulate any failure mode in a test: PageSpeed 429, judge timeout, worker crash, database down. Each one produces a known, safe outcome — partial results, retry, or a clear error message. No silent data corruption. Every API route is documented and contracted.
+> We can simulate any failure mode in a test: PageSpeed 429, judge timeout, worker crash, database down. Each one produces a known, safe outcome, partial results, retry, or a clear error message. No silent data corruption. Every API route is documented and contracted.
 
 ---
 
-## Tier 3 — Touch (experience)
+## Tier 3, Touch (experience)
 
 *What must be true for a paying customer to feel they bought a world-class product?*
 
@@ -115,10 +124,10 @@ Remaining hardening (not blocking ads): extend remaining route contracts, broade
 
 The five monetization blockers above now have automated test coverage. Residual hardening before scaling distribution:
 
-1. **Extend route contract tests** — Cover remaining API endpoints beyond `/api/checks`, api-keys, and projects.
-2. **Auth/session runtime tests** — Login, logout, session expiry, plan entitlements at runtime.
-3. **Screenshot/flow/PageSpeed fixtures** — Freeze non-HTML-derivable check modules into the regression suite.
-4. **Component tests for Touch tier** — Report rendering, empty states, loading UI.
+1. **Extend route contract tests**, Cover remaining API endpoints beyond `/api/checks`, api-keys, and projects.
+2. **Auth/session runtime tests**, Login, logout, session expiry, plan entitlements at runtime.
+3. **Screenshot/flow/PageSpeed fixtures**, Freeze non-HTML-derivable check modules into the regression suite.
+4. **Component tests for Touch tier**, Report rendering, empty states, loading UI.
 
 **When residual hardening is done, scale distribution with confidence.**
 
