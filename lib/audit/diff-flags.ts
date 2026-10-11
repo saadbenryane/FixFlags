@@ -5,10 +5,16 @@ import {
   observationIdentity,
   observationMatchKeys,
   parseAffectedPaths,
+  baseCheckId,
 } from '@/lib/audit/flag-identity'
 import { severityRank } from '@/lib/utils'
 import type { FlagStatus, ReportCompleteness, Severity } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
+import { hasRecordedRecoveryEvidence, type RecoveryExecution, type RecoveryFlag } from './recovery-evidence'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { CHECK_REGISTRY } from './check-registry'
+import { SEARCH_DEFINITIONS } from './search/definitions'
+import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 
 export type { FlagDiffSummaryItem } from './flag-types'
 
@@ -22,6 +28,9 @@ type FlagRow = {
   pageUrl?: string | null
   affectedPaths?: unknown
   fingerprint?: string | null
+  attentionPolicy?: unknown
+  evidenceTargets?: unknown
+  verificationRule?: string | null
 }
 
 type ChildPageCoverage = {
@@ -71,15 +80,7 @@ export function diffMatchKey(input: {
 }
 
 /** Normalize URLs for page-comparable Fixed matching (hash stripped, trailing slash). */
-export function normalizeDiffUrl(value: string): string {
-  try {
-    const url = new URL(value)
-    url.hash = ''
-    return url.toString().replace(/\/$/, '')
-  } catch {
-    return value.replace(/\/$/, '')
-  }
-}
+export const normalizeDiffUrl = normalizeVerifierUrl
 
 function flagPageUrls(flag: Pick<FlagRow, 'pageUrl' | 'affectedPaths'>): string[] {
   const fromPaths = parseAffectedPaths(flag.affectedPaths)
@@ -115,9 +116,15 @@ export function isPageComparableAbsence(input: {
   auditStatus: string | undefined
   reportCompleteness: ReportCompleteness | null | undefined
   childPages: ChildPageCoverage[]
-  parentFlag: Pick<FlagRow, 'pageUrl' | 'affectedPaths'>
+  parentFlag: RecoveryFlag
+  auditId?: string
+  executionSpec?: unknown
+  verifierExecutions?: RecoveryExecution[]
 }): boolean {
   if (input.auditStatus !== 'COMPLETED') return false
+  if (readExecutionSpec(input.executionSpec)?.engine === 'progressive-v1') return Boolean(input.auditId && hasRecordedRecoveryEvidence({
+    auditId: input.auditId, executionSpec: input.executionSpec, flag: input.parentFlag, executions: input.verifierExecutions ?? [],
+  }))
 
   const ownedUrls = flagPageUrls(input.parentFlag)
   if (ownedUrls.length === 0) {
@@ -134,6 +141,8 @@ async function loadAuditCoverage(auditId: string | null): Promise<{
   status: string | undefined
   reportCompleteness: ReportCompleteness | null | undefined
   pages: ChildPageCoverage[]
+  executionSpec?: unknown
+  verifierExecutions?: RecoveryExecution[]
 }> {
   if (!auditId) return { status: undefined, reportCompleteness: null, pages: [] }
   const audit = await prisma.audit.findUnique({
@@ -142,13 +151,30 @@ async function loadAuditCoverage(auditId: string | null): Promise<{
       status: true,
       reportCompleteness: true,
       pages: { select: { url: true, status: true, completeness: true } },
+      executionSpec: true,
     },
   })
   return {
     status: audit?.status,
     reportCompleteness: audit?.reportCompleteness,
     pages: audit?.pages ?? [],
+    executionSpec: audit?.executionSpec,
   }
+}
+
+/** Read compact responsibility receipts only when absent findings need a recovery decision. */
+async function loadRecoveryExecutions(auditId: string, executionSpec: unknown, flags: RecoveryFlag[]): Promise<RecoveryExecution[]> {
+  if (!flags.length || readExecutionSpec(executionSpec)?.engine !== 'progressive-v1') return []
+  const ids = [...new Set(flags.flatMap(flag => baseCheckId(flag.checkId) ?? []))]
+  const targets = new Set(ids.flatMap(id => ['check:' + id, 'module:' + CHECK_REGISTRY[id]?.module]))
+  for (const definition of SEARCH_DEFINITIONS) if (definition.checkIds.some(id => ids.includes(id))) {
+    targets.add('module:search'); targets.add('module:search-' + definition.evaluator)
+    if (definition.evaluator === 'google') {
+      targets.add('module:search-google-index'); targets.add('module:search-google-performance')
+    }
+  }
+  return prisma.auditVerifierExecution.findMany({ where: { auditId, status: 'COMPLETED', targetKey: { in: [...targets] } },
+    select: { targetKey: true, status: true, detail: true }, take: 1200 })
 }
 
 export function reviewedPageUrls(input: {
@@ -189,6 +215,8 @@ export async function diffFlagsAgainstParent(
   ])
 
   const monitoringByKey = indexByMatchKeys(monitoringFlags)
+  const recovery = await loadRecoveryExecutions(monitoringAuditId, child.executionSpec,
+    parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))))
   const updates: Array<{
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
@@ -207,6 +235,7 @@ export async function diffFlagsAgainstParent(
           reportCompleteness: child.reportCompleteness,
           childPages: child.pages,
           parentFlag,
+          auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery,
         })
       ) {
         updates.push({
@@ -312,6 +341,8 @@ export async function getFlagDiffSummary(
   ])
 
   const monitoringByKey = indexByMatchKeys(monitoringFlags)
+  const recovery = await loadRecoveryExecutions(monitoringAuditId, child.executionSpec,
+    parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))))
   const parentKeys = parentMatchKeySet(parentFlags)
 
   const fixed: FlagDiffSummaryItem[] = []
@@ -351,6 +382,7 @@ export async function getFlagDiffSummary(
           reportCompleteness: child.reportCompleteness,
           childPages: child.pages,
           parentFlag,
+          auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery,
         })
       ) {
         fixed.push(item)

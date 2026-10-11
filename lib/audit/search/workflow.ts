@@ -1,10 +1,11 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { assessSearchRecovery } from './recovery'
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { SEARCH_DEFINITIONS } from './definitions'
 import { collectSearchEvidence, type SearchResourceCache } from './collect'
 import { evaluateSearch, evaluateCheckedPageTitles, searchFindings } from './registry'
-import { searchReceiptSchema, searchAttentionSchema, searchVerifierSchema, type SearchObservation, type SearchReceipt } from './contracts'
+import { searchReceiptSchema, searchVerifierSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { recordVerifierExecution } from '@/lib/improvements/verifier-provenance'
 
 export const SEARCH_LOCAL_MODULES = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
@@ -77,37 +78,15 @@ export async function recordSearchVerifiers(receipt: SearchReceipt, db: typeof p
     const flag = occurrence.flag, checkId = flag.checkId?.split('::page:')[0]
     if (!checkId || flag.pageUrl !== receipt.pageUrl || seen.has(checkId)) continue
     seen.add(checkId)
-    const policy = searchAttentionSchema.safeParse(flag.attentionPolicy)
-    const sources = policy.success ? policy.data.sources ?? [] : []
-    const observations = receipt.observations.filter(item => item.checkId === checkId && (!sources.length || sources.includes(item.source)))
-    if (!observations.length) continue
-    const expectedTypes = policy.success ? policy.data.entityTypes ?? [] : []
-    const typesObserved = new Set(observations.flatMap(item => item.entityTypes ?? []))
-    const comparable = !receipt.observations.some(item => item.reason === 'observation_limit') && observations.every(item => item.disposition !== 'unknown' && item.disposition !== 'not_applicable') &&
-      sources.every(source => observations.some(item => item.source === source)) &&
-      expectedTypes.every(type => typesObserved.has(type))
-    const googleComparable = observations.every(item => {
-      if (item.source !== 'google-index') return true
-      const current = item.google, before = policy.success ? policy.data.google : undefined
-      if (!current || !before || current.property !== before.property) return false
-      return item.disposition === 'failed' || item.disposition === 'passed' && Boolean(current.lastCrawlAt && before.lastCrawlAt &&
-        new Date(current.lastCrawlAt) > new Date(before.lastCrawlAt))
-    })
-    const verifiedConflictRemoval = policy.success && policy.data.reason === 'sitemap_indexing_conflict' &&
-      receipt.complete && observations.every(item => item.reason === 'declared_indexing_exclusion' || item.disposition === 'passed')
-    const targets = policy.success ? policy.data.markupTargets ?? [] : []
-    const verifiedProperties = targets.length > 0 && targets.every(target => observations.some(item =>
-      item.entityId === target.entityId && item.entityTypes?.includes(target.entityType) && item.source === target.source &&
-      item.invalidProperties !== undefined && !target.properties.some(property => item.invalidProperties!.includes(property))))
-    const verdict = !comparable || !googleComparable ? 'unknown' : observations.some(item => item.disposition === 'failed') ? 'failed'
-      : observations.every(item => item.disposition === 'passed') || verifiedConflictRemoval || verifiedProperties ? 'passed' : 'unknown'
-    const established = comparable && verdict !== 'unknown'
+    const decision = assessSearchRecovery(receipt, checkId, flag.attentionPolicy)
+    if (!decision.observationIds.length) continue
+    const { verdict, comparable: established } = decision
     await recordVerifierExecution({ auditId: receipt.auditId, source: flag.source, checkId: flag.checkId,
       fingerprint: flag.fingerprint, pageUrl: receipt.pageUrl, status: established ? 'COMPLETED' : 'FAILED',
       evidenceReference: { auditId: receipt.auditId, module: 'search', pageUrl: receipt.pageUrl },
       detail: searchVerifierSchema.parse({ kind: 'search-verifier', version: 1, auditId: receipt.auditId, pageUrl: receipt.pageUrl,
         checkId, verdict, comparable: established,
-        observationIds: observations.map(item => item.id), reason: established ? 'responsibility_evaluated' : 'search_coverage_incomplete' }) }, db)
+        observationIds: decision.observationIds, reason: established ? 'responsibility_evaluated' : 'search_coverage_incomplete' }) }, db)
   }
 }
 
