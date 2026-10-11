@@ -114,6 +114,8 @@ export const evaluatorHandlers: TaskHandler[] = [
         flags = checked.flags
         assertions = checked.executions[0]?.assertions ?? []
         applicable = checked.executions[0]?.applicable === true
+        complete = checked.executions[0]?.complete
+        limitation = checked.executions[0]?.limitation
       }
       flags = suppressFlagsForPageRole(flags, context.input.role)
         .map(flag => ({ ...flag, pageUrl }))

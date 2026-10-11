@@ -44,7 +44,8 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   }),
   trust: define('trust', 'security', 'Public trust checks', 'metadata'),
   security: define('security', 'security', 'Public security configuration', 'metadata', {
-    https: assertion('security', ['no-https']), 'image-transport': assertion('security', ['security-mixed-content']),
+    https: assertion('security', ['no-https']), 'image-transport': assertion('security'),
+    'resource-transport': assertion('security', ['security-mixed-content']),
   }),
   'security-headers': define('security-headers', 'security', 'Response headers', 'headers', {
     'content-security-policy': assertion('security', ['security-csp-missing']),

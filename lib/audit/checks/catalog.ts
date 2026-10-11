@@ -18,6 +18,7 @@ import { runInteractionChecks } from './interaction'
 import { runTrackingChecks } from './tracking'
 import type { TrackingEvidence } from '../tracking/contracts'
 import { runSecurityBasicsChecks } from './security'
+import { RESOURCE_TRANSPORT_SCOPE } from '../resource-transport'
 import { runSecurityHeaderChecks } from './security-headers'
 import { runVisualPolishChecks } from './visual-polish'
 import { runCtaFocusChecks } from './cta-focus'
@@ -64,7 +65,11 @@ export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
     checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
   { id: 'auth-checkout', evaluate: c => runAuthCheckoutChecks(c.url, c.metadata) },
-  { id: 'security', evaluate: c => runSecurityBasicsChecks(c.url, c.metadata) },
+  { id: 'security', evaluate: c => {
+    Object.assign(c.scope, { complete: new URL(c.url).protocol !== 'https:' || c.metadata.resourceTransport?.complete === true,
+      limitation: RESOURCE_TRANSPORT_SCOPE })
+    return runSecurityBasicsChecks(c.url, c.metadata)
+  } },
   { id: 'security-headers', evaluate: c => runSecurityHeaderChecks(c.url, c.headers ?? null) },
   { id: 'messaging-clarity', evaluate: c => runMessagingClarityChecks(c.metadata) },
   { id: 'conversion-friction', evaluate: c => runConversionFrictionChecks(c.metadata, c.purpose) },

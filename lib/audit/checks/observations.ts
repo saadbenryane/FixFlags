@@ -2,6 +2,7 @@ import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
 import type { CheckAssertion } from './assertion'
 import { filterOutIframeAxeViolations, type AxeViolation } from './accessibility'
+import { observedInsecureResources, RESOURCE_TRANSPORT_SCOPE } from '../resource-transport'
 
 export function recordInpObservation(mobile: PageSpeedResult): CheckAssertion {
   const complete = mobile.crux?.inp !== null && mobile.crux?.inp !== undefined
@@ -24,8 +25,12 @@ export function recordCheckObservations(module: string, input: {
     const https = new URL(input.url).protocol === 'https:'
     record('https', 'Page uses HTTPS', 'The inspected page URL uses HTTPS', https ? 'HTTPS URL' : 'HTTP URL', https)
     if (https) {
-      const insecure = input.metadata.images.filter(image => image.src.startsWith('http://')).length
-      record('image-transport', 'Image transport', 'Captured image URLs do not use HTTP', `${insecure} HTTP image URLs in captured metadata`, insecure === 0)
+      const insecure = observedInsecureResources(input.metadata, input.url).length
+      const complete = input.metadata.resourceTransport?.complete === true
+      result.push({ key: 'resource-transport', name: 'Declared resource transport',
+        expected: 'Inspected HTML resource references do not use untrustworthy HTTP URLs',
+        observed: `${insecure} HTTP resource references recorded. ${complete ? '' : 'Resource collection is incomplete. '}${RESOURCE_TRANSPORT_SCOPE}`,
+        passed: complete && insecure === 0, complete })
     }
   }
   if (module === 'measurement') {

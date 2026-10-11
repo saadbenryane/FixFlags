@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { trackingEvidenceSchema } from '../tracking/contracts'
+import { resourceTransportSchema } from '../resource-transport'
 import { jsonValueSchema } from './contracts'
 import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
@@ -17,6 +18,7 @@ export const pageMetadataSchema = z.object({
   title: text.nullable(), description: text.nullable(), ogTitle: text.nullable(), ogDescription: text.nullable(),
   ogImage: text.nullable(), canonical: text.nullable(), lang: text.nullable(), viewport: text.nullable(), robots: text.nullable(),
   h1s: strings, h2s: strings, images: z.array(z.object({ src: text, alt: text.nullable() }).strict()).max(10_000),
+  resourceTransport: resourceTransportSchema.optional(),
   imagesWithoutAlt: count, links: z.array(z.object({ href: text, text, rel: text.nullable() }).strict()).max(10_000),
   forms: count, inputsWithoutLabel: count, buttonsWithoutText: count, linksWithoutText: count, iframesWithoutTitle: count,
   positiveTabindex: count, ctaTexts: strings, hasStructuredData: z.boolean(), structuredDataTypes: strings,

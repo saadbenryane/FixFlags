@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio'
 import { safeFetchHtml } from './url'
 import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
 import { normalizeHeadingText } from './checks/utils'
+import { collectResourceTransport, type ResourceTransport } from './resource-transport'
 
 export interface PageMetadata {
   title: string | null
@@ -16,6 +17,7 @@ export interface PageMetadata {
   h1s: string[]
   h2s: string[]
   images: Array<{ src: string; alt: string | null }>
+  resourceTransport?: ResourceTransport
   imagesWithoutAlt: number
   links: Array<{ href: string; text: string; rel: string | null }>
   forms: number
@@ -90,14 +92,11 @@ export function mergeRuntimeHeadMetadata(
 }
 
 export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
-  // Unwrap <noscript> content so Cheerio can parse links, headings, and CTAs
-  // inside noscript blocks. SPAs often put full fallback content (including
-  // navigation links, headings, and contact info) inside noscript for crawlers.
-  // Cheerio treats noscript as raw text by default, causing false negatives.
-  const unwrapped = html.replace(
-    /<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi,
-    (_, inner: string) => inner
-  )
+  // Resource declarations use the scripting-enabled parse, so fallback and
+  // template contents cannot become claims about live resource requests.
+  const resourceTransport = collectResourceTransport(cheerio.load(html), url)
+  // Public metadata also includes fallback content for crawlers.
+  const unwrapped = html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_, inner: string) => inner)
   const $ = cheerio.load(unwrapped)
 
   // Extract structured data
@@ -494,6 +493,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     h1s,
     h2s,
     images,
+    resourceTransport,
     imagesWithoutAlt,
     links,
     forms: $('form').length,
