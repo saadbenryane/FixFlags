@@ -16,7 +16,7 @@ The Flag page refreshes while a verification attempt is running. Refreshing the 
 
 ## Shopify connection
 
-Start the connection from the owned Site settings page. If authorization expires, retry there. If the shop is already linked to another account, the connection is refused rather than reassigned by hostname.
+Use the [Shopify troubleshooting guide](/docs/integrations/shopify#troubleshooting). Retry expired authorization from the owned Site's settings. A store attached elsewhere cannot be reassigned by its hostname. For Google property mismatches, empty results, or expired access, use the [integration guides](/docs/integrations).
 
 ## Contact support
 

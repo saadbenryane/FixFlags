@@ -21,14 +21,16 @@ describe('marketing nav labels', () => {
     assert.equal(changelog.href, '/changelog')
   })
 
-  it('keeps integrations and Shopify discoverable in the footer', () => {
+  it('keeps integrations discoverable without standalone install entries', () => {
     const hrefs = [
       ...FOOTER_COLUMNS.product,
       ...FOOTER_COLUMNS.resources,
       ...FOOTER_COLUMNS.company,
     ].map((link) => link.href)
     assert.ok(hrefs.includes('/integrations'))
-    assert.ok(hrefs.includes('/install'))
+    assert.ok(!hrefs.includes('/install'))
+    assert.ok(!FOOTER_COLUMNS.product.some(link => link.label === 'Shopify'))
+    assert.ok(FOOTER_COLUMNS.resources.some(link => link.href === '/docs'))
   })
 
   it('leads the product footer with the Site product', () => {

@@ -282,7 +282,7 @@ export const HOW_IT_WORKS_PAGE = {
     title: 'Add commerce context when your Site needs it.',
     body: 'Shopify adds product structure and purchase-path checks to the same FixFlags Site.',
     cta: 'Connect Shopify',
-    href: '/install',
+    href: '/docs/integrations/shopify',
   },
   mcp: {
     label: 'Work with your agent',

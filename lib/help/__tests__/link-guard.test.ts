@@ -7,7 +7,6 @@ import { DOCS_PAGES } from '@/lib/docs/catalog'
 import { INDEXABLE_ROUTES } from '@/lib/marketing/seo-routes'
 
 const PARKED_PREFIXES = [
-  '/docs/integrations',
   '/docs/cli',
   '/docs/mcp',
   '/help/mcp-and-editors',

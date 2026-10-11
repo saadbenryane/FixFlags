@@ -4,16 +4,6 @@ export const SEO = {
     description:
       'FixFlags independently checks the important outcomes on your live website. See Clear or a Flag with evidence, verify a fix, and keep watching.',
   },
-  protect: {
-    title: "Protect the path that makes money",
-    description:
-      'FixFlags walks your Shopify purchase path and tells you if customers can still buy. Video proof. Email when a confirmed path is down.',
-  },
-  install: {
-    title: 'Install FixFlags on Shopify',
-    description:
-      'Install FixFlags on your Shopify store. We walk the path to checkout and alert you if customers cannot buy.',
-  },
   integrations: {
     title: 'FixFlags Integrations',
     description:

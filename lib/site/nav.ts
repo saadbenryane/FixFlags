@@ -13,13 +13,11 @@ export const FOOTER_COLUMNS = {
   product: [
     { href: '/how-it-works', label: 'Product' },
     { href: '/integrations', label: 'Integrations' },
-    { href: '/install', label: 'Shopify' },
     { href: '/how-it-works', label: 'How it works' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/changelog', label: 'Changelog' },
   ],
   resources: [
-    { href: '/install', label: 'Install' },
     { href: '/help', label: 'Help Center' },
     { href: '/docs', label: 'Docs' },
     { href: '/faq', label: 'FAQ' },

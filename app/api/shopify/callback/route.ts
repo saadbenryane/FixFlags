@@ -9,21 +9,21 @@ import { consumeShopifyAccountLink } from '@/lib/shopify/account-link'
 
 export async function GET(request: NextRequest) {
   if (!isShopifyConfigured()) {
-    return NextResponse.redirect(new URL('/install?error=not_configured', getAppUrl()))
+    return NextResponse.redirect(new URL('/docs/integrations/shopify?error=not_configured', getAppUrl()))
   }
   const query = Object.fromEntries(request.nextUrl.searchParams.entries())
   const shop = normalizeShopDomain(query.shop ?? '')
   const code = query.code
   const state = query.state
   if (!shop || !code || !state) {
-    return NextResponse.redirect(new URL('/install?error=missing', getAppUrl()))
+    return NextResponse.redirect(new URL('/docs/integrations/shopify?error=missing', getAppUrl()))
   }
   if (query.hmac && !verifyShopifyOAuthHmac(query)) {
-    return NextResponse.redirect(new URL('/install?error=hmac', getAppUrl()))
+    return NextResponse.redirect(new URL('/docs/integrations/shopify?error=hmac', getAppUrl()))
   }
   const installState = readShopifyInstallState(state, shop)
   if (!installState) {
-    return NextResponse.redirect(new URL('/install?error=state', getAppUrl()))
+    return NextResponse.redirect(new URL('/docs/integrations/shopify?error=state', getAppUrl()))
   }
   try {
     const tokens = await exchangeShopifyCode(shop, code)
@@ -38,6 +38,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(embeddedAdmin)
   } catch (error) {
     logger.error('Shopify install callback failed', error instanceof Error ? error : new Error(String(error)))
-    return NextResponse.redirect(new URL('/install?error=token', getAppUrl()))
+    return NextResponse.redirect(new URL('/docs/integrations/shopify?error=token', getAppUrl()))
   }
 }

@@ -46,7 +46,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     order: 0,
     headings: [
       { id: 'quick-start', title: 'Quick start' },
-      { id: 'product-loop', title: 'The product loop' },
+      { id: 'the-product-loop', title: 'The product loop' },
       { id: 'choose-your-path', title: 'Choose your path' },
     ],
     relatedHelpSlugs: ['analyze-a-website', 'read-site-coverage', 'verify-a-flag', 'free-and-pro'],

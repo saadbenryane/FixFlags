@@ -14,6 +14,10 @@ describe('documentation catalog', () => {
       '/docs/getting-started',
       '/docs/site-care',
       '/docs/mcp',
+      '/docs/integrations',
+      '/docs/integrations/shopify',
+      '/docs/integrations/google-analytics',
+      '/docs/integrations/google-search-console',
       '/docs/troubleshooting',
     ])
   })

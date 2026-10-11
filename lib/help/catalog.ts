@@ -34,9 +34,9 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'read-site-coverage', categoryId: 'sites-and-coverage', title: 'Read Site coverage',
     excerpt: 'Coverage says what ran, what succeeded, and how fresh the evidence is.', popular: true,
-    searchTokens: ['coverage', 'cards', 'freshness', 'unknown', 'partial'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,
+    searchTokens: ['coverage', 'cards', 'freshness', 'unknown', 'partial'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
     body: [
-      { type: 'p', text: 'The Site board groups responsibility into Pages, Conversion, Security, Search, Performance, and Tracking. Shopify adds Commerce context to the same Site.' },
+      { type: 'p', text: 'The Site board groups responsibility into Pages, Conversion, Security, Search, Performance, and Tracking. Shopify adds purchase-path evidence to Conversion on the same Site.' },
       { type: 'ul', items: ['Healthy means the required scope was checked successfully and is still fresh.', 'Partial means some expected evidence is missing or unsupported.', 'Unknown means the area has not been evidenced.', 'Stale means the last successful evidence is too old to represent current behavior.'] },
     ], related: ['coverage-limitations', 'read-a-flag'], relatedDocs: ['site-care'],
   },
@@ -79,10 +79,10 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     slug: 'weekly-watch', categoryId: 'watch-and-notifications', title: 'Weekly Watch on Free',
-    excerpt: 'Free looks after one website with one full weekly Watch.', popular: true,
-    searchTokens: ['watch', 'weekly', 'schedule', 'monitoring', 'free'], updatedAt: '2026-09-20', estimatedReadMinutes: 2,
+    excerpt: 'Free looks after one website with weekly Watch of configured coverage.', popular: true,
+    searchTokens: ['watch', 'weekly', 'schedule', 'monitoring', 'free'], updatedAt: '2026-10-11', estimatedReadMinutes: 2,
     body: [
-      { type: 'p', text: 'Free includes one Site and one full weekly Watch. Watch is active only after FixFlags has saved a durable schedule.' },
+      { type: 'p', text: 'Free includes one Site and weekly Watch of configured monitoring coverage. Watch is active only after FixFlags has saved a durable schedule. A schedule does not establish that every page or customer action has been checked.' },
       { type: 'p', text: 'Healthy runs stay quiet. Delays or failures remain visible on Site settings with a retry path.' },
     ], related: ['notification-preferences', 'free-and-pro'], relatedDocs: ['site-care'],
   },
@@ -98,31 +98,33 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'connect-shopify', categoryId: 'shopify', title: 'Connect Shopify to a Site',
     excerpt: 'Authorize the store, then link it to an owned Site.', popular: true,
-    searchTokens: ['shopify', 'install', 'connect', 'store'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,
+    searchTokens: ['shopify', 'install', 'connect', 'store'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
     body: [
       { type: 'p', text: 'Shopify is a connection to the same Site, not a separate FixFlags product. Start from Site settings so the signed, single-use account link binds the installed shop to the Site you own.' },
       { type: 'p', text: 'The embedded app verifies a Shopify ID token before it loads private shop data. A shop already linked to another account cannot be claimed.' },
-    ], related: ['shopify-access-and-removal', 'read-site-coverage'], relatedDocs: ['getting-started'],
+      { type: 'p', text: 'If authorization expires, start again from Site settings. A store already attached elsewhere must be disconnected by its owner before it can be attached to another Site.' },
+    ], related: ['shopify-access-and-removal', 'read-site-coverage'], relatedDocs: ['shopify'],
   },
   {
     slug: 'connect-google-data', categoryId: 'getting-started', title: 'Connect Analytics or Search Console',
     excerpt: 'Add page traffic or search context to an owned Site.',
     searchTokens: ['analytics', 'google', 'search console', 'queries', 'sessions', 'connection'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
     body: [
-      { type: 'p', text: 'Open Integrations, choose Analytics or Search Console, then select a website you own. In Site settings, connect the Google property for that website. FixFlags only accepts a property whose web stream or search property matches the Site host.' },
+      { type: 'p', text: 'Open your Sites, select the website you own, then open Settings and Connections. Follow the integration guide to authorize a Google account with access to a matching property.' },
       { type: 'ul', items: ['Analytics adds sessions for watched pages from a 28-day report.', 'Search Console adds matching page queries, impressions, and clicks from a 28-day report.', 'The last read time and connection state appear in Site settings. Reconnect if authorization expires.'] },
       { type: 'callout', text: 'These numbers are context beside an independent website check. They do not prove that a signup, purchase, or other customer action works. FixFlags does not yet check Analytics event configuration or Search Console indexing through these connections.' },
       { type: 'link', text: 'View integrations', href: '/integrations' },
-    ], related: ['read-site-coverage', 'connect-shopify'], relatedDocs: ['getting-started'],
+    ], related: ['read-site-coverage', 'connect-shopify'], relatedDocs: ['google-analytics', 'google-search-console'],
   },
   {
     slug: 'shopify-access-and-removal', categoryId: 'shopify', title: 'Shopify access and removal',
     excerpt: 'Understand permissions, uninstall, redaction, and relinking.',
-    searchTokens: ['shopify', 'uninstall', 'privacy', 'redaction', 'revoke'], updatedAt: '2026-09-20', estimatedReadMinutes: 3,
+    searchTokens: ['shopify', 'uninstall', 'privacy', 'redaction', 'revoke'], updatedAt: '2026-10-11', estimatedReadMinutes: 3,
     body: [
       { type: 'p', text: 'FixFlags uses the minimum store data needed to walk and explain the purchase path. Background work uses the authorized offline token; embedded requests require a verified session.' },
       { type: 'p', text: 'Uninstall revokes the connection. Privacy webhooks are signature-verified and store the request identity and processing result, not customer payloads FixFlags does not need.' },
-    ], related: ['connect-shopify', 'privacy-and-evidence', 'contact-support'], relatedDocs: ['troubleshooting'],
+      { type: 'p', text: 'Disconnect in FixFlags detaches the store from its Site. To remove the Shopify authorization and stop the app’s separate purchase-path checks, uninstall FixFlags in Shopify admin as well.' },
+    ], related: ['connect-shopify', 'privacy-and-evidence', 'contact-support'], relatedDocs: ['shopify'],
   },
   {
     slug: 'free-and-pro', categoryId: 'account-and-billing', title: 'Free and Pro',

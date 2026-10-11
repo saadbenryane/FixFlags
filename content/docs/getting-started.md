@@ -8,7 +8,7 @@ Open the homepage or [/new](/new), enter the URL, Analyze, and wait on the Site 
 
 ## Shopify connection
 
-If you sell on Shopify, connect the store from Site settings. The signed account-link flow binds that shop to the Site you own. Shopify adds Commerce and purchase-path evidence to the same Site; it is not a second product.
+If you sell on Shopify, follow the [Shopify integration guide](/docs/integrations/shopify). Connect from the owned Site's settings to add purchase-path evidence to Conversion and Flags. [Analytics and Search Console](/docs/integrations) can add traffic and search context.
 
 ## Verify a Flag
 
@@ -16,7 +16,7 @@ Open the Flag, copy the fix into your editor, then Verify. Copying never closes 
 
 ## Keep watching
 
-Claim the Site, then Keep watching. Free Sites watch weekly. Pro and Studio can watch daily. Pause is an explicit action and means you are not covered until a schedule exists again.
+Claim the Site, then choose Keep watching. Free includes weekly Watch for one Site. Watch becomes active when the schedule is saved; confirm the next check in Site settings. Use the schedule control to change or stop monitoring. Existing paid accounts can choose daily, hourly, or custom intervals where available. New Pro and Studio access remains on the [waitlist](/pricing).
 
 ## Get help
 

@@ -232,6 +232,7 @@ export function SiteSettingsControls({
       <h2 id="connections" className="text-lg font-semibold">Connections</h2>
       {initial.shopify.configured === false ? null : <section id="connection-shopify" className="rounded-2xl border border-border/80 bg-background p-5">
         <h3 className="text-lg font-semibold">Shopify</h3>
+        <Link href="/docs/integrations/shopify" className="inline-flex min-h-11 items-center text-sm text-link">Read Shopify integration guide</Link>
         <p className="mt-1 text-sm text-muted-foreground">
           Add purchase-path evidence to this Site’s Conversion card and Flags.
         </p>
@@ -301,6 +302,7 @@ function GoogleConnectionCard({
   return (
     <section id={title === 'Search Console' ? 'connection-search-console' : 'connection-analytics'} className="rounded-2xl border border-border/80 bg-background p-5">
       <h3 className="text-lg font-semibold">{title}</h3>
+      <Link href={title === 'Search Console' ? '/docs/integrations/google-search-console' : '/docs/integrations/google-analytics'} className="inline-flex min-h-11 items-center text-sm text-link">Read {title === 'Search Console' ? 'Search Console' : 'Analytics'} integration guide</Link>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       {connection.propertyLabel ? (
         <p className="mt-3 text-sm">Property <strong>{connection.propertyLabel}</strong></p>

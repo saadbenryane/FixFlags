@@ -54,8 +54,6 @@ const STRANGER_SURFACES = collectStrings({
   PRICING_FAQ,
   seo: {
     home: SEO.home,
-    protect: SEO.protect,
-    install: SEO.install,
     pricing: SEO.pricing,
     faq: SEO.faq,
     help: SEO.help,

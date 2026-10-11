@@ -2,7 +2,6 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { getDocsPage } from '@/lib/docs/catalog'
 import type { HelpArticle } from '@/lib/help/types'
-import { docsPathForPageKey } from '@/lib/help/types'
 import { Heading } from '@/components/ui/typography'
 
 export function HelpRelatedDocs({ article }: { article: HelpArticle }) {
@@ -18,7 +17,7 @@ export function HelpRelatedDocs({ article }: { article: HelpArticle }) {
         {pages.map((page) => (
           <li key={page.key}>
             <Link
-              href={docsPathForPageKey(page.key) as Route}
+              href={page.path as Route}
               className="text-sm font-medium text-brand hover:underline"
             >
               {page.title}

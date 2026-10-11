@@ -96,7 +96,7 @@ export function ShopifyWorkspace({
         {workspace.siteId ? (
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
             Shopify adds purchase-path evidence to this store&apos;s FixFlags Site. Meaningful failures
-            become Commerce Flags there, alongside the rest of the website.
+            appear with Conversion evidence and Flags there, alongside the rest of the website.
           </p>
         ) : (
           <div className="space-y-3 rounded-nested-md bg-muted/40 p-4">

@@ -115,7 +115,7 @@ test('unknown states remain visible and scheduled scope stays explicit', async (
 
 test('integrations remain real navigable connections', async ({ page }) => {
   await visit(page)
-  await expect(page.locator('[data-integration="shopify"]')).toHaveAttribute('href', '/install')
+  await expect(page.locator('[data-integration="shopify"]')).toHaveAttribute('href', '/docs/integrations/shopify')
   await expect(page.locator('[data-integration="github"]')).toHaveAttribute('href', '/sign-in')
   const link = page.getByRole('link', { name: C.integrations.action })
   await link.focus(); await page.keyboard.press('Enter')

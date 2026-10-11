@@ -19,15 +19,15 @@ export default async function ShopifyAppPage({
     ])
   )
   if (query.hmac && !verifyShopifyOAuthHmac(query)) {
-    redirect('/install?error=hmac')
+    redirect('/docs/integrations/shopify?error=hmac')
   }
 
   const shopDomain = normalizeShopDomain(query.shop ?? '')
   if (!shopDomain) {
     if (isShopifyFixtureMode()) {
-      redirect('/install?error=fixture_shop')
+      redirect('/docs/integrations/shopify?error=fixture_shop')
     }
-    redirect('/install')
+    redirect('/docs/integrations/shopify')
   }
 
   // The query string identifies the embedded frame only. Private shop data is

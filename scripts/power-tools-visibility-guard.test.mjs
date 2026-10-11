@@ -39,11 +39,21 @@ test('the real rendered public sources contain no withheld power-tool link', () 
   assert.deepEqual(runPowerToolsVisibilityGuard(root), [])
 })
 
+test('allows published store and Google integration guides', () => {
+  assert.deepEqual(powerToolVisibilityFailures({
+    proxySource: proxyHonouringGate(),
+    discoverySources: {
+      'content/docs/integrations.md': '/docs/integrations/shopify /docs/integrations/google-analytics /docs/integrations/google-search-console',
+    },
+    mcpGateSource: mcpGate(),
+  }), [])
+})
+
 test('rejects missing route parking, inconsistent repository responses, and public links', () => {
   const failures = powerToolVisibilityFailures({
     proxySource: `${proxyHonouringGate().replace('"/api/repo-scans"', '"/api/other"')}\nRepository scanning is not currently available`,
     discoverySources: {
-      'lib/docs/content.ts': "href: '/docs/integrations'",
+      'lib/docs/content.ts': "href: '/docs/cli'",
     },
     mcpGateSource: mcpGate(),
   })
@@ -68,7 +78,7 @@ test('still rejects parked setup routes next to the waitlist logged-in line', ()
     proxySource: proxyHonouringGate(),
     discoverySources: {
       'lib/marketing/copy/plans.ts':
-        "features: ['Logged-in review on your computer']\nhref: '/docs/integrations'",
+        "features: ['Logged-in review on your computer']\nhref: '/docs/cli'",
     },
     mcpGateSource: mcpGate(),
   })

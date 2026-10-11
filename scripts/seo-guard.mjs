@@ -53,8 +53,6 @@ for (const key of seoKeys) {
 
 const requiredLlmsPaths = [
   '/',
-  '/protect',
-  '/install',
   '/integrations',
   '/how-it-works',
   '/pricing',
@@ -62,6 +60,10 @@ const requiredLlmsPaths = [
   '/docs/getting-started',
   '/docs/site-care',
   '/docs/troubleshooting',
+  '/docs/integrations',
+  '/docs/integrations/shopify',
+  '/docs/integrations/google-analytics',
+  '/docs/integrations/google-search-console',
   '/faq',
   '/help',
   '/help/getting-started/analyze-a-website',

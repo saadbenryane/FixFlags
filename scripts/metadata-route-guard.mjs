@@ -9,8 +9,6 @@ const ROOT = process.cwd()
 
 const ROUTE_TO_PAGE = {
   '/': 'app/(marketing)/page.tsx',
-  '/protect': 'app/(marketing)/protect/page.tsx',
-  '/install': 'app/(marketing)/install/page.tsx',
   '/integrations': 'app/(marketing)/integrations/page.tsx',
   '/waitlist': 'app/(marketing)/waitlist/page.tsx',
   '/request-demo': 'app/(marketing)/request-demo/page.tsx',
@@ -22,6 +20,10 @@ const ROUTE_TO_PAGE = {
   '/docs/getting-started': 'app/(docs)/docs/[slug]/page.tsx',
   '/docs/site-care': 'app/(docs)/docs/[slug]/page.tsx',
   '/docs/troubleshooting': 'app/(docs)/docs/[slug]/page.tsx',
+  '/docs/integrations': 'app/(docs)/docs/integrations/page.tsx',
+  '/docs/integrations/shopify': 'app/(docs)/docs/integrations/[integration]/page.tsx',
+  '/docs/integrations/google-analytics': 'app/(docs)/docs/integrations/[integration]/page.tsx',
+  '/docs/integrations/google-search-console': 'app/(docs)/docs/integrations/[integration]/page.tsx',
   '/changelog': 'app/(marketing)/changelog/page.tsx',
   '/blog': 'app/(marketing)/blog/page.tsx',
   '/samples': 'app/(marketing)/samples/page.tsx',

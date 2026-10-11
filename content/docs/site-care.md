@@ -1,6 +1,6 @@
 ## Site board
 
-A Site is the lasting home for one website. Its fixed launch board covers Pages, Conversion, Security, Search, Performance, and Tracking. A Shopify connection adds Commerce context to that same board.
+A Site is the lasting home for one website. Its starter board covers Pages, Conversion, Security, Search, Performance, and Tracking. Shopify adds purchase-path evidence to Conversion. Other available checks can be added from the check library.
 
 Cards distinguish the latest attempt from the latest successful evidence. They show freshness, scope, and exclusions. Unknown, partial, stale, and healthy are different states. No Flags never means an untested area is healthy.
 
@@ -16,13 +16,15 @@ Verify creates one durable attempt for the selected Flag and freshly exercises t
 
 ## Watch
 
-Free includes one Site with a full weekly Watch. Healthy Watch runs stay quiet. New and recurring customer Flags can notify according to the Site preference, and a verified recovery can notify independently.
+Free includes one Site with weekly Watch of its configured monitoring coverage. A Watch schedule does not guarantee that every page or action has been checked. Read the coverage and limitations for each area. Healthy Watch runs stay quiet. New and recurring customer Flags can notify according to the Site preference, and a verified recovery can notify independently.
 
 Watch is active only after its schedule is saved. A delayed or failed schedule remains visible and retryable in Site settings.
 
+Use the schedule control in Site settings to change the interval or stop monitoring. Free allows weekly Watch. Existing paid access can allow daily, hourly, and custom intervals. New paid access remains on the [waitlist](/pricing).
+
 ## Shopify connection
 
-Shopify is an optional connection. Installation authorizes the shop, and a signed single-use account link binds it to one owned Site. Embedded private data loads only after a verified Shopify session. Purchase-path findings enter the same Commerce card and Flag lifecycle.
+Shopify is an optional connection to the same owned Site. Purchase-path evidence belongs with Conversion and Flags. Follow the [Shopify integration guide](/docs/integrations/shopify) for setup, permissions, coverage, and removal. See [all integration guides](/docs/integrations) for traffic and search context.
 
 ## Get help
 

@@ -74,13 +74,3 @@ export function helpArticlePath(categoryId: HelpCategoryId, slug: HelpArticleSlu
 export function helpCategoryPath(categoryId: HelpCategoryId): HelpCategoryPath {
   return `/help/${categoryId}` as Route
 }
-
-export function docsPathForPageKey(key: DocsPageKey): string {
-  switch (key) {
-    case 'home': return '/docs'
-    case 'getting-started': return '/docs/getting-started'
-    case 'site-care': return '/docs/site-care'
-    case 'troubleshooting': return '/docs/troubleshooting'
-    default: return '/docs'
-  }
-}

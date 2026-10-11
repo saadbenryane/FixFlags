@@ -1,15 +1,10 @@
-export const SHOPIFY_APP = {
-  listingTitle: 'FixFlags: Purchase Path Monitor',
-  listingSubtitle: "Know when customers can't buy",
-  badge: 'Shopify',
-  installCta: 'Install on Shopify',
-  compactInstallCta: 'Install',
-  secondaryCta: 'See how it works',
-  shopPlaceholder: 'your-store.myshopify.com',
-  shopLabel: 'Shopify store domain',
-  continueCta: 'Continue to Shopify',
-  notConfigured:
-    'The Shopify app is not configured in this environment yet. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to install.',
+export const SHOPIFY_CONNECTION_RECOVERY = {
+  not_configured: 'Shopify connections are temporarily unavailable. Contact support if the controls are missing from Site settings.',
+  missing: 'Authorization was incomplete. Start a new connection from the Site you own.',
+  hmac: 'The Shopify authorization could not be verified. Start a new connection from Site settings.',
+  state: 'This authorization link is invalid or expired. Start a new connection from Site settings.',
+  token: 'Authorization or Site attachment could not finish. Retry from Site settings, or contact support if the store is already attached elsewhere.',
+  fixture_shop: 'The store could not be identified. Use the store’s myshopify.com domain in Site settings.',
 } as const
 
 export const HEALTH_COPY = {

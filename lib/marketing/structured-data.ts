@@ -1,5 +1,5 @@
 import { BRAND, SITE_URL, faqEntryAnchor, type FaqEntry } from './copy'
-import type { DocsPageDefinition } from '@/lib/docs/catalog'
+import { getDocsPage, type DocsPageDefinition } from '@/lib/docs/catalog'
 import type { HelpArticle, HelpCategory } from '@/lib/help/types'
 import { helpArticlePath } from '@/lib/help/types'
 
@@ -93,11 +93,13 @@ export function faqPageSchema(
 
 export function docsStructuredData(page: DocsPageDefinition) {
   const url = `${SITE_URL}${page.path}`
+  const parent = page.parentKey ? getDocsPage(page.parentKey) : null
   return {
     '@context': 'https://schema.org',
     '@graph': [
       breadcrumbListSchema([
         { name: 'Docs', item: `${SITE_URL}/docs` },
+        ...(parent ? [{ name: parent.title, item: `${SITE_URL}${parent.path}` }] : []),
         ...(page.path === '/docs' ? [] : [{ name: page.title, item: url }]),
       ]),
       {

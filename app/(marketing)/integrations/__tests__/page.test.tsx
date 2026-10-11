@@ -39,6 +39,11 @@ describe('integrations marketing page', () => {
     expect(LLMS_SECTIONS.flatMap(section => section.links).some(link => link.path === '/integrations')).toBe(true)
     expect(MARKETING_LINKS).toContainEqual({ href: '/integrations', label: 'Integrations' })
     expect(MARKETING_LINKS.some(link => link.label === 'For Shopify')).toBe(false)
-    expect(FOOTER_COLUMNS.product).toContainEqual({ href: '/install', label: 'Shopify' })
+    expect(FOOTER_COLUMNS.product).toContainEqual({ href: '/integrations', label: 'Integrations' })
+    expect(FOOTER_COLUMNS.product.some(link => link.label === 'Shopify')).toBe(false)
+    for (const item of C.items.filter(item => item.status === 'available')) {
+      expect(item.action).toBe('Read integration guide')
+      expect(item.href).toMatch(/^\/docs\/integrations\//)
+    }
   })
 })

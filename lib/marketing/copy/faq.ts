@@ -66,8 +66,8 @@ export const FAQ: readonly FaqEntry[] = [
   {
     question: 'What about Shopify?',
     answer:
-      'Shopify is a connection for the same Site. It can add product structure and independent purchase-path checks. Install it when that context would help, not as a separate product.',
-    learnMore: { href: '/install', label: 'Connect Shopify' },
+      'Shopify is a connection for the same Site. It adds product information and independent checks of selected purchase paths through checkout entry. Connect it from Site settings when that context would help.',
+    learnMore: { href: '/docs/integrations/shopify', label: 'Read integration guide' },
   },
   {
     question: 'Can I see what FixFlags saw?',

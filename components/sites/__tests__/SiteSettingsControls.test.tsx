@@ -21,7 +21,7 @@ function respond(body: unknown, status = 200) {
   }
 }
 
-function renderControls() {
+function renderControls(googleConfigured = false) {
   return render(
     <SiteSettingsControls
       siteId="site-1"
@@ -39,8 +39,8 @@ function renderControls() {
         notificationLevel: 'FLAGS',
         notifyOnRecovery: true,
         shopify: { configured: true, state: 'not_connected', domain: null },
-        searchConsole: { provider: 'SEARCH_CONSOLE', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
-        analytics: { provider: 'ANALYTICS', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+        searchConsole: { provider: 'SEARCH_CONSOLE', configured: googleConfigured, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+        analytics: { provider: 'ANALYTICS', configured: googleConfigured, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
       }}
     />
   )
@@ -61,6 +61,13 @@ function mockOptions(save: (url: string, options?: RequestInit) => unknown) {
 describe('SiteSettingsControls Watch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('links each configured provider to its integration guide', () => {
+    renderControls(true)
+    expect(screen.getByRole('link', { name: 'Read Shopify integration guide' })).toHaveAttribute('href', '/docs/integrations/shopify')
+    expect(screen.getByRole('link', { name: 'Read Analytics integration guide' })).toHaveAttribute('href', '/docs/integrations/google-analytics')
+    expect(screen.getByRole('link', { name: 'Read Search Console integration guide' })).toHaveAttribute('href', '/docs/integrations/google-search-console')
   })
 
   it('does not claim a different cadence than the one clicked', async () => {

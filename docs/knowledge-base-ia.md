@@ -1,19 +1,19 @@
 ---
 status: supporting
 authority: interface
-reviewed_at: 2026-10-10
+reviewed_at: 2026-10-11
 supersedes: []
 ---
 
 # Knowledge base information architecture
 
-FixFlags ships three public knowledge surfaces. Each has a distinct job; overlap is resolved by canonical ownership and cross-links. Customer product objects follow [product-architecture.md](product-architecture.md). Report-shaped docs are compatibility until [product-masterplan.md](product-masterplan.md) Wave J/K retarget them to Site, Pages, Journeys, and Flags.
+FixFlags ships three public knowledge surfaces. Each has a distinct job; overlap is resolved by canonical ownership and cross-links. Customer product objects follow [product-architecture.md](product-architecture.md). Public docs describe current Site behavior and available connections. Plans are not evidence that a capability is available.
 
 ## Surfaces
 
 | Surface | Route | Audience | Job |
 |---------|-------|----------|-----|
-| Documentation | `/docs` | New and returning builders | Learn how the product works: loop, reports, troubleshooting |
+| Documentation | `/docs` | New and returning builders | Learn the Site, Flags, Verify, Watch, and integration workflows |
 | Help Center | `/help` | Signed-in users who are stuck | Billing, account, failed checks, privacy, human support |
 | FAQ | `/faq` | Pre-purchase visitors | Short answers for SEO and pricing-page questions |
 
@@ -21,11 +21,12 @@ FixFlags ships three public knowledge surfaces. Each has a distinct job; overlap
 
 | Topic | Canonical home | Others |
 |-------|----------------|--------|
-| Product loop, report structure, fix prompts | `/docs` | Help excerpts link here |
-| Scores, severity, rubrics | `/help/checks-and-reports/scores-and-severity` | FAQ links here; `/docs/reports` for workflow depth |
-| Billing, credits, cancel, invoices | `/help/billing-and-plans/*` | FAQ: teaser + link |
-| Failed checks, URL reachability, stuck reviews | `/help/checks-and-reports/*` | `/docs/troubleshooting` links here |
-| Account, privacy, contact | `/help/account/*` | — |
+| Product loop, Site coverage, Flags, verification | `/docs` | Help excerpts link here |
+| Integration setup, permissions, coverage, removal | `/docs/integrations/*` | `/integrations` introduces providers; Help links to canonical guides |
+| Flag severity and evidence | `/help/flags-fix-verify/*`, `/help/sites-and-coverage/*` | `/docs/site-care` explains the workflow |
+| Billing, plans, cancel, invoices | `/help/account-and-billing/*` | FAQ: teaser + link |
+| Failed checks, URL reachability | `/help/troubleshooting/*` | `/docs/troubleshooting` links here |
+| Account, privacy, contact | `/help/account-and-billing/*`, `/help/privacy-and-security/*`, `/help/troubleshooting/contact-support` | Docs link to Help for recovery |
 | Pre-purchase positioning | `/faq` | Links to docs and help for depth |
 
 ## Maintenance
@@ -42,5 +43,5 @@ FixFlags ships three public knowledge surfaces. Each has a distinct job; overlap
 
 1. One canonical fact per topic. FAQ never duplicates a full help article without a `learnMore` link.
 2. New stuck surfaces in the app must link to help and offer chat (`HelpSupportActions`).
-3. Parked power-tool docs (MCP, CLI, integrations) stay out of public nav until un-parked.
+3. Shopify, Google Analytics, and Search Console guides are published under Integrations. Parked power-tool docs (MCP and CLI) remain gated until their release evidence exists.
 4. Do not merge Docs into Help. Stripe, Linear, and Notion keep the same split.

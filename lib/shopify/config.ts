@@ -19,13 +19,6 @@ export function shopifyCallbackUrl(): string {
   return `${getAppUrl()}/api/shopify/callback`
 }
 
-export function shopifyInstallCtaHref(): string {
-  return (
-    process.env.NEXT_PUBLIC_SHOPIFY_APP_STORE_URL?.trim() ||
-    '/install'
-  )
-}
-
 export function normalizeShopDomain(input: string): string | null {
   const raw = input.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
   if (!raw) return null

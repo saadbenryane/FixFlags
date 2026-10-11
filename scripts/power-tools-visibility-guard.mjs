@@ -8,7 +8,6 @@ export const PARKED_PUBLIC_PREFIXES = [
   '/api/integrations/github',
   '/api/repo-scans',
   '/dashboard/mcp-analytics',
-  '/docs/integrations',
   '/help/mcp-and-editors',
   '/report/repo',
   '/settings/integrations',
@@ -69,7 +68,7 @@ function discoveryFiles(root) {
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false
     // A parked page is not expected to avoid linking to itself. Everything else is.
-    if (/(?:dashboard[\\/]mcp-|settings[\\/]integrations|docs[\\/](?:cli|mcp|integrations)|help[\\/]mcp)/.test(file)) return false
+    if (/(?:dashboard[\\/]mcp-|settings[\\/]integrations|docs[\\/](?:cli|mcp)|help[\\/]mcp)/.test(file)) return false
     if (file === path.join(root, 'content/docs/mcp.md')) return false
     if (/(?:lib[\\/]help[\\/]catalog)\.tsx?$/.test(file)) return false
     return !/(?:copy[\\/]auth|copy[\\/]brand|copy[\\/]tools)\.ts$/.test(file)
