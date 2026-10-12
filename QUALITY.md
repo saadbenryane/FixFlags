@@ -28,12 +28,14 @@ Run TypeScript, lint, relevant unit/component/integration tests and applicable b
 
 The website release profile requires actual customer-loop, claim, tenancy, authentication, monitoring, accounts, uptime, category and removal proof. Required journeys may not be skipped or replaced with mocked success. MCP/CLI proof remains a separate parked-tools check.
 
+`npm run verify:website` runs the foundation gate with website unit and coverage profiles. Parked MCP/CLI and repository transport suites remain available through `npm run verify` and `npm run power-tools:verify`; they cannot satisfy website acceptance. Coverage thresholds remain unchanged.
+
 Validate fresh migrations and upgrade compatibility in disposable databases, web and worker builds, the deployment image, actual provider behavior, and the exact candidate revision on deployed web and worker. Local protocol substitutes never establish provider acceptance. Keep CI and Railway Wait for CI disabled until separately authorized.
 
 ## Experience evidence
 
 Verify 320/375/768/1280px, 200/400% zoom/reflow, reduced motion, light/dark themes, touch targets, keyboard focus and loading/empty/partial/error/expired states. Measure LCP, INP and CLS separately in controlled runs and production field data. Target 2.5s, 200ms and 0.1 respectively, with field evidence at the 75th percentile by device category.
 
-Five observed representative-user sessions are required. Four must complete analysis, evidence inspection, prompt copying, verification and monitoring configuration without coaching. No participant may interpret missing coverage as proof of health.
+The owner directed this completion task to conduct usability review independently because no representative users are available. Record agent task observations covering analysis, evidence inspection, prompt copying, verification, monitoring configuration and interpretation of incomplete coverage. Do not label these as human sessions or claim the original five-person study has occurred.
 
 The owner-approved white labels on #FF5A00 remain a documented 3.13:1 contrast exception. Do not claim full WCAG AA compliance. Report that specific exception separately from all other accessibility defects.

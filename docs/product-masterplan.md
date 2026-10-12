@@ -16,6 +16,7 @@ Implementation and proof are separate. A requirement closes only with evidence f
 | --- | --- | --- |
 | Trustworthy action contracts and guards | Empty settings receipts rejected; false values retained; route and fixture classification corrected | Focused action, component and guard regressions |
 | Application boundaries | Settings/removal commands; run selection separated from admission; improvement lifecycle modules; pure Site and board projections | Typecheck, lint, boundaries and existing lifecycle tests |
+| Removal execution fencing | Project-first worker locks; transactional cancellation settles pending runs, tasks and verification attempts; completed facts preserved | Migrated PostgreSQL proof covering a running worker, stale writes and duplicate deliveries; deployed removal journey |
 | Identity and independent recovery | Existing claim, progressive execution, immutable comparison and fix-attempt contracts retained | Real claim, broken/repaired/recurring and interruption journeys |
 | Automatic accounts | Typed lifecycle, independent cleanup capability, stale-acknowledgement removal fencing and scheduled token expiry | Real supported signup, receiving, login/session reuse and disposable deletion |
 | Uptime and monitoring | Existing probes, confirmations, scoped incidents and durable notification receipts retained | Real worker, outage/unknown/recovery, pause/resume and natural full-check cycle |

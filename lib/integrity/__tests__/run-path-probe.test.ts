@@ -30,8 +30,8 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
   }, 60_000)
 
   afterAll(async () => {
-    await closeServer?.()
-    await browser?.close()
+    try { await browser?.close() }
+    finally { await closeServer?.() }
   })
 
   it('walks a working buy path to GREEN with watchable evidence', async () => {
@@ -101,6 +101,7 @@ async function listenFixtures(): Promise<{ origin: string; close: () => Promise<
     close: () =>
       new Promise((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()))
+        server.closeAllConnections()
       }),
   }
 }

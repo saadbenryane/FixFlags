@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { SiteRunRefusal } from './run-refusal'
 import { accountStateSchema } from '../accounts/contracts'
 import { ACCOUNT_CHECK_COPY as C } from '@/lib/marketing/copy/account-checks'
+import { cancelSiteExecutions } from './cancel-executions'
 
 export const siteSettingsWriteSchema = z.object({
   notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).optional(),
@@ -50,6 +51,7 @@ export async function removeSite(owner: Owner, input: z.infer<typeof siteRemoval
       throw new SiteRunRefusal(C.removalRequired, 409, 'TEST_ACCOUNTS_REMAIN')
     if (accounts.length && accountSnapshot(accounts) !== accountSnapshot(acknowledgement.remainingAccounts ?? []))
       throw new SiteRunRefusal(C.removalChanged, 409, 'TEST_ACCOUNTS_CHANGED')
+    await cancelSiteExecutions(tx, owner.projectId, new Date())
     await tx.shopifyShop.updateMany({ where: { projectId: owner.projectId }, data: { projectId: null, linkedAt: null } })
     await tx.project.update({ where: { id: owner.projectId }, data: {
       deletedAt: new Date(), isManaged: false,

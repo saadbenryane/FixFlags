@@ -222,6 +222,7 @@ async function listenFixtures(): Promise<{ origin: string; close: () => Promise<
     close: () => new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()))
       server.closeIdleConnections()
+      server.closeAllConnections()
     }),
   }
 }

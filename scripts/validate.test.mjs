@@ -125,6 +125,15 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('security:audit'))
     })
 
+    it('website mode retains foundation checks and uses the selected website test profile', () => {
+      const plan = buildPlan('website', [])
+      const full = buildPlan('full', [])
+      assert.deepEqual(plan.commands.map(command => command.label), full.commands.map(command => command.label))
+      assert.deepEqual(plan.commands.find(command => command.label === 'test:unit').args, ['run', 'test:website'])
+      assert.deepEqual(plan.commands.find(command => command.label === 'test:coverage').args, ['run', 'test:coverage:website'])
+      assert.deepEqual(full.commands.find(command => command.label === 'test:unit').args, ['run', 'test:unit'])
+    })
+
     it('keeps the validation harness in the full gate so side effects are guarded', () => {
       const plan = buildPlan('affected', ['scripts/validate.mjs'])
       assert.equal(plan.reason, 'shared validation config changed; using full validation')

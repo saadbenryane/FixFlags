@@ -6,8 +6,8 @@ Real receiving configuration remains open: the Resend domain and MX record are v
 
 The isolated `public-validation` environment permits normal account execution only on its explicit controlled HTTPS origin while the production lifecycle gate remains false. The controlled target has its own database and external email/password signup, verification, session and deletion flows. Its protected controls induce real failures without adding test controls to customer routes. The required website capability journeys use a separate free-beta owner, including explicit acknowledgement when external account deletion remains unavailable.
 
-Operational companion to [the launch acceptance criteria in the product
-masterplan](product-masterplan.md#11-launch-acceptance-criteria). That checklist
+Operational companion to [the website completion ledger in the product
+masterplan](product-masterplan.md#public-website-validation-completion-ledger). That ledger
 is the contract. This file says how each item is actually proven, and which
 items are still waiting on something outside this repository.
 
@@ -18,7 +18,7 @@ exact candidate revision.
 
 Local implementation is not proof.
 
-`npm run verify` proves the engine runs. It does not prove a customer's Checkout
+`npm run verify:website` checks the website foundation. It does not prove a customer's Checkout
 worked, that a Flag opened on a real site, or that Codex can drive the loop. A
 route existing, a unit test passing, or "implemented locally" never satisfies a
 launch criterion. The criteria are proven in a release environment and in
@@ -62,7 +62,7 @@ npm run verify:release:stage deployed
 reported commit is not the full expected SHA. `npm run smoke:release` then probes
 the production origin. None of this has run.
 
-### 2. Codex, Claude Code, and Cursor sessions
+### 2. Codex, Claude Code, and Cursor sessions (parked)
 
 Criterion: each agent authenticates, resolves Site and Outcome, runs, reconnects
 and polls, inspects a Flag, records a fix, and verifies.
@@ -100,9 +100,9 @@ Needs real production runs, not synthetic load.
 
 ## Release sequence
 
-Release commands default to `RELEASE_PROFILE=free-launch`. This profile requires every stage below except `billing-open`; it includes the MCP protocol journey in credentialed core. The separate `RELEASE_PROFILE=paid-opening` profile retains `billing-open`, including production Watch cost/reliability proof. The `billing-closed` stage still requires its real Stripe test-mode and access-revocation proof but does not require the production Watch cost database. Each receipt records its profile; the final gate rejects missing or mixed-profile evidence. Historical receipts without the profile must be rerun.
+Release commands default to `RELEASE_PROFILE=free-launch`. This profile requires every stage below except `billing-open`; its credentialed core contains website journeys, including accounts, uptime, category rechecks and removal. The separate `RELEASE_PROFILE=paid-opening` profile retains `billing-open`, including production Watch cost/reliability proof. The `billing-closed` stage still requires its real Stripe test-mode and access-revocation proof but does not require the production Watch cost database. Each receipt records its profile; the final gate rejects missing or mixed-profile evidence. Historical receipts without the profile must be rerun.
 
-The MCP protocol journey is mandatory. External Codex, Claude Code and Cursor session proof and observed owner usability are recorded in [the credentialed matrix](../.agents/sessions/credentialed-journey-matrix.md); neither is established by a successful protocol fixture.
+MCP protocol and external agent sessions remain parked outside website acceptance. The [credentialed matrix](../.agents/sessions/credentialed-journey-matrix.md) retains their historical evidence separately. Agent task observations identify their observer accurately and cannot establish a human usability study.
 
 Run from a clean candidate revision, in this order. Do not commit between stages:
 the repo side-effect guard in `scripts/validate.mjs` fails the run if the working

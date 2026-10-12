@@ -106,7 +106,10 @@
     "agent:benchmark": "node scripts/harness-benchmark.mjs",
     "test:agent-benchmark": "node --test scripts/harness-benchmark.test.mjs",
     "agent:eval": "node scripts/agent-evals/main.mjs",
-    "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed"
+    "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed",
+    "test:website": "vitest run --exclude 'lib/mcp/**' --exclude 'lib/repo-scan/**' --exclude 'app/api/mcp/**' --exclude 'app/api/api-keys/**' --exclude 'app/api/integrations/github/**' --exclude 'app/api/repo-scans/**' --exclude 'app/api/webhooks/railway/**'",
+    "test:coverage:website": "vitest run --coverage --exclude 'lib/mcp/**' --exclude 'lib/repo-scan/**' --exclude 'app/api/mcp/**' --exclude 'app/api/api-keys/**' --exclude 'app/api/integrations/github/**' --exclude 'app/api/repo-scans/**' --exclude 'app/api/webhooks/railway/**'",
+    "verify:website": "node scripts/validate.mjs website"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

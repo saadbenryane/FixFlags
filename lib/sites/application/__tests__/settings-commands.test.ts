@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { removeSite, saveSiteSettings } from '../settings-commands'
-const db = vi.hoisted(() => ({ lock: vi.fn(), updateMany: vi.fn(), update: vi.fn(), accounts: vi.fn(), messages: vi.fn(), shops: vi.fn(), deleted: vi.fn() }))
+const db = vi.hoisted(() => ({ lock: vi.fn(), updateMany: vi.fn(), update: vi.fn(), accounts: vi.fn(), messages: vi.fn(), shops: vi.fn(), deleted: vi.fn(), runs: vi.fn(), audits: vi.fn(), cancelRuns: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { $transaction: (run: (tx: unknown) => unknown) => run({
   $queryRaw: db.lock, project: { updateMany: db.updateMany, update: db.update },
   siteTestAccount: { findMany: db.accounts, deleteMany: db.deleted }, siteAccountMessage: { deleteMany: db.messages }, shopifyShop: { updateMany: db.shops },
+  runRequest: { findMany: db.runs, updateMany: db.cancelRuns }, audit: { findMany: db.audits },
 }) } }))
 const owner = { projectId: 'project', userId: 'owner' }
-beforeEach(() => { vi.clearAllMocks(); db.lock.mockResolvedValue([{ id: 'project' }]); db.updateMany.mockResolvedValue({ count: 1 }); db.accounts.mockResolvedValue([]) })
+beforeEach(() => { vi.clearAllMocks(); db.lock.mockResolvedValue([{ id: 'project' }]); db.updateMany.mockResolvedValue({ count: 1 }); db.accounts.mockResolvedValue([]); db.runs.mockResolvedValue([]); db.audits.mockResolvedValue([]) })
 describe('tenant-scoped Site lifecycle commands', () => {
   it('requires the current owner for settings and does not clear messages for a foreign Site', async () => {
     db.updateMany.mockResolvedValue({ count: 0 })

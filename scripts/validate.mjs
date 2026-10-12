@@ -248,7 +248,7 @@ function changedLintCommand(files) {
   ])]
 }
 
-export function fullCommands() {
+export function fullCommands({ websiteOnly = false } = {}) {
   return [
     command('font:verify', 'npm', ['run', 'font:verify', '--', '--optional']),
     command('db:validate', 'npm', ['run', 'db:validate']),
@@ -274,8 +274,8 @@ export function fullCommands() {
     command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
     command('security:audit', 'npm', ['run', 'security:audit']),
     command('test:scripts', 'npm', ['run', 'test:scripts']),
-    command('test:unit', 'npm', ['run', 'test:unit']),
-    command('test:coverage', 'npm', ['run', 'test:coverage']),
+    command('test:unit', 'npm', ['run', websiteOnly ? 'test:website' : 'test:unit']),
+    command('test:coverage', 'npm', ['run', websiteOnly ? 'test:coverage:website' : 'test:coverage']),
     command('accuracy:eval', 'npm', ['run', 'accuracy:eval']),
     command('build', 'node', ['scripts/next-build.mjs']),
     command('worker:build', 'npm', ['run', 'worker:build']),
@@ -295,10 +295,10 @@ export function buildPlan(requestedMode, providedFiles) {
   const fullRequired = files.some(isFullValidationFile)
   const codeFiles = files.filter((f) => !isDocsOnlyFile(f))
 
-  if (requestedMode === 'full') {
+  if (requestedMode === 'full' || requestedMode === 'website') {
     return {
       files,
-      commands: withContainerValidation(fullCommands(), files),
+      commands: withContainerValidation(fullCommands({ websiteOnly: requestedMode === 'website' }), files),
       reason: 'full validation requested',
     }
   }

@@ -1,6 +1,7 @@
 import { SITE_BOARD_COPY } from './terminology'
 
 export const SITE_ACTION_COPY = {
+  removedDuringCheck: 'This website was removed before the check completed.',
   cancel: 'Cancel',
   scopedRun: { title: 'Checking selected evidence', retained: 'Site-wide evidence keeps its original date. This check updates only the selected scope.',
     queued: 'Waiting to start', running: 'Checking', interrupted: 'Check interrupted', unknown: 'Scope unavailable' },

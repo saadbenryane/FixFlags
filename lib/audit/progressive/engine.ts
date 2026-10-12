@@ -179,6 +179,10 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const token = randomUUID(), now = new Date()
   const input = taskInputSchema.parse(original.workInput)
   const claimed = await prisma.$transaction(async tx => {
+    const projects = await tx.$queryRaw<Array<{ deletedAt: Date | null }>>`
+      SELECT p."deletedAt" FROM "projects" p JOIN "audits" a ON a."projectId" = p."id"
+      WHERE a."id" = ${job.auditId} FOR UPDATE OF p`
+    if (projects.some(project => project.deletedAt)) return { count: 0 }
     await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${job.auditId} FOR UPDATE`
     if (input.fixtureId) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'fixture:' + input.fixtureId}))`
@@ -203,6 +207,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const task = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: original.id } })
   const owner = { auditId: job.auditId, taskId: task.id, token, generation: job.generation }
   await withExecutionOwnership(owner, async () => {
+    try {
     await executionTransaction(async tx => {
       if (handler.kind === 'judge') await tx.audit.updateMany({ where: { id: job.auditId,
         status: { in: ['QUEUED', 'CAPTURING', 'CHECKING'] } }, data: { status: 'JUDGING' } })
@@ -210,7 +215,6 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
         status: { notIn: ['COMPLETED', 'FAILED'] } }, data: { status: 'FINALIZING' } })
       await recordProgress(tx, job.auditId, { taskId: task.id, kind: handler.kind, state: 'RUNNING' })
     })
-    try {
       const requiredKeys = ['finalize', 'discovery', 'cross-page', 'bindings'].includes(handler.kind) ? []
         : handler.kind === 'judge' ? task.workDependencies.filter(key => key.endsWith(':browser') || key.endsWith(':captures')) : task.workDependencies
       const tasks = requiredKeys.length ? await prisma.auditVerifierExecution.findMany({ where: { auditId: job.auditId,

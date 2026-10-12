@@ -172,83 +172,46 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
   })
 })
 
-runPostgres('anonymous last-hour URL reuse PostgreSQL boundary', () => {
+runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
   const suffix = randomUUID()
   const url = `https://example.com/anon-reuse-${suffix}`
+  const visitorKey = `anonymous-reuse-${suffix}`
 
-  beforeEach(() => {
-    queueAdd.mockClear()
-    trackAnonymousAuditId.mockClear()
-  })
-
+  beforeEach(() => { queueAdd.mockClear(); trackAnonymousAuditId.mockClear() })
   afterEach(async () => {
     await prisma.audit.deleteMany({ where: { url } })
+    await prisma.provisionalSite.deleteMany({ where: { sessionKey: { startsWith: visitorKey } } })
   })
 
-  it('reuses a completed public scan of the same URL from the last hour without tracking or enqueueing', async () => {
-    const existing = await prisma.audit.create({
-      data: {
-        url,
-        userId: null,
-        isPublic: true,
-        status: 'COMPLETED',
-        completedAt: new Date(),
-        includeAi: false,
-      },
-    })
-
-    const result = await createAndEnqueueAudit({ url, clientId: `anon-${suffix}` })
-
-    expect(result).toEqual({
-      auditId: existing.id,
-      status: 'COMPLETED',
-      reused: true,
-      parentId: null,
-    })
+  it.each(['COMPLETED', 'CHECKING'] as const)('reuses the same visitor’s %s scan and refreshes claim access', async status => {
+    const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    await prisma.audit.update({ where: { id: admitted.auditId }, data: { status, ...(status === 'COMPLETED' ? { completedAt: new Date() } : {}) } })
+    queueAdd.mockClear(); trackAnonymousAuditId.mockClear()
+    const result = await createAndEnqueueAudit({ url, visitorKey })
+    expect(result).toEqual({ auditId: admitted.auditId, status, reused: true, parentId: null, siteId: admitted.siteId })
     expect(queueAdd).not.toHaveBeenCalled()
-    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+    expect(trackAnonymousAuditId).toHaveBeenCalledWith(admitted.auditId)
   })
 
-  it('reuses an in-progress public scan of the same URL from the last hour', async () => {
-    const existing = await prisma.audit.create({
-      data: {
-        url,
-        userId: null,
-        isPublic: true,
-        status: 'CHECKING',
-        includeAi: false,
-      },
-    })
-
-    const result = await createAndEnqueueAudit({ url })
-
-    expect(result).toMatchObject({
-      auditId: existing.id,
-      status: 'CHECKING',
-      reused: true,
-    })
-    expect(queueAdd).not.toHaveBeenCalled()
-    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+  it('creates an independent board for a different visitor at the exact same URL', async () => {
+    const first = await createAndEnqueueAudit({ url, visitorKey })
+    const other = await createAndEnqueueAudit({ url, visitorKey: visitorKey + '-other' })
+    expect(other.reused).toBe(false)
+    expect(other.auditId).not.toBe(first.auditId)
+    expect(other.siteId).not.toBe(first.siteId)
+    expect(queueAdd).toHaveBeenCalledTimes(2)
   })
 
-  it('creates a new teaser when the last public scan is older than one hour', async () => {
-    await prisma.audit.create({
-      data: {
-        url,
-        userId: null,
-        isPublic: true,
-        status: 'COMPLETED',
-        completedAt: new Date(Date.now() - 61 * 60 * 1000),
-        createdAt: new Date(Date.now() - 62 * 60 * 1000),
-        includeAi: false,
-      },
-    })
-
-    const result = await createAndEnqueueAudit({ url, clientId: `anon-miss-${suffix}` })
-
+  it('creates a new teaser on the same board when its own completed scan is older than one hour', async () => {
+    const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    await prisma.audit.update({ where: { id: admitted.auditId }, data: { status: 'COMPLETED',
+      completedAt: new Date(Date.now() - 61 * 60 * 1000), createdAt: new Date(Date.now() - 62 * 60 * 1000) } })
+    queueAdd.mockClear(); trackAnonymousAuditId.mockClear()
+    const result = await createAndEnqueueAudit({ url, visitorKey })
     expect(result.reused).toBe(false)
-    expect(result.auditId).toBeTruthy()
-    expect(queueAdd).toHaveBeenCalledTimes(1)
+    expect(result.auditId).not.toBe(admitted.auditId)
+    expect(result.siteId).toBe(admitted.siteId)
+    expect(queueAdd).toHaveBeenCalledOnce()
     expect(trackAnonymousAuditId).toHaveBeenCalledWith(result.auditId)
   })
 })
