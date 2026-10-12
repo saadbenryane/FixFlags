@@ -238,6 +238,9 @@ test.describe('credentialed revenue journeys', () => {
     await passkeyPage.waitForURL((url) => !url.pathname.startsWith('/two-factor'), {
       timeout: 30_000,
     })
+    const passkeySession = await passkeyPage.request.get('/api/auth/get-session')
+    expect(passkeySession.status()).toBe(200)
+    expect((await passkeySession.json())?.user).toMatchObject({ email, twoFactorEnabled: true })
     await passkeyContext.close()
 
     const recoveryContext = await browser.newContext()
@@ -248,6 +251,9 @@ test.describe('credentialed revenue journeys', () => {
     await recoveryPage.waitForURL((url) => !url.pathname.startsWith('/two-factor'), {
       timeout: 30_000,
     })
+    const recoverySession = await recoveryPage.request.get('/api/auth/get-session')
+    expect(recoverySession.status()).toBe(200)
+    expect((await recoverySession.json())?.user).toMatchObject({ email, twoFactorEnabled: true })
     await recoveryContext.close()
   })
 
