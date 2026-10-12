@@ -1,3 +1,4 @@
+import { comparableOutcomeCoverage, completeOutcomeEvidence } from '@/lib/sites/domain/outcome-proof'
 import type { Prisma, ReportCompleteness } from '@prisma/client'
 import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
@@ -174,6 +175,7 @@ export function assessVerificationCoverage(input: {
 export function assessTargetedOutcomeCoverage(input: {
   auditId: string; auditStatus: string; projectId: string; parentAuditId: string
   outcomeId: string | null; attemptId: string
+  targeted?: boolean
   run: {
     id: string; projectId: string; status: string; environment: string; verificationTarget: Prisma.JsonValue
     assessments: Array<{ outcomeId: string; auditId: string; runRequestId: string; state: string; coverage: Prisma.JsonValue; evidence: Prisma.JsonValue }>
@@ -182,28 +184,16 @@ export function assessTargetedOutcomeCoverage(input: {
 }): VerificationCoverageDecision {
   const record = (value: Prisma.JsonValue | null): Record<string, Prisma.JsonValue> =>
     value && !Array.isArray(value) && typeof value === 'object' ? value as Record<string, Prisma.JsonValue> : {}
-  const keys = (value: Prisma.JsonValue | undefined): string[] => Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string').sort() : []
   const target = record(input.run.verificationTarget)
   const assessment = input.run.assessments.find(item => item.outcomeId === input.outcomeId && item.auditId === input.auditId && item.runRequestId === input.run.id)
-  const source = record(input.sourceAssessment?.coverage ?? null)
   const observed = record(assessment?.coverage ?? null)
-  const required = keys(observed.requiredBindings)
-  const bindings = (value: Prisma.JsonValue | undefined): Prisma.JsonValue[] => Array.isArray(value)
-    ? [...value].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))) : []
-  const sourceBindings = bindings(source.bindings)
-  const observedBindings = bindings(observed.bindings)
-  const sameScope = required.length > 0 && JSON.stringify(required) === JSON.stringify(keys(source.requiredBindings)) &&
-    sourceBindings.length === required.length && observedBindings.length === required.length &&
-    JSON.stringify(sourceBindings) === JSON.stringify(observedBindings) &&
-    observed.environment === source.environment && observed.environment === input.run.environment &&
-    JSON.stringify(observed.scope ?? null) === JSON.stringify(source.scope ?? null)
+  const sameScope = comparableOutcomeCoverage(input.sourceAssessment?.coverage, observed) && observed.environment === input.run.environment
   const conclusive = assessment?.state === 'CLEAR' || assessment?.state === 'FLAG'
-  const executed = Boolean(assessment && Object.keys(record(assessment.evidence)).length > 0 &&
-    required.every(key => keys(observed.observedBindings).includes(key)))
+  const executed = completeOutcomeEvidence(observed, assessment?.evidence)
+  const intended = input.targeted === false ? input.run.verificationTarget === null : target.kind === 'OUTCOME' &&
+    target.attemptId === input.attemptId && target.outcomeId === input.outcomeId && target.parentAuditId === input.parentAuditId
   const comparable = input.auditStatus === 'COMPLETED' && input.run.status === 'COMPLETED' &&
-    input.run.projectId === input.projectId && target.kind === 'OUTCOME' && target.attemptId === input.attemptId &&
-    target.outcomeId === input.outcomeId && target.parentAuditId === input.parentAuditId &&
+    input.run.projectId === input.projectId && intended &&
     input.sourceAssessment?.state === 'FLAG' && sameScope && conclusive && executed
   return {
     comparable,

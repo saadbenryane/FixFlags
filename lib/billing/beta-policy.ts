@@ -5,8 +5,8 @@
 export const OPEN_BETA_ACCESS = true
 
 export const PLANNED_PAID_PRICING = {
-  BUILDER: { price: '$49', period: '/website/mo' },
-  TEAM: { price: '$99', period: '/website/mo' },
+  BUILDER: { price: '$49', period: '/website/mo', websiteChecks: 30 },
+  TEAM: { price: '$99', period: '/website/mo', websiteChecks: 90 },
 } as const
 
 /** Call only with a resolved account. Anonymous visitors retain claim boundaries. */

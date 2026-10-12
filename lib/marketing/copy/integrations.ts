@@ -33,8 +33,8 @@ export const INTEGRATIONS_PAGE = {
     {
       id: 'github', status: 'planned', title: 'GitHub', logo: '/brand/integrations/github.svg',
       purpose: 'Code and fix handoff',
-      summary: 'Planned: repository changes that could explain when a Flag appeared.',
-      checks: ['Recent changes near the first appearance of a Flag', 'Fix pull requests linked to affected pages', 'Fresh verification after a change is published'],
+      summary: 'Planned: connect published repository updates to Studio website checks.',
+      checks: ['Published changes linked to the affected website', 'Automatic Studio checks after a connected update', 'Triggered checks use the same monthly website-check allowance'],
     },
     {
       id: 'woocommerce', status: 'planned', title: 'WooCommerce', logo: '/brand/integrations/woocommerce.svg',

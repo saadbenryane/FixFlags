@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { errors } from 'playwright'
 import type { Prisma } from '@prisma/client'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { publicHttpCapacity } from '@/lib/audit/progressive/capacity'
@@ -57,7 +58,11 @@ async function recordFixtureCleanup(operationId: string, fixtureId: string, fixt
 
 export const safeFormExecutionResultSchema = z.object({
   disposition: z.enum(['SUCCEEDED', 'FAILED', 'BLOCKED']), reason: z.string().min(1),
-  detail: z.object({ fieldCount: z.number().int().nonnegative(), cleanupStatus: z.enum(['succeeded', 'failed', 'not_started', 'unknown']) }).strict(),
+  detail: z.object({ fieldCount: z.number().int().nonnegative(), cleanupStatus: z.enum(['succeeded', 'failed', 'not_started', 'unknown']),
+    successObservation: z.object({ source: z.literal('rendered-dom'), criterionType: z.enum(['text', 'url', 'target']),
+      presentBeforeSubmit: z.boolean(), presentAfterSubmit: z.boolean().nullable(), waitLimitMs: z.number().int().nonnegative().max(8000),
+    }).strict().optional(),
+  }).strict(),
 }).strict()
 
 async function setupConsent(projectId: string, fixtureId: string, version: number, db: typeof prisma | Prisma.TransactionClient = prisma) {
@@ -197,6 +202,8 @@ export async function executeSafeFormFixture(input: {
   const operationId = owner ? `${owner.taskId ?? owner.auditId}:g${owner.generation}` : null
   const deadline = Math.min(input.deadline ?? Infinity, Date.now() + 45_000)
   let requestRefused = false
+  let submissionAdmitted = false
+  let successObservation: SafeFormExecutionResult['detail']['successObservation']
   try {
     const browser = await getBrowser()
     session = await createAuditPage(browser, target.url, {
@@ -216,38 +223,57 @@ export async function executeSafeFormFixture(input: {
       if (Date.now() >= deadline) throw new Error('Fixture execution deadline exhausted')
       await targetLocator(session.page, target).first().fill(values[key]!, { timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
     }
-    const current = await executionTransaction(async tx => {
-      const authorized = await tx.outcomeFixture.findFirst({
-        where: { id: fixture.id, projectId: input.projectId, enabled: true, version: fixture.version },
-        select: { authorizedAt: true, lastDryRunVersion: true },
-    })
-    if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version, tx)) return null
-    if (authorized && (input.requireAuthorization === false || authorized.authorizedAt && authorized.lastDryRunVersion === fixture.version) && owner && operationId)
-      await tx.auditPipelineEvent.create({ data: { auditId: owner.auditId, executionId: operationId, traceId: owner.auditId,
-        attempt: owner.generation, stage: 'checking', event: 'protected_submission_admitted', status: 'started',
-        detail: { operationId, fixtureId: fixture.id, fixtureVersion: fixture.version } } })
-    return authorized
-    })
-    if (!current || (input.requireAuthorization !== false && (!current.authorizedAt || current.lastDryRunVersion !== fixture.version))) {
-      reason = 'fixture_not_authorized'
+    const criterion = success.data
+    const successLocator = criterion.type === 'text' ? session.page.getByText(criterion.value, { exact: false }).first()
+      : criterion.type === 'target' ? targetLocator(session.page, criterion.target).first() : null
+    const presentBeforeSubmit = criterion.type === 'url' ? new URL(session.page.url()).href === new URL(criterion.value).href
+      : await successLocator!.isVisible()
+    successObservation = { source: 'rendered-dom', criterionType: criterion.type, presentBeforeSubmit, presentAfterSubmit: null, waitLimitMs: 0 }
+    if (presentBeforeSubmit) {
+      reason = 'success_criterion_preexisting'
     } else {
-      if (Date.now() >= deadline) throw new Error('Fixture execution deadline exhausted')
-      await targetLocator(session.page, mapping.data.submit).first().click({ timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
-      const observedOrigin = new URL(session.page.url()).origin
-      if (observedOrigin !== origin) {
-        reason = 'form_left_authorized_origin'
-      } else if (success.data.type === 'text') {
-        const found = await session.page.getByText(success.data.value, { exact: false }).first().isVisible().catch(() => false)
-        disposition = found ? 'SUCCEEDED' : 'FAILED'
-        reason = found ? 'success_criterion_observed' : 'success_text_missing'
-      } else if (success.data.type === 'target') {
-        const found = await targetLocator(session.page, success.data.target).first().isVisible().catch(() => false)
-        disposition = found ? 'SUCCEEDED' : 'FAILED'
-        reason = found ? 'success_criterion_observed' : 'success_target_missing'
+      const current = await executionTransaction(async tx => {
+        const authorized = await tx.outcomeFixture.findFirst({
+          where: { id: fixture.id, projectId: input.projectId, enabled: true, version: fixture.version },
+          select: { authorizedAt: true, lastDryRunVersion: true },
+        })
+        if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version, tx)) return null
+        if (authorized && (input.requireAuthorization === false || authorized.authorizedAt && authorized.lastDryRunVersion === fixture.version) && owner && operationId) {
+          await tx.auditPipelineEvent.create({ data: { auditId: owner.auditId, executionId: operationId, traceId: owner.auditId,
+            attempt: owner.generation, stage: 'checking', event: 'protected_submission_admitted', status: 'started',
+            detail: { operationId, fixtureId: fixture.id, fixtureVersion: fixture.version } } })
+          submissionAdmitted = true
+        }
+        return authorized
+      })
+      if (!current || (input.requireAuthorization !== false && (!current.authorizedAt || current.lastDryRunVersion !== fixture.version))) {
+        reason = 'fixture_not_authorized'
       } else {
-        const found = new URL(session.page.url()).href === new URL(success.data.value).href
-        disposition = found ? 'SUCCEEDED' : 'FAILED'
-        reason = found ? 'success_criterion_observed' : 'success_url_missing'
+        if (Date.now() >= deadline) throw new Error('Fixture execution deadline exhausted')
+        await targetLocator(session.page, mapping.data.submit).first().click({ timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
+        const observedOrigin = new URL(session.page.url()).origin
+        if (observedOrigin !== origin) {
+          reason = 'form_left_authorized_origin'
+        } else {
+          const waitLimitMs = Math.max(1, Math.min(8000, deadline - Date.now()))
+          successObservation.waitLimitMs = waitLimitMs
+          try {
+            if (successLocator) await successLocator.waitFor({ state: 'visible', timeout: waitLimitMs })
+            else if (criterion.type === 'url') await session.page.waitForURL(url => url.href === new URL(criterion.value).href,
+              { timeout: waitLimitMs, waitUntil: 'domcontentloaded' })
+            if (new URL(session.page.url()).origin !== origin) reason = 'form_left_authorized_origin'
+            else {
+              disposition = 'SUCCEEDED'
+              reason = 'success_criterion_observed'
+              successObservation.presentAfterSubmit = true
+            }
+          } catch (error) {
+            if (!(error instanceof errors.TimeoutError)) throw error
+            successObservation.presentAfterSubmit = false
+            disposition = waitLimitMs === 8000 ? 'FAILED' : 'BLOCKED'
+            reason = waitLimitMs === 8000 ? `success_${criterion.type}_missing` : 'success_observation_incomplete'
+          }
+        }
       }
     }
   } catch {
@@ -257,14 +283,14 @@ export async function executeSafeFormFixture(input: {
     await session?.page.context().close().catch(() => undefined)
     cleanupStatus = await callHook(cleanupUrl, hookSecret, fixture.id, operationId ? { operationId } : undefined) ? 'succeeded' : 'failed'
   }
-  if (cleanupStatus === 'succeeded' && disposition !== 'BLOCKED' && operationId)
+  if (cleanupStatus === 'succeeded' && submissionAdmitted && operationId)
     await recordFixtureCleanup(operationId, fixture.id, fixture.version)
-  if (cleanupStatus !== 'succeeded') {
-    return { disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus } }
-  }
-  if (disposition === 'FAILED' && requestRefused)
-    return { disposition: 'BLOCKED', reason: 'fixture_boundary_refused', detail: { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus } }
-  return { disposition, reason, detail: { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus } }
+  const detail: SafeFormExecutionResult['detail'] = { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus,
+    ...(successObservation ? { successObservation } : {}) }
+  if (cleanupStatus !== 'succeeded') return { disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail }
+  if (requestRefused)
+    return { disposition: 'BLOCKED', reason: 'fixture_boundary_refused', detail }
+  return { disposition, reason, detail }
 }
 
 function targetLocator(page: Awaited<ReturnType<typeof createAuditPage>>['page'], target: AccessibleTarget) {

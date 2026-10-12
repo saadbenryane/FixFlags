@@ -1,5 +1,6 @@
 import { PageSpeedResult, CruxMetrics } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
+import { PERFORMANCE_RESOURCE_THRESHOLDS } from '../pagespeed-opportunities'
 
 function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string {
   if (!crux) return ''
@@ -54,7 +55,7 @@ export function runPerformanceChecks(
   findings.push(...runLabVitalsChecks(ps))
 
   const renderBlocking = ps.opportunities.find((o) => o.id === 'render-blocking-resources')
-  if (renderBlocking && renderBlocking.savings > 500) {
+  if (renderBlocking && renderBlocking.savings > PERFORMANCE_RESOURCE_THRESHOLDS.renderBlocking) {
     findings.push({
       checkId: 'render-blocking',
       rubric: 'EXPERIENCE',
@@ -68,7 +69,7 @@ export function runPerformanceChecks(
   }
 
   const unusedJs = ps.opportunities.find((o) => o.id === 'unused-javascript')
-  if (unusedJs && unusedJs.savings > 100_000) {
+  if (unusedJs && unusedJs.savings > PERFORMANCE_RESOURCE_THRESHOLDS.unusedJavascript) {
     findings.push({
       checkId: 'unused-js-large',
       rubric: 'EXPERIENCE',
@@ -82,7 +83,7 @@ export function runPerformanceChecks(
   }
 
   const unusedCss = ps.opportunities.find((o) => o.id === 'unused-css-rules')
-  if (unusedCss && unusedCss.savings > 50_000) {
+  if (unusedCss && unusedCss.savings > PERFORMANCE_RESOURCE_THRESHOLDS.unusedCss) {
     findings.push({
       checkId: 'unused-css-large',
       rubric: 'EXPERIENCE',
@@ -98,7 +99,7 @@ export function runPerformanceChecks(
   const unoptImages = ps.opportunities.filter(o => ['uses-optimized-images', 'uses-webp-images',
     'uses-responsive-images', 'efficient-animated-content'].includes(o.id))
     .sort((a, b) => b.savings - a.savings)[0]
-  if (unoptImages && unoptImages.savings > 50_000) {
+  if (unoptImages && unoptImages.savings > PERFORMANCE_RESOURCE_THRESHOLDS.images) {
     findings.push({
       checkId: 'unoptimized-images',
       rubric: 'EXPERIENCE',

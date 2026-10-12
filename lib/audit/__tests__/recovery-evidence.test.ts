@@ -57,6 +57,18 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
     expect(recovered('security-csp-unsafe-inline', [headers])).toBe(false)
   })
 
+  it('uses the same exact Performance responsibility proof despite unrelated unknown audits', () => {
+    const assertion = { key: 'unused-javascript', name: 'Unused JavaScript', expected: 'No excessive measured waste',
+      observed: '0 bytes in the new measurement', passed: true, complete: true }
+    const partial = row({ complete: false, passed: false, assertions: [assertion] })
+    expect(recovered('unused-js-large', [partial])).toBe(true)
+    expect(recovered('render-blocking', [partial])).toBe(false)
+    expect(recovered('unused-css-large', [partial])).toBe(false)
+    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, complete: false }] })])).toBe(false)
+    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, complete: undefined }] })])).toBe(false)
+    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, passed: false }] })])).toBe(false)
+  })
+
   it('requires conclusive matching controls instead of a healthy subset of keyboard navigation', () => {
     const assertion = { key: 'focus-styles', name: 'Focus', expected: 'Visible focus', observed: 'Style observed',
       passed: true, complete: true, targets: [{ selector: '#action', label: 'Action', context: 'dialog:#open=>#dialog' }] }

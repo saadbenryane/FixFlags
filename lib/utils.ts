@@ -52,7 +52,7 @@ export {
   rubricDescription,
   severityLabel,
   impactTagLabel,
-} from '@/lib/marketing/copy'
+} from '@/lib/marketing/copy/brand'
 
 export function rubricStatusColor(status: string): string {
   const map: Record<string, string> = {

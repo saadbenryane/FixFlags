@@ -105,6 +105,12 @@ describe('Product Watch', () => {
     }))
   })
 
+  it('keeps scheduling available when notification delivery is unavailable', async () => {
+    vi.stubEnv('RESEND_API_KEY', '')
+    vi.stubEnv('RESEND_FROM_EMAIL', '')
+    expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'weekly' })).toEqual({ ok: true })
+  })
+
   it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with its duration', async (interval, everyMinutes, stored) => {
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval, ...(everyMinutes ? { everyMinutes } : {}) })).toEqual({ ok: true })
     expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchInterval: stored, watchEveryMinutes: everyMinutes ?? null }) }))

@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
 import { auditHostname } from '@/lib/audit/active-audit'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy/errors'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 const POLL_DELAYS_MS = [2_000, 4_000, 8_000, 15_000] as const

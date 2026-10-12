@@ -46,9 +46,6 @@ export function productWatchReadiness(): { available: boolean; error: string | n
   if (!process.env.REDIS_URL) {
     return { available: false, error: 'WATCH_UNAVAILABLE: Redis is not configured' }
   }
-  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
-    return { available: false, error: 'WATCH_UNAVAILABLE: email delivery is not configured' }
-  }
   return { available: true, error: null }
 }
 
@@ -312,14 +309,10 @@ export async function processDueProjectWatches(
 }
 
 async function markWatchCompleted(projectId: string, completedAt: Date) {
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      watchLastRunAt: completedAt,
-      watchLeaseUntil: null,
-      watchConsecutiveFailures: 0,
-      watchLastError: null,
-    },
+  await prisma.project.updateMany({
+    where: { id: projectId, OR: [{ watchLastRunAt: null }, { watchLastRunAt: { lt: completedAt } }] },
+    // Notification retries cannot rewind monitoring or clear a scheduler lease.
+    data: { watchLastRunAt: completedAt },
   })
 }
 

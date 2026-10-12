@@ -11,11 +11,15 @@ The accepted commercial direction is one Site product, sold per website. [Busine
 
 ## Public packaging
 
+Open beta currently includes all supported features, custom scheduling, and unrestricted commercial usage on one website. The paid offers below are planned and remain on the waitlist.
+
 | Plan | Price | Website relationship |
 | --- | --- | --- |
-| Free | $0 | One website, verified weekly |
-| Pro | $49 per website per month | Each website verified every day |
-| Studio | Quoted per website | Several client websites on one login |
+| Free | $0 | Uptime monitoring; full supported access on one website during open beta |
+| Pro | Planned $49 per website per month | 30 website checks per month, scheduled or manual |
+| Studio | Planned $99 per website per month | 90 website checks per month, with planned checks after published updates |
+
+Both paid plans include custom automatic scheduling. One website check is a bounded run of the available FixFlags suite across configured coverage. Scheduled, manual, and Studio integration-triggered checks use the same allowance. Uptime monitoring runs separately on its configured schedule and must continue when the complete-check allowance is exhausted. Studio update triggers require a supported repository or deployment integration and remain planned.
 
 Paid checkout is closed. Pro and Studio calls to action join the waitlist. Stripe must remain closed until the per-Site cost baseline and complete test-mode checkout evidence close blocker B5 in the product masterplan.
 
@@ -31,7 +35,7 @@ FixFlags looks after a website and the journeys the business depends on:
 - ongoing Watch at the plan's honest cadence;
 - connections that enrich the same Site instead of creating another product.
 
-Plans change responsibility and frequency, not evidence standards. Do not sell checks per month, page counts, unlimited Sites, hourly full browser audits, an SLA, or unshipped integrations.
+Plans change the monthly website-check allowance and available triggers, not evidence standards. The allowance counts website runs, not individual technical checks. Do not promise unrestricted page counts, unlimited Sites, continuous detection, an SLA, or unshipped integrations as available features.
 
 ## Economics gate
 

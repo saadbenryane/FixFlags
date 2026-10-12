@@ -1,0 +1,26 @@
+import { createHash } from 'node:crypto'
+import type { CheckAssertion } from './assertion'
+
+export const DESTINATION_VERIFICATION_RULE = 'Public destination: repeat GET for every originally failed destination under the same page scope.'
+export type DestinationCheckOptions = {
+  deadline?: number
+  record?: (assertion: CheckAssertion) => void
+  scope?: { complete?: boolean; limitation?: string; collectedAt?: string }
+}
+
+/** Retain query-dependent destination identity without persisting signed values. */
+export function destinationContext(pageUrl: string, destination: string): string {
+  const identity = (value: string) => {
+    try { const url = new URL(value); url.hash = ''; return url.toString() } catch { return value }
+  }
+  return 'destination:' + createHash('sha256').update(JSON.stringify([identity(pageUrl), identity(destination)])).digest('hex')
+}
+
+export function displayDestination(value: string): string {
+  try { const url = new URL(value); url.username = ''; url.password = ''; url.search = ''; url.hash = ''; return url.toString().slice(0, 500) }
+  catch { return 'Invalid destination URL' }
+}
+
+export function destinationScope(options: DestinationCheckOptions, complete: boolean, limitation: string) {
+  if (options.scope) Object.assign(options.scope, { complete, limitation, collectedAt: new Date().toISOString() })
+}

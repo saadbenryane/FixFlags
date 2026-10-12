@@ -1,7 +1,7 @@
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { canonicalHistoricalCheckId } from './check-compatibility'
 import { SEARCH_CHECK_REGISTRY, type SearchCheckIdentity } from './search/definitions'
-import { PAGE_CHECK_DEFINITIONS, type PageCheckDefinition } from './checks/definitions'
+import { MODULE_CHECK_DEFINITIONS, type PageCheckDefinition } from './checks/definitions'
 
 export type CheckDefinition = { version: number; area: SiteCardArea; module: string; capabilities: readonly string[] }
 
@@ -164,8 +164,8 @@ const LEGACY_CHECK_DEFINITIONS = {
   'flow-cta-external-leave': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-cta-flow"] },
   'flow-pricing-nav-broken': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-multi-step-flow"] },
   'flow-mobile-menu-broken': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-multi-step-flow"] },
-  'flow-form-no-validation': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-form-feedback"] },
-  'flow-form-slow-feedback': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-form-feedback"] },
+  'flow-form-no-validation': { version: 1, area: 'conversion', module: 'form-validation', capabilities: ["experience-form-feedback"] },
+  'flow-form-slow-feedback': { version: 1, area: 'conversion', module: 'form-validation', capabilities: ["experience-form-feedback"] },
   'scroll-ghost-sections': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-scroll-reveal"] },
   'flow-cta-blank-destination': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-cta-flow"] },
   'flow-cta-stuck-loading': { version: 1, area: 'conversion', module: 'flow', capabilities: ["experience-cta-flow"] },
@@ -231,9 +231,9 @@ export const CHECK_DEFINITIONS = { ...LEGACY_CHECK_DEFINITIONS, ...searchDefinit
 export const CHECK_REGISTRY: Record<string, CheckDefinition> = CHECK_DEFINITIONS
 
 /** Historical consumers use projections of the same explicit module contracts. */
-export const CHECK_MODULES: Readonly<Record<string, Pick<PageCheckDefinition, 'version' | 'area' | 'name' | 'source' | 'input'>>> = { ...PAGE_CHECK_DEFINITIONS,
+export const CHECK_MODULES: Readonly<Record<string, Pick<PageCheckDefinition, 'version' | 'area' | 'name' | 'source' | 'input'>>> = { ...MODULE_CHECK_DEFINITIONS,
   search: { version: 1, area: 'search' as const, name: 'Public Search evidence', source: 'DETERMINISTIC' as const, input: 'metadata' as const } }
-export const CHECK_ASSERTIONS = Object.fromEntries(Object.entries(PAGE_CHECK_DEFINITIONS).map(([id, definition]) => [id, definition.assertions]))
+export const CHECK_ASSERTIONS = Object.fromEntries(Object.entries(MODULE_CHECK_DEFINITIONS).map(([id, definition]) => [id, definition.assertions]))
 
 export function registeredCheck(id: string | null | undefined) {
   return CHECK_REGISTRY[canonicalHistoricalCheckId(id)]

@@ -13,6 +13,12 @@ it('also makes an independently reproduced failure comparable rather than callin
   const failed = { ...input, run: { ...input.run, assessments: [{ ...input.run.assessments[0], state: 'FLAG' }] } }
   expect(assessTargetedOutcomeCoverage(failed).comparable).toBe(true)
 })
+it('uses the same scope proof for an ordinary scheduled child without inventing a targeted request', () => {
+  const automatic = { ...input, targeted: false, run: { ...input.run, verificationTarget: null } }
+  expect(assessTargetedOutcomeCoverage(automatic).comparable).toBe(true)
+  expect(assessTargetedOutcomeCoverage({ ...automatic, targeted: true }).comparable).toBe(false)
+  expect(assessTargetedOutcomeCoverage({ ...automatic, run: { ...automatic.run, verificationTarget: { kind: 'DIAGNOSTIC' } } }).comparable).toBe(false)
+})
 it('refuses blocked or missing evidence, changed required scope and unrelated identities', () => {
   for (const assessment of [
     { ...input.run.assessments[0], state: 'COULD_NOT_VERIFY' },

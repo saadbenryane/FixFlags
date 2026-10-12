@@ -32,7 +32,7 @@ import type {
 import type { ProductContract } from '@/lib/audit/product-contract'
 import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
 import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
-import { parseReviewCoverage } from '@/lib/audit/review-depth'
+import { parseReviewCoverage } from '@/lib/audit/review-coverage'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
 /**

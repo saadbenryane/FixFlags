@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { trackingEvidenceSchema } from '../tracking/contracts'
 import { resourceTransportSchema } from '../resource-transport'
+import { resourceAuditsSchema } from '../pagespeed-opportunities'
 import { jsonValueSchema } from './contracts'
 import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
@@ -31,6 +32,7 @@ export const pageSpeedSchema = z.object({
   strategy: z.enum(['desktop', 'mobile']), score: z.number().finite().nullable(), lcp: z.number().finite().nullable(),
   cls: z.number().finite().nullable(), fcp: z.number().finite().nullable(), tbt: z.number().finite().nullable(), inp: z.number().finite().nullable(),
   opportunities: z.array(z.object({ id: text, title: text, savings: z.number().finite(), itemsCount: count.optional() }).strict()).max(100),
+  resourceAudits: resourceAuditsSchema.optional(),
   failedAccessibilityAudits: z.array(z.object({ id: text, title: text, score: z.number().finite().nullable() }).strict()).max(500),
   diagnostics: z.record(z.string(), jsonValueSchema), raw: z.record(z.string(), jsonValueSchema),
   crux: z.object({ lcp: z.number().finite().nullable(), cls: z.number().finite().nullable(), fcp: z.number().finite().nullable(),

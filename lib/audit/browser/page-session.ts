@@ -66,6 +66,8 @@ export interface CreateAuditPageOptions {
   journeySafe?: boolean
   /** Local UI activation may not bypass routing through workers or sockets. */
   readOnlyInteractions?: boolean
+  /** Opaque session token for an isolated, outbound-blocked local form probe. */
+  localFormValidationToken?: string
   onSafetyRefusal?: JourneyRouteGuardOptions['onRefusal']
   /**
    * Buy-path walks: keep payment/download blocks, but allow same-origin cart
@@ -174,7 +176,7 @@ export async function createAuditPage(
     : undefined
   const safetyRestrictions: string[] = [], refusedUrls = new Set<string>()
   const network: NetworkMonitor = attachNetworkMonitor(page, targetUrl)
-  if (options.readOnlyInteractions) await page.routeWebSocket('**', async socket => {
+  if (options.readOnlyInteractions || options.localFormValidationToken) await page.routeWebSocket('**', async socket => {
     if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
     options.onSafetyRefusal?.('protected_action_requires_fixture')
     await socket.close().catch(() => undefined)
@@ -303,7 +305,7 @@ export async function createAuditPage(
   }
 
   if (options.journeySafe && !options.buyPath) {
-    await blockFormSubmits(page)
+    await blockFormSubmits(page, options.localFormValidationToken)
   }
 
   return {

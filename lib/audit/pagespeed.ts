@@ -1,6 +1,7 @@
 import { auditCache } from './cache'
 import { readBoundedJson } from '@/lib/http/read-json'
 import { z } from 'zod'
+import { readResourceAudits, projectResourceOpportunities, type ResourceAudit } from './pagespeed-opportunities'
 
 export const pageSpeedFailureSchema = z.object({
   code: z.enum(['PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE', 'PROVIDER_REFUSED', 'PROVIDER_RESPONSE_INVALID', 'MEASUREMENT_INCOMPLETE']),
@@ -50,6 +51,7 @@ export interface PageSpeedResult {
   inp: number | null // CrUX p75 over the reported field-data window, not a lab measurement
   // Savings use milliseconds for render blocking and bytes for resource opportunities.
   opportunities: Array<{ id: string; title: string; savings: number; itemsCount?: number }>
+  resourceAudits?: ResourceAudit[]
   failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
   raw: Record<string, unknown>
@@ -88,40 +90,6 @@ const ACCESSIBILITY_AUDIT_IDS = [
   'focus-traps',
   'focus-visible',
 ] as const
-
-function nonnegativeNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
-}
-
-/** Normalize provider versions once so checks consume stable identities and units. */
-function extractOpportunities(audits: Record<string, Record<string, unknown>>): PageSpeedResult['opportunities'] {
-  const definitions = [
-    { id: 'render-blocking-resources', aliases: ['render-blocking-insight', 'render-blocking-resources'], unit: 'ms' },
-    { id: 'unused-javascript', aliases: ['unused-javascript'], unit: 'bytes' },
-    { id: 'unused-css-rules', aliases: ['unused-css-rules'], unit: 'bytes' },
-    { id: 'uses-optimized-images', aliases: ['image-delivery-insight', 'uses-optimized-images'], unit: 'bytes' },
-    { id: 'uses-webp-images', aliases: ['modern-image-formats', 'uses-webp-images'], unit: 'bytes' },
-    { id: 'uses-responsive-images', aliases: ['uses-responsive-images'], unit: 'bytes' },
-    { id: 'efficient-animated-content', aliases: ['efficient-animated-content'], unit: 'bytes' },
-    { id: 'uses-text-compression', aliases: ['uses-text-compression'], unit: 'bytes' },
-  ] as const
-  return definitions.flatMap(({ id, aliases, unit }) => {
-    // Prefer the current insight when both it and its predecessor are returned.
-    const providerId = aliases.find(alias => audits[alias])
-    const audit = providerId ? audits[providerId] : undefined
-    if (!audit || typeof audit.score !== 'number' || audit.score >= 1) return []
-    const details = audit.details as Record<string, unknown> | undefined
-    const debug = details?.debugData as Record<string, unknown> | undefined
-    const metrics = audit.metricSavings as Record<string, unknown> | undefined
-    const savings = unit === 'ms'
-      ? nonnegativeNumber(metrics?.FCP) ?? nonnegativeNumber(details?.overallSavingsMs)
-      : nonnegativeNumber(details?.overallSavingsBytes) ?? nonnegativeNumber(debug?.wastedBytes)
-    if (savings === null) return []
-    // The consolidated image insight already includes the older image responsibilities.
-    if (['uses-webp-images', 'uses-responsive-images', 'efficient-animated-content'].includes(id) && audits['image-delivery-insight']) return []
-    return [{ id, title: typeof audit.title === 'string' ? audit.title : providerId!, savings: Math.round(savings) }]
-  })
-}
 
 export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeedResult, 'raw'> {
   const { raw, ...stored } = result
@@ -225,7 +193,8 @@ async function runPageSpeed(
       }
     }
 
-    const opportunities = extractOpportunities(audits)
+    const resourceAudits = readResourceAudits(audits)
+    const opportunities: PageSpeedResult['opportunities'] = projectResourceOpportunities(resourceAudits)
 
     if (strategy === 'mobile') {
       const tapTargetIds = ['target-size', 'tap-targets', 'tap-targets-too-small']
@@ -256,6 +225,7 @@ async function runPageSpeed(
       tbt: tbt !== null ? Math.round(tbt) : null,
       inp: crux?.inp ?? null,
       opportunities,
+      resourceAudits,
       failedAccessibilityAudits,
       diagnostics: {},
       raw: data,

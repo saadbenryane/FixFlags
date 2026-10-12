@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { errors } from 'playwright'
 
 const mocks = vi.hoisted(() => ({
   owner: vi.fn(), admitted: vi.fn(), eventFindFirst: vi.fn(), eventCreate: vi.fn(), fixtureFindUnique: vi.fn(), fixtureFindFirst: vi.fn(),
@@ -8,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   fill: vi.fn(),
   click: vi.fn(),
   isVisible: vi.fn(),
+  waitFor: vi.fn(),
+  waitForURL: vi.fn(),
   close: vi.fn(),
 }))
 
@@ -59,9 +62,11 @@ describe('Safe Form executor', () => {
     mocks.getBrowser.mockResolvedValue({})
     mocks.fill.mockResolvedValue(undefined)
     mocks.click.mockResolvedValue(undefined)
-    mocks.isVisible.mockResolvedValue(true)
+    mocks.isVisible.mockResolvedValue(false)
+    mocks.waitFor.mockResolvedValue(undefined)
+    mocks.waitForURL.mockResolvedValue(undefined)
     mocks.close.mockResolvedValue(undefined)
-    const locator = { first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }
+    const locator = { first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible, waitFor: mocks.waitFor }) }
     mocks.createAuditPage.mockResolvedValue({
       page: {
         getByLabel: () => locator,
@@ -69,6 +74,7 @@ describe('Safe Form executor', () => {
         getByRole: () => locator,
         getByText: () => locator,
         url: () => 'https://example.com/signup',
+        waitForURL: mocks.waitForURL,
         context: () => ({ close: mocks.close }),
       },
     })
@@ -213,7 +219,7 @@ describe('Safe Form executor', () => {
   })
 
   it('Flags a submitted form that does not show its success criterion', async () => {
-    mocks.isVisible.mockResolvedValue(false)
+    mocks.waitFor.mockRejectedValue(new errors.TimeoutError('Success signal did not appear'))
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })))
     const result = await executeSafeFormFixture({
       projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false,
@@ -225,6 +231,43 @@ describe('Safe Form executor', () => {
     })
     // A failed submission is still cleaned up, and is never blindly resubmitted.
     expect(mocks.click).toHaveBeenCalledTimes(1)
+    expect(mocks.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 8000 })
+  })
+
+  it('does not submit or manufacture recovery from an already visible success signal', async () => {
+    mocks.isVisible.mockResolvedValue(true)
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })))
+    const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id,
+      startUrl: fixture.targetUrl, allowLocalhost: false })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'success_criterion_preexisting', detail: { cleanupStatus: 'succeeded' } })
+    expect(mocks.click).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('waits for a visible target without recording the fixture values', async () => {
+    mocks.fixtureFindFirst.mockResolvedValue({ ...fixture, successCriterion: { type: 'target', target: { by: 'role', role: 'button', value: 'Continue' } } })
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })))
+    const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: fixture.targetUrl, allowLocalhost: false })
+    expect(result).toMatchObject({ disposition: 'SUCCEEDED', detail: { successObservation: {
+      source: 'rendered-dom', criterionType: 'target', presentBeforeSubmit: false, presentAfterSubmit: true, waitLimitMs: 8000 } } })
+    expect(JSON.stringify(result)).not.toContain('synthetic@example.test')
+    expect(mocks.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 8000 })
+  })
+
+  it('keeps an exhausted observation budget inconclusive instead of declaring failure', async () => {
+    mocks.waitFor.mockRejectedValue(new errors.TimeoutError('Observation deadline'))
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })))
+    const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: fixture.targetUrl,
+      allowLocalhost: false, deadline: Date.now() + 2000 })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'success_observation_incomplete' })
+    expect(mocks.click).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps browser loss during observation inconclusive', async () => {
+    mocks.waitFor.mockRejectedValue(new Error('Browser context closed'))
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })))
+    const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: fixture.targetUrl, allowLocalhost: false })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'form_execution_failed', detail: { cleanupStatus: 'succeeded' } })
   })
 
   it('does not report a result when cleanup cannot be proven', async () => {

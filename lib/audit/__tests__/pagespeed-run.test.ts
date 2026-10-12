@@ -139,6 +139,25 @@ describe('fetchPageSpeedData', () => {
     expect(result.desktop?.opportunities.every(o => o.savings === 65_000)).toBe(true)
   })
 
+  it('retains positive resource measurements without manufacturing success from absent or unavailable audits', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ lighthouseResult: { categories: { performance: { score: 0.95 } }, audits: {
+      'render-blocking-insight': { score: 1, details: { type: 'table', items: [] } },
+      'unused-javascript': { score: 1, details: { overallSavingsBytes: 0 } },
+      'unused-css-rules': { score: null, scoreDisplayMode: 'notApplicable', details: { overallSavingsBytes: 0 } },
+      'image-delivery-insight': { score: null, errorMessage: 'Trace model unavailable', details: { debugData: { wastedBytes: 0 } } },
+      'uses-optimized-images': { score: 1, details: { overallSavingsBytes: 0 } },
+    } } })))
+    const result = await fetchPageSpeedData('https://positive-resources.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop?.opportunities).toEqual([])
+    expect(result.desktop?.resourceAudits).toMatchObject([
+      { id: 'render-blocking-resources', providerAuditId: 'render-blocking-insight', savings: 0, score: 1 },
+      { id: 'unused-javascript', savings: 0, score: 1, unit: 'bytes' },
+      { id: 'unused-css-rules', savings: null, score: null },
+      { id: 'uses-optimized-images', providerAuditId: 'image-delivery-insight', savings: null, score: null },
+    ])
+    expect(toStoredPageSpeedResult(result.desktop!)).toHaveProperty('resourceAudits', result.desktop!.resourceAudits)
+  })
+
   it('prefers a consolidated image insight without duplicating replaced audit savings', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ lighthouseResult: {
       categories: { performance: { score: 0.9 } }, audits: {

@@ -23,7 +23,7 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
       data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(), authorizedAt: null,
         lastDryRunResult: { disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'unknown' } } } })
   }
-  if (task.workKind === 'check' && input.module) {
+  if ((task.workKind === 'check' || task.workKind === 'flow' && input.module === 'form-validation') && input.module) {
     const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '')
     const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: input.module,
       pageUrl: input.pageUrl, passed: false, applicable: true, failed: true, assertions: [] })

@@ -36,7 +36,8 @@ export type PageCheckContext = {
   consoleErrors: Array<{ type: string; text: string }>; metrics?: CaptureMetrics | null;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
-  scope: { complete?: boolean; limitation?: string };
+  deadline?: number;
+  scope: { complete?: boolean; limitation?: string; collectedAt?: string };
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
 type Evaluator = { id: string; evaluate(input: PageCheckContext): DeterministicFlag[] | Promise<DeterministicFlag[]> }
@@ -55,7 +56,7 @@ export function registerPageEvaluators(evaluators: Evaluator[], definitions = PA
 
 export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'metadata', evaluate: c => runMetadataChecks(c.metadata, c.record) },
-  { id: 'og-image', evaluate: c => runOgImageUrlCheck(c.url, c.metadata) },
+  { id: 'og-image', evaluate: c => runOgImageUrlCheck(c.url, c.metadata, { record: c.record, scope: c.scope, deadline: c.deadline }) },
   { id: 'accessibility', evaluate: c => runAccessibilityChecks(c.metadata, c.desktop ?? c.mobile, c.axe) },
   { id: 'keyboard', evaluate: c => c.keyboard ? runKeyboardChecks(c.keyboard).flags : [] },
   { id: 'seo', evaluate: c => runSeoChecks(c.url, c.metadata) },
@@ -64,7 +65,7 @@ export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'slop', evaluate: c => runSlopChecks(c.metadata) },
   { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
     checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
-  { id: 'auth-checkout', evaluate: c => runAuthCheckoutChecks(c.url, c.metadata) },
+  { id: 'auth-checkout', evaluate: c => runAuthCheckoutChecks(c.url, c.metadata, { record: c.record, scope: c.scope, deadline: c.deadline }) },
   { id: 'security', evaluate: c => {
     Object.assign(c.scope, { complete: new URL(c.url).protocol !== 'https:' || c.metadata.resourceTransport?.complete === true,
       limitation: RESOURCE_TRANSPORT_SCOPE })

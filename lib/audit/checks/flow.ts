@@ -8,6 +8,7 @@ import { runOverlayBlockerChecks } from './overlay'
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
+import { checkFormValidation } from './form-validation'
 
 const FLOW_CHECK_DESCRIPTORS = [
   { id: 'flow-no-cta-found', severity: 'IMPORTANT', tags: ['requiresBrowser', 'cta-flow'] },
@@ -144,7 +145,12 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
     })
   }
 
-  if (probes.formValidation === 'broken') {
+  if (probes.formEvidence) {
+    findings.push(...checkFormValidation(probes.formEvidence).flags)
+    findings.push(...runOverlayBlockerChecks('form', probes.formOverlay, probes.formLabel))
+  }
+
+  if (!probes.formEvidence && probes.formValidation === 'broken') {
     const label = probes.formLabel ? `"${probes.formLabel}"` : 'conversion form'
     const overlayFlags = runOverlayBlockerChecks('form', probes.formOverlay, label)
     if (overlayFlags.length > 0) {
@@ -165,7 +171,7 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   }
 
   if (
-    probes.formValidation === 'ok' &&
+    !probes.formEvidence && probes.formValidation === 'ok' &&
     probes.formFeedbackMs != null &&
     probes.formFeedbackMs > 1_000
   ) {

@@ -7,6 +7,8 @@ import { HelpRelatedDocs } from '@/components/help/HelpRelatedDocs'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
 import IntegrationGuide, { generateMetadata, generateStaticParams } from '@/app/(docs)/docs/integrations/[integration]/page'
 import IntegrationsDocsPage from '@/app/(docs)/docs/integrations/page'
+import DocsHomePage from '@/app/(docs)/docs/page'
+import { getDocsPage } from '@/lib/docs/catalog'
 
 vi.mock('@/lib/docs/content', async () => {
   const { readFileSync } = await import('node:fs')
@@ -20,6 +22,17 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPageViewTracker: () => null }))
 
 describe('integration guides', () => {
+  it('offers direct paths on the documentation home while preserving its article anchors', async () => {
+    render(await DocsHomePage())
+    for (const key of ['getting-started', 'site-care', 'fix-with-ai', 'integrations'] as const) {
+      const page = getDocsPage(key)
+      const title = screen.getByRole('heading', { level: 2, name: page.title })
+      expect(title.closest('a')).toHaveAttribute('href', page.path)
+      expect(title.closest('a')).toHaveTextContent(page.description)
+    }
+    expect(screen.getByRole('heading', { name: 'Quick start' })).toHaveAttribute('id', 'quick-start')
+    expect(screen.getByRole('heading', { name: 'The product loop' })).toHaveAttribute('id', 'the-product-loop')
+  })
   it('includes integration guides in desktop navigation and marks the current page', () => {
     render(<DocsNavigation />)
     expect(screen.getByRole('link', { name: 'Shopify' })).toHaveAttribute('aria-current', 'page')

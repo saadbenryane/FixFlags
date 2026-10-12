@@ -183,7 +183,7 @@ describe('availability Outcome execution', () => {
     await runBoundCheckoutForAudit('audit-1')
 
     expect(mocks.flagCreate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ fingerprint: `outcome:availability:${binding.key}` }),
+      data: expect.objectContaining({ fingerprint: `outcome:v1:page-1:${binding.key}` }),
     }))
     expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ disposition: 'FAILED', reason: 'expected_surface_missing' }),
@@ -204,6 +204,30 @@ describe('availability Outcome execution', () => {
     expect(assessRequiredBindings([binding], [
       { key: binding.key, disposition: 'BLOCKED', reason: 'bot_wall' },
     ]).state).toBe('COULD_NOT_VERIFY')
+  })
+
+  it('checks a healthy page containing Cloudflare and CAPTCHA resources instead of declaring a wall', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<title>Example</title><script src="https://static.cloudflareinsights.com/beacon.min.js"></script><div class="cf-turnstile">Captcha</div>', { status: 200 })))
+    await runBoundCheckoutForAudit('audit-1')
+    expect(mocks.createAuditPage).toHaveBeenCalledOnce()
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'available' }) }))
+  })
+
+  it('does not certify a 200 challenge response as availability', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<title>Example</title>', { status: 200, headers: { 'cf-mitigated': 'challenge' } })))
+    await runBoundCheckoutForAudit('audit-1')
+    expect(mocks.createAuditPage).not.toHaveBeenCalled()
+    expect(mocks.flagCreate).not.toHaveBeenCalled()
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'bot_wall' }) }))
+  })
+
+  it('confirms a genuine error page mentioning Cloudflare as a failure', async () => {
+    const fetchMock = vi.fn(async () => new Response('<title>Service unavailable</title><p>Please try later</p><footer>Cloudflare</footer>', { status: 503 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await runBoundCheckoutForAudit('audit-1')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(mocks.flagCreate).toHaveBeenCalledOnce()
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ disposition: 'FAILED', reason: 'http_unavailable' }) }))
   })
 
   it('treats a successful response with no rendered capture as Couldn\'t verify', async () => {

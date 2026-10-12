@@ -103,7 +103,8 @@ export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<
     pages.push({ pageId: browser?.pageId ?? '', url, metadata, desktop: speed?.desktop ?? null, mobile: speed?.mobile ?? null,
       desktopError: speed?.desktopError, mobileError: speed?.mobileError,
       desktopScreenshot: Boolean(captures?.snapshot.desktopUrl ?? browser?.snapshot.desktopUrl), mobileScreenshot: Boolean(captures?.snapshot.mobileUrl ?? browser?.snapshot.mobileUrl),
-      desktopBase64: '', mobileBase64: null, flowScan: pageTasks.some(task => task.workKind === 'flow' && task.workState === 'COMPLETED'),
+      desktopBase64: '', mobileBase64: null, flowScan: pageTasks.some(task => task.workKind === 'flow' && task.workState === 'COMPLETED' &&
+        (task.workInput as { module?: string })?.module !== 'form-validation'),
       flags, failedModules: pageTasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task =>
         (task.workInput as { module?: string })?.module ?? task.workKind ?? 'unknown'),
       triage: judged?.triage, triageFailure: judged?.triageFailure, searchReceipt: search?.receipt,
@@ -166,6 +167,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       await persistTaskPlan(context.audit.id, allPlans)
       const opened = await openCheckDestinations(plan.openCheckUrls, {
         origin: spec.targetUrl, ceiling: openCheckCeilingForDepth(depth),
+        deadline: context.deadline,
       })
       return serializeArtifact('discovery', discoverySchema.parse({ pages: plan.reviewUrls,
         openCheckCount: opened.results.length, truncated: plan.truncated || opened.truncated,

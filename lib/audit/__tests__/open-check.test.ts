@@ -19,6 +19,20 @@ function jsonResponse(status: number, body = '', headers: Record<string, string>
 }
 
 describe('open-check', () => {
+  it('uses GET evidence even when HEAD claims success', async () => {
+    const fetchImpl: OpenCheckFetch = async (_url, init) => jsonResponse(init?.method === 'HEAD' ? 200 : 404,
+      '<title>Page not found</title>', { 'content-type': 'text/html' }, 'https://example.com/gone')
+    const result = await openCheckDestination('https://example.com/gone', { fetchImpl })
+    expect(result.outcome).toBe('not_found')
+    expect(result.shouldFlagDead).toBe(true)
+  })
+
+  it('flags a missing login page rather than treating its path as authorization evidence', async () => {
+    const result = await openCheckDestination('https://example.com/login', {
+      fetchImpl: async () => jsonResponse(404, '', {}, 'https://example.com/login'),
+    })
+    expect(result.shouldFlagDead).toBe(true)
+  })
   it('does not Flag a destination as dead because HEAD failed', async () => {
     const fetchImpl: OpenCheckFetch = async (_url, init) => {
       if (init?.method === 'HEAD') throw new Error('HEAD blocked')

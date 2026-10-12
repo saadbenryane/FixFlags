@@ -1,4 +1,4 @@
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy/brand'
 
 export const MARKETING_LINKS = [
   { href: '/how-it-works', label: 'How it works' },

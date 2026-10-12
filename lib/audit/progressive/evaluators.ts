@@ -68,6 +68,7 @@ export const evaluatorHandlers: TaskHandler[] = [
       const snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       let flags: import('../flag-types').DeterministicFlag[], assertions: import('../checks/assertion').CheckAssertion[] = []
       let applicable = true, complete: boolean | undefined, limitation: string | undefined
+      let collectedAt: string | undefined
       let pageUrl = context.input.pageUrl
       if (checkModule === 'keyboard') {
         const task = dependency(context, 'keyboard')
@@ -95,9 +96,11 @@ export const evaluatorHandlers: TaskHandler[] = [
         // Each receipt describes only its own device and responsibility.
         assertions = inpOnly ? [recordInpObservation(measurement!)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
           metadata: parseMetadataFromHtml('', context.input.pageUrl), desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
-        complete = inpOnly ? assertions[0].complete === true : measurement!.score !== null && measurement!.lcp !== null && measurement!.cls !== null
-        if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required score, LCP and CLS measurements. Missing measurements remain unknown.'
+        complete = inpOnly ? assertions[0].complete === true : measurement!.score !== null && measurement!.lcp !== null && measurement!.cls !== null &&
+          assertions.every(assertion => assertion.complete !== false)
+        if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
       } else if (checkModule === 'security-headers') {
+        if (response?.document.reason === 'public_access_challenge') throw new TaskFailure('PUBLIC_ACCESS_CHALLENGE', false)
         if (!response?.document.status) throw new TaskFailure('RESPONSE_EVIDENCE_UNAVAILABLE', false)
         flags = runSecurityHeaderChecks(response.document.finalUrl, response.document.headers)
         assertions = recordCheckObservations(checkModule, { url: response.document.finalUrl,
@@ -108,7 +111,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         if (definition.input === 'accessibility' && snapshot?.axeViolations === undefined) throw new TaskFailure('ACCESSIBILITY_EVIDENCE_UNAVAILABLE', false)
         const observedUrl = checkModule === 'security' ? response!.document.finalUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata, null, null, snapshot?.consoleErrors ?? [], undefined,
-          snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule])
+          snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], { deadline: context.deadline })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
         if (checked.executions.length !== 1 || checked.executions[0].module !== checkModule) throw new TaskFailure('EVALUATOR_NOT_REGISTERED', false)
         flags = checked.flags
@@ -116,6 +119,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         applicable = checked.executions[0]?.applicable === true
         complete = checked.executions[0]?.complete
         limitation = checked.executions[0]?.limitation
+        collectedAt = checked.executions[0]?.collectedAt
       }
       flags = suppressFlagsForPageRole(flags, context.input.role)
         .map(flag => ({ ...flag, pageUrl }))
@@ -129,9 +133,9 @@ export const evaluatorHandlers: TaskHandler[] = [
         kind: 'site-module-check', version: 1, module: checkModule, passed: flags.length === 0 && complete !== false, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
         execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version,
-          source: checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : checkModule === 'security' ? 'original-html' : checkModule === 'security-headers' ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+          source: checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : checkModule === 'security' ? 'original-html' : ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'axe' : 'rendered-dom',
-          collectedAt: source.collectedAt },
+          collectedAt: collectedAt ?? source.collectedAt },
       } }))
     },
   },

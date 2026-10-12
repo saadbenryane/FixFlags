@@ -2,6 +2,7 @@ import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { validateTaskGraph, type TaskPlan, type TaskInput, type TaskKind } from './contracts'
 import { SEARCH_CHECK_REGISTRY } from '../search/definitions'
+import { ACTION_CHECK_DEFINITIONS } from '../checks/definitions'
 
 export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] {
   const prefix = 'p' + input.position, scope = 'page:' + input.pageUrl
@@ -14,13 +15,14 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
   if (modules.has('keyboard')) plans.push(make('keyboard', [], 'keyboard-evidence'))
   for (const [module, definition] of Object.entries(CHECK_MODULES)) {
-    if (module === 'search' || !modules.has(module)) continue
+    if (module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
     const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     plans.push(make('check', [prefix + ':' + inputKind], module))
     if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'),
       input: { ...input, module: 'performance', device: 'mobile' } })
   }
+  if (modules.has('form-validation')) plans.push(make('flow', [], 'form-validation'))
   for (const [evaluator, dependencies] of Object.entries({
     presentation: [prefix + ':http', prefix + ':browser'],
     indexing: [prefix + ':http', prefix + ':browser', 'resources'],
@@ -74,7 +76,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     const checkId = spec.verificationTarget.checkId.split('::page:')[0]
     const search = SEARCH_CHECK_REGISTRY[checkId as keyof typeof SEARCH_CHECK_REGISTRY]
     const checkModule = CHECK_REGISTRY[checkId]?.module
-    const scopes = checkModule === 'measurement' ? spec.verificationScopes ?? [] : []
+    const scopes = ['measurement', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? spec.verificationScopes ?? [] : []
     const extraPages = scopes.filter(scope => scope.pageUrl !== input.pageUrl)
     const pages = [ ...pageTaskPlan(input, spec), ...extraPages.flatMap((scope, index) =>
       pageTaskPlan({ ...input, pageUrl: scope.pageUrl, position: index + 1, primary: false, role: 'linked' }, spec)) ]
@@ -94,10 +96,10 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       selected.add(key); task.dependencies.forEach(include)
     }
     include(target)
-    if (checkModule === 'measurement') {
+    if (scopes.length) {
       if (scopes.find(scope => scope.pageUrl === input.pageUrl)?.phases.includes('public_action')) include('p0:flow')
       for (const [index, scope] of extraPages.entries()) {
-        include('p' + (index + 1) + ':measurement')
+        include('p' + (index + 1) + ':' + checkModule)
         if (scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
       }
     }

@@ -89,6 +89,13 @@ describe('durable bounded work contracts', () => {
     expect(multiPage.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
     expect(multiPage.find(task => task.kind === 'flow')?.input.pageUrl).toBe('https://example.com/second')
     expect(multiPage.some(task => ['captures', 'pagespeed', 'google', 'search'].includes(task.kind))).toBe(false)
+    for (const checkId of ['checkout-link-dead', 'og-image-broken']) {
+      const destinations = initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId },
+        verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'] }, { pageUrl: 'https://example.com/second', phases: ['page_load'] }] })
+      expect(destinations.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
+      expect(destinations.filter(task => task.kind === 'check')).toHaveLength(2)
+      expect(destinations.some(task => ['captures', 'pagespeed', 'google', 'search', 'flow'].includes(task.kind))).toBe(false)
+    }
     expect(() => initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'unknown-history' } })).toThrow('not registered')
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'focus-visible-missing' } }).map(task => task.kind))
       .toEqual(['check', 'keyboard', 'finalize'])
@@ -99,6 +106,16 @@ describe('durable bounded work contracts', () => {
     expect(graph.map(task => task.kind)).toEqual(['fixture-setup', 'finalize'])
     expect(graph[0].input.fixtureId).toBe('fixture')
     expect(graph[1].dependencies).toEqual(['fixture-setup'])
+    validateTaskGraph(graph)
+  })
+
+  it('executes scoped Form validation independently of CTA navigation and page collectors', () => {
+    const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+      scope: 'DIAGNOSTIC', checks: { 'flow-form-no-validation': 1 }, outcomes: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'flow-form-no-validation', pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+    expect(graph.map(task => task.kind)).toEqual(['flow', 'finalize'])
+    expect(graph[0].input.module).toBe('form-validation')
+    expect(graph[0].dependencies).toEqual([])
     validateTaskGraph(graph)
   })
 

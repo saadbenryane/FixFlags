@@ -1,4 +1,5 @@
-import { BRAND, SITE_URL, faqEntryAnchor, type FaqEntry } from './copy'
+import { BRAND, SITE_URL } from './copy/brand'
+import { faqEntryAnchor, type FaqEntry } from './copy/faq'
 import { getDocsPage, type DocsPageDefinition } from '@/lib/docs/catalog'
 import type { HelpArticle, HelpCategory } from '@/lib/help/types'
 import { helpArticlePath } from '@/lib/help/types'

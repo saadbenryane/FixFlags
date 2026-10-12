@@ -49,6 +49,11 @@ vi.mock('@/lib/audit/create-audit', async () => {
 vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
 }))
+vi.mock('@/lib/sites/application/outcome-incidents', () => ({ persistOutcomeAssessment: async (input: Record<string, unknown>) => {
+  const data = { ...input }; delete data.projectId; delete data.bindingKeys; delete data.failureFlagIds; delete data.outcomeKind
+  await mocks.assessmentUpsert({ where: { runRequestId_outcomeId: { runRequestId: data.runRequestId, outcomeId: data.outcomeId } }, create: data, update: {} })
+  return data
+} }))
 
 import { buildExecutionSpec, executionIntentHash } from '@/lib/sites/application/execution-spec'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
@@ -876,6 +881,16 @@ describe('RunRequest tenant boundary and idempotency', () => {
 
 
 describe('Tracking verification admission', () => {
+  it('snapshots every tenant-owned affected page for public destination verification', async () => {
+    const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'
+    mocks.flagFindMany.mockResolvedValue([{ affectedPaths: [pageUrl, other], evidenceTargets: [] }])
+    for (const checkId of ['checkout-link-dead', 'auth-page-broken', 'og-image-broken']) {
+      const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'DIAGNOSTIC', outcomes: [],
+        verificationTarget: { kind: 'DIAGNOSTIC', checkId, pageUrl, parentAuditId: 'before', attemptId: 'attempt' } })
+      expect(spec.verificationScopes).toEqual([{ pageUrl, phases: ['page_load'] }, { pageUrl: other, phases: ['page_load'] }])
+      expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, verificationScopes: undefined }))
+    }
+  })
   it('derives only tenant-owned recorded page and phase scopes and keeps replay identity stable', async () => {
     const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'
     mocks.flagFindMany.mockResolvedValue([{ affectedPaths: [pageUrl, other], evidenceTargets: [

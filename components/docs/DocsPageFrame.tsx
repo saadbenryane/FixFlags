@@ -5,6 +5,7 @@ import type { Route } from 'next'
 import { DocsRelatedHelp } from '@/components/docs/DocsRelatedHelp'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { KnowledgePageHeader } from '@/components/knowledge/KnowledgePageHeader'
+import s from './DocsExperience.module.css'
 
 export function DocsPageFrame({
   page,
@@ -22,10 +23,10 @@ export function DocsPageFrame({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_13rem]">
-        <article className="min-w-0 px-5 py-12 sm:px-8 sm:py-16 lg:px-12 xl:px-16">
-          <div className="mx-auto max-w-3xl">
-            <div className="mb-12">
+      <div className={s.frame}>
+        <article className={s.article}>
+          <div className={s.readingColumn}>
+            <div className={s.header}>
               <KnowledgePageHeader
                 breadcrumbs={[
                   { href: '/docs', label: 'Docs' },
@@ -42,9 +43,9 @@ export function DocsPageFrame({
           </div>
         </article>
         {page.headings.length > 2 ? (
-          <aside className="hidden border-l border-border/50 px-5 py-16 xl:block">
-            <div className="sticky top-[calc(var(--header-height-marketing)+2rem)]">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-label text-muted-foreground">
+          <aside className={s.contents}>
+            <div className={s.contentsInner}>
+              <p className={s.groupTitle}>
                 On this page
               </p>
               <nav aria-label="On this page">
@@ -53,7 +54,7 @@ export function DocsPageFrame({
                     <li key={heading.id}>
                       <a
                         href={`#${heading.id}`}
-                        className="block rounded-sm py-1.5 text-sm leading-snug text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                        className={s.contentsLink}
                       >
                         {heading.title}
                       </a>

@@ -14,7 +14,8 @@ function define(evaluator: string, area: SiteCardArea, name: string, input: Page
     resultSchema: 'site-module-check-v1', timeoutMs: 12_000, replaySafety: 'read_only',
     requiredEvidence: evaluator === 'measurement' ? ['rendered-html', 'browser-network'] : input === 'headers' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
       : input === 'mobile' ? ['pagespeed-mobile'] : evaluator === 'security' ? ['original-html']
-      : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe'] : ['rendered-html'] }
+      : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe']
+        : evaluator === 'auth-checkout' || evaluator === 'og-image' ? ['rendered-html', 'public-destination-response'] : ['rendered-html'] }
 }
 
 /** Portable contracts. Server registration supplies the declared evaluator. */
@@ -26,7 +27,9 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'preview-description-presence': assertion('search', ['og-description-missing']),
     'viewport-presence': assertion('accessibility', ['viewport-missing']), 'language-presence': assertion('accessibility', ['lang-missing']),
   }),
-  'og-image': define('og-image', 'search', 'Link preview image', 'metadata'),
+  'og-image': define('og-image', 'search', 'Link preview image', 'metadata', {
+    'preview-image-response': assertion('search', ['og-image-broken']),
+  }),
   seo: define('seo', 'search', 'Search access', 'metadata'),
   accessibility: define('accessibility', 'accessibility', 'Accessibility checks', 'accessibility', {
     'automated-accessibility': assertion('accessibility'),
@@ -59,17 +62,26 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'tracking-provider-recording': assertion('tracking'),
   }),
   performance: define('performance', 'performance', 'Page speed', 'performance', {
+    score: assertion('performance', ['perf-score-critical', 'perf-score-poor']),
     lcp: assertion('performance', ['lcp-critical', 'lcp-poor']), cls: assertion('performance', ['cls-critical', 'cls-poor']),
+    'render-blocking': assertion('performance', ['render-blocking']),
+    'unused-javascript': assertion('performance', ['unused-js-large']),
+    'unused-css': assertion('performance', ['unused-css-large']),
+    'image-optimization': assertion('performance', ['unoptimized-images']),
     inp: assertion('performance'),
   }),
   mobile: define('mobile', 'performance', 'Mobile page speed', 'mobile', {
+    score: assertion('performance', ['mobile-perf-critical', 'mobile-perf-poor']),
     lcp: assertion('performance', ['mobile-lcp-critical', 'mobile-lcp-poor']),
     cls: assertion('performance', ['mobile-cls-critical', 'mobile-cls-poor']),
   }),
   'mobile-ux-quality': define('mobile-ux-quality', 'performance', 'Mobile layout', 'browser'),
   content: define('content', 'conversion', 'Page content', 'metadata'),
   slop: define('slop', 'conversion', 'Content quality', 'metadata'),
-  'auth-checkout': define('auth-checkout', 'conversion', 'Public action controls', 'metadata'),
+  'auth-checkout': define('auth-checkout', 'conversion', 'Public action controls', 'metadata', {
+    'auth-destination': assertion('conversion', ['auth-page-broken']),
+    'checkout-destination': assertion('conversion', ['checkout-link-dead']),
+  }),
   'messaging-clarity': define('messaging-clarity', 'conversion', 'Message clarity', 'metadata'),
   'conversion-friction': define('conversion-friction', 'conversion', 'Action friction', 'metadata'),
   'trust-psychology': define('trust-psychology', 'conversion', 'Trust context', 'metadata'),
@@ -79,3 +91,12 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   'visual-polish': define('visual-polish', 'conversion', 'Visual consistency', 'browser'),
   'visual-hierarchy': define('visual-hierarchy', 'conversion', 'Visual hierarchy', 'browser'),
 }
+
+/** Action collectors own these observations without a second page evaluator. */
+export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
+  'form-validation': { ...define('form-validation', 'conversion', 'Form validation', 'browser', {
+    'empty-form-validation': assertion('conversion', ['flow-form-no-validation']),
+    'form-feedback': assertion('conversion', ['flow-form-slow-feedback']),
+  }), requiredEvidence: ['rendered-empty-form-validation'] },
+}
+export const MODULE_CHECK_DEFINITIONS = { ...PAGE_CHECK_DEFINITIONS, ...ACTION_CHECK_DEFINITIONS }

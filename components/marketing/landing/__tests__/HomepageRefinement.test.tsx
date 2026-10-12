@@ -4,12 +4,13 @@ import { Footer } from '@/components/layout/footer'
 import HowItWorksPage from '@/app/(marketing)/how-it-works/page'
 import { PUBLIC_SITE_COPY as C } from '@/lib/marketing/copy/public-site'
 import { FOOTER_COLUMNS } from '@/lib/site/nav'
+import { MeProvider } from '@/hooks/useMe'
 
 vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPageViewTracker: () => null }))
 
 describe('published marketing journey', () => {
   it('offers one primary analysis action and one sample link in the explanation header', () => {
-    const { container } = render(<HowItWorksPage />)
+    const { container } = render(<MeProvider initialUser={null}><HowItWorksPage /></MeProvider>)
     const header = container.querySelector('header')!
     expect(within(header).getByRole('heading', { level: 1 })).toHaveTextContent(C.howItWorks.title)
     expect(within(header).getAllByRole('link')).toHaveLength(2)

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
-import { PLAN_LIMIT_NOTICE, type PlanLimitKind } from '@/lib/marketing/copy'
+import { PLAN_LIMIT_NOTICE, type PlanLimitKind } from '@/lib/marketing/copy/auth'
 
 export interface PlanLimitNoticeProps {
   /** Which plan boundary was reached. Selects the explanation. */

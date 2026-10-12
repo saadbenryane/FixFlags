@@ -40,6 +40,7 @@ function isStableStoredIdentity(value: string): boolean {
  * identity when one exists; otherwise they key on rubric plus normalized title.
  */
 export function observationIdentity(input: ObservationIdentityInput): string {
+  if (input.fingerprint?.startsWith('outcome:v1:')) return input.fingerprint
   const checkId = durableCheckId(input.checkId)
   if (checkId) return `check:${checkId}`
   const stored = input.fingerprint?.trim()
@@ -51,6 +52,7 @@ export function observationIdentity(input: ObservationIdentityInput): string {
 
 /** Every key that should match this observation, including legacy stored hashes. */
 export function observationMatchKeys(input: ObservationIdentityInput): string[] {
+  if (input.fingerprint?.startsWith('outcome:v1:')) return [input.fingerprint]
   const keys = new Set<string>()
   keys.add(observationIdentity({ ...input, fingerprint: undefined }))
   keys.add(observationIdentity(input))
@@ -61,6 +63,19 @@ export function observationMatchKeys(input: ObservationIdentityInput): string[] 
     else keys.add(`ai:${stored}`)
   }
   return [...keys]
+}
+
+/** A bound responsibility is owned by its Outcome, rather than every matching check on the Site. */
+export function outcomeFlagFingerprint(outcomeId: string, bindingKey: string): string {
+  return `outcome:v1:${encodeURIComponent(outcomeId)}:${encodeURIComponent(bindingKey)}`
+}
+
+export function outcomeFlagOwner(fingerprint: string | null | undefined) {
+  if (!fingerprint?.startsWith('outcome:v1:')) return null
+  const parts = fingerprint.split(':')
+  try {
+    return parts.length === 4 && parts[2] && parts[3] ? { outcomeId: decodeURIComponent(parts[2]), bindingKey: decodeURIComponent(parts[3]) } : null
+  } catch { return null }
 }
 
 export function flagFingerprint(input: {

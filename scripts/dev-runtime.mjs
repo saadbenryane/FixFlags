@@ -50,7 +50,7 @@ try {
     cursor = next
     if (keys.length) throw new Error('A worker already uses this Redis. Stop its owning session before starting another local runtime.')
   } while (cursor !== '0')
-  launch(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', String(port)], { FIXFLAGS_PROCESS_ROLE: 'web' })
+  launch(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--turbopack', '-p', String(port)], { FIXFLAGS_PROCESS_ROLE: 'web' })
   launch(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'worker/index.ts'], { FIXFLAGS_PROCESS_ROLE: 'worker', AUDIT_WORKER_CONCURRENCY: '1' })
   const deadline = Date.now() + 120000
   let ready = false

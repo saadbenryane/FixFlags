@@ -16,7 +16,7 @@ import {
   readAnalyticsConsent,
   writeAnalyticsConsent,
 } from '@/lib/analytics/consent'
-import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy'
+import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy/legal'
 
 const gaId = process.env.NEXT_PUBLIC_GA_ID
 

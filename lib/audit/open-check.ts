@@ -1,3 +1,5 @@
+import { AuditUrlError, safeFetchDocument } from './url'
+import { isBotInterstitialDocument } from './browser/page-capture'
 import {
   canonicalizeDestination,
   isEligiblePublicDestination,
@@ -81,11 +83,16 @@ function outcomeFromGet(input: {
   requestedUrl: string
   wwwAuthenticate: string | null
   html: string | null
+  cfMitigated: string | null
+  httpErrorsOnly?: boolean
 }): { outcome: OpenCheckOutcome; shouldFlagDead: boolean; evidence: string } {
   const { status, finalUrl, requestedUrl, wwwAuthenticate, html } = input
 
+  if (isBotInterstitialDocument({ body: html ?? '', status, headers: { 'cf-mitigated': input.cfMitigated ?? '' } }))
+    return { outcome: 'blocked', shouldFlagDead: false, evidence: 'The destination presented an access challenge; its normal response remains unknown.' }
+
   if (looksLikeAuth(finalUrl, status, wwwAuthenticate) || looksLikeAuth(requestedUrl, status, wwwAuthenticate)) {
-    if (status === 401 || status === 403 || AUTH_PATH.test(finalUrl)) {
+    if (status === 401 || status === 403 || (status >= 200 && status < 300 && AUTH_PATH.test(finalUrl) && !(html && detectSoft404(html, status)))) {
       return {
         outcome: 'auth_required',
         shouldFlagDead: false,
@@ -127,7 +134,7 @@ function outcomeFromGet(input: {
   }
 
   if (status >= 200 && status < 300) {
-    if (html && detectSoft404(html, status)) {
+    if (!input.httpErrorsOnly && html && detectSoft404(html, status)) {
       return {
         outcome: 'render_error',
         shouldFlagDead: true,
@@ -164,110 +171,66 @@ function canonicalizeIfPossible(url: string): string {
 }
 
 async function fetchOnce(
-  fetchImpl: OpenCheckFetch,
+  fetchImpl: OpenCheckFetch | undefined,
   url: string,
-  method: 'HEAD' | 'GET',
-  timeoutMs: number
-): Promise<{ response: Response; html: string | null } | { error: 'timeout' | 'network' }> {
-  const { signal, cancel } = abortableTimeout(timeoutMs)
+  timeoutMs: number,
+  deadline?: number,
+): Promise<{ response: Response; html: string | null } | { error: 'timeout' | 'network' | 'blocked' }> {
+  const remaining = Math.min(timeoutMs, (deadline ?? Infinity) - Date.now())
+  if (remaining <= 0) return { error: 'timeout' }
+  const { signal, cancel } = abortableTimeout(remaining)
   try {
-    const response = await fetchImpl(url, {
-      method,
-      redirect: 'follow',
-      signal,
-      headers: { Accept: method === 'GET' ? 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8' : '*/*' },
-    })
-    let html: string | null = null
-    if (method === 'GET') {
-      const contentType = response.headers.get('content-type') ?? ''
-      if (contentType.includes('html') || contentType.length === 0) {
-        html = (await response.text()).slice(0, 20_000)
-      }
+    if (!fetchImpl) {
+      const document = await safeFetchDocument(url, { timeoutMs: remaining, deadline, maxBytes: 20_000 })
+      return { response: { status: document.statusCode, url: document.finalUrl,
+        headers: new Headers(document.headers) } as Response,
+        html: /html/i.test(document.headers['content-type'] ?? '') || !document.headers['content-type'] ? document.body : null }
     }
+    // Explicit transport injection is for controlled fixtures. Production always
+    // uses the bounded collector and validates each redirect destination.
+    const response = await fetchImpl(url, { method: 'GET', redirect: 'follow', signal,
+      headers: { Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8' } })
+    const contentType = response.headers.get('content-type') ?? ''
+    const html = contentType.includes('html') || !contentType ? (await response.text()).slice(0, 20_000) : null
     return { response, html }
   } catch (error) {
+    if (error instanceof AuditUrlError) return { error: 'blocked' }
     const name = error instanceof Error ? error.name : ''
-    if (name === 'AbortError' || name === 'TimeoutError') return { error: 'timeout' }
-    return { error: 'network' }
-  } finally {
-    cancel()
-  }
+    return { error: signal.aborted || name === 'AbortError' || name === 'TimeoutError' ? 'timeout' : 'network' }
+  } finally { cancel() }
 }
 
-function headLooksAuthoritativeSuccess(status: number): boolean {
-  return status >= 200 && status < 400
-}
-
-/**
- * Structured reachability. HEAD is an optional fast path. GET/render is
- * authoritative. Never Flag a destination as dead from HEAD failure alone.
- */
+/** GET response evidence is authoritative. It does not establish an interactive
+ * journey, rendered content, or access to an authenticated account. */
 export async function openCheckDestination(
   url: string,
-  options: {
-    origin?: string
-    fetchImpl?: OpenCheckFetch
-    timeoutMs?: number
-  } = {}
+  options: { origin?: string; fetchImpl?: OpenCheckFetch; timeoutMs?: number; deadline?: number; httpErrorsOnly?: boolean } = {},
 ): Promise<OpenCheckResult> {
   const canonical = canonicalizeDestination(url, options.origin)
-  const requested = canonical?.url ?? url
-  const fetchImpl = options.fetchImpl ?? fetch
-  const timeoutMs = options.timeoutMs ?? OPEN_CHECK_TIMEOUT_MS
-
-  const head = await fetchOnce(fetchImpl, requested, 'HEAD', timeoutMs)
-  if ('error' in head && head.error === 'timeout') {
-    const getAfterHeadTimeout = await fetchOnce(fetchImpl, requested, 'GET', timeoutMs)
-    return finalizeGet(requested, canonical, getAfterHeadTimeout)
-  }
-
-  if (!('error' in head) && headLooksAuthoritativeSuccess(head.response.status)) {
-    const finalUrl = head.response.url || requested
-    if (looksLikeAuth(finalUrl, head.response.status, head.response.headers.get('www-authenticate'))) {
-      return {
-        url: requested,
-        canonicalUrl: canonical?.url ?? requested,
-        outcome: 'auth_required',
-        status: head.response.status,
-        finalUrl,
-        evidence: `HEAD ${finalUrl} indicates sign-in is required.`,
-        shouldFlagDead: false,
-      }
-    }
-    const redirected = canonicalizeIfPossible(finalUrl) !== canonicalizeIfPossible(requested)
-    return {
-      url: requested,
-      canonicalUrl: canonical?.url ?? requested,
-      outcome: redirected ? 'redirected' : 'reachable',
-      status: head.response.status,
-      finalUrl,
-      evidence: redirected
-        ? `HEAD redirected from ${requested} to ${finalUrl}.`
-        : `HEAD ${finalUrl} returned ${head.response.status}.`,
-      shouldFlagDead: false,
-    }
-  }
-
-  const get = await fetchOnce(fetchImpl, requested, 'GET', timeoutMs)
-  return finalizeGet(requested, canonical, get)
+  let requested: string
+  try { requested = new URL(url, options.origin).toString() }
+  catch { return finalizeGet(url, canonical, { error: 'blocked' }) }
+  const get = await fetchOnce(options.fetchImpl, requested, options.timeoutMs ?? OPEN_CHECK_TIMEOUT_MS, options.deadline)
+  return finalizeGet(requested, canonical, get, options.httpErrorsOnly)
 }
 
 function finalizeGet(
   requested: string,
   canonical: CanonicalDestination | null,
-  get: Awaited<ReturnType<typeof fetchOnce>>
+  get: Awaited<ReturnType<typeof fetchOnce>>,
+  httpErrorsOnly = false,
 ): OpenCheckResult {
   if ('error' in get) {
     return {
       url: requested,
       canonicalUrl: canonical?.url ?? requested,
-      outcome: get.error === 'timeout' ? 'timeout' : 'unknown',
+      outcome: get.error === 'timeout' ? 'timeout' : get.error === 'blocked' ? 'blocked' : 'unknown',
       status: null,
       finalUrl: null,
       evidence:
         get.error === 'timeout'
           ? `GET ${requested} timed out.`
-          : `GET ${requested} failed before a response.`,
+          : get.error === 'blocked' ? 'Destination was refused by the public-network boundary.' : `GET ${requested} failed before a response.`,
       shouldFlagDead: false,
     }
   }
@@ -278,6 +241,7 @@ function finalizeGet(
     requestedUrl: requested,
     wwwAuthenticate: get.response.headers.get('www-authenticate'),
     html: get.html,
+    cfMitigated: get.response.headers.get('cf-mitigated'), httpErrorsOnly,
   })
 
   return {
@@ -299,6 +263,7 @@ export async function openCheckDestinations(
     timeoutMs?: number
     ceiling?: number
     concurrency?: number
+    deadline?: number
   } = {}
 ): Promise<{ results: OpenCheckResult[]; truncated: boolean }> {
   const ceiling = options.ceiling ?? DEFAULT_OPEN_CHECK_CEILING
@@ -325,6 +290,7 @@ export async function openCheckDestinations(
           origin: options.origin,
           fetchImpl: options.fetchImpl,
           timeoutMs: options.timeoutMs,
+          deadline: options.deadline,
         })
       )
     )

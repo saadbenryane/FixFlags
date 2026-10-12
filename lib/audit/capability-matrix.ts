@@ -393,7 +393,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     tool: 'html-parse',
     status: 'live',
 
-    notes: 'HEAD-checks login/sign-up and checkout/payment links, incl. cross-origin.',
+    notes: 'Bounded public GET checks login/sign-up and checkout/payment destinations, including cross-origin links. Transport refusals remain unknown; repair requires every original failed destination.',
   },
 
   // EXPERIENCE - interaction & loading

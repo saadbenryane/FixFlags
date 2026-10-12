@@ -1,4 +1,5 @@
 import { executionWrite } from '@/lib/audit/execution-ownership'
+import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { prisma } from '@/lib/db'
 import type { ImpactTag, Prisma, RubricName, Severity } from '@prisma/client'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
@@ -219,11 +220,12 @@ export function omitRepeatedCustomerFindings<T extends { problem: string; url: s
 
 export async function persistJourneyResult(
   auditId: string,
-  result: Awaited<ReturnType<typeof runJourneyTemplate>>
+  result: Awaited<ReturnType<typeof runJourneyTemplate>>,
+  boundOutcome?: { outcomeId: string; bindingKey: string },
 ): Promise<JourneyFindingDraft[]> {
   const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence))
   const alreadyRecorded = await prisma.flag.findMany({
-    where: { auditId },
+    where: { auditId, ...(boundOutcome ? { fingerprint: outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) } : {}) },
     select: { problem: true, pageUrl: true },
   })
   const findingsToPersist = omitRepeatedCustomerFindings(alreadyRecorded, [...filteredFindings])
@@ -322,7 +324,8 @@ export async function persistJourneyResult(
         confidence: f.confidence ?? 0.85,
         source: 'JOURNEY',
         pageUrl: f.url,
-        fingerprint: `journey:${f.checkId}:${f.url}`,
+        fingerprint: boundOutcome && f.checkId.startsWith('journey-checkout-failed-')
+          ? outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) : `journey:${f.checkId}:${f.url}`,
         position: f.stepNumber,
       },
     }))

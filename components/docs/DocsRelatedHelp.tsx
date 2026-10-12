@@ -4,6 +4,8 @@ import type { DocsPageDefinition } from '@/lib/docs/catalog'
 import { getHelpArticle } from '@/lib/help/search'
 import { helpArticlePath } from '@/lib/help/types'
 import { Heading } from '@/components/ui/typography'
+import { ArrowRight } from 'lucide-react'
+import s from './DocsExperience.module.css'
 
 export function DocsRelatedHelp({ page }: { page: DocsPageDefinition }) {
   const articles = (page.relatedHelpSlugs ?? [])
@@ -13,18 +15,18 @@ export function DocsRelatedHelp({ page }: { page: DocsPageDefinition }) {
   if (articles.length === 0) return null
 
   return (
-    <div className="mt-12 space-y-2 border-t border-border/60 pt-6">
+    <div className={s.related}>
       <Heading as="h2" className="text-lg">
         Related Help articles
       </Heading>
-      <ul className="space-y-1">
+      <ul>
         {articles.map((article) => (
           <li key={article.slug}>
             <Link
               href={helpArticlePath(article.categoryId, article.slug) as Route}
-              className="text-sm font-medium text-brand hover:underline"
+              className={s.relatedLink}
             >
-              {article.title}
+              <span>{article.title}</span><ArrowRight aria-hidden size={16} />
             </Link>
           </li>
         ))}

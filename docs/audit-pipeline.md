@@ -23,6 +23,40 @@ Worker upkeep initializes untouched existing Sites and retains explicit pauses,
 custom schedules, names and historical evidence. These defaults do not depend on
 email delivery configuration or an active customer browser session.
 
+Bound findings retain Outcome and binding identity, with the originating Flag
+referenced by the binding execution. Outcome assessments commit incident
+continuity and recovery with their Flag and Improvement projections. Unknown
+checks preserve an unresolved incident; repeated failures do not create another
+alert. Comparable successful execution of every required binding closes the
+incident, and a later failure records recurrence. Configuration, environment,
+version and fixture changes cannot certify an earlier failure as repaired.
+
+Authorized Signup fixtures submit once and observe their declared text, visible
+target or exact destination within a bounded eight-second window. A success
+signal already present before submission, an exhausted execution budget, a
+scanner refusal or unproven cleanup remains inconclusive. Confirmed missing
+completion creates a scoped Flag in the same transaction as the binding result.
+Observation receipts retain the criterion type and before/after presence without
+fixture values, DOM contents or credentialed screenshots.
+
+Scheduled and requested Outcome verification share the same scope comparison.
+A fresh scheduled child may verify an owner's pending fix when it checks the
+same responsibility. Assessment time comes from recorded execution, rather than
+the time a delayed projection happens to run. Scoped monitoring history uses
+its own proof, without requiring unrelated broad-report pages.
+After an intervening inconclusive check, committed recovery may also refine the
+fix attempt for its exact source incident. The fix must precede the recovery
+execution, its source Flag must have been closed by that recovery, and the
+original Outcome scope must still match. Earlier inconclusive cycle events
+remain recorded; the new result adds its own provenance.
+
+Historical single-binding Improvement IDs are retained when recorded scope,
+version, execution and Outcome ownership prove the migration. Ambiguous or
+unversioned history remains unverified. Notification classification reads the
+committed transition even after an intervening gap; notification retries cannot
+rewind the latest monitoring time or clear a scheduler lease. Missing email
+configuration limits notification delivery, while scheduling remains available.
+
 Progressive recovery requires the original responsibility's committed assertion
 or comparable Search receipt, rather than an absent Flag or a completed page.
 Scope, source and admitted version must match. Keyboard and Tracking use the
@@ -30,11 +64,53 @@ same scoped proof logic for automatic recovery and explicit fix verification.
 Rolling field INP does not prove an immediate repair. Unsupported proof stays
 inconclusive even when the surrounding module succeeds.
 
+PageSpeed normalization retains bounded resource audit measurements alongside
+its established failed-opportunity projection. Score, render-blocking resources,
+unused JavaScript, unused CSS and image delivery have exact repair assertions.
+Detection and proof share the existing savings thresholds and units. Image
+recovery requires the consolidated current insight or every supported legacy
+image responsibility. Missing, errored, informative and not-applicable provider
+audits remain unknown. An explicit successful empty result table can establish
+zero matching resources. The provider adapter follows the
+[Lighthouse insight contract](https://github.com/GoogleChrome/lighthouse/blob/main/core/audits/insights/insight-audit.js).
+Historical opportunity lists without positive measurements cannot certify
+resource recovery. A complete assertion remains useful when an unrelated audit
+is unavailable, through the same comparison used by explicit verification and
+automatic recovery. Field-window INP retains its separate limitation.
+
 Mixed-content observations retain bounded, redacted HTTP resource declarations
 from collected HTML, including scripts, stylesheets, responsive images, frames
 and media. Inert fallback and template content are excluded. These observations
 do not assert actual browser delivery, external CSS contents or later dynamic
 requests. Incomplete collection cannot certify recovery.
+
+Public destination checks share the guarded GET collector. Discovery, sign-in,
+checkout and preview-image probes validate public DNS and every redirect, bound
+HTTP capacity and body samples, and honor their execution deadline during DNS
+resolution. HEAD success does not certify a destination. Transport errors,
+access restrictions and scanner refusals remain unknown. Preview-image response
+and content-type evidence do not establish full image decoding or a platform's
+rendered preview.
+
+Auth, checkout and preview-image assertions retain hashed destination and page
+scope, without signed query values in findings. Repair and automatic recovery
+require every originally failed destination. Disappearing markup, changed URLs,
+an unrelated successful destination or an incomplete subset do not establish
+recovery. Targeted admission includes the recorded affected pages and reuses the
+same scoped proof logic. Historical findings without this scope remain
+inconclusive. Independent proved destinations remain usable when unrelated
+destinations are blocked or the bounded inventory is incomplete.
+Targeted verified repairs resolve their source Flag in the same transaction as
+the Improvement Attempt and its verification outcome. Failed or inconclusive
+proof leaves that Flag open, and unrelated historical Flags are not rewritten.
+
+Public HTTP and browser observations share challenge classification. Ordinary
+Cloudflare mentions, analytics resources and embedded CAPTCHA widgets do not
+block availability. Explicit mitigation headers or a challenge document remain
+unknown, including an HTTP 200 challenge. Search retains that observed response
+as incomplete, and security-header checks do not diagnose the challenge's
+headers as origin configuration. The mitigation signal follows Cloudflare's
+[documented response contract](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response/).
 
 Delivered task jobs rotate behind undispatched work between bounded queue
 rechecks. Lost queue deliveries remain reconstructible. Dispatch responses are
@@ -180,8 +256,30 @@ to a newly created local database, checks migration status and schema drift, and
 uses a disposable Redis container with the application worker. Representative
 Search collection and partial completion, expired Signup ownership with unsettled
 cleanup, and keyboard focus-style, menu restoration and Tracking library failure-to-repair verification have been exercised through
-this boundary. HTTP transport is served by controlled fixtures; keyboard evidence
-is collected in Chromium. The Signup interruption is modeled in the durable ledger
+this boundary. Public checkout, sign-in and preview-image failures now have
+targeted repair evidence and source-Flag resolution through the same worker.
+The authorized Signup fixture exercises delayed rendered completion, a missing
+signal, a preexisting signal without another submission, observed success with
+failed cleanup, comparable repair and recurrence. Its owner fix progresses from
+inconclusive to improved across the gap while retaining both cycle events.
+Default uptime has been exercised as a Watch run without a customer session,
+including healthy Cloudflare/CAPTCHA markup and an explicit HTTP 200 challenge.
+The outage fixture exercises failure, an inconclusive gap, ongoing failure,
+an owner's recorded fix verified by scheduled recovery, and recurrence. It also
+checks historical identity migration, independent pages with identical binding
+keys, history completion, and a delayed notification against a live scheduler
+lease. Notification selection and bounded missing-provider failure are local
+evidence, not provider acceptance or inbox delivery.
+The Performance fixture seeds historical findings from the real HTTP collector
+and detector, then exercises six fresh diagnostic admissions through the
+database, queue and application worker. Missing resource audits keep a repair
+inconclusive; measured repairs resolve their exact source Flags. Stored receipts
+also demonstrate independent score recovery despite unknown resource audits.
+Its PageSpeed responses come from a controlled local HTTP fixture, without
+establishing real Google provider acceptance. The verifier accepts Vitest name
+filters, for example `node scripts/verify-progressive-execution.mjs --testNamePattern 'Performance score and resource'`.
+HTTP transport is served by controlled fixtures; browser evidence is collected
+in Chromium. The Signup interruption is modeled in the durable ledger
 after a fenced submission-admission fact, not by creating a real account or killing
 a production worker. Existing local databases are neither migrated nor reset by
 this command. These checks do not establish provider or production acceptance.

@@ -252,87 +252,71 @@ describe('restoreDesktopCaptureViewport', () => {
 })
 
 describe('probeFormValidation', () => {
+  let restoreRect: () => void
   beforeEach(() => {
     document.body.innerHTML = ''
     styleOverrides.clear()
     stubComputedStyle()
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      return { width: this.closest('[hidden]') ? 0 : 300, height: 40 } as DOMRect
+    })
+    restoreRect = () => rectSpy.mockRestore()
   })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+  afterEach(() => { restoreRect(); vi.unstubAllGlobals() })
 
   it('skips when there is no conversion form', async () => {
     document.body.innerHTML = '<main><p>No form here</p></main>'
-    const result = await probeFormValidation(makePage())
-    assert.equal(result.formValidation, 'skipped')
+    assert.equal((await probeFormValidation(makePage())).formValidation, 'skipped')
   })
-
-  it('reports ok when native validation catches empty required fields', async () => {
-    document.body.innerHTML =
-      '<main><form><input name="email" type="email" required><button type="submit">Subscribe</button></form></main>'
+  it('reports the actual native constraint observation for empty required fields', async () => {
+    document.body.innerHTML = '<main><form><input name="email" type="email" required><button type="submit">Subscribe</button></form></main>'
     const result = await probeFormValidation(makePage())
     assert.equal(result.formValidation, 'ok')
     assert.equal(result.feedbackMs, 0)
+    assert.equal(result.evidence?.reason, 'native_validation')
   })
-
   it('skips forms without required fields', async () => {
-    document.body.innerHTML =
-      '<main><form><input name="email" type="email"><button type="submit">Subscribe</button></form></main>'
+    document.body.innerHTML = '<main><form><input name="email" type="email"><button type="submit">Subscribe</button></form></main>'
+    assert.equal((await probeFormValidation(makePage())).formValidation, 'skipped')
+  })
+  it('records a missing submit control without claiming an attempted submission', async () => {
+    document.body.innerHTML = '<main><form aria-label="Subscribe"><input name="email" type="email" required></form></main>'
     const result = await probeFormValidation(makePage())
+    assert.equal(result.formValidation, 'broken')
+    assert.equal(result.evidence?.reason, 'missing_submit')
+    assert.equal(result.formLabel, 'Subscribe')
+  })
+  it('never submits prefilled values or stores them as observation evidence', async () => {
+    document.body.innerHTML = '<main><form><input name="email" type="email" required value="PRIVATE@example.test"><button type="submit">Subscribe</button></form></main>'
+    const click = vi.fn()
+    const result = await probeFormValidation(makePage({ queryResult: { click } }))
     assert.equal(result.formValidation, 'skipped')
+    assert.equal(result.evidence?.reason, 'prefilled_fields')
+    assert.equal(click.mock.calls.length, 0)
+    assert.equal(JSON.stringify(result).includes('PRIVATE@example.test'), false)
   })
-
-  it('reports broken when a valid form has no submit button', async () => {
-    document.body.innerHTML =
-      '<main><form><input name="email" type="email" required value="a@b.com"><label>Email</label></form></main>'
-    const result = await probeFormValidation(makePage({ queryResult: null }))
-    assert.equal(result.formValidation, 'broken')
+  it('requires new feedback instead of passing an existing error message', async () => {
+    document.body.innerHTML = '<main><form><input name="email" aria-required="true"><button type="submit">Subscribe</button><p role="alert">Existing error</p></form></main>'
+    const click = vi.fn()
+    const result = await probeFormValidation(makePage({ queryResult: { click } }))
+    assert.equal(result.evidence?.reason, 'preexisting_feedback')
+    assert.equal(click.mock.calls.length, 0)
   })
-
-  it('reports broken when a valid form navigates away without feedback', async () => {
-    document.body.innerHTML =
-      '<main><form><input name="email" type="email" required value="a@b.com"><button type="submit">Subscribe</button></form></main>'
-    // formMeta + nativeCheck evaluate in the real DOM, then dismissConsent=false,
-    // clickStart=0, elapsed=2500 (> deadline) so the loop breaks without feedback, url changes.
-    const result = await probeFormValidation(
-      makePage({
-        evaluateQueue: [false, 0, 2500],
-        queueStart: 2,
-        url: 'https://example.com/thanks',
-        queryResult: { click: vi.fn(async () => {}) },
-      })
-    )
-    assert.equal(result.formValidation, 'broken')
+  it('keeps an interrupted click unknown rather than blaming form validation', async () => {
+    document.body.innerHTML = '<main><form><input name="email" aria-required="true"><button type="submit">Subscribe</button></form></main>'
+    const result = await probeFormValidation(makePage({ queryResult: { click: vi.fn(async () => { throw new Error('Browser closed') }) } }))
+    assert.equal(result.formValidation, 'skipped')
+    assert.equal(result.evidence?.reason, 'execution_interrupted')
   })
-
-  it('reports ok with feedback when validation feedback appears', async () => {
-    document.body.innerHTML =
-      '<main><form><input name="email" type="email" required value="a@b.com"><button type="submit">Subscribe</button></form></main>'
-    // formMeta + nativeCheck real; then dismissConsent=false, clickStart=0, elapsed=0, hasFeedback=true
-    const result = await probeFormValidation(
-      makePage({
-        evaluateQueue: [false, 0, 0, true],
-        queueStart: 2,
-        queryResult: { click: vi.fn(async () => {}) },
-      })
-    )
-    assert.equal(result.formValidation, 'ok')
+  it('does not borrow native validation from an invisible form', async () => {
+    document.body.innerHTML = '<main><form hidden><input required><button>Hidden</button></form><form id="visible"><input name="email" required><button>Subscribe</button></form></main>'
+    const result = await probeFormValidation(makePage())
+    assert.equal(result.formLabel, 'Subscribe')
+    assert.equal(result.evidence?.reason, 'native_validation')
   })
-
-  it('detects an overlay when the submit click throws', async () => {
-    document.body.innerHTML =
-      '<main><form><input name="email" type="email" required value="a@b.com"><button type="submit">Subscribe</button></form></main>'
-    const result = await probeFormValidation(
-      makePage({
-        queryResult: {
-          click: vi.fn(async () => {
-            throw new Error('element intercepted')
-          }),
-        },
-      })
-    )
-    assert.equal(result.formValidation, 'broken')
+  it('can inspect empty required fields while optional controls retain their defaults', async () => {
+    document.body.innerHTML = '<main><form><input name="email" required><input name="range" type="range" value="50"><button>Subscribe</button></form></main>'
+    assert.equal((await probeFormValidation(makePage())).evidence?.reason, 'native_validation')
   })
 })
 

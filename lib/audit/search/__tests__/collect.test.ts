@@ -6,6 +6,12 @@ import { document, PAGE } from './fixtures'
 
 beforeEach(() => vi.clearAllMocks())
 describe('bounded Search resource collection', () => {
+  it('retains an observed challenge response without evaluating it as the requested document', async () => {
+    safeFetchDocument.mockResolvedValue({ body: '<title>Just a moment...</title>', finalUrl: PAGE, statusCode: 200,
+      headers: { 'cf-mitigated': 'challenge' }, complete: true, redirects: [] })
+    const observed = await collectDocument(PAGE, Date.now() + 10_000)
+    expect(observed).toMatchObject({ status: 200, body: '<title>Just a moment...</title>', complete: false, reason: 'public_access_challenge' })
+  })
   it('shares site-level reads across pages of one execution', async () => {
     safeFetchDocument.mockImplementation(async (url: string) => ({ body: url.endsWith('robots.txt')
       ? 'User-agent: *\nAllow: /\nSitemap: https://example.com/custom.xml'

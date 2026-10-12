@@ -15,6 +15,7 @@ import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { CHECK_REGISTRY } from './check-registry'
 import { SEARCH_DEFINITIONS } from './search/definitions'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
+import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
 
 export type { FlagDiffSummaryItem } from './flag-types'
 
@@ -143,6 +144,8 @@ async function loadAuditCoverage(auditId: string | null): Promise<{
   pages: ChildPageCoverage[]
   executionSpec?: unknown
   verifierExecutions?: RecoveryExecution[]
+  projectId?: string | null
+  outcomeAssessments?: Array<{ evidence: unknown }>
 }> {
   if (!auditId) return { status: undefined, reportCompleteness: null, pages: [] }
   const audit = await prisma.audit.findUnique({
@@ -151,14 +154,14 @@ async function loadAuditCoverage(auditId: string | null): Promise<{
       status: true,
       reportCompleteness: true,
       pages: { select: { url: true, status: true, completeness: true } },
-      executionSpec: true,
+      executionSpec: true, projectId: true, outcomeAssessments: { select: { evidence: true } },
     },
   })
   return {
     status: audit?.status,
     reportCompleteness: audit?.reportCompleteness,
     pages: audit?.pages ?? [],
-    executionSpec: audit?.executionSpec,
+    executionSpec: audit?.executionSpec, projectId: audit?.projectId ?? null, outcomeAssessments: audit?.outcomeAssessments ?? [],
   }
 }
 
@@ -333,10 +336,12 @@ export async function getFlagDiffSummary(
   regressed: FlagDiffSummaryItem[]
   newIssues: FlagDiffSummaryItem[]
 }> {
-  const [parentFlags, monitoringFlags, child, parent] = await Promise.all([
+  const child = await loadAuditCoverage(monitoringAuditId)
+  const outcome = await outcomeMonitoringDiff(monitoringAuditId, { projectId: child.projectId ?? null, executionSpec: child.executionSpec, outcomeAssessments: child.outcomeAssessments ?? [] })
+  if (outcome) return outcome
+  const [parentFlags, monitoringFlags, parent] = await Promise.all([
     parentAuditId ? prisma.flag.findMany({ where: { auditId: parentAuditId } }) : Promise.resolve([]),
     prisma.flag.findMany({ where: { auditId: monitoringAuditId } }),
-    loadAuditCoverage(monitoringAuditId),
     loadAuditCoverage(parentAuditId),
   ])
 

@@ -171,6 +171,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
         {
           origin: canonicalizeDestination(audit.url)?.url ?? audit.url,
           ceiling: openCheckCeilingForDepth(reviewDepth),
+          deadline: ctx.deadline,
         }
       )
       openCheckResults = results
@@ -246,6 +247,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
           const extra = await openCheckDestinations(extraOpenCheck, {
             origin: canonicalizeDestination(audit.url)?.url ?? audit.url,
             ceiling: Math.max(0, openCheckCeilingForDepth(3) - openCheckResults.length),
+            deadline: ctx.deadline,
           })
           openCheckResults.push(...extra.results)
           ctx.openCheckCount = openCheckResults.length

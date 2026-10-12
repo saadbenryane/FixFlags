@@ -2,7 +2,8 @@ import type { Page } from 'playwright'
 import { MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { detectOverlayAtPoint, type OverlayBlockerInfo } from '@/lib/audit/browser/overlay-probe'
-import { probeFormValidation } from './form-probes'
+import { probeFormValidation, type FormProbeResult } from './form-probes'
+import type { FormEvidence } from './form-evidence'
 import { probeGhostSections } from './scroll-probes'
 
 export type ProbeOutcome = 'ok' | 'broken' | 'skipped'
@@ -17,6 +18,7 @@ export interface MultiStepProbeResult {
   formLabel?: string
   formFeedbackMs?: number | null
   formOverlay?: OverlayBlockerInfo | null
+  formEvidence?: FormEvidence
   ghostSections?: number
   ghostSampleSelector?: string
   ghostSampleText?: string
@@ -241,16 +243,16 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
   }
 }
 
-export async function runMultiStepProbes(page: Page, landingUrl: string): Promise<MultiStepProbeResult> {
+export async function runMultiStepProbes(page: Page, landingUrl: string, options: { includeFormValidation?: boolean } = {}): Promise<MultiStepProbeResult> {
   const pricing = await probePricingNav(page)
   if (pricing.pricingNav !== 'skipped' && page.url() !== landingUrl) {
     await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
     await sleep(300)
   }
 
-  const form = await probeFormValidation(page)
+  const form: FormProbeResult = options.includeFormValidation === false ? { formValidation: 'skipped' } : await probeFormValidation(page)
   let formResult = form
-  if (form.formValidation === 'skipped') {
+  if (options.includeFormValidation !== false && form.formValidation === 'skipped') {
     const signupPath = await page.evaluate(() => {
       ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const cta = document.querySelector('a.demo-cta-primary')
@@ -290,6 +292,7 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
     formLabel: formResult.formLabel,
     formFeedbackMs: formResult.feedbackMs,
     formOverlay: formResult.formOverlay,
+    formEvidence: formResult.evidence,
     ghostSections: ghost.ghostCount,
     ghostSampleSelector: ghost.sampleSelector ?? undefined,
     ghostSampleText: ghost.sampleText ?? undefined,

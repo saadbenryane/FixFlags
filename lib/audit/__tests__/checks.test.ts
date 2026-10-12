@@ -1,4 +1,6 @@
 import { describe, it, afterEach, vi } from 'vitest'
+
+vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
 import assert from 'node:assert/strict'
 
 function keyboardInteractionFinding(overrides: Partial<KeyboardInteraction>) {

@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio'
 import { XMLParser, XMLValidator } from 'fast-xml-parser'
 import { safeFetchDocument } from '../url'
+import { isBotInterstitialDocument } from '../browser/page-capture'
 import type { PublicDocument, SearchPageEvidence } from './contracts'
 
 export const SEARCH_DOCUMENT_LIMIT = 1_000_000
@@ -22,8 +23,9 @@ export async function collectDocument(url: string, deadline: number, maxBytes = 
   if (deadline - Date.now() < 100) return missingDocument(url, 'deadline_exhausted')
   try {
     const data = await safeFetchDocument(url, { deadline, timeoutMs: 5000, maxBytes })
+    const challenge = isBotInterstitialDocument({ body: data.body, headers: data.headers, status: data.statusCode })
     return { url, finalUrl: data.finalUrl, status: data.statusCode, headers: data.headers, body: data.body,
-      complete: data.complete, reason: data.complete ? null : 'document_truncated',
+      complete: data.complete && !challenge, reason: challenge ? 'public_access_challenge' : data.complete ? null : 'document_truncated',
       collectedAt: new Date().toISOString(), redirects: data.redirects }
   } catch {
     return missingDocument(url, Date.now() >= deadline ? 'deadline_exhausted' : 'public_document_unavailable')

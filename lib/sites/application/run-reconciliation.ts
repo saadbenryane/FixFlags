@@ -1,3 +1,5 @@
+import { persistOutcomeAssessment } from './outcome-incidents'
+import { readOutcomeIncident } from '../domain/outcome-incident'
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
@@ -59,7 +61,14 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         )
         const checkoutBinding = requiredBindings.find((binding) => binding.mechanism === 'BROWSER_JOURNEY' && outcome.kind === 'CHECKOUT')
         const review = checkoutBinding ? request.audit?.journeyReviews[0] : null
-        const flag = verdict.state === 'FLAG' && checkoutBinding
+        const failureFlagIds = executions.flatMap(execution => {
+          const detail = execution.detail
+          return requiredBindings.some(binding => binding.key === execution.bindingKey) && execution.disposition === 'FAILED' &&
+            detail && typeof detail === 'object' && !Array.isArray(detail) && typeof detail.failureFlagId === 'string' ? [detail.failureFlagId] : []
+        })
+        const flag = verdict.state === 'FLAG' && failureFlagIds.length
+          ? await prisma.flag.findFirst({ where: { id: { in: failureFlagIds }, auditId, audit: { projectId: request.projectId } }, select: { id: true, checkId: true } })
+          : verdict.state === 'FLAG' && checkoutBinding
           ? await prisma.flag.findFirst({
               where: { auditId, checkId: { startsWith: 'journey-checkout-failed-' } },
               select: { id: true, checkId: true },
@@ -88,13 +97,14 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
               orderBy: { updatedAt: 'desc' },
             })
           : null)
-        const assessedAt = new Date()
+        const times = executions.flatMap(execution => execution.createdAt ? [execution.createdAt.getTime()] : [])
+        const assessedAt = times.length ? new Date(Math.max(...times)) : request.audit?.completedAt ?? new Date()
         const validUntil = verdict.state === 'COULD_NOT_VERIFY'
           ? assessedAt
           : new Date(assessedAt.getTime() + outcome.staleAfterMinutes * 60_000)
-        await executionWrite(tx => tx.outcomeAssessment.upsert({
-          where: { runRequestId_outcomeId: { runRequestId: request.id, outcomeId: outcome.id } },
-          create: {
+        const assessment = await persistOutcomeAssessment({
+          projectId: request.projectId, bindingKeys: requiredBindings.map(binding => binding.key), failureFlagIds, outcomeKind: admitted?.kind ?? outcome.kind,
+
             outcomeId: outcome.id,
             runRequestId: request.id,
             auditId,
@@ -112,7 +122,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             },
             coverage: {
               environment: request.environment,
-              policy: outcome.bindingPolicy,
+              policy: admitted?.bindingPolicy ?? outcome.bindingPolicy,
               requiredBindings: verdict.requiredBindings,
               observedBindings: verdict.observedBindings,
               scope: checkoutBinding?.scope ?? null,
@@ -125,9 +135,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             },
             assessedAt,
             validUntil,
-          },
-          update: {},
-        }))
+        })
         await recordSiteLifecycleEvent({
           name: 'outcome_run_result',
           idempotencyKey: `outcome-run-result:${request.id}:${outcome.id}`,
@@ -142,10 +150,10 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         }).catch((error) => {
           logger.error('Outcome run result telemetry failed', { runId: request.id, error })
         })
-        if (verdict.state === 'CLEAR' && linkedImprovement?.status === 'VERIFIED') {
+        if (readOutcomeIncident(assessment.evidence)?.transition === 'recovery' && assessment.improvementId) {
           await recordSiteLifecycleEvent({
             name: 'outcome_recovered',
-            idempotencyKey: `outcome-recovered:${request.id}:${outcome.id}:${linkedImprovement.id}`,
+            idempotencyKey: `outcome-recovered:${request.id}:${outcome.id}:${assessment.improvementId}`,
             userId: request.requestedByUserId,
             projectId: request.projectId,
             properties: { kind: outcome.kind },

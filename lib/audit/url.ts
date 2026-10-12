@@ -116,11 +116,23 @@ export async function resolvePublicAddresses(hostname: string): Promise<string[]
   return addresses
 }
 
-export async function assertPublicAuditUrl(raw: string): Promise<URL> {
+export async function assertPublicAuditUrl(raw: string, signal?: AbortSignal): Promise<URL> {
   const normalized = normalizeAuditUrl(raw)
   if (!normalized.ok) throw new AuditUrlError(normalized.error)
   const parsed = new URL(normalized.url)
-  await resolvePublicAddresses(parsed.hostname)
+  signal?.throwIfAborted()
+  const lookup = resolvePublicAddresses(parsed.hostname)
+  if (!signal) await lookup
+  else {
+    let abort: (() => void) | undefined
+    try {
+      await Promise.race([lookup, new Promise<never>((_resolve, reject) => {
+        abort = () => reject(signal.reason)
+        signal.addEventListener('abort', abort, { once: true })
+        if (signal.aborted) abort()
+      })])
+    } finally { if (abort) signal.removeEventListener('abort', abort) }
+  }
   return parsed
 }
 
@@ -219,6 +231,7 @@ export async function safeFetchHtml(
 /** Public non-HTML evidence uses the same DNS and redirect boundary as HTML capture. */
 export async function safeFetchDocument(rawUrl: string, options: {
   timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
+  accept?: string;
 } = {}): Promise<{
   body: string; finalUrl: string; statusCode: number; headers: Record<string, string>;
   complete: boolean; redirects: string[];
@@ -230,17 +243,17 @@ export async function safeFetchDocument(rawUrl: string, options: {
   const redirects: string[] = []
   const maxBytes = options.maxBytes ?? 1_000_000
   try {
-    let current = (await assertPublicAuditUrl(rawUrl)).toString()
+    let current = (await assertPublicAuditUrl(rawUrl, controller.signal)).toString()
     for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
       const response = await fetch(current, { redirect: 'manual', signal: controller.signal,
-        headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: 'text/html,text/plain,application/xml,text/xml' } })
+        headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml' } })
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location')
         await response.body?.cancel()
         if (!location) throw new Error('Redirect response is missing a location')
         redirects.push(current)
-        current = (await assertPublicAuditUrl(new URL(location, current).toString())).toString()
+        current = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal)).toString()
         continue
       }
       const headers = Object.fromEntries(response.headers.entries())

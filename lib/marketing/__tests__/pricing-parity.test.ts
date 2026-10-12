@@ -29,11 +29,34 @@ describe('open beta pricing parity', () => {
     }
     expect(PRICING_FAQ.find(faq => faq.question === 'What happens when beta ends?')?.answer).toMatch(/useful Free plan/)
   })
-  it('separates planned browser verification from hourly availability', () => {
-    expect(PRICING_COMPARISON.rows.find(row => row.feature === 'Monitoring')?.studio).toMatch(/daily browser verification and hourly availability/)
-    expect(PRICING.compareNote).toMatch(/do not verify checkout or signup/)
+  it('offers one monthly website-check allowance while keeping uptime separate', () => {
+    const checks = PRICING_COMPARISON.rows.find(row => row.id === 'checks')!
+    const uptime = PRICING_COMPARISON.rows.find(row => row.id === 'uptime')!
+    const scheduling = PRICING_COMPARISON.rows.find(row => row.id === 'scheduling')!
+    expect(PLANNED_PAID_PRICING.BUILDER.websiteChecks).toBe(30)
+    expect(PLANNED_PAID_PRICING.TEAM.websiteChecks).toBe(PLANNED_PAID_PRICING.BUILDER.websiteChecks * 3)
+    expect(checks.pro.value).toBe('30 / month')
+    expect(checks.studio.value).toBe('90 / month')
+    expect(checks.free.kind).toBe('unlimited')
+    for (const key of ['free', 'pro', 'studio'] as const) expect(uptime[key].kind).toBe('included')
+    expect(scheduling.pro.value).toBe('Custom')
+    expect(scheduling.studio.value).toBe('Custom')
+    expect(PRICING_COMPARISON.allowanceNote).toMatch(/scheduled and manual/)
+    expect(PRICING_COMPARISON.allowanceNote).toMatch(/Uptime checks are included separately/)
+    expect(JSON.stringify({ PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ })).not.toMatch(/browser verification|daily checks/i)
     expect(PLANS[2].href).toBe('/waitlist/studio')
     expect(PLANS[1].href).toBe('/waitlist/pro')
+  })
+  it('marks update-triggered checks as planned and integration-dependent', () => {
+    const updates = PRICING_COMPARISON.rows.find(row => row.id === 'updates')!
+    expect(updates.studio.value).toBe('Planned')
+    expect(updates.studio.note).toMatch(/connected integration/)
+    expect(updates.pro.kind).toBe('excluded')
+    expect(updates.free.value).toBe('Planned')
+    const answer = PRICING_FAQ.find(entry => entry.question.includes('GitHub'))!.answer
+    expect(answer).toMatch(/published changes/)
+    expect(answer).toMatch(/same 90-check allowance/)
+    expect(answer).toMatch(/not available yet/)
   })
   it('does not imply unlimited websites or immediate paid access', () => {
     const surface = JSON.stringify({ PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ })

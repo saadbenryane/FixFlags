@@ -1,11 +1,13 @@
 'use client'
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { AuthFlow } from '@/components/auth/AuthFlow'
+import { lazy, Suspense } from 'react'
 import { AUTH, SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import type { ReportClaimReason } from '@/lib/audit/access-context'
 
 export type { ReportClaimReason }
+
+const AuthFlow = lazy(() => import('@/components/auth/AuthFlow').then(module => ({ default: module.AuthFlow })))
 
 export function ReportClaimDialog({
   open,
@@ -43,15 +45,17 @@ export function ReportClaimDialog({
       <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain p-5 sm:p-6">
         <DialogTitle className="sr-only">{copy.title}</DialogTitle>
         <DialogDescription className="sr-only">{copy.body}</DialogDescription>
-        <AuthFlow
-          mode="signup"
-          presentation="report-dialog"
-          from={from}
-          nextPath={nextPath}
-          auditId={auditId}
-          dialogTitle={copy.title}
-          dialogSubtitle={copy.body}
-        />
+        <Suspense fallback={<p role="status" className="py-8 text-center text-sm text-muted-foreground">{AUTH.reportGate.preparingOptions}</p>}>
+          <AuthFlow
+            mode="signup"
+            presentation="report-dialog"
+            from={from}
+            nextPath={nextPath}
+            auditId={auditId}
+            dialogTitle={copy.title}
+            dialogSubtitle={copy.body}
+          />
+        </Suspense>
       </DialogContent>
     </Dialog>
   )

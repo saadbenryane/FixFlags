@@ -91,6 +91,7 @@ export interface RunFlowScanOptions {
   landingStep?: FlowScanStep | null
   allowLocalhost?: boolean
   fetchHeaders?: Record<string, string>
+  includeFormValidation?: boolean
 }
 
 async function captureFlowStep(
@@ -188,7 +189,7 @@ async function runFlowScanWithinBudget(
   }
 
   const landingUrl = page.url()
-  const multiStep = await runMultiStepProbes(page, landingUrl)
+  const multiStep = await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation })
   // Form/nav probes can leave auth or result dialogs open (dogfood: GradLoom
   // "Show My Career Path" opens a Saved Career Paths modal). Dismiss residue
   // before ranking/clicking the primary CTA so we do not self-inflict overlay FPs.

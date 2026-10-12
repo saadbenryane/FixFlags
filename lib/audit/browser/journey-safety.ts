@@ -110,17 +110,31 @@ export async function captureAccessibilityTree(page: Page, maxChars = 12_000): P
 }
 
 /** Prevent native form submit while allowing fill/focus for UX probes. */
-export async function blockFormSubmits(page: Page): Promise<void> {
-  await page.evaluate(() => {
+export async function blockFormSubmits(page: Page, localValidationToken?: string): Promise<void> {
+  await page.evaluate((token) => {
     document.addEventListener(
       'submit',
       (event) => {
-        event.preventDefault()
-        event.stopPropagation()
+        const form = event.target
+        // The isolated validation probe has already blocked all outbound
+        // requests. Only that probe may observe the page's local submit handler.
+        if (!(form instanceof HTMLFormElement) || !token || form.getAttribute('data-fixflags-local-validation') !== token) {
+          event.preventDefault()
+          if (form instanceof HTMLFormElement) form.setAttribute('data-fixflags-submit-suppressed', 'true')
+          event.stopPropagation()
+        }
       },
       true
     )
-  })
+    window.addEventListener('submit', event => {
+      const form = event.target
+      if (form instanceof HTMLFormElement && token && form.getAttribute('data-fixflags-local-validation') === token && !event.defaultPrevented)
+        form.setAttribute('data-fixflags-submit-suppressed', 'true')
+      // Local handlers see the original event first. Native/server-only submit
+      // remains prevented and is an explicit scanner limitation.
+      event.preventDefault()
+    })
+  }, localValidationToken ?? null)
 }
 
 /** Disposable probe identity for engagement form fills. */

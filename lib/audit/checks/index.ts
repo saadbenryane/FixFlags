@@ -17,7 +17,7 @@ export type { AxeViolation } from './accessibility'
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]
   failedModules: string[]
-  executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; complete?: boolean; limitation?: string; assertions?: CheckAssertion[] }>
+  executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; complete?: boolean; limitation?: string; collectedAt?: string; assertions?: CheckAssertion[] }>
 }
 
 /** Legacy adapter and progressive tasks invoke the same validated registrations. */
@@ -26,7 +26,7 @@ export async function runAllChecks(
   consoleErrors: Array<{ type: string; text: string }>, onAreaComplete?: (index: number) => void,
   captureMetrics?: CaptureMetrics | null, responseHeaders?: Record<string, string> | null,
   axeViolations?: AxeViolation[], searchHandled = false, selectedModules?: readonly string[],
-  runtimeEvidence?: { tracking?: import('../tracking/contracts').TrackingEvidence },
+  runtimeEvidence?: { tracking?: import('../tracking/contracts').TrackingEvidence; deadline?: number },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
@@ -34,7 +34,7 @@ export async function runAllChecks(
   const results = await Promise.all(selected.map(async (check, index) => {
     const assertions: CheckAssertion[] = []
     const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
-      scope: {}, tracking: runtimeEvidence?.tracking, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => assertions.push(assertion) }
+      scope: {}, deadline: runtimeEvidence?.deadline, tracking: runtimeEvidence?.tracking, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => assertions.push(assertion) }
     try {
       const flags = await check.evaluate(input)
       if (check.id !== 'metadata' && check.id !== 'measurement') assertions.push(...recordCheckObservations(check.id, {

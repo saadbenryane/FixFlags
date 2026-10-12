@@ -1,7 +1,7 @@
 import { CHECK_REGISTRY } from './check-registry'
 import { baseCheckId, parseAffectedPaths } from './flag-identity'
 import { checkReceiptSchema } from './checks/receipt'
-import { assertionForTarget, scopedAssertionForTarget, checkVerifierSchema } from './checks/verification'
+import { scopedAssertionForTarget, checkVerifierSchema } from './checks/verification'
 import { searchReceiptSchema, searchVerifierSchema } from './search/contracts'
 import { assessSearchRecovery } from './search/recovery'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -39,7 +39,7 @@ export function hasRecordedRecoveryEvidence(input: {
     const checkModule = CHECK_REGISTRY[checkId]?.module
     const source = checkModule === 'performance' ? 'pagespeed-desktop' : checkModule === 'mobile' ? 'pagespeed-mobile'
       : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network'
-        : checkModule === 'security' ? 'original-html' : checkModule === 'security-headers' ? 'http'
+        : checkModule === 'security' ? 'original-html' : ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
           : checkModule === 'accessibility' ? 'axe' : 'rendered-dom'
     const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
       const result = checkReceiptSchema.safeParse(row.detail)
@@ -47,7 +47,7 @@ export function hasRecordedRecoveryEvidence(input: {
         result.data.execution.checkVersion === spec.checks[checkId] && recoveryUrl(result.data.pageUrl) === url &&
         result.data.execution.source === source ? [result.data] : []
     })
-    if (checkModule === 'keyboard' || checkModule === 'measurement') {
+    if (['keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
       const sources = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
         const result = checkReceiptSchema.safeParse(row.detail)
         return result.success ? [result.data] : []
@@ -56,8 +56,8 @@ export function hasRecordedRecoveryEvidence(input: {
         scopedAssertionForTarget({ receipt, checkId, flag: input.flag, receipts: sources })?.assertion.passed === true)
     }
     return receipts.length > 0 && receipts.every(receipt => {
-      if (!receipt.applicable || receipt.failed || receipt.complete === false) return false
-      const assertion = assertionForTarget(receipt, checkId)
+      if (!receipt.applicable || receipt.failed) return false
+      const assertion = scopedAssertionForTarget({ receipt, checkId, flag: input.flag })?.assertion
       // A module can omit a responsibility or succeed on a different assertion.
       // Only a recorded assertion for this exact finding establishes recovery.
       return assertion?.passed === true

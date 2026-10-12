@@ -11,6 +11,6 @@ export const PUBLIC_OFFER = {
   paid: `Planned pricing: ${PLANS[1].name} ${PLANS[1].price}${PLANS[1].period}; ${PLANS[2].name} ${PLANS[2].price}${PLANS[2].period}.`,
   availability: 'New paid access remains on the waitlist. Joining does not add a website, start a subscription, or charge you.',
   usage: OPEN_BETA_ACCESS
-    ? 'This is a temporary beta offer. We will tell you before the beta offer changes. See Pricing for planned paid offers; future allowances will be announced before launch.'
+    ? 'This is a temporary beta offer. We will tell you before the beta offer changes. See Pricing for planned paid website-check allowances. Final paid terms will be confirmed before launch.'
     : 'See Pricing for current usage allowances and monitoring intervals.',
 } as const

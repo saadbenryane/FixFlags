@@ -1,0 +1,19 @@
+.container { max-width: 1168px; }
+.assurances { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 24px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.assurances li { display: flex; align-items: center; gap: 7px; }
+.assurances svg { flex-shrink: 0; color: hsl(var(--brand)); }
+.sections { display: grid; gap: 64px; }
+.studio { margin-top: 28px; text-align: center; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.7; }
+.studio a, .links a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: hsl(var(--foreground)); }
+.studio svg, .links svg { flex-shrink: 0; color: hsl(var(--brand)); }
+.comparison { scroll-margin-top: var(--header-offset); }
+.compareNote { max-width: 760px; margin: 24px auto 0; text-align: center; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.7; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; margin-top: 16px; font-size: 14px; }
+.page a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.page a:focus-visible { outline: 2px solid hsl(var(--focus-ring)); outline-offset: 4px; }
+.faq { max-width: 800px; width: 100%; margin-inline: auto; }
+.faq h2 { font-family: var(--font-display), sans-serif; font-size: clamp(30px, 3.5vw, 44px); font-weight: 620; line-height: 1.1; letter-spacing: -.04em; text-wrap: balance; }
+.faq :global([data-state][id]) { background: hsl(var(--muted) / .7); box-shadow: none; backdrop-filter: none; }
+@media (max-width: 767px) {
+  .sections { gap: 48px; }
+}

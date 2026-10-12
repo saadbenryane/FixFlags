@@ -28,7 +28,8 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     if (fixture) Object.assign(binding, { fixture: { id: fixture.id, version: fixture.version } })
   }
   let verificationScopes: ExecutionSpec['verificationScopes']
-  if (input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId.split('::page:')[0].startsWith('tracking-')) {
+  const diagnosticModule = input.verificationTarget?.kind === 'DIAGNOSTIC' ? CHECK_REGISTRY[input.verificationTarget.checkId.split('::page:')[0]]?.module : null
+  if (input.verificationTarget?.kind === 'DIAGNOSTIC' && ['measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(diagnosticModule ?? '')) {
     const flags = await prisma.flag.findMany({ where: { auditId: input.verificationTarget.parentAuditId,
       audit: { projectId: input.projectId }, pageUrl: input.verificationTarget.pageUrl,
       checkId: input.verificationTarget.checkId }, take: 100, select: { evidenceTargets: true, affectedPaths: true } })
@@ -37,7 +38,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       return typeof context === 'string' && context.startsWith('tracking:') && context.length <= 4200 ? [context] : []
     }) : [])
     const pages = [...new Map([input.verificationTarget.pageUrl, ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])].map(page => [trackingPageKey(page), page])).values()]
-    verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: (['page_load', 'public_action'] as const).filter(phase =>
+    verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule !== 'measurement' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
       contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
 
   }

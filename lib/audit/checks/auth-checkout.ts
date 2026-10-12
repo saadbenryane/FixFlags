@@ -1,5 +1,7 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
+import { openCheckDestination } from '../open-check'
+import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
 const MAX_LINK_CHECKS = 8
 const FETCH_TIMEOUT_MS = 4000
@@ -23,32 +25,6 @@ function classifyLink(link: { href: string; text: string }): LinkKind | null {
   return null
 }
 
-/** True only on a definitive HTTP error (404 / 410 / 5xx); HEAD-blocking hosts and
- *  transient network errors are left alone to avoid false "dead path" alarms. */
-async function linkIsDead(absolute: string): Promise<boolean> {
-  const fetchWithMethod = async (method: string): Promise<number | null> => {
-    try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-      const res = await fetch(absolute, { method, signal: controller.signal })
-      clearTimeout(timer)
-      return res.status
-    } catch {
-      return null
-    }
-  }
-
-  const headStatus = await fetchWithMethod('HEAD')
-  if (headStatus !== null && headStatus !== 404 && headStatus !== 410 && headStatus < 500) {
-    return false
-  }
-  if (headStatus === null || headStatus === 404 || headStatus === 410 || headStatus >= 500) {
-    const getStatus = await fetchWithMethod('GET')
-    return getStatus !== null && (getStatus === 404 || getStatus === 410 || getStatus >= 500)
-  }
-  return false
-}
-
 /**
  * Auth & checkout smoke scan (EXPERIENCE): the conversion and revenue paths must
  * actually resolve. Complements `broken-internal-links` by covering cross-origin
@@ -56,41 +32,50 @@ async function linkIsDead(absolute: string): Promise<boolean> {
  */
 export async function runAuthCheckoutChecks(
   pageUrl: string,
-  meta: PageMetadata
+  meta: PageMetadata,
+  options: DestinationCheckOptions = {},
 ): Promise<DeterministicFlag[]> {
   const seen = new Set<string>()
-  const deadAuth: string[] = []
-  const deadCheckout: string[] = []
-  let checks = 0
-
+  const candidates: Array<{ url: string; kind: LinkKind }> = []
+  const deadAuth: string[] = [], deadCheckout: string[] = []
+  const targets = { auth: [] as NonNullable<DeterministicFlag['evidenceTargets']>, checkout: [] as NonNullable<DeterministicFlag['evidenceTargets']> }
   for (const link of meta.links) {
-    if (checks >= MAX_LINK_CHECKS) break
-    if (!link.href || link.href.startsWith('#') || link.href.startsWith('mailto:')) continue
-
+    if (!link.href || /^(?:#|mailto:|tel:)/i.test(link.href)) continue
     const kind = classifyLink(link)
     if (!kind) continue
-
-    let absolute: string
-    try {
-      absolute = new URL(link.href, pageUrl).toString()
-    } catch {
-      continue
-    }
-    if (seen.has(absolute)) continue
-    seen.add(absolute)
-    checks++
-
-    if (await linkIsDead(absolute)) {
-      if (kind === 'checkout') deadCheckout.push(absolute)
-      else deadAuth.push(absolute)
-    }
+    let url: URL
+    try { url = new URL(link.href, pageUrl) } catch { continue }
+    if (!['http:', 'https:'].includes(url.protocol)) continue
+    url.hash = ''
+    if (seen.has(url.toString())) continue
+    seen.add(url.toString())
+    candidates.push({ url: url.toString(), kind })
   }
+  const deadline = Math.min(options.deadline ?? Infinity, Date.now() + 8_000)
+  let complete = candidates.length <= MAX_LINK_CHECKS
+  await Promise.all(candidates.slice(0, MAX_LINK_CHECKS).map(async ({ url, kind }) => {
+    const result = await openCheckDestination(url, { timeoutMs: FETCH_TIMEOUT_MS, deadline, httpErrorsOnly: true })
+    const passed = result.outcome !== 'blocked' && result.status !== null && result.status >= 200 && result.status < 300
+    const conclusive = passed || result.shouldFlagDead
+    const context = destinationContext(pageUrl, url)
+    options.record?.({ key: kind + '-destination', name: kind === 'checkout' ? 'Checkout link response' : 'Sign-in link response',
+      expected: 'The public destination responds to GET without a missing-page or server error',
+      observed: `${displayDestination(url)}: ${result.status === null ? result.outcome : `GET HTTP ${result.status} (${result.outcome})`}. Interactive and authenticated behavior was not tested.`,
+      passed, complete: conclusive, context })
+    if (!conclusive) complete = false
+    if (result.shouldFlagDead) {
+      ;(kind === 'checkout' ? deadCheckout : deadAuth).push(displayDestination(url))
+      targets[kind].push({ kind: 'page', source: 'measured', device: 'desktop', label: 'Public destination response', context })
+    }
+  }))
+  destinationScope(options, complete, 'GET responses cover up to eight distinct public action destinations. Network errors, scanner refusals, access restrictions and untested destinations remain unknown. No login, checkout or payment is submitted.')
 
   const findings: DeterministicFlag[] = []
 
   if (deadCheckout.length > 0) {
     findings.push({
       checkId: 'checkout-link-dead',
+      evidenceTargets: targets.checkout, verificationRule: DESTINATION_VERIFICATION_RULE,
       rubric: 'EXPERIENCE',
       impactTag: 'REVENUE',
       severity: 'CRITICAL',
@@ -105,6 +90,7 @@ export async function runAuthCheckoutChecks(
   if (deadAuth.length > 0) {
     findings.push({
       checkId: 'auth-page-broken',
+      evidenceTargets: targets.auth, verificationRule: DESTINATION_VERIFICATION_RULE,
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: 'IMPORTANT',

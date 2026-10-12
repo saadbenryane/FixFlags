@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   runGoalProbe: vi.fn(),
   runPathProbe: vi.fn(),
   persistJourneyResult: vi.fn(),
-  flagUpdateMany: vi.fn(),
+  flagUpdateMany: vi.fn(), flagFindFirst: vi.fn(),
+  flagCreate: vi.fn(), safeForm: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -22,13 +23,14 @@ vi.mock('@/lib/db', () => ({
       outcomeBindingExecution: { findUnique: mocks.executionFindUnique, create: mocks.executionCreate },
       outcomeBindingAttempt: { findFirst: mocks.attemptFindFirst, createMany: mocks.attemptCreateMany, updateMany: mocks.attemptUpdateMany },
       auditPipelineEvent: { create: vi.fn(async () => ({})) },
+      flag: { create: mocks.flagCreate },
     }),
     runRequest: {
       findFirst: mocks.runFindFirst,
       updateMany: mocks.runUpdateMany,
     },
     journeyReview: { findFirst: mocks.journeyFindFirst },
-    flag: { updateMany: mocks.flagUpdateMany },
+    flag: { updateMany: mocks.flagUpdateMany, findFirst: mocks.flagFindFirst },
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
       create: mocks.executionCreate,
@@ -49,6 +51,7 @@ vi.mock('@/lib/integrity/run-path-probe', () => ({
 vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
   persistJourneyResult: mocks.persistJourneyResult,
 }))
+vi.mock('@/lib/sites/application/safe-form-executor', () => ({ executeSafeFormFixture: mocks.safeForm }))
 
 import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
 
@@ -84,6 +87,8 @@ describe('bound Checkout execution', () => {
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.persistJourneyResult.mockResolvedValue([])
     mocks.flagUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.flagFindFirst.mockResolvedValue({ id: 'checkout-flag' })
+    mocks.flagCreate.mockResolvedValue({ id: 'signup-flag' })
   })
 
   it('persists a confirmed purchase failure as one customer-level journey Flag', async () => {
@@ -121,12 +126,10 @@ describe('bound Checkout execution', () => {
           }),
         ],
       }),
+      { outcomeId: 'outcome-1', bindingKey: 'checkout-browser-v1' },
     )
-    expect(mocks.flagUpdateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { fingerprint: 'outcome:checkout' },
-      }),
-    )
+    expect(mocks.flagFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { auditId: 'audit-1', fingerprint: 'outcome:v1:outcome-1:checkout-browser-v1' } }))
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ detail: expect.objectContaining({ failureFlagId: 'checkout-flag' }) }) }))
   })
 
   it('persists blocked execution as inconclusive evidence without a Flag', async () => {
@@ -147,6 +150,7 @@ describe('bound Checkout execution', () => {
         findings: [],
         blockedReason: 'bot_wall',
       }),
+      { outcomeId: 'outcome-1', bindingKey: 'checkout-browser-v1' },
     )
   })
 
@@ -250,6 +254,38 @@ describe('bound Checkout execution', () => {
     }))
   })
 
+  it('publishes a confirmed authorized signup failure with its exact execution reference', async () => {
+    mocks.runFindFirst.mockResolvedValue({ id: 'run-1', projectId: 'site-1', audit: { url: 'https://shop.example' }, selections: [{ outcome: {
+      id: 'signup-1', kind: 'SIGNUP', bindings: [{ key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
+        config: { startUrl: 'https://shop.example/signup', safety: 'reversible', authorized: true, fixtureId: 'fixture-1' } }],
+    } }] })
+    mocks.safeForm.mockResolvedValue({ disposition: 'FAILED', reason: 'success_text_missing', detail: { fieldCount: 1, cleanupStatus: 'succeeded' } })
+    await runBoundCheckoutForAudit('audit-1')
+    expect(mocks.safeForm).toHaveBeenCalledTimes(1)
+    expect(mocks.flagCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      checkId: 'outcome-signup-failed', fingerprint: 'outcome:v1:signup-1:signup-v1', pageUrl: 'https://shop.example/signup',
+    }) })
+    expect(mocks.executionCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      disposition: 'FAILED', detail: { fieldCount: 1, cleanupStatus: 'succeeded', failureFlagId: 'signup-flag' },
+    }) })
+    expect(mocks.persistJourneyResult).not.toHaveBeenCalled()
+    mocks.executionFindUnique.mockResolvedValue({ id: 'execution-1' })
+    await runBoundCheckoutForAudit('audit-1')
+    expect(mocks.safeForm).toHaveBeenCalledTimes(1)
+    expect(mocks.flagCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('records cleanup uncertainty without creating a signup Flag', async () => {
+    mocks.runFindFirst.mockResolvedValue({ id: 'run-1', projectId: 'site-1', audit: { url: 'https://shop.example' }, selections: [{ outcome: {
+      id: 'signup-1', kind: 'SIGNUP', bindings: [{ key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
+        config: { startUrl: 'https://shop.example/signup', safety: 'reversible', authorized: true, fixtureId: 'fixture-1' } }],
+    } }] })
+    mocks.safeForm.mockResolvedValue({ disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: { fieldCount: 1, cleanupStatus: 'failed' } })
+    await runBoundCheckoutForAudit('audit-1')
+    expect(mocks.flagCreate).not.toHaveBeenCalled()
+    expect(mocks.executionCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven' }) })
+  })
+
   it('blocks a wait-only protected journey before a preexisting goal can Clear it', async () => {
     mocks.runFindFirst.mockResolvedValue({
       id: 'run-1',
@@ -326,6 +362,7 @@ describe('bound Checkout execution', () => {
     expect(mocks.persistJourneyResult).toHaveBeenCalledWith(
       'audit-1',
       expect.objectContaining({ goalAchieved: false, findings: [] }),
+      { outcomeId: 'outcome-1', bindingKey: 'checkout-browser-v1' },
     )
     expect(mocks.executionCreate.mock.calls.some((call) => call[0]?.data?.disposition === 'SUCCEEDED')).toBe(false)
   })

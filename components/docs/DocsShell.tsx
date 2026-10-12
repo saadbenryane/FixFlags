@@ -2,6 +2,7 @@ import type { KnowledgeSearchEntry } from '@/lib/knowledge/search'
 import { DocsMobileNavigation } from '@/components/docs/DocsMobileNavigation'
 import { DocsNavigation } from '@/components/docs/DocsNavigation'
 import { KnowledgeSearch } from '@/components/help/KnowledgeSearch'
+import s from './DocsExperience.module.css'
 
 export function DocsShell({
   entries,
@@ -11,16 +12,16 @@ export function DocsShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="border-t border-border/40 bg-background">
+    <div className={s.shell}>
       <DocsMobileNavigation entries={entries} />
-      <div className="mx-auto grid w-full max-w-[96rem] lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside className="hidden border-r border-border/50 px-5 py-8 lg:block">
-          <div className="sticky top-[calc(var(--header-height-marketing)+2rem)] space-y-8">
+      <div className={s.layout}>
+        <aside className={s.sidebar}>
+          <div className={s.sidebarContent}>
             <KnowledgeSearch entries={entries} placeholder="Search help and docs" />
             <DocsNavigation />
           </div>
         </aside>
-        <div className="min-w-0">{children}</div>
+        <div className={s.main}>{children}</div>
       </div>
     </div>
   )

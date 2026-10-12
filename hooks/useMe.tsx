@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react'
 import { toast } from 'sonner'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy/auth'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
 

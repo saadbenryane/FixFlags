@@ -29,6 +29,8 @@ npm run dev            # Next.js + one dedicated worker
 
 Open http://localhost:3000, enter a public URL, wait ~60s for results.
 
+The default local web process uses Turbopack to reduce compilation delays when opening pages. A page can still take longer on its first visit in development. For web-only development, use `npm run dev:web -- --turbopack`.
+
 ## Environment variables
 
 Required for dev: `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (`http://localhost:3000`), `NEXT_PUBLIC_APP_URL` (`http://localhost:3000`). AI explanation needs a usable provider key; independent deterministic execution does not. Doctor reports missing capabilities as limitations, not a release-ready result. Production readiness and credentialed release proof still require every shipped capability.

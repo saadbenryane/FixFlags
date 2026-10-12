@@ -1,3 +1,5 @@
+import * as cheerio from 'cheerio'
+
 export class PageCaptureError extends Error {
   readonly httpStatus: number | null
   readonly contentType: string | null
@@ -43,7 +45,20 @@ export function isBotInterstitialPage(input: {
   if ((input.cfMitigated ?? '').trim().toLowerCase() === 'challenge') return true
   const title = (input.title ?? '').trim().toLowerCase()
   if (!title) return false
-  return title.startsWith('just a moment') || title.startsWith('attention required')
+  return title.startsWith('just a moment') || title.startsWith('attention required') ||
+    /^(?:verify (?:that )?you are (?:a )?human|checking (?:your )?browser|captcha|access denied)[.!]*$/i.test(title)
+}
+
+/** Share browser challenge policy with bounded public HTTP observations.
+ * Provider names, script URLs and embedded CAPTCHA widgets are not a wall. */
+export function isBotInterstitialDocument(input: { body: string; headers: Record<string, string>; status: number }): boolean {
+  if (isBotInterstitialPage({ cfMitigated: input.headers['cf-mitigated'] })) return true
+  if (/^image\//i.test(input.headers['content-type'] ?? '')) return false
+  const $ = cheerio.load(input.body.slice(0, 64_000))
+  $('script, style, template, noscript').remove()
+  if (isBotInterstitialPage({ title: $('title').first().text() }) || isBotInterstitialPage({ title: $('h1').first().text() })) return true
+  const text = $('body').text().replace(/\s+/g, ' ').trim()
+  return input.status >= 400 && /^(?:checking your browser|access denied|verify you are human)\b/i.test(text)
 }
 
 export function pageCaptureFailureFromError(

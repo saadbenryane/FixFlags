@@ -7,12 +7,18 @@ import { assertionForTarget } from '../../checks/verification'
 import { publishUnfinishedCoverage } from '../incomplete'
 import type { TaskContext } from '../registry'
 import type { PageSpeedResult } from '../../pagespeed'
+import { readResourceAudits } from '../../pagespeed-opportunities'
 
 const pageUrl = 'https://example.com/pricing'
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 function measurement(overrides: Partial<PageSpeedResult> = {}): PageSpeedResult {
   return { strategy: 'mobile', score: 95, lcp: 1000, cls: 0, fcp: 500, tbt: 0, inp: null,
-    opportunities: [], failedAccessibilityAudits: [], diagnostics: {}, raw: {}, crux: null, ...overrides }
+    opportunities: [], resourceAudits: readResourceAudits({
+      'render-blocking-insight': { score: 1, metricSavings: { FCP: 0 } },
+      'unused-javascript': { score: 1, details: { overallSavingsBytes: 0 } },
+      'unused-css-rules': { score: 1, details: { overallSavingsBytes: 0 } },
+      'image-delivery-insight': { score: 1, details: { debugData: { wastedBytes: 0 } } },
+    }), failedAccessibilityAudits: [], diagnostics: {}, raw: {}, crux: null, ...overrides }
 }
 function context(data: PageSpeedResult, module = 'performance', device?: 'mobile'): TaskContext {
   const input = { pageUrl, position: 0, primary: true, role: 'primary', module, ...(device ? { device } : {}) }
@@ -59,12 +65,55 @@ describe('progressive Performance evidence', () => {
     const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop' }))), 'check').data)
     expect(result.flags).toEqual([])
     expect(result.receipt).toMatchObject({ complete: true, passed: true, execution: { source: 'pagespeed-desktop' } })
-    expect(result.receipt.assertions.map(assertion => assertion.key)).toEqual(['lcp', 'cls'])
+    expect(result.receipt.assertions.map(assertion => assertion.key)).toEqual(['score', 'lcp', 'cls', 'render-blocking', 'unused-javascript', 'unused-css', 'image-optimization'])
+  })
+
+  it('gives exact score and resource repair proof without turning missing audits into success', async () => {
+    const data = measurement({ strategy: 'desktop', score: 40, opportunities: [{ id: 'unused-javascript', title: 'Unused JS', savings: 200_000 }],
+      resourceAudits: [{ id: 'unused-javascript', providerAuditId: 'unused-javascript', title: 'Unused JS', unit: 'bytes', score: 0, savings: 200_000 }] })
+    const failed = checkArtifactSchema.parse(readArtifact(await evaluate(context(data)), 'check').data)
+    expect(assertionForTarget(failed.receipt, 'perf-score-critical')).toMatchObject({ key: 'score', passed: false, complete: true })
+    expect(assertionForTarget(failed.receipt, 'unused-js-large')).toMatchObject({ key: 'unused-javascript', passed: false, complete: true })
+    expect(assertionForTarget(failed.receipt, 'render-blocking')).toBeUndefined()
+    const repaired = checkArtifactSchema.parse(readArtifact(await evaluate(context({ ...data, score: 95, opportunities: [],
+      resourceAudits: [{ ...data.resourceAudits![0], score: 1, savings: 0 }] })), 'check').data)
+    expect(repaired.receipt.complete).toBe(false)
+    expect(assertionForTarget(repaired.receipt, 'unused-js-large')).toMatchObject({ passed: true, complete: true })
+    expect(assertionForTarget(repaired.receipt, 'perf-score-critical')).toMatchObject({ passed: true, complete: true })
+    const missing = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop', resourceAudits: undefined }))), 'check').data)
+    expect(assertionForTarget(missing.receipt, 'unused-js-large')).toBeUndefined()
   })
 
   it('retains available lab observations without passing incomplete measurements', async () => {
     const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop', cls: null }))), 'check').data)
-    expect(result.receipt).toMatchObject({ complete: false, passed: false, assertions: [{ key: 'lcp' }] })
+    expect(result.receipt).toMatchObject({ complete: false, passed: false })
+    expect(result.receipt.assertions.some(assertion => assertion.key === 'lcp')).toBe(true)
+    expect(result.receipt.assertions.some(assertion => assertion.key === 'cls')).toBe(false)
+  })
+
+  it('requires every legacy image responsibility for recovery and accepts the consolidated current insight', async () => {
+    const image = { id: 'uses-optimized-images', providerAuditId: 'uses-optimized-images', title: 'Images', unit: 'bytes', score: 0, savings: 80_000 } as const
+    const failed = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop',
+      opportunities: [{ id: image.id, title: image.title, savings: image.savings }], resourceAudits: [image] }))), 'check').data)
+    expect(assertionForTarget(failed.receipt, 'unoptimized-images')).toMatchObject({ passed: false, complete: true })
+    const subset = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop',
+      resourceAudits: [{ ...image, score: 1, savings: 0 }] }))), 'check').data)
+    expect(assertionForTarget(subset.receipt, 'unoptimized-images')).toBeUndefined()
+    const allLegacy = readResourceAudits(Object.fromEntries(['uses-optimized-images', 'modern-image-formats', 'uses-responsive-images', 'efficient-animated-content']
+      .map(id => [id, { score: 1, details: { overallSavingsBytes: 0 } }])))
+    const legacyRepaired = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop', resourceAudits: allLegacy }))), 'check').data)
+    expect(assertionForTarget(legacyRepaired.receipt, 'unoptimized-images')).toMatchObject({ passed: true, complete: true })
+    const currentRepaired = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop' }))), 'check').data)
+    expect(assertionForTarget(currentRepaired.receipt, 'unoptimized-images')).toMatchObject({ passed: true, complete: true })
+  })
+
+  it('keeps mobile score repair in its own measured device scope', async () => {
+    const failed = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ score: 40 }), 'mobile')), 'check').data)
+    expect(assertionForTarget(failed.receipt, 'mobile-perf-critical')).toMatchObject({ passed: false, complete: true })
+    expect(assertionForTarget(failed.receipt, 'perf-score-critical')).toBeUndefined()
+    const repaired = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement(), 'mobile')), 'check').data)
+    expect(assertionForTarget(repaired.receipt, 'mobile-perf-critical')).toMatchObject({ passed: true, complete: true })
+    expect(repaired.receipt.execution?.source).toBe('pagespeed-mobile')
   })
 
   it('keeps failed INP coverage in the same device scope as successful coverage', async () => {

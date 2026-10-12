@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { BRAND, SEO, SITE_URL } from './copy'
+import { BRAND, SITE_URL } from './copy/brand'
+import { SEO } from './copy/seo'
 
 const DEFAULT_OG_IMAGE = {
   url: '/og.jpg',

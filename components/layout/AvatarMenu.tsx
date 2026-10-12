@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useMe, type MeUser } from '@/hooks/useMe'
-import { authClient } from '@/lib/auth-client'
 import { planLabel } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +49,7 @@ export function AvatarMenu({
   if (!user) return null
 
   async function handleSignOut() {
+    const { authClient } = await import('@/lib/auth-client')
     await authClient.signOut()
     router.push('/')
     router.refresh()

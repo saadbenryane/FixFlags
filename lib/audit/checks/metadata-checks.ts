@@ -1,6 +1,9 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
+import { safeFetchDocument } from '../url'
+import { isBotInterstitialDocument } from '../browser/page-capture'
+import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
 export function runMetadataChecks(meta: PageMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
@@ -210,60 +213,43 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
 
 export async function runOgImageUrlCheck(
   pageUrl: string,
-  meta: PageMetadata
+  meta: PageMetadata,
+  options: DestinationCheckOptions = {},
 ): Promise<DeterministicFlag[]> {
-  if (!meta.ogImage) return []
-
+  const limitation = 'A bounded public GET sample establishes response status and declared image content type. Full image decoding, rendered previews and platform caches were not evaluated.'
+  if (!meta.ogImage) { destinationScope(options, true, limitation); return [] }
   let imageUrl: string
-  try {
-    imageUrl = new URL(meta.ogImage, pageUrl).toString()
-  } catch {
-    return [
-      {
-        checkId: 'og-image-broken',
-        rubric: 'REACH',
-        impactTag: 'SHARING',
-        severity: 'IMPORTANT',
-        problem: 'og:image URL is invalid',
-        evidence: `og:image content="${meta.ogImage}" could not be resolved`,
-        fix: '1. Set og:image to an absolute HTTPS URL that returns a valid image\n2. Use a 1200x630px PNG or JPG\n3. Verify the URL returns 200 and Content-Type is an image type',
-        confidence: 1.0,
-        source: 'DETERMINISTIC',
-      },
-    ]
+  let invalid = false
+  try { imageUrl = new URL(meta.ogImage, pageUrl).toString() }
+  catch { imageUrl = meta.ogImage; invalid = true }
+  let complete = invalid, passed = false, broken = invalid
+  let observed = 'The declared image URL could not be resolved.'
+  if (!invalid) {
+    try {
+      const response = await safeFetchDocument(imageUrl, { timeoutMs: 5000, deadline: options.deadline,
+        maxBytes: 64_000, accept: 'image/*' })
+      const status = response.statusCode, contentType = response.headers['content-type']?.toLowerCase() ?? ''
+      const restricted = status === 401 || status === 403 || status === 429 ||
+        isBotInterstitialDocument({ body: response.body, headers: response.headers, status })
+      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.body.length > 0
+      broken = !restricted && (status >= 400 || status >= 200 && status < 300 &&
+        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && response.body.length === 0))
+      complete = passed || broken
+      observed = `GET HTTP ${status}${contentType ? `, ${contentType.slice(0, 120)}` : ', no content type'}. ${restricted ? 'Access to the normal image response was not established. ' : ''}${limitation}`
+    } catch { observed = 'No public image response was obtained. Network errors and scanner refusals remain unknown.' }
   }
-
-  try {
-    const headController = new AbortController()
-    const headTimer = setTimeout(() => headController.abort(), 5000)
-    const res = await fetch(imageUrl, { method: 'HEAD', signal: headController.signal })
-    clearTimeout(headTimer)
-    if (res.ok) return []
-
-    const getController = new AbortController()
-    const getTimer = setTimeout(() => getController.abort(), 5000)
-    const getRes = await fetch(imageUrl, {
-      method: 'GET',
-      signal: getController.signal,
-      headers: { Range: 'bytes=0-0' },
-    })
-    clearTimeout(getTimer)
-    if (getRes.ok) return []
-  } catch {
-    // og:image HEAD/GET failed, fall through to flag
-  }
-
-  return [
-    {
-      checkId: 'og-image-broken',
-      rubric: 'REACH',
-      impactTag: 'SHARING',
-      severity: 'IMPORTANT',
-      problem: 'og:image URL does not load',
-      evidence: `HEAD/GET ${imageUrl} failed or returned an error status`,
-      fix: '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    },
-  ]
+  const context = destinationContext(pageUrl, imageUrl)
+  options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
+    expected: 'The declared image destination returns a successful GET response with image content type and content',
+    observed, passed, complete, context })
+  destinationScope(options, complete, limitation)
+  if (!broken) return []
+  return [{
+    checkId: 'og-image-broken', rubric: 'REACH', impactTag: 'SHARING', severity: 'IMPORTANT',
+    problem: invalid ? 'og:image URL is invalid' : 'og:image URL does not load',
+    evidence: `${displayDestination(imageUrl)}: ${observed}`,
+    fix: '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
+    confidence: 1.0, source: 'DETERMINISTIC', verificationRule: DESTINATION_VERIFICATION_RULE,
+    evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Link preview image response', context }],
+  }]
 }

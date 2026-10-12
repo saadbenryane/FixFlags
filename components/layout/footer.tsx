@@ -3,7 +3,7 @@ import { PublicLink } from '@/components/marketing/public-site/PublicInteraction
 import { Logo } from '@/components/brand/Logo'
 import { FooterBottom } from '@/components/layout/FooterBottom'
 import { Container } from '@/components/ui/container'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy/brand'
 import { FOOTER_COLUMNS } from '@/lib/site/nav'
 
 export function Footer() {

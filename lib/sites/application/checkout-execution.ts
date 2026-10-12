@@ -8,11 +8,12 @@ import { safeFetchDocument } from '@/lib/audit/url'
 import { getBrowser } from '@/lib/audit/screenshot'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
-import { PageCaptureError } from '@/lib/audit/browser/page-capture'
+import { PageCaptureError, isBotInterstitialDocument } from '@/lib/audit/browser/page-capture'
 import { TaskFailure } from '@/lib/audit/progressive/contracts'
+import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { runGoalProbe, type BrowserJourneyConfig } from '@/lib/integrity/run-goal-probe'
 import { runPathProbe } from '@/lib/integrity/run-path-probe'
-import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
+import { availabilityFlagCopy, safeFormFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_RUN_LEASE_MS } from '@/lib/sites/application/run-requests'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 import { validateBindingForOutcome, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
@@ -64,6 +65,7 @@ async function recordBindingEvidence(input: {
   attempts: BindingObservation[]
   conclusive: BindingObservation
   flag?: Prisma.FlagUncheckedCreateInput
+  failureFlagId?: string
 }): Promise<void> {
   const { auditId, outcomeId, bindingKey, mechanism, conclusive } = input
   if (currentExecutionOwnership()?.taskId && ['request_failed', 'rendered_surface_unavailable', 'form_execution_failed', 'probe_error'].includes(conclusive.reason)) {
@@ -81,6 +83,8 @@ async function recordBindingEvidence(input: {
   })
   if (existing) return
   const generation = currentExecutionOwnership()?.generation
+  const flag = input.flag ? await tx.flag.create({ data: input.flag }) : null
+  const failureFlagId = flag?.id ?? input.failureFlagId
   const execution = await tx.outcomeBindingExecution.create({
     data: {
       auditId,
@@ -89,12 +93,11 @@ async function recordBindingEvidence(input: {
       mechanism,
       disposition: conclusive.disposition,
       reason: conclusive.reason,
-      detail: conclusive.detail,
+      detail: failureFlagId ? { ...conclusive.detail, failureFlagId } : conclusive.detail,
       bindingVersion: input.bindingVersion,
       executionGeneration: generation,
     },
   })
-  if (input.flag) await tx.flag.create({ data: input.flag })
   // Continue the existing sequence so a restarted worker never reuses an attempt number.
   const last = await tx.outcomeBindingAttempt.findFirst({
     where: { auditId, outcomeId, bindingKey },
@@ -223,19 +226,16 @@ async function runCheckoutBinding(input: {
       url: step.url,
       screenshot: step.screenshotUrl,
     })),
-  })
-  if (isFlag) {
-    await executionWrite(tx => tx.flag.updateMany({
-      where: { auditId: input.auditId, checkId: { startsWith: 'journey-checkout-failed-' } },
-      data: { fingerprint: 'outcome:checkout' },
-    }))
-  }
+  }, { outcomeId: input.outcomeId, bindingKey: input.bindingKey })
+  const failure = isFlag ? await prisma.flag.findFirst({ where: { auditId: input.auditId,
+    fingerprint: outcomeFlagFingerprint(input.outcomeId, input.bindingKey) }, select: { id: true } }) : null
   await recordBindingEvidence({
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     bindingVersion: input.bindingVersion,
     mechanism: 'BROWSER_JOURNEY',
+    failureFlagId: failure?.id,
     attempts: result.attempts.map((attempt): BindingObservation => {
       const observation = checkoutAttemptObservation(attempt)
       return {
@@ -302,9 +302,7 @@ async function probeAvailabilityOnce(input: {
   if (status >= 300 && status < 400) {
     return { disposition: 'BLOCKED', reason: 'redirect_unfollowed', detail: { status } }
   }
-  const responseText = response.body ?? ''
-  const botWall = /(?:captcha|cloudflare|checking your browser|access denied|verify you are human)/i.test(responseText.slice(0, 20_000))
-  if (botWall) {
+  if (isBotInterstitialDocument({ body: response.body, headers: response.headers, status })) {
     return { disposition: 'BLOCKED', reason: 'bot_wall', detail: { status } }
   }
   if (status < 200 || status >= 300) return { disposition: 'FAILED', reason: 'http_unavailable',
@@ -381,7 +379,8 @@ async function runAvailabilityBinding(input: {
         confidence: 0.95,
         source: 'DETERMINISTIC',
         pageUrl: safe.url,
-        fingerprint: `outcome:availability:${input.bindingKey}`,
+        fingerprint: outcomeFlagFingerprint(input.outcomeId, input.bindingKey),
+        verificationRule: 'Repeat the same public availability binding and confirm a successful response and its expected rendered surface with matching configuration.',
         position: 1,
       }
   }
@@ -417,15 +416,23 @@ async function runSignupBinding(input: {
   // A safe form is submitted exactly once. The fixture is already proven reversible,
   // because a run that cannot prove its pre-run reset or its cleanup is BLOCKED rather
   // than FAILED, so the single attempt is conclusive and never becomes a blind resubmit.
-  await recordExecution({
+  const copy = result.disposition === 'FAILED' ? safeFormFlagCopy(result.reason) : null
+  const observation: BindingObservation = { disposition: result.disposition, reason: result.reason, detail: result.detail }
+  await recordBindingEvidence({
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     bindingVersion: input.bindingVersion,
     mechanism: 'SAFE_FORM',
-    disposition: result.disposition,
-    reason: result.reason,
-    detail: result.detail,
+    attempts: [observation],
+    conclusive: observation,
+    flag: copy ? { auditId: input.auditId, checkId: 'outcome-signup-failed', rubric: 'EXPERIENCE', severity: 'CRITICAL', impactTag: 'CONVERSION',
+      problem: copy.problem, evidence: copy.evidence, fix: copy.fix,
+      whyItMatters: 'People may be unable to complete signup while its completion response is missing.',
+      confidence: 0.95, source: 'DETERMINISTIC', pageUrl: input.config.startUrl,
+      fingerprint: outcomeFlagFingerprint(input.outcomeId, input.bindingKey), position: 1,
+      verificationRule: 'Run the same authorized fixture version and required bindings. Confirm a new success signal after submission, with proven reset and cleanup.',
+    } : undefined,
   })
 }
 

@@ -102,6 +102,9 @@ export function summaryFor(reason: string, state: BindingVerdict['state']): stri
     return 'FixFlags did not submit this form because no safe fixture is authorized.'
   }
   if (reason === 'http_unavailable') return FAILURE_COPY.http_unavailable.summary
+  if (['success_text_missing', 'success_target_missing', 'success_url_missing'].includes(reason)) return safeFormFlagCopy(reason).summary
+  if (reason === 'success_criterion_preexisting') return 'The success signal was already present, so FixFlags could not verify a new signup.'
+  if (reason === 'success_observation_incomplete') return 'The signup completion check ran out of time.'
   if (reason === 'redirect_unfollowed') {
     return 'The page redirected, so FixFlags could not verify the final response.'
   }
@@ -110,6 +113,16 @@ export function summaryFor(reason: string, state: BindingVerdict['state']): stri
   }
   if (state === 'FLAG') return 'A required check failed.'
   return 'FixFlags could not complete the required coverage for this Outcome.'
+}
+
+export function safeFormFlagCopy(reason: string): { summary: string; problem: string; evidence: string; fix: string } {
+  const signal = reason === 'success_text_missing' ? 'success message' : reason === 'success_url_missing' ? 'success destination' : 'success element'
+  return {
+    summary: 'Signup did not show its configured completion signal.',
+    problem: 'The authorized signup flow did not show its completion signal.',
+    evidence: `FixFlags submitted the authorized fixture once. The configured ${signal} was absent before submission and did not appear within the 8-second observation window. The fixture cleanup succeeded.`,
+    fix: 'Check the signup submission handler and its configured completion signal. Restore the missing response, then verify the same fixture again.',
+  }
 }
 
 export function availabilityFlagCopy(reason: string): {
