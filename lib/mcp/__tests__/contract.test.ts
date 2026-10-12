@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
 import { RateLimitError } from '@/lib/security/rate-limit'
+import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 
 describe('MCP Outcome contract envelopes', () => {
+  it('returns a changed-fix refusal with a fresh-key recovery action', () => {
+    const error = new ImprovementAttemptConflict()
+    expect(mcpCoreError(error, { action: 'retry' }).structuredContent).toEqual({ status: 'ERROR', error: {
+      code: 'FIX_INTENT_MISMATCH', message: error.message, recoverable: true, action: 'use_new_request_key',
+    } })
+  })
   it('returns equivalent structured and legacy text content', () => {
     const result = mcpStructuredResult({ runId: 'run-1', status: 'COMPLETED' })
     expect(result.structuredContent).toEqual({ runId: 'run-1', status: 'COMPLETED' })

@@ -25,7 +25,9 @@ function isPrivateIpv4(address: string): boolean {
 }
 
 function normalizeIpv6(address: string): string {
-  return address.toLowerCase().split('%')[0]
+  const value = address.toLowerCase().split('%')[0]
+  try { return new URL(`http://[${value}]`).hostname.replace(/^\[|\]$/g, '') }
+  catch { return value }
 }
 
 function isPrivateIpv6(address: string): boolean {
@@ -34,7 +36,13 @@ function isPrivateIpv6(address: string): boolean {
   if (value.startsWith('fc') || value.startsWith('fd') || /^fe[89ab]/.test(value)) return true
   if (value.startsWith('ff') || value.startsWith('2001:db8')) return true
   const mapped = value.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-  return mapped ? isPrivateIpv4(mapped[1]) : false
+  if (mapped) return isPrivateIpv4(mapped[1])
+  const hexMapped = value.match(/^::ffff:([a-f0-9]{1,4}):([a-f0-9]{1,4})$/)
+  if (hexMapped) {
+    const high = parseInt(hexMapped[1], 16), low = parseInt(hexMapped[2], 16)
+    return isPrivateIpv4(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`)
+  }
+  return false
 }
 
 export function isPublicIp(address: string): boolean {
@@ -44,7 +52,7 @@ export function isPublicIp(address: string): boolean {
   return false
 }
 
-export function isBlockedHostname(hostname: string): boolean {
+export function isBlockedHostname(hostname: string, allowDevLocalhost = process.env.DEV_ALLOW_LOCALHOST === 'true'): boolean {
   const normalized = hostname
     .toLowerCase()
     .replace(/\.$/, '')
@@ -54,7 +62,7 @@ export function isBlockedHostname(hostname: string): boolean {
     normalized.endsWith('.localhost') ||
     normalized === '127.0.0.1' ||
     normalized === '::1'
-  if (isLocal && process.env.DEV_ALLOW_LOCALHOST === 'true') return false
+  if (isLocal && allowDevLocalhost) return false
   return (
     isLocal ||
     normalized.endsWith('.local') ||
@@ -90,25 +98,29 @@ export function normalizeAuditUrl(
  * of the generic 500.
  */
 export class AuditUrlError extends Error {
-  constructor(message: string) {
+  constructor(message: string, public readonly code: 'UNSAFE_DESTINATION' | 'DNS_NOT_FOUND' | 'DNS_UNAVAILABLE' = 'UNSAFE_DESTINATION') {
     super(message)
     this.name = 'AuditUrlError'
   }
 }
 
+export class PublicRequestError extends Error {
+  readonly code = 'ETIMEDOUT'
+}
+
 export async function resolvePublicAddresses(hostname: string): Promise<string[]> {
+  hostname = hostname.replace(/^\[|\]$/g, '')
   if (isBlockedHostname(hostname)) {
     throw new AuditUrlError('Destination is not publicly accessible')
   }
   if (isIP(hostname)) return [hostname]
 
-  const [v4, v6] = await Promise.all([
-    resolve4(hostname).catch(() => []),
-    resolve6(hostname).catch(() => []),
-  ])
+  const results = await Promise.allSettled([resolve4(hostname), resolve6(hostname)])
+  const [v4, v6] = results.map(result => result.status === 'fulfilled' ? result.value : [])
   const addresses = [...v4, ...v6]
   if (addresses.length === 0) {
-    throw new AuditUrlError('We could not find that domain. Check the URL and try again.')
+    const absent = results.every(result => result.status === 'fulfilled' || ['ENOTFOUND', 'ENODATA'].includes(result.reason?.code))
+    throw new AuditUrlError('We could not find that domain. Check the URL and try again.', absent ? 'DNS_NOT_FOUND' : 'DNS_UNAVAILABLE')
   }
   if (addresses.some((address) => !isPublicIp(address))) {
     throw new AuditUrlError('Destination resolves to a private or reserved network')
@@ -116,10 +128,11 @@ export async function resolvePublicAddresses(hostname: string): Promise<string[]
   return addresses
 }
 
-export async function assertPublicAuditUrl(raw: string, signal?: AbortSignal): Promise<URL> {
+export async function assertPublicAuditUrl(raw: string, signal?: AbortSignal, publicOnly = false): Promise<URL> {
   const normalized = normalizeAuditUrl(raw)
   if (!normalized.ok) throw new AuditUrlError(normalized.error)
   const parsed = new URL(normalized.url)
+  if (publicOnly && isBlockedHostname(parsed.hostname, false)) throw new AuditUrlError('Destination is not publicly accessible')
   signal?.throwIfAborted()
   const lookup = resolvePublicAddresses(parsed.hostname)
   if (!signal) await lookup
@@ -232,6 +245,7 @@ export async function safeFetchHtml(
 export async function safeFetchDocument(rawUrl: string, options: {
   timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
   accept?: string;
+  publicOnly?: boolean;
 } = {}): Promise<{
   body: string; finalUrl: string; statusCode: number; headers: Record<string, string>;
   complete: boolean; redirects: string[];
@@ -242,18 +256,22 @@ export async function safeFetchDocument(rawUrl: string, options: {
   const timer = setTimeout(() => controller.abort(), Math.max(1, expiresAt - Date.now()))
   const redirects: string[] = []
   const maxBytes = options.maxBytes ?? 1_000_000
+  let requestInFlight = false
   try {
-    let current = (await assertPublicAuditUrl(rawUrl, controller.signal)).toString()
+    let current = (await assertPublicAuditUrl(rawUrl, controller.signal, options.publicOnly)).toString()
     for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
+      requestInFlight = true
       const response = await fetch(current, { redirect: 'manual', signal: controller.signal,
         headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml' } })
+      requestInFlight = false
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location')
         await response.body?.cancel()
+        requestInFlight = false
         if (!location) throw new Error('Redirect response is missing a location')
         redirects.push(current)
-        current = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal)).toString()
+        current = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal, options.publicOnly)).toString()
         continue
       }
       const headers = Object.fromEntries(response.headers.entries())
@@ -279,5 +297,8 @@ export async function safeFetchDocument(rawUrl: string, options: {
         statusCode: response.status, headers, complete, redirects }
     }
     throw new Error('Public evidence redirect limit exceeded')
+  } catch (error) {
+    if (controller.signal.aborted && requestInFlight) throw new PublicRequestError('Public response timed out')
+    throw error
   } finally { clearTimeout(timer); release() }
 }

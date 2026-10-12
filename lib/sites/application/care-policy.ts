@@ -26,6 +26,12 @@ export function outcomeFreshnessMinutes(interval: WatchInterval | null, everyMin
   return interval ? OUTCOME_FRESHNESS_MINUTES[interval] : OUTCOME_FRESHNESS_MINUTES.manual
 }
 
+/** Keep availability and configured bindings on their saved cadence. Repeating
+ * the full browser/provider graph more often than daily adds avoidable work. */
+export function siteCareIntervalMinutes(interval: WatchInterval, everyMinutes?: number | null): number {
+  return Math.max(24 * 60, watchIntervalMinutes(interval, everyMinutes))
+}
+
 /**
  * A Session identity can carry a null plan before the account row is read, so
  * the derived cap has to survive a plan that is not in the plan definitions.

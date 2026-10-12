@@ -9,6 +9,8 @@ import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { checkFormValidation } from './form-validation'
+import { scopePrimaryActionFlags } from '../flow/primary-action-evidence'
+import { displayDestination } from './destination-evidence'
 
 const FLOW_CHECK_DESCRIPTORS = [
   { id: 'flow-no-cta-found', severity: 'IMPORTANT', tags: ['requiresBrowser', 'cta-flow'] },
@@ -78,7 +80,7 @@ for (const descriptor of FLOW_CHECK_DESCRIPTORS) {
 
 function formatCtaEvidence(result: FlowScanResult): string {
   const label = result.ctaText ? `"${result.ctaText}"` : 'Primary CTA'
-  const href = result.ctaHref ? ` (href="${result.ctaHref}")` : ''
+  const href = result.ctaHref ? ` (href="${result.ctaHref.startsWith('#') ? result.ctaHref : displayDestination(result.ctaHref)}")` : ''
   return `${label}${href}`
 }
 
@@ -295,7 +297,7 @@ export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'ma
         impactTag: 'CONVERSION',
         severity: 'CRITICAL',
         problem: 'Primary CTA leads to an error page',
-        evidence: `After clicking ${ctaLabel}, the page returned HTTP ${result.httpStatus ?? 'error'} at ${result.finalUrl}`,
+        evidence: `After clicking ${ctaLabel}, the page returned HTTP ${result.httpStatus ?? 'error'} at ${displayDestination(result.finalUrl)}`,
         fix: '1. Fix the CTA destination URL\n2. Confirm the route exists and returns HTTP 200 in production\n3. Click the CTA from the live page and verify it reaches the intended screen',
         confidence: 1.0,
         source: 'DETERMINISTIC',
@@ -344,8 +346,8 @@ export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'ma
   const scoped = needsFirstStep(purpose) ? findings : findings.filter(flag => !['flow-no-cta-found', 'flow-cta-external-leave'].includes(flag.checkId))
   const ids = new Set(scoped.map((f) => f.checkId))
   if (ids.has('flow-cta-stuck-loading') && ids.has('flow-destination-stuck-loading')) {
-    return scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading')
+    return scopePrimaryActionFlags(scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading'), result.actionEvidence)
   }
 
-  return scoped
+  return scopePrimaryActionFlags(scoped, result.actionEvidence)
 }

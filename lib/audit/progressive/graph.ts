@@ -15,7 +15,7 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
   if (modules.has('keyboard')) plans.push(make('keyboard', [], 'keyboard-evidence'))
   for (const [module, definition] of Object.entries(CHECK_MODULES)) {
-    if (module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
+    if (module === 'automatic-accounts' || module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
     const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     plans.push(make('check', [prefix + ':' + inputKind], module))
@@ -35,7 +35,7 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     input: { ...input, module: 'summary' } })
   plans.push(make('google', [prefix + ':search-indexing'], 'google-index'))
   plans.push(make('google', [], 'google-performance'))
-  if (input.primary || spec.scope === 'DIAGNOSTIC' && spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))
+  if (input.primary || spec.category && ['conversion', 'tracking'].includes(spec.category.area) || spec.scope === 'DIAGNOSTIC' && spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))
     plans.push(make('flow', [prefix + ':browser']))
   if (input.primary) {
     plans.push(make('slow-replay', [prefix + ':browser']))
@@ -53,6 +53,8 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
 
 export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
   const input: TaskInput = { pageUrl: spec.targetUrl, position: 0, primary: true, role: 'primary' }
+  const accounts: TaskPlan[] = spec.accountChecks ? [{ kind: 'automatic-accounts', key: 'automatic-accounts', scope: 'accounts', input, dependencies: [] }] : []
+  if (spec.scope === 'ACCOUNT_CHECKS') return [...accounts, { kind: 'finalize', key: 'finalize', scope: 'accounts', input, dependencies: ['automatic-accounts'] }]
   if (spec.scope === 'FIXTURE_SETUP') {
     if (!spec.fixtureSetup) throw new Error('Signup setup is missing its fixture')
     return [
@@ -72,11 +74,38 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     validateTaskGraph(plans)
     return plans
   }
+  if (spec.scope === 'CATEGORY' && spec.category) {
+    const area = spec.category.area
+    const pages = spec.category.pages.flatMap((pageUrl, position) => pageTaskPlan({ ...input, pageUrl, position,
+      primary: position === 0, role: position === 0 ? 'primary' : 'linked' }, spec))
+    const available = new Map([...siteResourcePlans(input), ...accounts, ...pages].map(task => [task.key, task]))
+    const selected = new Set<string>()
+    const include = (key: string) => {
+      if (selected.has(key)) return
+      const task = available.get(key)
+      if (!task) throw new Error('Category dependency is unavailable: ' + key)
+      selected.add(key); task.dependencies.forEach(include)
+    }
+    for (const task of pages) if (['http', 'browser', 'check'].includes(task.kind) ||
+      area === 'search' && ['search', 'google'].includes(task.kind) ||
+      area === 'performance' && task.kind === 'slow-replay' ||
+      (area === 'conversion' || area === 'tracking') && task.kind === 'flow' ||
+      area === 'conversion' && ['bindings', 'journeys'].includes(task.kind)) include(task.key)
+    for (const task of accounts) include(task.key)
+    const plans = [...selected].map(key => available.get(key)!)
+    if (area === 'search') plans.push({ kind: 'cross-page', key: 'cross-page', scope: 'category:search', input,
+      dependencies: pages.filter(task => task.kind === 'search' && task.input.module === 'summary').map(task => task.key) })
+    plans.push({ kind: 'finalize', key: 'finalize', scope: 'category:' + area, input, dependencies: plans.map(task => task.key) })
+    validateTaskGraph(plans)
+    return plans
+  }
+  if (spec.scope === 'DIAGNOSTIC' && spec.accountChecks && spec.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.startsWith('account-'))
+    return [...accounts, { kind: 'finalize', key: 'finalize', scope: 'diagnostic', input, dependencies: ['automatic-accounts'] }]
   if (spec.scope === 'DIAGNOSTIC' && spec.verificationTarget?.kind === 'DIAGNOSTIC') {
     const checkId = spec.verificationTarget.checkId.split('::page:')[0]
     const search = SEARCH_CHECK_REGISTRY[checkId as keyof typeof SEARCH_CHECK_REGISTRY]
     const checkModule = CHECK_REGISTRY[checkId]?.module
-    const scopes = ['measurement', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? spec.verificationScopes ?? [] : []
+    const scopes = spec.verificationScopes ?? []
     const extraPages = scopes.filter(scope => scope.pageUrl !== input.pageUrl)
     const pages = [ ...pageTaskPlan(input, spec), ...extraPages.flatMap((scope, index) =>
       pageTaskPlan({ ...input, pageUrl: scope.pageUrl, position: index + 1, primary: false, role: 'linked' }, spec)) ]
@@ -99,7 +128,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     if (scopes.length) {
       if (scopes.find(scope => scope.pageUrl === input.pageUrl)?.phases.includes('public_action')) include('p0:flow')
       for (const [index, scope] of extraPages.entries()) {
-        include('p' + (index + 1) + ':' + checkModule)
+        include(target.replace(/^p0:/, 'p' + (index + 1) + ':'))
         if (scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
       }
     }
@@ -111,10 +140,11 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
   const pages = pageTaskPlan(input, spec)
   const plans: TaskPlan[] = [
     ...siteResourcePlans(input),
+    ...accounts,
     ...pages,
     { kind: 'discovery', key: 'discovery', scope: 'site', input, dependencies: ['p0:browser', 'p0:http'] },
     { kind: 'cross-page', key: 'cross-page', scope: 'site', input, dependencies: ['discovery', 'p0:search'] },
-    { kind: 'finalize', key: 'finalize', scope: 'site', input, dependencies: ['resources', 'discovery', 'cross-page', ...pages.map(task => task.key)] },
+    { kind: 'finalize', key: 'finalize', scope: 'site', input, dependencies: ['resources', 'discovery', 'cross-page', ...pages.map(task => task.key), ...accounts.map(task => task.key)] },
   ]
   validateTaskGraph(plans)
   return plans

@@ -1,8 +1,14 @@
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
+import { AXE_GENERATED_CHECK_IDS } from './check-registry'
+import { ACCESSIBILITY_VERIFICATION_RULE } from './checks/accessibility-rules'
 import { CHECK_REGISTRY } from './check-registry'
 
 /** Client-safe lookup - no server-only audit imports. */
 export const CHECK_ID_TO_RULE: Record<string, string> = {
+  'account-signup-failed': 'A test visitor can complete signup and reach a signed-in page.',
+  'account-verification-failed': 'The test visitor can complete the required email verification.',
+  'account-signed-in-page': 'The same signed-in page opens successfully without a detected browser or automated accessibility problem.',
+  'account-deletion-failed': 'After account deletion, the previously working test-account login is rejected in a fresh session.',
   'title-missing':
     'View page source or DevTools Elements, confirm a non-empty <title> tag.',
   'title-too-short':
@@ -418,6 +424,7 @@ export const JOURNEY_VERIFICATION_RULES: Record<string, string> = {
 }
 
 export const ALL_VERIFICATION_RULES: Record<string, string> = {
+  ...Object.fromEntries(AXE_GENERATED_CHECK_IDS.map(id => [id, ACCESSIBILITY_VERIFICATION_RULE])),
   ...CHECK_ID_TO_RULE,
   ...MEASUREMENT_VERIFICATION_RULES,
   ...SECURITY_VERIFICATION_RULES,

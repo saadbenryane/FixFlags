@@ -3,7 +3,7 @@ const EXACT_MATCH_ROUTES = ['/dashboard', '/admin', '/settings'] as const
 
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === '/dashboard') {
-    return pathname === '/dashboard' || pathname.startsWith('/products/')
+    return pathname === '/dashboard' || pathname.startsWith('/products/') || pathname.startsWith('/sites/')
   }
   if (EXACT_MATCH_ROUTES.includes(href as (typeof EXACT_MATCH_ROUTES)[number])) {
     return pathname === href

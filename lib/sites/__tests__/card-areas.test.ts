@@ -15,6 +15,39 @@ function observedReceipt(module: string, assertions: string[]) {
 }
 
 describe('site card packaging', () => {
+  it('keeps incomplete action evidence consistent across coverage, cards, and overall health', () => {
+    const now = new Date('2026-10-12T12:00:00Z')
+    const base = { auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { metadata: true, desktopPageSpeed: true, flowScan: true }, flags: [],
+      verifierExecutions: [
+        { targetKey: 'module:security', status: 'COMPLETED', detail: observedReceipt('security', ['https', 'image-transport']) },
+        { targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) },
+      ] }
+    const action = observedReceipt('flow', ['primary-action-presence', 'primary-action-click'])
+    const coverage = buildCoverageFacts({ ...base, verifierExecutions: [...base.verifierExecutions,
+      { targetKey: 'module:flow', status: 'COMPLETED', detail: { ...action, complete: false } }] })
+    expect(coverage.find(fact => fact.area === 'conversion')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    const health = siteCardHealth({ inFlight: false, finished: true, hasLastKnown: false, flags: [], coverage, now })
+    expect(health.state).toBe('unknown')
+    const cards = buildBoardCards({ siteId: 'site', inFlight: false, hasLastKnown: false, health,
+      coverageByArea: new Map(coverage.map(fact => [fact.area, fact])), flags: [], outcomes: [], pageCount: 1, captureUrl: null, checkedAt: now.toISOString() })
+    expect(cards.find(card => card.id === 'conversion')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    const recovered = buildCoverageFacts(base)
+    expect(siteCardHealth({ inFlight: false, finished: true, hasLastKnown: false, flags: [], coverage: recovered, now }).state).toBe('healthy')
+    const flagged = buildCoverageFacts({ ...base, failedModules: ['flow'],
+      flags: [{ checkId: 'flow-cta-dead-end', rubric: 'MESSAGE', severity: 'IMPORTANT', impactTag: 'CONVERSION' }] })
+    expect(flagged.find(fact => fact.area === 'conversion')).toMatchObject({ state: 'problem', openFlagCount: 1, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+  })
+
+  it('does not let complete Search summaries conceal another incomplete page module', () => {
+    const now = new Date('2026-10-12T12:00:00Z')
+    const coverage = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, evidenceCoverage: { metadata: true }, flags: [],
+      failedModules: ['og-image'], verifierExecutions: [{ targetKey: 'module:search', status: 'COMPLETED', detail: {
+        kind: 'search-checks', version: 1, auditId: 'current', pageUrl: 'https://example.com/', collectedAt: now.toISOString(), complete: true, observations: [],
+      } }] })
+    expect(coverage.find(fact => fact.area === 'search')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+  })
+
   it('does not certify a category from completion-only receipts', () => {
     const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: new Date(), now: new Date(), evidenceCoverage: {}, flags: [],
       verifierExecutions: ['security', 'trust', 'accessibility', 'measurement'].map(module => ({ targetKey: 'module:' + module, status: 'COMPLETED' })) })

@@ -537,8 +537,13 @@ model SiteConnectionFact {
 }
 
 model Project {
+  uptimeMonitor UptimeMonitor?
   id                          String                @id @default(cuid())
   userId                      String
+  accountChecksEnabled        Boolean               @default(true)
+  accountCheckRevision        Int                   @default(1)
+  testAccounts                SiteTestAccount[]
+  accountCheckReceipts         SiteAccountCheckReceipt[]
   name                        String
   url                         String
   createdAt                   DateTime              @default(now())
@@ -1196,6 +1201,7 @@ model ReportRubric {
 }
 
 model Screenshot {
+  recordedAt DateTime? @default(now())
   id      String     @id @default(cuid())
   auditId String
   device  Device
@@ -1315,6 +1321,7 @@ model ImprovementOccurrence {
 }
 
 model ImprovementAttempt {
+  frozen              Boolean                 @default(false)
   idempotencyKey       String?
   requestHash          String?
   id                   String                  @id @default(cuid())
@@ -1323,6 +1330,7 @@ model ImprovementAttempt {
   builder              String
   handoffReference     String?
   pullRequestReference String?
+  commitReference      String?
   deploymentReference  String?
   changeSummary        String?
   verificationAuditId  String?
@@ -2701,4 +2709,146 @@ enum CanvasStatus {
   GENERATING
   READY
   FAILED
+}
+
+/// One retained identity and at most one unresolved disposable identity per origin.
+model SiteTestAccount {
+  id                    String   @id @default(cuid())
+  projectId             String
+  origin                String
+  purpose               String
+  email                 String   @unique
+  encryptedPassword     String
+  encryptedSession      String?
+  signupUrl             String
+  loginUrl              String?
+  homeUrl               String?
+  flowFingerprint       String
+  state                 String   @default("RESERVED")
+  operationId           String?
+  submittedAt           DateTime?
+  signupVerifiedAt      DateTime?
+  deletionVerifiedAt    DateTime?
+  lastCheckedAt         DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  project               Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages              SiteAccountMessage[]
+  @@unique([projectId, origin, purpose])
+  @@index([projectId, state])
+  @@map("site_test_accounts")
+}
+
+/// Only extracted verification data is retained, encrypted with a short expiry.
+model SiteAccountMessage {
+  id                    String   @id @default(cuid())
+  providerId            String   @unique
+  accountId             String
+  encryptedVerification String
+  receivedAt            DateTime @default(now())
+  expiresAt             DateTime
+  account               SiteTestAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  @@index([accountId, expiresAt])
+  @@map("site_account_messages")
+}
+
+/// Public-safe observations are tenant scoped. Credentials never enter receipts.
+model SiteAccountCheckReceipt {
+  id                    String   @id @default(cuid())
+  projectId             String
+  auditId               String
+  kind                  String
+  state                 String
+  detail                String
+  pageUrl               String
+  evidence              Json
+  createdAt             DateTime @default(now())
+  project               Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([auditId, kind, pageUrl])
+  @@index([projectId, createdAt])
+  @@map("site_account_check_receipts")
+}
+
+model UptimeMonitor {
+  id                String           @id @default(cuid())
+  projectId         String           @unique
+  targetUrl         String
+  version           Int              @default(1)
+  enabled           Boolean          @default(true)
+  state             String           @default("unknown")
+  nextProbeAt       DateTime         @default(now())
+  lastCheckedAt     DateTime?
+  lastScheduledAt   DateTime?
+  pendingFailureAt  DateTime?
+  pendingSlotAt     DateTime?
+  confirmationDueAt DateTime?
+  leaseUntil        DateTime?
+  leaseToken        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  probes            UptimeProbe[]
+  incidents         UptimeIncident[]
+
+  @@index([nextProbeAt, leaseUntil])
+  @@index([confirmationDueAt])
+  @@map("uptime_monitors")
+}
+
+model UptimeProbe {
+  id          String        @id @default(cuid())
+  monitorId   String
+  version     Int
+  targetUrl   String
+  scheduledAt DateTime
+  observedAt  DateTime
+  attempt     Int
+  result      String
+  reason      String
+  statusCode  Int?
+  durationMs  Int
+  finalUrl    String?
+  confirmed   Boolean       @default(false)
+  monitor     UptimeMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, version, scheduledAt, attempt])
+  @@index([monitorId, version, observedAt(sort: Desc), id])
+  @@index([observedAt])
+  @@map("uptime_probes")
+}
+
+model UptimeIncident {
+  id            String               @id @default(cuid())
+  monitorId     String
+  version       Int
+  targetUrl     String
+  startedAt     DateTime
+  confirmedAt   DateTime
+  recoveredAt   DateTime?
+  supersededAt  DateTime?
+  reason        String
+  monitor       UptimeMonitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  notifications UptimeNotification[]
+
+  @@index([monitorId, confirmedAt(sort: Desc)])
+  @@map("uptime_incidents")
+}
+
+model UptimeNotification {
+  id            String         @id @default(cuid())
+  incidentId    String
+  kind          String
+  status        String         @default("PENDING")
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now())
+  leaseUntil    DateTime?
+  sentAt        DateTime?
+  providerId    String?
+  lastError     String?
+  createdAt     DateTime       @default(now())
+  incident      UptimeIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@unique([incidentId, kind])
+  @@index([status, nextAttemptAt, leaseUntil])
+  @@map("uptime_notifications")
 }

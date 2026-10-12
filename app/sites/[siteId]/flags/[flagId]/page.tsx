@@ -6,7 +6,6 @@ import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
-import { SiteAgent } from '@/components/sites/SiteAgent'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -21,7 +20,7 @@ import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { BoardDetails } from '@/components/sites/BoardDetails'
 
-function attemptLabel(attempt: { outcome: string | null; comparable: boolean | null; reason: string | null }): string {
+function attemptLabel(attempt: Parameters<typeof verificationResult>[0]): string {
   return verificationResultLabel(verificationResult(attempt))
 }
 
@@ -64,7 +63,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const outcomes = await listSiteOutcomes(site)
   const connectionContext = site.projectId ? connectionLines((await loadSiteConnectionViews(site.projectId)).facts, flag.pageUrl) : []
   const relatedOutcome = outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
-  const home = await loadSiteHome(resolvedId)
+  const home = await loadSiteHome(resolvedId, { ownerEvidence: access.decision.role === 'owner' })
   if (!home) notFound()
 
   const proofId = flagRecoveryProofId({
@@ -110,13 +109,13 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     : flag.problem
 
   return (
-    <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="flags" title={flag.problem} description={flag.whyItMatters} presentation={home.presentation} watch={home.watch} checking={flag.verifying} headerAction={access.decision.role === 'owner' ? <SiteAgent siteId={resolvedId} flagId={flag.id} /> : null}>
+    <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
       <div className="mx-auto w-full max-w-5xl lg:pr-24 2xl:pr-0">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="-ml-4 text-muted-foreground" asChild>
-            <Link href={`/sites/${resolvedId}/flags`}>
+            <Link href={`/sites/${resolvedId}#category-${flag.area}`}>
               <ChevronLeft aria-hidden="true" />
-              Back to Flags
+              Back to Overview
             </Link>
           </Button>
           <p className="text-xs text-muted-foreground">
@@ -124,8 +123,6 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
           </p>
         </div>
         <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={flag.id} initial={home}>
-          <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
-          <p className="mt-3 max-w-2xl text-base text-muted-foreground">{resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters}</p>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}

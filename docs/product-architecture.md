@@ -187,19 +187,17 @@ Overview
   Site identity, monitoring cadence, visible recovery
   Category rows: confirmed visitor actions and scoped website health
   Every category row lists its open Flags
-Flags
-  in-place list of every open Flag → detail → Fix → Verify → history
-Monitoring
-  current state and cadence → Flags per check → Flag and recovery timeline
+Timeline
+  recorded checks → findings → rechecks → verified recoveries
 Integrations
   supported connections → logo and connection state → configuration
 Settings
-  Outcomes and coverage · monitoring · notifications · connections · Remove Site
+  Monitoring cadence and pause/resume · notifications · automatic account checks · Remove Site
 ```
 
 Pages and category cards remain inspectable depth. Outcome detail shows expected behavior, state/freshness, related surfaces, evidence, recent runs, Flags, and diagnostics. Raw checks and steps are disclosed progressively.
 
-Websites (`/dashboard`) shows all Sites as full-width resource rows below one persistent Analyze control. A selected Site retains its URL and uses Overview, Flags, Monitoring, Integrations, and Settings on desktop and mobile, with All websites as the return action. Flags, Monitoring, and Integrations switch the contents of the persistent Site shell. They are not separate report products. Outcome is the underlying responsibility model; visible cards use concrete visitor-action names. Essential progress and recovery stay visible, while completed execution detail is progressive depth. Ask FixFlags is contextual, not persistent chrome or a tab.
+Websites (`/dashboard`) shows all Sites as full-width resource rows below one persistent Analyze control. A selected Site retains its URL and uses Overview, Timeline, Integrations, and Settings on desktop and mobile, with All websites as the return action. Timeline and Integrations switch the contents of the persistent Site shell. They are not separate report products. Outcome is the underlying responsibility model; visible cards use concrete visitor-action names. Essential progress and recovery stay visible, while completed execution detail is progressive depth. One floating chat launcher lives in the selected Site shell. Site questions is scoped to the selected Site or Flag and available only to owners; Support is a separate view with its own conversation. Desktop chat keeps the dashboard interactive, while mobile chat uses a full-screen panel.
 
 ## Trigger model
 

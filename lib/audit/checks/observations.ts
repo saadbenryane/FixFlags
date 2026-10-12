@@ -1,9 +1,12 @@
 import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
 import type { CheckAssertion } from './assertion'
-import { filterOutIframeAxeViolations, type AxeViolation } from './accessibility'
 import { observedInsecureResources, RESOURCE_TRANSPORT_SCOPE } from '../resource-transport'
 import { LEGACY_IMAGE_AUDITS, PERFORMANCE_RESOURCE_THRESHOLDS, type ResourceAudit } from '../pagespeed-opportunities'
+import { securityHeaderObservations } from './security-headers'
+import { publicTrustObservations } from './trust'
+import { consoleObservations } from './console'
+import type { ConsoleCoverage } from '../console-evidence'
 
 function recordResourceObservation(input: { key: string; name: string; ids: readonly ResourceAudit['id'][];
   data: PageSpeedResult; threshold: number; unit: ResourceAudit['unit'] }): CheckAssertion {
@@ -47,12 +50,15 @@ export function recordInpObservation(mobile: PageSpeedResult): CheckAssertion {
 /** Positive observations come from inspected inputs, never from missing Flags. */
 export function recordCheckObservations(module: string, input: {
   url: string; metadata: PageMetadata; headers?: Record<string, string> | null;
-  desktop: PageSpeedResult | null; mobile: PageSpeedResult | null; axe?: AxeViolation[];
+  desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
+  consoleCoverage?: ConsoleCoverage;
 }): CheckAssertion[] {
   const result: CheckAssertion[] = []
   const record = (key: string, name: string, expected: string, observed: string, passed: boolean) => {
     result.push({ key, name, expected, observed, passed, complete: true })
   }
+  if (module === 'trust') result.push(...Object.values(publicTrustObservations(input.metadata)))
+  if (module === 'console') result.push(...consoleObservations(input.consoleCoverage))
   if (module === 'security') {
     const https = new URL(input.url).protocol === 'https:'
     record('https', 'Page uses HTTPS', 'The inspected page URL uses HTTPS', https ? 'HTTPS URL' : 'HTTP URL', https)
@@ -70,17 +76,7 @@ export function recordCheckObservations(module: string, input: {
       input.metadata.hasAnalytics ? 'Analytics snippet detected' : 'No snippet detected; consent-delayed or proxied analytics may not appear here', input.metadata.hasAnalytics)
   }
   if (module === 'security-headers' && input.headers) {
-    for (const [header, name] of [['content-security-policy', 'Content Security Policy'], ['x-content-type-options', 'Content type protection']] as const) {
-      const value = input.headers[header]
-      const passed = header === 'x-content-type-options' ? value?.toLowerCase() === 'nosniff' : Boolean(value)
-      record(header, name, header === 'x-content-type-options' ? 'Response specifies nosniff' : 'An enforcing CSP header is present',
-        value ? `${header} recorded` : `${header} absent`, Boolean(passed))
-    }
-  }
-  if (module === 'accessibility' && input.axe !== undefined) {
-    const violations = filterOutIframeAxeViolations(input.axe)
-    record('automated-accessibility', 'Automated accessibility inspection', 'No axe violations in the inspected top-level page',
-      `${violations.length} automated rule violations recorded; manual accessibility was not evaluated`, violations.length === 0)
+    result.push(...securityHeaderObservations(input.url, input.headers))
   }
   if (module === 'performance' || module === 'mobile') {
     if (module === 'performance' && input.mobile) result.push(recordInpObservation(input.mobile))

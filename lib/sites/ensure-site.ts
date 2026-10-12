@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { encodeSiteId, siteUrlParts, type SiteRecord } from '@/lib/sites/types'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { productNameFromUrl } from '@/lib/audit/product-intelligence'
+import { productTransaction } from '@/lib/billing/product-transaction'
 
 /**
  * Resolve or create the customer Site for an analysis.
@@ -222,12 +223,12 @@ export async function claimProvisionalSitesForProject(input: {
   /** Only claim provisionals tied to these audits (or matching session keys). */
   primaryAuditIds: string[]
   sessionKeys?: string[]
-}): Promise<void> {
+}, db: Prisma.TransactionClient = prisma): Promise<void> {
   const auditIds = input.primaryAuditIds.filter(Boolean)
   const sessionKeys = (input.sessionKeys ?? []).map((k) => k.trim()).filter(Boolean)
   if (auditIds.length === 0 && sessionKeys.length === 0) return
 
-  await prisma.provisionalSite.updateMany({
+  await db.provisionalSite.updateMany({
     where: {
       canonicalHost: input.canonicalHost,
       claimedProjectId: null,
@@ -248,79 +249,62 @@ export async function migrateProvisionalSiteDataToProject(input: {
   projectId: string
   canonicalHost: string
   primaryAuditIds: string[]
-}): Promise<void> {
+}, transaction?: Prisma.TransactionClient): Promise<void> {
   const auditIds = input.primaryAuditIds.filter(Boolean)
   if (auditIds.length === 0) return
 
-  const provisionals = await prisma.provisionalSite.findMany({
+  if (!transaction) return productTransaction(tx => migrateProvisionalSiteDataToProject(input, tx))
+  const db = transaction
+
+  const provisionals = await db.provisionalSite.findMany({
     where: {
       canonicalHost: input.canonicalHost,
-      OR: [
-        { claimedProjectId: input.projectId },
-        { primaryAuditId: { in: auditIds } },
-      ],
+      claimedProjectId: input.projectId,
     },
     select: { id: true },
   })
   if (provisionals.length === 0) return
   const provisionalIds = provisionals.map((p) => p.id)
 
-  const pages = await prisma.sitePage.findMany({
+  const pages = await db.sitePage.findMany({
     where: { provisionalSiteId: { in: provisionalIds } },
   })
   for (const page of pages) {
-    const existing = await prisma.sitePage.findUnique({
+    const existing = await db.sitePage.findUnique({
       where: {
         projectId_url: { projectId: input.projectId, url: page.url },
       },
     })
     if (existing) {
-      await prisma.siteOutcomePage.updateMany({
-        where: { pageId: page.id },
-        data: { pageId: existing.id },
+      const links = await db.siteOutcomePage.findMany({ where: { pageId: page.id }, select: { outcomeId: true } })
+      if (links.length) await db.siteOutcomePage.createMany({
+        data: links.map(link => ({ outcomeId: link.outcomeId, pageId: existing.id })), skipDuplicates: true,
       })
-      await prisma.sitePage.delete({ where: { id: page.id } })
+      await db.sitePage.delete({ where: { id: page.id } })
     } else {
-      await prisma.sitePage.update({
+      await db.sitePage.update({
         where: { id: page.id },
         data: { projectId: input.projectId, provisionalSiteId: null },
       })
     }
   }
 
-  const outcomes = await prisma.siteOutcome.findMany({
+  const outcomes = await db.siteOutcome.findMany({
     where: { provisionalSiteId: { in: provisionalIds } },
+    orderBy: { id: 'asc' },
   })
   for (const outcome of outcomes) {
-    const existing = await prisma.siteOutcome.findFirst({
-      where: {
-        projectId: input.projectId,
-        slug: outcome.slug,
-      },
-    })
-    if (existing) {
-      await prisma.siteOutcomePage.updateMany({
-        where: { outcomeId: outcome.id },
-        data: { outcomeId: existing.id },
-      })
-      // Prefer user confirmation from provisional when owned row is still heuristic.
-      if (outcome.confirmedAt && !existing.confirmedAt) {
-        await prisma.siteOutcome.update({
-          where: { id: existing.id },
-          data: {
-            name: outcome.name,
-            description: outcome.description,
-            inferenceSource: outcome.inferenceSource,
-            confirmedAt: outcome.confirmedAt,
-          },
-        })
-      }
-      await prisma.siteOutcome.delete({ where: { id: outcome.id } })
-    } else {
-      await prisma.siteOutcome.update({
-        where: { id: outcome.id },
-        data: { projectId: input.projectId, provisionalSiteId: null },
-      })
+    let slug = outcome.slug
+    let collision = 0
+    // A shared label does not establish shared responsibility. Retain the
+    // original identity, configuration and history instead of cascading them away.
+    while (await db.siteOutcome.findFirst({ where: { projectId: input.projectId, slug }, select: { id: true } })) {
+      collision++
+      slug = `${outcome.slug}-claimed-${outcome.id}${collision > 1 ? `-${collision}` : ''}`
     }
+    await db.siteOutcome.update({
+      where: { id: outcome.id },
+      data: { projectId: input.projectId, provisionalSiteId: null, ...(slug !== outcome.slug ? { slug } : {}) },
+    })
   }
 }

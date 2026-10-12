@@ -21,10 +21,10 @@ export type WatchNotificationStatusLike =
 /**
  * `none`         No alert was warranted, so there is nothing to report.
  * `delivering`   An alert is warranted and FixFlags is still getting it out.
- * `delivered`    The customer was told.
+ * `accepted`     The provider accepted the message. Inbox delivery is unproven.
  * `undelivered`  FixFlags stopped trying. The customer was never told.
  */
-export type WatchAlertDeliveryState = 'none' | 'delivering' | 'delivered' | 'undelivered'
+export type WatchAlertDeliveryState = 'none' | 'delivering' | 'accepted' | 'undelivered'
 
 /**
  * What can honestly be said about the most recent alert.
@@ -41,7 +41,7 @@ export function watchAlertDelivery(input: {
 }): WatchAlertDeliveryState {
   const status = input.status
   if (!status || status === 'NOT_APPLICABLE') return 'none'
-  if (status === 'SENT') return 'delivered'
+  if (status === 'SENT') return 'accepted'
   if (status === 'SENDING') {
     const leaseUntil = input.leaseUntil ? new Date(input.leaseUntil) : null
     const leaseExpired = leaseUntil != null

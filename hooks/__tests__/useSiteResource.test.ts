@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useSiteResource } from '../useSiteResource'
@@ -72,4 +72,24 @@ it('observes an active diagnostic run even when the broad analysis and Outcomes 
   await waitFor(() => expect(result.current.view.activeRuns).toEqual([]), { timeout: 5000 })
   expect(result.current.view.audit.id).toBe('audit-1')
   unmount()
+})
+
+
+it('refreshes enabled Uptime every minute after website work is idle', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
+  try {
+    const initial = siteViewFixture(); initial.outcomes = []; initial.activeRuns = []
+    initial.uptime = { enabled: true, targetUrl: initial.site.url, state: 'unknown', lastCheckedAt: null, nextCheckAt: null, openIncidentCount: 0, segments: [] }
+    const fetch = vi.fn(async () => ({ ok: true, json: async () => initial }))
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0, isVisible: () => true, isOnline: () => true } }, children)
+    const { unmount } = renderHook(() => useSiteResource('fixture-site', initial), { wrapper })
+    await act(async () => { await vi.advanceTimersByTimeAsync(20) })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(59_000) })
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_010) })
+    expect(fetch).toHaveBeenCalledTimes(2)
+    unmount()
+  } finally { vi.useRealTimers() }
 })

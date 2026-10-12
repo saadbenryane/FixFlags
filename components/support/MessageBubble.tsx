@@ -10,7 +10,7 @@ export function MessageBubble({ variant, children }: MessageBubbleProps) {
     <div className={cn('flex', variant === 'visitor' ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed',
+          'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words',
           variant === 'visitor'
             ? 'bg-brand text-brand-foreground rounded-br-md'
             : 'bg-muted text-foreground rounded-bl-md'

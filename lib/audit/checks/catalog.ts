@@ -10,6 +10,11 @@ import { runPerformanceChecks } from './performance'
 import { runAccessibilityChecks, type AxeViolation } from './accessibility'
 import { runSeoChecks } from './seo'
 import { runTrustChecks } from './trust'
+import { consoleObservations, runConsoleChecks } from './console'
+import type { ConsoleCoverage } from '../console-evidence'
+import type { AccessibilityEvidence } from '../browser/accessibility-evidence'
+import type { CaptureObservationScope } from '../browser/observation-scope'
+import { accessibilityObservations, scopeAccessibilityFlags } from './accessibility-observations'
 import { runMobileChecks } from './mobile'
 import { runContentChecks } from './content'
 import { runSlopChecks } from './slop'
@@ -34,6 +39,8 @@ import type { KeyboardEvidence } from '../browser/keyboard-probe'
 export type PageCheckContext = {
   url: string; metadata: PageMetadata; desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
   consoleErrors: Array<{ type: string; text: string }>; metrics?: CaptureMetrics | null;
+  consoleCoverage?: ConsoleCoverage;
+  accessibilityEvidence?: AccessibilityEvidence; renderedScope?: CaptureObservationScope;
   headers?: Record<string, string> | null; axe?: AxeViolation[];
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
   deadline?: number;
@@ -57,12 +64,21 @@ export function registerPageEvaluators(evaluators: Evaluator[], definitions = PA
 export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'metadata', evaluate: c => runMetadataChecks(c.metadata, c.record) },
   { id: 'og-image', evaluate: c => runOgImageUrlCheck(c.url, c.metadata, { record: c.record, scope: c.scope, deadline: c.deadline }) },
-  { id: 'accessibility', evaluate: c => runAccessibilityChecks(c.metadata, c.desktop ?? c.mobile, c.axe) },
+  { id: 'accessibility', evaluate: c => {
+    const observations = accessibilityObservations({ metadata: c.metadata, evidence: c.accessibilityEvidence, scope: c.renderedScope })
+    observations.forEach(c.record)
+    Object.assign(c.scope, { complete: observations.find(item => item.key === 'automated-accessibility')?.complete === true,
+      limitation: 'Automated desktop rule outcomes and captured HTML signals are recorded separately. Unresolved rules require further review; manual accessibility was not evaluated.' })
+    return scopeAccessibilityFlags(runAccessibilityChecks(c.metadata, c.desktop ?? c.mobile, c.axe), observations, c.axe)
+  } },
   { id: 'keyboard', evaluate: c => c.keyboard ? runKeyboardChecks(c.keyboard).flags : [] },
-  { id: 'seo', evaluate: c => runSeoChecks(c.url, c.metadata) },
-  { id: 'trust', evaluate: c => runTrustChecks(c.url, c.metadata, c.consoleErrors) },
-  { id: 'content', evaluate: c => runContentChecks(c.metadata, c.purpose) },
-  { id: 'slop', evaluate: c => runSlopChecks(c.metadata) },
+  { id: 'seo', evaluate: c => runSeoChecks(c.url, c.metadata, { renderedScope: c.renderedScope, record: c.record, scope: c.scope }) },
+  { id: 'trust', evaluate: c => runTrustChecks(c.url, c.metadata) },
+  { id: 'console', evaluate: c => { Object.assign(c.scope, { complete: consoleObservations(c.consoleCoverage).every(assertion => assertion.complete === true),
+      limitation: 'Console inspection covers the recorded desktop and mobile page-load windows, not later actions or all execution states.' });
+    return runConsoleChecks(c.consoleErrors, c.consoleCoverage) } },
+  { id: 'content', evaluate: c => runContentChecks(c.metadata, c.purpose, c.record) },
+  { id: 'slop', evaluate: c => runSlopChecks(c.metadata, c.record) },
   { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
     checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
   { id: 'auth-checkout', evaluate: c => runAuthCheckoutChecks(c.url, c.metadata, { record: c.record, scope: c.scope, deadline: c.deadline }) },
@@ -72,21 +88,21 @@ export const PAGE_CHECKS = registerPageEvaluators([
     return runSecurityBasicsChecks(c.url, c.metadata)
   } },
   { id: 'security-headers', evaluate: c => runSecurityHeaderChecks(c.url, c.headers ?? null) },
-  { id: 'messaging-clarity', evaluate: c => runMessagingClarityChecks(c.metadata) },
-  { id: 'conversion-friction', evaluate: c => runConversionFrictionChecks(c.metadata, c.purpose) },
-  { id: 'trust-psychology', evaluate: c => runTrustPsychologyChecks(c.metadata, c.purpose, c.url) },
+  { id: 'messaging-clarity', evaluate: c => runMessagingClarityChecks(c.metadata, c.record) },
+  { id: 'conversion-friction', evaluate: c => runConversionFrictionChecks(c.metadata, c.purpose, c.record) },
+  { id: 'trust-psychology', evaluate: c => runTrustPsychologyChecks(c.metadata, c.purpose, c.url, c.record) },
   { id: 'performance', evaluate: c => runPerformanceChecks(c.desktop, c.mobile) },
   { id: 'mobile', evaluate: c => runMobileChecks(c.mobile) },
-  { id: 'mobile-ux-quality', evaluate: c => runMobileUXQualityChecks(c.metadata, c.metrics ?? null, c.purpose.purpose) },
-  { id: 'layout', evaluate: c => runLayoutChecks(c.metrics ?? null, c.purpose.purpose) },
-  { id: 'interaction', evaluate: c => runInteractionChecks(c.metrics ?? null) },
-  { id: 'cta-focus', evaluate: c => runCtaFocusChecks(c.metrics ?? null) },
-  { id: 'visual-polish', evaluate: c => runVisualPolishChecks(c.metrics ?? null) },
-  { id: 'visual-hierarchy', evaluate: c => runVisualHierarchyChecks(c.metadata, c.metrics ?? null) },
+  { id: 'mobile-ux-quality', evaluate: c => runMobileUXQualityChecks(c.metadata, c.metrics ?? null, c.purpose.purpose, c.record) },
+  { id: 'layout', evaluate: c => runLayoutChecks(c.metrics ?? null, c.purpose.purpose, c.record) },
+  { id: 'interaction', evaluate: c => runInteractionChecks(c.metrics ?? null, c.record) },
+  { id: 'cta-focus', evaluate: c => runCtaFocusChecks(c.metrics ?? null, c.record) },
+  { id: 'visual-polish', evaluate: c => runVisualPolishChecks(c.metrics ?? null, c.record) },
+  { id: 'visual-hierarchy', evaluate: c => runVisualHierarchyChecks(c.metadata, c.metrics ?? null, c.record) },
 ])
 
 export function pageCheckApplicable(definition: PageCheckDefinition, input: PageCheckContext) {
-  return definition.input === 'keyboard' ? Boolean(input.keyboard?.candidateCount) : definition.input === 'performance' ? Boolean(input.desktop || input.mobile)
+  return definition.input === 'console' ? Boolean(input.consoleCoverage || input.consoleErrors.length) : definition.input === 'keyboard' ? Boolean(input.keyboard?.candidateCount) : definition.input === 'performance' ? Boolean(input.desktop || input.mobile)
     : definition.input === 'mobile' ? Boolean(input.mobile)
     : definition.input === 'headers' ? Boolean(input.headers)
     : definition.input === 'accessibility' ? input.axe !== undefined || Boolean(input.desktop || input.mobile)

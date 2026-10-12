@@ -28,7 +28,7 @@ describe('Button', () => {
     expect(link).toHaveAttribute('aria-busy', 'true')
     expect(link).toHaveAttribute('aria-disabled', 'true')
     expect(link).toHaveAttribute('tabindex', '-1')
-    expect(link.querySelector('svg')).toHaveClass('animate-spin')
+    expect(link.querySelector('svg')).toHaveClass('motion-safe:animate-spin')
   })
 
   it('disables a loading button and exposes its busy state', () => {

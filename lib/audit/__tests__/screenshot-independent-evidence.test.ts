@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ upload: vi.fn(), axe: vi.fn(), screenshot: vi.fn(), close: vi.fn() }))
+const mocks = vi.hoisted(() => ({ upload: vi.fn(), axe: vi.fn(), screenshot: vi.fn(), close: vi.fn(), truncated: vi.fn() }))
 vi.mock('@/lib/storage/screenshots', () => ({ uploadScreenshot: mocks.upload }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl: vi.fn() }))
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
@@ -18,10 +18,12 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
       if (Array.isArray(argument)) return []
       if (typeof argument === 'string') return { readyState: 'complete', title: 'Example', loadingVisible: false, loadingLabel: null }
       if (fn.toString().includes('outerHTML')) return { html: '<html><head><title>Example</title></head><body>Content</body></html>', truncated: false }
+      if (fn.toString().includes('document.readyState ===')) return true
       return { title: 'Example', description: null, ogTitle: null, ogDescription: null, ogImage: null,
         canonical: null, lang: 'en', viewport: null, robots: null, hasFavicon: false }
     },
   }, navigationStartedAt: Date.now(), disposeNetwork: vi.fn(), responseHeaders: { 'content-type': 'text/html' }, httpStatus: 200,
+  consoleTruncated: mocks.truncated, consoleTiming: () => ({ loaded: true, observedMs: 5000, minimumMs: 2000 }),
   tracking: () => ({ version: 1, phase: 'page_load', requests: [], truncated: false, durationMs: 10, consentInteraction: 'none' }),
   networkFailures: [], technologyResources: [], technologyResourcesTruncated: () => false, formProbe: null,
 }) }))
@@ -29,22 +31,34 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
 import { captureScreenshots } from '../screenshot'
 
 describe('independent rendered evidence', () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable')); mocks.axe.mockResolvedValue({ violations: [] }) })
+  beforeEach(() => { vi.clearAllMocks(); mocks.truncated.mockReturnValue(false); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable'));
+    mocks.axe.mockResolvedValue({ url: 'https://example.com/', testEngine: { version: 'fixture-axe' }, violations: [], incomplete: [],
+      passes: [{ id: 'button-name', nodes: [{ target: ['button'] }] }], inapplicable: [] }) })
   it('records DOM and an actually completed axe scan without accessing media storage', async () => {
     const result = await captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, captureMedia: false })
     expect(result.captureFailures).toEqual([])
     expect(result.desktopHtml).toContain('<title>Example</title>')
     expect(result.axeViolations).toEqual([])
+    expect(result.accessibilityEvidence).toMatchObject({ engine: 'fixture-axe', rules: [{ id: 'button-name', state: 'passed', nodes: 1 }] })
     expect(result.loadExperience?.loadingClearedMs).toBeNull()
     expect(result.captureMetrics?.loadExperience?.loadingClearedMs).toBeNull()
     expect(result.captureStatus).toEqual({ desktop: 'pending', mobile: 'pending' })
+    expect(result.consoleCoverage).toMatchObject({ phase: 'page_load', desktop: { complete: true, observedMs: 5000 }, mobile: { complete: true, observedMs: 5000 } })
     expect(mocks.upload).not.toHaveBeenCalled(); expect(mocks.screenshot).not.toHaveBeenCalled()
+  })
+  it('records console truncation independently of completed DOM and media status', async () => {
+    mocks.truncated.mockReturnValue(true)
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, captureMedia: false })
+    expect(result.desktopHtml).toContain('Content')
+    expect(result.consoleCoverage).toMatchObject({ desktop: { complete: false }, mobile: { complete: false } })
   })
   it('does not turn an axe exception into a successful no-violations observation', async () => {
     mocks.axe.mockRejectedValueOnce(new Error('Frame injection refused'))
     const result = await captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, captureMedia: false })
     expect(result.desktopHtml).toContain('Content')
     expect(result.axeViolations).toBeUndefined()
+    expect(result.accessibilityEvidence).toBeUndefined()
+    expect(result.renderedScope).toMatchObject({ pageUrl: 'https://example.com/', finalUrl: 'https://example.com/', access: 'public' })
     expect(mocks.upload).not.toHaveBeenCalled()
   })
 })

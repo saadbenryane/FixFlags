@@ -6,7 +6,7 @@ import type {
   VerificationOutcome,
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { isCustomerFlag } from '@/lib/audit/attention'
+import { isCustomerFlag, isResolvedFlagStatus } from '@/lib/audit/attention'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 import { adoptLegacyOutcomeIdentity } from '@/lib/sites/application/outcome-identity'
@@ -33,6 +33,8 @@ import {
 } from '@/lib/improvements/rejection-reasons'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 import { systemClock, type Clock } from '@/lib/time/clock'
+import { attemptIntentHash, normalizedAttemptValue, assertAttemptReplay } from './attempt-intent'
+import { readVerificationTarget } from '@/lib/sites/domain/execution-spec'
 
 type ImprovementServiceDependencies = { clock?: Clock }
 
@@ -97,8 +99,16 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
 
   const flags = audit.flags as ImprovementFlag[]
   const customerFlags = flags.filter(isCustomerFlag)
+  const recommendations = flags.filter(flag => !isResolvedFlagStatus(flag.status) && !isCustomerFlag(flag))
+  // Once an owner acts on a recommendation, that Improvement owns subsequent
+  // observations too. Keep its priority and the existing Attention policy.
+  const existingRecommendations = recommendations.length ? await prisma.improvement.findMany({
+    where: { projectId, fingerprint: { in: [...new Set(recommendations.map(improvementFingerprint))] } },
+    select: { fingerprint: true, priority: true },
+  }) : []
+  const recommendationPriorities = new Map(existingRecommendations.map(item => [item.fingerprint, item.priority]))
   const candidates = rankFlagsByPriority(customerFlags, [], customerFlags.length)
-    .map(({ flag }) => flag)
+    .map(({ flag }) => flag).concat(recommendations.filter(flag => recommendationPriorities.has(improvementFingerprint(flag))))
 
   const improvementsByFingerprint = new Map<string, { id: string; status: ImprovementStatus }>()
   let uniquePriority = 0
@@ -106,6 +116,7 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
     const fingerprint = improvementFingerprint(flag)
     let improvement = improvementsByFingerprint.get(fingerprint)
     if (!improvement) {
+      const priority = isCustomerFlag(flag) ? uniquePriority++ : recommendationPriorities.get(fingerprint)!
       improvement = await executionWrite(async tx => {
         await adoptLegacyOutcomeIdentity(tx, { projectId, fingerprint, executionSpec: audit.executionSpec })
         return tx.improvement.upsert({
@@ -120,7 +131,7 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
           protectedScope: flag.pageUrl,
           successCondition:
             flag.verificationRule || 'Recovery criteria have not been established.',
-          priority: uniquePriority,
+          priority,
         },
         update: {
           title: flag.problem,
@@ -130,11 +141,10 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
           protectedScope: flag.pageUrl,
           successCondition:
             flag.verificationRule || 'Recovery criteria have not been established.',
-          priority: uniquePriority,
+          priority,
         },
       }) })
       improvementsByFingerprint.set(fingerprint, improvement)
-      uniquePriority += 1
     }
     if (improvement.status === 'VERIFIED') {
       await executionWrite(tx => tx.improvement.update({
@@ -183,11 +193,15 @@ export async function createImprovementAttempt(input: {
   actor?: string
   handoffReference?: string
   pullRequestReference?: string
+  commitReference?: string
   deploymentReference?: string
   changeSummary?: string | null
+  idempotencyKey?: string
 }, dependencies: ImprovementServiceDependencies = {}) {
   const clock = dependencies.clock ?? systemClock
-  const changeSummary = input.changeSummary?.trim() || null
+  const changeSummary = normalizedAttemptValue(input.changeSummary)
+  const idempotencyKey = input.idempotencyKey?.trim() || null
+  const requestHash = idempotencyKey ? attemptIntentHash(input) : null
   const improvement = await prisma.improvement.findFirst({
     where: {
       id: input.improvementId,
@@ -200,42 +214,66 @@ export async function createImprovementAttempt(input: {
   if (!improvement) throw new Error('Improvement not found for Product')
 
   return executionTransaction(async (tx) => {
-    // Serialize duplicate Ready-to-verify clicks for the same Improvement and
-    // source Review. The open-attempt lookup and create must be one boundary,
-    // otherwise concurrent web/MCP/CLI requests can both observe no attempt.
+    // Attempt creation and result projection share one lock across source
+    // reviews, so an older run cannot overwrite a newer recorded repair.
     await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(
-        hashtextextended(${`fixflags:improvement-attempt:${improvement.id}:${input.sourceAuditId}`}, 0)
+        hashtextextended(${`fixflags:improvement-attempt:${improvement.id}`}, 0)
       )
     `
-    const accepted = await tx.improvement.updateMany({
-      where: { id: improvement.id, acceptedAt: null },
-      data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
-    })
-    const existing = await tx.improvementAttempt.findFirst({
+    if (idempotencyKey) {
+      const recorded = await tx.improvementAttempt.findUnique({ where: { improvementId_idempotencyKey: { improvementId: improvement.id, idempotencyKey } } })
+      if (recorded) {
+        assertAttemptReplay(input, recorded)
+        return recorded
+      }
+    }
+    let existing = idempotencyKey ? null : await tx.improvementAttempt.findFirst({
       where: {
         improvementId: improvement.id,
         sourceAuditId: input.sourceAuditId,
         outcome: null,
       },
-      select: { id: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+    if (existing?.frozen || existing?.idempotencyKey || existing?.verificationAuditId) {
+      const changed = (['handoffReference', 'pullRequestReference', 'commitReference', 'deploymentReference', 'changeSummary'] as const)
+        .some(key => input[key] !== undefined && normalizedAttemptValue(input[key]) !== normalizedAttemptValue(existing![key]))
+      if (!changed) return existing
+      existing = null
+    }
+    const accepted = await tx.improvement.updateMany({
+      where: { id: improvement.id, acceptedAt: null },
+      data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
     })
     const data = {
       builder: input.builder,
-      handoffReference: input.handoffReference,
-      pullRequestReference: input.pullRequestReference,
-      deploymentReference: input.deploymentReference,
+      handoffReference: normalizedAttemptValue(input.handoffReference) ?? undefined,
+      pullRequestReference: normalizedAttemptValue(input.pullRequestReference) ?? undefined,
+      commitReference: normalizedAttemptValue(input.commitReference) ?? undefined,
+      deploymentReference: normalizedAttemptValue(input.deploymentReference) ?? undefined,
       // An omitted description is honest. On a retry it must not erase an
       // earlier description on the same pending attempt.
       changeSummary: changeSummary ?? (existing ? undefined : null),
     }
-    const attempt = existing
-      ? await tx.improvementAttempt.update({ where: { id: existing.id }, data })
-      : await tx.improvementAttempt.create({
+    let attempt
+    if (existing) {
+      // Admission can bind this legacy draft while this transaction is reading
+      // it. Freeze the row atomically, rather than overwriting an admitted fix.
+      const changed = await tx.improvementAttempt.updateMany({ where: { id: existing.id, idempotencyKey: null,
+        verificationAuditId: null, outcome: null, frozen: false }, data })
+      const current = await tx.improvementAttempt.findUniqueOrThrow({ where: { id: existing.id } })
+      if (changed.count > 0) attempt = current
+      else if ((['handoffReference', 'pullRequestReference', 'commitReference', 'deploymentReference', 'changeSummary'] as const)
+        .every(key => input[key] === undefined || normalizedAttemptValue(input[key]) === normalizedAttemptValue(current[key]))) return current
+    }
+    if (!attempt) attempt = await tx.improvementAttempt.create({
           data: {
             improvementId: improvement.id,
             sourceAuditId: input.sourceAuditId,
             ...data,
+            idempotencyKey,
+            requestHash,
           },
         })
     await tx.improvement.update({
@@ -279,6 +317,8 @@ export async function recordFlagImprovementAttempt(input: {
   action: 'ACCEPT' | 'HANDOFF_COPIED' | 'READY_TO_VERIFY' | 'REJECT'
   changeSummary?: string
   deploymentReference?: string
+  commitReference?: string
+  idempotencyKey?: string
   rejectionReason?: ImprovementRejectionReason
   rejectionNote?: string
   rejectionRevisitAt?: Date
@@ -300,51 +340,27 @@ export async function recordFlagImprovementAttempt(input: {
   if (!improvementId) {
     const contract = parseProductContract(flag.audit.productContract)
     const fingerprint = improvementFingerprint(flag)
-    const improvement = await executionWrite(tx => tx.improvement.upsert({
-      where: {
-        projectId_fingerprint: { projectId, fingerprint },
-      },
-      create: {
-        projectId,
-        fingerprint,
-        title: flag.problem,
-        judgment: flag.whyItMatters,
-        expectedBenefit: flag.whyItMatters,
-        recommendedChange: flag.fix,
-        protectedScope: contract?.criticalOutcomes.length
-          ? `Keep these Product outcomes unchanged: ${contract.criticalOutcomes.join('; ')}`
-          : null,
-        successCondition:
-          flag.verificationRule || `A fresh Product Review no longer observes: ${flag.problem}`,
-        priority: 50,
-        status: 'PROPOSED',
-      },
-      update: {},
-      select: { id: true },
-    }))
-    improvementId = improvement.id
-    const occurrenceImprovementId = improvement.id
-    const occurrence = await executionWrite(tx => tx.improvementOccurrence.upsert({
-      where: { flagId: flag.id },
-      create: {
-        improvementId: occurrenceImprovementId,
-        auditId: flag.audit.id,
-        flagId: flag.id,
-        kind: 'OBSERVED',
-      },
-      update: {},
-    }))
-    await appendImprovementCycleEvent({
-      projectId: flag.audit.projectId,
-      improvementId,
-      occurrenceId: occurrence.id,
-      sourceAuditId: flag.audit.id,
-      idempotencyKey: `generated:${flag.id}`,
-      type: 'GENERATED',
-      transport: input.builder,
-      client: input.client,
-      actor: input.actor,
+    const linked = await executionTransaction(async tx => {
+      const owned = await tx.flag.findFirst({ where: { id: flag.id,
+        audit: { userId: input.userId, projectId, project: { userId: input.userId } } }, select: { id: true } })
+      if (!owned) throw new Error('Flag is not attached to an owned Product')
+      // Empty-update ORM upserts can race through read-then-create. Native
+      // conflict-safe inserts converge without rewriting existing history.
+      await tx.improvement.createMany({ data: [{ projectId, fingerprint, title: flag.problem,
+        judgment: flag.whyItMatters, expectedBenefit: flag.whyItMatters, recommendedChange: flag.fix,
+        protectedScope: contract?.criticalOutcomes.length ? 'Keep these Product outcomes unchanged: ' + contract.criticalOutcomes.join('; ') : null,
+        successCondition: flag.verificationRule || 'A fresh Product Review no longer observes: ' + flag.problem,
+        priority: 50, status: 'PROPOSED' }], skipDuplicates: true })
+      const improvement = await tx.improvement.findUniqueOrThrow({ where: { projectId_fingerprint: { projectId, fingerprint } }, select: { id: true } })
+      const created = await tx.improvementOccurrence.createMany({ data: [{ improvementId: improvement.id,
+        auditId: flag.audit.id, flagId: flag.id, kind: occurrenceKind(flag.status) }], skipDuplicates: true })
+      const occurrence = await tx.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      if (created.count > 0) await appendImprovementCycleEvent({ projectId, improvementId: occurrence.improvementId,
+        occurrenceId: occurrence.id, sourceAuditId: flag.audit.id, idempotencyKey: 'generated:' + flag.id,
+        type: 'GENERATED', transport: input.builder, client: input.client, actor: input.actor }, tx)
+      return occurrence
     })
+    improvementId = linked.improvementId
   }
 
   if (input.action === 'REJECT') {
@@ -453,7 +469,9 @@ export async function recordFlagImprovementAttempt(input: {
     actor: input.actor,
     handoffReference: `flag:${flag.id}`,
     deploymentReference: input.deploymentReference,
-    changeSummary: input.changeSummary ?? '',
+    commitReference: input.commitReference,
+    idempotencyKey: input.idempotencyKey,
+    changeSummary: input.changeSummary,
   }, { clock })
   return {
     flagId: flag.id,
@@ -466,6 +484,11 @@ export async function recordFlagImprovementAttempt(input: {
       type: 'RUN_UPDATE_REVIEW' as const,
       command: `fixflags recheck ${flag.audit.id}`,
     },
+    commitReference: attempt.commitReference ?? null,
+    deploymentReference: attempt.deploymentReference ?? null,
+    changeSummary: attempt.changeSummary ?? null,
+    verificationAuditId: attempt.verificationAuditId ?? null,
+    outcome: attempt.outcome ?? null,
   }
 }
 
@@ -616,14 +639,14 @@ export async function reconcileImprovementVerification(input: {
   verificationAuditId: string
 }, dependencies: ImprovementServiceDependencies = {}): Promise<VerificationResult[]> {
   const clock = dependencies.clock ?? systemClock
-  const [verificationAudit, parentOccurrences, currentFlags] = await Promise.all([
-    prisma.audit.findUnique({
+  const verificationAudit = await prisma.audit.findUnique({
       where: { id: input.verificationAuditId },
       select: {
         id: true,
         parentId: true,
         projectId: true,
         productContract: true,
+        executionSpec: true,
         status: true,
         startedAt: true,
         reportCompleteness: true,
@@ -646,7 +669,12 @@ export async function reconcileImprovementVerification(input: {
           },
         },
       },
-    }),
+    })
+  if (!verificationAudit?.projectId || verificationAudit.parentId !== input.parentAuditId) return []
+  const targetedRun = verificationAudit.runRequests?.find(run => run.verificationTarget != null)
+  const target = readVerificationTarget(targetedRun?.verificationTarget)
+  if (targetedRun && (!target || target.parentAuditId !== input.parentAuditId || targetedRun.projectId !== verificationAudit.projectId)) return []
+  const [parentOccurrences, currentFlags] = await Promise.all([
     prisma.improvementOccurrence.findMany({
       where: { auditId: input.parentAuditId },
       include: {
@@ -654,9 +682,10 @@ export async function reconcileImprovementVerification(input: {
         improvement: {
           include: {
             attempts: {
-              where: { outcome: null, sourceAuditId: input.parentAuditId },
+              where: { outcome: null, sourceAuditId: input.parentAuditId, ...(target ? { id: target.attemptId }
+                : verificationAudit.startedAt ? { createdAt: { lte: verificationAudit.startedAt } } : {}) },
               orderBy: { createdAt: 'desc' },
-              take: 1,
+              take: target ? 1 : 500,
             },
           },
         },
@@ -664,13 +693,6 @@ export async function reconcileImprovementVerification(input: {
     }),
     prisma.flag.findMany({ where: { auditId: input.verificationAuditId } }),
   ])
-  if (
-    !verificationAudit?.projectId ||
-    verificationAudit.parentId !== input.parentAuditId
-  ) {
-    return []
-  }
-
   const recoveredOutcomeIds = verificationAudit.status === 'COMPLETED' ? verificationAudit.runRequests?.flatMap(run =>
     run.verificationTarget === null && run.projectId === verificationAudit.projectId && run.status === 'COMPLETED'
       ? run.assessments.filter(assessment => assessment.auditId === verificationAudit.id && assessment.runRequestId === run.id &&
@@ -678,9 +700,11 @@ export async function reconcileImprovementVerification(input: {
       : []) ?? [] : []
   // Query unresolved fixes rather than every Flag accumulated during an outage.
   // Only a source Flag closed by this exact recovery can resume an inconclusive fix.
-  const recoveredAttempts = recoveredOutcomeIds.length && verificationAudit.startedAt
+  const hasTargetedRun = verificationAudit.runRequests?.some(run => run.verificationTarget !== null)
+  const recoveredAttempts = verificationAudit.status === 'COMPLETED' && verificationAudit.startedAt && !hasTargetedRun
     ? await prisma.improvementAttempt.findMany({
-        where: { improvement: { projectId: verificationAudit.projectId, outcomeId: { in: recoveredOutcomeIds },
+        where: { improvement: { projectId: verificationAudit.projectId,
+            OR: [{ outcomeId: null }, { outcomeId: { in: recoveredOutcomeIds } }],
             status: { notIn: ['REJECTED', 'SUPERSEDED'] } },
           sourceAudit: { projectId: verificationAudit.projectId, flags: { some: { status: 'FIXED', resolvedInId: verificationAudit.id } } },
           OR: [{ outcome: null }, { outcome: 'INCONCLUSIVE' }], createdAt: { lte: verificationAudit.startedAt } },
@@ -688,32 +712,28 @@ export async function reconcileImprovementVerification(input: {
         include: { improvement: true, sourceAudit: { select: { improvementOccurrences: { include: { flag: true } } } } },
       }) : []
   const recoveredOccurrences = recoveredAttempts.flatMap(attempt => {
+    if (attempt.improvement.outcomeId && !recoveredOutcomeIds.includes(attempt.improvement.outcomeId)) return []
     const occurrence = attempt.sourceAudit.improvementOccurrences.find(item => item.improvementId === attempt.improvementId &&
       item.flag.status === 'FIXED' && item.flag.resolvedInId === verificationAudit.id)
     return occurrence ? [{ ...occurrence, improvement: { ...attempt.improvement, attempts: [attempt] } }] : []
   })
-  const occurrences = [...recoveredOccurrences, ...parentOccurrences]
+  const occurrences = [...recoveredOccurrences, ...parentOccurrences].flatMap(occurrence =>
+    occurrence.improvement.attempts.map(attempt => ({ ...occurrence, improvement: { ...occurrence.improvement, attempts: [attempt] } })))
 
   const currentByKey = new Map(
     currentFlags.map((flag) => [improvementFingerprint(flag), flag])
   )
   const results: VerificationResult[] = []
-  const reconciledImprovementIds = new Set<string>()
+  const reconciledAttemptIds = new Set<string>()
   for (const occurrence of occurrences) {
     if (occurrence.improvement.status === 'REJECTED' || occurrence.improvement.status === 'SUPERSEDED') continue
-    if (reconciledImprovementIds.has(occurrence.improvementId)) continue
     const sourceAuditId = occurrence.auditId
     const attempt = occurrence.improvement.attempts.find(item => item.sourceAuditId === sourceAuditId)
     if (!attempt) continue
-    const targetedRun = verificationAudit.runRequests?.find((run) => {
-      const target = run.verificationTarget
-      return target && !Array.isArray(target) && typeof target === 'object' &&
-        (target.kind === 'OUTCOME' || target.kind === 'DIAGNOSTIC')
-    })
-    const target = targetedRun?.verificationTarget as Record<string, unknown> | undefined
     // One targeted request is not authority to reconcile another pending fix.
     if (target && target.attemptId !== attempt.id) continue
-    reconciledImprovementIds.add(occurrence.improvementId)
+    if (reconciledAttemptIds.has(attempt.id)) continue
+    reconciledAttemptIds.add(attempt.id)
     const current = currentByKey.get(occurrence.improvement.fingerprint ?? improvementFingerprint(occurrence.flag))
     let coverageDecision = assessVerificationCoverage({
       auditId: verificationAudit.id,
@@ -728,6 +748,8 @@ export async function reconcileImprovementVerification(input: {
       checkId: occurrence.flag.checkId,
       fingerprint: occurrence.flag.fingerprint,
       pageUrl: occurrence.flag.pageUrl,
+      executionSpec: verificationAudit.executionSpec,
+      ...(!current ? { originalFlag: occurrence.flag } : {}),
       verifierExecutions: verificationAudit.verifierExecutions,
     })
     const outcomeRun = target?.kind === 'OUTCOME' ? targetedRun : !target && occurrence.improvement.outcomeId
@@ -781,6 +803,9 @@ export async function reconcileImprovementVerification(input: {
     }
 
     await executionTransaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'fixflags:improvement-attempt:' + occurrence.improvementId}, 0))`
+      const latestAttempt = await tx.improvementAttempt.findFirst({ where: { improvementId: occurrence.improvementId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true } })
       await tx.improvementAttempt.update({
         where: { id: attempt.id },
         data: {
@@ -799,7 +824,7 @@ export async function reconcileImprovementVerification(input: {
                 : 'The independent Review still observed the targeted condition.',
         },
       })
-      await tx.improvement.update({
+      if (!latestAttempt || latestAttempt.id === attempt.id) await tx.improvement.update({
         where: { id: occurrence.improvementId },
         data: { status },
       })

@@ -1,4 +1,10 @@
 import type { DeterministicFlag } from '../flag-types'
+import type { CheckAssertion } from './assertion'
+import { PAGE_CHECK_DEFINITIONS } from './definitions'
+import { destinationContext } from './destination-evidence'
+
+export const SECURITY_HEADER_VERIFICATION_RULE = 'Public response headers: repeat every originally failed header responsibility on the same response URL.'
+export const SECURITY_HEADER_LIMITATION = 'Some response header declarations could not be interpreted. Their configuration remains unknown.'
 
 /**
  * Builder / PaaS managed hostnames where response headers like CSP/HSTS are not
@@ -36,9 +42,13 @@ function managedHostConstraintNote(hostname: string): string {
   return `Not settable on managed subdomain (${hostname}); requires custom domain + proxy config.`
 }
 
-function parseMaxAge(value: string): number | null {
-  const match = value.match(/max-age\s*=\s*(\d+)/i)
-  return match ? Number(match[1]) : null
+function parseMaxAge(value: string, requireCompleteDeclaration = false): number | null {
+  const declarations = requireCompleteDeclaration ? value.split(';').map(part => part.trim())
+    .filter(part => /^max-age(?:\s*=|$)/i.test(part)) : []
+  if (requireCompleteDeclaration && declarations.length !== 1) return null
+  const match = requireCompleteDeclaration ? declarations[0].match(/^max-age\s*=\s*(\d+)$/i) : value.match(/max-age\s*=\s*(\d+)/i)
+  const age = match ? Number(match[1]) : null
+  return age !== null && Number.isSafeInteger(age) ? age : null
 }
 
 function cspDirective(csp: string, name: string): string | null {
@@ -47,6 +57,48 @@ function cspDirective(csp: string, name: string): string | null {
     .map((part) => part.trim())
     .find((part) => part.toLowerCase().startsWith(`${name} `) || part.toLowerCase() === name)
   return match ?? null
+}
+
+/** Explicit observations of the response configuration, before finding rollups. */
+export function securityHeaderObservations(url: string, headers: Record<string, string> | null): CheckAssertion[] {
+  if (headers === null) return []
+  const csp = headers['content-security-policy'], hsts = headers['strict-transport-security']
+  const scripts = csp ? cspDirective(csp, 'script-src') ?? cspDirective(csp, 'default-src') : null
+  const objects = csp ? cspDirective(csp, 'object-src') : null
+  const age = hsts ? parseMaxAge(hsts, true) : null
+  const https = url.startsWith('https://')
+  const frame = headers['x-frame-options']?.trim().toLowerCase()
+  const referrer = headers['referrer-policy']?.trim().toLowerCase()
+  const permissions = headers['permissions-policy']
+  const overbroad = ['camera', 'microphone', 'geolocation'].filter(feature => permissions?.toLowerCase().includes(`${feature}=*`))
+  const values: CheckAssertion[] = []
+  const responseContext = destinationContext(url, url)
+  const observe = (key: string, name: string, expected: string, observed: string, passed: boolean, complete = true) => {
+    values.push({ key, name, expected, observed, passed: complete && passed, complete,
+      context: `security-header:${key}:${responseContext}` })
+  }
+  observe('content-security-policy', 'Content Security Policy', 'An enforcing CSP header is present', csp ? 'Enforcing CSP recorded' : 'Enforcing CSP absent', Boolean(csp))
+  observe('csp-inline-scripts', 'CSP inline script permissions', 'The inspected script directive omits unsafe-inline', scripts ? 'Script directive ' + (scripts.includes('unsafe-inline') ? 'contains' : 'omits') + ' unsafe-inline' : 'No script directive can be inspected', Boolean(scripts && !scripts.includes('unsafe-inline')), Boolean(scripts))
+  observe('csp-eval', 'CSP dynamic script permissions', 'The inspected script directive omits unsafe-eval', scripts ? 'Script directive ' + (scripts.includes('unsafe-eval') ? 'contains' : 'omits') + ' unsafe-eval' : 'No script directive can be inspected', Boolean(scripts && !scripts.includes('unsafe-eval')), Boolean(scripts))
+  observe('csp-objects', 'CSP object sources', 'An object-src directive without a wildcard is recorded', objects ? 'Object directive ' + (objects.includes('*') ? 'contains' : 'omits') + ' a wildcard' : 'Object directive absent', Boolean(objects && !objects.includes('*')))
+  observe('hsts-duration', 'HSTS duration', 'The HTTPS HSTS max-age is at least 31536000 seconds', age === null ? hsts ? 'HSTS duration could not be parsed' : 'HSTS absent' : `HSTS max-age ${age} seconds`, age !== null && age >= 31536000, https && (!hsts || age !== null))
+  observe('hsts-subdomains', 'HSTS subdomain declaration', 'The HTTPS HSTS header contains includeSubDomains', hsts?.toLowerCase().includes('includesubdomains') ? 'includeSubDomains recorded' : 'includeSubDomains absent', Boolean(hsts?.toLowerCase().includes('includesubdomains')), https)
+  observe('hsts-preload', 'HSTS preload declaration', 'The HTTPS HSTS header contains preload', hsts?.toLowerCase().includes('preload') ? 'Preload declaration recorded; browser-list enrollment was not checked' : 'Preload declaration absent', Boolean(hsts?.toLowerCase().includes('preload')), https)
+  const framed = Boolean(csp && cspDirective(csp, 'frame-ancestors')) || frame === 'deny' || frame === 'sameorigin'
+  observe('frame-protection', 'Frame configuration', 'CSP frame-ancestors or DENY/SAMEORIGIN frame options are recorded', framed ? 'Accepted frame configuration recorded' : 'Accepted frame configuration absent', framed)
+  const nosniff = Boolean(headers['x-content-type-options']?.toLowerCase().includes('nosniff'))
+  observe('x-content-type-options', 'Content type protection', 'Response specifies nosniff', nosniff ? 'nosniff recorded' : 'nosniff absent', nosniff)
+  const referrerAccepted = Boolean(referrer && !referrer.includes('unsafe-url') && referrer !== 'no-referrer-when-downgrade')
+  observe('referrer-policy', 'Referrer configuration', 'A policy without the diagnosed full-URL disclosure settings is recorded', referrerAccepted ? 'Accepted referrer configuration recorded' : 'Referrer configuration absent or has a diagnosed disclosure setting', referrerAccepted)
+  for (const [key, header, name] of [
+    ['opener-policy', 'cross-origin-opener-policy', 'Cross-origin opener declaration'],
+    ['embedder-policy', 'cross-origin-embedder-policy', 'Cross-origin embedder declaration'],
+    ['resource-policy', 'cross-origin-resource-policy', 'Cross-origin resource declaration'],
+  ]) observe(key, name, `${header} is present`, headers[header] ? `${header} recorded; policy effectiveness was not tested` : `${header} absent`, Boolean(headers[header]))
+  observe('permissions-policy', 'Browser permission configuration', 'A Permissions-Policy without diagnosed sensitive-feature wildcards is recorded', permissions ? overbroad.length ? `Wildcard declarations for ${overbroad.join(', ')}` : 'Permission configuration recorded' : 'Permission configuration absent', Boolean(permissions && !overbroad.length))
+  const crossDomain = headers['x-permitted-cross-domain-policies']
+  observe('cross-domain-policy', 'Legacy cross-domain declaration', 'The cross-domain policy is absent or specifies none', crossDomain ? crossDomain.trim().toLowerCase() === 'none' ? 'Cross-domain declaration specifies none' : 'Cross-domain declaration does not specify none' : 'No legacy cross-domain declaration', !crossDomain || crossDomain.trim().toLowerCase() === 'none')
+  return values.filter(item => https || !item.key.startsWith('hsts-'))
 }
 
 export function runSecurityHeaderChecks(
@@ -66,6 +118,13 @@ export function runSecurityHeaderChecks(
   }
   const csp = headers['content-security-policy'] ?? null
   const cspReportOnly = headers['content-security-policy-report-only'] ?? null
+  const observations = securityHeaderObservations(url, headers)
+  const failed = (key: string) => observations.find(item => item.key === key)?.passed === false
+  const scoped = (flag: DeterministicFlag, ids = [flag.checkId]): DeterministicFlag => ({ ...flag,
+    verificationRule: SECURITY_HEADER_VERIFICATION_RULE,
+    evidenceTargets: observations.filter(item => ids.some(id => PAGE_CHECK_DEFINITIONS['security-headers'].assertions[item.key].verifies.includes(id)))
+      .map(item => ({ kind: 'page', context: item.context!, source: 'measured', device: 'desktop', label: item.name })),
+  })
 
   if (!csp) {
     findings.push({
@@ -82,7 +141,7 @@ export function runSecurityHeaderChecks(
     })
   } else {
     const scriptSrc = cspDirective(csp, 'script-src') ?? cspDirective(csp, 'default-src')
-    if (scriptSrc?.includes('unsafe-inline')) {
+    if (scriptSrc && failed('csp-inline-scripts')) {
       findings.push({
         checkId: 'security-csp-unsafe-inline',
         rubric: 'REACH',
@@ -96,7 +155,7 @@ export function runSecurityHeaderChecks(
       })
     }
 
-    if (scriptSrc?.includes('unsafe-eval')) {
+    if (scriptSrc && failed('csp-eval')) {
       findings.push({
         checkId: 'security-csp-unsafe-eval',
         rubric: 'REACH',
@@ -111,7 +170,7 @@ export function runSecurityHeaderChecks(
     }
 
     const objectSrc = cspDirective(csp, 'object-src')
-    if (!objectSrc || objectSrc.includes('*')) {
+    if (failed('csp-objects')) {
       findings.push({
         checkId: 'security-csp-weak-object-src',
         rubric: 'REACH',
@@ -161,6 +220,8 @@ export function runSecurityHeaderChecks(
       })
     } else {
       const maxAge = parseMaxAge(hsts)
+      // Retain the established detection threshold. Repair additionally needs
+      // an unambiguous complete duration declaration, rather than a numeric prefix.
       if (maxAge !== null && maxAge < 31536000) {
         findings.push({
           checkId: 'security-hsts-too-short',
@@ -175,7 +236,7 @@ export function runSecurityHeaderChecks(
         })
       }
 
-      if (!hsts.toLowerCase().includes('includesubdomains')) {
+      if (failed('hsts-subdomains')) {
         findings.push({
           checkId: 'security-hsts-no-subdomains',
           rubric: 'REACH',
@@ -189,7 +250,7 @@ export function runSecurityHeaderChecks(
         })
       }
 
-      if (!hsts.toLowerCase().includes('preload')) {
+      if (failed('hsts-preload')) {
         findings.push({
           checkId: 'security-hsts-no-preload',
           rubric: 'REACH',
@@ -207,7 +268,7 @@ export function runSecurityHeaderChecks(
 
   // CSP frame-ancestors supersedes X-Frame-Options in modern browsers; skip both
   // frame-options checks when it's present to avoid flagging the same risk twice.
-  if (!csp || !cspDirective(csp, 'frame-ancestors')) {
+  if (failed('frame-protection')) {
     const frameOptions = headers['x-frame-options'] ?? null
     if (!frameOptions) {
       findings.push({
@@ -237,7 +298,7 @@ export function runSecurityHeaderChecks(
     }
   }
 
-  if (!headers['x-content-type-options']?.toLowerCase().includes('nosniff')) {
+  if (failed('x-content-type-options')) {
     findings.push({
       checkId: 'security-content-type-options-missing',
       rubric: 'REACH',
@@ -274,8 +335,7 @@ export function runSecurityHeaderChecks(
       source: 'DETERMINISTIC',
     })
   } else {
-    const lower = referrerPolicy.toLowerCase().trim()
-    if (lower.includes('unsafe-url') || lower === 'no-referrer-when-downgrade') {
+    if (failed('referrer-policy')) {
       findings.push({
         checkId: 'security-referrer-policy-weak',
         rubric: 'REACH',
@@ -291,7 +351,7 @@ export function runSecurityHeaderChecks(
   }
 
   // Cross-Origin Policies
-  if (!headers['cross-origin-opener-policy']) {
+  if (failed('opener-policy')) {
     findings.push({
       checkId: 'security-coop-missing',
       rubric: 'REACH',
@@ -306,7 +366,7 @@ export function runSecurityHeaderChecks(
     })
   }
 
-  if (!headers['cross-origin-embedder-policy']) {
+  if (failed('embedder-policy')) {
     findings.push({
       checkId: 'security-coep-missing',
       rubric: 'REACH',
@@ -321,7 +381,7 @@ export function runSecurityHeaderChecks(
     })
   }
 
-  if (!headers['cross-origin-resource-policy']) {
+  if (failed('resource-policy')) {
     findings.push({
       checkId: 'security-corp-missing',
       rubric: 'REACH',
@@ -373,7 +433,7 @@ export function runSecurityHeaderChecks(
 
   // X-Permitted-Cross-Domain-Policies (legacy Flash/PDF)
   const xPermitted = headers['x-permitted-cross-domain-policies'] ?? null
-  if (xPermitted && xPermitted.trim().toLowerCase() !== 'none') {
+  if (xPermitted && failed('cross-domain-policy')) {
     findings.push({
       checkId: 'security-x-permitted-cross-domain',
       rubric: 'REACH',
@@ -429,7 +489,7 @@ export function runSecurityHeaderChecks(
       ? ` ${managedHostConstraintNote(managedHostname)}`
       : ''
     return [
-      {
+      scoped({
         checkId: 'security-headers-hardening',
         rubric: 'REACH' as const,
         impactTag: 'TRUST' as const,
@@ -441,7 +501,7 @@ export function runSecurityHeaderChecks(
           : 'Add defense-in-depth headers that are still missing: Referrer-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy, and/or Permissions-Policy as appropriate. Tighten HSTS with includeSubDomains/preload only after subdomains are ready. Do not treat this as missing CSP, HSTS, XCTO, or frame protection.',
         confidence: 1.0,
         source: 'DETERMINISTIC' as const,
-      },
+      }, items.map(item => item.checkId)),
     ]
   }
 
@@ -488,7 +548,7 @@ export function runSecurityHeaderChecks(
     }
     // When cores are missing, one Flag is enough - do not also emit a hardening
     // rollup that would dominate Finish Plan / accuracy top-3 slots.
-    return [consolidated]
+    return [scoped(consolidated, coreFindings.map(item => item.checkId))]
   }
 
   const aspirationalOut = rollupAspirational(aspirationalFindings)
@@ -497,7 +557,7 @@ export function runSecurityHeaderChecks(
       !CORE_SECURITY_HEADER_IDS.has(f.checkId) &&
       !ASPIRATIONAL_SECURITY_HEADER_IDS.has(f.checkId)
   )
-  const withCores = [...coreFindings, ...aspirationalOut, ...remaining]
+  const withCores = [...coreFindings, ...aspirationalOut, ...remaining].map(flag => flag.verificationRule ? flag : scoped(flag))
 
   // Remaining findings on managed hosts still must not escalate severity.
   if (managedHostname) {

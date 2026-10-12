@@ -1,3 +1,5 @@
+import { z } from 'zod'
+import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { NextRequest, NextResponse } from 'next/server'
 import { watchScheduleSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
 import { auth } from '@/lib/auth'
@@ -63,7 +65,26 @@ export async function POST(
     const access = await requireSiteAccess(siteId)
     if (!access.ok) return apiError(access.message, access.status)
 
-    const body = schema.safeParse(await req.json().catch(() => ({})))
+    const raw = await req.json().catch(() => ({}))
+    if (raw && typeof raw === 'object' && 'action' in raw) {
+      const action = z.object({ action: z.enum(['pause', 'resume']) }).strict().safeParse(raw)
+      if (!action.success) return apiError('Choose a valid monitoring action.', 400)
+      const projectId = access.decision.site.projectId
+      if (access.decision.role !== 'owner' || !projectId) return apiError('Claim this Site first.', 403)
+      const project = await prisma.project.findFirst({ where: { id: projectId, userId: session.user.id, deletedAt: null }, select: { watchInterval: true, watchEveryMinutes: true } })
+      const interval = fromStoredWatchInterval(project?.watchInterval ?? null)
+      if (!project || !interval) return apiError('Choose a monitoring schedule first.', 409)
+      if (action.data.action === 'pause') {
+        await prisma.project.updateMany({ where: { id: projectId, userId: session.user.id, deletedAt: null },
+          data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'Paused. This Site is not on a check schedule.' } })
+      } else {
+        const result = await executeSiteCommand({ type: 'SET_WATCH', siteId: access.decision.site.siteId, userId: session.user.id,
+          interval, ...(interval === 'custom' && project.watchEveryMinutes ? { everyMinutes: project.watchEveryMinutes } : {}) })
+        if (isWatchRejection(result)) return apiError(result.error, statusForCode(result.code), { code: result.code })
+      }
+      return NextResponse.json({ ok: true })
+    }
+    const body = schema.safeParse(raw)
     if (!body.success) return apiError('Choose a watch interval', 400)
 
     const requested = body.data.interval

@@ -16,6 +16,8 @@ const searchDb = vi.hoisted(() => ({
   indexStatus: { findUnique: vi.fn() },
   searchPerformance: { count: vi.fn(), findFirst: vi.fn() },
 }))
+const accountExecutor = vi.hoisted(() => ({ execute: vi.fn() }))
+vi.mock('@/lib/sites/accounts/executor', () => ({ executeAccountChecks: accountExecutor.execute }))
 vi.mock('@/lib/db', () => ({ prisma: searchDb }))
 import { runSearchPerformanceChecks } from '@/lib/audit/checks/search-performance'
 import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metadata-checks'
@@ -27,9 +29,10 @@ import type { KeyboardInteraction } from '@/lib/audit/browser/keyboard-probe'
 import { runSeoChecks } from '@/lib/audit/checks/seo'
 import { evaluateSearch, searchFindings } from '@/lib/audit/search/registry'
 import { evidence as searchEvidence, document as searchDocument } from '@/lib/audit/search/__tests__/fixtures'
-import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
+import { CHECK_REGISTRY, AXE_GENERATED_CHECK_IDS } from '@/lib/audit/check-registry'
 import { deadDestinationFlags } from '@/lib/audit/open-check'
 import { runTrustChecks } from '@/lib/audit/checks/trust'
+import { runConsoleChecks } from '@/lib/audit/checks/console'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
@@ -56,6 +59,9 @@ import { runVisualHierarchyChecks } from '@/lib/audit/checks/visual-hierarchy'
 import { runMobileUXQualityChecks } from '@/lib/audit/checks/mobile-ux-quality'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
+import { accountHandlers } from '@/lib/audit/progressive/accounts'
+import { accountCheckId } from '@/lib/sites/accounts/check-definitions'
+import { flagSchema } from '@/lib/audit/progressive/results'
 import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verification-rules'
 import type { PageLoadExperience } from '@/lib/audit/capture-metrics'
 import {
@@ -381,15 +387,15 @@ describe('runSeoChecks', () => {
 describe('runTrustChecks', () => {
   it('flags HTTP, missing legal/contact info, and cookie consent gaps', () => {
     assert.ok(
-      checkIds(runTrustChecks('http://example.com', healthyMeta(), [])).includes('no-https')
+      checkIds(runTrustChecks('http://example.com', healthyMeta())).includes('no-https')
     )
     assert.ok(
-      checkIds(runTrustChecks('https://example.com', healthyMeta({ hasPrivacyPolicy: false }), [])).includes(
+      checkIds(runTrustChecks('https://example.com', healthyMeta({ hasPrivacyPolicy: false }))).includes(
         'no-privacy-policy'
       )
     )
     assert.ok(
-      checkIds(runTrustChecks('https://example.com', healthyMeta({ hasContactInfo: false }), [])).includes(
+      checkIds(runTrustChecks('https://example.com', healthyMeta({ hasContactInfo: false }))).includes(
         'no-contact-info'
       )
     )
@@ -397,8 +403,7 @@ describe('runTrustChecks', () => {
       checkIds(
         runTrustChecks(
           'https://example.com',
-          healthyMeta({ hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false }),
-          []
+          healthyMeta({ hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false })
         )
       ).includes('cookie-consent-absent')
     )
@@ -411,12 +416,12 @@ describe('runTrustChecks', () => {
       text: `Error ${i}`,
     }))
     assert.ok(
-      checkIds(runTrustChecks('https://example.com', healthyMeta(), one)).includes(
+      checkIds(runConsoleChecks(one)).includes(
         'console-errors-some'
       )
     )
     assert.ok(
-      checkIds(runTrustChecks('https://example.com', healthyMeta(), many)).includes(
+      checkIds(runConsoleChecks(many)).includes(
         'console-errors-critical'
       )
     )
@@ -429,11 +434,11 @@ describe('runTrustChecks', () => {
         text: 'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector',
       },
     ]
-    assert.equal(runTrustChecks('https://example.com', healthyMeta(), errors).length, 0)
+    assert.equal(runConsoleChecks(errors).length, 0)
   })
 
   it('passes a healthy HTTPS page', () => {
-    assert.equal(runTrustChecks('https://example.com', healthyMeta(), []).length, 0)
+    assert.equal(runTrustChecks('https://example.com', healthyMeta()).length, 0)
   })
 })
 
@@ -1488,28 +1493,25 @@ describe('trigger matrix - one failing signal per checkId', () => {
         ],
         'https://example.com/'
       ).map((flag) => flag.checkId),
-    'no-https': () => checkIds(runTrustChecks('http://example.com', healthyMeta(), [])),
+    'no-https': () => checkIds(runTrustChecks('http://example.com', healthyMeta())),
     'no-privacy-policy': () =>
       checkIds(
-        runTrustChecks('https://example.com', healthyMeta({ hasPrivacyPolicy: false }), [])
+        runTrustChecks('https://example.com', healthyMeta({ hasPrivacyPolicy: false }))
       ),
     'no-contact-info': () =>
       checkIds(
-        runTrustChecks('https://example.com', healthyMeta({ hasContactInfo: false }), [])
+        runTrustChecks('https://example.com', healthyMeta({ hasContactInfo: false }))
       ),
     'cookie-consent-absent': () =>
       checkIds(
         runTrustChecks(
           'https://example.com',
-          healthyMeta({ hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false }),
-          []
+          healthyMeta({ hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false })
         )
       ),
     'console-errors-critical': () =>
       checkIds(
-        runTrustChecks(
-          'https://example.com',
-          healthyMeta(),
+        runConsoleChecks(
           [
             { type: 'error', text: 'a' },
             { type: 'error', text: 'b' },
@@ -1519,7 +1521,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
       ),
     'console-errors-some': () =>
       checkIds(
-        runTrustChecks('https://example.com', healthyMeta(), [{ type: 'error', text: 'one' }])
+        runConsoleChecks([{ type: 'error', text: 'one' }])
       ),
     'mobile-perf-critical': () =>
       checkIds(runMobileChecks(healthyMobilePs({ score: 40 }))),
@@ -2353,8 +2355,17 @@ describe('trigger matrix - one failing signal per checkId', () => {
       ),
   }
 
-  it('legacy finding triggers cover their inventory; Search assertion receipts have a separate contract suite', () => {
-    const findingIds = ALL_CHECK_IDS.filter(id => CHECK_REGISTRY[id].module !== 'search')
+  for (const [kind, checkId] of Object.entries(accountCheckId)) triggers[checkId] = async () => {
+    accountExecutor.execute.mockResolvedValueOnce({ observations: [{ kind, state: 'failed', detail: 'Observed account behavior failed.', pageUrl: 'https://example.com/account', evidence: {} }] })
+    const artifact = await accountHandlers[0].evaluate({ audit: { id: 'account-audit', projectId: 'owned', isPublic: false,
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'ACCOUNT_CHECKS', targetUrl: 'https://example.com/account', environment: 'production',
+        checks: {}, outcomes: [], verificationTarget: null, accountChecks: { revision: 1, mode: 'retest' } } }, deadline: Date.now() + 1000 } as never)
+    return checkIds(flagSchema.array().parse(artifact.data.flags))
+  }
+
+  it('finding triggers cover their inventory; Search assertion receipts have a separate contract suite', () => {
+    const generated = new Set<string>(AXE_GENERATED_CHECK_IDS)
+    const findingIds = ALL_CHECK_IDS.filter(id => CHECK_REGISTRY[id].module !== 'search' && !generated.has(id))
     assert.deepEqual(Object.keys(triggers).sort(), [...findingIds].sort())
   })
 

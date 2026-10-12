@@ -15,6 +15,24 @@ New admissions snapshot `ExecutionSpec` with `engine: progressive-v1` on the exi
 Audit ledger. This describes the local implementation candidate, not deployed or
 release-accepted behavior. Historical Audits retain the legacy adapter below.
 
+Owned manual category rechecks use the same admission and progressive task ledger.
+`scope: category` selects Search, Performance, Conversion, Security, Tracking or
+Accessibility through one `area`. Admission freezes the latest completed full-site
+inventory in the requested environment. Each required page, collector, evaluator
+and interaction remains an obligation of that execution. Pages uses a full-site
+check; availability retains its existing Outcome execution. A category does not
+become the latest full-site analysis or certify unrelated repairs.
+
+Category finalization records deterministic evidence without requiring screenshots
+or an AI summary. Shared collectors commit only admitted findings and repair
+assertions. Comparisons preserve the preceding category attempt and original
+full-site observations, including recommendations without an Improvement.
+The board and website list overlay only the applicable category's current evidence.
+Failed, missing or unfinished required work cannot reuse an older passing answer.
+API, MCP and category history use the immutable comparison and shared assessment.
+Local worker acceptance covers Search rechecks, Security repair and recurrence;
+live-provider and production acceptance remain separate requirements.
+
 Owned Site admission persists automatic public availability through the existing
 Outcome and binding contract. Free defaults to weekly checks; eligible paid
 accounts default to daily checks. The first check is due immediately. Claiming
@@ -22,6 +40,33 @@ migrates provisional identity and bindings before adding a missing default.
 Worker upkeep initializes untouched existing Sites and retains explicit pauses,
 custom schedules, names and historical evidence. These defaults do not depend on
 email delivery configuration or an active customer browser session.
+
+Anonymous Site admission retains the supplied HTTP(S) origin, including its port
+and host spelling, separately from hostname identity. Claiming commits Audit
+ownership, provisional Site redirection, page and Outcome migration, and default
+monitoring in one transaction. Colliding Outcome slugs receive distinct internal
+slugs while retaining their original IDs, bindings and history. Matching labels
+do not authorize merging responsibilities. Duplicate page associations merge
+without violating their unique keys. Scheduled Watch selects production
+Outcomes; a staging responsibility cannot prevent production uptime admission.
+
+Scheduled Site care uses the existing broad task graph when the configured
+production target needs fresh Site evidence. Daily and weekly schedules repeat
+that graph on their saved cadence; shorter schedules retain their availability
+and configured binding cadence while reusing recent broad observations and
+refreshing them about daily. A scoped verification cannot stand in for a broad
+Site check. Enabled required bindings are derived at admission without requiring
+another confirmation; privileged mechanisms retain their own live authorization
+and fixture safety checks. Broad requests start at the Site, rather than a single
+binding's destination, and compare against a recorded broad parent.
+
+One scheduled tick retains its admitted scope and binding selection on retries.
+A replay returns the recorded selection, not newly derived coverage. A new
+request cannot reuse an active broad run that lacks its current binding scope.
+Bound incidents remain owned by Outcome assessments; broad diagnostics do not
+rewrite them through the report comparison. Notification classification combines
+both committed projections after reconciliation. Successful availability does
+not certify whole-Site Clear through the run API.
 
 Bound findings retain Outcome and binding identity, with the originating Flag
 referenced by the binding execution. Outcome assessments commit incident
@@ -48,6 +93,24 @@ visible form feedback supplies positive evidence; blocked requests, preexisting
 feedback, changed forms and incomplete observation do not prove a failure or repair.
 Feedback timing and the full negative observation window use the browser's click
 clock, so driver acknowledgement delays cannot manufacture slow or missing feedback.
+
+The existing public flow task commits primary-action presence, click, advancement
+and main-frame response observations. Failed findings and repair assertions use
+the same recorded page, viewport and hashed control identity. Navigation URLs and
+declared panel relationships retain their original scope without exposing signed
+query values in finding copy. Native buttons and declared button roles share CTA
+selection. A completed click alone cannot establish action advancement or a
+completed signup, payment or other business outcome.
+
+Targeted primary-action repair selects the originally recorded control, even when
+another CTA becomes the highest-ranked candidate. It uses the existing guarded
+flow task without repeating unrelated navigation probes, provider work or capture
+uploads. An unrelated successful control, changed href, removed control, refused
+operation, unavailable response or access challenge cannot certify repair. A
+newly visible declared panel can establish its own observed advancement without
+pretending that an HTTP navigation occurred. Utility pages without a primary-action
+responsibility record that absence as an observation. Historical findings without
+comparable action scope remain unverified.
 
 Form assertions retain the original page and hashed form identity. Explicit fix
 verification and automatic recovery require the same scoped positive proof.
@@ -82,6 +145,17 @@ same scoped proof logic for automatic recovery and explicit fix verification.
 Rolling field INP does not prove an immediate repair. Unsupported proof stays
 inconclusive even when the surrounding module succeeds.
 
+Response-header detection and observations share their inspected configuration
+predicates. Single findings and consolidated core or hardening findings retain
+the exact originally failed header responsibilities and hashed final response
+URL. Explicit repair and automatic recovery consume the same scoped assertions.
+A rollup disappearing, a different redirect destination, an unavailable response
+or malformed HSTS duration cannot certify repair. Missing HSTS recovery requires
+the duration recommended by its original finding. Other independently proved
+header repairs remain useful while an unrelated declaration is unknown. Header
+presence and declarations do not establish policy effectiveness or browser HSTS
+preload-list enrollment. Historical unscoped rollups remain inconclusive.
+
 PageSpeed normalization retains bounded resource audit measurements alongside
 its established failed-opportunity projection. Score, render-blocking resources,
 unused JavaScript, unused CSS and image delivery have exact repair assertions.
@@ -109,6 +183,24 @@ resolution. HEAD success does not certify a destination. Transport errors,
 access restrictions and scanner refusals remain unknown. Preview-image response
 and content-type evidence do not establish full image decoding or a platform's
 rendered preview.
+
+Public link discovery commits source-page scoped response assertions alongside
+its findings, using the same response classification as targeted repair. Shared
+destinations use the existing bounded discovery sweep; publishing observations
+does not add a second normal-scan fetch. Repair admission retains every affected
+source page, and each originally failed destination must provide comparable GET
+proof before the Flag closes. Removed links, changed destinations and access
+restrictions remain inconclusive. Recurrence reopens the existing Improvement
+and preserves the original Flag's resolution.
+
+Inventory deduplication keys are separate from fetch URLs. Normalizing a key
+cannot strip a supplied host, locale, trailing slash or meaningful query from
+the URL inspected. Relative declarations resolve against their observed document
+base, including redirects and a published base element. Response assertions
+require the actual fetched destination, rather than an equivalent inventory key.
+Finding copy removes destination query values while hashed contexts retain exact
+comparison scope. Historical metadata without a recorded base retains its
+original page URL adapter.
 
 Auth, checkout and preview-image assertions retain hashed destination and page
 scope, without signed query values in findings. Repair and automatic recovery
@@ -159,6 +251,11 @@ exception is missing evidence, never an empty successful scan. Captures retain
 their own task, source and time; they are not a pixel-perfect claim about a separate
 DOM observation. AI explanation consumes committed results and captures downstream
 and cannot establish an assertion or recovery.
+
+Browser readiness passes timeout options separately from the page-function
+argument. Missing titles retain their bounded three-second observation window;
+document readiness retains eight seconds. Title absence remains inspectable
+evidence and cannot occupy browser capacity for the driver's default timeout.
 
 Local Search responsibilities have separate task checkpoints and receipts.
 Robots collection settles before sitemap expansion; crawl checks depend on HTTP
@@ -280,6 +377,36 @@ The authorized Signup fixture exercises delayed rendered completion, a missing
 signal, a preexisting signal without another submission, observed success with
 failed cleanup, comparable repair and recurrence. Its owner fix progresses from
 inconclusive to improved across the gap while retaining both cycle events.
+Section-link evaluation uses exact captured identifiers and named anchors,
+resolves declarations against the observed document base, and decodes fragment
+targets without lowercasing them. SEO and CTA placeholder checks share this
+native-target lookup. Routing and text fragments remain outside the inspected
+scope. Receipts contain at most 300 distinct targets; additional targets remain
+unknown without discarding failures already observed. Current findings bind
+each missing target to its requested/final page, capture profile and access
+conditions. Targeted rechecks inspect all originally affected documents without
+adding provider, media or unrelated action work. Missing or changed links and
+historical normalized identifiers cannot certify repair. The Chromium, migrated
+PostgreSQL and Redis worker fixture proves two-page detection, partial repair,
+challenge uncertainty, removed/changed scope, complete repair and recurrence on
+the same Improvement. These checks establish declared document targets, not
+click handlers or scroll behavior.
+
+The public link fixture runs discovery over two source pages, commits their
+failed GET observations, and exercises unchanged, blocked, removed-declaration
+and repaired targeted runs through the application, database, queue and worker.
+Every original source scope must pass before resolution. A subsequent Watch
+failure records regression on the same Improvement and retains the first Flag's
+verified resolution. This controlled fixture does not establish production
+transport, external-provider acceptance or notification delivery.
+Primary-action fixtures exercise a failed CTA navigation, access restrictions,
+an HTTP 200 challenge, replaced or removed controls, a competing working CTA,
+independent repair and scheduled recurrence through migrated PostgreSQL, isolated
+Redis, real Chromium and the worker. They also collect and verify missing primary
+actions, disabled native and ARIA controls, and a dead end repaired by its declared
+visible panel. Source identity, recorded fix attempts, Flag closure and first
+resolution survive these transitions. Deeper destination semantics, unsupported
+action types and extended live behavior retain their separate verification limits.
 Default uptime has been exercised as a Watch run without a customer session,
 including healthy Cloudflare/CAPTCHA markup and an explicit HTTP 200 challenge.
 The outage fixture exercises failure, an inconclusive gap, ongoing failure,
@@ -288,6 +415,103 @@ checks historical identity migration, independent pages with identical binding
 keys, history completion, and a delayed notification against a live scheduler
 lease. Notification selection and bounded missing-provider failure are local
 evidence, not provider acceptance or inbox delivery.
+Broad diagnostic comparison also uses the latest durable Improvement occurrence
+from an earlier completed Site run in the same environment. An inconclusive
+report cannot turn an ongoing failure into a new incident. A later failure after
+recorded recovery is regressed, while the original fixed Flag and its resolution
+remain intact. Healthy runs omit old recoveries. Pending fixes from an older
+source require positive evidence for that original Flag's affected pages and
+responsibility before reconciliation resumes. Flag closure and fix verification
+consume the same recorded recovery predicate, including source requirements,
+assertions and check versions. A partial unrelated module cannot certify repair
+or invalidate an independently completed responsibility.
+After both diagnostic and bound projections commit, finalization records the
+comparison once under `projection:flag-comparison` in the existing execution
+ledger. This is a comparison projection, not a verifier assertion or another
+incident engine. Report readers and delayed Watch notifications use its original
+buckets and Flag summaries, so a later recovery cannot rewrite an older failure
+or evidence gap. Retries retain the first committed projection and still apply
+current notification preferences. A failed comparison write leaves finalization
+retryable. Historical runs without this receipt retain their compatibility
+comparison; their mutable Flag rows cannot reconstruct lost historical facts.
+The separately selected `SCHEDULED_SITE_CARE_REQUIRED=true` worker scenario
+exercises four broad scheduled runs, immutable tick replay and a fresh
+binding-only tick. A real HTTP 503 creates a diagnostic gap before comparable
+title recovery and recurrence. The fixture expires unavailable provider work
+to keep the local scenario bounded. Explicit unsuccessful page responses settle
+affected browser tasks after one attempt, retaining structured response evidence
+and failed coverage. A refused response is not a worker crash or a successful
+check. Network, database and unclassified browser/parser interruptions retain
+their existing bounded retry policy. The scenario does not establish provider
+delivery or timing for infrastructure interruptions in production.
+Public trust detection and recovery share explicit privacy-link, published
+contact and cookie-consent signal predicates. Contact evidence excludes script,
+style, hidden and template implementation text, while retaining published
+content, contact links and structured data. Unobserved analytics without a
+consent signal is an observation, not proof that an earlier consent finding was
+repaired. These predicates do not establish policy quality, contact destination
+availability, consent enforcement or legal compliance.
+The separately selected `PUBLIC_TRUST_DB_REQUIRED=true` worker scenario collects
+three source findings through Chromium, the real metadata parser and detector.
+Fresh targeted application runs prove unrepaired conditions, an HTTP 503 gap,
+unobserved analytics, an independent contact repair and privacy/consent repairs
+despite unrelated console errors. A broad follow-up recognizes recurrence with
+the same Improvement and preserves the original resolution. Existing
+Improvements also retain observations when the current finding is a
+recommendation, preserving its priority and dismissal state. Resolved or ignored
+observations and unengaged recommendations do not expand automatic Attention.
+Console collection is a separate page evaluator, using desktop and mobile
+page-load windows even when desktop HTML or media storage is unavailable. It
+records actionable console errors and unhandled page exceptions, with distinct
+message identities and bounded retention. Truncation cannot certify recovery.
+Repair requires the original requested and final URLs (including fragment
+routes), capture profiles and access conditions on every originally affected
+page. Credentialed conditions
+use a keyed digest; secret values do not enter the scope receipt. One positively
+observed remaining error disproves an all-clear responsibility, including when
+the count falls below the original critical threshold or another viewport is
+unavailable. Clearing a finding requires every original window to complete
+without errors through its recorded failure horizon. The frozen execution
+snapshot carries this minimum observation time into verification and later
+Site care, within existing browser deadlines. Broad care retains each page's
+own horizon, so one delayed failure does not slow every page. Client navigation
+restarts the final document's window, retaining its actual final URL. Media-only
+tasks do not repeat console observation waits. A shortened or unavailable window
+remains inconclusive. Historical findings without these scopes, and legacy
+captures mixing page load with public actions, cannot establish scoped recovery.
+The separately selected `CONSOLE_DB_REQUIRED=true` worker scenarios exercise
+delayed console errors and unhandled exceptions, a partial repair on a second
+page, mobile-only evidence after desktop refusal, an unavailable mobile window,
+redirect comparability, complete repair, recurrence and bounded console floods.
+These observations cover recorded windows, not every later interaction or
+JavaScript execution state.
+Accessibility collection retains each actual axe rule's passed, failed,
+unresolved or inapplicable outcome, with engine version and the desktop capture
+scope. A failure-only list cannot certify a repair or a healthy automated
+inspection. Mixed passing and unresolved nodes retain the unresolved result;
+one observed failure can still establish that the responsibility fails.
+The collector projects failure text, selectors and fix details into the existing
+finding contract. Transient engine internals, including undefined contrast
+parser fields, cannot interrupt durable snapshot storage. Top-level iframe
+attributes remain the Site's responsibility; nodes inside embedded frames retain
+their existing scope limit.
+The portable WCAG rule inventory follows the installed engine and existing
+rule-to-finding aliases. Rules emitted by the selected WCAG policy have
+registered execution identities and verification assertions. Missing rules or changed
+engine, requested/final URL, profile or access scope remain inconclusive.
+Verification repeats every originally affected page, requiring positive outcomes
+for the same rule family. Unrelated failures do not invalidate an independently
+proved repair. Captured-HTML fallbacks retain their existing copy and severity,
+and carry distinct predicates rather than borrowing an axe rule's pass. An
+unavailable axe engine leaves automated coverage incomplete while retaining
+those actual HTML observations. Historical unscoped findings cannot acquire
+comparable source facts retroactively. Manual and assistive-technology review
+remain outside these automated assertions.
+The separately selected `ACCESSIBILITY_DB_REQUIRED=true` worker scenario
+collects real accessible-name, contrast, iframe-title and ARIA failures. It
+exercises a partial repair on another page, HTTP 503 uncertainty, independent
+name recovery, genuinely unresolved gradient contrast, measured contrast and
+ARIA repairs, and recurrence with the original Improvement and resolution.
 The Performance fixture seeds historical findings from the real HTTP collector
 and detector, then exercises six fresh diagnostic admissions through the
 database, queue and application worker. Missing resource audits keep a repair
@@ -333,6 +557,31 @@ clients refresh authoritative tenant-scoped queries. Neither event reconnect nor
 HTTP/MCP polling performs recovery. Module execution completion is distinct from
 assertion success. Current results require comparable page/configuration/source;
 older receipts are explicit historical evidence.
+
+Site coverage applies incomplete module receipts, failed module ownership, local
+Search responsibilities and Tracking delivery limits before deriving overall
+health. Category cards and account summaries consume these same facts. A current
+observation in one area cannot establish a Clear Site while another required
+area or recorded page is unresolved. Confirmed Flags remain actionable alongside
+incomplete evidence. Completed partial reports retain the existing recheck action,
+including runs with no fatal failure code. The independent Search worker fixture
+checks agreement among the overview, account list and monitoring history using
+the fully migrated disposable database and Redis queues.
+
+Category depth reads compose the current category receipts with the remaining
+full-site receipts. Superseded area observations retain their originating Audit
+and date in history. Pagination is bounded and tied to this evidence selection;
+a cursor from a different selection cannot relabel older evidence as current.
+HTTP and MCP readers select the full-site baseline explicitly, so a newer
+diagnostic or category execution cannot replace its identity.
+
+Diagnostic run results use the exact admitted repair attempt, source Audit,
+verification Audit and immutable evidence reference. Comparable recovery is
+Clear, a reproduced failure is Flag, and missing or inconclusive proof remains
+unverified. Account-only reads use the committed account task. Unavailable
+behavior is incomplete even alongside a successful observation. Run results
+and history share these conclusions. A notification marked SENT establishes
+provider acceptance, represented as `accepted`, without proving inbox delivery.
 
 The homepage's 104 responsibilities have explicit stable coverage identities and
 registered evaluator mappings. The capability report exposes partial coverage;
@@ -576,6 +825,27 @@ Watch parent lookup normalizes the selected URL with the same function used at A
 
 Notification selection applies current Site preferences to both the count and the exact Flag destination. OFF also disables recovery messages. Confidence and impact survive diff projection. Provider rejection and missing delivery configuration consume bounded claims; a confirmed provider ID records SENT, which proves acceptance rather than inbox delivery.
 
+Classification cannot overwrite a live sender or confirmed acceptance. A claim
+compares the observed attempt count, and terminal delivery writes require that
+exact attempt and lease. An expired sender cannot undo a newer acceptance or
+release a newer active claim. Opting out cancels due or expired work while
+preserving a live provider call's recorded ownership. Provider requests use a
+20-second abort deadline, forwarding the signal through the installed SDK to
+the actual HTTP call. Retries retain the alert's stable provider idempotency key
+and five-attempt ceiling. The migrated PostgreSQL/Redis worker fixture exercises
+stale classification reads, late rejection and acceptance after reclamation,
+live and expired opt-outs, exact recipients and Flag links through the installed
+SDK with a controlled HTTP boundary. This establishes local ledger and SDK
+behavior, not real-provider acceptance or inbox delivery.
+
 Checkout proof records the final main-frame response after navigation and checks visible checkout errors before success. Reaching a checkout URL with HTTP 503 is not Clear. Failed confirmation attempts and their response status remain recorded. A Site verification request may omit its change description; store null rather than an invented repair, preserve existing pending context on retries, and let fresh execution determine the result.
+
+Recorded repairs share the existing Improvement Attempt and cycle ledger across Site, API and MCP paths. A request key identifies one declared repair within its Improvement. Exact retries return the original receipt, including completed outcomes, without another attempt or event. A changed declaration under that key returns `FIX_INTENT_MISMATCH` (HTTP 409). Historical receipts without a recorded request hash retain their original receipt; their original payload cannot be reconstructed. Commit and deployment references are declared provenance, not proof that those changes were deployed.
+
+The `20261012060000_fix_attempt_commit_reference` migration persists commit references, freezes keyed or admitted repair intent in PostgreSQL, and removes the older constraint limiting a source to one pending repair. Distinct repairs may coexist while an earlier verifier runs. The database protects source, builder, handoff, references, description and request identity after freezing. Legacy unkeyed, unadmitted drafts retain guarded preparation updates. Native conflict-safe materialization preserves existing Improvement and occurrence history under concurrent first-fix requests.
+
+Reconciliation selects the attempt named by a targeted run, rather than whichever pending repair happens to be newest. Recording and projection share an Improvement lock. A result updates its attempt and original incident proof; only the latest repair updates the Improvement's current verification status. The original Flag's first confirmed resolution remains intact. Board and detail show checking only for an admitted, unfinished verification of the current source scope in the same Site, including interrupted finalization. History evaluates each attempt's own admitted scope. A readiness record alone does not establish checking.
+
+`FIX_INTENTS_DB_REQUIRED=true node scripts/verify-progressive-execution.mjs -t "immutable fix intents"` exercises concurrent first-fix recording, database immutability, distinct later repairs, exact worker reconciliation, completed replay and changed-payload refusal in migrated disposable PostgreSQL and isolated Redis. This local fixture does not establish deployed migration, production queue or external-provider behavior.
 
 Targeted Outcome recovery consumes a completed assessment from the exact tenant RunRequest, attempt, source Audit and Outcome. Required binding keys, environment and recorded scope must match the failure, with positive execution evidence. Reconciliation projects those assessments before issuing the fix verdict. Missing, blocked, changed or unrelated scope remains inconclusive. Optional PageSpeed gaps do not invalidate a completed Checkout binding; legacy report comparisons keep their existing full-review coverage rules. A failed Outcome cannot resolve its Flag merely because a particular diagnostic row disappeared.

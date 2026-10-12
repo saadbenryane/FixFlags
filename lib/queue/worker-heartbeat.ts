@@ -1,6 +1,7 @@
 import { createWorkerRedis } from './redis'
 import { randomUUID } from 'node:crypto'
 import type Redis from 'ioredis'
+import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 
 const HEARTBEAT_PREFIX = 'fixflags:worker:heartbeat:'
 const STALLED_COUNT_KEY = 'fixflags:worker:stalled-count'
@@ -43,6 +44,7 @@ export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
   bootedAtMs?: number
   version?: string
   sha?: string
+  supportedScopes?: string[]
 }
 
 /** Called by the worker process on start, idle tick, and each job lifecycle event. */
@@ -59,6 +61,7 @@ export async function touchWorkerHeartbeat(
     bootedAtMs: WORKER_BOOTED_AT_MS,
     version: WORKER_VERSION,
     sha: WORKER_SHA,
+    supportedScopes: [...executionSpecSchema.shape.scope.options],
     ...diagnostics,
   }
   await getRedis().set(
@@ -82,6 +85,7 @@ export interface WorkerHeartbeatStatus {
     bootedAtMs: number | null
     version: string
     sha: string
+    supportedScopes?: string[]
     lastSuccessfulBrowserProbeAt: string | null
     queueState: WorkerDiagnostics['queueState']
   }>
@@ -204,6 +208,7 @@ export function aggregateWorkerHeartbeats(
       bootedAtMs: record.bootedAtMs ?? null,
       version: record.version ?? 'unknown',
       sha: record.sha ?? 'unknown',
+      supportedScopes: Array.isArray(record.supportedScopes) ? record.supportedScopes.filter(scope => typeof scope === 'string') : [],
       lastSuccessfulBrowserProbeAt: record.lastSuccessfulBrowserProbeAt ?? null,
       queueState: record.queueState ?? 'idle',
     })),

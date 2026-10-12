@@ -5,6 +5,19 @@ import type { BoardCardView } from '@/lib/sites/board-card'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
+  it('shows unfinished work and a separate recovery action alongside recorded Flags', () => {
+    const retry = vi.fn()
+    render(<BoardCard name="Search" status="1 Flag" state="problem" answer="Page title is missing" icon="search"
+      layout="row" flags={[{ id: 'f1', title: 'Page title is missing', href: '#flag' }]}
+      incompleteReason="Unfinished checks: Crawl access." recoveryAction={<button onClick={retry}>Check Search again</button>} />)
+    expect(screen.getByRole('link', { name: 'Page title is missing' })).toBeVisible()
+    expect(screen.getByText('Unfinished checks: Crawl access.')).toBeVisible()
+    const action = screen.getByRole('button', { name: 'Check Search again' })
+    expect(action.parentElement?.closest('button, a')).toBeNull()
+    fireEvent.click(action)
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
   it('keeps healthy status accessible without repeating freshness on the board', () => {
     render(
       <BoardCard

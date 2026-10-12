@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       },
     })
     if ('error' in result) return NextResponse.redirect(`${base}/dashboard`)
-    return NextResponse.redirect(`${base}/sites/${result.projectId}/settings`)
+    return NextResponse.redirect(`${base}/sites/${result.projectId}?view=integrations#integrations`)
   } catch {
     return NextResponse.redirect(`${base}/dashboard`)
   }

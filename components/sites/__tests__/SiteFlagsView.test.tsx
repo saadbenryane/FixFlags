@@ -1,13 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SiteFlagsView, siteFlagTab } from '../SiteFlagsView'
 import { SiteBoard } from '../SiteBoard'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -148,17 +147,10 @@ describe('the tab is read on the server', () => {
     expect(siteFlagTab(['open', 'resolved'])).toBe('open')
   })
 
-  it('reaches both tabs as real links the customer can open', () => {
+  it('keeps old callers on Overview without a duplicate tab list', () => {
     renderFlags('open')
-    const open = screen.getByRole('tab', { name: /open \(1\)/i })
-    const resolved = screen.getByRole('tab', { name: /resolved/i })
-    expect(open).toHaveAttribute('aria-selected', 'true')
-    expect(resolved).toHaveAttribute('href', '/sites/p_example/flags?tab=resolved')
-    open.focus()
-    fireEvent.keyDown(open, { key: 'ArrowRight' })
-    expect(resolved).toHaveFocus()
-    expect(open).toHaveAttribute('aria-selected', 'true')
-    expect(resolved).toHaveAttribute('aria-selected', 'false')
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Overview', exact: true }).length).toBeGreaterThan(0)
   })
 })
 
@@ -167,39 +159,11 @@ describe('the tab is read on the server', () => {
  * independently verified as fixed and no surface showed them. Resolved history
  * must be reachable without diluting the open attention a customer came for.
  */
-describe('Open attention and Resolved are different lists', () => {
-  it('shows an open Flag on the open tab', () => {
-    renderFlags('open')
-    expect(screen.getByText('Meta description is missing')).toBeVisible()
-    expect(screen.queryByText('Alt text was missing')).not.toBeInTheDocument()
-  })
-
-  it('shows a verified recovery, with its proof, on the resolved tab', () => {
+describe('legacy list renderers use canonical workspace views', () => {
+  it('places resolved history in Timeline', () => {
     renderFlags('resolved')
-    expect(screen.getByText('Alt text was missing')).toBeVisible()
-    expect(screen.queryByText('Meta description is missing')).not.toBeInTheDocument()
-    expect(screen.getByText(SITE_BOARD_COPY.flagResolvedList)).toBeVisible()
-    expect(screen.queryByText(/verified as fixed/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'View proof' })).toHaveAttribute('href', expect.stringContaining('/flags/'))
-    expect(screen.queryByRole('button', { name: /copy fix prompt/i })).not.toBeInTheDocument()
-  })
-
-  it('never implies a Site is healthy just because nothing is open', () => {
-    renderFlags('open', flagsView({
-      flags: [],
-      presentation: {
-        ...flagsView().presentation,
-        result: { state: 'could_not_verify', label: 'Couldn’t verify' },
-        flags: { count: 0, label: '0 Flags', fixFirstCount: 0 },
-      },
-    }))
-    expect(screen.getByText('No Flags found. Coverage is incomplete.')).toBeVisible()
-    expect(screen.queryByText('Nothing needs you right now.')).not.toBeInTheDocument()
-  })
-
-  it('says no verified recoveries yet without claiming the Site is healthy', () => {
-    renderFlags('resolved', flagsView({ resolvedFlags: [] }))
-    expect(screen.getByText('No verified recoveries yet')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Timeline' })).toBeVisible()
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
   })
 })
 
@@ -232,8 +196,7 @@ describe('the Flags tab is reachable from the Site chrome', () => {
         <SiteBoard siteId="p_example" initial={flagsView()} />
       </MeProvider>
     )
-    const links = screen.getAllByRole('link', { name: /^Flags/ })
-    expect(links.length).toBeGreaterThan(0)
-    for (const link of links) expect(link).toHaveAttribute('href', '/sites/p_example?view=flags#flags')
+    expect(screen.queryByRole('link', { name: 'Flags', exact: true })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Timeline', exact: true }).length).toBeGreaterThan(0)
   })
 })

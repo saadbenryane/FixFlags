@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   runRequestFindMany: vi.fn(async () => []),
   persistAuditRunCost: vi.fn(),
   diffFlagsAgainstParent: vi.fn(),
+  persistFlagDiffSummary: vi.fn(),
   notifyWatchRegression: vi.fn(),
   materializeAttentionForAudit: vi.fn(),
   reconcileImprovementVerification: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('@/lib/audit/project-watch', () => ({ notifyWatchRegression: mocks.notif
 
 vi.mock('@/lib/audit/diff-flags', () => ({
   diffFlagsAgainstParent: mocks.diffFlagsAgainstParent,
+  persistFlagDiffSummary: mocks.persistFlagDiffSummary,
 }))
 
 vi.mock('@/lib/improvements/service', () => ({
@@ -84,6 +86,13 @@ import {
 } from '../finalize'
 
 describe('persistImprovementCycle', () => {
+  it('counts category usage through the existing idempotent completion ledger', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ userId: 'owner', improvementProjectedAt: null,
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: 'https://example.com/', environment: 'production',
+        category: { area: 'security', sourceAuditId: 'full', pages: ['https://example.com/'] }, checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null } })
+    await persistImprovementCycle('category', 'full')
+    assert.deepEqual(mocks.incrementUsageOnCompleteForAudit.mock.calls, [['category', 'owner']])
+  })
   it('classifies a completed first Watch without waiting for comparison history', async () => {
     mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
     await persistImprovementCycle('first-watch', null)
@@ -135,6 +144,28 @@ describe('persistImprovementCycle', () => {
 
     expect(mocks.diffFlagsAgainstParent).not.toHaveBeenCalled()
     expect(mocks.materializeAttentionForAudit).not.toHaveBeenCalled()
+  })
+
+  it('classifies notifications only after both evidence projections commit and leaves failed classification retryable', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
+    await persistImprovementCycle('broad-watch', 'parent')
+    expect(mocks.notifyWatchRegression).toHaveBeenCalledWith('parent', 'broad-watch')
+    expect(mocks.runRequestFindMany.mock.invocationCallOrder[0]).toBeLessThan(mocks.notifyWatchRegression.mock.invocationCallOrder[0])
+    expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.notifyWatchRegression.mock.invocationCallOrder[0])
+    expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.persistFlagDiffSummary.mock.invocationCallOrder[0])
+    expect(mocks.persistFlagDiffSummary.mock.invocationCallOrder[0]).toBeLessThan(mocks.notifyWatchRegression.mock.invocationCallOrder[0])
+    mocks.auditUpdateMany.mockClear()
+    mocks.notifyWatchRegression.mockRejectedValueOnce(new Error('classification persistence failed'))
+    await expect(persistImprovementCycle('broad-watch', 'parent')).rejects.toThrow('classification persistence failed')
+    expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+  })
+
+  it('leaves completion and notification retryable when the immutable comparison cannot be recorded', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
+    mocks.persistFlagDiffSummary.mockRejectedValueOnce(new Error('Comparison storage unavailable'))
+    await expect(persistImprovementCycle('broad-watch', 'parent')).rejects.toThrow('Comparison storage unavailable')
+    expect(mocks.notifyWatchRegression).not.toHaveBeenCalled()
+    expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
   })
 })
 

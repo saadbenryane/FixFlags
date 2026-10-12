@@ -20,6 +20,8 @@ export interface CaptureMetrics {
   /** True when CSS animations still run under prefers-reduced-motion: reduce. */
   motionIgnoresReducedPreference: boolean
   motionSampleLabel: string | null
+  /** False when browser emulation or either motion observation failed. */
+  motionComplete?: boolean
   inputsBelow16px: Array<{ selector: string; fontSize: number }>
   loadExperience?: PageLoadExperience | null
   desktopLoadExperience?: PageLoadExperience | null
@@ -367,6 +369,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     ...base,
     motionIgnoresReducedPreference: motion.motionIgnoresReducedPreference,
     motionSampleLabel: motion.motionSampleLabel,
+    motionComplete: motion.motionComplete,
   }
 }
 
@@ -424,23 +427,24 @@ async function countSignificantMotionInPage(
 export async function measureMotionA11y(page: Page): Promise<{
   motionIgnoresReducedPreference: boolean
   motionSampleLabel: string | null
+  motionComplete: boolean
 }> {
-  const before = await countSignificantMotionInPage(page)
-  if (before.count === 0) {
-    return { motionIgnoresReducedPreference: false, motionSampleLabel: null }
-  }
-
+  let emulated = false
   try {
+    const before = await countSignificantMotionInPage(page)
+    if (before.count === 0) return { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true }
+    emulated = true
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const after = await countSignificantMotionInPage(page)
-    await page.emulateMedia({ reducedMotion: 'no-preference' })
-
     const stillAnimating = after.count > 0 && after.count >= Math.ceil(before.count * 0.5)
     return {
       motionIgnoresReducedPreference: stillAnimating,
       motionSampleLabel: stillAnimating ? before.sample : null,
+      motionComplete: true,
     }
   } catch {
-    return { motionIgnoresReducedPreference: false, motionSampleLabel: null }
+    return { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: false }
+  } finally {
+    if (emulated) await page.emulateMedia({ reducedMotion: 'no-preference' })
   }
 }

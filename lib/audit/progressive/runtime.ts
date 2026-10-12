@@ -9,6 +9,7 @@ import { initialTaskPlan, availabilityOnly } from './graph'
 import { collectionHandlers } from './collectors'
 import { evaluatorHandlers } from './evaluators'
 import { lifecycleHandlers } from './lifecycle'
+import { accountHandlers } from './accounts'
 import { actionHandlers } from './actions'
 import { registerTaskHandlers } from './registry'
 import { loadTaskGraph, persistTaskPlan, reconcileTasks, dispatchReadyTasks, executeTask, recoverProgressiveTasks } from './engine'
@@ -16,7 +17,7 @@ import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
 
-const handlers = registerTaskHandlers([...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers])
+const handlers = registerTaskHandlers([...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers, ...accountHandlers])
 for (const coverage of ADVERTISED_COVERAGE_REGISTRY.values()) for (const evaluator of coverage.evaluators) {
   if (evaluator.startsWith('task:') && !handlers.has(evaluator.slice(5) as Parameters<typeof handlers.has>[0]))
     throw new Error('Advertised task evaluator is not registered: ' + evaluator)

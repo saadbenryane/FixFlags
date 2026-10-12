@@ -5,6 +5,8 @@ import { normalizeHeadingText } from './checks/utils'
 import { collectResourceTransport, type ResourceTransport } from './resource-transport'
 
 export interface PageMetadata {
+  /** Observed document base used to resolve relative navigation declarations. */
+  linkBaseUrl?: string
   title: string | null
   description: string | null
   ogTitle: string | null
@@ -42,8 +44,11 @@ export interface PageMetadata {
   navLandmarkCount: number
   pageText: string
   jsonLd: unknown[]
-  /** Lowercase id attributes present on the page (for hash link validation). */
+  /** Exact id attributes. Fragment targets are case sensitive. */
   elementIds: string[]
+  /** Named anchors from the same complete HTML. Absent in older snapshots,
+   * whose normalized identifiers cannot establish exact fragment recovery. */
+  anchorNames?: string[]
   /** Count of form input/textarea/select elements lacking validation attributes. */
   formInputsMissingValidation: number
   /** Total number of form input/textarea/select elements. */
@@ -408,10 +413,15 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   )
 
   // Contact info detection - check body text, visible links, and JSON-LD structured data
+  const publishedBody = $('body').clone()
+  publishedBody.find('script, style, template, [hidden]').remove()
+  const publishedText = publishedBody.text().toLowerCase()
+  const publishedLinks = publishedBody.find('a[href]').toArray().map(element => ($(element).attr('href') ?? '').toLowerCase())
   const hasContactInfoFromText = !!(
-    htmlStr.includes('contact') ||
-    htmlStr.includes('@') ||
-    htmlStr.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/)
+    publishedText.includes('contact') ||
+    publishedText.includes('@') ||
+    publishedText.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) ||
+    publishedLinks.some(href => href.includes('contact') || /^mailto:|^tel:/.test(href))
   )
   const hasContactInfoFromJsonLd = jsonLd.some((item) => {
     if (!item || typeof item !== 'object') return false
@@ -463,8 +473,13 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
 
   const elementIds: string[] = []
   $('[id]').each((_, el) => {
-    const id = $(el).attr('id')?.trim().toLowerCase()
+    const id = $(el).attr('id')
     if (id) elementIds.push(id)
+  })
+  const anchorNames: string[] = []
+  $('a[name]').each((_, el) => {
+    const name = $(el).attr('name')
+    if (name) anchorNames.push(name)
   })
 
   // Resolve og:image and canonical against the page URL. Social crawlers
@@ -480,7 +495,14 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     }
   }
 
+  let linkBaseUrl = url
+  try {
+    const base = $('base[href]').first().attr('href')
+    if (base) linkBaseUrl = new URL(base, url).href
+  } catch { /* An invalid base declaration leaves the document URL as the base. */ }
+
   return {
+    linkBaseUrl,
     title: $('title').first().text().trim() || null,
     description: $('meta[name="description"]').attr('content') || null,
     ogTitle: $('meta[property="og:title"]').attr('content') || null,
@@ -518,6 +540,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     pageText,
     jsonLd,
     elementIds,
+    anchorNames,
     formInputsMissingValidation,
     totalFormInputs,
     maxConversionFormInputs,

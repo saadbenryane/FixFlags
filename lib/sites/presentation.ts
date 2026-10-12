@@ -1,7 +1,7 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { scheduleFromWatch, scheduleLabel } from './monitoring-schedule'
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
-import { SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 import type { WatchBoardState } from '@/lib/sites/watch-state'
 
 export type SiteResultState =
@@ -56,6 +56,7 @@ export type CustomerAttention = {
 }
 
 export type VerificationResultLabel =
+  | 'unverified'
   | 'verifying'
   | 'verified'
   | 'still_open'
@@ -165,14 +166,15 @@ export function resultPresentation(input: {
   flagCount: number
   stale: boolean
   hasCurrentEvidence: boolean
+  assessmentResult?: import('./assessment').SiteAssessment['result']
 }): SitePresentation['result'] {
   const inFlight = Boolean(input.auditStatus && !['COMPLETED', 'FAILED'].includes(input.auditStatus))
   let state: SiteResultState
   if (inFlight) state = 'checking'
   else if (input.auditStatus === 'FAILED') state = 'failed'
-  else if (input.flagCount > 0) state = 'flags'
-  else if (input.stale) state = 'stale'
-  else if (!input.hasCurrentEvidence || input.healthState === 'unknown') state = 'could_not_verify'
+  else if (input.flagCount > 0 || input.assessmentResult === 'FLAG' || input.healthState === 'attention' || input.healthState === 'problem') state = 'flags'
+  else if (input.stale || input.assessmentResult === 'STALE') state = 'stale'
+  else if (!input.hasCurrentEvidence || input.healthState !== 'healthy') state = 'could_not_verify'
   else state = 'clear'
   return { state, label: SITE_PRESENTATION_COPY.result[state] }
 }
@@ -217,6 +219,8 @@ export function runPresentation(input: {
   auditStatus: string | null
   startedAt: Date | null
   failureCode: string | null
+  reportCompleteness?: string | null
+  failedModules?: unknown
 }): SitePresentation['run'] {
   if (!input.auditStatus) {
     return { state: 'idle', label: SITE_PRESENTATION_COPY.run.idle, auditId: input.auditId, recoveryAction: null }
@@ -231,7 +235,8 @@ export function runPresentation(input: {
     const state: SiteRunState = input.startedAt ? 'interrupted' : 'failed'
     return { state, label: SITE_PRESENTATION_COPY.run[state], auditId: input.auditId, recoveryAction: 'retry' }
   }
-  if (input.failureCode) {
+  if (input.failureCode || input.reportCompleteness === 'PARTIAL' ||
+    (Array.isArray(input.failedModules) && input.failedModules.length > 0)) {
     return { state: 'partial', label: SITE_PRESENTATION_COPY.run.partial, auditId: input.auditId, recoveryAction: 'retry' }
   }
   return { state: 'idle', label: SITE_PRESENTATION_COPY.run.idle, auditId: input.auditId, recoveryAction: null }
@@ -306,8 +311,10 @@ export function verificationResult(input: {
   outcome: string | null
   comparable: boolean | null
   reason: string | null
+  verifying?: boolean
+  verificationAuditId?: string | null
 }): VerificationResultLabel {
-  if (!input.outcome) return 'verifying'
+  if (!input.outcome) return input.verifying ? 'verifying' : input.verificationAuditId ? 'could_not_verify' : 'unverified'
   if (input.outcome === 'IMPROVED') return 'verified'
   if (input.outcome === 'UNCHANGED') return 'still_open'
   if (input.outcome === 'REGRESSED') return 'regressed'
@@ -320,6 +327,7 @@ export function verificationResult(input: {
 }
 
 export function verificationResultLabel(result: VerificationResultLabel): string {
+  if (result === 'unverified') return SITE_BOARD_COPY.noVerificationYet
   return SITE_PRESENTATION_COPY.verification[result]
 }
 

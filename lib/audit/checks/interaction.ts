@@ -1,5 +1,6 @@
 import type { CaptureMetrics, PageLoadExperience } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 function slowLoadFlag(load: PageLoadExperience | null | undefined): DeterministicFlag | null {
   if (
@@ -25,7 +26,23 @@ function slowLoadFlag(load: PageLoadExperience | null | undefined): Deterministi
   }
 }
 
-export function runInteractionChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
+export function runInteractionChecks(metrics: CaptureMetrics | null, record?: CheckRecorder): DeterministicFlag[] {
+  recordObservation(record, 'reduced-motion', 'Reduced-motion behavior',
+    'Reduced motion lowers the significant visible CSS animation count below half of its original count, or none is initially present',
+    metrics?.motionComplete === true ? metrics.motionIgnoresReducedPreference ? 'At least half of the significant CSS motion remained under reduced motion.' : 'The recorded animation-count comparison met the reduction rule.'
+      : 'A complete reduced-motion comparison is unavailable.',
+    metrics?.motionComplete === true ? !metrics.motionIgnoresReducedPreference : undefined)
+  recordObservation(record, 'blocking-loading-ui', 'Captured loading UI',
+    'No blocking loading indicator remains at capture time',
+    metrics ? `Blocking loading UI ${metrics.stuckLoadingIndicator ? 'remained' : 'was absent'} at capture time.` : 'Loading UI was not observed.',
+    metrics && typeof metrics.stuckLoadingIndicator === 'boolean' ? !metrics.stuckLoadingIndicator : undefined, true)
+  const windows = [metrics?.loadExperience, metrics?.desktopLoadExperience].filter((window): window is PageLoadExperience => Boolean(window))
+  const loadFailed = windows.some(window => Boolean(slowLoadFlag(window)))
+  const loadComplete = windows.length > 0 && windows.every(window => !window.loadingVisibleAtFinal &&
+    (!window.loadingVisibleAtInitial || window.loadingClearedMs !== null))
+  recordObservation(record, 'loading-delay', 'Recorded loading delay', 'Blocking initial loading UI clears within 3000ms in each recorded window',
+    windows.length ? windows.map(window => `${window.device}: initial loading ${window.loadingVisibleAtInitial}, final loading ${window.loadingVisibleAtFinal}, cleared at ${window.loadingClearedMs ?? 'unknown'}ms.`).join(' ')
+      : 'No initial and final loading window was recorded.', loadFailed ? false : loadComplete ? true : undefined, true)
   if (metrics == null) return []
 
   const findings: DeterministicFlag[] = []

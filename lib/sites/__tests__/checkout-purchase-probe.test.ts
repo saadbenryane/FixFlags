@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   attemptCreateMany: vi.fn(),
   attemptUpdateMany: vi.fn(),
   persistJourneyResult: vi.fn(),
-  flagUpdateMany: vi.fn(),
+  flagFindFirst: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -29,7 +29,7 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.runUpdateMany,
     },
     journeyReview: { findFirst: mocks.journeyFindFirst },
-    flag: { updateMany: mocks.flagUpdateMany },
+    flag: { findFirst: mocks.flagFindFirst },
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
       create: mocks.executionCreate,
@@ -80,7 +80,7 @@ describe('unmocked Checkout purchase probe', () => {
     mocks.attemptUpdateMany.mockResolvedValue({ count: 0 })
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.persistJourneyResult.mockResolvedValue([])
-    mocks.flagUpdateMany.mockResolvedValue({ count: 0 })
+    mocks.flagFindFirst.mockResolvedValue({ id: 'failure-flag' })
   })
 
   it('records success only after the buy control reaches checkout', async () => {
@@ -111,9 +111,14 @@ describe('unmocked Checkout purchase probe', () => {
     ])
     expect(journey.steps.some((step) => step.url.startsWith(`${origin}/red-atc`))).toBe(true)
     expect(lastDisposition()).toBe('FAILED')
-    expect(mocks.flagUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: { fingerprint: 'outcome:checkout' },
-    }))
+    expect(mocks.persistJourneyResult).toHaveBeenCalledWith('audit-1', expect.any(Object),
+      { outcomeId: 'outcome-1', bindingKey: 'checkout-browser-v1' })
+    expect(mocks.flagFindFirst).toHaveBeenCalledWith({ where: {
+      auditId: 'audit-1', fingerprint: 'outcome:v1:outcome-1:checkout-browser-v1',
+    }, select: { id: true } })
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      outcomeId: 'outcome-1', bindingKey: 'checkout-browser-v1', disposition: 'FAILED', detail: expect.objectContaining({ failureFlagId: 'failure-flag' }),
+    }) }))
   }, 120_000)
 
   it('records neither success nor a confirmed failure when the page has no buy control', async () => {
@@ -126,7 +131,7 @@ describe('unmocked Checkout purchase probe', () => {
     expect(journey.findings).toEqual([])
     expect(journey.steps.some((step) => step.url.startsWith(`${origin}/unknown`))).toBe(true)
     expect(lastDisposition()).toBe('BLOCKED')
-    expect(mocks.flagUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.flagFindFirst).not.toHaveBeenCalled()
   }, 120_000)
 
   it('does not record success when the start URL is already checkout', async () => {

@@ -38,16 +38,16 @@ export function hasRecordedRecoveryEvidence(input: {
     if (searches.length) return searches.every(receipt => assessSearchRecovery(receipt, checkId, input.flag.attentionPolicy).verdict === 'passed')
     const checkModule = CHECK_REGISTRY[checkId]?.module
     const source = checkModule === 'performance' ? 'pagespeed-desktop' : checkModule === 'mobile' ? 'pagespeed-mobile'
-      : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network'
-        : checkModule === 'security' ? 'original-html' : ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
-          : checkModule === 'accessibility' ? 'axe' : 'rendered-dom'
+      : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network'
+        : checkModule === 'security' ? 'original-html' : checkId === 'broken-internal-links' || ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
+          : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom'
     const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
       const result = checkReceiptSchema.safeParse(row.detail)
       return result.success && result.data.module === checkModule && result.data.execution?.auditId === input.auditId &&
         result.data.execution.checkVersion === spec.checks[checkId] && recoveryUrl(result.data.pageUrl) === url &&
         result.data.execution.source === source ? [result.data] : []
     })
-    if (['keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
+    if (['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['flow', 'accessibility', 'console', 'keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
       const sources = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
         const result = checkReceiptSchema.safeParse(row.detail)
         return result.success ? [result.data] : []

@@ -21,6 +21,26 @@ const complete = {
 }
 
 describe('assessVerificationCoverage', () => {
+  it.each(['proved', 'missing', 'other-page', 'other-responsibility', 'observed-only', 'old-version'] as const)('uses the same scoped module recovery proof as Flag closure: %s', scenario => {
+    const pageUrl = 'https://example.com/'
+    const input = { ...complete, auditId: 'after', checkId: scenario === 'other-responsibility' ? 'lang-missing' : 'viewport-missing', pageUrl,
+      reportCompleteness: 'PARTIAL' as const, evidenceCoverage: {}, pages: [], failedModules: ['pagespeed'],
+      originalFlag: { checkId: 'viewport-missing', pageUrl },
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+        checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: null },
+      verifierExecutions: scenario === 'missing' ? [] : [{ targetKey: 'module:metadata', scopeKey: 'page:' + pageUrl, status: 'COMPLETED' as const,
+        evidenceReference: { taskId: 'metadata-task' }, detail: { kind: 'site-module-check', version: 1, module: 'metadata', passed: true, applicable: true,
+          pageUrl: scenario === 'other-page' ? 'https://example.com/elsewhere' : pageUrl,
+          execution: { auditId: 'after', taskId: 'metadata-task', checkVersion: scenario === 'old-version' ? 2 : 1,
+            source: 'rendered-dom', collectedAt: '2026-10-12T12:00:00.000Z' },
+          assertions: [{ key: 'viewport-presence', name: 'Viewport', expected: 'Viewport present', observed: 'Viewport present', passed: true,
+            ...(scenario === 'observed-only' ? { disposition: 'observed' } : {}) }],
+        } }],
+    }
+    expect(assessVerificationCoverage(input).comparable).toBe(scenario === 'proved')
+    if (scenario === 'proved') expect(assessVerificationCoverage(input).coverage.executionEvidenceReference).toMatchObject({ kind: 'recorded-recovery', auditId: 'after' })
+  })
+
   it('accepts an exact HTTP assertion without a screenshot or unrelated module success', () => {
     const detail = { kind: 'check-verifier', version: 1, auditId: 'after', taskId: 'task',
       checkId: 'security-csp-missing', checkVersion: 1, pageUrl: 'https://example.com/', source: 'http',

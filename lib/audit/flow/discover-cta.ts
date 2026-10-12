@@ -1,4 +1,5 @@
 import type { Page } from 'playwright'
+import { primaryControlContext, primaryPageContext } from './primary-action-evidence'
 import {
   FLOW_IDX_ATTR,
   rankScoredCtaCandidate,
@@ -12,6 +13,8 @@ export interface FlowCtaCandidate {
   href: string | null
   score: number
   opensInNewTab: boolean
+  context?: string
+  controls?: string | null
 }
 
 const CTA_SELECTORS = 'a[href], button, [role="button"]'
@@ -30,10 +33,14 @@ export async function discoverFlowCtas(page: Page, pageUrl: string, includeNavig
       const items: Array<{
         idx: number
         tag: string
+        role: string | null
         text: string
         href: string | null
         opensInNewTab: boolean
         hashTargetExists?: boolean
+        identity: string
+        controls: string | null
+        resolvedHref: string | null
       }> = []
       let idx = 0
 
@@ -73,7 +80,18 @@ export async function discoverFlowCtas(page: Page, pageUrl: string, includeNavig
             hashTargetExists = Boolean(id && (document.getElementById(id) || document.querySelector('a[name="' + CSS.escape(id) + '"]')))
           } catch { /* Invalid fragments cannot establish a destination. */ }
         }
-        items.push({ idx, tag, text, href, opensInNewTab, ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
+        const path: string[] = []
+        let node: Element | null = el
+        while (node && path.length < 12) {
+          if (node.id && document.querySelectorAll('#' + CSS.escape(node.id)).length === 1) { path.unshift('#' + node.id); break }
+          const siblings: Element[] = node.parentElement ? Array.from(node.parentElement.children).filter(child => child.tagName === node!.tagName) : []
+          path.unshift(node.tagName.toLowerCase() + ':nth-of-type(' + (siblings.indexOf(node) + 1) + ')')
+          node = node.parentElement
+        }
+        let resolvedHref: string | null = null
+        try { if (href) resolvedHref = new URL(href, document.baseURI).href } catch { /* Invalid destinations stay unverified. */ }
+        items.push({ idx, tag, role: el.getAttribute('role'), text, href, opensInNewTab, identity: path.join('>'), controls: el.getAttribute('aria-controls'), resolvedHref,
+          ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
         idx++
       }
 
@@ -82,13 +100,15 @@ export async function discoverFlowCtas(page: Page, pageUrl: string, includeNavig
     { selectors: CTA_SELECTORS, attr: FLOW_IDX_ATTR, includeNavigation }
   )
 
-  return scoreCtaCandidates(pageUrl, raw).map((item) => ({
-    flowIdx: item.idx,
-    text: item.text,
-    href: item.href,
-    score: item.score,
-    opensInNewTab: raw.find((r) => r.idx === item.idx)?.opensInNewTab ?? false,
-  }))
+  const pageContext = primaryPageContext(pageUrl, page.url(), page.viewportSize())
+  const byIndex = new Map(raw.map(item => [item.idx, item]))
+  return scoreCtaCandidates(pageUrl, raw).map((item) => {
+    const element = byIndex.get(item.idx)!
+    return { flowIdx: item.idx, text: item.text, href: element.href?.startsWith('#') ? item.href : element.resolvedHref ?? item.href,
+      score: item.score, opensInNewTab: element.opensInNewTab,
+      context: primaryControlContext({ pageContext, identity: element.identity, label: item.text, href: element.resolvedHref, controls: element.controls }),
+      controls: element.controls }
+  })
 }
 
 /** If header/nav filtering removed all candidates, retry including them (auth still scores low). */

@@ -23,8 +23,8 @@ describe('Watch alert delivery', () => {
     expect(watchAlertDelivery({ status: 'NOT_APPLICABLE', attempts: 0 })).toBe('none')
   })
 
-  it('reports a delivered alert as delivered', () => {
-    expect(watchAlertDelivery({ status: 'SENT', attempts: 1 })).toBe('delivered')
+  it('reports provider acceptance without claiming inbox delivery', () => {
+    expect(watchAlertDelivery({ status: 'SENT', attempts: 1 })).toBe('accepted')
   })
 
   it('reports an alert still being sent as in progress, not as a failure', () => {
@@ -150,7 +150,7 @@ describe('Site notice for an undelivered alert', () => {
 describe('One-line delivery summary for Site chrome', () => {
   it('is silent when delivery is fine or irrelevant', () => {
     expect(watchAlertSummary('none')).toBeNull()
-    expect(watchAlertSummary('delivered')).toBeNull()
+    expect(watchAlertSummary('accepted')).toBeNull()
   })
 
   it('states an undelivered alert rather than leaving only the schedule', () => {

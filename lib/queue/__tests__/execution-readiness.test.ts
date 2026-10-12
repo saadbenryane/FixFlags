@@ -20,4 +20,11 @@ describe('execution readiness', () => {
     read.mockRejectedValue(new Error('unreachable'))
     await expect(requireExecutionReady()).rejects.toMatchObject({ status: 503, code: 'EXECUTION_UNAVAILABLE' })
   })
+  it('requires every live worker to support a newly admitted execution scope', async () => {
+    const ready = { queueState: 'active', supportedScopes: ['CATEGORY'] }
+    read.mockResolvedValue({ alive: true, browserOk: true, workers: [ready] })
+    await expect(requireExecutionReady('CATEGORY')).resolves.toBeUndefined()
+    read.mockResolvedValue({ alive: true, browserOk: true, workers: [ready, { queueState: 'idle' }] })
+    await expect(requireExecutionReady('CATEGORY')).rejects.toMatchObject({ status: 503, code: 'EXECUTION_SCOPE_UNAVAILABLE' })
+  })
 })

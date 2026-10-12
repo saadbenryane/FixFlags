@@ -67,7 +67,7 @@ export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAu
       <div className="border-t border-border/80 pt-5">
         <h3 className="mb-3 text-sm font-semibold">{SITE_BOARD_COPY.verifyStep}</h3>
         <p className="text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.verifyStepBody}</p>
-        <Button className="mt-3 w-full" variant="brand" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
+        <Button className="mt-3 w-full" variant="default" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>
           <ShieldCheck aria-hidden="true" />
           {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
         </Button>
@@ -90,7 +90,7 @@ export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAu
           <SiteActionFeedback message={message} error={error} siteId={siteId} />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>{SITE_ACTION_COPY.cancel}</Button>
-            <Button type="button" variant="brand" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+            <Button type="button" variant="default" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

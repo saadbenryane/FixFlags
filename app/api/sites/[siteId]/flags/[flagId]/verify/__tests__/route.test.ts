@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
+import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -58,6 +59,14 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/verify', () => {
     expect(response.status).toBe(409)
     expect(body.message).toBe('Another Site run is already in progress')
     expect(body.message).not.toBe('Something went wrong')
+  })
+
+  it('returns the exact changed-fix conflict through the shared API error boundary', async () => {
+    const error = new ImprovementAttemptConflict()
+    mocks.executeSiteCommand.mockRejectedValue(error)
+    const response = await POST(request('verify-once'), context)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: error.code, message: error.message, requestId: expect.any(String) })
   })
 
   it('accepts a fresh verification and returns its RunRequest identity', async () => {

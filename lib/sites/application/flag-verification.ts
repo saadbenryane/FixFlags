@@ -2,12 +2,13 @@ import { prisma } from '@/lib/db'
 import { recordFlagImprovementAttempt } from '@/lib/improvements/service'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
+import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 
 export async function recordSiteFlagFix(input: {
   siteId: string
   flagId: string
   userId: string
-  idempotencyKey: string
+  idempotencyKey?: string
   changeSummary?: string
   commitReference?: string
   deploymentReference?: string
@@ -18,8 +19,18 @@ export async function recordSiteFlagFix(input: {
   const flag = await loadSiteFlagDetail(site, input.flagId)
   if (!flag) throw new Error('Flag not found')
 
+  const key = input.idempotencyKey?.trim()
+  const recorded = key && flag.improvementId ? await prisma.improvementAttempt.findFirst({
+    where: { improvementId: flag.improvementId, idempotencyKey: key,
+      improvement: { projectId: site.projectId, project: { userId: input.userId } } },
+  }) : null
+  const sourceFlagId = flag.sourceFlagId ?? flag.id
+  if (recorded && input.flagId !== flag.improvementId && recorded.handoffReference !== 'flag:' + sourceFlagId) throw new ImprovementAttemptConflict()
+  // A durable Improvement may point to a later occurrence by the time a retry
+  // arrives. Replay its original source; ownership is rechecked by the service.
+  const recordedSource = recorded?.handoffReference?.startsWith('flag:') ? recorded.handoffReference.slice(5) : null
   const result = await recordFlagImprovementAttempt({
-    flagId: flag.sourceFlagId ?? flag.id,
+    flagId: recordedSource ?? sourceFlagId,
     userId: input.userId,
     builder: 'site',
     client: input.client,
@@ -27,6 +38,8 @@ export async function recordSiteFlagFix(input: {
     action: 'READY_TO_VERIFY',
     changeSummary: input.changeSummary,
     deploymentReference: input.deploymentReference,
+    commitReference: input.commitReference,
+    idempotencyKey: key,
   })
   if (!result.attemptId) throw new Error('Could not record this fix attempt')
 
@@ -34,9 +47,13 @@ export async function recordSiteFlagFix(input: {
     siteId: site.siteId,
     flagId: flag.id,
     attemptId: result.attemptId,
-    idempotencyKey: input.idempotencyKey,
-    commitReference: input.commitReference ?? null,
-    deploymentReference: input.deploymentReference ?? null,
+    idempotencyKey: key,
+    changeSummary: 'changeSummary' in result ? result.changeSummary : null,
+    commitReference: 'commitReference' in result ? result.commitReference : null,
+    deploymentReference: 'deploymentReference' in result ? result.deploymentReference : null,
+    sourceAuditId: result.sourceReviewId,
+    verificationAuditId: 'verificationAuditId' in result ? result.verificationAuditId : null,
+    outcome: 'outcome' in result ? result.outcome : null,
   }
 }
 

@@ -76,6 +76,14 @@ describe('url identity', () => {
 
   it('preserves a fetchable url on the canonical destination', () => {
     const canonical = canonicalizeDestination('https://Example.com/Checkout/?fbclid=abc#x')
-    expect(canonical?.url).toBe('https://example.com/Checkout')
+    expect(canonical?.url).toBe('https://example.com/Checkout/?fbclid=abc')
+  })
+
+  it('deduplicates variants without changing the actual host, locale, path or query to fetch', () => {
+    const raw = 'https://www.example.com/en/pricing/?lang=en&page=2&token=private#details'
+    const canonical = canonicalizeDestination(raw)!
+    expect(canonical.url).toBe(raw.split('#')[0])
+    expect(canonical.key).toBe(canonicalDestinationKey('https://example.com/pricing?token=private'))
+    expect(collectEligibleDestinations(ORIGIN, [{ href: raw, text: 'Pricing' }])[0].href).toBe(raw.split('#')[0])
   })
 })

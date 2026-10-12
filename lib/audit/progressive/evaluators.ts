@@ -3,8 +3,9 @@ import type { Prisma } from '@prisma/client'
 import { runAllChecks } from '../checks'
 import { runPerformanceChecks, runInpChecks } from '../checks/performance'
 import { runMobileChecks } from '../checks/mobile'
-import { runSecurityHeaderChecks } from '../checks/security-headers'
+import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION } from '../checks/security-headers'
 import { recordCheckObservations, recordInpObservation } from '../checks/observations'
+import { runConsoleChecks, consoleObservations } from '../checks/console'
 import { parseMetadataFromHtml } from '../metadata'
 import { readScreenshotSnapshot, browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
 import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
@@ -26,6 +27,7 @@ import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
+import { checkPublicLinks } from '../checks/public-links'
 
 function dependency(context: TaskContext, kind: string) {
   return [...context.dependencies.values()].find(item => item.workKind === kind && item.workState === 'COMPLETED')
@@ -70,7 +72,20 @@ export const evaluatorHandlers: TaskHandler[] = [
       let applicable = true, complete: boolean | undefined, limitation: string | undefined
       let collectedAt: string | undefined
       let pageUrl = context.input.pageUrl
-      if (checkModule === 'keyboard') {
+      const publicLinks = checkModule === 'seo' && spec?.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.split('::page:')[0] === 'broken-internal-links'
+      if (publicLinks) {
+        if (!metadata) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
+        pageUrl = context.input.pageUrl
+        const checked = await checkPublicLinks(pageUrl, metadata, context.deadline)
+        flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
+        collectedAt = new Date().toISOString()
+      } else if (checkModule === 'console') {
+        if (!snapshot) throw new TaskFailure('CONSOLE_EVIDENCE_UNAVAILABLE', false)
+        flags = runConsoleChecks(snapshot.consoleErrors, snapshot.consoleCoverage)
+        assertions = consoleObservations(snapshot.consoleCoverage)
+        complete = assertions.every(assertion => assertion.complete === true)
+        limitation = 'Console inspection covers recorded desktop and mobile page-load windows. Later actions and unavailable captures remain outside this evidence.'
+      } else if (checkModule === 'keyboard') {
         const task = dependency(context, 'keyboard')
         if (!task?.workResult) throw new TaskFailure('KEYBOARD_EVIDENCE_UNAVAILABLE', false)
         const evidence = keyboardEvidenceSchema.parse(readArtifact(task.workResult, 'keyboard').data)
@@ -105,13 +120,16 @@ export const evaluatorHandlers: TaskHandler[] = [
         flags = runSecurityHeaderChecks(response.document.finalUrl, response.document.headers)
         assertions = recordCheckObservations(checkModule, { url: response.document.finalUrl,
           metadata: parseMetadataFromHtml('', context.input.pageUrl), headers: response.document.headers, desktop: null, mobile: null })
+        complete = assertions.every(assertion => assertion.complete !== false)
+        if (!complete) limitation = SECURITY_HEADER_LIMITATION
       } else {
         if (!metadata) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
         if (definition.input === 'browser' && !snapshot?.captureMetrics) throw new TaskFailure('RENDERED_METRICS_UNAVAILABLE', false)
-        if (definition.input === 'accessibility' && snapshot?.axeViolations === undefined) throw new TaskFailure('ACCESSIBILITY_EVIDENCE_UNAVAILABLE', false)
         const observedUrl = checkModule === 'security' ? response!.document.finalUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata, null, null, snapshot?.consoleErrors ?? [], undefined,
-          snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], { deadline: context.deadline })
+          snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
+            deadline: context.deadline, accessibilityEvidence: snapshot?.accessibilityEvidence, renderedScope: snapshot?.renderedScope,
+            ...(spec?.category ? { area: spec.category.area, allowedCheckIds: Object.keys(spec.checks) } : {}) })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
         if (checked.executions.length !== 1 || checked.executions[0].module !== checkModule) throw new TaskFailure('EVALUATOR_NOT_REGISTERED', false)
         flags = checked.flags
@@ -133,8 +151,8 @@ export const evaluatorHandlers: TaskHandler[] = [
         kind: 'site-module-check', version: 1, module: checkModule, passed: flags.length === 0 && complete !== false, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
         execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version,
-          source: checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : checkModule === 'security' ? 'original-html' : ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
-            : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'axe' : 'rendered-dom',
+          source: publicLinks ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : checkModule === 'security' ? 'original-html' : ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+            : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom',
           collectedAt: collectedAt ?? source.collectedAt },
       } }))
     },

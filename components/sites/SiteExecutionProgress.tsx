@@ -1,25 +1,32 @@
+import { ChevronDown, Loader2 } from 'lucide-react'
 import type { ExecutionProgress } from '@/lib/sites/application/execution-progress'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
-export function SiteExecutionProgress({ progress }: { progress: ExecutionProgress }) {
+export function SiteExecutionProgress({ progress, compact = false }: { progress: ExecutionProgress; compact?: boolean }) {
   const copy = SITE_ACTION_COPY.execution
   const state = (value: string) => copy.states[value as keyof typeof copy.states] ?? value
   const kind = (value: string) => copy.kinds[value as keyof typeof copy.kinds] ?? value
-  return <section className="rounded-board-panel border border-border p-4" aria-label={copy.title}>
-    <p className="text-sm font-medium" role="status" aria-live="polite" aria-atomic="true">
+  return <section className={compact ? 'mt-3 border-t border-border/70 pt-3' : 'rounded-board-panel border border-border bg-muted/20 p-4'} aria-label={copy.title}>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+    <p className="text-xs font-medium tabular-nums sm:text-sm" role="status" aria-live="polite" aria-atomic="true">
       {copy.completed(progress.completed, progress.total)}
       {progress.running > 0 && ` · ${copy.running(progress.running)}`}
       {progress.recovering > 0 && ` · ${copy.recovering(progress.recovering)}`}
     </p>
+    {!compact ? <span className="text-xs text-muted-foreground">{copy.live}</span> : null}
+    </div>
+    <div role="progressbar" aria-label={copy.completed(progress.completed, progress.total)} aria-valuemin={0} aria-valuemax={progress.total || 1} aria-valuenow={progress.completed} className="my-3 h-1.5 overflow-hidden rounded-full bg-muted">
+      <div className="h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-500" style={{ width: `${progress.total ? Math.min(100, progress.completed / progress.total * 100) : 0}%` }} />
+    </div>
     {(progress.unknown > 0 || progress.inapplicable > 0) && <p className="mt-1 text-sm text-muted-foreground">
       {[progress.unknown ? copy.unknown(progress.unknown) : null, progress.inapplicable ? copy.inapplicable(progress.inapplicable) : null].filter(Boolean).join(' · ')}
     </p>}
-    <details className="mt-2">
-      <summary className="flex min-h-11 cursor-pointer items-center text-sm underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{copy.details}</summary>
+    <details className="group">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">{copy.details}<ChevronDown size={15} className="shrink-0 group-open:rotate-180" aria-hidden /></summary>
       <p className="mb-2 text-sm text-muted-foreground">{copy.limitation}</p>
-      <ul className="max-h-72 space-y-3 overflow-auto">
-        {progress.tasks.map(task => <li key={task.id} className="text-sm">
-          <div className="flex flex-wrap justify-between gap-2"><span>{task.module ? copy.modules[task.module as keyof typeof copy.modules] ?? kind(task.kind) : kind(task.kind)}{task.device ? ` · ${copy.devices[task.device]}` : ''}</span><span className="text-muted-foreground">{state(task.state)}</span></div>
+      <ul className="max-h-72 divide-y divide-border overflow-auto overscroll-contain">
+        {progress.tasks.map(task => <li key={task.id} className="py-3 text-sm">
+          <div className="flex flex-wrap justify-between gap-2"><span>{task.module ? copy.modules[task.module as keyof typeof copy.modules] ?? kind(task.kind) : kind(task.kind)}{task.device ? ` · ${copy.devices[task.device]}` : ''}</span><span className="inline-flex items-center gap-2 text-xs text-muted-foreground">{task.state === 'RUNNING' ? <Loader2 size={13} className="text-brand motion-safe:animate-spin" aria-hidden /> : null}{state(task.state)}</span></div>
           <p className="break-all text-xs text-muted-foreground">{task.pageUrl}</p>
         </li>)}
       </ul>

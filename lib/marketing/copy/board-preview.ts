@@ -13,6 +13,9 @@ export const BOARD_PREVIEW_COPY = {
   manageConnections: 'Manage connections',
   checkHistory: 'Check history',
   flagTrend: 'Flags over time',
+  checksCount: (count: number) => `${count} ${count === 1 ? 'check' : 'checks'}`,
+  trendDescription: (count: number) => `Flag count across ${count} ${count === 1 ? 'check' : 'checks'}`,
+  incompleteTrend: 'Incomplete checks leave a gap. They do not count as zero Flags.',
   complete: 'Check completed',
   incomplete: 'Check incomplete',
   history: {

@@ -49,6 +49,7 @@ process.env.BETTER_AUTH_SECRET = 'test-anonymous-claim-secret-at-least-32-chars'
 describe('claimAnonymousAudits', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    monitoring.migrate.mockReset()
     prismaMock.$transaction.mockImplementation(async (operation) => operation(prismaMock))
     cookieStore.get.mockReturnValue({ value: createAnonymousClaim('teaser-1') })
     prismaMock.audit.findMany.mockResolvedValue([
@@ -95,7 +96,19 @@ describe('claimAnonymousAudits', () => {
     prismaMock.project.findUnique.mockResolvedValue({ id: 'project-1', productIntelligence: null })
     await claimAnonymousAudits('u1')
     expect(monitoring.ensure).toHaveBeenCalledWith(prismaMock, 'project-1', 'u1')
+    expect(monitoring.claim).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1' }), prismaMock)
+    expect(monitoring.migrate).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1' }), prismaMock)
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
     expect(monitoring.migrate.mock.invocationCallOrder[0]).toBeLessThan(monitoring.ensure.mock.invocationCallOrder[0])
+  })
+
+  it('retains the claim proof and skips follow-up work when identity migration fails', async () => {
+    monitoring.migrate.mockRejectedValueOnce(new Error('migration interrupted'))
+    await expect(claimAnonymousAudits('u1')).rejects.toThrow('migration interrupted')
+    expect(monitoring.ensure).not.toHaveBeenCalled()
+    expect(enqueueAiReview).not.toHaveBeenCalled()
+    expect(incrementUsageOnCompleteForAudit).not.toHaveBeenCalled()
+    expect(cookieStore.delete).not.toHaveBeenCalled()
   })
 
   it('does not claim a known audit id from an unsigned or tampered cookie', async () => {

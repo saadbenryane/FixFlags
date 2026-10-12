@@ -1,7 +1,9 @@
+import { sectionTargetExists, sectionTargetSet } from './section-links'
 import { PageMetadata } from '../metadata'
 import { isDeadHref } from '../flow/link-scoring'
 import type { DeterministicFlag } from '../flag-types'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /lorem ipsum/i, label: 'Lorem ipsum placeholder text' },
@@ -64,7 +66,7 @@ export function detectSocialProofSlop(text: string): { label: string; matched: s
   return null
 }
 
-export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const h1Generic =
     meta.h1s.length > 0 &&
@@ -73,6 +75,9 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     )
   const bodyText = meta.pageText.slice(0, CHECK_TEXT_LIMIT)
   const sampleText = h1Generic ? bodyText : [meta.pageText, ...meta.h1s].join(' ').slice(0, CHECK_TEXT_LIMIT)
+  let placeholderMatched = false
+  let templateMatched = false
+  let builderMatched = false
 
   function matchedSnippet(text: string, pattern: RegExp, contextChars = 40): string {
     const match = text.match(pattern)
@@ -88,6 +93,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   for (const { pattern, label } of PLACEHOLDER_PATTERNS) {
     const match = sampleText.match(pattern)
     if (match) {
+      placeholderMatched = true
       findings.push({
         checkId: 'placeholder-copy-detected',
         rubric: 'MESSAGE',
@@ -109,6 +115,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   for (const { pattern, label } of TEMPLATE_COPY_PATTERNS) {
     const match = headingText.match(pattern)
     if (match) {
+      templateMatched = true
       findings.push({
         checkId: 'template-default-copy',
         rubric: 'MESSAGE',
@@ -127,6 +134,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   for (const { pattern, label } of AI_BUILDER_PATTERNS) {
     const match = sampleText.match(pattern)
     if (match) {
+      builderMatched = true
       findings.push({
         checkId: 'placeholder-copy-detected',
         rubric: 'MESSAGE',
@@ -157,13 +165,12 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     })
   }
 
-  const elementIdSet = new Set(meta.elementIds)
+  const sectionTargets = sectionTargetSet(meta)
   const deadCtaLinks = meta.links.filter((link) => {
     const href = link.href
     // Hash target that exists on the page is not dead
     if (href.startsWith('#')) {
-      const targetId = href.slice(1).toLowerCase()
-      if (elementIdSet.has(targetId)) return false
+      if (sectionTargetExists(meta, href.slice(1), sectionTargets)) return false
     }
     return isDeadHref(href) && CTA_PATTERN.test(`${href} ${link.text}`)
   })
@@ -197,5 +204,20 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     })
   }
 
+  const sampled = sampleText.trim().length > 0
+  recordObservation(record, 'placeholder-patterns', 'Captured placeholder patterns', 'Sampled page copy does not match placeholder or builder-artifact patterns',
+    `${sampleText.length} characters sampled. Placeholder pattern ${placeholderMatched}, builder-artifact pattern ${builderMatched}.`,
+    sampled ? !placeholderMatched && !builderMatched : undefined, true)
+  recordObservation(record, 'template-heading-patterns', 'Captured template headings', 'Captured title and H1 headings do not match starter-template patterns',
+    `Template-heading pattern ${templateMatched} in the captured title and H1 sample.`, headingText.trim() ? !templateMatched : undefined, true)
+  recordObservation(record, 'template-tokens', 'Captured template tokens', 'Sampled page copy contains no recognized unreplaced template token',
+    tokenMatch ? `Recognized token: ${tokenMatch[0].slice(0, 80)}.` : 'No recognized token in the captured sample.', sampled ? !tokenMatch : undefined, true)
+  const ctaLinks = meta.links.filter(link => CTA_PATTERN.test(`${link.href} ${link.text}`))
+  recordObservation(record, 'cta-href-values', 'Captured action destinations', 'Captured action links declare non-placeholder destinations',
+    `${deadCtaLinks.length} placeholder destinations among ${ctaLinks.length} recognized action links. Destination behavior was not executed here.`,
+    ctaLinks.length ? deadCtaLinks.length === 0 : undefined, true)
+  recordObservation(record, 'social-proof-patterns', 'Captured social proof wording', 'Sampled copy does not match placeholder social-proof patterns',
+    socialSlop ? `Recognized pattern: ${socialSlop.label}.` : 'No recognized placeholder social-proof pattern in the captured sample. Authenticity was not verified.',
+    sampled ? !socialSlop : undefined, true)
   return findings
 }

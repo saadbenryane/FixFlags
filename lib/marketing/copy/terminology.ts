@@ -133,6 +133,7 @@ export const SITE_BOARD_COPY = {
   checkOutOfDate: 'Check out of date',
   checkOutOfDateDetail: 'Run a new check for current evidence',
   checkAgain: 'Check again',
+  checkAreaAgain: (area: string) => `Check ${area} again`,
   starting: 'Starting…',
   flagListNoOpen: 'No open Flags',
   flagListIncomplete: 'No Flags found. Coverage is incomplete.',

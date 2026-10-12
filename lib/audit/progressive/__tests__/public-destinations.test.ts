@@ -18,9 +18,10 @@ const pageUrl = 'https://example.com/pricing'
 const fetchMock = vi.fn()
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 function context(module: string, metadata = healthyMeta(), page = pageUrl): TaskContext {
-  const checkId = module === 'og-image' ? 'og-image-broken' : 'checkout-link-dead'
+  const checkId = module === 'seo' ? 'broken-internal-links' : module === 'og-image' ? 'og-image-broken' : 'checkout-link-dead'
   return { audit: { id: 'after', parentId: 'before', executionSpec: { version: 1, engine: 'progressive-v1',
-    targetUrl: page, environment: 'production', scope: 'SITE', checks: { [checkId]: 1, 'auth-page-broken': 1 }, outcomes: [], verificationTarget: null } } as TaskContext['audit'],
+    targetUrl: page, environment: 'production', scope: module === 'seo' ? 'DIAGNOSTIC' : 'SITE', checks: { [checkId]: 1, 'auth-page-broken': 1 }, outcomes: [],
+    verificationTarget: module === 'seo' ? { kind: 'DIAGNOSTIC', checkId, pageUrl: page, parentAuditId: 'before', attemptId: 'attempt' } : null } } as TaskContext['audit'],
     task: { id: 'check:' + page } as TaskContext['task'],
     input: { pageUrl: page, position: 0, primary: true, role: 'primary', module }, deadline: Date.now() + 10_000,
     dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
@@ -37,6 +38,35 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('guarded public destination evidence', () => {
+  it('verifies broken public links with the same GET evidence used for discovery', async () => {
+    const ctx = context('seo', actionMeta([{ href: '/missing', text: 'Details', rel: null }]))
+    fetchMock.mockResolvedValue(new Response('<title>Page not found</title>', { status: 200, headers: { 'content-type': 'text/html' } }))
+    const before = await checked(ctx)
+    expect(before.flags[0]).toMatchObject({ checkId: 'broken-internal-links', verificationRule: DESTINATION_VERIFICATION_RULE,
+      evidenceTargets: [{ context: destinationContext(pageUrl, 'https://example.com/missing') }] })
+    expect(before.receipt.assertions[0]).toMatchObject({ passed: false, complete: true })
+    fetchMock.mockResolvedValue(new Response('<title>Useful details</title>', { status: 200, headers: { 'content-type': 'text/html' } }))
+    const after = await checked(ctx)
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'broken-internal-links', flag: before.flags[0] })?.assertion.passed).toBe(true)
+    expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: ctx.audit.executionSpec, flag: before.flags[0],
+      executions: [{ targetKey: 'module:seo', status: 'COMPLETED', detail: after.receipt }] })).toBe(true)
+    const removed = await checked(context('seo', actionMeta([])))
+    expect(scopedAssertionForTarget({ receipt: removed.receipt, checkId: 'broken-internal-links', flag: before.flags[0] })).toBeUndefined()
+    fetchMock.mockResolvedValue(new Response('Blocked', { status: 429 }))
+    const blocked = await checked(ctx)
+    expect(blocked.flags).toEqual([])
+    expect(blocked.receipt).toMatchObject({ complete: false, assertions: [{ passed: false, complete: false }] })
+  })
+
+  it('inspects the original public URL even when its inventory identity drops locale and query variants', async () => {
+    const url = 'https://www.example.com/en/missing/?lang=en&page=2&token=PRIVATE_VALUE'
+    fetchMock.mockResolvedValue(new Response('Missing', { status: 404 }))
+    const result = await checked(context('seo', actionMeta([{ href: url, text: 'Details', rel: null }])))
+    expect(fetchMock).toHaveBeenCalledWith(url, expect.objectContaining({ redirect: 'manual' }))
+    expect(result.flags[0].evidenceTargets?.[0].context).toBe(destinationContext(pageUrl, url))
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_VALUE')
+  })
+
   it('records GET failures, verifies the same repaired targets and recognizes recurrence', async () => {
     const ctx = context('auth-checkout', actionMeta())
     fetchMock.mockImplementation(async (_url, init) => new Response('Gone', { status: init.method === 'HEAD' ? 200 : 404 }))

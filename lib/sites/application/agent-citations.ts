@@ -22,7 +22,7 @@ export async function authorizeAgentCitations(projectId: string, values: unknown
     if (citation.type === 'flag' && flagsAllowed.has(citation.id)) return [{ ...citation, href: `/sites/${projectId}/flags/${citation.id}` }]
     if (citation.type === 'attempt' && attemptsAllowed.has(citation.id)) return [{ ...citation,
       href: `/sites/${projectId}/flags/${attemptsAllowed.get(citation.id)}#attempt-${citation.id}` }]
-    if (citation.type === 'watch' && citation.id === projectId) return [{ ...citation, href: `/sites/${projectId}?view=monitoring#monitoring` }]
+    if (citation.type === 'watch' && citation.id === projectId) return [{ ...citation, href: `/sites/${projectId}/settings#watch` }]
     return []
   }) : []
 }

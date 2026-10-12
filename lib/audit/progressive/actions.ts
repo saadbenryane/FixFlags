@@ -8,7 +8,7 @@ import { scanAccessToFetchHeaders } from '../scan-access'
 import { runFlowScan, type FlowScanResult } from '../flow/run-flow-scan'
 import { runFlowChecks } from '../checks/flow'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
-import { detectPagePurpose } from '../page-purpose'
+import { detectPagePurpose, needsFirstStep } from '../page-purpose'
 import { runSlowReplay } from '../flow/slow-replay-probe'
 import { runSlowReplayChecks } from '../checks/slow-replay'
 import { browserEvidence } from './evaluators'
@@ -27,8 +27,10 @@ import { checkFormValidation } from '../checks/form-validation'
 import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { runOverlayBlockerChecks } from '../checks/overlay'
+import { PRIMARY_ACTION_CHECKS, PRIMARY_ACTION_VERIFICATION_RULE, primaryActionAssertions } from '../flow/primary-action-evidence'
 
 const flowSchema = z.object({ tracking: trackingEvidenceSchema.optional(), receipt: checkReceiptSchema.optional(),
+  flowReceipt: checkReceiptSchema.optional(),
   formReceipt: checkReceiptSchema.optional(), formEvidence: formEvidenceSchema.optional(), flags: z.array(flagSchema).max(500), result: z.object({
   status: z.enum(['success', 'no_cta', 'unclickable', 'error_response', 'dead_end', 'external_leave', 'skipped', 'timeout']),
   steps: z.array(z.object({ label: z.string(), screenshotUrl: z.string().nullable(), url: z.string() }).strict()).max(30),
@@ -43,9 +45,10 @@ export const actionHandlers: TaskHandler[] = [
   { kind: 'flow', replay: 'read_only', timeoutMs: 40_000,
     validateResult: artifact => { flowSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
-      const { receipt, formReceipt } = flowSchema.parse(artifact.data)
+      const { receipt, formReceipt, flowReceipt } = flowSchema.parse(artifact.data)
       if (receipt) await commitCheckReceipt(context, receipt, tx, ':phase:public_action')
       if (formReceipt) await commitCheckReceipt(context, formReceipt, tx)
+      if (flowReceipt) await commitCheckReceipt(context, flowReceipt, tx)
       await commitFindings(context, artifact, tx)
     },
     async evaluate(context) {
@@ -83,6 +86,18 @@ export const actionHandlers: TaskHandler[] = [
       }
       const metadata = browserEvidence(context)?.metadata
       if (!metadata) throw new TaskFailure('FLOW_PAGE_UNAVAILABLE', false)
+      const target = readExecutionSpec(context.audit.executionSpec)?.verificationTarget
+      const targetedPrimary = target?.kind === 'DIAGNOSTIC' && PRIMARY_ACTION_CHECKS.some(id => id === target.checkId.split('::page:')[0])
+      let expectedActionContexts: string[] | undefined
+      if (targetedPrimary && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
+        const flags = await prisma.flag.findMany({ where: { auditId: target.parentAuditId, audit: { projectId: context.audit.projectId }, checkId: target.checkId },
+          take: 100, select: { evidenceTargets: true, verificationRule: true } })
+        const contexts = flags.flatMap(flag => flag.verificationRule !== PRIMARY_ACTION_VERIFICATION_RULE || !Array.isArray(flag.evidenceTargets) ? [] : flag.evidenceTargets.flatMap(value => {
+          const parsed = z.object({ context: z.string().regex(/^flow:control:[a-f0-9]{64}$/) }).safeParse(value)
+          return parsed.success ? [parsed.data.context] : []
+        }))
+        expectedActionContexts = contexts.length ? [...new Set(contexts)] : []
+      }
       const access = await resolveAuditScanAccess(context.audit.id)
       let protectedActionRefused = false
       const session = await createAuditPage(await getAuditBrowser(), context.input.pageUrl, {
@@ -95,18 +110,28 @@ export const actionHandlers: TaskHandler[] = [
         const result: FlowScanResult = await runFlowScan(session.page,
           context.audit.id, context.input.pageUrl,
           { pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, deadlineMs: Math.max(1, context.deadline - Date.now()),
-            fetchHeaders: scanAccessToFetchHeaders(access), includeFormValidation: false })
+            fetchHeaders: scanAccessToFetchHeaders(access), includeFormValidation: false,
+            ...(targetedPrimary ? { primaryOnly: true, captureSteps: false, expectedActionContexts } : {}) })
         if (protectedActionRefused) throw new TaskFailure('PROTECTED_ACTION_REQUIRES_FIXTURE', false)
-        if (result.status === 'skipped') throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
+        if (result.status === 'skipped' && !result.actionEvidence) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
         const tracking = session.tracking('public_action')
         const measured = runTrackingChecks(metadata, tracking, context.input.pageUrl)
-        const flags = [...measured.flags, ...runFlowChecks(result, detectPagePurpose(metadata, context.input.pageUrl).purpose),
+        const purpose = detectPagePurpose(metadata, context.input.pageUrl).purpose
+        const actionFlags = runFlowChecks(result, purpose)
+        const flags = [...measured.flags, ...actionFlags,
           ...runNetworkEngagementChecks(session.networkFailures, session.formProbe)].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
         if (context.input.primary) await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
+        const applicable = !result.actionEvidence || result.actionEvidence.candidateCount > 0 || needsFirstStep(purpose)
+        const assertions = primaryActionAssertions(result.actionEvidence, needsFirstStep(purpose))
+        const complete = !applicable || assertions.length === 4 && assertions.every(assertion => assertion.complete === true)
         return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking, receipt: {
           kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: context.input.pageUrl, applicable: true,
           passed: measured.flags.length === 0 && measured.complete, complete: measured.complete, limitation: measured.limitation, assertions: measured.assertions,
           execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() },
+        }, flowReceipt: { kind: 'site-module-check', version: 1, module: 'flow', pageUrl: context.input.pageUrl, applicable,
+          passed: complete && actionFlags.length === 0 && assertions.every(assertion => assertion.passed), complete, assertions,
+          limitation: 'Public action observations cover the recorded page and control. Unsupported responses, changed controls, unsafe actions and intended business completion remain separate or unknown.',
+          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
         } }))
       } finally { session.disposeNetwork(); await session.page.context().close() }
     },

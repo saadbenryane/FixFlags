@@ -44,6 +44,7 @@ export const SEARCH_COPY = {
   lastCrawl: 'Google’s last recorded crawl',
   reportingWindow: 'Reporting window',
   partial: 'Some Search evidence could not be collected. Missing evidence is not a passing result.',
+  unfinished: (groups: string[]) => `Unfinished checks: ${groups.join(', ')}.`,
   more: 'Show more results',
   summary: { recorded: 'Public Search checks recorded', partial: 'Search partially checked', excluded: 'Search exclusions declared',
     observed: 'Observed', checked: 'Checked', unknown: 'Could not establish',

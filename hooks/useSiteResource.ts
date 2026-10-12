@@ -16,7 +16,7 @@ export function useSiteResource(siteId: string, initial: SiteHomeView) {
     fallbackData: initial,
     refreshInterval: (view) => {
       const current = view ?? initial
-      return current.activeRuns.length > 0 || current.outcomes.some(outcome => outcome.running) || (current.audit.status && !['COMPLETED', 'FAILED'].includes(current.audit.status)) ? 2500 : 0
+      return current.activeRuns.length > 0 || current.outcomes.some(outcome => outcome.running) || (current.audit.status && !['COMPLETED', 'FAILED'].includes(current.audit.status)) ? 2500 : current.uptime?.enabled ? 60_000 : 0
     },
     revalidateOnFocus: true,
   })

@@ -17,6 +17,7 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
 import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
+import { assertAttemptReplay } from '@/lib/improvements/attempt-intent'
 
 export type SiteCommand =
   | {
@@ -184,9 +185,11 @@ export async function executeSiteCommand(command: SiteCommand) {
           const attempt = initialFlag.improvementId ? await prisma.improvementAttempt.findFirst({
             where: { id: reusable.verificationTarget.attemptId, improvementId: initialFlag.improvementId,
               sourceAuditId: reusable.verificationTarget.parentAuditId, improvement: { projectId: initialSite.projectId } },
-            select: { id: true },
+            select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true },
           }) : null
           if (!attempt) throw new SiteRunRefusal('This request key belongs to another Flag attempt.', 409)
+          if (!command.attemptId) assertAttemptReplay({ userId: command.userId, sourceAuditId: attempt.sourceAuditId,
+            handoffReference: attempt.handoffReference, changeSummary: command.changeSummary }, attempt)
           return {
             ok: true as const,
             runId: reusable.runId,
@@ -206,7 +209,7 @@ export async function executeSiteCommand(command: SiteCommand) {
             siteId: command.siteId,
             flagId: command.flagId,
             userId: command.userId,
-            idempotencyKey: command.idempotencyKey ?? `web-fix:${command.flagId}`,
+            idempotencyKey: command.idempotencyKey,
             // No fallback to the Outcome's expected behaviour. That text is what
             // should be true afterwards, not something anyone changed, and writing it
             // here put a fabricated change into the one record whose whole value is

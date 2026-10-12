@@ -9,9 +9,11 @@ import { listSiteOutcomes, loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
+import { categoryAreaSchema } from '@/lib/sites/domain/execution-spec'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
+import { resolveLatestAudit } from '@/lib/sites/application/site-execution'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
@@ -81,8 +83,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
             .filter((outcome) => outcome.kind !== 'GENERIC')
             .map((outcome) => loadSiteOutcomeDetail(site, outcome.id)),
         )
-        const latestAudit = await prisma.audit.findFirst({ where: { projectId: site.projectId! }, orderBy: { createdAt: 'desc' }, select: { id: true } })
-        const resultPage = await loadSiteCheckResultPage(site, latestAudit?.id ?? null, resultCursor)
+        const latestAudit = await resolveLatestAudit(site)
+        const resultPage = await loadSiteCheckResultPage(site, latestAudit, resultCursor)
         return mcpStructuredResult({
           siteId: site.siteId,
           checkResults: resultPage.results,
@@ -104,17 +106,22 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
       inputSchema: z.object({
         siteId: z.string().min(1),
         outcomeIds: z.array(z.string().min(1)).max(20).optional(),
+        scope: z.enum(['outcomes', 'site', 'category']).default('outcomes'),
+        area: categoryAreaSchema.optional(),
         idempotencyKey: z.string().min(8).max(160),
         commit: z.string().max(80).optional(),
         deployment: z.string().max(160).optional(),
         affectedArea: z.string().max(120).optional(),
+      }).superRefine((input, context) => {
+        if ((input.scope === 'category') !== Boolean(input.area) || input.scope !== 'outcomes' && input.outcomeIds?.length)
+          context.addIssue({ code: 'custom', message: 'Select one category, the Site, or Outcomes.' })
       }),
       annotations: toolAnnotations(MCP_TOOLS.run),
     },
-    async ({ siteId, outcomeIds, idempotencyKey, commit, deployment, affectedArea }) => {
+    async ({ siteId, scope, area, outcomeIds, idempotencyKey, commit, deployment, affectedArea }) => {
       try {
         const site = await ownedSite(user.id, siteId)
-        const selected = outcomeIds?.length ? outcomeIds : (await listSiteOutcomes(site))
+        const selected = scope !== 'outcomes' ? [] : outcomeIds?.length ? outcomeIds : (await listSiteOutcomes(site))
           .filter((outcome) => outcome.enabled && outcome.criticality !== 'INFORMATIONAL' && outcome.bindings.some((binding) => binding.required))
           .map((outcome) => outcome.id)
         const run = await requestSiteRun({
@@ -122,6 +129,7 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           outcomeIds: selected,
           userId: user.id,
           source: 'MCP',
+          scope: scope === 'site' ? 'SITE' : scope === 'category' ? 'CATEGORY' : 'OUTCOMES', categoryArea: area,
           idempotencyKey,
           context: { commit, deployment, affectedArea },
         })
@@ -245,10 +253,14 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           deploymentReference: deployment,
           client: 'mcp',
         })
+        const admitted = attempt.verificationAuditId ? await prisma.runRequest.findFirst({
+          where: { auditId: attempt.verificationAuditId, projectId: site.projectId! }, select: { id: true },
+        }) : null
         return mcpStructuredResult({
           status: 'RECORDED',
           ...attempt,
-          next: {
+          next: admitted ? { tool: MCP_TOOLS.getRun.name, arguments: { siteId: site.siteId, runId: admitted.id } }
+            : attempt.outcome ? { tool: MCP_TOOLS.getFlag.name, arguments: { siteId: site.siteId, flagId } } : {
             tool: MCP_TOOLS.verifyFlag.name,
             arguments: { siteId: site.siteId, flagId, attemptId: attempt.attemptId },
           },

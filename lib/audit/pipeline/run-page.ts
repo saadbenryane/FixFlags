@@ -70,6 +70,11 @@ function buildCaptureOutageMessage(
   const status = failure?.httpStatus
   switch (failure?.code) {
     case 'HTTP_FORBIDDEN':
+      if (status !== 403) return {
+        failureCode: 'SITE_FORBIDDEN',
+        failureMessage: 'This site presented a bot challenge instead of the page. It may be blocking automated audits, so FixFlags cannot scan it.',
+        throwMessage: `Site presented a bot challenge for ${normalizedUrl}`,
+      }
       return {
         failureCode: 'SITE_FORBIDDEN',
         failureMessage:
@@ -486,7 +491,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.captureMetrics ?? null,
     screenshots?.responseHeaders ?? null,
     screenshots?.axeViolations,
-    true, undefined, { tracking: screenshots.tracking, deadline: ctx.deadline },
+    true, undefined, { tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
+      accessibilityEvidence: screenshots.accessibilityEvidence, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
   )
 
   for (const execution of executions) {

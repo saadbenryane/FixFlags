@@ -1,8 +1,12 @@
 ## Site board
 
-A Site is the lasting home for one website. Its starter board covers Pages, Conversion, Security, Search, Performance, and Tracking. Shopify adds purchase-path evidence to Conversion. Other available checks can be added from the check library.
+A Site is the lasting home for one website. Its starter board covers Pages, Conversion, Security, Search, Performance, and Tracking. Shopify adds purchase-path evidence to Conversion. Supported checks are discovered automatically. Overview groups Flags and check results by category. There is no check-selection wizard.
 
 Cards show the latest check attempt and the latest completed evidence separately. They show freshness, scope, and exclusions. Unknown, partial, stale, and healthy are different states. No Flags never means an untested area is healthy.
+
+## Workspace
+
+The website sidebar contains Overview, Timeline, Integrations, and Settings. Overview contains all categorized Flags. Timeline shows recorded checks, rechecks and verified recoveries. Integrations manages optional connections directly. Settings controls monitoring and notifications.
 
 ## Flags and evidence
 
@@ -23,6 +27,12 @@ Monitoring uses the Site’s configured coverage. A Watch schedule does not guar
 Watch is active only after its schedule is saved. A delayed or failed schedule remains visible and retryable in Site settings.
 
 Use the schedule control in Site settings to change the interval or stop monitoring. During open beta, you can choose any supported schedule for your one website. Read [Pricing](/pricing) for the temporary offer, and confirm the next run in Site settings.
+
+## Automatic account checks
+
+When automatic account checks are available, Settings provides one switch for signup and signed-in inspection. FixFlags reuses one test account and uses a separate disposable account for signup and deletion tests. Test emails use plus aliases, and supported verification links and codes are handled automatically.
+
+Routine monitoring does not create another account. Disposable signup tests run initially, after material signup-form changes, or when explicitly requested. Unsupported authentication and unverified deletion remain visible limitations. The cleanup action reports whether FixFlags test accounts were actually deleted.
 
 ## Shopify connection
 

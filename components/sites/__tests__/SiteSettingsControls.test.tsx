@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { SiteIntegrationsControls } from '@/components/sites/SiteIntegrationsControls'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
 import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
 
@@ -21,9 +22,10 @@ function respond(body: unknown, status = 200) {
   }
 }
 
-function renderControls(googleConfigured = false) {
+function renderControls(googleConfigured = false, integrations = false) {
+  const Controls = integrations ? SiteIntegrationsControls : SiteSettingsControls
   return render(
-    <SiteSettingsControls
+    <Controls
       siteId="site-1"
       watch={{
         state: 'off',
@@ -59,15 +61,39 @@ function mockOptions(save: (url: string, options?: RequestInit) => unknown) {
 }
 
 describe('SiteSettingsControls Watch', () => {
+  afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('links each configured provider to its integration guide', () => {
-    renderControls(true)
+    renderControls(true, true)
     expect(screen.getByRole('link', { name: 'Read Shopify integration guide' })).toHaveAttribute('href', '/docs/integrations/shopify')
     expect(screen.getByRole('link', { name: 'Read Analytics integration guide' })).toHaveAttribute('href', '/docs/integrations/google-analytics')
     expect(screen.getByRole('link', { name: 'Read Search Console integration guide' })).toHaveAttribute('href', '/docs/integrations/google-search-console')
+  })
+
+  it('persists notification preferences through the signed-in settings API', async () => {
+    const fetchMock = vi.fn(async () => respond({ ok: true, notificationLevel: 'OFF', notifyOnRecovery: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderControls()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Email me' })).toHaveValue('OFF'))
+    expect(fetchMock).toHaveBeenCalledWith('/api/sites/site-1/settings', expect.objectContaining({
+      method: 'PATCH', body: JSON.stringify({ notificationLevel: 'OFF', notifyOnRecovery: true }),
+    }))
+    expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).toBeDisabled()
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('retains the saved notification preference when a change is rejected', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => respond({ error: 'Settings could not be saved.' }, 503)))
+    renderControls()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
+    expect(await screen.findByText('Settings could not be saved.')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Email me' })).toHaveValue('FLAGS')
+    expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).toBeEnabled()
+    expect(refresh).not.toHaveBeenCalled()
   })
 
   it('does not claim a different cadence than the one clicked', async () => {

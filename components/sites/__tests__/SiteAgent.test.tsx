@@ -1,6 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { SiteAgent } from '../SiteAgent'
+import { SiteChatWidget } from '../SiteChatWidget'
+import { SupportProvider } from '@/components/live-support/SupportProvider'
+
+vi.mock('@/components/live-support/useSupportPolling', () => ({
+  useSupportSession: () => ({ data: { session: null }, mutate: vi.fn() }),
+  useSupportMessages: () => ({ data: { messages: [] }, mutate: vi.fn() }),
+}))
+function SiteAgent({ siteId, flagId }: { siteId: string; flagId?: string }) {
+  return <SupportProvider><SiteChatWidget key={`${siteId}:${flagId}`} siteId={siteId} flagId={flagId} host="example.com" ownsSite /></SupportProvider>
+}
 
 const history = { threadId: 'thread-1', messages: [] }
 const receipt = { reply: 'The cart remained empty in the recorded check.', citations: [{ type: 'flag', id: 'flag-1', label: 'Cart evidence', href: '/sites/site-1/flags/flag-1' }],
@@ -14,14 +23,15 @@ describe('contextual Ask FixFlags', () => {
     const fetch = vi.fn(async (_url: string, options?: RequestInit) => response(options?.method === 'POST' ? receipt : history))
     vi.stubGlobal('fetch', fetch)
     render(<SiteAgent siteId="site-1" flagId="flag-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Ask FixFlags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Your question' }), { target: { value: 'Why was the cart flagged?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send question' }))
     await waitFor(() => expect(fetch.mock.calls.some(call => call[1]?.method === 'POST')).toBe(true))
     const posted = fetch.mock.calls.find(call => call[1]?.method === 'POST')![1]!
     expect(JSON.parse(posted.body as string)).toEqual({ message: 'Why was the cart flagged?', flagId: 'flag-1' })
     expect((posted.headers as Record<string, string>)['Idempotency-Key']).toMatch(/^web:/)
-    await waitFor(() => expect(screen.getByText('Your reply is ready.')).toBeVisible())
+    expect(await screen.findByText(receipt.reply)).toBeVisible()
+    expect(screen.getByText('Why was the cart flagged?')).toBeVisible()
   })
 
   it('preserves an interrupted message through refresh and retries its exact intent', async () => {
@@ -32,14 +42,14 @@ describe('contextual Ask FixFlags', () => {
     })
     vi.stubGlobal('fetch', fetch)
     const first = render(<SiteAgent siteId="site-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Ask FixFlags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
     fireEvent.change(await screen.findByRole('textbox', { name: 'Your question' }), { target: { value: 'Explain the current evidence.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send question' }))
     await screen.findByRole('button', { name: 'Recover reply' })
     const originalKey = postedKey
     first.unmount()
     const recovered = render(<SiteAgent siteId="site-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Ask FixFlags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
     expect(await screen.findByRole('textbox', { name: 'Your question' })).toHaveValue('Explain the current evidence.')
     fireEvent.click(screen.getByRole('button', { name: 'Recover reply' }))
     await waitFor(() => expect(fetch.mock.calls.filter(call => call[1]?.method === 'POST')).toHaveLength(2))
@@ -51,7 +61,7 @@ describe('contextual Ask FixFlags', () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({ threadId: 'thread-1', messages: [{ id: 'reply-1', role: 'assistant', content: 'Private evidence',
       citations: [{ ...receipt.citations[0], href: '/sites/other-site/flags/flag-1' }], createdAt: receipt.createdAt }] })))
     render(<SiteAgent siteId="site-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Ask FixFlags' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open FixFlags chat' }))
     expect(await screen.findByRole('button', { name: 'Reload conversation' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Cart evidence' })).not.toBeInTheDocument()
   })

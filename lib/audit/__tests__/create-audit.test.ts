@@ -17,6 +17,7 @@ const prismaMock = vi.hoisted(() => ({
   $executeRaw: vi.fn(),
   runRequest: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   outcomeFixture: { updateMany: vi.fn() },
+  flag: { findMany: vi.fn() },
   audit: {
     create: vi.fn(),
     findFirst: vi.fn(),
@@ -118,6 +119,7 @@ describe('createAndEnqueueAudit', () => {
     vi.clearAllMocks()
     prismaMock.audit.findUnique.mockReset().mockResolvedValue(null)
     prismaMock.project.findUnique.mockReset().mockResolvedValue(null)
+    prismaMock.flag.findMany.mockReset().mockResolvedValue([])
 
     prismaMock.$transaction.mockImplementation(async (op: (tx: typeof prismaMock) => Promise<{ id: string }>) => {
       return op(prismaMock)

@@ -4,6 +4,7 @@ import { classifyCtaHref, isNonPageActionHref, resolveSameOrigin, scoreCtaLink }
 export interface RawCtaElement {
   idx: number
   tag: string
+  role?: string | null
   text: string
   href: string | null
   hashTargetExists?: boolean
@@ -29,12 +30,13 @@ export function scoreCtaCandidates(
 
   for (const item of elements) {
     const href = item.href ?? ''
+    const buttonLike = item.tag === 'button' || item.role?.toLowerCase() === 'button'
     // mailto:/tel:/sms: links are intentional but never navigate the page, so
     // the flow scan must not select them as a page-navigation CTA candidate.
-    if ((classifyCtaHref(href, { hashTargetExists: item.hashTargetExists }).isPlaceholder || isNonPageActionHref(href)) && item.tag !== 'button') continue
+    if ((classifyCtaHref(href, { hashTargetExists: item.hashTargetExists }).isPlaceholder || isNonPageActionHref(href)) && !buttonLike) continue
 
     let score = scoreCtaLink(href, item.text)
-    if (score === 0 && item.tag === 'button') {
+    if (score === 0 && buttonLike) {
       if (CTA_BUTTON_PATTERN.test(item.text)) {
         score = 85
       } else {
@@ -89,7 +91,7 @@ export function extractCtaElementsFromHtml(html: string): RawCtaElement[] {
         hashTargetExists = Boolean(id && $('[id],a[name]').toArray().some(node => $(node).attr('id') === id || node.tagName === 'a' && $(node).attr('name') === id))
       } catch { /* Invalid fragments cannot establish a destination. */ }
     }
-    elements.push({ idx: idx++, tag, text, href, ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
+    elements.push({ idx: idx++, tag, role: $el.attr('role') ?? null, text, href, ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
   })
 
   return elements

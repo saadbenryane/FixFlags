@@ -1,13 +1,23 @@
 .panel { min-width: 0; }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .header h2 { font-size: 14px; font-weight: 600; }
-.header span { font-size: 12px; color: hsl(var(--muted-foreground)); }
-.chart { padding: 4px 0 22px; border-bottom: 1px solid hsl(var(--border) / .65); }
-.chart svg { display: block; width: 100%; height: auto; margin-top: 12px; overflow: visible; }
-.area { fill: hsl(var(--brand) / .075); }
-.trend { fill: none; stroke: hsl(var(--brand)); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.point { fill: hsl(var(--background)); stroke: hsl(var(--brand)); stroke-width: 2.5; }
-.chartLabels { display: flex; justify-content: space-between; gap: 10px; margin-top: -2px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.header p { margin-top: 4px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.latest { padding: 5px 9px; border-radius: var(--radius-control); background: hsl(var(--muted) / .6); font-size: 12px; font-weight: 600; }
+.latest[data-attention='true'] { background: hsl(var(--brand) / .08); color: hsl(var(--brand)); }
+.chart { padding: 20px; border: 1px solid hsl(var(--border) / .65); border-radius: var(--radius-board-panel); background: hsl(var(--background)); }
+.chartPlot { position: relative; margin-top: 20px; padding-left: 26px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.yAxis { position: absolute; inset: 0 auto 0 0; width: 18px; }
+.yAxis span { position: absolute; right: 0; transform: translateY(-50%); font-size: 11px; color: hsl(var(--muted-foreground)); }
+.gridLine { stroke: hsl(var(--border) / .6); stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
+.area { fill: hsl(var(--brand) / .045); }
+.trend { fill: none; stroke: hsl(var(--brand)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.point { fill: hsl(var(--background)); stroke: hsl(var(--brand)); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.point[data-latest='true'] { fill: hsl(var(--brand)); stroke-width: 2; }
+.gap { fill: hsl(var(--background)); stroke: hsl(var(--muted-foreground)); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.chartLabels { display: flex; justify-content: space-between; gap: 10px; margin: 0 2.5% 0 calc(26px + 2.5%); font-size: 11px; color: hsl(var(--muted-foreground)); }
+.gapNote { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; font-size: 11px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+.gapNote i { width: 6px; height: 6px; flex-shrink: 0; border: 1px solid currentColor; border-radius: 50%; }
 .empty { padding: 24px 0; font-size: 13px; line-height: 1.55; color: hsl(var(--muted-foreground)); }
 .timelineHeading { margin: 24px 0 16px; font-size: 14px; font-weight: 600; }
 .timeline { margin: 0; padding: 0; list-style: none; }

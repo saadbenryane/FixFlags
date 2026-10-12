@@ -18,6 +18,8 @@ import {
   resolvePublicAddresses,
   assertPublicAuditUrl,
   safeFetchHtml,
+  safeFetchDocument,
+  PublicRequestError,
   AuditUrlError,
 } from '../url'
 
@@ -56,6 +58,9 @@ describe('isPublicIp', () => {
     assert.equal(isPublicIp('ff02::1'), false)
     assert.equal(isPublicIp('2001:db8::1'), false)
     assert.equal(isPublicIp('::ffff:10.0.0.1'), false)
+    assert.equal(isPublicIp('::ffff:7f00:1'), false)
+    assert.equal(isPublicIp('::ffff:a00:1'), false)
+    assert.equal(isPublicIp('::ffff:808:808'), true)
     assert.equal(isPublicIp('::ffff:8.8.8.8'), true)
   })
 })
@@ -161,6 +166,14 @@ describe('resolvePublicAddresses', () => {
     resolve4.mockRejectedValue(new Error('ENOTFOUND'))
     resolve6.mockRejectedValue(new Error('ENOTFOUND'))
     await assert.rejects(() => resolvePublicAddresses('missing.example'), AuditUrlError)
+  })
+
+  it('distinguishes absent records from unavailable DNS infrastructure', async () => {
+    resolve4.mockRejectedValue(Object.assign(new Error('Absent'), { code: 'ENOTFOUND' }))
+    resolve6.mockRejectedValue(Object.assign(new Error('Absent'), { code: 'ENODATA' }))
+    await expect(resolvePublicAddresses('missing.example')).rejects.toMatchObject({ code: 'DNS_NOT_FOUND' })
+    resolve4.mockRejectedValue(Object.assign(new Error('Resolver unavailable'), { code: 'ESERVFAIL' }))
+    await expect(resolvePublicAddresses('missing.example')).rejects.toMatchObject({ code: 'DNS_UNAVAILABLE' })
   })
 
   it('throws when a resolved address is private', async () => {
@@ -293,5 +306,42 @@ describe('safeFetchHtml', () => {
       () => safeFetchHtml('https://example.com/'),
       (err: unknown) => err instanceof AuditUrlError
     )
+  })
+})
+
+describe('public response timeout provenance', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it('identifies a timeout only after a validated request has started', async () => {
+    resolve4.mockResolvedValue(['93.184.216.34'])
+    resolve6.mockResolvedValue([])
+    vi.stubGlobal('fetch', vi.fn((_url: string, options: RequestInit) => new Promise((_resolve, reject) => {
+      options.signal!.addEventListener('abort', () => reject(options.signal!.reason), { once: true })
+    })))
+    await expect(safeFetchDocument('https://example.com', { timeoutMs: 20 })).rejects.toBeInstanceOf(PublicRequestError)
+    resolve4.mockImplementation(() => new Promise(() => {}))
+    await expect(safeFetchDocument('https://example.com', { timeoutMs: 20 })).rejects.not.toBeInstanceOf(PublicRequestError)
+  })
+  it('does not label a slow body after successful response headers as a missing HTTP response', async () => {
+    resolve4.mockResolvedValue(['93.184.216.34'])
+    resolve6.mockResolvedValue([])
+    vi.stubGlobal('fetch', vi.fn((_url: string, options: RequestInit) => new Response(new ReadableStream({ start(controller) {
+      options.signal!.addEventListener('abort', () => controller.error(options.signal!.reason), { once: true })
+      controller.enqueue(new TextEncoder().encode('<html>Streaming'))
+    } }), { status: 200 })))
+    await expect(safeFetchDocument('https://example.com', { timeoutMs: 20 })).rejects.not.toBeInstanceOf(PublicRequestError)
+  })
+  it('keeps strict public observations outside localhost even when local fixtures are enabled', async () => {
+    const previous = process.env.DEV_ALLOW_LOCALHOST
+    process.env.DEV_ALLOW_LOCALHOST = 'true'
+    try {
+      const fetch = vi.fn(async () => new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/' } }))
+      vi.stubGlobal('fetch', fetch)
+      await expect(safeFetchDocument('http://127.0.0.1/', { publicOnly: true })).rejects.toBeInstanceOf(AuditUrlError)
+      expect(fetch).not.toHaveBeenCalled()
+      resolve4.mockResolvedValue(['93.184.216.34']); resolve6.mockResolvedValue([])
+      await expect(safeFetchDocument('https://example.com/', { publicOnly: true })).rejects.toBeInstanceOf(AuditUrlError)
+      expect(fetch).toHaveBeenCalledOnce()
+      expect(normalizeAuditUrl('https://[::ffff:127.0.0.1]/').ok).toBe(false)
+    } finally { if (previous === undefined) delete process.env.DEV_ALLOW_LOCALHOST; else process.env.DEV_ALLOW_LOCALHOST = previous }
   })
 })

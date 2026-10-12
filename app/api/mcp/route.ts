@@ -2,12 +2,11 @@ import type { ApiKeyClient } from '@prisma/client'
 import { NextRequest } from 'next/server'
 import {
   createMcpHandler,
-  hostHeaderValidationResponse,
   McpServer,
-  originValidationResponse,
 } from '@modelcontextprotocol/server'
 import { registerAllTools, validateApiKey } from '@/lib/mcp/tools'
 import { prisma } from '@/lib/db'
+import { validateMcpRequestOrigin } from '@/lib/mcp/request-origin'
 import { logger } from '@/lib/logger'
 import {
   extractAuditIdFromToolResult,
@@ -140,8 +139,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
     }
   }
 
-  const hostname = new URL(req.url).hostname
-  const rejected = hostHeaderValidationResponse(req, [hostname]) ?? originValidationResponse(req, [hostname])
+  const rejected = validateMcpRequestOrigin(req)
   if (rejected) return rejected
   const handler = createMcpHandler(() => {
     const server = new McpServer(

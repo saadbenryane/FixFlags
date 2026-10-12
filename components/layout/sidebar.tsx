@@ -126,7 +126,7 @@ export function SidebarNav({
   )
 }
 
-function SidebarFooter({ compact = false }: { compact?: boolean }) {
+export function SidebarFooter({ compact = false }: { compact?: boolean }) {
   const { user } = useMe()
 
   return (

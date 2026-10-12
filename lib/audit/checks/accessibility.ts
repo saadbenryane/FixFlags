@@ -1,6 +1,7 @@
 import { PageMetadata } from '../metadata'
 import { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
+import { axeRuleToCheckId } from './accessibility-rules'
 
 export interface AxeViolation {
   id: string
@@ -21,8 +22,10 @@ export interface AxeViolation {
  * frames are still analyzed by axe when present in the top-level results.
  */
 export function isIframeAxeTarget(target: string[] | undefined): boolean {
-  if (!target || target.length === 0) return false
-  return target.some((part) => {
+  if (!target || target.length < 2) return false
+  // The final selector is the affected element. A top-level iframe's own
+  // title belongs to the Site; only an ancestor frame places a node inside it.
+  return target.slice(0, -1).some((part) => {
     const value = String(part).toLowerCase()
     return (
       value.includes('iframe') ||
@@ -55,40 +58,6 @@ function axeImpactToSeverity(impact: AxeViolation['impact']): string {
     case 'minor':
       return 'POLISH'
   }
-}
-
-/** Map axe rule IDs to FixFlags check IDs. */
-function axeRuleToCheckId(axeId: string): string {
-  const mapping: Record<string, string> = {
-    'color-contrast': 'color-contrast-poor',
-    'image-alt': 'images-missing-alt',
-    'input-image-alt': 'images-missing-alt',
-    'label': 'form-inputs-no-label',
-    'select-name': 'form-inputs-no-label',
-    'button-name': 'buttons-no-text',
-    'link-name': 'links-no-text',
-    'frame-title': 'iframe-no-title',
-    'frame-title-unique': 'iframe-no-title',
-    'tabindex': 'tabindex-positive',
-    'bypass': 'skip-link-missing',
-    'region': 'skip-link-missing',
-    'focus-order-semantics': 'focus-visible-missing',
-    'aria-required-children': 'axe-aria-required-children',
-    'aria-required-parent': 'axe-aria-required-parent',
-    'duplicate-id-active': 'axe-duplicate-id-active',
-    'duplicate-id-aria': 'axe-duplicate-id-aria',
-    'heading-order': 'heading-order-skipped',
-    'landmark-banner-is-top-level': 'axe-landmark-banner',
-    'landmark-contentinfo-is-top-level': 'axe-landmark-contentinfo',
-    'landmark-main-is-top-level': 'axe-landmark-main',
-    'landmark-no-duplicate-banner': 'axe-landmark-duplicate',
-    'landmark-one-main': 'axe-landmark-one-main',
-    'page-has-heading-one': 'axe-missing-h1',
-    'list': 'axe-list-structure',
-    'listitem': 'axe-list-structure',
-    'meta-viewport': 'axe-meta-viewport',
-  }
-  return mapping[axeId] ?? `axe-${axeId}`
 }
 
 /**

@@ -4,6 +4,8 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
 import { CHECK_MODULES } from '@/lib/audit/check-registry'
+import { searchEvidence } from './search-evidence'
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 
 export type CoverageFact = {
   area: SiteCardArea
@@ -16,6 +18,8 @@ export type CoverageFact = {
   evidenced: boolean
   /** Evidence exists but is too old to support a current healthy answer. */
   stale?: boolean
+  /** Missing work in the current analysis, independent of confirmed findings. */
+  incompleteReason?: string | null
 }
 
 /** A completed broad Site check is current for one weekly Watch cycle plus a day of grace. */
@@ -115,7 +119,31 @@ function passedAssertion(executions: Array<{ targetKey: string; status: string; 
   })
 }
 
-type CoverageExecution = { targetKey: string; status: string; detail?: unknown; workKind?: string | null; pageUrl?: string | null }
+export type CoverageExecution = { targetKey: string; status: string; detail?: unknown; workKind?: string | null; pageUrl?: string | null }
+
+function failedModuleArea(module: string): SiteCardArea | undefined {
+  if (module.startsWith('search-')) return 'search'
+  if (module === 'pagespeed' || module === 'slow-replay') return 'performance'
+  if (module === 'journeys') return 'conversion'
+  return CHECK_MODULES[module]?.area
+}
+
+/** Completed runs can retain useful observations without establishing health. */
+function incompleteAreaReason(input: {
+  area: SiteCardArea; openFlagCount: number; evidenced: boolean;
+  auditStatus: string | null; failureCode?: string | null; failedModules?: unknown;
+  triageCompleted?: boolean; extraReviewCompleted?: boolean;
+}): string | null {
+  if (input.auditStatus !== 'COMPLETED') return null
+  if (Array.isArray(input.failedModules) && input.failedModules.some(module => typeof module === 'string' && failedModuleArea(module) === input.area)) {
+    return SITE_BOARD_COPY.cardCheckIncomplete
+  }
+  // Prescription enriches findings without invalidating an observed check.
+  if (input.triageCompleted && !input.extraReviewCompleted && input.openFlagCount > 0 && input.area !== 'site' &&
+    ['AI_CONTRACT_INVALID', 'AI_REVIEW_FAILED'].includes(input.failureCode ?? '')) return SITE_BOARD_COPY.cardReviewIncomplete
+  if (input.failureCode && !input.evidenced && input.area !== 'site') return SITE_BOARD_COPY.cardCheckIncomplete
+  return null
+}
 
 /** Current task plans define the expected keyboard scope. Historical axe-only
  * observations retain their original contract rather than acquiring new tasks. */
@@ -171,6 +199,10 @@ export function buildCoverageFacts(input: {
   completedAt: Date | null
   now: Date
   evidenceCoverage: unknown
+  failureCode?: string | null
+  failedModules?: unknown
+  triageCompleted?: boolean
+  extraReviewCompleted?: boolean
   flags: Array<{
     checkId: string | null
     rubric: string
@@ -207,6 +239,23 @@ export function buildCoverageFacts(input: {
   const evidence = parseEvidence(input.evidenceCoverage)
   const journeyRan = Boolean(evidence.flowScan || evidence.journeyWalk)
   const pageSpeedRan = Boolean(evidence.desktopPageSpeed || evidence.mobilePageSpeed)
+  const executions = input.verifierExecutions ?? []
+  const search = searchEvidence(executions)
+  const incompleteAreas = new Set<SiteCardArea>()
+  const runtimeTracking = executions.some(execution => {
+    if (execution.targetKey !== 'module:measurement' || execution.status !== 'COMPLETED') return false
+    const receipt = readCheckReceipt(execution.detail)
+    return !receipt.legacy && 'execution' in receipt && receipt.execution?.source === 'browser-network'
+  })
+  for (const execution of executions) {
+    if (!execution.targetKey.startsWith('module:')) continue
+    const moduleKey = execution.targetKey.slice('module:'.length)
+    const receipt = readCheckReceipt(execution.detail)
+    if (execution.status === 'FAILED' || (!receipt.legacy && (('complete' in receipt && receipt.complete === false) || receipt.assertions.some(assertion => assertion.complete === false)))) {
+      const area = failedModuleArea(moduleKey)
+      if (area) incompleteAreas.add(area)
+    }
+  }
 
   const areas: SiteCardArea[] = [
     'security',
@@ -221,6 +270,12 @@ export function buildCoverageFacts(input: {
   return areas.map((area) => {
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
+    const incompleteReason = (area === 'search' && search && !search.complete && !inFlight
+      ? search.unfinished.length ? SEARCH_COPY.unfinished(search.unfinished) : SEARCH_COPY.partial : null)
+      ?? incompleteAreaReason({ area, openFlagCount, evidenced: evidenced.has(area), auditStatus: input.auditStatus,
+        failureCode: input.failureCode, failedModules: input.failedModules,
+        triageCompleted: input.triageCompleted, extraReviewCompleted: input.extraReviewCompleted })
+      ?? (!inFlight && incompleteAreas.has(area) ? SITE_BOARD_COPY.cardCheckIncomplete : null)
 
     // A committed failure is immediately useful even while unrelated work is
     // still running. A previous healthy card cannot conceal this execution's Flag.
@@ -228,7 +283,22 @@ export function buildCoverageFacts(input: {
       const important = input.flags.some(flag => cardAreaForCheck(flag) === area && ['CRITICAL', 'IMPORTANT'].includes(flag.severity))
       return { area, state: (important ? 'problem' : 'attention') as CardHealthState,
         label: openFlagCount === 1 ? '1 thing needs attention' : `${openFlagCount} things need attention`,
-        detail: null, checkedAt, openFlagCount, evidenced: true }
+        detail: null, checkedAt, openFlagCount, evidenced: true, incompleteReason }
+    }
+
+    if (area === 'search' && search) {
+      const stale = search.receipts.some(receipt => siteCoverageIsStale(receipt.collectedAt, input.now))
+      const complete = search.complete && !search.excluded && !incompleteReason && !stale
+      return { area, state: complete ? 'healthy' : 'unknown',
+        label: stale ? SITE_BOARD_COPY.checkOutOfDate : search.excluded ? SEARCH_COPY.summary.excluded : search.complete ? SEARCH_COPY.summary.recorded : SEARCH_COPY.summary.partial,
+        detail: stale ? SITE_BOARD_COPY.checkOutOfDateDetail : search.excluded ? SEARCH_COPY.summary.restriction : search.complete ? SEARCH_COPY.summary.scope(search.receipts.length) : SEARCH_COPY.partial,
+        checkedAt: search.checkedAt, openFlagCount: 0, evidenced: search.evidenced, stale, incompleteReason }
+    }
+
+    // A loaded library or attempted request cannot prove delivery or consent.
+    if (incompleteReason || incompleteAreas.has(area) || (area === 'tracking' && runtimeTracking)) {
+      return { area, state: 'unknown', label: incompleteReason ?? 'Couldn’t verify',
+        detail: null, checkedAt, openFlagCount: 0, evidenced: area === 'tracking' && runtimeTracking ? false : evidenced.has(area), incompleteReason }
     }
 
     if (inFlight && evidenced.has(area) && ['security', 'tracking', 'accessibility'].includes(area)) {

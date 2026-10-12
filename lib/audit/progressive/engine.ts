@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask } from './queues'
 import { publishUnfinishedCoverage, settleFailedFinalization } from './incomplete'
@@ -12,6 +13,7 @@ import type { TaskHandler, TaskContext } from './registry'
 import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
+import { PageCaptureError } from '../browser/page-capture'
 
 const DELIVERY_RECHECK_MS = 30_000
 
@@ -220,7 +222,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       if (handler.kind === 'finalize') context.deadline = Date.now() + handler.timeoutMs
       if (handler.replay === 'protected' && task.workAttempts > 1 && !await handler.reconcile!(context))
         throw new TaskFailure('PROTECTED_EFFECT_UNRESOLVED', false)
-      const result = taskArtifactSchema.parse(await handler.evaluate(context))
+      const result = taskArtifactSchema.parse(scopeTaskArtifact(await handler.evaluate(context), original.audit.executionSpec))
       handler.validateResult(result)
       await executionTransaction(async tx => {
         await handler.commit?.(context, result, tx)
@@ -244,6 +246,12 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
         firstFailureAt: task.workRecoveryUntil ? task.workRecoveryUntil.getTime() - 30 * 60_000 : undefined,
         attempts: task.workAttempts, crash: failure.crash, retryable: failure.retryable, retryAfterMs: failure.retryAfterMs })
       await executionTransaction(async tx => {
+        if (error instanceof PageCaptureError && !failure.retryable) await tx.auditPipelineEvent.create({ data: {
+          auditId: job.auditId, executionId: task.id, traceId: job.auditId, attempt: task.workAttempts,
+          stage: 'checking', event: 'page_response_unavailable', status: 'partial',
+          detail: { version: 1, taskId: task.id, generation: job.generation, kind: handler.kind,
+            code: error.code, httpStatus: error.httpStatus, contentType: error.contentType, finalUrl: error.finalUrl },
+        } })
         if (!decision.retry && !failure.code.endsWith('_NOT_APPLICABLE')) await publishUnfinishedCoverage(tx, task, failure.code)
         if (!decision.retry) await settleFailedFinalization(tx, task)
         await tx.auditVerifierExecution.update({ where: { id: task.id }, data: {
@@ -263,6 +271,11 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
 
 export function classifyTaskFailure(error: unknown): TaskFailure {
   if (error instanceof TaskFailure) return error
+  // A refused navigation is a completed observation of unavailable scope. A
+  // fresh scheduled run can observe recovery; repeating secondary browser work
+  // inside this run cannot replace its already recorded page capture evidence.
+  if (error instanceof PageCaptureError && ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(error.code))
+    return new TaskFailure('PAGE_' + error.code, false)
   if (error instanceof StorageNotConfiguredError) return new TaskFailure('STORAGE_NOT_CONFIGURED', false)
   if (error instanceof StorageUploadError) return new TaskFailure('STORAGE_UPLOAD_INTERRUPTED', true)
   if (error instanceof Prisma.PrismaClientInitializationError || error instanceof Prisma.PrismaClientKnownRequestError &&

@@ -2,6 +2,7 @@ import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { DeterministicFlag } from '../flag-types'
 import { normalizeHeadingText } from './utils'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 const WEAK_VALUE_WORDS = /\b(solution|platform|tool|app|software|product|company|business)\b/i
 
@@ -17,7 +18,7 @@ const JARGON_PATTERNS = [
 const AUDIENCE_REGEX = /\b(for\s+(?:[\w-]+\s+){0,3}(teams?|developers?|designers?|founders?|startups?|companies?|enterprises?|creators?|marketers?|operators?|agencies?)|built\s+for|designed\s+for|made\s+for)\b/i
 const OUTCOME_REGEX = /\b(build|builder|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support|schedule|plan|organi[sz]e|collaborate|deploy|monitor|analy[sz]e|design|write|send|email|pay|scale|streamline|simplify|accelerate|generate|discover|learn|hire|invoice|onboard|search|browse|explore|read|watch|listen|download|install|run|use|access|open|store|share|connect|communicate|message|chat|call|meet|present|report|visualize|process|handle|deliver|publish|post|upload|import|export|sync|backup|secure|protect|filter|sort|list|view|show|display|compose|draft|edit|review|approve|submit|transfer|migrate)\b|\b\d+(?:x|%)\b/i
 
-export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckRecorder): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const h1s = meta.h1s ?? []
@@ -28,6 +29,9 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
 
   const hasAudience = AUDIENCE_REGEX.test(combinedTopText)
   const hasOutcome = OUTCOME_REGEX.test(combinedTopText)
+  recordObservation(record, 'headline-outcome', 'Headline positioning signals', 'Captured headline avoids the generic-category-only pattern',
+    `Headline: ${h1}. Audience pattern ${hasAudience}, outcome pattern ${hasOutcome}.`,
+    h1 ? !WEAK_VALUE_WORDS.test(h1) || hasAudience || hasOutcome : undefined, true)
 
   if (h1 && WEAK_VALUE_WORDS.test(h1) && !hasAudience && !hasOutcome) {
     findings.push({
@@ -57,6 +61,9 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
   if (b2bMatch) b2bMatches.push(b2bMatch[0])
 
   const totalJargon = jargonMatches.length + b2bMatches.length
+  recordObservation(record, 'heading-jargon', 'Heading wording patterns', 'Captured headings do not trigger the jargon rule',
+    `${totalJargon} wording patterns matched in sampled headings. Audience and outcome patterns ${hasAudience && hasOutcome ? 'both present' : 'not both present'}.`,
+    combinedTopText ? totalJargon === 0 || hasAudience && hasOutcome : undefined, true)
 
   // Skip jargon check entirely when the headline clearly names both audience
   // and outcome - such headlines are well-written even if they include a B2B
@@ -88,6 +95,10 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
   // what the product IS, which is sufficient even without an explicit audience.
   const PRODUCT_CATEGORY_PATTERN = /^the\s+\w[\w\s]*\s+for\s+/i
   const isProductCategory = PRODUCT_CATEGORY_PATTERN.test(h1)
+  recordObservation(record, 'audience-or-outcome', 'Headline audience or outcome signals',
+    'Captured headline names a recognized audience, outcome, or product-category pattern',
+    `Audience pattern ${hasAudience}, outcome pattern ${hasOutcome}, category pattern ${isProductCategory}.`,
+    h1 ? hasAudience || hasOutcome || isProductCategory : undefined, true)
   if (h1 && !hasAudience && !hasOutcome && !isProductCategory) {
     findings.push({
       checkId: 'messaging-no-audience',
@@ -120,6 +131,9 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
 
   const hasRepeatedLongSentences = longSentences.length >= 3
   const hasRunOnPattern = longSentences.length >= 2 && longSentences.some((s) => s.trim().split(/\s+/).filter(Boolean).length >= 45)
+  recordObservation(record, 'prose-sentence-length', 'Sampled prose length', 'Sampled prose does not trigger repeated long sentences or the run-on pattern',
+    `${sentences.length} prose sentences sampled; ${longSentences.length} exceed ${sentLengthThreshold} words.`,
+    sentences.length ? !hasRepeatedLongSentences && !hasRunOnPattern : undefined, true)
 
   if (hasRepeatedLongSentences || hasRunOnPattern) {
     findings.push({
@@ -136,6 +150,8 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
   }
 
   const h1WordCount = h1.trim().split(/\s+/).filter(Boolean).length
+  recordObservation(record, 'headline-length', 'Headline length', 'Captured headline has at least three words or a recognized outcome signal',
+    `${h1WordCount} headline words; outcome pattern ${hasOutcome}.`, h1 ? h1WordCount >= 3 || hasOutcome : undefined, true)
 
   if (h1 && h1WordCount < 3 && !hasOutcome) {
     findings.push({

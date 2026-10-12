@@ -1,0 +1,68 @@
+import { createHash } from 'node:crypto'
+import { z } from 'zod'
+import type { CheckAssertion } from '../checks/assertion'
+import type { DeterministicFlag } from '../flag-types'
+import { PRIMARY_ACTION_ASSERTIONS } from '../checks/definitions'
+
+export const PRIMARY_ACTION_VERIFICATION_RULE = 'Public primary action: independently exercise the same observed page and control; missing or changed action scope cannot establish repair.'
+export const PRIMARY_ACTION_CHECKS = Object.values(PRIMARY_ACTION_ASSERTIONS).flat()
+export const primaryActionEvidenceSchema = z.object({
+  version: z.literal(1), pageContext: z.string().regex(/^flow:page:[a-f0-9]{64}$/),
+  controlContext: z.string().regex(/^flow:control:[a-f0-9]{64}$/).nullable(),
+  candidateCount: z.number().int().min(0).max(10000), clicked: z.boolean(), clickBlocked: z.boolean(),
+  navigation: z.enum(['changed', 'same', 'unknown']),
+  response: z.enum(['healthy', 'error', 'restricted', 'challenge', 'unknown']),
+  responseExpected: z.boolean(),
+  httpStatus: z.number().int().min(100).max(599).nullable(),
+}).strict()
+export type PrimaryActionEvidence = z.infer<typeof primaryActionEvidenceSchema>
+const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+export function primaryPageContext(requested: string, observed: string, viewport: { width: number; height: number } | null) {
+  return 'flow:page:' + hash([requested, observed, viewport])
+}
+export function primaryControlContext(input: { pageContext: string; identity: string; label: string; href: string | null; controls: string | null }) {
+  return 'flow:control:' + hash([input.pageContext, input.identity, input.label.trim().replace(/\s+/g, ' '), input.href, input.controls])
+}
+
+export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefined, actionRequired = true): CheckAssertion[] {
+  if (!evidence) return []
+  const base = { expected: 'An applicable primary action is visible in the inspected viewport',
+    observed: `${evidence.candidateCount} applicable visible controls recorded. This does not establish completed signup, payment or other business outcomes.` }
+  const assertions: CheckAssertion[] = [{ key: 'primary-action-presence', name: 'Visible primary action', ...base,
+    passed: evidence.candidateCount > 0, complete: true, context: evidence.pageContext,
+    ...(!actionRequired && evidence.candidateCount === 0 ? { disposition: 'observed' as const } : {}) }]
+  if (!evidence.controlContext) return assertions
+  assertions.push({ key: 'primary-action-click', name: 'Primary control receives a click',
+    expected: 'The same visible primary control receives the browser click',
+    observed: evidence.clicked ? 'The browser completed the click on this control.' : evidence.clickBlocked ? 'The recorded control was disabled or covered at click time.' : 'The click could not be conclusively observed.',
+    passed: evidence.clicked, complete: evidence.clicked || evidence.clickBlocked, context: evidence.controlContext })
+  const restricted = evidence.response === 'restricted' || evidence.response === 'challenge'
+  assertions.push({ key: 'primary-action-navigation', name: 'Primary action advances',
+    expected: 'The original action advances the browser or opens its declared panel',
+    observed: restricted ? 'The action reached an access restriction; its intended destination remains unknown.' : evidence.navigation === 'changed'
+      ? 'The click changed the browser URL or opened the control’s declared panel.' : evidence.navigation === 'same'
+        ? 'The declared navigation completed its observation window without advancing.' : 'No conclusive action advancement was recorded.',
+    passed: !restricted && evidence.navigation === 'changed', complete: !restricted && evidence.navigation !== 'unknown', context: evidence.controlContext })
+  assertions.push({ key: 'primary-action-response', name: 'Primary action destination response',
+    expected: 'The same action reaches a normal successful main-frame response',
+    observed: !evidence.responseExpected ? 'This declared on-page action does not require a main-frame HTTP navigation.' : evidence.httpStatus === null ? 'No comparable main-frame HTTP response was observed.' : `Main-frame HTTP ${evidence.httpStatus}: ${evidence.response}.`,
+    passed: !evidence.responseExpected || evidence.response === 'healthy', complete: !evidence.responseExpected || ['healthy', 'error'].includes(evidence.response),
+    ...(!evidence.responseExpected ? { disposition: 'observed' as const } : {}), context: evidence.controlContext })
+  return assertions
+}
+
+const assertionKeys: Record<string, string> = Object.fromEntries(Object.entries(PRIMARY_ACTION_ASSERTIONS).flatMap(([key, ids]) => ids.map(id => [id, key])))
+/** Keep historical findings intact. Current findings retain only observed failures
+ * and bind their repair to the same recorded page or control. */
+export function scopePrimaryActionFlags(flags: DeterministicFlag[], evidence: PrimaryActionEvidence | undefined) {
+  if (!evidence) return flags
+  const assertions = primaryActionAssertions(evidence)
+  return flags.flatMap(flag => {
+    const key = assertionKeys[flag.checkId]
+    if (!key) return [flag]
+    const assertion = assertions.find(item => item.key === key && item.complete && !item.passed)
+    return assertion ? [{ ...flag, verificationRule: PRIMARY_ACTION_VERIFICATION_RULE,
+      evidenceTargets: [{ kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const,
+        label: flag.checkId === 'flow-no-cta-found' ? 'Primary action viewport' : 'Primary action', context: assertion.context }] }] : []
+  })
+}

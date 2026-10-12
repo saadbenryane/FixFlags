@@ -7,17 +7,17 @@ supersedes: []
 
 # FixFlags card-board experience
 
-**CUSTOMER BOARD CONTRACT, reconciled 2026-10-07 with owner testing.** The selected Site Overview uses the retained flat card grid. Visitor-action cards use the existing Outcome domain; website-health cards retain their distinct evidence scope. This is design acceptance, not a production release claim.
+**CUSTOMER BOARD CONTRACT, reconciled 2026-10-07 with owner testing.** The selected Site Overview uses the flat category rows. Visitor-action cards use the existing Outcome domain; website-health cards retain their distinct evidence scope. This is design acceptance, not a production release claim.
 
 **Your software runs. FixFlags watches.** One Site, clear Outcomes, and broader Product health underneath.
 
 ## Information architecture
 
-Home shows all websites. A selected Site shows identity and a compact, always-visible progress/result panel followed by one flat card grid. Confirmed visitor-action cards and website-health cards share that grid without conflating their health. Do not put an empty Outcomes heading or a full Flag list ahead of the grid. Outcomes remain the engineering domain, not a concept customers must learn before using the board. Shopify and other connections enrich the same Site.
+Home shows all websites. A selected Site shows identity and a compact, always-visible progress/result panel followed by categorized check rows. Visitor-action evidence belongs inside the related category without conflating its health with website-wide observations. Do not put an empty Outcomes heading or a duplicate Flag list ahead of the category rows. Outcomes remain the engineering domain, not a concept customers must learn before using the board. Shopify and other connections enrich the same Site.
 
-Websites remains `/dashboard` and uses full-width Site rows below one Analyze control. Selected Site navigation is Overview, Flags, Settings on desktop and mobile, with All websites as the return action. Monitoring belongs to Site identity and Settings, never the navigation rail. Detailed Flags belong on Flags or category depth. Ask FixFlags appears only where it has grounded Site or Flag context.
+Websites remains `/dashboard` and uses full-width Site rows below one Analyze control. Selected Site navigation is Overview, Timeline, Integrations, Settings on desktop and mobile, with All websites as the return action. Monitoring belongs to Site identity and Settings, never the navigation rail. Overview contains the categorized Flags; individual Flag detail provides evidence and verification. Timeline contains recorded checks and fixes. One bottom-right chat launcher opens Site questions and Support. Site questions uses grounded Site or Flag context and is available only to owners; other visitors receive Support.
 
-One current answer and its recovery action must be visible without opening disclosures. Pipeline milestones belong in the Activity dialog, never a permanent checklist on the Overview, nested dropdowns, or a repeated per-page event dump. Unconfirmed inferred actions are offered through setup, not shown as configured cards.
+One current answer and its recovery action must be visible without opening disclosures. Pipeline milestones belong in the Activity dialog, never a permanent checklist on the Overview, nested dropdowns, or a repeated per-page event dump. Supported availability and discovered checkout checks are maintained automatically; discovery alone never supplies a passing result.
 
 Owner testing, October 7, reconciled with the clear-first Site: make the Overview scannable rather than explanatory. Monitoring is a compact header signal. One run banner communicates Analyzing, Analysis incomplete, Updates paused, or disconnected updates, with one recovery action. Completed pipeline narration stays hidden. Each card shows one category label, one answer that reflows, one status, and the Flag count at the bottom left when that count is the result. Card surfaces stay neutral. Orange, green, gray, and progress treatment sit on the status signal. Impact, diagnosis, timestamps, and evidence remain in category depth. Unknown or stale cards retain their limitation. A Flag count is not a substitute for stale, failed, or incomplete evidence. Presentation-only labels may shorten known findings; they must not rewrite the stored finding or invent a healthy answer.
 
@@ -30,7 +30,6 @@ Card detail is a structured priority queue: category icon and count, severity-ba
 | First visit    | Scenario 01                      | Immediate starter board with resolved checks and independent checking activity; discoveries, running and queued checks inside Site activity |
 | Connected      | Scenario 02                      | Same cards enriched by source metrics and freshness, with one restrained Search concern                                                     |
 | Mobile         | Phone control or narrow viewport | Same state and cards in a priority stream; 393 × 852 viewport, safe-area navigation, full-height detail sheets                              |
-| Add            | Header action                    | Executable Outcomes, additional coverage, and configured connections                                                                         |
 | Card depth     | Search or Performance            | Overview, pages, underlying checks, history, source and coverage limits                                                                     |
 | Important Flag | Scenario 03 → View Flag          | One purchase failure with Conversion, Tracking, Paid traffic, Revenue and Changes context; evidence and verification                        |
 
@@ -38,7 +37,7 @@ Scenario 04 demonstrates quiet health. The runnable prototype lives in `prototyp
 
 ## Card and state contract
 
-A card contains a name, current answer or metric, at most one useful visual, one to three facts, relevant Flag/action and source/freshness. The permanent compact Pages card includes identity, thumbnail, page count, Flag count and activity. The starter board is Pages, Security, Search, Performance, Conversion, Tracking and Add card.
+A card contains a name, current answer or metric, at most one useful visual, one to three facts, relevant Flag/action and source/freshness. Site identity and the captured-page thumbnail live in the header. The Pages category shows scoped results and findings, with complete page evidence in depth. The starter board is Pages, Security, Search, Performance, Conversion, Tracking, Uptime and Accessibility.
 
 Health cards answer whether something works. Context cards explain what is happening without fabricated health labels. Missing context becomes unavailable while supported public checks remain useful. Connecting a source transforms the recommendation into its useful card.
 
@@ -54,13 +53,13 @@ Card anatomy: one category label, one answer, one status signal, and the Flag co
 
 The Site detail reads actual AuditPage results for the resolved latest audit, behind the existing Site access check. Queued, partial and failed pages stay distinct from completed pages. Older unresolved Improvements retain their originating Flag evidence and check identity, so counts, category cards and detail links agree. Never replace missing evidence with a healthy claim.
 
-Add is one header action. It offers executable Outcomes, additional coverage, and configured connections. It is not a logo marketplace and not a trailing library tile.
+No Add action is present. Checks are discovered automatically. Integrations owns supported connection controls, Settings owns monitoring and account-check preferences, and Timeline owns check and fix history.
 
 In production, checking retains the last known health result and its time. Stale evidence cannot imply current health. No giant score, fake progress percentage, blue status palette or green card backgrounds.
 
 ## Grid and interaction system
 
-October 10 shared refinement: regular category cards use one category label, an 18px UI-type answer, concise context, and a single visible status in the footer with one whole-card target. Unknown/checking states retain their status rather than implying a passing count. The homepage sample uses four desktop columns with Pages spanning two, two tablet columns and one phone column; all seven categories remain accessible. Shared Flag-preview mode remains compatible.
+October 10 shared refinement: regular category cards use one category label, an 18px UI-type answer, concise context, and a single visible status in the footer with one whole-card target. Unknown/checking states retain their status rather than implying a passing count. The homepage sample and owned workspace use flat category rows at every viewport. Every category and its findings remain accessible on mobile. Shared Flag-preview mode remains compatible.
 
 The prototype illustrates a 12-column desktop grid, standard and wide cards, and a phone priority stream. Its dimensions, radii and palette are reference values, not instructions to restyle current production cards. Production card geometry belongs to `components/sites/BoardCard.module.css`; shared visual conventions and approved bright-orange buttons with white labels belong to [DESIGN.md](../DESIGN.md). Preserve the current neutral surfaces and restrained shadows. Earlier brown-orange and olive-gray prototype styling is superseded.
 

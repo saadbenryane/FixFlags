@@ -50,6 +50,7 @@ import { canonicalizeDestination } from './url-identity'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { systemClock } from '@/lib/time/clock'
 import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
+import { resolvedPageLinks } from './checks/public-links'
 import { markOutcomeRunsCouldNotVerify } from '@/lib/sites/application/run-requests'
 import { claimExecution, ExecutionOwnershipLost, withExecutionOwnership } from './execution-ownership'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -163,7 +164,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
       const hop1Plan = planReviewTargets({
         pastedUrl: audit.url,
         depth: reviewDepth,
-        pastedLinks: primary.metadata.links ?? [],
+        pastedLinks: resolvedPageLinks(primary.url, primary.metadata),
       })
 
       const { results, truncated: openCheckTruncated } = await openCheckDestinations(
@@ -233,10 +234,10 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
         const hop2Plan = planReviewTargets({
           pastedUrl: audit.url,
           depth: 3,
-          pastedLinks: primary.metadata.links ?? [],
+          pastedLinks: resolvedPageLinks(primary.url, primary.metadata),
           linkedPageLinks: pageRuns.slice(1).map((page) => ({
             pageUrl: page.url,
-            links: page.metadata.links ?? [],
+            links: resolvedPageLinks(page.url, page.metadata),
           })),
         })
         const extraOpenCheck = hop2Plan.openCheckUrls.filter((url) => {

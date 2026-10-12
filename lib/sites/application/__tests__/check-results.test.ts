@@ -5,6 +5,26 @@ vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany, findF
 import { loadSiteCheckResults, loadSiteCheckResultPage, CHECK_RESULT_PAGE_SIZE } from '../check-results'
 
 describe('Site result access and provenance', () => {
+  it('composes category receipts with the broad scope and dates superseded area evidence as history', async () => {
+    const site = { projectId: 'site-1' } as SiteRecord
+    const categories = new Map([['security', { id: 'category-1' }]]) as never
+    const receipt = { targetKey: 'module:security', status: 'COMPLETED', detail: {},
+      pageUrl: 'https://example.com', updatedAt: new Date('2026-10-12T12:00:00Z') }
+    const rows = [{ ...receipt, id: 'new-security', auditId: 'category-1' },
+      { ...receipt, id: 'old-security', auditId: 'latest' },
+      { ...receipt, targetKey: 'module:metadata', id: 'current-metadata', auditId: 'latest' }]
+    findMany.mockResolvedValueOnce(rows); findFirst.mockResolvedValueOnce({ id: 'old-security' })
+    const current = await loadSiteCheckResultPage(site, 'latest', undefined, categories)
+    expect(current.results.map(result => result.id)).toEqual(['new-security', 'current-metadata'])
+    expect(current.results[0]).toMatchObject({ historical: false, auditId: 'category-1',
+      evidenceReference: { auditId: 'category-1', executionId: 'new-security' } })
+    findMany.mockResolvedValueOnce(rows.slice(1))
+    const history = await loadSiteCheckResultPage(site, 'latest', current.nextCursor!, categories)
+    expect(history.results).toMatchObject([{ id: 'old-security', historical: true, auditId: 'latest', checkedAt: receipt.updatedAt.toISOString() }])
+    expect(history.results).toHaveLength(1)
+    await expect(loadSiteCheckResultPage(site, 'latest', current.nextCursor!, new Map([['security', { id: 'category-2' }]]) as never))
+      .rejects.toThrow('Invalid check history cursor')
+  })
   beforeEach(() => { vi.clearAllMocks(); findMany.mockResolvedValue([]); findFirst.mockResolvedValue(null) })
   it('never reads receipts by host or by a missing provisional identity', async () => {
     await loadSiteCheckResults({ projectId: 'site-1' } as SiteRecord, 'latest')

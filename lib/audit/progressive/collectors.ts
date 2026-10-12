@@ -14,6 +14,7 @@ import { getAuditBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { collectKeyboardEvidence, keyboardEvidenceSchema } from '../browser/keyboard-probe'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 
 export const collectionHandlers: TaskHandler[] = [
   { kind: 'keyboard', replay: 'read_only', timeoutMs: 30_000,
@@ -66,11 +67,13 @@ export const collectionHandlers: TaskHandler[] = [
           position: context.input.position, role: context.input.role, status: 'CAPTURING' }, update: {},
       }))
       const access = await resolveAuditScanAccess(context.audit.id)
+      const spec = readExecutionSpec(context.audit.executionSpec)
+      const consoleObservationMs = spec?.consoleObservationScopes?.find(scope => new URL(scope.pageUrl).href === pageUrl)?.minimumMs ?? spec?.consoleObservationMs
       // DOM and semantics have no private-storage dependency. Media has its own
       // checkpoint and recovery window, so an upload outage cannot erase this input.
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `p${context.input.position}-g${context.task.workGeneration}`, { runFlow: false, scanAccess: access, deadline: context.deadline,
-          collectOriginalDocument: false, captureMedia: false })
+          collectOriginalDocument: false, captureMedia: false, consoleObservationMs })
       const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= 1_000_000
       const metadata = htmlWithinBudget ? mergeRuntimeHeadMetadata(await parseMetadataIsolated(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline), captured.runtimeHeadMetadata) : null
       if (!metadata && !captured.desktopHtml && !captured.desktopHtmlTruncated && !captured.captureFailures?.some(failure => ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))

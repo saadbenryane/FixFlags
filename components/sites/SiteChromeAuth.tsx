@@ -24,7 +24,7 @@ export function SiteChromeAuth({
   if (isLoading) return <span className={cn('inline-flex min-h-11 items-center text-xs text-muted-foreground', className)} role="status">{SITE_ACTION_COPY.sessionPending}</span>
 
   return (
-    <Button variant="brand" size="sm" className={cn(className)} asChild>
+    <Button variant="default" size="sm" className={cn(className)} asChild>
       <Link href={signInHref(pathname || '/')}>{CARE_HOME.signIn}</Link>
     </Button>
   )

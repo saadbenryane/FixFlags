@@ -1,44 +1,39 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
-import { Clock3, Flag, Globe2, LayoutGrid, Plug, Radio, Settings2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Menu, Radio } from 'lucide-react'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { SiteAccountRail } from '@/components/layout/SiteAccountRail'
+import { AnalysisDetails, LiveSiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
+import { MobileSidebar } from '@/components/layout/sidebar'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
-import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
-import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { CustomerMain, customerMobileBarClass } from '@/components/layout/customer-frame'
-import { customerAttention, type MonitoringState, type SitePresentation } from '@/lib/sites/presentation'
+import { type SitePresentation } from '@/lib/sites/presentation'
+import styles from './SiteShell.module.css'
+import { SupportProvider } from '@/components/live-support/SupportProvider'
+import { SiteChatWidget } from './SiteChatWidget'
 
-type SiteRoute = 'home' | 'flags' | 'monitoring' | 'integrations' | 'settings'
-
-const routes = [
-  ['home', 'Overview', LayoutGrid],
-  ['flags', 'Flags', Flag],
-  ['monitoring', 'Monitoring', Clock3],
-  ['integrations', 'Integrations', Plug],
-  ['settings', 'Settings', Settings2],
-] as const
-
-function monitoringClass(state: MonitoringState | undefined, legacy: SiteHomeView['watch']['state']): string {
-  const resolved = state ?? (legacy === 'watching' ? 'weekly' : legacy === 'off' ? 'not_monitored' : legacy === 'quota' ? 'quota_blocked' : legacy)
-  if (resolved === 'weekly' || resolved === 'daily' || resolved === 'hourly' || resolved === 'custom') return 'border-success/60 text-foreground'
-  if (resolved === 'not_monitored') return 'border-border text-muted-foreground'
-  return 'border-brand text-foreground'
-}
+import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
 
 function routeHref(siteId: string, route: SiteRoute): Route {
   if (route === 'home') return `/sites/${siteId}` as Route
-  if (route === 'flags' || route === 'monitoring' || route === 'integrations') return `/sites/${siteId}?view=${route}#${route}` as Route
+  if (route === 'timeline' || route === 'integrations') return `/sites/${siteId}?view=${route}#${route}` as Route
   return `/sites/${siteId}/${route}` as Route
 }
 
-export function SiteShell({
+export function SiteShell(props: Parameters<typeof SiteShellContent>[0]) {
+  return <SupportProvider><SiteShellContent {...props} /></SupportProvider>
+}
+
+function SiteShellContent({
   siteId,
   ownerId,
   activeRoute,
@@ -48,6 +43,9 @@ export function SiteShell({
   watch,
   statusMessage,
   headerAction,
+  analysisStatus,
+  analysisView,
+  chatFlag,
   children,
 }: {
   siteId: string
@@ -60,128 +58,66 @@ export function SiteShell({
   checking?: boolean
   statusMessage?: string | null
   headerAction?: ReactNode
+  analysisView?: SiteHomeView
+  analysisStatus?: ReactNode
+  chatFlag?: { id: string; title: string }
   children: ReactNode
 }) {
   const { user } = useMe()
   const signedIn = Boolean(user)
   const ownsSite = Boolean(user && ownerId && user.id === ownerId)
-  const visibleRoutes = routes.filter(([id]) => id !== 'settings' || ownsSite)
-  const previewImage = useRef<HTMLImageElement>(null)
-  const [failedPreview, setFailedPreview] = useState<string | null>(null)
-  const [captureOpen, setCaptureOpen] = useState(false)
-  const monitoring = presentation?.monitoring
-  const monitoringState = monitoring?.state ?? (watch.state === 'watching' ? watch.interval ?? 'not_monitored' : watch.state === 'off' ? 'not_monitored' : watch.state === 'quota' ? 'quota_blocked' : watch.state)
-  const cadenceLabel = monitoring?.label ?? watch.label
-  const watchLabel = monitoringState === 'daily' || monitoringState === 'weekly' || monitoringState === 'hourly' || monitoringState === 'custom'
-    ? `Monitoring on · ${cadenceLabel}`
-    : monitoringState === 'not_monitored' ? 'Monitoring off' : `Monitoring · ${cadenceLabel}`
+  const showSettings = ownsSite || !signedIn
+  const navigationHref = (route: SiteRoute) => route === 'settings' && !signedIn
+    ? `/sign-in?next=${encodeURIComponent(`/sites/${siteId}/settings`)}` as Route
+    : routeHref(siteId, route)
+  const [navigationOpen, setNavigationOpen] = useState(false)
   const identity = presentation?.identity
-  const attention = presentation ? customerAttention(presentation) : null
-  const flagCount = presentation?.flags.count ?? 0
-  const previewUrl = identity?.preview?.url
-  useEffect(() => {
-    const image = previewImage.current
-    // An unavailable image can finish before hydration attaches onError.
-    if (previewUrl && image?.complete && image.naturalWidth === 0) setFailedPreview(previewUrl)
-  }, [previewUrl])
+  const host = identity?.host ?? title
+  const viewTitle = activeRoute === 'home' && title !== host ? title : routes.find(([id]) => id === activeRoute)?.[1] ?? title
+  const navigation = (label: string, close?: () => void) => <SiteWorkspaceNavigation activeRoute={activeRoute} label={label} showSettings={showSettings}
+    renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} onClick={close} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex max-w-[1360px] gap-8 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
-        <aside className="hidden w-44 shrink-0 flex-col gap-6 lg:flex">
-          <Logo variant="lockup" size="sm" />
-          {signedIn ? <Link href="/dashboard" className="flex min-h-11 items-center text-sm text-muted-foreground">← All websites</Link> : <SiteChromeAuth />}
-          <nav className="flex flex-col gap-1" aria-label="Site">
-            {visibleRoutes.map(([id, label, Icon]) => (
-              <Link
-                key={id}
-                href={routeHref(siteId, id)}
-                aria-current={activeRoute === id ? 'page' : undefined}
-                className={cn(
-                  'flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-sm font-medium',
-                  activeRoute === id ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
-                )}
-              >
-                <Icon className="h-4 w-4" aria-hidden />
-                {label}
-                {id === 'flags' && flagCount > 0 ? (
-                  <span className="ml-auto rounded-full bg-foreground/10 px-2 py-0.5 text-xs">{flagCount}</span>
-                ) : null}
-              </Link>
-            ))}
-          </nav>
-        </aside>
+  const analyzing = presentation?.run.state === 'queued' || presentation?.run.state === 'running'
 
-        <CustomerMain className="space-y-6">
-          <header className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex w-full items-center justify-between gap-3 lg:hidden">
-              <Logo variant="lockup" size="sm" />
-              {signedIn ? <Link href="/dashboard" className="flex min-h-11 items-center text-sm text-muted-foreground">← All websites</Link> : <SiteChromeAuth />}
-            </div>
-            <div className="flex min-w-0 items-center gap-3">
-              {identity ? identity.preview && identity.preview.url !== failedPreview ? <button type="button" className="h-14 w-16 shrink-0 overflow-hidden rounded-control border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setCaptureOpen(true)} aria-label={`Open captured page for ${identity.host}`}>
-                {/* Authorized captures use the current browser session. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img ref={previewImage} src={identity.preview.url} onError={() => setFailedPreview(identity.preview!.url)} alt="" width={128} height={112} className="h-full w-full object-cover object-top" />
-              </button> : <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-control border border-border text-muted-foreground" role="img" aria-label={identity.preview ? SITE_BOARD_COPY.previewUnavailable : "No website preview yet"}><Globe2 className="h-5 w-5" aria-hidden /></span> : null}
-              <div className="min-w-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                <h1 className="break-words text-2xl font-semibold tracking-tight">{identity?.host ?? title}</h1>
-                {attention ? <Link href={`/sites/${siteId}?view=flags#flags`} className={cn('text-sm font-medium', attention.tone === 'attention' || attention.tone === 'clear' ? 'text-foreground' : 'text-muted-foreground')} aria-label={`${attention.text}. View Flags`}>
-                  {attention.tone === 'attention' ? <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-brand" /> : null}{attention.text}
-                </Link> : null}
-              </div>
-              {identity && activeRoute !== 'home' ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{{ flags: 'Flags', monitoring: 'Monitoring', integrations: 'Integrations', settings: 'Settings' }[activeRoute]}</p> : null}
-              {identity && activeRoute === 'home' ? <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <span>{presentation.coverage.label}</span>
-              </p> : null}
-              {!identity && description ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{description}</p> : null}
-              {statusMessage ? <p role="status" className="mt-2 text-sm text-foreground">{statusMessage}</p> : null}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {identity && ownsSite ? <Link href={`/sites/${siteId}?view=monitoring#monitoring`} className={cn('inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] border px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring', monitoringClass(monitoring?.state, watch.state))}>
-                <Radio className="h-4 w-4" aria-hidden />
-                {watchLabel}
-              </Link> : identity ? <span className={cn('inline-flex min-h-11 items-center gap-2 px-1 text-sm font-medium', monitoringClass(monitoring?.state, watch.state))}>
-                <Radio className="h-4 w-4" aria-hidden />
-                {watchLabel}
-              </span> : null}
-              {headerAction}
-              {!signedIn ? (
-                <SiteChromeAuth className="hidden lg:inline-flex" />
-              ) : null}
-            </div>
-          </header>
-          {children}
-        </CustomerMain>
-      </div>
-
-      <nav className={customerMobileBarClass} aria-label="Mobile Site">
-        {visibleRoutes.map(([id, label, Icon]) => (
-          <Link
-            key={id}
-            href={routeHref(siteId, id)}
-            aria-current={activeRoute === id ? 'page' : undefined}
-            className={cn(
-              'relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-xs',
-              activeRoute === id ? 'text-foreground' : 'text-muted-foreground'
-            )}
-          >
-            <Icon className="h-5 w-5" aria-hidden />
-            {label}
-            {id === 'flags' && flagCount > 0 ? (
-              <span className="absolute right-1/4 top-1 rounded-full bg-brand px-1.5 text-3xs text-brand-foreground">{flagCount}</span>
-            ) : null}
-          </Link>
-        ))}
-      </nav>
-      {identity?.preview ? <Dialog open={captureOpen} onOpenChange={setCaptureOpen}><DialogContent className="max-h-[90dvh] max-w-4xl overflow-auto rounded-card">
-        <DialogTitle>{identity.host}</DialogTitle>
-        <DialogDescription>{identity.preview.pageUrl} · {identity.preview.viewport} · {formatEvidenceTimestamp(identity.preview.recordedAt)}</DialogDescription>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={identity.preview.url} alt={`Captured ${identity.host}`} width={1280} height={720} className="h-auto w-full" />
-      </DialogContent></Dialog> : null}
+  return <div className={cn(styles.workspace, signedIn && styles.withAccount)}>
+    <SiteAccountRail />
+    <div className={styles.mobileAccount}><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
+      {signedIn ? <MobileSidebar showAdmin={user?.isAdmin} /> : <SiteChromeAuth />}
     </div>
-  )
+    <aside className={styles.websiteSidebar} aria-label={SITE_WORKSPACE_COPY.siteMenu}>
+      {!signedIn ? <div className={styles.anonymousBrand}><Logo variant="lockup" size="sm" /></div> : null}
+      <div className={styles.identity}>
+        <Link href={routeHref(siteId, 'home')} className={styles.domain}>{host}</Link>
+        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} initial={analysisView} /> : <AnalysisDetails host={host} statusLabel={presentation?.run.label ?? watch.label}
+          active={Boolean(analyzing)} disconnected={false} />)}
+      </div>
+      <div className={styles.desktopNavigation}>{navigation('Site')}</div>
+      <div className={styles.tabletNavigation}>
+        <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
+          <SheetTrigger asChild><Button variant="outline" size="sm"><Menu size={16} aria-hidden />{SITE_WORKSPACE_COPY.siteMenu}</Button></SheetTrigger>
+          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all pr-6">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
+            {navigation('Website drawer', () => setNavigationOpen(false))}
+            {ownsSite ? <Link href={`/sites/${siteId}/settings#watch`} onClick={() => setNavigationOpen(false)} className="mt-auto flex min-h-11 items-center gap-2 text-sm"><Radio size={15} aria-hidden /><span>{SITE_WORKSPACE_COPY.analysisCadence}: {watch.interval ? presentation?.monitoring.label ?? watch.label : SITE_WORKSPACE_COPY.monitoringOff}</span></Link> : null}
+          </SheetContent>
+        </Sheet>
+      </div>
+      {ownsSite ? <Link href={`/sites/${siteId}/settings#watch`} className={styles.cadence} aria-label={`${SITE_WORKSPACE_COPY.analysisCadence}: ${watch.interval ? presentation?.monitoring.label ?? watch.label : SITE_WORKSPACE_COPY.monitoringOff}`}>
+        <Radio size={15} aria-hidden /><span><small>{SITE_WORKSPACE_COPY.analysisCadence}</small>{watch.interval ? presentation?.monitoring.label ?? watch.label : SITE_WORKSPACE_COPY.monitoringOff}</span>
+      </Link> : null}
+    </aside>
+    <div className={styles.canvas}>
+      <CustomerMain className="space-y-5">
+        <header className={styles.header}><div className="min-w-0"><h1>{viewTitle}</h1>
+          {title !== host && description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div>
+          {headerAction ? <div className={styles.actions}>{headerAction}</div> : null}
+        </header>
+        {statusMessage ? <p role="status" className="text-sm">{statusMessage}</p> : null}
+        {children}
+      </CustomerMain>
+    </div>
+    <SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} mobile className={cn(customerMobileBarClass, 'md:hidden')}
+      renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
+    <SiteChatWidget key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
+      host={host} ownsSite={ownsSite} flagId={chatFlag?.id} flagTitle={chatFlag?.title} />
+  </div>
 }

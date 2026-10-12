@@ -1,4 +1,4 @@
-import type { Browser, Page } from 'playwright'
+import type { Browser, Page, Response as BrowserResponse } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { discoverFlowCtasWithFallback, flowCtaSelector, rankCtaCandidate } from './discover-cta'
@@ -22,6 +22,8 @@ import {
   dismissOpenDialogs,
   type OverlayBlockerInfo,
 } from '@/lib/audit/browser/overlay-probe'
+import { primaryPageContext, type PrimaryActionEvidence } from './primary-action-evidence'
+import { isBotInterstitialPage } from '../browser/page-capture'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -55,6 +57,7 @@ export type FlowClickFailure =
   | 'timeout'
 
 export interface FlowScanResult {
+  actionEvidence?: PrimaryActionEvidence
   status: FlowScanStatus
   steps: FlowScanStep[]
   finalUrl: string
@@ -85,6 +88,10 @@ export interface FlowScanResult {
 }
 
 export interface RunFlowScanOptions {
+  /** A repair checks the original recorded control rather than today's top CTA. */
+  expectedActionContexts?: string[]
+  primaryOnly?: boolean
+  captureSteps?: boolean
   pageKey?: string
   deadlineMs?: number
   /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
@@ -184,12 +191,14 @@ async function runFlowScanWithinBudget(
 
   if (options.landingStep) {
     steps.push(options.landingStep)
-  } else {
+  } else if (options.captureSteps !== false) {
     steps.push(await captureFlowStep(page, auditId, 0, 'Landing', options.pageKey))
+  } else {
+    steps.push({ label: 'Landing', screenshotUrl: null, url: page.url() })
   }
 
   const landingUrl = page.url()
-  const multiStep = await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation })
+  const multiStep = options.primaryOnly ? undefined : await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation })
   // Form/nav probes can leave auth or result dialogs open (dogfood: GradLoom
   // "Show My Career Path" opens a Saved Career Paths modal). Dismiss residue
   // before ranking/clicking the primary CTA so we do not self-inflict overlay FPs.
@@ -197,24 +206,31 @@ async function runFlowScanWithinBudget(
   await dismissOpenDialogs(page)
 
   const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
-  const cta = rankCtaCandidate(candidates)
+  const actionEvidence: PrimaryActionEvidence = { version: 1,
+    pageContext: primaryPageContext(pageUrl, page.url(), page.viewportSize()), controlContext: null,
+    candidateCount: candidates.length, clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null }
+  const cta = options.expectedActionContexts ? candidates.find(candidate => candidate.context && options.expectedActionContexts!.includes(candidate.context)) ?? null : rankCtaCandidate(candidates)
   if (!cta) {
-    return { status: 'no_cta', steps, finalUrl: page.url(), multiStep }
+    return { status: options.expectedActionContexts ? 'skipped' : 'no_cta', steps, finalUrl: page.url(), multiStep, actionEvidence }
   }
 
   const selector = flowCtaSelector(cta.flowIdx)
   const ctaMeta = {
+    actionEvidence,
     ctaText: cta.text,
     ctaHref: cta.href ?? null,
     ctaAnchor: await captureCtaAnchor(page, selector),
     multiStep,
   }
+  actionEvidence.controlContext = cta.context ?? null
+  const panelWasVisible = cta.controls ? await controlledPanelVisible(page, cta.controls) : false
 
   // Buttons with on-page handlers (no navigable href), hash links, new tabs, and
   // intentional external CTAs must not race waitForNavigation - that race was
   // reporting flow_click_timeout as CRITICAL unclickable on working same-page CTAs
   // (dogfood: gradloom.app "See How It Works" button).
   const href = cta.href ?? null
+  actionEvidence.responseExpected = Boolean(href && !isSamePageHashHref(href))
   const skipNavigationWait =
     cta.opensInNewTab ||
     isIntentionalExternalCta(origin, href) ||
@@ -222,6 +238,7 @@ async function runFlowScanWithinBudget(
     isSamePageHashHref(href)
   let clicked = false
   let clickResponseStatus: number | undefined
+  let clickResponse: BrowserResponse | null = null
 
   try {
     await page.evaluate((sel) => {
@@ -238,6 +255,7 @@ async function runFlowScanWithinBudget(
       const overlayBlocker = await detectOverlayAtPoint(page, selector)
       const obscuredBy =
         overlayBlocker ?? (await detectObscuringElementAtPoint(page, selector))
+      actionEvidence.clickBlocked = Boolean(overlayBlocker || obscuredBy)
       return {
         status: 'unclickable',
         steps,
@@ -248,6 +266,7 @@ async function runFlowScanWithinBudget(
         ...ctaMeta,
       }
     }
+    actionEvidence.clickBlocked = !(await clickTarget.isEnabled().catch(() => true))
 
     // Bound the Playwright click itself. For real navigable hrefs, arm
     // waitForNavigation before the click so we do not miss the response.
@@ -260,6 +279,8 @@ async function runFlowScanWithinBudget(
     try {
       await clickTarget.click({ timeout: FLOW_CLICK_TIMEOUT_MS })
       clicked = true
+      actionEvidence.clicked = true
+      actionEvidence.clickBlocked = false
     } catch (err) {
       await clickTarget.dispose().catch(() => {})
       throw err
@@ -269,6 +290,7 @@ async function runFlowScanWithinBudget(
       await new Promise((r) => setTimeout(r, 800))
     } else {
       const response = await navigationPromise
+      clickResponse = response
       if (response) {
         clickResponseStatus = response.status()
       } else {
@@ -282,6 +304,7 @@ async function runFlowScanWithinBudget(
       !clicked
         ? overlayBlocker ?? (await detectObscuringElementAtPoint(page, selector))
         : null
+    actionEvidence.clickBlocked ||= Boolean(overlayBlocker || obscuredBy)
     const clickError =
       err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200)
     return {
@@ -300,22 +323,43 @@ async function runFlowScanWithinBudget(
     return { status: 'timeout', steps, finalUrl: page.url(), ...ctaMeta }
   }
 
-  const postClickMetrics = await measurePostClickLoading(page)
-  steps.push(await captureFlowStep(page, auditId, 1, 'After click', options.pageKey))
+  actionEvidence.httpStatus = clickResponseStatus ?? null
+  const responseTitle = await page.title().catch(() => '')
+  const responseHeading = await page.locator('h1').first().textContent({ timeout: 250 }).catch(() => '')
+  const challenge = isBotInterstitialPage({ title: responseTitle, cfMitigated: clickResponse?.headers()['cf-mitigated'] }) || isBotInterstitialPage({ title: responseHeading })
+  let responseMatches = false
+  if (clickResponse) {
+    const responseUrl = new URL(clickResponse.url()), observedUrl = new URL(page.url())
+    responseUrl.hash = ''; observedUrl.hash = ''
+    responseMatches = responseUrl.href === observedUrl.href
+  }
+  actionEvidence.response = challenge ? 'challenge' : !responseMatches || !clickResponseStatus ? 'unknown'
+    : [401, 403, 429].includes(clickResponseStatus) ? 'restricted' : clickResponseStatus >= 400 ? 'error'
+      : clickResponseStatus >= 200 && clickResponseStatus < 300 ? 'healthy' : 'unknown'
+  const declaredPanelOpened = Boolean(cta.controls && !panelWasVisible && await controlledPanelVisible(page, cta.controls))
+  actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) || declaredPanelOpened ? 'changed'
+    : !skipNavigationWait ? 'same' : 'unknown'
+  if (actionEvidence.response === 'restricted' || actionEvidence.response === 'challenge') {
+    return { status: 'skipped', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
+  }
+
+  const postClickMetrics = options.primaryOnly ? undefined : await measurePostClickLoading(page)
+  steps.push(options.captureSteps === false ? { label: 'After click', screenshotUrl: null, url: page.url() }
+    : await captureFlowStep(page, auditId, 1, 'After click', options.pageKey))
 
   const finalUrl = page.url()
   const httpStatus = clickResponseStatus
 
   const destinationTrust =
-    urlsMeaningfullyChanged(landingUrl, finalUrl)
+    !options.primaryOnly && urlsMeaningfullyChanged(landingUrl, finalUrl)
       ? await fetchDestinationTrust(finalUrl, options.fetchHeaders)
       : undefined
 
-  const destinationUX = urlsMeaningfullyChanged(landingUrl, finalUrl)
+  const destinationUX = !options.primaryOnly && urlsMeaningfullyChanged(landingUrl, finalUrl)
     ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, options.fetchHeaders)
     : undefined
 
-  if (httpStatus && httpStatus >= 400) {
+  if (actionEvidence.response === 'error') {
       return {
         status: 'error_response',
         steps,
@@ -338,7 +382,7 @@ async function runFlowScanWithinBudget(
   }
 
   if (!urlsMeaningfullyChanged(landingUrl, finalUrl)) {
-    if (skipNavigationWait || isIntentionalExternalCta(origin, cta.href ?? null)) {
+    if (skipNavigationWait || declaredPanelOpened || isIntentionalExternalCta(origin, cta.href ?? null)) {
       return {
         status: 'success',
         steps,
@@ -389,6 +433,24 @@ async function runFlowScanWithinBudget(
     destinationUX,
     ...ctaMeta,
   }
+}
+
+async function controlledPanelVisible(page: Page, controls: string) {
+  return page.evaluate((ids) => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+    return ids.trim().split(/\s+/).some(id => {
+      const panel = document.getElementById(id)
+      if (!panel) return false
+      const rect = panel.getBoundingClientRect(), style = getComputedStyle(panel)
+      let node: Element | null = panel
+      while (node) {
+        const ancestor = getComputedStyle(node)
+        if (ancestor.display === 'none' || ancestor.visibility === 'hidden' || ancestor.opacity === '0') return false
+        node = node.parentElement
+      }
+      return rect.width > 0 && rect.height > 0 && rect.top < innerHeight && rect.bottom > 0 && rect.left < innerWidth && rect.right > 0 && style.visibility !== 'hidden'
+    })
+  }, controls).catch(() => false)
 }
 
 /**

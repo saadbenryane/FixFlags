@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { RateLimitError } from '@/lib/security/rate-limit'
+import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 import {
   MCP_CONTRACT_VERSION,
   MCP_CORE_TOOL_DEFINITIONS,
@@ -55,6 +56,10 @@ export function mcpCoreError(error: unknown, defaults?: { code?: string; action?
   if (error instanceof RateLimitError) {
     code = 'RATE_LIMITED'
     action = 'wait_and_retry'
+    message = error.message
+  } else if (error instanceof ImprovementAttemptConflict) {
+    code = error.code
+    action = 'use_new_request_key'
     message = error.message
   } else if (/not found/i.test(typed.message ?? '')) {
     code = 'NOT_FOUND'

@@ -1,10 +1,19 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import { recordObservation, type CheckRecorder } from './assertion'
 
-export function runVisualPolishChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
-  if (metrics == null) return []
+export function runVisualPolishChecks(metrics: CaptureMetrics | null, record?: CheckRecorder): DeterministicFlag[] {
+  if (metrics == null) {
+    recordObservation(record, 'font-family-count', 'Sampled typography', 'At most four font families occur in the sampled elements', 'Typography was not measured.', undefined, true)
+    recordObservation(record, 'button-radius-range', 'Sampled button radii', 'Sampled non-pill button radii do not trigger the 6px variation rule', 'Button radii were not measured.', undefined, true)
+    return []
+  }
 
   const findings: DeterministicFlag[] = []
+
+  recordObservation(record, 'font-family-count', 'Sampled typography', 'At most four font families occur in the sampled elements',
+    `${metrics.uniqueFontFamilies} font families captured: ${metrics.fontFamilySample?.join(', ') ?? ''}.`,
+    Number.isFinite(metrics.uniqueFontFamilies) && metrics.uniqueFontFamilies > 0 ? metrics.uniqueFontFamilies <= 4 : undefined, true)
 
   if (metrics.uniqueFontFamilies > 4) {
     const sample = metrics.fontFamilySample?.join(', ') ?? ''
@@ -21,14 +30,15 @@ export function runVisualPolishChecks(metrics: CaptureMetrics | null): Determini
     })
   }
 
-  const radii = metrics.buttonBorderRadii?.filter((r) => r < 100) ?? []
+  const radii = metrics.buttonBorderRadii?.filter((r) => r < 100).sort((a, b) => a - b) ?? []
   const allRadii = metrics.buttonBorderRadii ?? []
+  const inconsistent = radii.length > 2 && radii[radii.length - 1] - radii[0] >= 6
+  recordObservation(record, 'button-radius-range', 'Sampled button radii', 'Sampled non-pill button radii do not trigger the 6px variation rule',
+    `${allRadii.length} distinct button radii captured: ${allRadii.join(', ')}px.`,
+    allRadii.length && allRadii.every(radius => Number.isFinite(radius) && radius >= 0) ? !inconsistent : undefined, true)
 
   if (
-    radii.length > 2 &&
-    radii.length > 0 &&
-    allRadii.length > 0 &&
-    (radii[radii.length - 1] - radii[0]) >= 6
+    inconsistent
   ) {
     findings.push({
       checkId: 'visual-radius-inconsistent',

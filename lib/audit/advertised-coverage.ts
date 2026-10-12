@@ -8,20 +8,57 @@ export type CoverageConfiguration = 'public' | 'pagespeed' | 'search_console' | 
 export type AdvertisedCoverage = {
   id: string; evaluators: readonly CoverageEvaluator[]; configuration: CoverageConfiguration;
   extent: 'checked_scope' | 'heuristic' | 'partial'; limitation: string;
+  acceptance: {
+    applicability: string;
+    requiredObservations: readonly string[];
+    recovery: 'comparable_observation' | 'advisory_reassessment' | 'provider_reporting_window' | 'authorized_lifecycle' | 'scheduled_transition';
+    scenarios: readonly ('working' | 'failing' | 'incomplete' | 'repaired' | 'recurring')[];
+    proofEnvironments: readonly ('local_worker' | 'live_provider' | 'live_schedule')[];
+  };
 }
 const scope = 'Applies only to the checked pages and recorded execution, not the entire website.'
 const heuristic = 'Observed content or layout signals, not proof of visitor behavior or business impact.'
 const lab = 'Requires available PageSpeed evidence. Lab measurements are separate from field data; unavailable metrics remain unknown.'
 const provider = 'Requires an authorized property covering the checked scope. Provider reporting time is separate from live collection time.'
+const applicability: Record<CoverageConfiguration, string> = {
+  public: 'Applicable public-page content and safely observable behavior in the admitted scope.',
+  pagespeed: 'Available measurements for the admitted page and device. Missing provider measurements remain incomplete.',
+  search_console: 'An authorized matching Search Console property and the recorded provider reporting window.',
+  analytics: 'An authorized matching Analytics property and the recorded provider reporting window.',
+  signup_fixture: 'A current authorized reversible fixture, demonstrated success condition, and recorded cleanup.',
+  availability: 'An owned enabled availability binding and the account-permitted monitoring cadence.',
+}
+
+/** Acceptance requirements are obligations, never evidence that a scenario passed. */
+function acceptanceFor(id: string, evaluators: readonly CoverageEvaluator[], configuration: CoverageConfiguration,
+  extent: AdvertisedCoverage['extent']): AdvertisedCoverage['acceptance'] {
+  const scheduled = /^uptime\.(schedule|incidents|history|recovery)$/.test(id)
+  const providerWindow = id === 'performance.inp' || configuration === 'search_console' || configuration === 'analytics'
+  const lifecycle = configuration === 'signup_fixture'
+  return {
+    applicability: applicability[configuration],
+    requiredObservations: [...new Set(evaluators.flatMap(evaluator => {
+      const [kind, module] = evaluator.split(':')
+      return kind === 'page' ? PAGE_CHECK_DEFINITIONS[module].requiredEvidence.map(source => `${evaluator}:${source}`)
+        : [evaluator + ':recorded-observation']
+    }))],
+    recovery: scheduled ? 'scheduled_transition' : providerWindow ? 'provider_reporting_window' : lifecycle ? 'authorized_lifecycle'
+      : extent === 'heuristic' ? 'advisory_reassessment' : 'comparable_observation',
+    scenarios: extent === 'heuristic' ? ['working', 'failing', 'incomplete', 'repaired'] : ['working', 'failing', 'incomplete', 'repaired', 'recurring'],
+    proofEnvironments: scheduled ? ['local_worker', 'live_schedule'] : providerWindow || configuration === 'pagespeed' || lifecycle
+      ? ['local_worker', 'live_provider'] : ['local_worker'],
+  }
+}
 function entries(ids: readonly string[], evaluators: readonly CoverageEvaluator[], configuration: CoverageConfiguration = 'public',
   extent: AdvertisedCoverage['extent'] = 'checked_scope', limitation = scope): AdvertisedCoverage[] {
-  return ids.map(id => ({ id, evaluators, configuration, extent, limitation }))
+  return ids.map(id => ({ id, evaluators, configuration, extent, limitation, acceptance: acceptanceFor(id, evaluators, configuration, extent) }))
 }
 
 /** Explicit public responsibilities. This inventory maps execution, not passing verdicts. */
 export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['pages.discovery'], ['task:discovery']),
-  ...entries(['pages.internal-links', 'pages.section-links'], ['page:seo']),
+  ...entries(['pages.internal-links'], ['task:discovery', 'page:seo']),
+  ...entries(['pages.section-links'], ['page:seo']),
   ...entries(['pages.responses'], ['task:http']),
   ...entries(['pages.pricing-contact', 'pages.action-destinations', 'pages.blank-dead-end', 'pages.loading', 'pages.destination-content', 'pages.promise-consistency'], ['task:flow']),
   ...entries(['conversion.primary-action', 'conversion.mobile-navigation', 'conversion.validation', 'conversion.feedback'], ['task:flow']),
@@ -63,7 +100,7 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['accessibility.focus'], ['page:keyboard'], 'public', 'partial', 'Actual keyboard focus on the page and safely opened popups is inspected for an outline or computed style change. This does not establish pixel contrast, every custom focus effect, embedded controls, or unopened states.'),
   ...entries(['accessibility.tab-order'], ['page:keyboard'], 'public', 'heuristic', 'Records the exercised Tab sequence and detects positive-tabindex backward jumps. Intended reading order and unopened interaction states require separate review.'),
   ...entries(['uptime.response', 'uptime.errors', 'uptime.provenance'], ['task:bindings'], 'availability'),
-  ...entries(['uptime.console'], ['page:trust']),
+  ...entries(['uptime.console'], ['page:console']),
   ...entries(['uptime.schedule', 'uptime.incidents', 'uptime.history', 'uptime.recovery'], ['projection:availability'], 'availability', 'checked_scope', 'Persisted configured availability runs and incident history, not uninterrupted observation between scheduled checks.'),
 ]
 
@@ -81,6 +118,13 @@ export function validateAdvertisedCoverage(definitions: readonly AdvertisedCover
           : evaluator === 'provider:analytics' || evaluator === 'projection:availability'
       if (!valid) throw new Error('Missing coverage evaluator: ' + evaluator)
     }
+    const acceptance = definition.acceptance
+    const required = acceptanceFor(definition.id, definition.evaluators, definition.configuration, definition.extent)
+    if (!acceptance?.applicability.trim() ||
+      required.requiredObservations.some(observation => !acceptance.requiredObservations.includes(observation)) ||
+      required.scenarios.some(scenario => !acceptance.scenarios.includes(scenario)) ||
+      required.proofEnvironments.some(environment => !acceptance.proofEnvironments.includes(environment)) ||
+      acceptance.recovery !== required.recovery) throw new Error('Missing acceptance requirements: ' + definition.id)
     mapped.set(definition.id, definition)
   }
   for (const id of advertised) if (!mapped.has(id)) throw new Error('Missing advertised coverage: ' + id)

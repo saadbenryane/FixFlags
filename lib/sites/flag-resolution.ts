@@ -30,16 +30,31 @@ export type FlagResolution =
   | { kind: 'proven'; statusLabel: string; proof: FlagProofNote }
   | { kind: 'unproven'; statusLabel: string; body: string; nextStep: 'verify' }
 
-/**
- * The Flag detail page shows the improvement status when one is linked.
- * That value is PROPOSED until a check improves it to VERIFIED. The flag-row
- * status, including FIXED, is only the fallback.
- */
+/** Recovery and recurrence belong to the observed incident. Repair workflow
+ * remains separate and cannot reopen a fixed observation. */
 export function siteFlagDetailStatus(
   improvementStatus: string | null | undefined,
   flagStatus: string,
 ): string {
-  return improvementStatus ?? flagStatus
+  return flagStatus === 'FIXED' || flagStatus === 'REGRESSED' ? flagStatus : improvementStatus ?? flagStatus
+}
+
+/** Project current incident attention without rewriting repair declarations.
+ * A fixed row without its completed, tenant-owned recovery remains unverified. */
+export function currentIncidentFlags<T extends { status?: string | null; resolvedInId?: string | null }>(
+  flags: T[], completedRecoveryIds: { has(id: string): boolean },
+): Array<Omit<T, 'status'> & { status?: string | null }> {
+  return flags.flatMap(flag => {
+    if (flag.status === 'IGNORED') return []
+    if (flag.status !== 'FIXED') return [flag]
+    if (flag.resolvedInId && completedRecoveryIds.has(flag.resolvedInId)) return []
+    return [{ ...flag, status: 'UNVERIFIED' }]
+  })
+}
+
+export function incidentAffectedPaths(flags: Array<{ pageUrl?: string | null; affectedPaths?: unknown }>): string[] {
+  return [...new Set(flags.flatMap(flag => Array.isArray(flag.affectedPaths) && flag.affectedPaths.some(path => typeof path === 'string' && path.length > 0)
+    ? flag.affectedPaths.filter((path): path is string => typeof path === 'string' && path.length > 0) : flag.pageUrl ? [flag.pageUrl] : []))]
 }
 
 const STILL_OPEN = new Set(['OPEN', 'REGRESSED', 'IGNORED'])

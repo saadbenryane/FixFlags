@@ -5,6 +5,17 @@ import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 
+/** Both Site readers need the same compact observations, rather than full task artifacts. */
+export const siteCoverageExecutionSelect = {
+  where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' }] },
+  select: { id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
+} satisfies Prisma.Audit$verifierExecutionsArgs
+
+export const categoryCoverageExecutionSelect = {
+  where: { OR: [...siteCoverageExecutionSelect.where.OR, { targetKey: { startsWith: 'task:' } }] },
+  select: { ...siteCoverageExecutionSelect.select, workState: true },
+} satisfies Prisma.Audit$verifierExecutionsArgs
+
 export const siteEvidenceAuditSelect = {
   executionSpec: true,
   id: true,
@@ -14,6 +25,7 @@ export const siteEvidenceAuditSelect = {
   triageAt: true,
   aiReviewAt: true,
   failedModules: true,
+  reportCompleteness: true,
   completedAt: true,
   createdAt: true,
   updatedAt: true,
@@ -21,10 +33,7 @@ export const siteEvidenceAuditSelect = {
   pipelineEvents: { orderBy: { occurredAt: 'desc' }, take: 100, select: { stage: true, event: true, status: true, occurredAt: true } },
   failureCode: true,
   evidenceCoverage: true,
-  verifierExecutions: {
-    where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' }] },
-    select: { id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
-  },
+  verifierExecutions: siteCoverageExecutionSelect,
   url: true,
 } satisfies Prisma.AuditSelect
 
@@ -64,7 +73,7 @@ export async function resolvePriorCompletedAudit(site: SiteRecord, currentId: st
 export type ActiveSiteRun = {
   id: string
   auditId: string | null
-  scope: 'SITE' | 'OUTCOMES' | 'DIAGNOSTIC' | 'UNKNOWN'
+  scope: 'SITE' | 'CATEGORY' | 'OUTCOMES' | 'DIAGNOSTIC' | 'UNKNOWN'
   targetLabel: string | null
   trigger: 'MANUAL' | 'SCHEDULED' | 'OTHER' | 'UNKNOWN'
   status: 'QUEUED' | 'RUNNING' | 'INTERRUPTED'

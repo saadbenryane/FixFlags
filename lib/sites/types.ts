@@ -1,8 +1,5 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
-import {
-  canonicalProductHost,
-  canonicalProductUrl,
-} from '@/lib/audit/product-intelligence'
+import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 
 export type SiteRef =
   | { kind: 'project'; siteId: string; projectId: string }
@@ -29,9 +26,12 @@ export function parseSiteId(siteId: string): SiteRef | null {
 }
 
 export function siteUrlParts(url: string): { canonicalHost: string; canonicalUrl: string } | null {
-  const canonicalHost = canonicalProductHost(url)
-  if (!canonicalHost) return null
-  return { canonicalHost, canonicalUrl: canonicalProductUrl(url) }
+  try {
+    const target = new URL(url)
+    if (!['http:', 'https:'].includes(target.protocol)) return null
+    // Hostname identity does not authorize changing the executable origin.
+    return { canonicalHost: canonicalProductHost(url), canonicalUrl: target.origin }
+  } catch { return null }
 }
 
 export type SiteRecord = {

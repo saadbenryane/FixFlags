@@ -99,7 +99,7 @@ export interface CreateAuditResult {
 
 /** Internal control result for an identically admitted tenant command. */
 export class RunAdmissionReplay extends Error {
-  constructor(readonly runId: string, readonly auditId: string) { super('Run intent already admitted'); this.name = 'RunAdmissionReplay' }
+  constructor(readonly runId: string, readonly auditId: string, readonly outcomeIds: string[] = []) { super('Run intent already admitted'); this.name = 'RunAdmissionReplay' }
 }
 
 /** Unsigned visitors reuse a public scan of the same URL instead of starting a duplicate job. */
@@ -396,12 +396,12 @@ export async function createAndEnqueueAudit(
               const intent = options.runRequestAdmission
               const existing = await tx.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
                 projectId: intent.projectId, source: intent.source!, idempotencyKey: intent.idempotencyKey,
-              } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true } })
+              } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true, selections: { select: { outcomeId: true } } } })
               if (existing) {
                 if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== userId)
                   throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
                 if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
-                throw new RunAdmissionReplay(existing.id, existing.auditId)
+                throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort())
               }
             }
 

@@ -6,9 +6,17 @@ import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { selectResolvedFlags, siteFlagDetailStatus } from '@/lib/sites/flag-resolution'
+import { selectResolvedFlags, siteFlagDetailStatus, currentIncidentFlags, incidentAffectedPaths } from '@/lib/sites/flag-resolution'
+import { loadIncidentRecoveryProofs } from './application/incident-proofs'
 import { compareFlagPriority, flagPriority, type FlagVerificationState } from '@/lib/sites/presentation'
 import type { SiteRecord } from '@/lib/sites/types'
+import { attemptHasActiveVerification } from '@/lib/improvements/attempt-state'
+import type { Prisma } from '@prisma/client'
+
+const attemptVerificationSelect = { projectId: true, parentId: true, status: true, verifierExecutions: {
+  where: { workKind: 'finalize', workState: { in: ['READY', 'RUNNING', 'RETRY_WAIT'] } }, take: 1,
+  select: { workKind: true, workState: true },
+} } satisfies Prisma.AuditSelect
 
 function toSiteFlagSeed(flag: {
   attentionPolicy?: unknown
@@ -121,7 +129,8 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
       include: {
         outcome: { select: { id: true, name: true } },
         occurrences: { orderBy: { createdAt: 'desc' }, include: { flag: true } },
-        attempts: { orderBy: { createdAt: 'desc' }, take: 1, select: { outcome: true } },
+        attempts: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1,
+          select: { outcome: true, sourceAuditId: true, verificationAudit: { select: attemptVerificationSelect } } },
       },
     })
 
@@ -139,15 +148,16 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
       : []
 
     if (improvements.length > 0) {
-      const projected = improvements.map((imp) => {
-        const currentOccurrenceFlags = (imp.occurrences ?? [])
-          .map((occurrence) => occurrence.flag)
-          .filter((flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED')
+      const proofIds = (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
+        flags: improvements.flatMap(imp => (imp.occurrences ?? []).map(occurrence => occurrence.flag)) }])).get(site.projectId) ?? new Set<string>()
+      const projected = improvements.flatMap((imp) => {
+        const currentOccurrenceFlags = currentIncidentFlags((imp.occurrences ?? []).map(occurrence => occurrence.flag), proofIds)
         const auditFlag = auditFlags.find((candidate) => candidate.fingerprint === imp.fingerprint)
+        if (imp.occurrences?.length > 0 && currentOccurrenceFlags.length === 0 && !auditFlag) return []
         const flag = auditFlag ?? currentOccurrenceFlags[0] ?? imp.occurrences?.[0]?.flag
-        const paths = currentOccurrenceFlags.map((candidate) => candidate.pageUrl).filter((path): path is string => Boolean(path))
+        const paths = incidentAffectedPaths(currentOccurrenceFlags)
         if (auditFlag?.pageUrl) paths.push(auditFlag.pageUrl)
-        return toSiteFlagSeed({
+        return [toSiteFlagSeed({
           ...(flag ?? {
             id: imp.id,
             checkId: null,
@@ -161,13 +171,14 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
             pageUrl: null,
             resolvedInId: null,
           }),
-          status: imp.status,
+          status: flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
           improvementId: imp.id,
           affectedPaths: paths,
           relatedOutcome: imp.outcome ?? null,
-          verificationState: verificationState(imp.status, imp.attempts?.[0]?.outcome == null && Boolean(imp.attempts?.length)),
+          verificationState: verificationState(flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
+            attemptHasActiveVerification(imp.attempts?.[0], site.projectId!, flag?.auditId)),
           latestOccurrenceAt: imp.occurrences?.[0]?.createdAt ?? null,
-        })
+        })]
       })
       const representedFingerprints = new Set(improvements.map((improvement) => improvement.fingerprint))
       return [
@@ -231,6 +242,7 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
       resolvedInId: true,
       createdAt: true,
       confidence: true,
+      improvementOccurrence: { select: { improvementId: true } },
     },
   })
   const verified = await prisma.improvement.findMany({
@@ -282,10 +294,14 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
     },
   })
 
-  const fixedEntries = rows.map((flag) => ({
-    at: flag.createdAt.toISOString(),
-    seed: toSiteFlagSeed({ ...flag, improvementId: null }),
-  }))
+  const recoveries = (await loadIncidentRecoveryProofs([{ projectId: site.projectId, flags: rows }])).get(site.projectId)
+  const fixedEntries = rows.flatMap(flag => {
+    const at = flag.resolvedInId ? recoveries?.get(flag.resolvedInId) : null
+    return at ? [{ at: at.toISOString(), seed: toSiteFlagSeed({ ...flag,
+      improvementId: flag.improvementOccurrence?.improvementId ?? null,
+      verificationState: 'verified', latestOccurrenceAt: at,
+    }) }] : []
+  })
   const verifiedEntries = verified.flatMap((improvement) => {
     const attempt = improvement.attempts[0]
     const display = improvement.occurrences.find((occurrence) => occurrence.flag)?.flag
@@ -315,7 +331,11 @@ export type SiteFlagAttemptView = {
   comparable: boolean | null
   reason: string | null
   changeSummary: string | null
+  sourceAuditId?: string
+  commitReference?: string | null
+  deploymentReference?: string | null
   verificationAuditId: string | null
+  verifying?: boolean
 }
 
 export type SiteFlagDetail = SiteFlagSeed & {
@@ -342,7 +362,7 @@ export async function loadSiteFlagDetail(
   flagId: string
 ): Promise<SiteFlagDetail | null> {
   // Detail is a historical resource, independent of the open inbox and its pagination.
-  const flagRow = await prisma.flag.findFirst({
+  let flagRow = await prisma.flag.findFirst({
     where: {
       audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' },
       OR: [{ id: flagId }, { improvementOccurrence: { improvementId: flagId } }],
@@ -351,11 +371,29 @@ export async function loadSiteFlagDetail(
     include: { improvementOccurrence: { include: { improvement: true } } },
   })
   if (!flagRow) return null
+  const incidentId = flagRow.improvementOccurrence?.improvement.id
+  const occurrenceScope = incidentId ? await prisma.improvementOccurrence.findMany({
+    where: { improvementId: incidentId, audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true, flag: { select: { id: true, auditId: true, pageUrl: true, affectedPaths: true, status: true, resolvedInId: true } } },
+  }) : []
+  const recoveries = site.projectId ? (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
+    flags: [flagRow, ...occurrenceScope.map(occurrence => occurrence.flag)] }])).get(site.projectId) : null
+  const activeScope = currentIncidentFlags(occurrenceScope.map(occurrence => occurrence.flag), recoveries ?? new Set<string>())
+  // Durable incident links open the unresolved original capture. Exact Flag
+  // links remain historical resources, including completed recoveries.
+  if (flagRow.id !== flagId && activeScope[0] && activeScope[0].id !== flagRow.id) {
+    flagRow = await prisma.flag.findFirst({ where: { id: activeScope[0].id,
+      audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
+      include: { improvementOccurrence: { include: { improvement: true } } } })
+    if (!flagRow) return null
+  }
   const improvement = flagRow.improvementOccurrence?.improvement
+  const provenRecovery = flagRow.status === 'FIXED' && recoveries?.has(flagRow.resolvedInId ?? '')
   const seed = toSiteFlagSeed({
     ...flagRow,
     improvementId: improvement?.id,
-    status: siteFlagDetailStatus(improvement?.status, flagRow.status),
+    status: flagRow.status === 'FIXED' && !provenRecovery ? 'UNVERIFIED' : siteFlagDetailStatus(improvement?.status, flagRow.status),
     resolvedInId: flagRow.resolvedInId ?? null,
   })
 
@@ -363,7 +401,7 @@ export async function loadSiteFlagDetail(
   const attempts = improvementId
     ? await prisma.improvementAttempt.findMany({
         where: { improvementId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 12,
         select: {
           id: true,
@@ -373,7 +411,11 @@ export async function loadSiteFlagDetail(
           comparable: true,
           verificationReason: true,
           changeSummary: true,
+          commitReference: true,
+          deploymentReference: true,
           verificationAuditId: true,
+          sourceAuditId: true,
+          verificationAudit: { select: attemptVerificationSelect },
         },
       })
     : []
@@ -385,22 +427,12 @@ export async function loadSiteFlagDetail(
       }) : null
   const expectedBehavior = linkedOutcome?.expectation?.trim() || customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
-  const occurrenceScope = improvementId
-    ? await prisma.improvementOccurrence.findMany({
-        where: { improvementId },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true, flag: { select: { pageUrl: true, status: true } } },
-      })
-    : []
-  const affectedPaths = [...new Set(occurrenceScope
-    .filter((occurrence) => occurrence.flag.status === 'OPEN' || occurrence.flag.status === 'REGRESSED')
-    .map((occurrence) => occurrence.flag.pageUrl)
-    .filter((path): path is string => Boolean(path)))]
+  const affectedPaths = flagRow.id === flagId ? seed.affectedPaths : incidentAffectedPaths(activeScope)
   const scopedSeed = toSiteFlagSeed({
     ...seed,
     affectedPaths: affectedPaths.length > 0 ? affectedPaths : seed.affectedPaths,
     latestOccurrenceAt: occurrenceScope[0]?.createdAt ?? seed.latestOccurrenceAt,
-    verificationState: verificationState(seed.status, attempts.some((attempt) => attempt.outcome == null)),
+    verificationState: verificationState(seed.status, attemptHasActiveVerification(attempts[0], site.projectId!, flagRow.auditId)),
   })
 
   return {
@@ -422,8 +454,12 @@ export async function loadSiteFlagDetail(
       comparable: attempt.comparable,
       reason: attempt.verificationReason,
       changeSummary: attempt.changeSummary,
+      sourceAuditId: attempt.sourceAuditId,
+      commitReference: attempt.commitReference ?? null,
+      deploymentReference: attempt.deploymentReference ?? null,
       verificationAuditId: attempt.verificationAuditId,
+      verifying: attemptHasActiveVerification(attempt, site.projectId!),
     })),
-    verifying: attempts.some((attempt) => attempt.outcome == null),
+    verifying: attemptHasActiveVerification(attempts[0], site.projectId!, flagRow.auditId),
   }
 }

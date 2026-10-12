@@ -9,4 +9,11 @@ export const SITE_AGENT_COPY = {
   interrupted: 'Your message is retained. Recover the reply before sending it again.',
   retryHistory: 'Reload conversation', sources: 'Evidence referenced', you: 'You', assistant: 'FixFlags',
   replied: 'Your reply is ready.', invalid: 'The reply could not be read. Recover it using the same request.',
+  chatTitle: 'FixFlags', openChat: 'Open FixFlags chat', closeChat: 'Close FixFlags chat',
+  siteQuestions: 'Site questions', support: 'Support', information: 'About Site answers',
+  suggestions: ['What needs attention?', 'What should I do next?'],
+  pending: 'Preparing your reply…', unread: (count: number) => `${count} unread support messages`,
+  greeting: (host: string, flagTitle?: string) => flagTitle
+    ? `Hi! I can help explain “${flagTitle}” on ${host} using recorded evidence. What would you like to know?`
+    : `Hi! I can help you understand the recorded evidence for ${host}. What would you like to look at?`,
 } as const

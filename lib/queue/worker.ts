@@ -1,3 +1,4 @@
+import { startUptimeRuntime } from '@/lib/uptime/runtime'
 import { Worker, UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
@@ -206,8 +207,9 @@ export function startWorker() {
   })
 
   const tasks = startProgressiveWorkers()
+  const uptime = startUptimeRuntime()
   const closeAuditWorker = worker.close.bind(worker)
-  worker.close = async force => { clearInterval(heartbeatTimer); await Promise.all([closeAuditWorker(force), tasks.close()]) }
+  worker.close = async force => { clearInterval(heartbeatTimer); await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close()]) }
   return worker
 }
 

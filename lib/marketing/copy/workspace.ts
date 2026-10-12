@@ -23,3 +23,18 @@ export const OUTCOME_DETAIL_COPY = {
   enable: 'Enable Outcome',
   pauseHelp: 'Pausing preserves existing evidence and stops new scheduled or manual verification.',
 } as const
+
+export const SITE_WORKSPACE_COPY = {
+  attempts: (count: number) => `${count} ${count === 1 ? 'attempt' : 'attempts'}`,
+  remaining: (count: number) => `${count} ${count === 1 ? 'task' : 'tasks'} remaining`,
+  milestones: { done: 'Recorded', current: 'In progress', pending: 'Queued', partial: 'Incomplete' },
+  disconnected: 'Updates disconnected', queued: 'Queued', analyzing: 'Analyzing',
+  findings: 'Findings',
+  siteMenu: 'Website navigation', accountMenu: 'Account navigation',
+  preview: 'Website preview', desktop: 'Desktop', mobile: 'Mobile',
+  noCapture: 'No screenshot yet', captureUnavailable: 'Screenshot unavailable',
+  latestCapture: 'Latest capture', previousCapture: 'Previous capture', timeUnknown: 'Capture time unavailable',
+  openCapture: (host: string) => `Open captured page for ${host}`,
+  analysisCadence: 'Website analysis', monitoringOff: 'Not scheduled',
+  technicalDetails: 'Technical details',
+} as const

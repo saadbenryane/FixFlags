@@ -1,12 +1,33 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
+import type { CheckAssertion } from './assertion'
+
+/** These observations establish captured public signals, never policy quality,
+ * reachable contact destinations, consent enforcement or legal compliance. */
+export function publicTrustObservations(meta: PageMetadata): Record<'privacy-link' | 'contact-information' | 'cookie-consent-signals', CheckAssertion> {
+  return {
+    'privacy-link': { key: 'privacy-link', name: 'Privacy policy link', expected: 'A privacy policy link is present in the captured page',
+      observed: meta.hasPrivacyPolicy ? 'Privacy policy link detected in captured page links' : 'No privacy policy link detected in captured page links',
+      passed: meta.hasPrivacyPolicy, complete: true },
+    'contact-information': { key: 'contact-information', name: 'Contact information', expected: 'Contact information is present in the captured page',
+      observed: meta.hasContactInfo ? 'Contact information detected in captured content or structured data' : 'No contact information detected in captured content or structured data',
+      passed: meta.hasContactInfo, complete: true },
+    'cookie-consent-signals': { key: 'cookie-consent-signals', name: 'Cookie-consent signals',
+      expected: 'Detected cookie-based analytics is accompanied by consent signals in the captured page',
+      observed: !meta.hasCookieBasedAnalytics ? 'No known cookie-based analytics detected in captured markup; consent obligations were not evaluated'
+        : meta.hasCookieConsent ? 'Cookie-based analytics and consent signals detected; consent enforcement was not evaluated'
+          : 'Cookie-based analytics detected without consent signals in the captured page',
+      passed: !meta.hasCookieBasedAnalytics || meta.hasCookieConsent, complete: true,
+      ...(!meta.hasCookieBasedAnalytics && !meta.hasCookieConsent ? { disposition: 'observed' as const } : {}) },
+  }
+}
 
 export function runTrustChecks(
   url: string,
   meta: PageMetadata,
-  consoleErrors: Array<{ type: string; text: string }>
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  const observations = publicTrustObservations(meta)
 
   if (!url.startsWith('https://')) {
     findings.push({
@@ -22,7 +43,7 @@ export function runTrustChecks(
     })
   }
 
-  if (!meta.hasPrivacyPolicy) {
+  if (!observations['privacy-link'].passed) {
     findings.push({
       checkId: 'no-privacy-policy',
       rubric: 'REACH',
@@ -36,7 +57,7 @@ export function runTrustChecks(
     })
   }
 
-  if (!meta.hasContactInfo) {
+  if (!observations['contact-information'].passed) {
     findings.push({
       checkId: 'no-contact-info',
       rubric: 'REACH',
@@ -50,7 +71,7 @@ export function runTrustChecks(
     })
   }
 
-  if (meta.hasCookieBasedAnalytics && !meta.hasCookieConsent) {
+  if (!observations['cookie-consent-signals'].passed) {
     findings.push({
       checkId: 'cookie-consent-absent',
       rubric: 'REACH',
@@ -60,37 +81,6 @@ export function runTrustChecks(
       evidence: 'Analytics script found but no cookie consent banner or cookie management found',
       fix: '1. Add a cookie consent banner (first-party Accept/Reject, or Cookiebot/CookieYes/Osano)\n2. Default analytics denied; load Google Tag Manager / GA only after consent (Consent Mode v2 if using Google)\n3. Include a Cookie settings link in the footer so visitors can change preferences',
       confidence: 0.7,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  const criticalErrors = consoleErrors.filter(
-    (error) =>
-      error.type === 'error' &&
-      !/net::ERR_BLOCKED_BY_CLIENT\.Inspector\b/i.test(error.text)
-  )
-  if (criticalErrors.length >= 3) {
-    findings.push({
-      checkId: 'console-errors-critical',
-      rubric: 'EXPERIENCE',
-      impactTag: 'TRUST',
-      severity: 'IMPORTANT',
-      problem: `${criticalErrors.length} JavaScript console errors detected`,
-      evidence: `Console errors: ${criticalErrors.slice(0, 2).map((e) => e.text.slice(0, 80)).join('; ')}`,
-      fix: '1. Open Chrome DevTools Console tab\n2. Resolve each error by fixing the source code causing it\n3. Verify all errors are gone after the fix',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  } else if (criticalErrors.length > 0) {
-    findings.push({
-      checkId: 'console-errors-some',
-      rubric: 'EXPERIENCE',
-      impactTag: 'TRUST',
-      severity: 'POLISH',
-      problem: `${criticalErrors.length} JavaScript console error${criticalErrors.length > 1 ? 's' : ''} detected`,
-      evidence: `Console errors: ${criticalErrors.map((e) => e.text.slice(0, 80)).join('; ')}`,
-      fix: '1. Open Chrome DevTools Console tab and inspect the errors\n2. Trace each error to the source and fix accordingly\n3. Test the affected features after fixing',
-      confidence: 1.0,
       source: 'DETERMINISTIC',
     })
   }

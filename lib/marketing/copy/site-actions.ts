@@ -8,6 +8,11 @@ export const SITE_ACTION_COPY = {
   signIn: 'Your session expired. Sign in again to continue.',
   signInAction: 'Sign in again',
   sessionPending: 'Checking your session…',
+  signupPrompt: {
+    title: 'Keep an eye on this website.',
+    body: 'Create an account to save this analysis and keep track of what needs attention.',
+    email: 'Sign up with email', signIn: 'Sign in with email', skip: 'Skip for now',
+  },
   configurationUnknown: 'Previous evidence does not verify the current configuration. Run a fresh verification.',
   invalidResponse: 'FixFlags could not confirm this action. Refresh before trying again.',
   added: 'Card added. Verify it for fresh evidence. Your Watch schedule is unchanged.',
@@ -17,6 +22,7 @@ export const SITE_ACTION_COPY = {
   refreshPending: 'The action was saved. Refresh to see the latest state.',
   updatesDisconnected: 'Updates disconnected. Your last recorded evidence is still shown.',
   outcome: {
+    availability: 'Page availability',
     verifying: 'Checking…', verify: 'Check now', started: 'Check started',
     pausedRunning: 'Paused. The active verification will finish.', paused: 'Outcome paused.',
     enabled: 'Outcome enabled.', enabledVerifying: 'Outcome enabled. Fresh verification started.',
@@ -39,6 +45,9 @@ export const SITE_ACTION_COPY = {
   },
   execution: {
     title: 'Checking progress', details: 'Inspect recorded work',
+    live: 'Results appear as checks finish.',
+    flagsSoFar: 'Flags so far', pagesChecking: 'Checking pages…',
+    areaChecking: (name: string) => `Checking ${name.toLowerCase()}…`,
     completed: (done: number, total: number) => `${done} of ${total} tasks recorded`,
     running: (count: number) => `${count} running`, recovering: (count: number) => `${count} recovering automatically`,
     unknown: (count: number) => `${count} could not establish a result`, inapplicable: (count: number) => `${count} not applicable`,

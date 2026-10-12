@@ -42,6 +42,7 @@ vi.mock('@/lib/sites/application/flag-verification', () => ({
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
 
 import { executeSiteCommand } from '@/lib/sites/application/commands'
+import { attemptIntentHash } from '@/lib/improvements/attempt-intent'
 
 describe('VERIFY_FLAG', () => {
   beforeEach(() => {
@@ -135,6 +136,19 @@ describe('VERIFY_FLAG', () => {
       verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'other-attempt' } })
     mocks.attemptFindFirst.mockResolvedValue(null)
     await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'wrong-intent' })).rejects.toMatchObject({ status: 409 })
+    expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])('checks the recorded implicit fix payload before reusing its run, changed: %s', async changed => {
+    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1' } })
+    mocks.attemptFindFirst.mockResolvedValue({ id: 'att_1', sourceAuditId: 'parent_1', handoffReference: 'flag:flag_1',
+      requestHash: attemptIntentHash({ userId: 'user_1', sourceAuditId: 'parent_1', handoffReference: 'flag:flag_1', changeSummary: 'Original repair' }) })
+    const result = executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1',
+      idempotencyKey: 'same-intent', changeSummary: changed ? 'Another repair' : 'Original repair' })
+    if (changed) await expect(result).rejects.toMatchObject({ code: 'FIX_INTENT_MISMATCH', status: 409 })
+    else expect(await result).toMatchObject({ runId: 'run_1', attemptId: 'att_1' })
     expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
   })

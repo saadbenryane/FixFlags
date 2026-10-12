@@ -1,10 +1,12 @@
 import { PageMetadata } from '../metadata'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runContentChecks(
   meta: PageMetadata,
-  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
+  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
+  record?: CheckRecorder,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
@@ -23,6 +25,9 @@ export function runContentChecks(
       genericPhrases.some((p) => h1.toLowerCase().includes(p)) ||
       categoryHeadlinePatterns.some((p) => p.test(h1))
 
+    recordObservation(record, 'headline-specificity', 'Headline wording', 'Captured H1 does not match a generic starter phrase',
+      `Captured H1: ${h1}`, !isGeneric, true)
+
     if (isGeneric) {
       findings.push({
         checkId: 'h1-generic',
@@ -37,6 +42,13 @@ export function runContentChecks(
       })
     }
   }
+
+  if (meta.h1s.length === 0) recordObservation(record, 'headline-specificity', 'Headline wording',
+    'A captured H1 can be evaluated', 'No H1 was captured.', undefined, true)
+
+  if (productPage) recordObservation(record, 'cta-presence', 'Recognized action labels',
+    'Captured product-page controls include a recognized action label', `${meta.ctaTexts.length} recognized action labels captured.`,
+    meta.ctaTexts.length > 0, true)
 
   // "No CTA" only matters on a real marketing/product page. Placeholder
   // domains, docs, articles, and OSS project pages legitimately have no
@@ -61,6 +73,14 @@ export function runContentChecks(
   // where H1 may exist in the shell while section headings render later.
   const pageTextLen = (meta.pageText ?? '').trim().length
   const headingSampleComplete = pageTextLen >= 200
+  recordObservation(record, 'section-headings', 'Section headings', 'Captured content with an H1 includes H2 section headings',
+    `${meta.h1s.length} H1 and ${meta.h2s.length} H2 headings in ${pageTextLen} captured characters.`,
+    meta.h1s.length > 0 && headingSampleComplete ? meta.h2s.length > 0 : undefined, true)
+
+  if (meta.forms > 0) recordObservation(record, 'form-validation-attributes', 'Declared form validation',
+    'Captured input fields declare HTML validation attributes',
+    `${meta.formInputsMissingValidation} of ${meta.totalFormInputs} captured fields lack validation attributes. Runtime validation was not tested.`,
+    meta.totalFormInputs > 0 ? meta.formInputsMissingValidation === 0 : undefined, true)
   if (meta.h1s.length > 0 && meta.h2s.length === 0 && headingSampleComplete) {
     findings.push({
       checkId: 'heading-hierarchy-missing',

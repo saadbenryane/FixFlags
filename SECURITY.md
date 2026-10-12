@@ -46,6 +46,7 @@ supersedes: []
 - Protected pages (`/admin/`, `/settings/`) gated by middleware; server validates session on API routes
 - admin role configured via `ADMIN_USER_IDS` env var
 - Newly created developer keys carry an explicit MCP permission set and a 30, 90, or 365 day expiry. The default is read-only evidence for 90 days. CLI device approval issues a 90-day key for the complete Fix → Verify workflow. Existing empty-scope account keys retain their historical full-access behavior until the owner replaces or revokes them; every non-empty scope set is enforced even without an OAuth audience.
+- MCP host validation uses the configured app origin, not the incoming request URL or Host header as its authority. Loopback aliases are accepted only for an explicitly configured loopback app. Browser origins must match the configured protocol and port; nonbrowser clients may omit Origin.
 
 ## Report access invariants
 
@@ -65,6 +66,13 @@ supersedes: []
 - `/api/integrity-assets` authorizes the owner of the persisted Outcome RunRequest, or an active Shopify path's linked Site owner / verified Shopify ID-token session. Knowing an artifact URL does not grant access. Invalid namespaces and path traversal are rejected before storage reads.
 - Flag detail shows a capture only through its exact persisted JourneyFinding and source Audit in the same Site. Preserve the raw Flag ID separately from its durable Improvement ID. Do not substitute the latest Site thumbnail for failure evidence.
 - Local signed S3-compatible protocol tests do not establish a real bucket's permissions. Release requires credentialed private-bucket upload, owner retrieval, denied cross-tenant/anonymous retrieval, and actual display.
+
+## Uptime evidence
+
+- Uptime history and incident projections require the Site owner. History cursors are scoped to the monitor, target generation, and selected window.
+- Queue jobs contain monitor references and schedule identities, never a caller-provided URL or tenant authority. Eligibility, ownership, target version, and monitoring state are rechecked before requests and persistence.
+- Uptime uses strict public HTTP fetching even when development permits localhost for other analysis fixtures. DNS, redirect, size, and deadline guards remain enforced. Probes never replay browser credentials.
+- A successful HTTP observation can close only a reachability incident in the same target generation. It cannot verify or recover a Flag that requires rendered-page or browser evidence.
 
 ## Secrets management
 
@@ -151,3 +159,12 @@ Product Signal ingestion is the explicit exception.
 - SOC2 / compliance (pre-revenue)
 - VPC / network isolation (Railway managed)
 - Secrets rotation policy (single founder, manual rotation)
+
+## Automatic Site accounts
+
+- Account execution requires an owned, private Site run, current entitlement and preference revision, complete mailbox/encryption configuration, and explicit lifecycle-verification enablement. Anonymous checks never create accounts.
+- One retained account and one unresolved disposable account are reserved per Site origin. Persist submission admission before the request. Interrupted signup is reconciled through the same identity, never replayed as a new signup.
+- Credentials and browser storage are encrypted. Cookie and local-storage replay is restricted to the account's exact origin. Public-safe receipts contain no credentials, email contents or verification tokens.
+- Signed-in inspection blocks unrelated mutations, external navigation, payment/download paths, sockets and workers. Deletion is limited to the disposable identity unless the owner explicitly requests test-account cleanup.
+- Resend receiving verifies raw-body Svix signatures with bounded timestamps, deduplicates provider email IDs, matches one exact active recipient, and retrieves content only from the fixed Resend API. Extracted same-origin verification data is encrypted with a 15-minute expiry.
+- Preference changes increment a revision. Account tasks check that revision, entitlement and execution ownership before privileged requests. Existing Safe Form fixture authorization and cleanup invariants remain independent.

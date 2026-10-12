@@ -105,7 +105,7 @@ export function BoardGrid({ children, className, layout = 'grid' }: { children: 
 export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {
   state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void; showText?: boolean
 }) {
-  const content = <>{count > 0 ? <span>{count} {count === 1 ? 'Flag' : 'Flags'}</span> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
+  const content = <>{count > 0 ? <><span>{count} {count === 1 ? 'Flag' : 'Flags'}</span>{state === 'checking' ? <span>{text}</span> : null}</> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
   const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
   return onOpen
     ? <button type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</button>
@@ -130,6 +130,7 @@ export function BoardCard({
   flags,
   flagCount,
   incompleteReason,
+  recoveryAction,
   compact = false,
   showFlagPreview = false,
   layout = 'card',
@@ -155,6 +156,7 @@ export function BoardCard({
   metric?: boolean
   flagCount?: number
   incompleteReason?: string | null
+  recoveryAction?: React.ReactNode
   compact?: boolean
   showFlagPreview?: boolean
   layout?: 'card' | 'row'
@@ -187,13 +189,17 @@ export function BoardCard({
   const freshnessLabel = freshness ?? boardCardFreshnessText(checkedAt ?? null)
 
   if (layout === 'row') {
-    const clear = state === 'healthy' && count === 0 && !checking
+    const clear = state === 'healthy' && count === 0 && !checking && !incompleteReason
     const rowClassName = `${styles.boardRow} ${count > 0 ? styles.rowProblem : ''} ${clear ? styles.rowClear : ''} ${checking ? styles.rowChecking : ''}`
     const iconClass = count > 0 ? styles.iconAttention : clear ? styles.iconHealthy : undefined
     const rowMeta = <span className={styles.rowTrailing}>
-      {freshnessLabel ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
-      <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /></span>
+      {freshnessLabel && !checking ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
+      <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${checking && count > 0 ? `${flagCountLabel(count)}. ` : ''}${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /></span>
     </span>
+    const recovery = incompleteReason && !checking ? <div className={styles.rowRecovery}>
+      <p>{incompleteReason}</p>
+      {recoveryAction}
+    </div> : null
     if (previewFlags.length > 0) {
       return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>
         {onOpen ? <button type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</button>
@@ -209,13 +215,13 @@ export function BoardCard({
             </span>
           </li>)}
         </ul>
+        {recovery}
       </article>
     }
     const resultContent = <>
       <span className={styles.rowResultCopy}>
         <strong>{answer}</strong>
         {detail ? <span>{detail}</span> : null}
-        {incompleteReason ? <span>{incompleteReason}</span> : null}
       </span>
       {(href || onOpen) ? <span className={styles.rowArrow}><ArrowRight size={17} aria-hidden="true" /></span> : null}
     </>
@@ -229,6 +235,7 @@ export function BoardCard({
         : <Link className={styles.rowResultAction} href={href as Route} aria-label={`View ${name} details`}>{resultContent}</Link>
         : onOpen ? <button type="button" className={styles.rowResultAction} onClick={onOpen} aria-label={`View ${name} details`}>{resultContent}</button>
           : <span className={styles.rowResultAction}>{resultContent}</span>}
+      {recovery}
     </article>
   }
 
@@ -324,12 +331,14 @@ export function ProductBoardCard({
   card,
   onOpen,
   renderFlagCopy,
+  recoveryAction,
   compact = false,
   layout = 'card',
 }: {
   card: BoardCardView
   onOpen?: () => void
   renderFlagCopy?: (flag: BoardCardFlagChip) => React.ReactNode
+  recoveryAction?: React.ReactNode
   compact?: boolean
   layout?: 'card' | 'row'
 }) {
@@ -345,9 +354,10 @@ export function ProductBoardCard({
       status={card.status}
       state={card.state}
       answer={answer}
-      detail={card.id === 'site' || (compact && card.evidenced && card.state !== 'unknown') ? null : problem ? problem.body : card.detail}
+      detail={card.id === 'site' ? card.detail : (compact && card.evidenced && card.state !== 'unknown' && card.activity !== 'checking') ? null : problem ? problem.body : card.detail}
       compact={compact}
-      incompleteReason={compact ? null : card.incompleteReason}
+      incompleteReason={compact && layout !== 'row' ? null : card.incompleteReason}
+      recoveryAction={recoveryAction}
 
       visual={card.captureUrl && card.captureAlt ? { src: card.captureUrl, alt: card.captureAlt } : null}
       crop={card.cropUrl && card.cropAlt ? { src: card.cropUrl, alt: card.cropAlt } : null}

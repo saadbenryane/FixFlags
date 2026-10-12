@@ -1,5 +1,7 @@
 import { AuditUrlError, safeFetchDocument } from './url'
 import { isBotInterstitialDocument } from './browser/page-capture'
+import { destinationContext, displayDestination, DESTINATION_VERIFICATION_RULE } from './checks/destination-evidence'
+import type { EvidenceTarget } from './evidence-targets'
 import {
   canonicalizeDestination,
   isEligiblePublicDestination,
@@ -314,13 +316,15 @@ export function deadDestinationFlags(
   confidence: number
   source: 'DETERMINISTIC'
   pageUrl: string
+  verificationRule: string
+  evidenceTargets: EvidenceTarget[]
 }> {
   const dead = results.filter((result) => result.shouldFlagDead)
   if (dead.length === 0) return []
 
   const evidence = dead
     .slice(0, 8)
-    .map((result) => `${result.canonicalUrl} (${result.outcome}${result.status ? ` ${result.status}` : ''})`)
+    .map((result) => `${displayDestination(result.url)} (${result.outcome}${result.status ? ` ${result.status}` : ''})`)
     .join('; ')
 
   return [
@@ -335,6 +339,9 @@ export function deadDestinationFlags(
       confidence: 1,
       source: 'DETERMINISTIC',
       pageUrl: sourceUrl,
+      verificationRule: DESTINATION_VERIFICATION_RULE,
+      evidenceTargets: dead.map(result => ({ kind: 'page', source: 'measured', device: 'desktop',
+        label: 'Public link response', context: destinationContext(sourceUrl, result.url) })),
     },
   ]
 }

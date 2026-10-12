@@ -14,6 +14,9 @@ const stubs = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findFirst: stubs.latestAudit } } }))
 vi.mock('@/lib/sites/application/check-results', () => ({ loadSiteCheckResultPage: stubs.checkResults }))
+vi.mock('@/lib/sites/application/site-execution', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/sites/application/site-execution')>(), resolveLatestAudit: stubs.latestAudit,
+}))
 
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: stubs.loadSiteRecord }))
 vi.mock('@/lib/sites/outcomes', () => ({
@@ -66,6 +69,6 @@ describe('MCP Outcome tool', () => {
     expect(stubs.loadSiteOutcomeDetail).toHaveBeenCalledWith(site, 'outcome-1')
     expect(stubs.mcpOutcomePayload).toHaveBeenCalledWith(detail)
     expect(result.structuredContent).toEqual({ siteId: 'site-1', outcomes: [projected], checkResults: [], checkResultsNextCursor: null })
-    expect(stubs.checkResults).toHaveBeenCalledWith(site, 'audit-1', undefined)
+    expect(stubs.checkResults).toHaveBeenCalledWith(site, { id: 'audit-1' }, undefined)
   })
 })

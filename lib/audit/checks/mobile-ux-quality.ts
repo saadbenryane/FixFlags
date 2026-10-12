@@ -2,17 +2,28 @@ import type { CaptureMetrics } from '../capture-metrics'
 import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runMobileUXQualityChecks(
   meta: PageMetadata,
   captureMetrics: CaptureMetrics | null,
-  purpose: PagePurpose = 'marketing'
+  purpose: PagePurpose = 'marketing',
+  record?: CheckRecorder,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
 
   // Missing viewport meta tag is already covered by metadata-checks.ts's
   // 'viewport-missing' (same condition, same severity), so don't double-flag it here.
-  if (!captureMetrics) return findings
+  if (!captureMetrics) {
+    for (const [key, name] of [['mobile-input-fonts', 'Mobile input sizing'], ['mobile-cta-position', 'Mobile action position'],
+      ['mobile-cta-label', 'Mobile action label'], ['mobile-loading-delay', 'Mobile loading delay']])
+      recordObservation(record, key, name, 'Recorded mobile evidence supports this observation', 'Mobile metrics were not collected.', undefined, true)
+    return findings
+  }
+
+  recordObservation(record, 'mobile-input-fonts', 'Mobile input sizing', 'Sampled visible inputs use at least 16px fonts',
+    `${captureMetrics.inputsBelow16px.length} sampled inputs have fonts below 16px. This does not prove runtime validation or keyboard behavior.`,
+    captureMetrics.inputsBelow16px.length === 0, true)
 
   if (captureMetrics.inputsBelow16px.length > 0) {
     findings.push({
@@ -30,8 +41,20 @@ export function runMobileUXQualityChecks(
 
   const primaryCtaTop = captureMetrics.mobilePrimaryCtaTopPx
   const viewportHeight = captureMetrics.mobileViewportHeight
+  const measuredPosition = primaryCtaTop !== null && Number.isFinite(primaryCtaTop) && viewportHeight > 0 &&
+    primaryCtaTop >= 0 && primaryCtaTop <= captureMetrics.mobileDocumentHeight
+  if (needsFirstStep(purpose)) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
+    'The sampled primary action is below the top 20 percent of the initial mobile viewport',
+    measuredPosition ? `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.` : 'No usable primary action position was measured.',
+    measuredPosition ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight >= 0.2 : undefined, true)
+  const mobileLoad = captureMetrics.loadExperience
+  recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
+    mobileLoad ? `Initial loading ${mobileLoad.loadingVisibleAtInitial}, final loading ${mobileLoad.loadingVisibleAtFinal}, cleared at ${mobileLoad.loadingClearedMs ?? 'unknown'}ms.`
+      : 'No mobile loading window was recorded.',
+    mobileLoad?.device === 'mobile' && !mobileLoad.loadingVisibleAtFinal && (!mobileLoad.loadingVisibleAtInitial || mobileLoad.loadingClearedMs !== null)
+      ? !mobileLoad.loadingVisibleAtInitial || mobileLoad.loadingClearedMs! <= 4000 : undefined, true)
 
-  if (needsFirstStep(purpose) && primaryCtaTop !== null && viewportHeight > 0) {
+  if (needsFirstStep(purpose) && primaryCtaTop !== null && measuredPosition) {
     // The metric is an absolute document position; the thumb-zone ratio is
     // about the CTA's position in the initial viewport, so use the
     // viewport-relative top.
@@ -71,6 +94,8 @@ export function runMobileUXQualityChecks(
       const isVague =
         weakPhrases.some((p) => ctaText.startsWith(p)) ||
         weakExactWords.some((p) => ctaText === p)
+      recordObservation(record, 'mobile-cta-label', 'Mobile action label', 'The sampled primary action label does not match a vague-label pattern',
+        `Recorded label: ${captureMetrics.mobilePrimaryCtaText}.`, !isVague, true)
       if (isVague) {
         findings.push({
           checkId: 'mobile-cta-weak-label',
@@ -86,6 +111,10 @@ export function runMobileUXQualityChecks(
       }
     }
   }
+
+  if (needsFirstStep(purpose) && (!captureMetrics.mobilePrimaryCtaText || !measuredPosition))
+    recordObservation(record, 'mobile-cta-label', 'Mobile action label', 'A measured primary action has a label that can be inspected',
+      'A usable primary action label and position were not recorded.', undefined, true)
 
   if (captureMetrics.loadExperience?.device === 'mobile' && captureMetrics.loadExperience.loadingVisibleAtInitial &&
     captureMetrics.loadExperience.loadingClearedMs != null && captureMetrics.loadExperience.loadingClearedMs > 4000) {

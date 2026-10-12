@@ -1,6 +1,12 @@
+import type { UptimeSummary, UptimeIncidentView } from '@/lib/uptime/domain'
+import { loadUptimeSummary, loadUptimeEvents } from '@/lib/uptime/queries'
+import type { SiteCapture } from '@/lib/sites/captures'
+import { loadAccountChecksView } from '../accounts/store'
+import type { AccountChecksView } from '../accounts/contracts'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { resolveLatestAudit, resolvePriorCompletedAudit } from './site-execution'
+import { loadCategoryEvidence, applicableCategoryEvidence, overlayCategoryCoverage } from './category-evidence'
 import { prisma } from '@/lib/db'
 import { projectCheckResults, type SiteCheckResult } from '@/lib/sites/check-results'
 import type { MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
@@ -32,7 +38,7 @@ import { applyCardEvidence } from './card-evidence'
 import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
 import { connectionCardNotes, loadSiteConnectionViews } from '@/lib/sites/connections/read'
 import type { PublicConnection } from '@/lib/sites/connections/match'
-import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
+import { loadSiteCaptures } from './captures'
 import { loadTechnologyProfile, type TechnologyProfileStatus, type VisibleTechnology } from '@/lib/audit/technology-profile'
 import { isShopifyConfigured } from '@/lib/shopify/config'
 import { projectSiteActivity, type SiteActivity } from '@/lib/sites/activity'
@@ -52,6 +58,9 @@ export type { BoardCardView }
 
 export type SiteHomeView = {
   schemaVersion: 2
+  captures?: SiteCapture[]
+  uptime?: UptimeSummary | null
+  uptimeEvents?: UptimeIncidentView[]
   inventoryPageCount: number
   activeRuns: ActiveSiteRun[]
   monitoringTrend: MonitoringHistoryEntry[]
@@ -89,11 +98,7 @@ export type SiteHomeView = {
     lastError: string | null
     covered: boolean
     label: string
-    /**
-     * Whether the last warranted Watch alert actually reached the customer.
-     * Carries the raw evidence as well as the verdict, so the notice is derived
-     * in one place rather than decided twice.
-     */
+    /** Provider acceptance is separate from confirmed inbox delivery. */
     alert: {
       state: WatchAlertDeliveryState
       status: 'NOT_APPLICABLE' | 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | null
@@ -104,6 +109,7 @@ export type SiteHomeView = {
   }
   checkedPages?: Array<{ url: string; title: string | null; status: string; checkedAt: string }>
   settings: {
+    accountChecks?: AccountChecksView
     notificationLevel: 'FLAGS' | 'CRITICAL_ONLY' | 'OFF' | null
     notifyOnRecovery: boolean | null
     shopify: { configured: boolean; state: 'connected' | 'unavailable' | 'not_connected'; domain: string | null }
@@ -118,6 +124,10 @@ function factsFromAudit(
     status: string
     completedAt: Date | null
     evidenceCoverage: unknown
+    failedModules?: unknown
+    failureCode?: string | null
+    triageAt?: Date | null
+    aiReviewAt?: Date | null
     verifierExecutions?: Array<{ targetKey: string; status: string; workKind?: string | null; pageUrl?: string | null; detail?: unknown }>
   } | null,
   flags: SiteFlagSeed[],
@@ -130,6 +140,10 @@ function factsFromAudit(
     completedAt: audit?.completedAt ?? null,
     now,
     evidenceCoverage: audit?.evidenceCoverage,
+    failedModules: audit?.failedModules,
+    failureCode: audit?.failureCode,
+    triageCompleted: Boolean(audit?.triageAt),
+    extraReviewCompleted: Boolean(audit?.aiReviewAt),
     verifierExecutions: audit?.verifierExecutions,
     flags: flags.map((f) => ({
       checkId: f.checkId,
@@ -153,21 +167,7 @@ async function countSitePages(site: SiteRecord): Promise<number> {
   return 0
 }
 
-type SitePreview = NonNullable<SitePresentation['identity']['preview']> & { auditId: string }
-
-async function latestDesktopCapture(auditId: string | null): Promise<SitePreview | null> {
-  if (!auditId) return null
-  const shot = await prisma.screenshot.findFirst({
-    where: { auditId, device: 'DESKTOP' },
-    orderBy: { id: 'desc' },
-    select: { url: true, width: true, height: true, audit: { select: { url: true, completedAt: true } }, page: { select: { url: true, updatedAt: true } } },
-  })
-  if (!shot?.url) return null
-  return { url: normalizeInternalScreenshotUrl(shot.url), auditId, pageUrl: shot.page?.url ?? shot.audit.url,
-    viewport: `${shot.width} × ${shot.height}`, recordedAt: (shot.audit.completedAt ?? shot.page?.updatedAt)?.toISOString() ?? null }
-}
-
-export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null> {
+export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean } = {}): Promise<SiteHomeView | null> {
   const site = await loadSiteRecord(siteId)
   if (!site) return null
   const now = new Date()
@@ -202,18 +202,19 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       ? factsFromAudit(prior, flags, now)
       : null
 
-  const coverage = factsFromAudit(
+  const categoryEvidence = applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [site.projectId] : []), audit)
+  const coverage = overlayCategoryCoverage(factsFromAudit(
     audit,
     flags,
     now,
     lastKnownFacts,
     Boolean(lastKnownFacts)
-  )
+  ), categoryEvidence, now, flags)
 
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
 
   const finished = isAuditFinished(audit?.status)
-  const resultPage = await loadSiteCheckResultPage(site, audit?.id ?? null)
+  const resultPage = await loadSiteCheckResultPage(site, audit, undefined, categoryEvidence)
   const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
   const health = siteCardHealth({
     inFlight,
@@ -222,12 +223,16 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     flags,
     coverage,
     now,
+    executionSpec: audit?.executionSpec,
+    pagesComplete: checkedPages.length > 0 && checkedPages.every(page => page.status === 'COMPLETED'),
     outcomes: outcomes.map((outcome) => ({ state: outcome.state, enabled: outcome.enabled })),
   })
   const siteCardState = health.state
-  const capture =
-    (await latestDesktopCapture(audit?.id ?? null)) ??
-    (await latestDesktopCapture(prior?.id ?? null))
+  const captures = await loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null)
+  const capture = captures.find(item => item.device === 'desktop')
+  const [uptime, uptimeEvents] = options.ownerEvidence && site.projectId ? await Promise.all([
+    loadUptimeSummary(site.projectId, now), loadUptimeEvents(site.projectId),
+  ]) : [undefined, undefined]
 
   const technologyProfile = audit?.id ? await loadTechnologyProfile(audit.id) : null
   const analytics = technologyProfile?.technologies
@@ -252,6 +257,15 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     detected: { analytics },
   })
   applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now })
+  for (const [area, categoryAudit] of categoryEvidence) {
+    const card = cards.find(card => card.id === area)
+    if (!card) continue
+    const categoryInFlight = isAuditInFlight(categoryAudit.status)
+    applyCardEvidence({ cards: [card], audit: { ...audit!, ...categoryAudit },
+      summaryResults: projectCheckResults(categoryAudit.id, categoryAudit.verifierExecutions), inFlight: categoryInFlight,
+      pageCount, connections, connectionNotes, now })
+    if (categoryInFlight) card.activity = 'checking'
+  }
 
   const watchState = watchBoardState({
     interval: site.watchInterval,
@@ -271,6 +285,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     flagCount: flags.length,
     stale,
     hasCurrentEvidence: finished && evidenceFacts.some((fact) => !fact.stale),
+    assessmentResult: health.assessment.result,
   })
   const monitoring = monitoringPresentation(watchState, site.watchInterval, site.watchEveryMinutes)
   const projectedRun = runPresentation({
@@ -278,6 +293,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     auditStatus: audit?.status ?? null,
     startedAt: audit?.startedAt ?? null,
     failureCode: audit?.failureCode ?? null,
+    reportCompleteness: audit?.reportCompleteness ?? null,
+    failedModules: audit?.failedModules,
   })
   const presentation: SitePresentation = {
     identity: {
@@ -356,6 +373,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   return {
     schemaVersion: 2,
+    captures, uptime,
+    uptimeEvents: uptimeEvents?.map(event => ({ ...event, startedAt: event.startedAt.toISOString(), confirmedAt: event.confirmedAt.toISOString(), recoveredAt: event.recoveredAt?.toISOString() ?? null, supersededAt: event.supersededAt?.toISOString() ?? null })),
     inventoryPageCount: pageCount,
     activeRuns,
     site,
@@ -405,6 +424,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       },
     },
     settings: {
+      ...(site.projectId ? { accountChecks: await loadAccountChecksView(site.projectId) } : {}),
       notificationLevel: projectSettings?.notificationLevel ?? null,
       notifyOnRecovery: projectSettings?.notifyOnRecovery ?? null,
       shopify: {

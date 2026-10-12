@@ -388,11 +388,13 @@ export async function syncOutcomesFromAudit(input: {
             criticality: 'CRITICAL',
             expectation: 'The selected product appears in the cart and checkout opens.',
             inferenceSource: 'browser',
+            confirmedAt: new Date(),
           },
           update: {
             kind: 'CHECKOUT',
             criticality: 'CRITICAL',
             expectation: 'The selected product appears in the cart and checkout opens.',
+            confirmedAt: new Date(),
           },
         })
         checkoutOutcomeId = checkout.id
@@ -409,7 +411,7 @@ export async function syncOutcomesFromAudit(input: {
             scope: { device: 'mobile', expected: 'checkout_reached' },
             required: true,
           },
-          update: { config: bindingConfig, enabled: true },
+          update: { config: bindingConfig },
         })
       }
     }

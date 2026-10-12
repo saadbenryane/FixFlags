@@ -117,10 +117,10 @@ export const CARE_HOME = {
       { name: 'Can customers reach checkout?', scope: 'Product → cart → checkout. No payment or order.', status: '1 Flag', state: 'problem', last: '14 Sep · 09:00 UTC' },
     ],
     unconfiguredTitle: 'Signup is not being watched',
-    unconfiguredBody: 'Signup needs a safe test account, a reset and cleanup process, and your authorization before checks can begin.',
+    unconfiguredBody: 'Automatic account checks use a FixFlags test identity when the service and website support them. Unsupported signup flows remain unverified.',
     notScheduled: 'Not scheduled',
     note: 'Scheduled checks can find problems at the next check, not the moment they happen. The other analysis areas have their own scope and check times.',
-    setup: 'Monitoring starts after you choose your checks and turn it on. This sample schedule does not run from this page; your available schedule depends on your plan.',
+    setup: 'FixFlags checks supported website behavior automatically. This sample schedule does not run from this page; your available schedule depends on your plan.',
     history: [
       { label: '10 Sep', flagCount: 0 },
       { label: '11 Sep', flagCount: 0 },
@@ -195,11 +195,11 @@ export const CARE_HOME = {
   coverage: {
     label: 'What FixFlags watches',
     title: 'Watch what people came to do.',
-    body: 'Choose the outcome. FixFlags keeps checking it on the live site.',
+    body: 'FixFlags discovers supported checks and keeps running them on the live site.',
     analysisLabel: 'Also analyzed',
     analysis: ['Performance', 'Accessibility', 'Search', 'Security', 'Tracking', 'Layout'],
-    boundary: 'Signup needs synthetic test data plus an exact-origin reset and cleanup path you control. FixFlags authorizes it only after a successful dry run. Login and password reset are not supported yet.',
-    setupNote: 'Signup monitoring needs a safe test account and setup on your website.',
+    boundary: 'Automatic account checks use a reusable FixFlags identity and a separate disposable account for signup and deletion. Unsupported authentication flows remain unverified.',
+    setupNote: 'Supported account checks need no customer setup.',
     audiences: [
       {
         id: 'website', label: 'Website', question: 'Is the site reachable?', monitored: 'Public page availability',
@@ -291,7 +291,7 @@ export const HOMEPAGE_SAMPLE = {
   boardAction: 'Recheck',
   summaryLabel: 'Sample website status',
   navigationLabel: 'Sample navigation',
-  navigation: { site: 'Site', flags: 'Flags', monitoring: 'Monitoring', integrations: 'Integrations', settings: 'Settings' },
+  navigation: { site: 'Overview', timeline: 'Timeline', integrations: 'Integrations', settings: 'Settings' },
   flagsTitle: 'Flags to fix',
   allAreas: 'All areas',
   summaryItems: [
@@ -347,7 +347,7 @@ export const HOMEPAGE_SAMPLE = {
       results: [ { label: '/pricing', status: 'Flag', flag: 'availability', detail: 'The pricing page returned HTTP 404.' }, { label: '/contact', status: 'Flag', flag: 'contact', detail: 'The contact page took 4.2 seconds to show its main content on mobile.' }, { label: '10 other pages', status: 'Checked', detail: 'The other public pages opened successfully.' } ] },
     { id: 'conversion', name: CARD_CATALOG.conversion.name, state: 'problem', answer: CART_EXAMPLE.title, context: 'Add to cart · 0 items in the cart', status: '1 Flag', flagCount: 1, flag: 'checkout',
       scope: 'Product → Add to cart → cart → checkout entry. No payment or real order.', checkedAt: '2026-09-14T09:00:00Z',
-      results: [ { label: 'Add to cart', status: 'Flag', detail: CART_EXAMPLE.observed }, { label: 'Safe Signup', status: 'Not configured', detail: 'Requires synthetic data, an exact-origin reset and cleanup path, and authorization after a successful dry run.' } ],
+      results: [ { label: 'Add to cart', status: 'Flag', detail: CART_EXAMPLE.observed }, { label: 'Signup', status: 'Not verified', detail: 'Account checks are shown separately when the website supports signup.' } ],
       connection: { label: 'Shopify context', body: 'A connected store can add product context beside the same browser evidence.', href: '/shopify' } },
     { id: 'security', name: CARD_CATALOG.security.name, state: 'healthy', answer: 'Pages use HTTPS', context: 'Public protections', status: '0 Flags', flagCount: 0,
       scope: 'Illustrative public security basics only. No server-side or penetration-test claim.', checkedAt: '2026-09-14T09:00:00Z',

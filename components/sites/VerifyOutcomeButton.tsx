@@ -30,7 +30,7 @@ export function VerifyOutcomeButton({
 
   return (
     <div className="mt-4">
-      <Button variant="brand" disabled={disabled || busy} onClick={() => void verify()}>
+      <Button variant="default" disabled={disabled || busy} onClick={() => void verify()}>
         {busy ? C.outcome.verifying : C.outcome.verify}
       </Button>
       <SiteActionFeedback message={message} error={error} siteId={siteId} />

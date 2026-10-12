@@ -199,6 +199,73 @@ function openFlag(partial: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
 }
 
 describe('SiteBoard chrome', () => {
+  it('gives signed-out visitors a recheck path that returns to their Site', () => {
+    renderBoard(null)
+    expect(screen.getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
+  })
+
+  it('keeps incomplete Search visible for a visitor even without usable evidence', () => {
+    render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={boardView({
+      cards: [card({ id: 'search', name: 'Search', state: 'unknown', evidenced: false,
+        answer: 'Search partially checked', incompleteReason: 'Unfinished checks: Crawl access.' })],
+    })} /></MeProvider>)
+    const search = screen.getByRole('article', { name: 'Search' })
+    expect(within(search).getByText('Unfinished checks: Crawl access.')).toBeVisible()
+    expect(within(search).getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
+  })
+
+  it('starts a fresh Search category check and retains saved results on refusal', async () => {
+    const view = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'unknown',
+      answer: 'Search partially checked', incompleteReason: 'Unfinished checks: Crawl access.' })] })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).endsWith('/runs')
+      ? { ok: false, status: 503, json: async () => ({ message: 'The scanner is temporarily unavailable. Try again.' }) }
+      : { ok: true, status: 200, json: async () => view })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') }))
+    expect(await screen.findByText('The scanner is temporarily unavailable. Try again.')).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/runs', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ scope: 'category', area: 'search' }),
+      headers: expect.objectContaining({ 'Idempotency-Key': expect.stringMatching(/^web:/) }),
+    }))
+    expect(screen.getByText('Search partially checked')).toBeVisible()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })).toBeEnabled()
+    vi.unstubAllGlobals()
+  })
+
+  it('submits one fresh check and shows its queued state after the server accepts it', async () => {
+    const initial = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'unknown',
+      answer: 'Search partially checked', incompleteReason: 'Unfinished checks: Crawl access.' })] })
+    let current = initial
+    let accept!: () => void
+    const pending = new Promise<void>(resolve => { accept = resolve })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/runs')) {
+        await pending
+        return { ok: true, status: 202, json: async () => ({ runId: 'run-2', auditId: 'audit-2', outcomeIds: [], reused: false }) }
+      }
+      return { ok: true, status: 200, json: async () => current }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+    const action = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })
+    fireEvent.click(action)
+    fireEvent.click(action)
+    expect(action).toBeDisabled()
+    expect(action).toHaveTextContent(SITE_BOARD_COPY.starting)
+    expect(screen.getByText('Search partially checked')).toBeVisible()
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/runs'))).toHaveLength(1)
+    current = boardView({ ...initial,
+      audit: { ...initial.audit, id: 'audit-2', status: 'QUEUED', progress: 0 },
+      presentation: { ...initial.presentation, run: { state: 'queued', label: 'Queued', auditId: 'audit-2', recoveryAction: 'view_details' } },
+    })
+    accept()
+    expect(await screen.findByText(SITE_BOARD_COPY.checkStarted)).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })).toHaveTextContent(SITE_BOARD_COPY.checking))
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })).toBeDisabled()
+    vi.unstubAllGlobals()
+  })
+
   it('reports interrupted Outcome verification without changing the recorded verdict', async () => {
     const view = boardView({ outcomes: [watchedOutcome({ name: 'Checkout', state: 'FLAG', summary: 'Checkout did not open' })] })
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -206,10 +273,12 @@ describe('SiteBoard chrome', () => {
       return { ok: true, status: 200, json: async () => view }
     }))
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
+    fireEvent.click(within(screen.getByRole('heading', { name: 'Checkout' }).closest('section')!).getByRole('button', { name: 'Check again' }))
     expect(await screen.findByText(SITE_BOARD_COPY.connectionInterrupted)).toBeVisible()
     expect(screen.getByText('Checkout did not open')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
+    expect(within(screen.getByRole('heading', { name: 'Checkout' }).closest('section')!).getByRole('button', { name: 'Check again' })).toBeEnabled()
     vi.unstubAllGlobals()
   })
   it('leads with the Checkout result and links to its complete details', () => {
@@ -224,6 +293,8 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>,
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
+
     expect(screen.getByRole('heading', { name: 'Checkout' })).toBeVisible()
     expect(screen.getByText(summary)).toBeVisible()
     expect(screen.queryByText('The selected product appears in the cart and checkout opens.')).not.toBeInTheDocument()
@@ -249,8 +320,54 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>,
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
+
     expect(screen.getByText('The selected product appears in the cart and checkout opens.')).toBeVisible()
     expect(screen.queryByText(UNASSESSED_OUTCOME_SUMMARY)).not.toBeInTheDocument()
+  })
+
+  it('keeps a first availability check pending without presenting its expectation as a result', () => {
+    const expectation = 'The public page responds successfully.'
+    const view = boardView({ inventoryPageCount: 1, outcomes: [watchedOutcome({
+      name: 'This page loads', kind: 'AVAILABILITY', state: 'COULD_NOT_VERIFY',
+      summary: UNASSESSED_OUTCOME_SUMMARY, expectation, running: true,
+      lastVerifiedAt: null, latestRunId: null,
+    })] })
+    view.presentation.run.state = 'running'
+    view.presentation.result = { state: 'checking', label: 'Analyzing' }
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+
+
+    fireEvent.click(screen.getByRole('button', { name: 'Uptime details' }))
+    fireEvent.click(screen.getByText('Rendered-page verification'))
+    const outcome = screen.getByRole('heading', { name: 'Page availability' }).closest('section')!
+    expect(within(outcome).getByRole('status')).toHaveTextContent('Checking…')
+    expect(within(outcome).getByRole('link', { name: 'Page availability' })).toHaveAttribute('href', '/sites/p_example/outcomes/out-1')
+    expect(screen.queryByText(expectation)).not.toBeInTheDocument()
+    expect(screen.queryByText('Website check')).not.toBeInTheDocument()
+    expect(screen.queryByText('No completed verification yet')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Checking again…' })).not.toBeInTheDocument()
+    expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
+    expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(within(screen.getByRole('article', { name: 'Pages' })).getByText('Checking pages…')).toBeVisible()
+    expect(within(screen.getByRole('group', { name: 'Website status summary' })).queryByText('Pages')).not.toBeInTheDocument()
+  })
+
+  it('identifies a retained result as previous evidence while its next verification runs', () => {
+    const summary = 'The page returned an error when checked.'
+    const view = boardView({ outcomes: [watchedOutcome({
+      name: 'This page loads', kind: 'AVAILABILITY', state: 'FLAG', summary, running: true,
+    })] })
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Uptime details' }))
+    fireEvent.click(screen.getByText('Rendered-page verification'))
+    const outcome = screen.getByRole('heading', { name: 'Page availability' }).closest('section')!
+    expect(within(outcome).getByRole('status')).toHaveTextContent('Checking…')
+    expect(within(outcome).getByText(summary)).toBeVisible()
+    expect(within(outcome).getByText(/Previous evidence · Last verified/)).toBeVisible()
+    expect(within(outcome).queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument()
   })
 
   it('tells Home that a stale Clear needs a fresh verification', () => {
@@ -272,7 +389,9 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>,
     )
-    expect(screen.getByRole('status')).toHaveTextContent('Stale')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pages' }))
+
+    expect(within(screen.getByRole('heading', { name: 'Page loads' }).closest('section')!).getByRole('status')).toHaveTextContent('Stale')
     expect(screen.getByText(summary)).toBeVisible()
     expect(screen.getByText('Run a fresh verification before relying on this result.')).toBeVisible()
     expect(screen.getByText(/A result stays current for 8 days/)).toBeVisible()
@@ -297,7 +416,9 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>,
     )
-    expect(screen.getByRole('status')).toHaveTextContent('Clear')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pages' }))
+
+    expect(within(screen.getByRole('heading', { name: 'Page loads' }).closest('section')!).getByRole('status')).toHaveTextContent('Clear')
     expect(screen.getByText('This page opened when we checked.')).toBeVisible()
     expect(screen.queryByText(summary)).not.toBeInTheDocument()
     expect(screen.queryByText('Run a fresh verification before relying on this result.')).not.toBeInTheDocument()
@@ -316,36 +437,24 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.cardsHeading })).toHaveClass('sr-only')
-    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.addCard })).toBeVisible()
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
     expect(screen.queryByText(SITE_BOARD_COPY.cardGuidance)).not.toBeInTheDocument()
   })
 
   it('offers monitoring directly without a separate confirmation step or hiding results', () => {
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={boardView({ audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null } })} /></MeProvider>)
-    expect(screen.getByRole('button', { name: 'Turn on monitoring' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Turn on monitoring' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Open Search' })).toBeVisible()
-    expect(screen.getByText('Monitoring is off.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
   })
 
-  it('sends an unsigned visitor to sign in when confirming the page is refused', async () => {
-    push.mockClear()
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) })))
-    render(
-      <MeProvider initialUser={null}>
-        <SiteBoard
-          siteId="p_example"
-          initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
-          })}
-        />
-      </MeProvider>
-    )
-    fireEvent.click(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })[0])
-    expect(screen.getByRole('link', { name: 'Sign in to configure' })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
-    vi.unstubAllGlobals()
+  it('offers sign-in without opening a check configuration wizard', () => {
+    renderBoard(null)
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Sign in' })[0]).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
   })
 
   it('shows a failed check as failed and retries that check', async () => {
@@ -429,9 +538,9 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>
     )
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(screen.getAllByRole('status').some(status => status.textContent === (
       'The written summary did not run. The Flags below come from the browser check.'
-    )
+    ))).toBe(true)
     expect(screen.queryByText('Check failed')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
     expect(screen.getByText('Headline does not convey usage context')).toBeVisible()
@@ -466,32 +575,29 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>
     )
-    expect(screen.getByRole('link', { name: '1 Flag. View Flags' })).toHaveAttribute('href', `${SITE_PATH}?view=flags#flags`)
+    expect(within(screen.getByRole('group', { name: 'Website status summary' })).getByText('Flag')).toBeVisible()
     expect(screen.queryByText('Search · Important Flag')).not.toBeInTheDocument()
   })
 
-  it('keeps the complete Flag list inside the Site shell', () => {
-    render(
-      <MeProvider initialUser={signedInUser}>
-        <SiteBoard siteId="p_example" initial={boardView({ flags: [openFlag()] })} viewMode="flags" />
-      </MeProvider>
-    )
-    expect(screen.getByRole('heading', { name: 'Flags', level: 2 })).toBeVisible()
-    expect(screen.getByText('Pricing page is unavailable')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'View Flag' })).toHaveAttribute('href', '/sites/p_example/flags/flag-1')
-    expect(screen.queryByRole('button', { name: 'Open Pages' })).not.toBeInTheDocument()
+  it('keeps findings inside Overview categories with four navigation items', () => {
+    renderBoard(signedInUser)
+    const rail = screen.getByRole('navigation', { name: 'Site' })
+    expect(within(rail).getAllByRole('link').map(link => link.textContent?.trim())).toEqual(['Overview', 'Timeline', 'Integrations', 'Settings'])
+    expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Flags', level: 2 })).not.toBeInTheDocument()
   })
 
   it('opens the shared schedule editor for the owner and saves an allowed cadence', async () => {
     const view = boardView()
+    view.watch = { ...view.watch, state: 'watching', interval: 'daily', label: 'Daily', nextRunAt: '2099-10-11T09:00:00.000Z' }
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url.endsWith('/watch')) return Response.json(options?.method === 'POST' ? { ok: true, interval: 'weekly' } : { intervals: ['daily', 'weekly'] })
       return Response.json(view)
     })
     vi.stubGlobal('fetch', fetchMock)
     try {
-      render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-      fireEvent.click(screen.getByRole('button', { name: 'Monitoring Off. No next check scheduled' }))
+      render(<MeProvider initialUser={signedInUser}><SiteSettingsView siteId="p_example" view={view} /></MeProvider>)
+      fireEvent.click(screen.getByRole('button', { name: 'Edit schedule' }))
       const dialog = screen.getByRole('dialog')
       const frequency = within(dialog).getByRole('combobox', { name: 'Check frequency' })
       await waitFor(() => expect(frequency).toBeEnabled())
@@ -513,8 +619,8 @@ describe('SiteBoard chrome', () => {
     initial.inventoryPageCount = 12
     initial.presentation.coverage.pagesExpected = 12
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
-    const summary = screen.getByRole('group', { name: 'Website status summary' })
-    expect(within(summary).getByRole('button', { name: '12 Pages. 1 needs attention' })).toBeVisible()
+    const pages = screen.getByRole('article', { name: 'Pages' })
+    expect(within(pages).getByText('1 needs attention')).toBeVisible()
   })
 
   it('shows real monitoring history in the same Site shell', () => {
@@ -528,8 +634,8 @@ describe('SiteBoard chrome', () => {
     view.monitoringTrend = view.monitoringHistory.map(entry => ({ ...entry, scope: 'SITE', status: 'COMPLETED', evidenceAt: entry.checkedAt }))
     view.presentation.monitoring = { state: 'daily', label: 'Daily' }
     view.watch = { ...view.watch, state: 'watching', interval: 'daily', nextRunAt: '2026-10-11T09:00:00.000Z', covered: true, label: 'Daily' }
-    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="monitoring" /></MeProvider>)
-    expect(screen.getByRole('heading', { name: 'Monitoring', level: 2 })).toBeVisible()
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="timeline" /></MeProvider>)
+    expect(screen.getByRole('heading', { name: 'Timeline', level: 2 })).toBeVisible()
     expect(screen.getByText('Flags over time')).toBeVisible()
     expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Pricing page is unavailable' })).toHaveAttribute('href', '/sites/p_example/flags/flag-1')
@@ -543,7 +649,7 @@ describe('SiteBoard chrome', () => {
       { id: 'fix-1', checkedAt: '2026-10-11T09:00:00.000Z', flagCount: 0, scope: 'OUTCOMES', trigger: 'MANUAL', afterFix: true, targetLabel: 'Reach checkout', result: 'CLEAR' },
     ] })
     view.monitoringTrend = view.monitoringHistory.filter(entry => entry.scope === 'SITE').map(entry => ({ ...entry, status: 'COMPLETED', evidenceAt: entry.checkedAt }))
-    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="monitoring" /></MeProvider>)
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="timeline" /></MeProvider>)
     expect(screen.getByRole('img', { name: 'Flag count across 2 checks' })).toBeVisible()
     const event = screen.getByText('Check after a fix').closest('li')!
     expect(within(event).getByText('Manual check · Selected visitor actions · Reach checkout')).toBeVisible()
@@ -567,8 +673,8 @@ describe('SiteBoard chrome', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     try {
-      render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
-      fireEvent.click(screen.getByRole('button', { name: /^Monitoring Every 3 hours/ }))
+      render(<MeProvider initialUser={signedInUser}><SiteSettingsView siteId="p_example" view={initial} /></MeProvider>)
+      fireEvent.click(screen.getByRole('button', { name: 'Edit schedule' }))
       const dialog = screen.getByRole('dialog')
       await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Check frequency' })).toBeEnabled())
       expect(within(dialog).getByRole('spinbutton', { name: 'Every' })).toHaveValue(3)
@@ -577,7 +683,7 @@ describe('SiteBoard chrome', () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Save schedule' }))
       await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example/watch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: 'custom', everyMinutes: 4320 }) }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(screen.getByRole('button', { name: /^Monitoring Every 3 days/ })).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Edit schedule' })).toBeVisible()
     } finally { vi.unstubAllGlobals() }
   })
 
@@ -587,10 +693,10 @@ describe('SiteBoard chrome', () => {
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="integrations" /></MeProvider>)
     expect(screen.getByRole('heading', { name: 'Integrations', level: 2 })).toBeVisible()
     expect(screen.getByText('Shopify')).toBeVisible()
-    expect(screen.getByText('Google Analytics')).toBeVisible()
-    expect(screen.getByText('Google Search Console')).toBeVisible()
-    expect(screen.getByText('Connected')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Settings for Shopify' })).toHaveAttribute('href', '/sites/p_example/settings#connection-shopify')
+    expect(screen.queryByRole('heading', { name: 'Analytics' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Search Console' })).not.toBeInTheDocument()
+    expect(screen.getByText('example.myshopify.com')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Disconnect' })).toBeVisible()
     expect(screen.queryByText('Available')).not.toBeInTheDocument()
   })
 
@@ -603,6 +709,45 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('img', { name: 'Next.js logo' })).toBeVisible()
   })
 
+  it('shows active work in its cards and retains recorded results', () => {
+    const view = boardView({ executionProgress: {
+      total: 4, completed: 1, running: 2, pending: 1, recovering: 0, unknown: 0, inapplicable: 0,
+      recoveryUntil: null, eventCursor: null,
+      tasks: [
+        { id: 'browser', kind: 'browser', pageUrl: 'https://example.com', state: 'RUNNING', attempts: 1, reason: null, retryAt: null },
+        { id: 'flow', kind: 'flow', pageUrl: 'https://example.com', state: 'RUNNING', attempts: 1, reason: null, retryAt: null },
+        { id: 'security', kind: 'check', module: 'security', pageUrl: 'https://example.com', state: 'COMPLETED', attempts: 1, reason: null, retryAt: null },
+        { id: 'speed', kind: 'pagespeed', pageUrl: 'https://example.com', state: 'WAITING', attempts: 0, reason: null, retryAt: null },
+      ],
+    } })
+    view.presentation.run.state = 'running'
+    view.presentation.result.state = 'checking'
+    view.audit.status = 'RUNNING'
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    const pages = screen.getByRole('article', { name: 'Pages' })
+    expect(within(pages).getByText('1 running')).toBeVisible()
+    expect(within(pages).getByText('Rendered content and semantics')).toBeVisible()
+    const conversion = screen.getByRole('article', { name: 'Conversion' })
+    expect(within(conversion).getByText('1 running')).toBeVisible()
+    expect(within(conversion).getByText('Headline does not convey usage context')).toBeVisible()
+    expect(within(screen.getByRole('article', { name: 'Performance' })).queryByText(/running/)).not.toBeInTheDocument()
+    const header = screen.getByRole('complementary', { name: 'Website navigation' })
+    const status = within(header).getByRole('status')
+    expect(status).toHaveTextContent('Analyzing')
+    expect(status.querySelector('svg')).not.toBeNull()
+    expect(screen.getAllByText('Analyzing')).toHaveLength(1)
+    expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
+    expect(within(header).queryByText('0 pages')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Checking' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Run details' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Technical details').closest('details')).not.toHaveAttribute('open')
+    expect(within(dialog).getByText('Technical details')).toBeVisible()
+    expect(screen.queryByText('Monitoring is off.')).not.toBeInTheDocument()
+  })
+
   it('shows Sign in with a next path for logged-out visitors', () => {
     renderBoard(null)
     const links = screen.getAllByRole('link', { name: CARE_HOME.signIn })
@@ -612,23 +757,27 @@ describe('SiteBoard chrome', () => {
         'href',
         `/sign-in?next=${encodeURIComponent(SITE_PATH)}`
       )
-      expect(link).toHaveClass('bg-brand', 'text-brand-foreground')
+      expect(link).toHaveClass('bg-primary', 'text-primary-foreground')
     }
     expect(screen.queryByRole('link', { name: 'All Sites' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Keep watching' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
-    expect(screen.getByText('Monitoring off')).toBeInTheDocument()
+    expect(screen.queryByText('Monitoring off')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Turn on monitoring' })).not.toBeInTheDocument()
     const rail = screen.getByRole('navigation', { name: 'Site' })
     expect(rail).toBeInTheDocument()
     expect(rail).toHaveTextContent('Overview')
-    expect(rail).toHaveTextContent('Flags')
-    expect(rail).not.toHaveTextContent('Settings')
-    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
+    expect(rail).toHaveTextContent('Timeline')
+    expect(within(rail).queryByRole('link', { name: 'Flags', exact: true })).not.toBeInTheDocument()
+    expect(rail).toHaveTextContent('Settings')
+    for (const link of screen.getAllByRole('link', { name: 'Settings' })) {
+      expect(link).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(`${SITE_PATH}/settings`)}`)
+    }
     expect(screen.queryByRole('link', { name: 'More' })).not.toBeInTheDocument()
     expect(rail).not.toHaveTextContent('Not watching')
     expect(rail).not.toHaveTextContent('Keep watching')
     expect(rail).not.toHaveTextContent('All Sites')
-    expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Security' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tracking' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Pages' })).toBeInTheDocument()
@@ -643,15 +792,14 @@ describe('SiteBoard chrome', () => {
         <SiteSettingsView siteId="p_example" view={boardView()} />
       </MeProvider>
     )
-    expect(screen.getByRole('heading', { name: 'example.com', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
-      'Outcomes and coverage',
       'Monitoring',
       'Notifications',
-      'Connections',
+      'Automatic account checks',
       'Remove Site',
     ])
-    expect(screen.getByRole('heading', { name: 'Shopify', level: 3 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Shopify', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Search Console', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Analytics', level: 3 })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove Site' })).toBeInTheDocument()
@@ -660,9 +808,10 @@ describe('SiteBoard chrome', () => {
   it('keeps watch and All Sites for signed-in owners', () => {
     renderBoard(signedInUser)
     expect(screen.queryByRole('link', { name: CARE_HOME.signIn })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /All websites/ }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Monitoring off' })).toHaveAttribute('href', `${SITE_PATH}?view=monitoring#monitoring`)
-    expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })).toHaveLength(1)
+    expect(within(screen.getByRole('complementary', { name: 'App' })).getByRole('link', { name: 'Websites' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Website analysis: Not scheduled' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
+    expect(screen.queryByRole('button', { name: 'Turn on monitoring' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Security' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Tracking' })).toBeInTheDocument()
     for (const link of screen.getAllByRole('link', { name: 'Settings' })) {
@@ -692,7 +841,7 @@ describe('SiteBoard chrome', () => {
         })} />
       </MeProvider>
     )
-    expect(screen.getAllByText('2 of 3 pages')).toHaveLength(2)
+    expect(screen.getAllByText('2 of 3 pages')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Uptime' })).not.toBeInTheDocument()
   })
 
@@ -808,7 +957,7 @@ describe('SiteBoard chrome', () => {
       '/api/sites/p_example/runs',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ scope: 'site', outcomeIds: [] }),
+        body: JSON.stringify({ scope: 'category', area: 'conversion' }),
       }),
     ))
     expect(await screen.findByText('New check started')).toBeVisible()
@@ -968,7 +1117,7 @@ describe('an undelivered Watch alert', () => {
     )
     expect(screen.getByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).toBeInTheDocument()
     // The board must still say checks are happening. Delivery failed, not coverage.
-    expect(screen.getByRole('link', { name: 'Monitoring on · Weekly' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Website analysis: Weekly' })).toBeInTheDocument()
     expect(screen.getByText(/keeps checking/i)).toBeInTheDocument()
   })
 
@@ -1037,7 +1186,7 @@ describe('an undelivered Watch alert', () => {
         <SiteBoard
           siteId="p_example"
           initial={boardView({
-            watch: { ...watching, alert: { state: 'delivered', status: 'SENT', attempts: 1, at: '2026-09-20T10:00:00.000Z' } },
+            watch: { ...watching, alert: { state: 'accepted', status: 'SENT', attempts: 1, at: '2026-09-20T10:00:00.000Z' } },
             watching: true,
           })}
         />

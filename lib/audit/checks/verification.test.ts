@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { assertionForTarget, recordAssertionVerifiers } from './verification'
+import { assertionForTarget, recordAssertionVerifiers, scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
 
 const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'security-headers',
@@ -13,6 +13,17 @@ describe('exact assertion verification', () => {
     expect(assertionForTarget(receipt, 'security-csp-unsafe-inline')).toBeUndefined()
     expect(assertionForTarget({ ...receipt, assertions: [] }, 'security-csp-missing')).toBeUndefined()
     expect(assertionForTarget({ ...receipt, assertions: [{ ...receipt.assertions[0], complete: false }] }, 'security-csp-missing')).toBeUndefined()
+  })
+  it('cannot verify a signed-in finding with another page or public context', () => {
+    const account = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'automatic-accounts', pageUrl: 'https://example.com/dashboard',
+      applicable: true, passed: true, complete: true,
+      assertions: [{ key: 'signed-in-page', name: 'Signed-in page', expected: 'Page works', observed: 'Page opened', passed: true, complete: true,
+        context: 'account:signed_in:v1:https://example.com/dashboard' }],
+      execution: { auditId: 'after', taskId: 'task', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-12T10:00:00.000Z' } })
+    const original = { verificationRule: 'Automatic account observation v1', evidenceTargets: [{ context: 'account:signed_in:v1:https://example.com/billing' }] }
+    expect(scopedAssertionForTarget({ receipt: account, checkId: 'account-signed-in-page', flag: original })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: account, checkId: 'account-signed-in-page', flag: { ...original,
+      evidenceTargets: [{ context: 'account:signed_in:v1:https://example.com/dashboard' }] } })?.assertion.passed).toBe(true)
   })
   it('records failed assertions without claiming recovery and ignores another page', async () => {
     const upsert = vi.fn()

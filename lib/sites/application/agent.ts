@@ -19,6 +19,7 @@ import {
 } from '@/lib/workspace/chat'
 import { finalizeChatUsage, releaseChatUsage, reserveChatUsage } from '@/lib/billing/chat-usage'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { SITE_AGENT_COPY } from '@/lib/marketing/copy/site-agent'
 
 const MAX_MESSAGES = 40
 
@@ -68,7 +69,7 @@ export async function getSiteAgentHistory(input: { siteId: string; userId: strin
   const thread = await prisma.siteAgentThread.findFirst({
     where: { projectId: input.siteId, userId: input.userId },
     orderBy: { updatedAt: 'desc' },
-    include: { messages: { orderBy: { createdAt: 'desc' }, take: MAX_MESSAGES, include: { intent: { select: { flagId: true } } } } },
+    include: { messages: { orderBy: { createdAt: 'desc' }, take: MAX_MESSAGES, include: { intent: { select: { flagId: true, requestKey: true } } } } },
   })
   const citations = await authorizeAgentCitations(input.siteId, (thread?.messages ?? []).map(message => message.citations))
   return {
@@ -79,6 +80,7 @@ export async function getSiteAgentHistory(input: { siteId: string; userId: strin
       content: message.content,
       citations: citations(message.citations),
       flagId: message.intent?.flagId ?? null,
+      requestKey: message.intent?.requestKey ?? null,
       createdAt: message.createdAt.toISOString(),
     })),
   }
@@ -92,6 +94,15 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
   const admitted = await admitAgentMessage({ ...input, projectId: project.id, storedMessage: minimizeStoredMessage(input.message) })
   if (!admitted.created) return replayAgentMessage(admitted.intent, input.userId)
   try {
+  // Greeting-only messages use authorized context and the same durable receipt path.
+  if (/^(?:hi|hello|hey)[\s!.,?]*$/i.test(input.message.trim())) {
+    const reply = SITE_AGENT_COPY.greeting(project.canonicalHost, selectedFlag?.problem)
+    const ready = await saveAgentReply(admitted.intent.id, { reply, citations: [], usage: null })
+    const response = await completeAgentMessage(ready, input.userId)
+    await recordSiteLifecycleEvent({ name: 'agent_answered', idempotencyKey: `agent-answered:${response.messageId}`,
+      userId: input.userId, projectId: project.id, properties: { deterministic: true, citationCount: 0 } }).catch(() => undefined)
+    return response
+  }
   const priorMessages = await prisma.siteAgentMessage.findMany({ where: { threadId: admitted.intent.threadId, intentId: { not: admitted.intent.id } },
     orderBy: { createdAt: 'desc' }, take: 6, select: { role: true, content: true } })
   const latest = project.audits[0] ?? null
@@ -183,7 +194,7 @@ export async function sendSiteAgentMessage(input: { siteId: string; userId: stri
     href: `/sites/${project.id}/flags/${flag.id}`,
   }))
   if (project.watchLastRunAt || project.watchLastError) {
-    citations.push({ type: 'watch', id: project.id, label: 'Watch status', href: `/sites/${project.id}?view=monitoring#monitoring` })
+    citations.push({ type: 'watch', id: project.id, label: 'Watch status', href: `/sites/${project.id}/settings#watch` })
   }
 
   const ready = await saveAgentReply(admitted.intent.id, { reply, citations, usage })

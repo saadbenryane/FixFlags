@@ -8,6 +8,7 @@ import {
   needsFirstStep,
 } from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
+import { recordObservation, type CheckRecorder } from './assertion'
 import { hasLogoWall } from './utils'
 
 const FREE_TRIAL_MARKERS = /(free trial|try free|start free|no credit card|no cc|free plan|get started free|14.day trial|7.day trial|30.day trial)/i
@@ -89,7 +90,8 @@ function missingFirstStepCopy(offer: OfferType): { evidence: string; fix: string
 
 export function runConversionFrictionChecks(
   meta: PageMetadata,
-  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
+  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
+  record?: CheckRecorder,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
@@ -109,6 +111,9 @@ export function runConversionFrictionChecks(
   const hasGuarantee = GUARANTEE_MARKERS.test(bodyText)
   const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta.images ?? [])
   const hasPricingLinks = firstSteps.has('pricing')
+  if (needsFirstStep(purpose.purpose)) recordObservation(record, 'first-step-signals', 'Recognized first-step signals',
+    'Sampled product content contains a recognized first-step signal', `Recognized paths: ${[...firstSteps].join(', ') || 'none'}. Destinations were not executed by this check.`,
+    bodyText.trim().length >= 200 || firstSteps.size > 0 ? firstSteps.size > 0 : undefined, true)
 
   // First-step checks run on marketing and studio pages. Content pages
   // legitimately have no conversion path. Any matching first step is enough;
@@ -129,6 +134,8 @@ export function runConversionFrictionChecks(
   }
 
   const hasCreditCardClarity = /no credit card|without credit card|credit card (required|needed)/i.test(bodyText)
+  if (hasFreeTrial) recordObservation(record, 'trial-payment-wording', 'Trial commitment wording',
+    'Captured trial copy states a credit-card requirement', `Credit-card requirement wording ${hasCreditCardClarity ? 'detected' : 'not detected'} in the sampled content.`, hasCreditCardClarity, true)
   if (hasFreeTrial && !hasCreditCardClarity) {
     findings.push({
       checkId: 'friction-trial-commitment-unclear',
@@ -147,6 +154,9 @@ export function runConversionFrictionChecks(
   // free, etc.). Search bars, cookie forms, and login forms legitimately have
   // many fields but are not conversion friction.
   const formFields = meta.maxConversionFormInputs ?? meta.totalFormInputs ?? 0
+  if (meta.forms > 0) recordObservation(record, 'conversion-field-count', 'Captured conversion form size',
+    'The recorded form has at most five fields', `${formFields} fields recorded. Field necessity and conversion impact were not measured.`,
+    meta.maxConversionFormInputs !== undefined ? formFields <= 5 : undefined, true)
   if (formFields > 5) {
     findings.push({
       checkId: 'friction-form-too-many-fields',
@@ -169,6 +179,9 @@ export function runConversionFrictionChecks(
   // direct pricing link, not just anywhere on the page.
   const hasPaymentCta = ctaTexts.some((c) => /\b(buy|subscribe|purchase|upgrade|pro|premium|enterprise|paid|pricing)\b/i.test(c))
   const hasPaymentLink = hasPricingLinks
+  if (productPage && (hasPaymentCta || hasPaymentLink) && ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)))
+    recordObservation(record, 'commitment-signals', 'Signup commitment wording', 'Captured signup copy includes a recognized commitment or risk-reversal signal',
+      `Guarantee, cancellation, or free-trial wording ${hasRiskReversal ? 'detected' : 'not detected'}. Accuracy of the commercial promise was not verified.`, hasRiskReversal, true)
   if (productPage && (hasPaymentCta || hasPaymentLink) && ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)) && !hasRiskReversal) {
     findings.push({
       checkId: 'friction-no-risk-reversal',
@@ -183,6 +196,10 @@ export function runConversionFrictionChecks(
     })
   }
 
+  if (productPage && ctaTexts.length > 0) recordObservation(record, 'social-proof-signals', 'Captured social proof signals',
+    'Sampled content near product actions includes a recognized proof signal',
+    `Social-proof text or customer-logo pattern ${hasSocialProof ? 'detected' : 'not detected'}. Authenticity was not verified.`,
+    hasSocialProof || bodyText.trim().length >= 200 ? hasSocialProof : undefined, true)
   if (productPage && !hasSocialProof && ctaTexts.length > 0) {
     findings.push({
       checkId: 'friction-no-social-proof',

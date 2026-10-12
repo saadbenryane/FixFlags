@@ -3,6 +3,7 @@ import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
 import { hasLogoWall } from './utils'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 const AUTHORITY_MARKERS = [
   /\b(as seen in|featured in|mentioned in|press|media)\b/i,
@@ -93,7 +94,8 @@ export function resolvePageHostname(
 export function runTrustPsychologyChecks(
   meta: PageMetadata,
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
-  pageUrl?: string | null
+  pageUrl?: string | null,
+  record?: CheckRecorder,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
@@ -108,6 +110,14 @@ export function runTrustPsychologyChecks(
   const hasSpecificTestimonial = TESTIMONIAL_QUALITY_MARKERS.some((p) => p.test(bodyText))
   const hasDataClaim = DATA_SPECIFICITY.some((p) => p.test(bodyText))
   const hasCustomerLogos = hasLogoWall(meta.images ?? [])
+  if (productPage && ctaTexts.length > 0) recordObservation(record, 'authority-signals', 'Captured authority signals',
+    'Sampled product content includes a recognized authority, testimonial, media, or logo signal',
+    `Authority ${hasAuthorityRef}, media ${hasMediaName}, testimonial ${hasTestimonialLikeContent}, customer-logo pattern ${hasCustomerLogos}. Authenticity was not established.`,
+    bodyText.length >= 100 || hasAuthorityRef || hasMediaName || hasTestimonialLikeContent || hasCustomerLogos
+      ? hasAuthorityRef || hasMediaName || hasTestimonialLikeContent || hasCustomerLogos : undefined, true)
+  if (hasTestimonialLikeContent && ctaTexts.length > 0) recordObservation(record, 'testimonial-detail', 'Captured testimonial detail',
+    'Sampled testimonial content contains a recognized attribution or substantial-quote pattern',
+    `Attribution or substantial-quote pattern ${hasSpecificTestimonial ? 'detected' : 'not detected'}. Customer identity and permission were not verified.`, hasSpecificTestimonial, true)
 
   // Only flag a total absence of trust signals. If the page shows testimonials or
   // a customer/partner logo wall, it has authority proof (just not press badges),
@@ -163,6 +173,10 @@ export function runTrustPsychologyChecks(
   // Fire when: aggressive claim in heading (single is enough), OR 2+ leadership
   // terms in headings, OR 2+ body superlatives without data.
   const hasClaim = hasAggressiveClaim || (hasLeadershipClaim && headingClaimCount >= 2) || (claimInBody && claimInBody.length >= 2)
+  recordObservation(record, 'claim-support-signals', 'Captured claim wording',
+    'Captured superlative patterns are accompanied by a recognized data-specificity pattern, or no superlative rule is triggered',
+    `Superlative pattern ${Boolean(hasClaim)}, specificity pattern ${hasDataClaim}. Claims and supporting data were not independently validated.`,
+    bodyText.trim().length >= 100 || headingText.trim().length > 0 ? !hasClaim || hasDataClaim : undefined, true)
   if (hasClaim && !hasDataClaim) {
     const claim = claimInHeading?.[0] ?? claimInBody?.[0] ?? 'superlative claim'
     const isAggressive = AGGRESSIVE_SUPERLATIVES.test(claim)
@@ -183,6 +197,10 @@ export function runTrustPsychologyChecks(
   const emailCount = (bodyText.match(emailRegex) || []).length
   const hasContactLink = links.some((l) => /\b(contact|support|help|get in touch|talk to us|reach out|chat with us|let.s talk)\b/i.test(l.href + ' ' + l.text))
   const hasPhone = /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/.test(bodyText)
+  if (productPage) recordObservation(record, 'direct-contact-signals', 'Captured contact signals',
+    'Captured product content contains an email, phone, support link, or structured contact signal',
+    `Contact link ${hasContactLink}, phone ${hasPhone}, email ${emailCount > 0}, structured contact ${meta.hasContactInfo}. Reachability was not tested.`,
+    hasContactLink || hasPhone || emailCount > 0 || meta.hasContactInfo ? true : bodyText.length >= TRUST_DOM_SAMPLE_MIN_CHARS ? false : undefined, true)
 
   // "No direct contact" is gated to product/marketing pages. Documentation,
   // articles, placeholder, and OSS pages do not need a sales/support contact
@@ -212,6 +230,10 @@ export function runTrustPsychologyChecks(
   // (empty anchor list + short body text) where navigation may not have hydrated.
   const linkSampleIncomplete =
     links.length === 0 && bodyText.length < TRUST_DOM_SAMPLE_MIN_CHARS
+  if (ctaTexts.length > 0) recordObservation(record, 'internal-navigation-count', 'Captured internal navigation',
+    'Captured product navigation contains at least two same-site links',
+    `${internalLinks.length} same-site links found. Destination responses were not checked by this observation.`,
+    linkSampleIncomplete ? undefined : internalLinks.length >= 2, true)
 
   if (
     !linkSampleIncomplete &&

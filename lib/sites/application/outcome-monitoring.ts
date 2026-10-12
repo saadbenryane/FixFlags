@@ -10,7 +10,8 @@ export async function outcomeMonitoringDiff(auditId: string, loaded?: { projectI
     projectId: true, executionSpec: true,
     outcomeAssessments: { select: { evidence: true } },
   } })
-  if (!audit?.projectId || readExecutionSpec(audit.executionSpec)?.scope !== 'OUTCOMES') return null
+  const scope = readExecutionSpec(audit?.executionSpec)?.scope
+  if (!audit?.projectId || !['OUTCOMES', 'SITE'].includes(scope ?? '')) return null
   const incidents = audit.outcomeAssessments.map(row => readOutcomeIncident(row.evidence))
   if (!incidents.length || incidents.some(incident => !incident)) return null
   const groups = { fixed: [] as string[], inconclusive: [] as string[], unchanged: [] as string[], regressed: [] as string[], newIssues: [] as string[] }

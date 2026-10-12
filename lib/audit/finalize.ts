@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { projectSiteAnalysis } from '@/lib/sites/application/project-analysis'
 import { persistAuditRunCost } from '@/lib/billing/costs'
-import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
+import { diffFlagsAgainstParent, persistFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
@@ -61,19 +61,20 @@ export async function persistImprovementCycle(
 ): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
-    select: { improvementProjectedAt: true, executionSpec: true },
+    select: { improvementProjectedAt: true, executionSpec: true, userId: true },
   })
   if (!audit || audit.improvementProjectedAt) return
 
   try {
     await projectSiteAnalysis(auditId)
     const scope = readExecutionSpec(audit.executionSpec)?.scope
+    if (scope === 'CATEGORY' && audit.userId) await incrementUsageOnCompleteForAudit(auditId, audit.userId)
     if (scope === 'FIXTURE_SETUP') {
       await reconcileOutcomeRunsForAudit(auditId)
       await executionWrite(tx => tx.audit.update({ where: { id: auditId }, data: { improvementProjectedAt: new Date() } }))
       return
     }
-    if (parentId && scope !== 'OUTCOMES' && scope !== 'DIAGNOSTIC') await diffFlagsAgainstParent(auditId, parentId)
+    if (scope === 'SITE' || parentId && scope !== 'OUTCOMES' && scope !== 'DIAGNOSTIC') await diffFlagsAgainstParent(auditId, parentId)
     await executeProductCommand({ type: 'MATERIALIZE_ATTENTION', auditId })
     // Targeted recovery consumes the persisted binding assessment, rather than
     // treating optional broad-report evidence as the Outcome's success rule.
@@ -85,9 +86,10 @@ export async function persistImprovementCycle(
         verificationAuditId: auditId,
       })
     }
-    if (!parentId || scope === 'OUTCOMES') {
-      // A first Watch still owns a result and an alert. Missing comparison
-      // history cannot strand a meaningful newly observed failure in PENDING.
+    if (scope !== 'DIAGNOSTIC') {
+      await persistFlagDiffSummary(parentId, auditId)
+      // Classification consumes the committed diagnostic and Outcome projections.
+      // A first Watch still owns an alert without inventing comparison history.
       const { notifyWatchRegression } = await import('@/lib/audit/project-watch')
       await notifyWatchRegression(parentId, auditId)
     }

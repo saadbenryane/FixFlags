@@ -1,0 +1,52 @@
+.launcher {
+  position: fixed;
+  right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
+  bottom: calc(var(--floating-action-offset) + 4.5rem + env(safe-area-inset-bottom));
+  z-index: var(--z-fab);
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  box-shadow: var(--shadow-card);
+}
+
+.panel {
+  position: fixed;
+  right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
+  bottom: calc(var(--floating-action-offset) + 4.5rem + env(safe-area-inset-bottom));
+  z-index: var(--z-fab);
+  display: flex;
+  flex-direction: column;
+  width: min(25rem, calc(100vw - 2 * var(--floating-action-offset)));
+  height: min(35rem, calc(100dvh - 4.5rem - 2 * var(--floating-action-offset)));
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  box-shadow: var(--shadow-raised);
+  outline: none;
+}
+
+@media (min-width: 1024px) {
+  .launcher,
+  .panel {
+    bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
+  }
+
+  .panel {
+    height: min(35rem, calc(100dvh - 2 * var(--floating-action-offset)));
+  }
+}
+
+@media (max-width: 639px) {
+  .panel {
+    inset: var(--chat-viewport-top, 0px) 0 auto;
+    z-index: var(--z-modal);
+    width: 100%;
+    height: var(--chat-viewport-height, 100dvh);
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+}

@@ -91,7 +91,7 @@ const LOCAL_LOGOS: Record<string, string> = {
   Shopify: '/brand/integrations/shopify.svg',
 }
 
-function ToolLogo({ name }: { name: string }) {
+export function ToolLogo({ name }: { name: string }) {
   const local = LOCAL_LOGOS[name]
   if (local) return <span className={styles.toolLogo}><Image src={local} alt="" width={24} height={24} /></span>
   const icon = ICONS[name]

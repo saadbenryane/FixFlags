@@ -53,6 +53,10 @@ describe('Site presentation', () => {
     expect(runPresentation({ auditId: 'a', auditStatus: 'QUEUED', startedAt: null, failureCode: null })).toMatchObject({ state: 'queued', recoveryAction: 'view_details' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'CHECKING', startedAt: new Date(), failureCode: null }).state).toBe('running')
     expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: 'AI_CONTRACT_INVALID' })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+    expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,
+      reportCompleteness: 'PARTIAL' })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+    expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,
+      failedModules: ['flow'] })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'FAILED', startedAt: null, failureCode: 'LOST' }).state).toBe('failed')
     expect(runPresentation({ auditId: 'a', auditStatus: 'FAILED', startedAt: new Date(), failureCode: 'LOST' }).state).toBe('interrupted')
 
@@ -66,7 +70,7 @@ describe('Site presentation', () => {
               const clear = flagCount === 0
                 && !stale
                 && hasCurrentEvidence
-                && healthState !== 'unknown'
+                && healthState === 'healthy'
                 && (auditStatus === null || auditStatus === 'COMPLETED')
               expect(result.state === 'clear').toBe(clear)
               if (result.state === 'clear') expect(result.label).not.toBe('0 Flags')
@@ -129,7 +133,9 @@ describe('Site presentation', () => {
   })
 
   it('distinguishes verification results without treating a copied prompt as recovery', () => {
-    expect(verificationResult({ outcome: null, comparable: null, reason: null })).toBe('verifying')
+    expect(verificationResult({ outcome: null, comparable: null, reason: null })).toBe('unverified')
+    expect(verificationResult({ outcome: null, comparable: null, reason: null, verificationAuditId: 'failed-audit', verifying: false })).toBe('could_not_verify')
+    expect(verificationResult({ outcome: null, comparable: null, reason: null, verificationAuditId: 'active-audit', verifying: true })).toBe('verifying')
     expect(verificationResult({ outcome: 'IMPROVED', comparable: true, reason: null })).toBe('verified')
     expect(verificationResult({ outcome: 'UNCHANGED', comparable: true, reason: null })).toBe('still_open')
     expect(verificationResult({ outcome: 'REGRESSED', comparable: true, reason: null })).toBe('regressed')

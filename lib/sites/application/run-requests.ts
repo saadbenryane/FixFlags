@@ -13,9 +13,11 @@ import { RateLimitError } from '@/lib/security/rate-limit'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { logger } from '@/lib/logger'
 import { normalizeAuditUrl } from '@/lib/audit/url'
-import { siteAnalysisAuditWhere } from './analysis-scope'
-import { buildExecutionSpec, executionIntentHash } from './execution-spec'
-import { readExecutionSpec, readVerificationTarget } from '../domain/execution-spec'
+import { siteAnalysisAuditWhere, siteWideAnalysisAuditWhere } from './analysis-scope'
+import { buildExecutionSpec, canonicalExecutionOutcomes, executionIntentHash } from './execution-spec'
+import { canonicalIntent, readExecutionSpec, readVerificationTarget } from '../domain/execution-spec'
+import { categoryAreaSchema, type CategoryArea } from '../domain/execution-spec'
+import { requireExecutionReady } from '@/lib/queue/execution-readiness'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
@@ -72,8 +74,10 @@ export type RunInput = {
   outcomeIds: string[]
   userId: string
   source: RunRequestSource
-  /** Broad Site care has no Outcome selection but still uses this same durable command. */
-  scope?: 'OUTCOMES' | 'SITE' | 'FIXTURE_SETUP'
+  /** Broad Site care derives enabled bindings; callers do not select them. */
+  scope?: 'OUTCOMES' | 'SITE' | 'CATEGORY' | 'FIXTURE_SETUP' | 'ACCOUNT_CHECKS'
+  categoryArea?: CategoryArea
+  accountMode?: 'routine' | 'retest' | 'cleanup'
   fixtureId?: string
   environment?: string
   idempotencyKey?: string
@@ -140,8 +144,8 @@ function sameExecutionScope(
  * was unmetered, so the allowance only applied to the legacy new-URL path and a
  * Free Site could be re-checked without limit.
  */
-function consumesScanAllowance(scope: 'OUTCOMES' | 'SITE' | 'FIXTURE_SETUP', source: RunRequestSource): boolean {
-  return scope === 'SITE' && source !== 'WATCH'
+function consumesScanAllowance(scope: NonNullable<RunInput['scope']>, source: RunRequestSource): boolean {
+  return (scope === 'SITE' || scope === 'CATEGORY') && source !== 'WATCH'
 }
 
 export async function requestSiteRun(input: RunInput): Promise<{
@@ -150,12 +154,16 @@ export async function requestSiteRun(input: RunInput): Promise<{
   outcomeIds: string[]
   reused: boolean
 }> {
-  const selectedIds = [...new Set(input.outcomeIds)].sort()
+  let selectedIds = [...new Set(input.outcomeIds)].sort()
   const scope = input.scope ?? 'OUTCOMES'
+  const environment = input.environment ?? 'production'
+  if (scope === 'CATEGORY' ? !categoryAreaSchema.safeParse(input.categoryArea).success || input.source === 'WATCH' : input.categoryArea !== undefined)
+    throw new SiteRunRefusal('Invalid category check selection', 400)
+  if (scope === 'CATEGORY' && (input.url || input.parentAuditId)) throw new SiteRunRefusal('Category checks use the latest website inventory.', 400)
   if ((scope === 'FIXTURE_SETUP') !== Boolean(input.fixtureId) ||
     scope === 'FIXTURE_SETUP' && (selectedIds.length > 0 || input.verificationTarget))
     throw new SiteRunRefusal('Invalid Signup setup selection', 400)
-  if (scope === 'SITE' && (selectedIds.length > 0 || input.verificationTarget)) {
+  if ((scope === 'SITE' || scope === 'CATEGORY' || scope === 'ACCOUNT_CHECKS') && (selectedIds.length > 0 || input.verificationTarget)) {
     throw new SiteRunRefusal('Site care cannot select an Outcome or Flag verification target', 400)
   }
   if (scope === 'OUTCOMES' && selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
@@ -169,7 +177,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
   }
   const outcomes = await prisma.siteOutcome.findMany({
     where: {
-      id: { in: selectedIds },
+      ...(scope === 'SITE' || scope === 'CATEGORY' && input.categoryArea === 'conversion' ? { environment,
+        ...(scope === 'CATEGORY' ? { kind: { not: 'AVAILABILITY' as const } } : {}),
+        bindings: { some: { enabled: true, required: true } } } : { id: { in: selectedIds } }),
       projectId: input.projectId,
       enabled: true,
       project: { userId: input.userId, deletedAt: null },
@@ -182,8 +192,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
       },
     },
   })
-  if (outcomes.length !== selectedIds.length) throw new SiteRunRefusal('Outcome not found', 404)
-  const environment = input.environment ?? 'production'
+  if (scope === 'SITE' || scope === 'CATEGORY') selectedIds = outcomes.map(outcome => outcome.id).sort()
+  else if (outcomes.length !== selectedIds.length) throw new SiteRunRefusal('Outcome not found', 404)
   if (outcomes.some((outcome) => outcome.environment !== environment)) {
     throw new SiteRunRefusal('Outcome is not configured for this environment', 400)
   }
@@ -207,22 +217,43 @@ export async function requestSiteRun(input: RunInput): Promise<{
   // start at its own page. Each binding still executes from its own config.
   const requestedUrl = fixture?.targetUrl ?? (input.verificationTarget?.kind === 'DIAGNOSTIC'
     ? input.verificationTarget.pageUrl
-    : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart))
+    : input.url ?? (scope === 'SITE' || scope === 'CATEGORY' || input.source === 'WATCH' || !singleStart ? project.url : singleStart))
   const normalized = normalizeAuditUrl(requestedUrl)
   const auditUrl = normalized.ok ? normalized.url : requestedUrl
   const executionSpec = fixture ? { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: auditUrl, environment,
     scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: fixture.id, version: fixture.version }, checks: {}, outcomes: [], verificationTarget: null } : await buildExecutionSpec({
     projectId: input.projectId, targetUrl: auditUrl, environment,
     scope: input.verificationTarget?.kind === 'DIAGNOSTIC' ? 'DIAGNOSTIC' : scope,
-    outcomes, verificationTarget: input.verificationTarget,
+    outcomes, categoryArea: input.categoryArea, accountMode: input.accountMode, verificationTarget: input.verificationTarget,
   })
+  if (scope === 'ACCOUNT_CHECKS' && !executionSpec.accountChecks) throw new SiteRunRefusal('Automatic account checks are paused or unavailable.', 409)
   const requestHash = executionIntentHash(executionSpec)
-  if (executionSpec.scope === 'DIAGNOSTIC') {
+  if (executionSpec.scope === 'DIAGNOSTIC' || executionSpec.scope === 'CATEGORY') {
     try { initialTaskPlan(executionSpec) }
-    catch { throw new SiteRunRefusal('This finding has no registered independent verifier. Its previous evidence is retained; a repair cannot be certified by this action.', 409) }
+    catch { throw new SiteRunRefusal(executionSpec.scope === 'CATEGORY' ? 'This category has no valid execution plan.' : 'This finding has no registered independent verifier. Its previous evidence is retained; a repair cannot be certified by this action.', 409) }
   }
-  const matchesIntent = (run: { requestHash?: string | null; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }) =>
-    run.requestHash ? run.requestHash === requestHash : sameExecutionScope(run, selectedIds, input.verificationTarget)
+  const matchesIntent = (run: { requestHash?: string | null; executionSpec?: unknown; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }) => {
+    const admitted = readExecutionSpec(run.executionSpec)
+    if (admitted && admitted.scope !== executionSpec.scope) return false
+    if (executionSpec.category && (!admitted?.category || admitted.category.area !== executionSpec.category.area)) return false
+    // Recompute valid historical snapshots so their prior row ordering remains
+    // replayable without trusting a different executable responsibility.
+    return run.requestHash ? (admitted ? executionIntentHash(admitted) : run.requestHash) === requestHash
+      : sameExecutionScope(run, selectedIds, input.verificationTarget)
+  }
+  const replaySelection = (run: { selections?: Array<{ outcomeId: string }> }) => scope === 'SITE' || scope === 'CATEGORY'
+    ? (run.selections ?? []).map(selection => selection.outcomeId).sort() : selectedIds
+  const compatibleActive = (run: Parameters<typeof matchesIntent>[0] & { executionSpec?: unknown }) => {
+    if (!matchesIntent(run)) return false
+    const admitted = readExecutionSpec(run.executionSpec)
+    if (scope === 'CATEGORY' && (admitted?.category?.sourceAuditId !== executionSpec.category?.sourceAuditId ||
+      canonicalIntent(admitted?.category?.pages) !== canonicalIntent(executionSpec.category?.pages))) return false
+    if ((admitted?.consoleObservationMs ?? 0) < (executionSpec.consoleObservationMs ?? 0)) return false
+    if (executionSpec.consoleObservationScopes?.some(scope => scope.minimumMs >
+      (admitted?.consoleObservationScopes?.find(prior => prior.pageUrl === scope.pageUrl)?.minimumMs ?? admitted?.consoleObservationMs ?? 2000))) return false
+    if (scope !== 'SITE' && scope !== 'CATEGORY') return true
+    return admitted?.scope === scope && canonicalIntent(canonicalExecutionOutcomes(admitted.outcomes)) === canonicalIntent(canonicalExecutionOutcomes(executionSpec.outcomes))
+  }
 
   const requestedKey =
     input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
@@ -240,7 +271,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (byKey.projectId !== input.projectId || byKey.environment !== environment || !matchesIntent(byKey)) {
       throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
     }
-    return { runId: byKey.id, auditId: byKey.auditId, outcomeIds: selectedIds, reused: true }
+    return { runId: byKey.id, auditId: byKey.auditId, outcomeIds: replaySelection(byKey), reused: true }
   }
 
   // Clear any run that no worker still owns before deciding whether this Site is
@@ -254,10 +285,10 @@ export async function requestSiteRun(input: RunInput): Promise<{
     include: { selections: { select: { outcomeId: true } } },
   })
   if (active) {
-    if (active.environment !== environment || !matchesIntent(active)) {
+    if (active.environment !== environment || !compatibleActive(active)) {
       throw new SiteRunRefusal('Another Site run is already in progress', 409)
     }
-    return { runId: active.id, auditId: active.auditId, outcomeIds: selectedIds, reused: true }
+    return { runId: active.id, auditId: active.auditId, outcomeIds: replaySelection(active), reused: true }
   }
 
 
@@ -272,6 +303,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
     if (recentRuns >= INTERACTIVE_RUN_LIMIT_PER_DAY) throw new RateLimitError(60 * 60)
   }
 
+  if (scope === 'CATEGORY' || scope === 'ACCOUNT_CHECKS' || scope === 'FIXTURE_SETUP') await requireExecutionReady(scope)
   const run = { id: randomUUID() }
   const runAdmission: Prisma.RunRequestUncheckedCreateInput = {
         id: run.id,
@@ -296,7 +328,15 @@ export async function requestSiteRun(input: RunInput): Promise<{
       }
 
   try {
-    const parentAuditId = fixture ? undefined : input.verificationTarget?.parentAuditId ?? input.parentAuditId
+    const categoryParent = executionSpec.category ? await prisma.audit.findFirst({
+      where: { projectId: input.projectId, status: 'COMPLETED', AND: [
+        { executionSpec: { path: ['scope'], equals: 'CATEGORY' } },
+        { executionSpec: { path: ['category', 'area'], equals: executionSpec.category.area } },
+        { executionSpec: { path: ['category', 'sourceAuditId'], equals: executionSpec.category.sourceAuditId } },
+        { executionSpec: { path: ['environment'], equals: executionSpec.environment } },
+      ] }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true },
+    }) : null
+    const parentAuditId = fixture ? undefined : input.verificationTarget?.parentAuditId ?? input.parentAuditId ?? categoryParent?.id ?? executionSpec.category?.sourceAuditId
     const parent = parentAuditId
       ? await prisma.audit.findFirst({
           where: {
@@ -307,14 +347,15 @@ export async function requestSiteRun(input: RunInput): Promise<{
           select: { id: true },
         })
       : fixture ? null : await prisma.audit.findFirst({
-          where: { projectId: input.projectId, status: 'COMPLETED', url: auditUrl, ...siteAnalysisAuditWhere },
+          where: { projectId: input.projectId, status: 'COMPLETED', url: auditUrl,
+            ...(scope === 'SITE' ? siteWideAnalysisAuditWhere : siteAnalysisAuditWhere) },
           orderBy: { completedAt: 'desc' },
           select: { id: true },
         })
     if (parentAuditId && !parent)
       throw new SiteRunRefusal('Verification source is no longer available', 409)
     const started = await createAndEnqueueAudit({
-      url: auditUrl,
+      url: executionSpec.targetUrl,
       userId: input.userId,
       parentId: parent?.id,
       recheckTrigger: input.source === 'WATCH' ? 'WATCH' : 'MANUAL',
@@ -349,7 +390,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
     return { runId: run.id, auditId: started.auditId, outcomeIds: selectedIds, reused: started.reused }
   } catch (error) {
     if (error instanceof RunAdmissionReplay)
-      return { runId: error.runId, auditId: error.auditId, outcomeIds: selectedIds, reused: true }
+      return { runId: error.runId, auditId: error.auditId, outcomeIds: scope === 'SITE' ? error.outcomeIds : selectedIds, reused: true }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const concurrent = await prisma.runRequest.findFirst({
         where: { projectId: input.projectId, OR: [
@@ -358,9 +399,10 @@ export async function requestSiteRun(input: RunInput): Promise<{
         ] }, include: { selections: { select: { outcomeId: true } } },
       })
       if (concurrent) {
-        if (concurrent.environment !== environment || !matchesIntent(concurrent))
+        const identicalKey = concurrent.source === input.source && concurrent.idempotencyKey === requestedKey
+        if (concurrent.environment !== environment || !(identicalKey ? matchesIntent(concurrent) : compatibleActive(concurrent)))
           throw new SiteRunRefusal('Another Site run is already in progress', 409)
-        return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: selectedIds, reused: true }
+        return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: replaySelection(concurrent), reused: true }
       }
     }
     // Admission refusal rolls back both ledgers. There is no orphan request to fail.
@@ -428,6 +470,11 @@ export async function retryFailedExecution(auditId: string): Promise<
   if (run && audit.userId && audit.projectId) {
     const outcomeIds = run.selections.map((selection) => selection.outcomeId)
     const setup = readExecutionSpec(run.executionSpec)?.fixtureSetup
+    if (readExecutionSpec(run.executionSpec)?.scope === 'ACCOUNT_CHECKS') {
+      const intent = readExecutionSpec(run.executionSpec)!.accountChecks!
+      const started = await requestSiteRun({ projectId: audit.projectId, userId: audit.userId, source: 'INTERNAL', outcomeIds: [], scope: 'ACCOUNT_CHECKS', accountMode: intent.mode, idempotencyKey: `internal-retry:${audit.id}:${run.id}` })
+      return { ok: true, auditId: started.auditId, runId: started.runId }
+    }
     if (setup) {
       const started = await requestSiteRun({ projectId: audit.projectId, userId: audit.userId, outcomeIds: [], source: 'INTERNAL',
         scope: 'FIXTURE_SETUP', fixtureId: setup.id, idempotencyKey: `internal-retry:${audit.id}:${run.id}` })

@@ -2,15 +2,21 @@ import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runVisualHierarchyChecks(
   meta: PageMetadata,
-  captureMetrics: CaptureMetrics | null
+  captureMetrics: CaptureMetrics | null,
+  record?: CheckRecorder,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const h1s = meta.h1s ?? []
   const h2s = meta.h2s ?? []
+  recordObservation(record, 'prominent-action-count', 'Sampled action hierarchy', 'Fewer than two equally prominent actions compete in the sampled mobile viewport',
+    captureMetrics ? `${captureMetrics.competingPrimaryCtaCount} equally prominent actions measured.` : 'Prominent actions were not measured.',
+    captureMetrics && Number.isFinite(captureMetrics.competingPrimaryCtaCount) && captureMetrics.competingPrimaryCtaCount >= 0
+      ? captureMetrics.competingPrimaryCtaCount < 2 : undefined, true)
 
   if (captureMetrics) {
     if (captureMetrics.competingPrimaryCtaCount >= 2) {
@@ -30,6 +36,9 @@ export function runVisualHierarchyChecks(
   }
 
   const totalHeadings = h1s.length + h2s.length
+  recordObservation(record, 'section-headings', 'Captured section hierarchy', 'Captured heading structure includes sections beneath its headline',
+    `${h1s.length} H1 and ${h2s.length} H2 headings recorded.`,
+    totalHeadings > 0 && bodyText.trim().length >= 200 ? !(h2s.length === 0 && h1s.length <= 1) : undefined, true)
   if (totalHeadings > 0 && h2s.length === 0 && h1s.length <= 1) {
     findings.push({
       checkId: 'hierarchy-no-sections',
@@ -45,6 +54,8 @@ export function runVisualHierarchyChecks(
   }
 
   const h1Count = h1s.length
+  recordObservation(record, 'headline-presence', 'Captured headline', 'Captured content includes an H1 heading',
+    `${h1Count} H1 headings in ${bodyText.length} sampled characters.`, h1Count > 0 ? true : bodyText.length > 10 ? false : undefined, true)
   if (h1Count === 0) {
     const hasVisibleText = bodyText.length > 10
     if (hasVisibleText) {
@@ -67,6 +78,9 @@ export function runVisualHierarchyChecks(
   // over-counts on pages with many content sections below the fold.
   const aboveFoldHeadings = [h1s[0] ?? '', ...(h2s.slice(0, 2))]
   const aboveFoldTextLength = aboveFoldHeadings.join(' ').split(/\s+/).filter(Boolean).length
+  recordObservation(record, 'heading-word-count', 'Sampled heading density', 'The H1 and first two H2 headings contain at most 80 words',
+    `${aboveFoldTextLength} words in the sampled headings. Physical above-fold density was not measured.`,
+    totalHeadings > 0 ? aboveFoldTextLength <= 80 : undefined, true)
   if (aboveFoldTextLength > 80) {
     findings.push({
       checkId: 'hierarchy-information-density',

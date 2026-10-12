@@ -57,9 +57,7 @@ export function MarketingHeaderAuth({
 
   return (
     <div className={cn("flex items-center gap-2", mode === "desktop" && "ml-2")}>
-      <Link href="/dashboard" className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Dashboard</Link>
       <AvatarMenu user={user} />
-      {analyze}
     </div>
   );
 }

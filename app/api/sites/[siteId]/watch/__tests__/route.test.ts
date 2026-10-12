@@ -13,7 +13,7 @@ vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers(
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
 vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: mocks.executeSiteCommand }))
 vi.mock('@/lib/auth/entitlements', () => ({ allowedWatchIntervals: mocks.allowedWatchIntervals }))
-vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: vi.fn() } } }))
+vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: vi.fn() }, project: { findFirst: vi.fn(), updateMany: vi.fn() } } }))
 
 import { POST } from '@/app/api/sites/[siteId]/watch/route'
 import { prisma } from '@/lib/db'
@@ -84,6 +84,20 @@ describe('POST /api/sites/[siteId]/watch', () => {
     })
   })
 
+  it('pauses monitoring without forgetting a custom cadence', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({ watchInterval: 'CUSTOM', watchEveryMinutes: 180 } as never)
+    const action = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ action: 'pause' }) })
+    expect((await POST(action, context)).status).toBe(200)
+    expect(prisma.project.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
+      watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'Paused. This Site is not on a check schedule.',
+    } }))
+  })
+  it('resumes the saved cadence through the entitlement-checked command', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValue({ watchInterval: 'CUSTOM', watchEveryMinutes: 180 } as never)
+    const action = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ action: 'resume' }) })
+    expect((await POST(action, context)).status).toBe(200)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'SET_WATCH', siteId: 'site-1', userId: 'user-1', interval: 'custom', everyMinutes: 180 })
+  })
   it('pauses Watch when the interval is null', async () => {
     const response = await POST(request(null), context)
 

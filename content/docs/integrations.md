@@ -12,7 +12,7 @@ The [integrations overview](/integrations) also lists sources we are exploring. 
 
 1. [Analyze your website](/docs/getting-started), then sign in and save the Site to your account.
 2. [Open your Sites](/dashboard) and select the website you want to connect.
-3. Open **Settings → Connections** and follow the guide for your provider.
+3. Open **Integrations** and follow the guide for your provider.
 
 Connections belong to an owned Site. If a provider's controls are missing, that connection may be unavailable on the current FixFlags server. Contact support instead of entering credentials into another form.
 

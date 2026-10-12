@@ -5,6 +5,7 @@ export const SITE_CONNECTION_COPY = {
   refresh: 'Refresh context', refreshed: 'Context refreshed.', disconnect: 'Disconnect',
   lastRead: (date: string) => `Last successful read ${date}`,
   guide: (name: string) => `Read ${name} integration guide`,
+  guideLabel: 'Guide',
   property: 'Property', unavailable: 'Connection setup is unavailable right now.',
   descriptions: { shopify: 'Store and product context', analytics: 'Audience context', search: 'Search performance context' },
   observation: (date: string | null) => date ? `Read ${date}.` : 'Observation date unknown.',

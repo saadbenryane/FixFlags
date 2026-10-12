@@ -91,7 +91,9 @@ globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input))
   if (url.hostname === 'api.resend.com') return nativeFetch(`${fixtureOrigin}${url.pathname}`, init)
   if (fixtureEnabled && url.hostname === 'example.com') return nativeFetch(`${fixtureOrigin}${url.pathname}${url.search}`, init)
-  if (url.hostname === 'www.googleapis.com') return new Response('{}', { status: 503 })
+  if (url.hostname === 'www.googleapis.com') return new Response('{}', {
+    status: process.env.FIXFLAGS_LOCAL_PROVIDER_REFUSAL === '1' ? 403 : 503,
+  })
   return nativeFetch(input, init)
 }
 const launch = chromium.launch.bind(chromium)
@@ -107,13 +109,21 @@ chromium.launch = async (options) => {
       // Install the fixture as the continuation of the real route safety guard.
       page.route = async (matcher, handler, options) => route(matcher, async (current, request) => {
         const originalContinue = current.continue.bind(current)
-        current.continue = async (overrides) => {
+        const originalFallback = current.fallback.bind(current)
+        const serveFixture = async () => {
           const url = new URL(request.url())
-          if (fixtureEnabled && url.hostname === 'example.com') {
-            const response = await nativeFetch(`${fixtureOrigin}${url.pathname}${url.search}`, { method: request.method(), body: request.method() === 'GET' ? undefined : request.postData() })
-            await current.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer()) }); return
-          }
+          if (!fixtureEnabled || url.hostname !== 'example.com') return false
+          const response = await nativeFetch(`${fixtureOrigin}${url.pathname}${url.search}`, { method: request.method(), body: request.method() === 'GET' ? undefined : request.postData() })
+          await current.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer()) })
+          return true
+        }
+        current.continue = async (overrides) => {
+          if (await serveFixture()) return
           return originalContinue(overrides)
+        }
+        current.fallback = async (overrides) => {
+          if (await serveFixture()) return
+          return originalFallback(overrides)
         }
         if (typeof handler === 'function') await handler(current, request)
       }, options)

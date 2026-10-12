@@ -83,7 +83,7 @@ describe('flagResolutionView', () => {
         resolvedInId: 'audit-proof',
         proof: completedProof(),
       }))
-      expect(status).toBe(improvementStatus)
+      expect(status).toBe('FIXED')
       expect(view.kind).toBe('proven')
       if (view.kind !== 'proven') continue
       expect(view.statusLabel).toBe(SITE_BOARD_COPY.flagRecovered)

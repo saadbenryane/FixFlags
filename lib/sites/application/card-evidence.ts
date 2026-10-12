@@ -1,5 +1,4 @@
 import type { BoardCardView } from '@/lib/sites/board-card'
-import { incompleteCardReason } from '@/lib/sites/board-card'
 import { applySearchCardEvidence } from '@/lib/sites/search-view'
 import { keyboardScopeComplete } from '@/lib/sites/coverage'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
@@ -56,7 +55,7 @@ export function applyCardEvidence({ cards, audit, summaryResults, inFlight, page
         const copy = SITE_ACTION_COPY.execution.tracking
         const attempts = runtime.find(result => result.assertionKey === 'tracking-initiation' && result.status === 'observed')
         const library = runtime.find(result => result.assertionKey === 'tracking-library' && result.status === 'passed')
-        card.state = 'unknown'; card.evidenced = false; card.status = copy.partial
+        card.status = copy.partial
         card.answer = attempts ? copy.requestsObserved : library ? copy.libraryObserved : copy.runtimeUnknown
         card.detail = attempts?.observation ?? library?.observation ?? runtime.find(result => result.status === 'unknown')?.observation ?? copy.deliveryLimit
         card.facts = [...card.facts, copy.deliveryLimit, copy.consentLimit].slice(-4)
@@ -68,14 +67,5 @@ export function applyCardEvidence({ cards, audit, summaryResults, inFlight, page
     if (card.id === 'tracking' && connectionNotes.tracking) card.facts = [...card.facts, connectionNotes.tracking].slice(0, 4)
     if (card.id === 'search' && connections?.searchConsole.status === 'connected') card.sources = [...card.sources, 'Search Console']
     if (card.id === 'tracking' && connections?.analytics.status === 'connected') card.sources = [...card.sources, 'Google Analytics']
-    card.incompleteReason = incompleteCardReason({
-      card,
-      auditStatus: audit?.status ?? null,
-      failureCode: audit?.failureCode ?? null,
-      failedModules: Array.isArray(audit?.failedModules) ? audit.failedModules.filter((item): item is string => typeof item === 'string') : [],
-      triageCompleted: Boolean(audit?.triageAt),
-      extraReviewCompleted: Boolean(audit?.aiReviewAt),
-    })
-    if (card.incompleteReason && card.state === 'healthy') card.state = 'unknown'
   }
 }

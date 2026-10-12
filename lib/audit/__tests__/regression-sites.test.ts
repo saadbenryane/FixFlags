@@ -41,7 +41,7 @@ function testFixture(
     const flags = [
       ...runMetadataChecks(meta),
       ...runContentChecks(meta, purpose),
-      ...runTrustChecks(URL, meta, []),
+      ...runTrustChecks(URL, meta),
       ...runAccessibilityChecks(meta, null),
       ...runSlopChecks(meta),
       ...runMeasurementChecks(meta),
@@ -237,9 +237,10 @@ describe('regression: blog-samaltman-com.html', () => {
 describe('regression: shopify-com.html', () => {
   testFixture(
     'shopify-com.html',
-    3,
+    4,
     [
       { checkId: 'title-too-long', severity: 'POLISH' },
+      { checkId: 'no-contact-info', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
       { checkId: 'buttons-no-text', severity: 'POLISH' },
     ],

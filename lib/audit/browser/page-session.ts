@@ -19,6 +19,9 @@ import {
   type TechnologyResourceRecord,
 } from './network-monitor'
 import { isBotInterstitialPage, PageCaptureError } from './page-capture'
+import { actionableConsoleErrors } from '../console-evidence'
+import type { ConsoleMessage as RecordedConsoleMessage } from '../console-evidence'
+import { createHmac, randomUUID } from 'node:crypto'
 import { classifyTrackingEndpoint } from '../tracking/endpoints'
 
 export const PAGE_TIMEOUT_MS = 30_000
@@ -34,7 +37,10 @@ export interface AuditPageSession {
   /** Visitor timing begins after browser-capacity admission, immediately before navigation. */
   navigationStartedAt: number
   /** Shared console error buffer (mutated by page listeners). */
-  consoleErrors: Array<{ type: string; text: string }>
+  consoleErrors: RecordedConsoleMessage[]
+  resetConsoleForPage?: () => void
+  consoleTruncated: () => boolean
+  consoleTiming: () => { loaded: boolean; observedMs: number; minimumMs: number }
   /** HTTP status from the initial navigation, if known. */
   httpStatus: number | null
   /** Response headers from the initial page navigation. */
@@ -57,7 +63,8 @@ export interface AuditPageSession {
 export interface CreateAuditPageOptions {
   resourcePriority?: 'availability'
   profile: CaptureProfile
-  consoleErrors?: Array<{ type: string; text: string }>
+  consoleErrors?: RecordedConsoleMessage[]
+  consoleIdentityKey?: string
   /** Demo fixture flow on localhost; skips public-URL guard for local dev URLs. */
   allowLocalhost?: boolean
   /** Set false when the caller needs the first post-DOMContentLoaded paint. */
@@ -77,7 +84,10 @@ export interface CreateAuditPageOptions {
   /** Directory for Playwright recordVideo. Finalized when the context closes. */
   recordVideoDir?: string
   /** HTTP basic auth, cookies, or headers for preview/staging targets. */
+  refusedRequestUrls?: Set<string>
   scanAccess?: ScanAccessConfig | null
+  /** Tenant-scoped, decrypted only inside an isolated account check. */
+  storageState?: import('playwright').BrowserContextOptions['storageState']
   /** Absolute audit deadline. Navigation never receives more than the remaining budget. */
   deadline?: number
   collectSearchEvidence?: boolean
@@ -139,6 +149,7 @@ export async function createAuditPage(
         }
       : undefined,
     ...playwrightAccess,
+    ...(options.storageState ? { storageState: options.storageState } : {}),
   }) } catch (error) { release(); throw error }
   const deadlineTimer = options.deadline ? setTimeout(() => {
     // Cancel the entire isolated context, including screenshots, injected scans,
@@ -174,7 +185,7 @@ export async function createAuditPage(
         allowCartMutations: options.buyPath === true,
       }
     : undefined
-  const safetyRestrictions: string[] = [], refusedUrls = new Set<string>()
+  const safetyRestrictions: string[] = [], refusedUrls = options.refusedRequestUrls ?? new Set<string>()
   const network: NetworkMonitor = attachNetworkMonitor(page, targetUrl)
   if (options.localFormValidationToken) {
     const bindingName = '__fixflagsLocalRefusal_' + options.localFormValidationToken.replaceAll('-', '')
@@ -262,10 +273,27 @@ export async function createAuditPage(
   })
   await page.route('**', guardRequest)
 
+  let consoleTruncated = false
+  let consoleLoadedAt: number | null = null, lastConsoleErrorAt: number | null = null
+  page.on('load', () => { consoleLoadedAt = Date.now() })
+  const consoleKeys = new Set<string>()
+  const consoleIdentityKey = options.consoleIdentityKey ?? randomUUID()
+  const recordConsoleError = (text: string) => {
+    if (!actionableConsoleErrors([{ type: 'error', text }]).length) return
+    lastConsoleErrorAt = Date.now()
+    const bounded = text.slice(0, 2000)
+    const identity = createHmac('sha256', consoleIdentityKey).update(text).digest('hex')
+    if (text.length > bounded.length) consoleTruncated = true
+    if (consoleKeys.has(identity)) return
+    if (consoleKeys.size >= 500) { consoleTruncated = true; return }
+    consoleKeys.add(identity)
+    consoleErrors.push({ type: 'error', text: bounded, identity })
+  }
+  page.on('pageerror', (error: Error) => recordConsoleError(error.message))
   page.on('console', (msg: ConsoleMessage) => {
     if (msg.type() === 'error') {
       if (refusedUrls.has(msg.location().url) && /(?:ERR_FAILED|blockedbyclient|ERR_BLOCKED_BY_CLIENT)/i.test(msg.text())) return
-      consoleErrors.push({ type: msg.type(), text: msg.text() })
+      recordConsoleError(msg.text())
     }
   })
 
@@ -320,7 +348,7 @@ export async function createAuditPage(
       network.dispose()
       throw new PageCaptureError('Destination presented a bot challenge instead of the Product', {
         code: 'HTTP_FORBIDDEN',
-        httpStatus: httpStatus === 200 ? 403 : httpStatus,
+        httpStatus,
         contentType: contentType || null,
         finalUrl: page.url(),
       })
@@ -336,8 +364,8 @@ export async function createAuditPage(
     network.dispose()
     throw new PageCaptureError('Destination presented a bot challenge instead of the Product', {
       code: 'HTTP_FORBIDDEN',
-      httpStatus: 403,
-      contentType: 'text/html',
+      httpStatus: response?.status() ?? null,
+      contentType: response?.headers()['content-type'] ?? null,
       finalUrl: page.url(),
     })
   }
@@ -350,6 +378,10 @@ export async function createAuditPage(
     page,
     navigationStartedAt,
     consoleErrors,
+    resetConsoleForPage: () => { consoleErrors.splice(0); consoleKeys.clear(); consoleTruncated = false; consoleLoadedAt = null; lastConsoleErrorAt = null },
+    consoleTruncated: () => consoleTruncated,
+    consoleTiming: () => ({ loaded: consoleLoadedAt !== null, observedMs: consoleLoadedAt === null ? 0 : Math.min(90000, Math.max(0, Date.now() - consoleLoadedAt)),
+      minimumMs: Math.min(90000, Math.max(2000, lastConsoleErrorAt !== null && consoleLoadedAt !== null ? lastConsoleErrorAt - consoleLoadedAt + 1000 : 0)) }),
     httpStatus: response?.status() ?? null,
     responseHeaders,
     originalDocument: options.collectSearchEvidence ? await originalNavigationDocument(response, targetUrl, options.deadline) : undefined,

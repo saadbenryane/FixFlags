@@ -114,6 +114,15 @@ describe('open-check', () => {
     expect(gets).toBeGreaterThan(0)
   })
 
+  it('fetches the supplied destination rather than its normalized inventory identity', async () => {
+    const url = 'https://www.example.com/en/pricing/?lang=en&page=2'
+    const requested: string[] = []
+    const result = await openCheckDestinations([url], { origin: 'https://www.example.com/',
+      fetchImpl: async input => { requested.push(input); return jsonResponse(200, '<title>Pricing</title>', {}, input) } })
+    expect(requested).toEqual([url])
+    expect(result.results[0].url).toBe(url)
+  })
+
   it('emits a dead-destination Flag only when evidence is enough', () => {
     const flags = deadDestinationFlags(
       [

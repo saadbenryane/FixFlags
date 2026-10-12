@@ -57,6 +57,7 @@ vi.mock('@/lib/sites/application/outcome-incidents', () => ({ persistOutcomeAsse
 
 import { buildExecutionSpec, executionIntentHash } from '@/lib/sites/application/execution-spec'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
+import { consoleContext } from '@/lib/audit/console-evidence'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun, retryFailedExecution } from '@/lib/sites/application/run-requests'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
@@ -72,6 +73,44 @@ const ownedOutcome = {
 }
 
 describe('RunRequest tenant boundary and idempotency', () => {
+  it('freezes category checks against the latest full-site inventory without selecting other responsibilities', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.auditFindFirst.mockImplementation(async (query: { select?: { pages?: unknown } }) => query.select?.pages
+      ? { id: 'audit-parent', url: 'https://shop.example/landing?campaign=1', pages: [{ url: 'https://shop.example/landing?campaign=1' }, { url: 'https://shop.example/pricing' }] }
+      : { id: 'audit-parent' })
+    await requestSiteRun({ projectId: 'project-1', userId: 'user-1', scope: 'CATEGORY', categoryArea: 'search', outcomeIds: [], source: 'WEB', idempotencyKey: 'search-category' })
+    const admitted = mocks.createAudit.mock.calls[0][0]
+    expect(admitted).toMatchObject({ url: 'https://shop.example/landing?campaign=1', parentId: 'audit-parent',
+      executionSpec: { scope: 'CATEGORY', category: { area: 'search', sourceAuditId: 'audit-parent',
+        pages: ['https://shop.example/landing?campaign=1', 'https://shop.example/pricing'] }, outcomes: [] } })
+    expect(admitted.executionSpec.checks).toHaveProperty('title-missing')
+    expect(admitted.executionSpec.checks).not.toHaveProperty('no-https')
+    expect(mocks.auditFindFirst.mock.calls[0][0].where).toMatchObject({ projectId: 'project-1', status: 'COMPLETED', OR: expect.any(Array) })
+  })
+  it('refuses category work without a completed source or with a caller-supplied page', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.auditFindFirst.mockResolvedValue(null)
+    const input = { projectId: 'project-1', userId: 'user-1', scope: 'CATEGORY' as const, categoryArea: 'search' as const, outcomeIds: [], source: 'WEB' as const }
+    await expect(requestSiteRun(input)).rejects.toMatchObject({ status: 409 })
+    await expect(requestSiteRun({ ...input, url: 'https://shop.example/other' })).rejects.toMatchObject({ status: 400 })
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+  it('keeps category replay intent stable when derived page inventories change', async () => {
+    mocks.auditFindFirst.mockResolvedValue({ id: 'full', url: 'https://shop.example/', pages: [] })
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: 'https://shop.example/', environment: 'production', scope: 'CATEGORY', categoryArea: 'search', outcomes: [] })
+    const changed = { ...spec, targetUrl: 'https://shop.example/new', category: { ...spec.category!, sourceAuditId: 'new-full', pages: ['https://shop.example/new'] } }
+    expect(executionIntentHash(spec)).toBe(executionIntentHash(changed))
+    expect(executionIntentHash(spec)).not.toBe(executionIntentHash({ ...changed, category: { ...changed.category, area: 'security' } }))
+  })
+  it('cannot reuse an unscoped legacy request as a modern category check', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.auditFindFirst.mockResolvedValue({ id: 'audit-parent', url: 'https://shop.example/', pages: [] })
+    mocks.runFindUnique.mockResolvedValue({ id: 'old-run', projectId: 'project-1', environment: 'production',
+      auditId: 'old-audit', requestHash: null, executionSpec: null, selections: [], verificationTarget: null })
+    await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', scope: 'CATEGORY', categoryArea: 'search',
+      outcomeIds: [], source: 'WEB', idempotencyKey: 'legacy-request' })).rejects.toMatchObject({ status: 409 })
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.outcomeFindMany.mockResolvedValue([ownedOutcome])
@@ -87,6 +126,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.auditFindUnique.mockResolvedValue(null)
     mocks.flagFindFirst.mockResolvedValue(null)
+    mocks.flagFindMany.mockResolvedValue([])
     mocks.improvementFindFirst.mockResolvedValue(null)
     mocks.assessmentUpsert.mockResolvedValue({})
     mocks.executionFindMany.mockResolvedValue([])
@@ -156,6 +196,53 @@ describe('RunRequest tenant boundary and idempotency', () => {
       // can honestly mean, so it is the one action that counts.
       skipUsageCount: false,
     }))
+  })
+
+  it('includes enabled owned bindings in broad care without substituting one binding target for the Site', async () => {
+    const available = { ...ownedOutcome, id: 'availability', kind: 'AVAILABILITY',
+      bindings: [{ key: 'http', version: 2, enabled: true, required: true, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: 'https://shop.example/pricing' } }] }
+    mocks.outcomeFindMany.mockResolvedValue([available])
+    const result = await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WATCH', scope: 'SITE' })
+    expect(mocks.outcomeFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: {
+      projectId: 'project-1', environment: 'production', enabled: true,
+      bindings: { some: { enabled: true, required: true } }, project: { userId: 'user-1', deletedAt: null },
+    } }))
+    expect(result.outcomeIds).toEqual(['availability'])
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://shop.example/', skipUsageCount: true,
+      executionSpec: expect.objectContaining({ scope: 'SITE', outcomes: [expect.objectContaining({ id: 'availability' })] }),
+      runRequestAdmission: expect.objectContaining({ selections: { create: [{ outcomeId: 'availability' }] } }),
+    }))
+  })
+
+  it('replays the original broad selection after automatic coverage is added, but does not reuse it for a new current-care intent', async () => {
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: 'https://shop.example/', environment: 'production', scope: 'SITE', outcomes: [] })
+    const recorded = { id: 'original', auditId: 'original-audit', projectId: 'project-1', environment: 'production',
+      requestHash: executionIntentHash(spec), executionSpec: spec, selections: [], verificationTarget: null }
+    mocks.runFindUnique.mockResolvedValueOnce(recorded)
+    expect(await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'original' }))
+      .toEqual({ runId: 'original', auditId: 'original-audit', outcomeIds: [], reused: true })
+    mocks.runFindFirst.mockResolvedValue(recorded)
+    await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WATCH', scope: 'SITE', idempotencyKey: 'new-care' }))
+      .rejects.toMatchObject({ status: 409 })
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+
+  it('replays a frozen care request but does not reuse a shorter console observation for a new run', async () => {
+    const pageUrl = 'https://shop.example/'
+    mocks.outcomeFindMany.mockResolvedValue([])
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'SITE', outcomes: [] })
+    const recorded = { id: 'original', auditId: 'original-audit', projectId: 'project-1', environment: 'production',
+      requestHash: executionIntentHash(spec), executionSpec: spec, selections: [], verificationTarget: null }
+    mocks.flagFindMany.mockResolvedValue([{ pageUrl, affectedPaths: [pageUrl], evidenceTargets: [
+      { context: consoleContext('desktop', pageUrl, pageUrl, 'profile', 'public', 6500) },
+    ] }])
+    mocks.runFindUnique.mockResolvedValueOnce(recorded)
+    expect(await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'original' }))
+      .toMatchObject({ runId: 'original', auditId: 'original-audit', reused: true })
+    mocks.runFindFirst.mockResolvedValue(recorded)
+    await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WATCH', scope: 'SITE', idempotencyKey: 'new-window' }))
+      .rejects.toMatchObject({ status: 409 })
+    expect(mocks.createAudit).not.toHaveBeenCalled()
   })
 
   it('does not charge the allowance for an Outcome verification', async () => {
@@ -450,6 +537,18 @@ describe('RunRequest tenant boundary and idempotency', () => {
     expect(result?.result).toBe('CLEAR')
     expect(mocks.runFindFirst).toHaveBeenCalledTimes(1)
     expect(mocks.runUpdate).not.toHaveBeenCalled()
+  })
+
+  it('retains each bound assessment without promoting successful uptime to whole-Site Clear', async () => {
+    mocks.runFindFirst.mockResolvedValue({ id: 'broad', status: 'COMPLETED', source: 'WATCH',
+      executionSpec: { version: 1, scope: 'SITE', targetUrl: 'https://shop.example/', environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
+      selections: [{ outcomeId: 'availability', outcome: { name: 'This page loads' } }],
+      assessments: [{ outcomeId: 'availability', state: 'CLEAR', summary: 'The page loads.', assessedAt: new Date(), validUntil: new Date('2099-01-01') }],
+      audit: { progress: 100, status: 'COMPLETED', completedAt: new Date(), reportCompleteness: 'PARTIAL',
+        evidenceCoverage: {}, verifierExecutions: [], flags: [], pages: [] }, requestedAt: new Date(), completedAt: new Date(),
+    })
+    expect(await getOwnedRun('user-1', 'broad')).toMatchObject({ result: 'COULD_NOT_VERIFY', outcomeId: null,
+      outcomes: [{ outcomeId: 'availability', result: 'CLEAR' }] })
   })
 
   it('does not report a multi-Outcome run Clear when one selected Outcome is inconclusive', async () => {
@@ -881,15 +980,48 @@ describe('RunRequest tenant boundary and idempotency', () => {
 
 
 describe('Tracking verification admission', () => {
+  it('keeps responsibility ordering out of replay identity while preserving executable step order', async () => {
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: 'https://shop.example/', environment: 'production', scope: 'OUTCOMES',
+      outcomes: [ownedOutcome, { ...ownedOutcome, id: 'outcome-2', bindings: [
+        { ...ownedOutcome.bindings[0]!, key: 'second' }, { ...ownedOutcome.bindings[0]!, key: 'first' },
+      ] }] })
+    const reordered = { ...spec, outcomes: spec.outcomes.toReversed().map(outcome => ({ ...outcome, bindings: outcome.bindings.toReversed() })) }
+    expect(executionIntentHash(reordered)).toBe(executionIntentHash(spec))
+    const journey = { ...spec, outcomes: spec.outcomes.map(outcome => ({ ...outcome, bindings: outcome.bindings.map(binding => ({ ...binding,
+      config: { startUrl: 'https://shop.example/', steps: [{ action: 'click', selector: '#first' }, { action: 'click', selector: '#second' }] },
+    })) })) }
+    const changed = { ...journey, outcomes: journey.outcomes.map(outcome => ({ ...outcome, bindings: outcome.bindings.map(binding => ({ ...binding,
+      config: { ...binding.config, steps: binding.config.steps.toReversed() },
+    })) })) }
+    expect(executionIntentHash(changed)).not.toBe(executionIntentHash(journey))
+  })
+
   it('snapshots every tenant-owned affected page for public destination verification', async () => {
     const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'
     mocks.flagFindMany.mockResolvedValue([{ affectedPaths: [pageUrl, other], evidenceTargets: [] }])
-    for (const checkId of ['checkout-link-dead', 'auth-page-broken', 'og-image-broken']) {
+    for (const checkId of ['checkout-link-dead', 'auth-page-broken', 'og-image-broken', 'buttons-no-text', 'axe-aria-hidden-focus']) {
       const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'DIAGNOSTIC', outcomes: [],
         verificationTarget: { kind: 'DIAGNOSTIC', checkId, pageUrl, parentAuditId: 'before', attemptId: 'attempt' } })
       expect(spec.verificationScopes).toEqual([{ pageUrl, phases: ['page_load'] }, { pageUrl: other, phases: ['page_load'] }])
       expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, verificationScopes: undefined }))
     }
+  })
+  it('freezes console page scopes and failure horizons for targeted verification and broad care', async () => {
+    const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'
+    mocks.flagFindMany.mockResolvedValue([{ pageUrl, affectedPaths: [pageUrl, other], evidenceTargets: [
+      { context: consoleContext('desktop', other, other, 'profile', 'public', 6500) },
+      { context: consoleContext('mobile', pageUrl, pageUrl, 'profile', 'public', 2000) },
+    ] }])
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'DIAGNOSTIC', outcomes: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'console-errors-critical', pageUrl, parentAuditId: 'before', attemptId: 'attempt' } })
+    expect(spec.verificationScopes).toEqual([{ pageUrl, phases: ['page_load'] }, { pageUrl: other, phases: ['page_load'] }])
+    expect(spec.consoleObservationMs).toBe(6500)
+    expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, consoleObservationMs: undefined }))
+    const care = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'SITE', outcomes: [] })
+    expect(care.consoleObservationMs).toBeUndefined()
+    expect(care.consoleObservationScopes).toEqual([{ pageUrl, minimumMs: 2000 }, { pageUrl: other, minimumMs: 6500 }])
+    expect(executionIntentHash(care)).toBe(executionIntentHash({ ...care, consoleObservationScopes: undefined }))
+    expect(mocks.flagFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ audit: { projectId: 'project-1', status: 'COMPLETED' } }) }))
   })
   it('derives only tenant-owned recorded page and phase scopes and keeps replay identity stable', async () => {
     const pageUrl = 'https://shop.example/', other = 'https://shop.example/details'

@@ -1,3 +1,5 @@
+import { uptimeSummarySchema, uptimeIncidentSchema } from '@/lib/uptime/contracts'
+import { accountViewSchema } from './accounts/contracts'
 import { z } from 'zod'
 import type { SiteHomeView } from './application/queries'
 import { siteCheckResultSchema } from './check-results'
@@ -23,7 +25,7 @@ const flag = z.object({
 const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableTime, completionState: z.enum(['COMPLETED', 'PARTIAL', 'FAILED']), flagCount: count,
     status: z.enum(['COMPLETED', 'FAILED']), flags: z.array(z.object({ id: text, title: text })),
 
-    scope: z.enum(['SITE', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']), targetLabel: nullableText,
+    scope: z.enum(['SITE', 'CATEGORY', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']), targetLabel: nullableText,
     trigger: z.enum(['MANUAL', 'SCHEDULED', 'OTHER', 'UNKNOWN']), afterFix: z.boolean(),
     result: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY']).nullable() })
 
@@ -31,8 +33,12 @@ const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableT
 /** Full client projection contract. A malformed refresh cannot replace recorded evidence. */
 export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   schemaVersion: z.literal(2),
+  captures: z.array(z.object({ auditId: text, device: z.enum(['desktop', 'mobile']), previous: z.boolean(),
+    url: text, pageUrl: text, viewport: text, recordedAt: nullableTime })).max(2).optional(),
+  uptime: uptimeSummarySchema.nullable().optional(),
+  uptimeEvents: z.array(uptimeIncidentSchema).max(50).optional(),
   inventoryPageCount: count,
-  activeRuns: z.array(z.object({ id: text, auditId: nullableText, scope: z.enum(['SITE', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']),
+  activeRuns: z.array(z.object({ id: text, auditId: nullableText, scope: z.enum(['SITE', 'CATEGORY', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']),
     targetLabel: nullableText, trigger: z.enum(['MANUAL', 'SCHEDULED', 'OTHER', 'UNKNOWN']), status: z.enum(['QUEUED', 'RUNNING', 'INTERRUPTED']),
     requestedAt: time, progress: z.number().min(0).max(100) })),
   site: z.object({ siteId: text, kind: z.enum(['project', 'provisional']), url: text, canonicalHost: text, name: text,
@@ -85,11 +91,12 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   monitoringTrend: z.array(historyEntry),
   watch: z.object({ state: z.enum(['off', 'watching', 'paused', 'delayed', 'quota']), interval: watchIntervalSchema.nullable(),
     everyMinutes: count.nullable().optional(), nextRunAt: nullableTime, lastRunAt: nullableTime, lastError: nullableText,
-    covered: z.boolean(), label: text, alert: z.object({ state: z.enum(['none', 'delivering', 'delivered', 'undelivered']),
+    covered: z.boolean(), label: text, alert: z.object({ state: z.enum(['none', 'delivering', 'accepted', 'delivered', 'undelivered'])
+      .transform(state => state === 'delivered' ? 'accepted' as const : state),
       status: z.enum(['NOT_APPLICABLE', 'PENDING', 'SENDING', 'SENT', 'FAILED']).nullable(), attempts: count, leaseUntil: nullableTime.optional(), at: nullableTime }),
   }),
   checkedPages: z.array(z.object({ url: text, title: nullableText, status: text, checkedAt: time })).optional(),
-  settings: z.object({ notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).nullable(), notifyOnRecovery: z.boolean().nullable(),
+  settings: z.object({ accountChecks: accountViewSchema.optional(), notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).nullable(), notifyOnRecovery: z.boolean().nullable(),
     shopify: z.object({ configured: z.boolean(), state: z.enum(['connected', 'unavailable', 'not_connected']), domain: nullableText }),
     searchConsole: connection, analytics: connection }),
 })

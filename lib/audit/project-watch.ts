@@ -9,7 +9,7 @@ import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitle
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { requestSiteRun } from '@/lib/sites/application/run-requests'
+import { requestScheduledSiteRun } from '@/lib/sites/application/scheduled-runs'
 import {
   calcWatchNextRun,
   fromStoredWatchInterval,
@@ -40,6 +40,7 @@ const LEASE_MS = 10 * 60 * 1000
  * re-attempted within a Watch interval rather than being lost.
  */
 const NOTIFICATION_LEASE_MS = 10 * 60 * 1000
+const NOTIFICATION_PROVIDER_TIMEOUT_MS = 20_000
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 export function productWatchReadiness(): { available: boolean; error: string | null } {
@@ -231,30 +232,9 @@ export async function processDueProjectWatches(
         continue
       }
 
-      const outcomes = await prisma.siteOutcome.findMany({
-        where: { projectId: project.id, enabled: true },
-        select: { id: true },
-        orderBy: { id: 'asc' },
-      })
-      if (outcomes.length === 0) {
-        errors += 1
-        await recordWatchFailure(
-          unchangedSchedule,
-          project.watchConsecutiveFailures + 1,
-          'Confirm an Outcome before Watch can verify this Site.',
-          now,
-        )
-        continue
-      }
-      const outcomeIds = outcomes.map((outcome) => outcome.id)
-      const tick = project.watchNextRunAt?.toISOString() ?? now.toISOString()
-      await requestSiteRun({
-        projectId: project.id,
-        outcomeIds,
-        userId: project.userId,
-        source: 'WATCH',
-        idempotencyKey: `watch:${project.id}:${tick}:${outcomeIds.join(',')}`,
-        context: { cadence: interval, ...(interval === 'custom' ? { everyMinutes: project.watchEveryMinutes } : {}) },
+      await requestScheduledSiteRun({
+        projectId: project.id, userId: project.userId, interval,
+        everyMinutes: project.watchEveryMinutes, scheduledAt: project.watchNextRunAt ?? now, now,
       })
       enqueued += 1
       await refreshStaleGoogleContext(project.id, now).catch(error => {
@@ -357,8 +337,9 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   const alertRecoveryCount = alertRecoveries.length
   if (child.watchNotificationStatus !== 'SENDING' &&
       (child.watchRegressionCount === null || child.watchRecoveryCount === null)) {
-    await prisma.audit.update({
-      where: { id: childAuditId },
+    await prisma.audit.updateMany({
+      where: { id: childAuditId, watchNotificationStatus: { notIn: ['SENT', 'SENDING'] },
+        OR: [{ watchRegressionCount: null }, { watchRecoveryCount: null }] },
       data: {
         watchRegressionCount: regressCount,
         watchRecoveryCount: recoveryCount,
@@ -367,12 +348,15 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
     })
   }
   if (regressCount === 0 && alertRecoveryCount === 0) {
-    if (child.watchNotificationStatus === 'PENDING' || child.watchNotificationStatus === 'FAILED') {
-      await prisma.audit.updateMany({
-        where: { id: childAuditId, watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
-        data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null },
-      })
-    }
+    // A later opt-out can cancel due work, including an expired claim. It
+    // cannot cancel a live provider call or rewrite confirmed acceptance.
+    await prisma.audit.updateMany({
+      where: { id: childAuditId, OR: [
+        { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+        { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lte: new Date() } },
+      ] },
+      data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null },
+    })
     return
   }
 
@@ -416,15 +400,16 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   // alert forever. A held lease is excluded, so a second worker never steals a
   // delivery that is still in flight.
   const claimNow = deliveryNow
+  const claimLease = new Date(claimNow.getTime() + NOTIFICATION_LEASE_MS)
   const claimed = await prisma.audit.updateMany({
     where: {
       id: childAuditId,
-      watchNotificationAttempts: { lt: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
+      watchNotificationAttempts: { equals: child.watchNotificationAttempts, lt: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
       OR: [
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
         {
           watchNotificationStatus: 'SENDING',
-          watchNotificationLeaseUntil: { lt: claimNow },
+          watchNotificationLeaseUntil: { lte: claimNow },
         },
       ],
     },
@@ -432,10 +417,12 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       watchNotificationStatus: 'SENDING',
       watchNotificationAttempts: { increment: 1 },
       watchNotificationLastError: null,
-      watchNotificationLeaseUntil: new Date(claimNow.getTime() + NOTIFICATION_LEASE_MS),
+      watchNotificationLeaseUntil: claimLease,
     },
   })
   if (claimed.count !== 1) return
+  const ownedClaim = { id: childAuditId, watchNotificationStatus: 'SENDING' as const,
+    watchNotificationAttempts: child.watchNotificationAttempts + 1, watchNotificationLeaseUntil: claimLease }
 
   const host = (() => {
     try { return new URL(child.url).hostname } catch { return child.url }
@@ -459,18 +446,23 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
 
   try {
     if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
+    // The installed SDK forwards request options to fetch. Abort the actual
+    // request, rather than leaving it running after a Promise timeout.
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(new Error('Watch notification provider deadline')), NOTIFICATION_PROVIDER_TIMEOUT_MS)
+    const deliveryOptions = { idempotencyKey: `fixflags-watch-${child.id}-v1`, signal: controller.signal }
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: child.user.email,
       subject,
       html: `<p>Hi${child.user.name ? ` ${escapeEmailHtml(child.user.name)}` : ''},</p><p>${lead}</p>${problem}${checked}<p><a href="${escapeEmailHtml(destination)}">${leadFlag?.id ? 'See evidence and next steps' : 'Open this Site’s Flags'}</a></p>`,
       text: `Hi${child.user.name ? ` ${child.user.name}` : ''},\n\n${regressCount > 0 ? `FixFlags found ${regressCount} problem${regressCount === 1 ? '' : 's'} that need${regressCount === 1 ? 's' : ''} attention on ${host}.` : `An independent check verified recovery on ${host}.`}\n\n${leadFlag?.problem ?? ''}\n${child.completedAt ? `Checked ${child.completedAt.toISOString()}.\n` : ''}\nSee evidence and next steps: ${destination}`,
-    }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
+    }, deliveryOptions).finally(() => clearTimeout(timer))
     // The provider SDK resolves rejected requests with an error, rather than throwing.
     if (error) throw new Error(error.message)
     if (!data?.id) throw new Error('Email provider did not confirm acceptance')
-    await prisma.audit.update({
-      where: { id: childAuditId },
+    const recorded = await prisma.audit.updateMany({
+      where: ownedClaim,
       data: {
         watchNotificationStatus: 'SENT',
         watchNotifiedAt: new Date(),
@@ -478,10 +470,11 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
         watchNotificationLeaseUntil: null,
       },
     })
+    if (recorded.count !== 1) return
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    await prisma.audit.update({
-      where: { id: childAuditId },
+    await prisma.audit.updateMany({
+      where: ownedClaim,
       data: {
         watchNotificationStatus: 'FAILED',
         watchNotificationLastError: message.slice(0, 1000),

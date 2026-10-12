@@ -25,11 +25,11 @@ describe('MarketingHeaderAuth', () => {
     expect(screen.getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/new')
   })
 
-  it('shows Dashboard, account, and Analyze when signed in', () => {
+  it('shows only the account menu in the desktop actions when signed in', () => {
     useMe.mockReturnValue({ user: { id: 'user-1' } })
     render(<MarketingHeaderAuth />)
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/new')
+    expect(screen.queryByRole('link', { name: 'Analyze' })).not.toBeInTheDocument()
   })
 })

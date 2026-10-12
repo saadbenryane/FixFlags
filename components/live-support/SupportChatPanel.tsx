@@ -3,13 +3,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ChatComposer } from '@/components/ui/chat-composer'
 import { Textarea } from '@/components/ui/textarea'
 import { MessageBubble } from '@/components/support/MessageBubble'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportMessages } from '@/components/live-support/useSupportPolling'
 import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 
-export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
+export function SupportChatPanel({ auditId, composer, compact = false, onRead }: {
+  auditId?: string | null
+  compact?: boolean
+  composer?: { draft: string; setDraft: (value: string) => void; sending: boolean; beginSend: () => boolean; endSend: () => void
+    error: string | null; setError: (value: string | null) => void }
+  onRead?: () => void
+}) {
   const {
     sessionId,
     setSessionId,
@@ -20,33 +27,47 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
   } = useSupportContext()
   const resolvedAuditId = auditId ?? contextAuditId
   const { data, mutate, error: pollError } = useSupportMessages(sessionId, panelOpen)
-  const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [localDraft, setLocalDraft] = useState('')
+  const [localSending, setLocalSending] = useState(false)
+  const draft = composer?.draft ?? localDraft
+  const setDraft = composer?.setDraft ?? setLocalDraft
+  const sending = composer?.sending ?? localSending
+  const [localError, setLocalError] = useState<string | null>(null)
+  const error = composer ? composer.error : localError
+  const setError = composer?.setError ?? setLocalError
   const bottomRef = useRef<HTMLDivElement>(null)
+  const transcriptRef = useRef<HTMLDivElement>(null)
+  const stickToBottom = useRef(true)
 
   useEffect(() => {
     if (draftPrefill) {
       setDraft(draftPrefill)
       clearDraftPrefill()
     }
-  }, [draftPrefill, clearDraftPrefill])
+  }, [draftPrefill, clearDraftPrefill, setDraft])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [data?.messages])
+    if (compact) {
+      if (stickToBottom.current && transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
+    } else {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      bottomRef.current?.scrollIntoView?.({ behavior: reducedMotion ? 'instant' : 'smooth' })
+    }
+  }, [data?.messages, compact])
 
   useEffect(() => {
     if (!sessionId || !panelOpen) return
     void fetch(`/api/support/sessions/${sessionId}/messages`, { method: 'PATCH' })
-  }, [sessionId, panelOpen, data?.messages?.length])
+      .then(response => { if (response.ok) onRead?.() }).catch(() => undefined)
+  }, [sessionId, panelOpen, data?.messages?.length, onRead])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     const text = draft.trim()
-    if (!text || sending) return
+    if (!text || sending || (composer && !composer.beginSend())) return
+    stickToBottom.current = true
 
-    setSending(true)
+    setLocalSending(true)
     setError(null)
     try {
       if (sessionId) {
@@ -85,7 +106,8 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
       }    } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send')
     } finally {
-      setSending(false)
+      setLocalSending(false)
+      composer?.endSend()
     }
   }
 
@@ -94,8 +116,11 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
   const showLocalWelcome = !sessionId
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto p-4 min-h-0">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div ref={transcriptRef} className="flex-1 space-y-3 overflow-y-auto p-4 min-h-0" onScroll={event => {
+        const node = event.currentTarget
+        stickToBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 60
+      }}>
         {pollError && messages.length === 0 && sessionId && (
           <p className="text-sm text-destructive text-center py-8" role="alert">
             Could not load messages. Try sending a message to reconnect.
@@ -123,26 +148,26 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSend} className="border-t border-border p-3 space-y-2">
+      <form onSubmit={handleSend} className={compact ? 'shrink-0 space-y-2 p-3' : 'border-t border-border p-3 space-y-2'}>
         {error && (
           <p className="text-xs text-destructive" role="alert">
             {error}
           </p>
         )}
-        <div className="flex gap-2">
-          <Textarea
+        <div className={compact ? 'flex items-end gap-2' : 'flex gap-2'}>
+          {compact ? <ChatComposer
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={setDraft}
+            label={SUPPORT_CHAT.messageLabel}
             placeholder="Type a message…"
-            rows={2}
-            className="flex-1 resize-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                void handleSend(e)
+            disabled={sending}
+          /> : <Textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Type a message…"
+            rows={2} className="flex-1 resize-none" onKeyDown={event => {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+                event.preventDefault()
+                void handleSend(event)
               }
-            }}
-          />
+            }} />}
           <Button type="submit" size="icon" disabled={sending || !draft.trim()} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>

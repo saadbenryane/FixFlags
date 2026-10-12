@@ -8,7 +8,6 @@ import {
 import type { CoverageFact, SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { CHECK_MODULES } from '@/lib/audit/check-registry'
 
 export const BROWSER_SOURCE = SITE_BOARD_COPY.browserSource
 
@@ -58,37 +57,6 @@ export type BoardCardView = {
   problem: BoardCardProblem | null
   /** Missing work proven for this area by the latest Audit, separate from retained findings. */
   incompleteReason?: string | null
-}
-
-/** Deterministic module failures have a known card owner. Other pipeline failures
- * cannot be assigned to an area without evidence. */
-export const FAILED_MODULE_AREAS: Partial<Record<string, SiteCardArea[]>> = Object.fromEntries(
-  Object.entries(CHECK_MODULES).map(([id, contract]) => [id, [contract.area]])
-)
-
-export function incompleteCardReason(input: {
-  card: Pick<BoardCardView, 'id' | 'openFlagCount' | 'evidenced'>
-  auditStatus: string | null
-  failureCode: string | null
-  failedModules: string[]
-  triageCompleted: boolean
-  extraReviewCompleted: boolean
-}): string | null {
-  if (input.auditStatus !== 'COMPLETED') return null
-  if (input.failedModules.some((module) => FAILED_MODULE_AREAS[module]?.includes(input.card.id))) {
-    return SITE_BOARD_COPY.cardCheckIncomplete
-  }
-  // Prescription enriches recorded Flags. Its failure does not invalidate a
-  // completed browser check or imply that healthy cards were never checked.
-  if (input.triageCompleted && !input.extraReviewCompleted &&
-      ['AI_CONTRACT_INVALID', 'AI_REVIEW_FAILED'].includes(input.failureCode ?? '') &&
-      input.card.openFlagCount > 0 && input.card.id !== 'site') {
-    return SITE_BOARD_COPY.cardReviewIncomplete
-  }
-  if (input.failureCode && !input.card.evidenced && input.card.id !== 'site') {
-    return SITE_BOARD_COPY.cardCheckIncomplete
-  }
-  return null
 }
 
 export function boardCardStatusText(
@@ -352,6 +320,7 @@ export function buildBoardCards(input: {
       evidenced: fact?.evidenced ?? false,
       openFlagCount: areaFlags.length,
       checkedAt: fact?.checkedAt ?? null,
+      incompleteReason: fact?.incompleteReason ?? null,
       flagIds: areaFlags.map((flag) => flag.id),
       flagChips: chipsForFlags(input.siteId, areaFlags),
       sources: sourcesForArea(area, input.detected),

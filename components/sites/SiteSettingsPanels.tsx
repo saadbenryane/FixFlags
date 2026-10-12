@@ -1,0 +1,80 @@
+'use client'
+
+import { useId, type ReactNode } from 'react'
+import { Bell, Clock3, UserRound, type LucideIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { SiteSettingsSection } from './SiteSettingsSection'
+import { SITE_SETTINGS_COPY as S } from '@/lib/marketing/copy/site-settings'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import { MONITORING_SCHEDULE_COPY as M } from '@/lib/marketing/copy/monitoring'
+import { ACCOUNT_CHECK_COPY as A } from '@/lib/marketing/copy/account-checks'
+import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
+import styles from './SiteSettingsPanels.module.css'
+
+export type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
+
+function PanelHeading({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) {
+  return <div className={styles.heading}><span className={styles.icon}><Icon size={18} aria-hidden /></span><div><h2>{title}</h2><p>{description}</p></div></div>
+}
+
+export function SiteMonitoringSettingsPanel({ label, paused, scheduled, nextCheck, lastCheck, lastError, busy = false, onEdit, onPause, notice, editor }: {
+  label: string; paused: boolean; scheduled: boolean; nextCheck?: string | null; lastCheck?: string | null;
+  lastError?: string | null; busy?: boolean; onEdit: () => void; onPause: (paused: boolean) => void;
+  notice?: ReactNode; editor?: ReactNode;
+}) {
+  return <SiteSettingsSection id="watch" tabIndex={-1}>
+    <PanelHeading icon={Clock3} title={S.monitoring} description={S.monitoringBody} />
+    <div className={styles.schedule}><span className={styles.scheduleLabel}><i data-active={scheduled && !paused} aria-hidden />{paused ? S.paused : label}</span>
+      <div className={styles.actions}><Button variant="outline" disabled={busy} onClick={onEdit}>{M.edit}</Button>
+        {scheduled ? <Button variant="ghost" disabled={busy} onClick={() => onPause(!paused)}>{paused ? S.resume : S.pause}</Button> : null}</div>
+    </div>
+    {(nextCheck && !paused) || lastCheck ? <dl className={styles.facts}>
+      {nextCheck && !paused ? <div><dt>{S.next}</dt><dd>{nextCheck}</dd></div> : null}
+      {lastCheck ? <div><dt>{S.last}</dt><dd>{lastCheck}</dd></div> : null}
+    </dl> : null}
+    {lastError ? <p className={styles.note}>{lastError}</p> : null}
+    {notice}{editor}
+  </SiteSettingsSection>
+}
+
+export function SiteNotificationSettingsPanel({ level, recovery, busy = false, onChange }: {
+  level: NotificationLevel | null; recovery: boolean | null; busy?: boolean;
+  onChange: (level: NotificationLevel, recovery: boolean) => void;
+}) {
+  const id = useId()
+  return <SiteSettingsSection>
+    <PanelHeading icon={Bell} title={S.notifications} description={S.notificationsBody} />
+    {level == null || recovery == null ? <p className={styles.note}>{SITE_BOARD_COPY.notificationsUnavailable}</p> : <>
+      <div className={styles.field}><label htmlFor={id}>{S.emailMe}</label><select id={id} value={level} disabled={busy} onChange={event => onChange(event.target.value as NotificationLevel, recovery)}>
+        <option value="FLAGS">{S.levels.FLAGS}</option><option value="CRITICAL_ONLY">{S.levels.CRITICAL_ONLY}</option><option value="OFF">{S.levels.OFF}</option>
+      </select></div>
+      <label className={styles.toggle}><input type="checkbox" checked={recovery} disabled={busy || level === 'OFF'} onChange={event => onChange(level, event.target.checked)} /><span>{S.recovery}</span></label>
+    </>}
+  </SiteSettingsSection>
+}
+
+export function SiteAccountChecksPanel({ initial, enabled, busy = false, onToggle, onRequest, feedback }: {
+  initial?: AccountChecksView; enabled: boolean; busy?: boolean; onToggle: (enabled: boolean) => void;
+  onRequest: (mode: 'retest' | 'cleanup') => void; feedback?: ReactNode;
+}) {
+  return <SiteSettingsSection id="account-checks">
+    <PanelHeading icon={UserRound} title={A.title} description={A.body} />
+    <label className={styles.toggle}><input type="checkbox" role="switch" checked={enabled} disabled={busy || !initial?.eligible} onChange={event => onToggle(event.target.checked)} /><span>{A.enabled}</span></label>
+    <details className={styles.details}><summary>{S.accountDetails}</summary><p>{A.email} {A.retention}</p></details>
+    {initial?.reason ? <p className={styles.note}>{initial.reason}</p> : null}
+    {initial?.accounts.length ? <dl className={styles.facts}>{initial.accounts.map(account => <div key={account.purpose}>
+      <dt>{account.purpose === 'retained' ? A.retained : A.disposable}</dt><dd>{account.email}</dd><dd>{A.accountStates[account.state as keyof typeof A.accountStates] ?? 'Not verified'}</dd>
+    </div>)}</dl> : null}
+    {initial?.results.length ? <ul className={styles.results}>{initial.results.map(item => <li key={item.kind + item.pageUrl}>
+      <strong>{A.kinds[item.kind]}</strong><span data-state={item.state}>{A.states[item.state]}</span><p>{item.detail}</p><time dateTime={item.checkedAt}>{formatEvidenceTimestamp(item.checkedAt)}</time>
+    </li>)}</ul> : <p className={styles.note}>{A.none}</p>}
+    <div className={styles.actions}><Button variant="outline" disabled={busy || !enabled || !initial?.ready || !initial.eligible} onClick={() => onRequest('retest')}>{A.retest}</Button>
+      <Button variant="ghost" disabled={busy || !initial?.accounts.length || !initial.ready || !initial.eligible} onClick={() => onRequest('cleanup')}>{A.cleanup}</Button></div>
+    {feedback}
+  </SiteSettingsSection>
+}
+
+export function SiteRemovalSettingsPanel({ busy = false, onRemove }: { busy?: boolean; onRemove?: () => void }) {
+  return <section className={styles.removal}><div><h2>{S.remove}</h2><p>{S.removeBody}</p></div><Button variant="destructive" disabled={busy || !onRemove} onClick={onRemove}>{S.remove}</Button></section>
+}

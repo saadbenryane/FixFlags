@@ -90,7 +90,7 @@ const PAGINATION_PATH = /\/(?:page|p)\/\d+\/?$/i
 export type CanonicalDestination = {
   /** Stable identity key used for deduplication. */
   key: string
-  /** Fetchable http(s) URL after identity normalization. */
+  /** Actual supplied HTTP(S) destination, separate from its deduplication key. */
   url: string
   origin: string
   pathname: string
@@ -155,9 +155,9 @@ export function parsePublicHttpUrl(raw: string, base?: string): URL | null {
 }
 
 /**
- * One deterministic canonical destination for review/open-check identity.
- * Strips hashes, trailing slashes, tracking params, generated pagination/facet
- * params, locale prefixes, and equivalent www/apex hosts.
+ * Normalize the deduplication key without rewriting the destination we inspect.
+ * Equivalent inventory entries can retain their supplied host, locale, path and
+ * query. Identity normalization cannot authorize fetching a different URL.
  */
 export function canonicalizeDestination(
   raw: string,
@@ -169,17 +169,18 @@ export function canonicalizeDestination(
   parsed.hash = ''
   parsed.username = ''
   parsed.password = ''
+  const url = parsed.toString()
+  const originForFetch = parsed.origin
   parsed.hostname = normalizeSiteHost(parsed.hostname.replace(/\.$/, ''))
   stripDefaultPort(parsed)
   parsed.pathname = normalizePathname(parsed.pathname)
   const keptQuery = keepQueryParams(parsed.searchParams).toString()
   parsed.search = keptQuery ? `?${keptQuery}` : ''
 
-  const url = parsed.toString()
   return {
     key: `${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.search}`,
     url,
-    origin: parsed.origin,
+    origin: originForFetch,
     pathname: parsed.pathname,
   }
 }

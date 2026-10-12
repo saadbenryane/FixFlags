@@ -37,7 +37,8 @@ describe('registered check and evidence contracts', () => {
     expect(recordCheckObservations('measurement', input)[0].passed).toBe(false)
     expect(recordCheckObservations('performance', input)).toEqual([])
     expect(recordCheckObservations('accessibility', input)).toEqual([])
-    expect(recordCheckObservations('accessibility', { ...input, axe: [] })[0].passed).toBe(true)
+    // An empty legacy violations list cannot establish that axe ran or passed.
+    expect(recordCheckObservations('accessibility', { ...input, axe: [] })).toEqual([])
   })
   it('validates new receipts and strips malformed historical assertions and private fields', () => {
     expect(checkReceiptSchema.safeParse({ kind: 'site-module-check', version: 1, module: 'metadata', pageUrl: 'https://example.com', passed: true, applicable: true }).success).toBe(true)

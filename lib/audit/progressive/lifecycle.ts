@@ -10,8 +10,11 @@ import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speed
 import { browserEvidence, captureEvidence, searchArtifactSchema } from './evaluators'
 import { flagSchema, commitFindings } from './results'
 import { asReviewDepth, planReviewTargets, openCheckCeilingForDepth, buildReviewCoverage } from '../review-depth'
-import { openCheckDestinations, deadDestinationFlags } from '../open-check'
+import { openCheckDestinations } from '../open-check'
 import { canonicalizeDestination } from '../url-identity'
+import { publicLinkObservations, publicLinkUrls, resolvedPageLinks } from '../checks/public-links'
+import { checkReceiptSchema } from '../checks/receipt'
+import { commitCheckReceipt } from './results'
 import { runCheckedPageSearch } from '../search/workflow'
 import { runCorridorConsistencyChecks } from '../checks/corridor-consistency'
 import { runBoundOutcomeExecutions } from '@/lib/sites/application/checkout-execution'
@@ -33,7 +36,8 @@ import { persistAuditRunCost } from '@/lib/billing/costs'
 
 const findingsSchema = z.object({ flags: z.array(flagSchema).max(500) }).strict()
 const discoverySchema = z.object({ flags: z.array(flagSchema).max(500),
-  pages: z.array(z.string().url()).max(24), openCheckCount: z.number().int().nonnegative().max(120), truncated: z.boolean() }).strict()
+  pages: z.array(z.string().url()).max(24), openCheckCount: z.number().int().nonnegative().max(120), truncated: z.boolean(),
+  receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), bindingKey: z.string() }).strict()
 const journeySchema = z.object({ findingCount: z.number().int().nonnegative() }).strict()
 const usageSchema = z.object({ inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), model: z.string(),
@@ -66,7 +70,7 @@ export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<
         'pageId', "workResult"->'data'->'pageId', 'snapshot', jsonb_build_object(
           'desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl', 'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
       WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata'))
-      WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'journeys', 'fixture-setup', 'finalize') THEN NULL
+      WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'journeys', 'fixture-setup', 'automatic-accounts', 'finalize') THEN NULL
       ELSE "workResult" END AS "workResult"
     FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" LIKE 'task:%'
       ${pageUrl ? Prisma.sql`AND "pageUrl" = ${pageUrl}` : Prisma.empty}
@@ -140,14 +144,19 @@ export const lifecycleHandlers: TaskHandler[] = [
     },
   },
   { kind: 'discovery', replay: 'read_only', timeoutMs: 45_000,
-    validateResult: artifact => { discoverySchema.parse(artifact.data) }, commit: commitFindings,
+    validateResult: artifact => { discoverySchema.parse(artifact.data) },
+    async commit(context, artifact, tx) {
+      const result = discoverySchema.parse(artifact.data)
+      for (const receipt of result.receipts ?? []) await commitCheckReceipt(context, receipt, tx, ':public-links:' + (context.input.module ?? 'first'))
+      await commitFindings(context, artifact, tx)
+    },
     async evaluate(context) {
       const spec = readExecutionSpec(context.audit.executionSpec)
       if (!spec) throw new TaskFailure('EXECUTION_SPEC_INVALID', false)
       const pages = await recordedPages(context.audit.id), primary = pages.find(page => page.url === spec.targetUrl)
       const depth = asReviewDepth(spec.reviewDepth ?? context.audit.reviewDepth)
-      const plan = planReviewTargets({ pastedUrl: spec.targetUrl, depth, pastedLinks: primary?.metadata.links ?? [],
-        linkedPageLinks: context.input.module === 'second' ? pages.filter(page => page !== primary).map(page => ({ pageUrl: page.url, links: page.metadata.links })) : [] })
+      const plan = planReviewTargets({ pastedUrl: spec.targetUrl, depth, pastedLinks: primary ? resolvedPageLinks(primary.url, primary.metadata) : [],
+        linkedPageLinks: context.input.module === 'second' ? pages.filter(page => page !== primary).map(page => ({ pageUrl: page.url, links: resolvedPageLinks(page.url, page.metadata) })) : [] })
       const existing = await loadTaskGraph(context.audit.id)
       const allPlans: TaskPlan[] = existing.map(task => ({ kind: task.workKind as TaskPlan['kind'], key: task.targetKey.slice(5),
         scope: task.scopeKey, input: task.workInput as TaskPlan['input'], dependencies: task.workDependencies }))
@@ -169,9 +178,18 @@ export const lifecycleHandlers: TaskHandler[] = [
         origin: spec.targetUrl, ceiling: openCheckCeilingForDepth(depth),
         deadline: context.deadline,
       })
+      const sources = context.input.module === 'second' ? pages : primary ? [primary] : []
+      const observations = sources.map(page => {
+        const urls = publicLinkUrls(page.url, page.metadata)
+        const checked = publicLinkObservations(page.url, urls, opened.results)
+        return { ...checked, receipt: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'seo',
+          pageUrl: page.url, passed: checked.complete && checked.flags.length === 0, applicable: true,
+          assertions: checked.assertions, complete: checked.complete, limitation: checked.limitation,
+          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() } }) }
+      })
       return serializeArtifact('discovery', discoverySchema.parse({ pages: plan.reviewUrls,
         openCheckCount: opened.results.length, truncated: plan.truncated || opened.truncated,
-        flags: deadDestinationFlags(opened.results, spec.targetUrl) }))
+        flags: observations.flatMap(result => result.flags), receipts: observations.map(result => result.receipt) }))
     },
   },
   { kind: 'cross-page', replay: 'read_only', timeoutMs: 12_000,
@@ -247,7 +265,7 @@ export const lifecycleHandlers: TaskHandler[] = [
         take: MAX_TASKS_PER_AUDIT, select: { targetKey: true } })
       failed.push(...incomplete.map(receipt => receipt.targetKey.slice('module:'.length)))
       const spec = readExecutionSpec(latest.executionSpec)
-      if (spec && spec.scope !== 'SITE') {
+      if (spec && spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') {
         // A configured action does not need an unrelated page scan, screenshot,
         // PageSpeed measurement or AI explanation to complete its own assessment.
         await persistAuditRunCost(latest.id, { durationMs: Date.now() - (latest.startedAt ?? latest.createdAt).getTime(),
@@ -263,6 +281,36 @@ export const lifecycleHandlers: TaskHandler[] = [
         return serializeArtifact('finalize', { status: 'COMPLETED', partial: failed.length > 0 })
       }
       const pages = await recordedPages(latest.id), ctx = await pipelineContext(context)
+      const accountTask = await prisma.auditVerifierExecution.findFirst({ where: { auditId: latest.id, workKind: 'automatic-accounts', workState: 'COMPLETED' }, select: { workResult: true } })
+      if (accountTask?.workResult && pages[0]) {
+        const accountFlags = z.array(flagSchema).parse(readArtifact(accountTask.workResult, 'automatic-accounts').data.flags ?? [])
+        pages[0].flags.push(...accountFlags)
+      }
+      if (spec?.category) {
+        const missingPages = spec.category.pages.filter(url => !pages.some(page => page.url === url))
+        if (missingPages.length) failed.push('category-pages')
+        if (pages.some(page => page.searchReceipt?.complete === false)) failed.push('search')
+        await persistDeterministicFlags(latest.id, collapsedPageFlags(pages), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+        await persistAuditRunCost(latest.id, { durationMs: Date.now() - (latest.startedAt ?? latest.createdAt).getTime(),
+          llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'none',
+          pagespeedCalls: pages.reduce((count, page) => count + Number(Boolean(page.desktop)) + Number(Boolean(page.mobile)), 0), pagesReviewed: pages.length })
+        await executionWrite(async tx => {
+          for (const page of pages) await tx.auditPage.updateMany({ where: { auditId: latest.id, url: page.url, status: { not: 'FAILED' } },
+            data: { status: 'COMPLETED' } })
+          await tx.audit.update({ where: { id: latest.id }, data: {
+            status: 'COMPLETED', progress: 100, verdict: null,
+            reportCompleteness: failed.length ? 'PARTIAL' : 'FULL', failedModules: [...new Set(failed)],
+            evidenceCoverage: { version: 1, scope: 'CATEGORY', area: spec.category!.area,
+              metadata: pages.length === spec.category!.pages.length,
+              desktopPageSpeed: pages.length > 0 && pages.every(page => Boolean(page.desktop)),
+              mobilePageSpeed: pages.length > 0 && pages.every(page => Boolean(page.mobile)),
+              flowScan: pages.length > 0 && pages.every(page => page.flowScan), aiAssessment: false },
+            completedAt: latest.completedAt ?? new Date(), finalizedAt: new Date(), failureCode: null, errorMsg: null,
+          } })
+        })
+        await persistImprovementCycle(latest.id, latest.parentId)
+        return serializeArtifact('finalize', { status: 'COMPLETED', partial: failed.length > 0 })
+      }
       if (pages.some(page => page.searchReceipt?.complete === false)) failed.push('search')
       ctx.pagespeedCalls = pages.reduce((count, page) => count + Number(Boolean(page.desktop)) + Number(Boolean(page.mobile)), 0)
       for (const page of pages) if (page.triage) {

@@ -1,5 +1,6 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 /** Three or more equally-weighted primary CTAs above the fold dilute focus. */
 const COMPETING_CTA_THRESHOLD = 3
@@ -8,7 +9,11 @@ const COMPETING_CTA_THRESHOLD = 3
  * CTA focus scan (MESSAGE): a landing page converts best with one obvious primary
  * action above the fold. Flags when several high-intent CTAs compete for it.
  */
-export function runCtaFocusChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
+export function runCtaFocusChecks(metrics: CaptureMetrics | null, record?: CheckRecorder): DeterministicFlag[] {
+  const count = metrics?.competingPrimaryCtaCount
+  recordObservation(record, 'primary-action-count', 'Prominent action count', 'Fewer than three high-intent actions compete in the sampled mobile viewport',
+    count === undefined ? 'Prominent actions were not measured.' : `${count} equally weighted actions measured.`,
+    count !== undefined && Number.isFinite(count) && count >= 0 ? count < COMPETING_CTA_THRESHOLD : undefined, true)
   if (metrics == null || metrics.competingPrimaryCtaCount < COMPETING_CTA_THRESHOLD) {
     return []
   }

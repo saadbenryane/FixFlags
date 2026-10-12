@@ -1,0 +1,175 @@
+import { randomUUID } from 'node:crypto'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { prisma } from '@/lib/db'
+import { claimAnonymousAudits } from '../claim-anonymous'
+import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
+import * as sites from '@/lib/sites/ensure-site'
+import { processDueProjectWatches } from '../project-watch'
+import { fixedClock } from '@/lib/time/clock'
+import { getAuditQueue } from '@/lib/queue/client'
+import { getFlagDiffSummary, persistFlagDiffSummary } from '../diff-flags'
+import { FLAG_COMPARISON_TARGET } from '../flag-comparison'
+
+const cookies = vi.hoisted(() => ({ get: vi.fn(), delete: vi.fn() }))
+vi.mock('next/headers', () => ({ cookies: async () => cookies }))
+
+const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
+run('anonymous claim with migrated PostgreSQL', () => {
+  let userId: string, projectId: string, auditId: string, provisionalId: string
+  const url = 'https://example.com/'
+  const host = 'example.com'
+
+  beforeAll(() => {
+    const target = new URL(process.env.DATABASE_URL ?? '')
+    if (!['localhost', '127.0.0.1'].includes(target.hostname) || !target.pathname.includes('test'))
+      throw new Error('Claim integration requires a disposable local test database')
+    vi.stubEnv('BETTER_AUTH_SECRET', 'local-claim-integration-secret-at-least-32-characters')
+  })
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    userId = 'claim-test-' + randomUUID()
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.com', preferredTools: [] } })
+    const project = await prisma.project.create({ data: { userId, name: 'Existing Site', url, canonicalHost: host } })
+    projectId = project.id
+    const audit = await prisma.audit.create({ data: { url, status: 'COMPLETED', skipUsageCount: true, aiReviewAt: new Date() } })
+    auditId = audit.id
+    const provisional = await prisma.provisionalSite.create({ data: { sessionKey: randomUUID(), url, canonicalHost: host, primaryAuditId: auditId } })
+    provisionalId = provisional.id
+    cookies.get.mockReturnValue({ value: createAnonymousClaim(auditId) })
+  })
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await prisma.provisionalSite.delete({ where: { id: provisionalId } })
+    await prisma.audit.deleteMany({ where: { id: auditId } })
+    await prisma.user.delete({ where: { id: userId } })
+  })
+  afterAll(async () => {
+    vi.unstubAllEnvs()
+    const queue = getAuditQueue(), client = await queue.client
+    await queue.close(); client.disconnect()
+    await prisma.$disconnect()
+  })
+
+  async function collidingOutcomes() {
+    const owned = await prisma.siteOutcome.create({ data: { projectId, slug: 'page-loads', name: 'Keep my homepage',
+      kind: 'AVAILABILITY', inferenceSource: 'user', confirmedAt: new Date(),
+      bindings: { create: { key: 'owned-availability', mechanism: 'HTTP_AVAILABILITY', config: { startUrl: url } } } } })
+    const source = await prisma.siteOutcome.create({ data: { provisionalSiteId: provisionalId, slug: 'page-loads',
+      name: 'Keep my pricing page', kind: 'AVAILABILITY', inferenceSource: 'user', confirmedAt: new Date(),
+      bindings: { create: { key: 'pricing-availability', version: 3, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: url + 'pricing' } } } },
+      include: { bindings: true } })
+    const execution = await prisma.outcomeBindingExecution.create({ data: { auditId, outcomeId: source.id,
+      bindingKey: source.bindings[0].key, bindingVersion: 3, mechanism: 'HTTP_AVAILABILITY', disposition: 'FAILED', reason: 'http_unavailable' } })
+    return { owned, source, execution }
+  }
+
+  it('retains the supplied public origin from anonymous admission through claim and automatic uptime setup', async () => {
+    const target = 'http://www.example.com:8080/pricing'
+    await prisma.project.delete({ where: { id: projectId } })
+    await prisma.audit.update({ where: { id: auditId }, data: { url: target } })
+    const provisional = await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })
+    const site = await sites.ensureSiteForAudit({ url: target, auditId, sessionKey: provisional.sessionKey })
+    expect(site).toMatchObject({ canonicalHost: host, url: 'http://www.example.com:8080' })
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    const claimed = await sites.loadSiteRecord(site.siteId)
+    expect(claimed).toMatchObject({ url: site.url, userId, canonicalHost: host })
+    const coverage = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId: claimed!.projectId }, include: { bindings: true } })
+    expect(coverage.bindings[0].config).toEqual({ startUrl: site.url, expectedSelector: 'body' })
+  })
+
+  it('preserves completed anonymous comparison evidence through claiming and replay', async () => {
+    const finding = await prisma.flag.create({ data: { auditId, source: 'DETERMINISTIC', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      checkId: 'fixture-claim-check', problem: 'Observed anonymous problem', evidence: 'Captured public evidence', whyItMatters: 'The page should work',
+      fix: 'Resolve the observed issue', confidence: 1, position: 0, pageUrl: url } })
+    await persistFlagDiffSummary(null, auditId)
+    const before = await getFlagDiffSummary(null, auditId)
+    const receipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId, targetKey: FLAG_COMPARISON_TARGET } })
+    expect(before.newIssues).toEqual([expect.objectContaining({ id: finding.id, status: 'OPEN' })])
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    await prisma.flag.update({ where: { id: finding.id }, data: { status: 'FIXED', resolvedInId: 'later-healthy-run' } })
+    expect(await getFlagDiffSummary(null, auditId)).toEqual(before)
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: receipt.id } })).toEqual(receipt)
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await getFlagDiffSummary(null, auditId)).toEqual(before)
+  })
+
+  // This sweeps all due Sites in its database. Run it in the focused disposable
+  // scheduler invocation, independently of suites intentionally pausing work.
+  it.skipIf(process.env.CLAIM_SCHEDULER_DB_REQUIRED !== 'true')('admits default production uptime from the real scheduler when the same Site has staging coverage', async () => {
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId, slug: 'page-loads' } })
+    const staging = await prisma.siteOutcome.create({ data: { projectId, slug: 'staging-loads', name: 'Staging availability',
+      kind: 'AVAILABILITY', environment: 'staging', confirmedAt: new Date(),
+      bindings: { create: { key: 'staging-availability', mechanism: 'HTTP_AVAILABILITY', config: { startUrl: url + 'staging' } } } } })
+    const now = new Date()
+    expect(await processDueProjectWatches(20, { clock: fixedClock(now) })).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    const request = await prisma.runRequest.findFirstOrThrow({ where: { projectId, source: 'WATCH' }, include: { selections: true, audit: true } })
+    expect(request).toMatchObject({ environment: 'production', selections: [{ outcomeId: outcome.id }],
+      audit: { projectId, userId, recheckTrigger: 'WATCH' } })
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: staging.id } })).toEqual(staging)
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchLastError: null,
+      watchNextRunAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) })
+  })
+
+  it('preserves both Outcome identities, exact bindings, execution evidence and duplicate page links on claim and replay', async () => {
+    const { owned, source, execution } = await collidingOutcomes()
+    const page = await prisma.sitePage.create({ data: { projectId, url, path: '/' } })
+    const provisionalPage = await prisma.sitePage.create({ data: { provisionalSiteId: provisionalId, url, path: '/' } })
+    await prisma.siteOutcomePage.createMany({ data: [
+      { outcomeId: owned.id, pageId: page.id }, { outcomeId: source.id, pageId: page.id },
+      { outcomeId: source.id, pageId: provisionalPage.id },
+    ] })
+
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    const claimed = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: source.id }, include: { bindings: true, pages: true, bindingExecutions: true } })
+    expect(claimed).toMatchObject({ projectId, provisionalSiteId: null, name: source.name, confirmedAt: source.confirmedAt,
+      kind: source.kind, bindings: source.bindings, bindingExecutions: [execution], pages: [{ outcomeId: source.id, pageId: page.id }] })
+    expect(claimed.slug).not.toBe(owned.slug)
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: owned.id } })).toEqual(owned)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId, projectId })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date) })
+    expect(await sites.loadSiteRecord('p_' + provisionalId)).toMatchObject({ siteId: projectId, projectId, userId })
+
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: source.id } })).toMatchObject({ slug: claimed.slug })
+    expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(2)
+    expect(await prisma.outcomeBindingExecution.findUniqueOrThrow({ where: { id: execution.id } })).toEqual(execution)
+  })
+
+  it('rolls back ownership, redirect, page and Outcome migration together when the claim is interrupted', async () => {
+    const { source } = await collidingOutcomes()
+    const page = await prisma.sitePage.create({ data: { provisionalSiteId: provisionalId, url: url + 'pricing', path: '/pricing' } })
+    const migrate = sites.migrateProvisionalSiteDataToProject
+    vi.spyOn(sites, 'migrateProvisionalSiteDataToProject').mockImplementationOnce(async (input, tx) => {
+      await migrate(input, tx)
+      throw new Error('Interrupted after migration')
+    })
+    await expect(claimAnonymousAudits(userId)).rejects.toThrow('Interrupted after migration')
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId: null, projectId: null })
+    expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: null })
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: source.id } })).toMatchObject({ projectId: null, provisionalSiteId: provisionalId, slug: source.slug })
+    expect(await prisma.sitePage.findUniqueOrThrow({ where: { id: page.id } })).toMatchObject({ projectId: null, provisionalSiteId: provisionalId })
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchInterval: null })
+    expect(cookies.delete).not.toHaveBeenCalled()
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+  })
+
+  it('does not move another owner\'s already claimed provisional data even if its primary Audit matches', async () => {
+    const foreignId = 'foreign-claim-' + randomUUID()
+    let foreignProvisionalId: string | undefined
+    try {
+      await prisma.user.create({ data: { id: foreignId, email: foreignId + '@example.com', preferredTools: [] } })
+      const foreignProject = await prisma.project.create({ data: { userId: foreignId, name: 'Foreign Site', url, canonicalHost: host } })
+      const foreign = await prisma.provisionalSite.create({ data: { sessionKey: randomUUID(), canonicalHost: host, url,
+        primaryAuditId: auditId, claimedProjectId: foreignProject.id,
+        outcomes: { create: { slug: 'foreign', name: 'Foreign evidence' } } }, include: { outcomes: true } })
+      foreignProvisionalId = foreign.id
+      expect(await claimAnonymousAudits(userId)).toBe(1)
+      expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: foreign.id } })).toMatchObject({ claimedProjectId: foreignProject.id })
+      expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: foreign.outcomes[0].id } })).toMatchObject({ projectId: null, provisionalSiteId: foreign.id })
+    } finally {
+      if (foreignProvisionalId) await prisma.provisionalSite.delete({ where: { id: foreignProvisionalId } })
+      await prisma.user.deleteMany({ where: { id: foreignId } })
+    }
+  })
+})

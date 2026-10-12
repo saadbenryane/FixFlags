@@ -1,7 +1,9 @@
+import { ACCOUNT_CHECK_DEFINITIONS } from '../sites/accounts/check-definitions'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { canonicalHistoricalCheckId } from './check-compatibility'
 import { SEARCH_CHECK_REGISTRY, type SearchCheckIdentity } from './search/definitions'
 import { MODULE_CHECK_DEFINITIONS, type PageCheckDefinition } from './checks/definitions'
+import { AXE_POLICY_CHECK_IDS } from './checks/accessibility-rules'
 
 export type CheckDefinition = { version: number; area: SiteCardArea; module: string; capabilities: readonly string[] }
 
@@ -74,8 +76,8 @@ const LEGACY_CHECK_DEFINITIONS = {
   'no-privacy-policy': { version: 1, area: 'security', module: 'trust', capabilities: ["reach-trust-signals"] },
   'no-contact-info': { version: 1, area: 'security', module: 'trust', capabilities: ["reach-trust-signals"] },
   'cookie-consent-absent': { version: 1, area: 'security', module: 'trust', capabilities: ["reach-trust-signals"] },
-  'console-errors-critical': { version: 1, area: 'uptime', module: 'trust', capabilities: ["reach-console-errors"] },
-  'console-errors-some': { version: 1, area: 'uptime', module: 'trust', capabilities: ["reach-console-errors"] },
+  'console-errors-critical': { version: 1, area: 'uptime', module: 'console', capabilities: ["reach-console-errors"] },
+  'console-errors-some': { version: 1, area: 'uptime', module: 'console', capabilities: ["reach-console-errors"] },
   'mobile-perf-critical': { version: 1, area: 'performance', module: 'mobile', capabilities: ["experience-mobile-perf"] },
   'mobile-perf-poor': { version: 1, area: 'performance', module: 'mobile', capabilities: ["experience-mobile-perf"] },
   'tap-targets-small': { version: 1, area: 'conversion', module: 'mobile', capabilities: ["experience-mobile-perf"] },
@@ -226,12 +228,17 @@ type NewSearchIdentity = Exclude<SearchCheckIdentity, keyof typeof LEGACY_CHECK_
 const searchDefinitions = Object.fromEntries(Object.entries(SEARCH_CHECK_REGISTRY)
   .filter(([id]) => !Object.hasOwn(LEGACY_CHECK_DEFINITIONS, id))
   .map(([id, definition]) => [id, { version: definition.version, area: 'search', module: 'search', capabilities: ['search-evidence'] }])) as unknown as Record<NewSearchIdentity, CheckDefinition>
-export const CHECK_DEFINITIONS = { ...LEGACY_CHECK_DEFINITIONS, ...searchDefinitions }
+type GeneratedAxeCheckIdentity = Exclude<typeof AXE_POLICY_CHECK_IDS[number], keyof typeof LEGACY_CHECK_DEFINITIONS>
+export const AXE_GENERATED_CHECK_IDS = AXE_POLICY_CHECK_IDS.filter((id): id is GeneratedAxeCheckIdentity => !Object.hasOwn(LEGACY_CHECK_DEFINITIONS, id))
+const axeDefinitions = Object.fromEntries(AXE_GENERATED_CHECK_IDS.map(id => [id,
+  { version: 1, area: 'accessibility', module: 'accessibility', capabilities: ['experience-a11y-axe-core'] } satisfies CheckDefinition])) as unknown as Record<GeneratedAxeCheckIdentity, CheckDefinition>
+export const CHECK_DEFINITIONS = { ...LEGACY_CHECK_DEFINITIONS, ...searchDefinitions, ...axeDefinitions, ...ACCOUNT_CHECK_DEFINITIONS }
 
 export const CHECK_REGISTRY: Record<string, CheckDefinition> = CHECK_DEFINITIONS
 
 /** Historical consumers use projections of the same explicit module contracts. */
 export const CHECK_MODULES: Readonly<Record<string, Pick<PageCheckDefinition, 'version' | 'area' | 'name' | 'source' | 'input'>>> = { ...MODULE_CHECK_DEFINITIONS,
+  'automatic-accounts': { version: 1, area: 'conversion', name: 'Automatic account checks', source: 'DETERMINISTIC', input: 'browser' },
   search: { version: 1, area: 'search' as const, name: 'Public Search evidence', source: 'DETERMINISTIC' as const, input: 'metadata' as const } }
 export const CHECK_ASSERTIONS = Object.fromEntries(Object.entries(MODULE_CHECK_DEFINITIONS).map(([id, definition]) => [id, definition.assertions]))
 

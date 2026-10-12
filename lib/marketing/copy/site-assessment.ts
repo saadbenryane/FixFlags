@@ -1,0 +1,43 @@
+export const SITE_ASSESSMENT_COPY = {
+  site: {
+    CLEAR: 'The required Site scope was checked with current evidence.',
+    FLAG: 'This Site check recorded Flags.',
+    STALE: 'Evidence from this Site check is out of date.',
+    COULD_NOT_VERIFY: 'Required evidence from this Site check is incomplete.',
+    FAILED: 'This Site check did not finish.',
+  },
+  outcomes: {
+    CLEAR: 'All selected Outcomes were verified Clear.',
+    FLAG: 'At least one selected Outcome has a Flag.',
+    STALE: 'At least one selected Outcome is Stale.',
+    COULD_NOT_VERIFY: 'At least one selected Outcome could not be verified.',
+    FAILED: 'This Site run did not finish.',
+  },
+  category: {
+    CLEAR: 'The required category scope was checked with current evidence.',
+    FLAG: 'This category check recorded Flags.',
+    STALE: 'Evidence from this category check is out of date.',
+    COULD_NOT_VERIFY: 'Required evidence from this category check is incomplete.',
+    FAILED: 'This category check did not finish.',
+  },
+  diagnostic: {
+    CLEAR: 'This verification confirmed recovery under the recorded failure conditions.',
+    FLAG: 'This verification still observed the recorded failure.',
+    STALE: 'Evidence from this verification is out of date.',
+    COULD_NOT_VERIFY: 'This verification could not establish recovery under the recorded failure conditions.',
+    FAILED: 'This verification did not finish.',
+  },
+  accounts: {
+    CLEAR: 'The recorded account checks completed without a detected failure.',
+    FLAG: 'The recorded account checks observed a failure.',
+    STALE: 'Evidence from these account checks is out of date.',
+    COULD_NOT_VERIFY: 'The recorded account checks could not establish all required behavior.',
+    FAILED: 'These account checks did not finish.',
+  },
+  checkingCategory: (name: string) => `Checking ${name.toLowerCase()}`,
+  categoryIncomplete: 'This category check did not establish all required evidence. Previous findings remain available.',
+  invalidSelection: 'Select a website check, one supported category, or valid Outcomes.',
+  signInToRun: 'Sign in to start a website check.',
+  claimToRun: 'Claim this Site before starting a check.',
+  workerScopeUnavailable: 'The scan service needs to be updated before this check can start. Your recorded results are still available.',
+} as const

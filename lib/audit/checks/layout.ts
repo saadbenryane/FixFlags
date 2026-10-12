@@ -1,16 +1,20 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
+import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runLayoutChecks(
   metrics: CaptureMetrics | null,
-  purpose: PagePurpose = 'marketing'
+  purpose: PagePurpose = 'marketing',
+  record?: CheckRecorder,
 ): DeterministicFlag[] {
   // This is a conversion-layout check. A contextual action at the end of an
   // article, documentation page, OSS README, or placeholder is not evidence
   // that the page's primary CTA was hidden. Page-purpose checks already use
   // the same boundary for first-step expectations.
   if (!needsFirstStep(purpose) || metrics == null || metrics.mobilePrimaryCtaTopPx == null) {
+    if (needsFirstStep(purpose)) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
+      'The measured primary action begins inside the initial mobile viewport', 'Primary action position was not measured.', undefined, true)
     return []
   }
 
@@ -25,10 +29,18 @@ export function runLayoutChecks(
   if (
     viewportHeight <= 0 ||
     documentHeight <= 0 ||
+    scrollDepth < 0 ||
+    !Number.isFinite(scrollDepth) ||
     scrollDepth > documentHeight
   ) {
+    recordObservation(record, 'mobile-cta-position', 'Mobile action position',
+      'The measured primary action begins inside the initial mobile viewport', 'The layout measurements are unusable.', undefined, true)
     return []
   }
+
+  recordObservation(record, 'mobile-cta-position', 'Mobile action position',
+    'The measured primary action begins inside the initial mobile viewport',
+    `Action starts at ${scrollDepth}px in a ${viewportHeight}px viewport and ${documentHeight}px document.`, scrollDepth < viewportHeight, true)
 
   // This check promises that the CTA is hidden without scrolling. A CTA whose
   // top edge is inside the initial viewport is visible, even when it sits in

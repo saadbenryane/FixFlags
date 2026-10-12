@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Check, CircleAlert, CircleHelp, Clock3 } from 'lucide-react'
+import { Check, CircleAlert, CircleHelp, Clock3, Loader2 } from 'lucide-react'
 import type { Route } from 'next'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
 import { cn } from '@/lib/utils'
 import styles from './BoardCard.module.css'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 type OutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
@@ -41,25 +42,24 @@ export function OutcomeSummaryCard({
   const StateIcon = state === 'CLEAR' ? Check : state === 'FLAG' ? CircleAlert : state === 'STALE' ? Clock3 : CircleHelp
   if (layout === 'row') {
     return <section className={cn(styles.boardRow, styles.outcomeRow)}>
-      <span className={cn(styles.rowTitle, styles.outcomeRowTitle)}>
-        <StateIcon className={cn('h-[18px] w-[18px]', running && 'motion-safe:animate-pulse')} aria-hidden />
-        <span><small>{label}</small><h2>{href ? <Link href={href} className="hover:underline">{name}</Link> : name}</h2></span>
-      </span>
-      <span className={styles.rowResult}>
-        <strong>{result ?? expectation}</strong>
+      <div className={cn(styles.rowTitle, styles.outcomeRowTitle)}>
+        <StateIcon className="h-[18px] w-[18px]" aria-hidden />
+        <div>{label !== 'Website check' ? <small>{label}</small> : null}<h2>{href ? <Link href={href} className="hover:underline">{name}</Link> : name}</h2></div>
+      </div>
+      {result || !running || nextStep ? <div className={styles.rowResult}>
+        {result ? <strong>{result}</strong> : !running ? <span>{SITE_ACTION_COPY.expected}: <span>{expectation}</span></span> : null}
         {nextStep ? <span className={styles.rowNextStep}>{nextStep}</span> : null}
-        <span>{coverage}</span>
-        <span>{freshness}</span>
-      </span>
+        {!running ? <span>{freshness}</span> : result ? <span>{SITE_ACTION_COPY.previousResults} · {freshness}</span> : null}
+      </div> : null}
       <span className={styles.rowStatus}>
         <span className={cn(
           'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
-          state === 'CLEAR' && 'border-success/30 text-success',
-          state === 'FLAG' && 'border-brand text-brand',
-          (state === 'STALE' || state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
-        )} role="status">{outcomeStatusLabel(state, running)}</span>
+          !running && state === 'CLEAR' && 'border-success/30 text-success',
+          !running && state === 'FLAG' && 'border-brand text-brand',
+          (running || state === 'STALE' || state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
+        )} role="status">{running ? <Loader2 className="h-3.5 w-3.5 shrink-0 text-brand motion-safe:animate-spin" aria-hidden /> : null}{running ? SITE_ACTION_COPY.outcome.verifying : outcomeStatusLabel(state)}</span>
       </span>
-      <span className={styles.outcomeRowActions}>{actions}</span>
+      {actions ? <div className={styles.outcomeRowActions}>{actions}</div> : null}
     </section>
   }
   return (

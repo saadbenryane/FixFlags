@@ -56,7 +56,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
   const ids = await readClaimedAnonymousIds()
   if (ids.length === 0) return 0
 
-  const audits = await productTransaction(
+  const { audits, claimedProjects } = await productTransaction(
     async (tx) => {
       const claimable = await tx.audit.findMany({
         where: {
@@ -75,6 +75,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         },
       })
 
+      const projects = new Map<string, { id: string; canonicalHost: string; auditIds: string[] }>()
       for (const audit of claimable) {
         const canonicalHost = canonicalProductHost(audit.url)
         if (!canonicalHost) throw new Error(`Cannot attach Product for audit ${audit.id}`)
@@ -127,45 +128,30 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
           where: { id: audit.id },
           data: { userId, projectId: project.id },
         })
+        const claimed = projects.get(project.id) ?? { id: project.id, canonicalHost, auditIds: [] }
+        claimed.auditIds.push(audit.id)
+        projects.set(project.id, claimed)
       }
-      return claimable
+      for (const project of projects.values()) {
+        const input = { userId, projectId: project.id, canonicalHost: project.canonicalHost, primaryAuditIds: project.auditIds }
+        await claimProvisionalSitesForProject(input, tx)
+        await migrateProvisionalSiteDataToProject(input, tx)
+        // Identity, bindings and defaults become visible together. An interrupted
+        // migration rolls back the claim rather than publishing an empty Site.
+        await ensureDefaultMonitoring(tx, project.id, userId)
+      }
+      return { audits: claimable, claimedProjects: [...projects.values()] }
     }
   )
 
-  for (const audit of audits) {
-    const host = canonicalProductHost(audit.url)
-    if (!host) continue
-    const project = await prisma.project.findUnique({
-      where: { userId_canonicalHost: { userId, canonicalHost: host } },
-      select: { id: true },
-    })
-    if (project) {
-      await claimProvisionalSitesForProject({
-        userId,
-        projectId: project.id,
-        canonicalHost: host,
-        primaryAuditIds: audits
-          .filter((a) => canonicalProductHost(a.url) === host)
-          .map((a) => a.id),
-      })
-      await migrateProvisionalSiteDataToProject({
-        projectId: project.id,
-        canonicalHost: host,
-        primaryAuditIds: audits
-          .filter((a) => canonicalProductHost(a.url) === host)
-          .map((a) => a.id),
-      })
-      // Migrate before creating defaults so the original Outcome and binding
-      // survive claiming rather than being replaced by a newly created row.
-      await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, userId))
-      await recordSiteLifecycleEvent({
-        name: 'site_claimed',
-        idempotencyKey: `site_claimed:${userId}:${project.id}`,
-        userId,
-        projectId: project.id,
-        properties: { auditCount: audits.filter((a) => canonicalProductHost(a.url) === host).length },
-      }).catch(() => undefined)
-    }
+  for (const project of claimedProjects) {
+    await recordSiteLifecycleEvent({
+      name: 'site_claimed',
+      idempotencyKey: `site_claimed:${userId}:${project.id}`,
+      userId,
+      projectId: project.id,
+      properties: { auditCount: project.auditIds.length },
+    }).catch(() => undefined)
   }
 
   if (audits.length === 0) {

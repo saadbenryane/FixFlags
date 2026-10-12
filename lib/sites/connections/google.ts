@@ -238,7 +238,7 @@ async function commitSync(input: { connectionId: string; projectId: string }, re
       data: { lastSyncAttemptAt: observedAt, status: result.status, statusDetail: result.detail,
         ...(['CONNECTED', 'MISMATCH'].includes(result.status) ? { propertyId: result.propertyId, propertyLabel: result.propertyLabel } : {}), ...(result.status === 'CONNECTED' ? { lastSyncedAt: observedAt } : {}) },
     })
-    if (admitted.count !== 1) throw new Error('Connection changed while refreshing; refresh again from settings.')
+    if (admitted.count !== 1) throw new Error('Connection changed while refreshing; refresh again from Integrations.')
     if (facts !== null) {
       await tx.siteConnectionFact.deleteMany({ where: { connectionId: input.connectionId } })
       if (facts.length) await tx.siteConnectionFact.createMany({ data: facts.map(fact => ({
@@ -302,7 +302,7 @@ export async function completeGoogleConnection(input: {
   client?: GoogleConnectionClient
 }): Promise<{ projectId: string } | { error: string }> {
   const parsed = readConnectionState(input.state)
-  if (!parsed || parsed.userId !== input.sessionUserId) return { error: 'This connection link expired. Start again from Site settings.' }
+  if (!parsed || parsed.userId !== input.sessionUserId) return { error: 'This connection link expired. Start again from Integrations.' }
   const host = await input.hostForProject(parsed.projectId, parsed.userId)
   if (!host) return { error: 'Site not found' }
   const client = input.client ?? liveGoogleClient()

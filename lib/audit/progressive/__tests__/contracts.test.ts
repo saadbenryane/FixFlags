@@ -3,9 +3,28 @@ import { retryDecision, validateTaskGraph, readArtifact, serializeArtifact, task
 import { registerTaskHandlers } from '../registry'
 import { initialTaskPlan, availabilityOnly } from '../graph'
 import { CHECK_REGISTRY } from '../../check-registry'
+import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('durable bounded work contracts', () => {
+  it.each(['search', 'performance', 'conversion', 'security', 'tracking', 'accessibility'] as const)('plans only %s work and its required collectors for every frozen page', area => {
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: input.pageUrl,
+      environment: 'production', category: { area, sourceAuditId: 'full', pages: [input.pageUrl, 'https://example.com/second'] },
+      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).filter(([id, definition]) => definition.area === area || area === 'search' && id.startsWith('corridor-og-')).map(([id, definition]) => [id, definition.version])),
+      outcomes: [], verificationTarget: null })
+    const graph = initialTaskPlan(spec)
+    validateTaskGraph(graph)
+    expect(graph.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual(spec.category!.pages)
+    expect(graph.some(task => ['captures', 'judge', 'discovery'].includes(task.kind))).toBe(false)
+    if (area !== 'search') expect(graph.some(task => ['search', 'google', 'search-resources', 'cross-page'].includes(task.kind))).toBe(false)
+    if (area !== 'performance') {
+      expect(graph.some(task => task.kind === 'slow-replay')).toBe(false)
+      for (const collector of graph.filter(task => task.kind === 'pagespeed'))
+        expect(graph.some(task => task.kind === 'check' && task.dependencies.includes(collector.key))).toBe(true)
+    }
+    if (area === 'tracking' || area === 'conversion') expect(graph.filter(task => task.kind === 'flow' && !task.input.module).map(task => task.input.pageUrl)).toEqual(spec.category!.pages)
+    expect(graph.at(-1)?.kind).toBe('finalize')
+  })
   it('retries transient interruptions within both recovery windows, never customer failures', () => {
     const base = { now: 100_000, admittedAt: 0, attempts: 1, crash: false, random: 0.5 }
     expect(retryDecision({ ...base, retryable: true })).toEqual({ retry: true, until: 1_900_000, nextAt: 105_000 })
@@ -63,6 +82,15 @@ describe('durable bounded work contracts', () => {
     expect(byKey.get('p0:judge')!.dependencies).toContain('p0:captures')
     expect(byKey.get('p0:judge')!.dependencies).toContain('p0:security-headers')
   })
+  it('admits automatic account work only through its explicit snapshot', () => {
+    const base = { version: 1 as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
+      checks: {}, outcomes: [], verificationTarget: null }
+    expect(initialTaskPlan(base).some(task => task.kind === 'automatic-accounts')).toBe(false)
+    const graph = initialTaskPlan({ ...base, accountChecks: { revision: 1, mode: 'routine' } })
+    expect(graph.find(task => task.kind === 'finalize')?.dependencies).toContain('automatic-accounts')
+    expect(initialTaskPlan({ ...base, scope: 'ACCOUNT_CHECKS', accountChecks: { revision: 2, mode: 'cleanup' } }).map(task => task.kind))
+      .toEqual(['automatic-accounts', 'finalize'])
+  })
   it('isolates requested bindings and reserves availability without spawning a broad scan', () => {
     const spec = { version: 1 as const, targetUrl: input.pageUrl, environment: 'production', scope: 'OUTCOMES' as const,
       checks: {}, outcomes: [{ id: 'availability', kind: 'AVAILABILITY', expectation: null, bindingPolicy: 'ALL_REQUIRED',
@@ -81,6 +109,12 @@ describe('durable bounded work contracts', () => {
     expect(inp.map(task => task.key)).toEqual(['p0:inp-mobile', 'p0:pagespeed-mobile', 'finalize'])
     expect(initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'title-missing' } }).map(task => task.kind))
       .toEqual(['search', 'http', 'browser', 'finalize'])
+    const titles = initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'title-missing' },
+      verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'] }, { pageUrl: 'https://example.com/second', phases: ['page_load'] }] })
+    expect(titles.filter(task => task.kind === 'search').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
+    expect(titles.filter(task => task.kind === 'http')).toHaveLength(2)
+    expect(titles.filter(task => task.kind === 'browser')).toHaveLength(2)
+    expect(titles.some(task => ['captures', 'google', 'pagespeed', 'flow', 'discovery'].includes(task.kind))).toBe(false)
     const tracking = { ...spec, verificationTarget: { ...spec.verificationTarget, checkId: 'tracking-library-http-error' } }
     expect(initialTaskPlan(tracking).map(task => task.kind)).toEqual(['check', 'browser', 'finalize'])
     expect(initialTaskPlan({ ...tracking, verificationScopes: [{ pageUrl: input.pageUrl, phases: ['public_action'] }] }).map(task => task.kind)).toEqual(['check', 'browser', 'flow', 'finalize'])
@@ -89,7 +123,7 @@ describe('durable bounded work contracts', () => {
     expect(multiPage.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
     expect(multiPage.find(task => task.kind === 'flow')?.input.pageUrl).toBe('https://example.com/second')
     expect(multiPage.some(task => ['captures', 'pagespeed', 'google', 'search'].includes(task.kind))).toBe(false)
-    for (const checkId of ['checkout-link-dead', 'og-image-broken']) {
+    for (const checkId of ['checkout-link-dead', 'og-image-broken', 'broken-internal-links']) {
       const destinations = initialTaskPlan({ ...spec, verificationTarget: { ...spec.verificationTarget, checkId },
         verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'] }, { pageUrl: 'https://example.com/second', phases: ['page_load'] }] })
       expect(destinations.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/second'])
@@ -116,6 +150,26 @@ describe('durable bounded work contracts', () => {
     expect(graph.map(task => task.kind)).toEqual(['flow', 'finalize'])
     expect(graph[0].input.module).toBe('form-validation')
     expect(graph[0].dependencies).toEqual([])
+    validateTaskGraph(graph)
+  })
+
+  it('checks every affected primary-action page without adding unrelated provider work', () => {
+    const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+      scope: 'DIAGNOSTIC', checks: { 'flow-cta-404': 1 }, outcomes: [],
+      verificationScopes: [{ pageUrl: input.pageUrl, phases: ['public_action'] }, { pageUrl: 'https://example.com/other', phases: ['public_action'] }],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'flow-cta-404', pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+    expect(graph.map(task => task.kind).sort()).toEqual(['browser', 'browser', 'finalize', 'flow', 'flow'])
+    expect(graph.filter(task => task.kind === 'flow').map(task => task.input.pageUrl)).toEqual([input.pageUrl, 'https://example.com/other'])
+    validateTaskGraph(graph)
+  })
+
+  it('rechecks all affected section-link documents with only browser evidence and the section evaluator', () => {
+    const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+      scope: 'DIAGNOSTIC', checks: { 'broken-page-anchors': 1 }, outcomes: [],
+      verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'] }, { pageUrl: 'https://example.com/other', phases: ['page_load'] }],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'broken-page-anchors', pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+    expect(graph.map(task => task.kind).sort()).toEqual(['browser', 'browser', 'check', 'check', 'finalize'])
+    expect(graph.filter(task => task.kind === 'check').map(task => task.input.module)).toEqual(['seo', 'seo'])
     validateTaskGraph(graph)
   })
 

@@ -56,7 +56,7 @@ function stubComputedStyle(): void {
   }))
 }
 
-function fakePage(emulateMediaImpl?: () => Promise<void>): Page {
+function fakePage(emulateMediaImpl?: (options: { reducedMotion: string }) => Promise<void>): Page {
   const evaluate = vi.fn(async (fn: () => unknown) => {
     return fn()
   })
@@ -64,7 +64,7 @@ function fakePage(emulateMediaImpl?: () => Promise<void>): Page {
     evaluate,
     emulateMedia: vi.fn(async (opts: { reducedMotion: string }) => {
       // Default: reduced-motion is honored, so animations disappear.
-      if (emulateMediaImpl) return emulateMediaImpl()
+      if (emulateMediaImpl) return emulateMediaImpl(opts)
       if (opts.reducedMotion === 'reduce') {
         document.querySelectorAll('*').forEach((el) => {
           const overrides = styleOverrides.get(el) ?? {}
@@ -229,7 +229,7 @@ describe('measureMotionA11y', () => {
     setRect(el, { top: 0, width: 100, height: 50 })
 
     const result = await measureMotionA11y(fakePage())
-    assert.deepEqual(result, { motionIgnoresReducedPreference: false, motionSampleLabel: null })
+    assert.deepEqual(result, { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true })
   })
 
   it('reports ignored reduced-motion preference when animations persist', async () => {
@@ -265,17 +265,29 @@ describe('measureMotionA11y', () => {
     assert.equal(result.motionSampleLabel, null)
   })
 
-  it('degrades cleanly when emulateMedia throws', async () => {
+  it('does not certify motion when emulation fails, and restores the preference', async () => {
     document.body.innerHTML = '<main><div id="anim">Animated</div></main>'
     const el = document.querySelector('#anim') as Element
     setRect(el, { top: 0, width: 100, height: 50 })
     setStyle(el, { animationName: 'fadeIn', animationDuration: '1s' })
 
-    const result = await measureMotionA11y(fakePage(async () => {
-      throw new Error('emulate failed')
+    const preferences: string[] = []
+    const result = await measureMotionA11y(fakePage(async (options) => {
+      preferences.push(options.reducedMotion)
+      if (options.reducedMotion === 'reduce') throw new Error('emulate failed')
     }))
     assert.equal(result.motionIgnoresReducedPreference, false)
     assert.equal(result.motionSampleLabel, null)
+    assert.equal(result.motionComplete, false)
+    assert.deepEqual(preferences, ['reduce', 'no-preference'])
+  })
+
+  it('refuses a capture when the browser preference cannot be restored', async () => {
+    document.body.innerHTML = '<main><div id="anim">Animated</div></main>'
+    const el = document.querySelector('#anim') as Element
+    setRect(el, { top: 0, width: 100, height: 50 })
+    setStyle(el, { animationName: 'fadeIn', animationDuration: '1s' })
+    await assert.rejects(measureMotionA11y(fakePage(async () => { throw new Error('emulation unavailable') })), /emulation unavailable/)
   })
 
   it('skips hidden animation elements', async () => {
