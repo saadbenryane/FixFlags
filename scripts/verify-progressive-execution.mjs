@@ -9,7 +9,8 @@ const source = new URL(process.env.DATABASE_URL ?? '')
 if (!['localhost', '127.0.0.1'].includes(source.hostname))
   throw new Error('Execution integration verification requires local PostgreSQL')
 const suffix = randomUUID().replaceAll('-', '')
-const databaseName = `fixflags_execution_test_${suffix}`
+const uptime = process.argv.includes('--uptime')
+const databaseName = uptime ? `fixflags_uptime_test_${suffix}` : `fixflags_execution_test_${suffix}`
 const redisName = `fixflags-execution-test-${suffix}`
 const disposable = new URL(source)
 disposable.pathname = '/' + databaseName
@@ -19,7 +20,7 @@ let created = false
 let redisCreated = false
 
 function run(command, args, env = process.env) {
-  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 120_000 })
+  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 1_200_000 })
   if (result.status !== 0) throw new Error([result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n') || 'Verification process failed')
   return result.stdout.trim()
 }
@@ -39,11 +40,20 @@ try {
     'redis:7-alpine', 'redis-server', '--save', '', '--appendonly', 'no'])
   redisCreated = true
   const port = run('docker', ['port', redisName, '6379/tcp']).split(':').at(-1)
-  const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run',
+  const arguments_ = process.argv.slice(2).filter(argument => argument !== '--uptime')
+  const only = arguments_[0] === '--only'
+  const suites = only ? arguments_.slice(1) : [
     'lib/audit/progressive/__tests__/execution.integration.test.ts',
-    'lib/audit/progressive/__tests__/dispatch.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts', ...process.argv.slice(2)], {
+    'lib/audit/progressive/__tests__/dispatch.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts', ...arguments_,
+  ]
+  if (!suites.some(argument => !argument.startsWith('-'))) throw new Error('Choose at least one focused verification suite')
+  const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run',
+    ...suites], {
     ...env, REDIS_URL: `redis://127.0.0.1:${port}`, PROGRESSIVE_EXECUTION_DB_REQUIRED: 'true',
+    ...(uptime ? { UPTIME_TEST_DATABASE_URL: disposable.toString() } : {}),
     KEYBOARD_BROWSER_REQUIRED: 'true',
+    FIX_INTENTS_DB_REQUIRED: 'true', ACCESSIBILITY_DB_REQUIRED: 'true', CONSOLE_DB_REQUIRED: 'true',
+    PUBLIC_TRUST_DB_REQUIRED: 'true', SCHEDULED_SITE_CARE_REQUIRED: 'true', CLAIM_SCHEDULER_DB_REQUIRED: 'true',
     TOKEN_ENCRYPTION_KEY: '11'.repeat(32), OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', PAGESPEED_API_KEY: '',
     R2_ACCESS_KEY_ID: '', R2_SECRET_ACCESS_KEY: '', RESEND_API_KEY: '',
   })

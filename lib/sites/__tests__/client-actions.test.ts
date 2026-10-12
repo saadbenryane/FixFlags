@@ -19,6 +19,8 @@ describe('Site action responses', () => {
       await expect(readSiteActionResponse(Response.json({ ok: true }), operation)).rejects.toThrow(SITE_ACTION_COPY.invalidResponse)
     await expect(readSiteActionResponse(Response.json({ ok: true, notificationLevel: 'FLAGS', notifyOnRecovery: true }), 'settings'))
       .resolves.toMatchObject({ ok: true, notificationLevel: 'FLAGS' })
+    for (const setting of [{ accountChecksEnabled: false }, { notifyOnRecovery: false }])
+      await expect(readSiteActionResponse(Response.json({ ok: true, ...setting }), 'settings')).resolves.toMatchObject(setting)
   })
   it('owns submission before React renders pending state', async () => {
     const controller = createSiteActionController()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -43,7 +44,7 @@ const PRIMARY_ITEMS: SidebarItem[] = [
 
 const SECONDARY_ITEMS: SidebarItem[] = [
   { href: '/billing', label: 'Billing', icon: CreditCard },
-  { href: '/settings/api-keys', label: 'API keys', icon: KeyRound },
+  ...(MCP_IS_DISCOVERABLE ? [{ href: '/settings/api-keys' as const, label: 'API keys', icon: KeyRound }] : []),
   { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/help', label: 'Help', icon: CircleHelp },
 ]

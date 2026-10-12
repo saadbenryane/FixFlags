@@ -538,7 +538,9 @@ run('migrated progressive execution', () => {
       expect(home.flags.some(flag => flag.checkId === 'title-missing')).toBe(false)
       expect(home.resolvedFlags.filter(flag => flag.checkId === 'title-missing')).toHaveLength(1)
       expect(home.resolvedFlags.find(flag => flag.checkId === 'title-missing')?.id).toBe(improvementId)
-      expect((await getOwnedRun(userId, repair.runId))?.result).not.toBe('FLAG')
+      const repairedRun = await getOwnedRun(userId, repair.runId)
+      const comparison = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: repair.auditId!, targetKey: 'projection:flag-comparison' }, select: { detail: true } })
+      expect(repairedRun?.result, JSON.stringify(comparison.detail)).not.toBe('FLAG')
       expect((await loadSiteSummaries(userId)).find(site => site.id === projectId)?.presentation.result).toEqual(home.presentation.result)
       headerTitleMissing = true
       const recurrence = await settledRun('CATEGORY', 'incident-recurrence')

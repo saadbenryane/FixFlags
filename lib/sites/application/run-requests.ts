@@ -1,27 +1,26 @@
-import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
-export { reconcileOutcomeRunsForAudit, markOutcomeRunsCouldNotVerify } from './run-reconciliation'
-export { getOwnedRun } from './run-queries'
-import { RUN_LEASE_MS, activeRunWhere, reclaimExpiredRuns } from './run-leases'
-import { randomUUID } from 'node:crypto'
-import { Prisma, type RunRequestSource } from '@prisma/client'
-import { prisma } from '@/lib/db'
-import { createAndEnqueueAudit, RunAdmissionReplay } from '@/lib/audit/create-audit'
-import { buildAttribution } from '@/lib/leads/attribution'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
-import { RateLimitError } from '@/lib/security/rate-limit'
+import { createAndEnqueueAudit,RunAdmissionReplay } from '@/lib/audit/create-audit'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { prisma } from '@/lib/db'
+import { buildAttribution } from '@/lib/leads/attribution'
 import { logger } from '@/lib/logger'
-import { normalizeAuditUrl } from '@/lib/audit/url'
-import { siteAnalysisAuditWhere, siteWideAnalysisAuditWhere } from './analysis-scope'
-import { buildExecutionSpec, canonicalExecutionOutcomes, executionIntentHash } from './execution-spec'
-import { canonicalIntent, readExecutionSpec, readVerificationTarget } from '../domain/execution-spec'
-import { categoryAreaSchema, type CategoryArea } from '../domain/execution-spec'
 import { requireExecutionReady } from '@/lib/queue/execution-readiness'
-import { initialTaskPlan } from '@/lib/audit/progressive/graph'
+import { RateLimitError } from '@/lib/security/rate-limit'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
+import { Prisma,type RunRequestSource } from '@prisma/client'
+import { randomUUID } from 'node:crypto'
+import { canonicalIntent,readExecutionSpec,readVerificationTarget } from '../domain/execution-spec'
+import { siteAnalysisAuditWhere,siteWideAnalysisAuditWhere } from './analysis-scope'
+import { canonicalExecutionOutcomes,executionIntentHash } from './execution-spec'
+import { activeRunWhere,reclaimExpiredRuns,RUN_LEASE_MS } from './run-leases'
+import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
+import { resolveRunExecution,validateRunSelection } from './run-selection'
+export { getOwnedRun } from './run-queries'
+export { markOutcomeRunsCouldNotVerify,reconcileOutcomeRunsForAudit } from './run-reconciliation'
 
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
 
+export type { RunInput,SiteRunVerificationTarget } from './run-intent'
 export { OUTCOME_RUN_LEASE_MS } from './run-leases'
 
 export function reclaimExpiredOutcomeRuns(projectId: string): Promise<number> {
@@ -34,96 +33,7 @@ function auditSource(source: RunRequestSource) {
   return 'DASHBOARD' as const
 }
 
-function safeContext(
-  value: Record<string, string | number | boolean | null | undefined> | undefined,
-): Prisma.InputJsonObject | undefined {
-  if (!value) return undefined
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(
-        ([key, item]) =>
-          !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
-          item !== undefined,
-      )
-      .map(([key, item]) => {
-        if (typeof item !== 'string') return [key, item]
-        const trimmed = item.trim().slice(0, 160)
-        const sensitive = /(?:https?:\/\/|bearer\s+|api[_-]?key|password|secret|token)/i.test(trimmed)
-        return [key, sensitive ? '[redacted]' : trimmed]
-      }),
-  ) as Prisma.InputJsonObject
-}
-
-export type SiteRunVerificationTarget =
-  | {
-      kind: 'OUTCOME'
-      outcomeId: string
-      attemptId: string
-      parentAuditId: string
-    }
-  | {
-      kind: 'DIAGNOSTIC'
-      pageUrl: string
-      checkId: string
-      attemptId: string
-      parentAuditId: string
-    }
-
-export type RunInput = {
-  projectId: string
-  outcomeIds: string[]
-  userId: string
-  source: RunRequestSource
-  /** Broad Site care derives enabled bindings; callers do not select them. */
-  scope?: 'OUTCOMES' | 'SITE' | 'CATEGORY' | 'FIXTURE_SETUP' | 'ACCOUNT_CHECKS'
-  categoryArea?: CategoryArea
-  accountMode?: 'routine' | 'retest' | 'cleanup'
-  fixtureId?: string
-  environment?: string
-  idempotencyKey?: string
-  context?: Record<string, string | number | boolean | null | undefined>
-  verificationAttemptId?: string
-  parentAuditId?: string
-  /** Page a Flag verify must recheck. Bindings still start from their own configuration. */
-  url?: string
-  verificationTarget?: SiteRunVerificationTarget
-}
-
-function sameSelection(
-  run: { selections?: Array<{ outcomeId: string }> },
-  selectedIds: string[],
-): boolean {
-  const stored = (run.selections ?? []).map((selection) => selection.outcomeId).sort()
-  return stored.length === selectedIds.length && stored.every((id, index) => id === selectedIds[index])
-}
-
-function verificationTargetIdentity(value: Prisma.JsonValue | SiteRunVerificationTarget | null | undefined): string | null {
-  if (!value || Array.isArray(value) || typeof value !== 'object') return null
-  const target = value as Record<string, unknown>
-  if (target.kind === 'OUTCOME') {
-    return JSON.stringify(['OUTCOME', target.outcomeId, target.attemptId, target.parentAuditId])
-  }
-  if (target.kind === 'DIAGNOSTIC') {
-    return JSON.stringify(['DIAGNOSTIC', target.pageUrl, target.checkId, target.attemptId, target.parentAuditId])
-  }
-  return JSON.stringify(value)
-}
-
-function verificationTargetKind(value: Prisma.JsonValue | SiteRunVerificationTarget | null | undefined): string | null {
-  if (!value || Array.isArray(value) || typeof value !== 'object') return null
-  const kind = (value as Record<string, unknown>).kind
-  return typeof kind === 'string' ? kind : null
-}
-
-function sameExecutionScope(
-  run: { selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null },
-  selectedIds: string[],
-  verificationTarget: SiteRunVerificationTarget | undefined,
-): boolean {
-  return sameSelection(run, selectedIds) &&
-    verificationTargetIdentity(run.verificationTarget) === verificationTargetIdentity(verificationTarget)
-}
-
+import { safeContext,sameExecutionScope,sameSelection,verificationTargetKind,type RunInput,type SiteRunVerificationTarget } from './run-intent'
 /**
  * Which Site runs count against the plan's scan allowance.
  *
@@ -154,84 +64,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
   outcomeIds: string[]
   reused: boolean
 }> {
-  let selectedIds = [...new Set(input.outcomeIds)].sort()
-  const scope = input.scope ?? 'OUTCOMES'
-  const environment = input.environment ?? 'production'
-  if (scope === 'CATEGORY' ? !categoryAreaSchema.safeParse(input.categoryArea).success || input.source === 'WATCH' : input.categoryArea !== undefined)
-    throw new SiteRunRefusal('Invalid category check selection', 400)
-  if (scope === 'CATEGORY' && (input.url || input.parentAuditId)) throw new SiteRunRefusal('Category checks use the latest website inventory.', 400)
-  if ((scope === 'FIXTURE_SETUP') !== Boolean(input.fixtureId) ||
-    scope === 'FIXTURE_SETUP' && (selectedIds.length > 0 || input.verificationTarget))
-    throw new SiteRunRefusal('Invalid Signup setup selection', 400)
-  if ((scope === 'SITE' || scope === 'CATEGORY' || scope === 'ACCOUNT_CHECKS') && (selectedIds.length > 0 || input.verificationTarget)) {
-    throw new SiteRunRefusal('Site care cannot select an Outcome or Flag verification target', 400)
-  }
-  if (scope === 'OUTCOMES' && selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
-    throw new SiteRunRefusal('Select at least one Outcome', 400)
-  }
-  if (
-    input.verificationTarget?.kind === 'OUTCOME' &&
-    !selectedIds.includes(input.verificationTarget.outcomeId)
-  ) {
-    throw new SiteRunRefusal('Verification target must be included in the Outcome selection', 400)
-  }
-  const outcomes = await prisma.siteOutcome.findMany({
-    where: {
-      ...(scope === 'SITE' || scope === 'CATEGORY' && input.categoryArea === 'conversion' ? { environment,
-        ...(scope === 'CATEGORY' ? { kind: { not: 'AVAILABILITY' as const } } : {}),
-        bindings: { some: { enabled: true, required: true } } } : { id: { in: selectedIds } }),
-      projectId: input.projectId,
-      enabled: true,
-      project: { userId: input.userId, deletedAt: null },
-    },
-    include: {
-      project: { select: { url: true } },
-      bindings: {
-        where: { enabled: true },
-        orderBy: { createdAt: 'asc' },
-      },
-    },
-  })
-  if (scope === 'SITE' || scope === 'CATEGORY') selectedIds = outcomes.map(outcome => outcome.id).sort()
-  else if (outcomes.length !== selectedIds.length) throw new SiteRunRefusal('Outcome not found', 404)
-  if (outcomes.some((outcome) => outcome.environment !== environment)) {
-    throw new SiteRunRefusal('Outcome is not configured for this environment', 400)
-  }
-  const first = outcomes.find((outcome) => outcome.id === selectedIds[0]) ?? null
-  const project = first?.project ?? await prisma.project.findFirst({
-    where: { id: input.projectId, userId: input.userId, deletedAt: null },
-    select: { url: true },
-  })
-  if (!project) throw new SiteRunRefusal('Site not found', 404)
-
-  const fixture = input.fixtureId ? await prisma.outcomeFixture.findFirst({
-    where: { id: input.fixtureId, projectId: input.projectId, enabled: true }, select: { id: true, version: true, targetUrl: true },
-  }) : null
-  if (input.fixtureId && !fixture) throw new SiteRunRefusal('Signup fixture not found', 404)
-
-  const single = outcomes.length === 1 ? outcomes[0] : null
-  const singleRequired = single?.bindings.filter((binding) => binding.required) ?? []
-  const singleConfig = singleRequired.length === 1 ? singleRequired[0]!.config as Record<string, unknown> : null
-  const singleStart = typeof singleConfig?.startUrl === 'string' ? singleConfig.startUrl : null
-  // Watch and multi-Outcome runs enter at the Site. One bound Outcome can
-  // start at its own page. Each binding still executes from its own config.
-  const requestedUrl = fixture?.targetUrl ?? (input.verificationTarget?.kind === 'DIAGNOSTIC'
-    ? input.verificationTarget.pageUrl
-    : input.url ?? (scope === 'SITE' || scope === 'CATEGORY' || input.source === 'WATCH' || !singleStart ? project.url : singleStart))
-  const normalized = normalizeAuditUrl(requestedUrl)
-  const auditUrl = normalized.ok ? normalized.url : requestedUrl
-  const executionSpec = fixture ? { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: auditUrl, environment,
-    scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: fixture.id, version: fixture.version }, checks: {}, outcomes: [], verificationTarget: null } : await buildExecutionSpec({
-    projectId: input.projectId, targetUrl: auditUrl, environment,
-    scope: input.verificationTarget?.kind === 'DIAGNOSTIC' ? 'DIAGNOSTIC' : scope,
-    outcomes, categoryArea: input.categoryArea, accountMode: input.accountMode, verificationTarget: input.verificationTarget,
-  })
-  if (scope === 'ACCOUNT_CHECKS' && !executionSpec.accountChecks) throw new SiteRunRefusal('Automatic account checks are paused or unavailable.', 409)
-  const requestHash = executionIntentHash(executionSpec)
-  if (executionSpec.scope === 'DIAGNOSTIC' || executionSpec.scope === 'CATEGORY') {
-    try { initialTaskPlan(executionSpec) }
-    catch { throw new SiteRunRefusal(executionSpec.scope === 'CATEGORY' ? 'This category has no valid execution plan.' : 'This finding has no registered independent verifier. Its previous evidence is retained; a repair cannot be certified by this action.', 409) }
-  }
+  const selection = validateRunSelection(input)
+  const { scope, environment } = selection
+  const { selectedIds, first, fixture, auditUrl, executionSpec, requestHash } = await resolveRunExecution(input, selection)
   const matchesIntent = (run: { requestHash?: string | null; executionSpec?: unknown; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }) => {
     const admitted = readExecutionSpec(run.executionSpec)
     if (admitted && admitted.scope !== executionSpec.scope) return false

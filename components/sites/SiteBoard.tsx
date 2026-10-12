@@ -1,63 +1,43 @@
 'use client'
 
 
-import Link from 'next/link'
-import type { Route } from 'next'
-import { useRef, useState } from 'react'
-import { FileCheck, RefreshCw } from 'lucide-react'
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
-import { BOARD_CARD_ICONS, BoardGrid, BoardSummaryStrip, ProductBoardCard } from '@/components/sites/BoardCard'
-import { RecommendationList, SiteCardFindings } from '@/components/sites/SiteCardFindings'
-import { SiteCheckResults } from '@/components/sites/SiteCheckResults'
-import { SiteSignupPrompt } from '@/components/sites/SiteSignupPrompt'
-import { cardExecution } from '@/lib/sites/card-execution'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { SitePreviewCard } from '@/components/layout/SitePreviewCard'
-import { UptimeCard } from '@/components/uptime/UptimeCard'
-import { UPTIME_COPY as U } from '@/lib/marketing/copy/uptime'
-import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
-import shellStyles from './SiteShell.module.css'
-import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
-import { useSiteResource } from '@/hooks/useSiteResource'
-import { BoardDetails } from '@/components/sites/BoardDetails'
-import { MONITORING_COPY } from '@/lib/marketing/copy'
-import { siteTrendChecks } from '@/lib/sites/monitoring-history'
-import { SiteMonitoringHistory } from '@/components/sites/SiteMonitoringHistory'
-import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
-import { TechnologyStrip, type ToolItem } from '@/components/sites/SiteTooling'
-import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
-import { SiteIntegrationsControls } from '@/components/sites/SiteIntegrationsControls'
-import { SiteShell } from '@/components/sites/SiteShell'
+import { BoardGrid,BoardSummaryStrip,ProductBoardCard } from '@/components/sites/BoardCard'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
+import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
+import { SiteMonitoringHistory } from '@/components/sites/SiteMonitoringHistory'
+import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { SiteShell } from '@/components/sites/SiteShell'
+import { SiteSignupPrompt } from '@/components/sites/SiteSignupPrompt'
+import { TechnologyStrip } from '@/components/sites/SiteTooling'
 import { Button } from '@/components/ui/button'
-import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
+import { UptimeCard } from '@/components/uptime/UptimeCard'
 import { useMe } from '@/hooks/useMe'
-import type { SiteHomeView } from '@/lib/sites/application/queries'
-import type { BoardCardView } from '@/lib/sites/board-card'
-import { ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS, type SiteCardArea } from '@/lib/sites/card-areas'
-import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
-import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
-import { outcomeCoverageLabel, outcomeFreshnessDisclosure, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
-import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
-import { formatEvidenceTimestamp } from '@/lib/time/format'
-import { createSiteActionController, executeSiteAction } from '@/lib/sites/client-actions'
+import { useSiteResource } from '@/hooks/useSiteResource'
+import { SITE_BOARD_COPY,WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
+import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { outcomeCardFreshness,projectSiteBoard } from '@/lib/sites/board-view'
+import { type SiteCardArea } from '@/lib/sites/card-areas'
+import { cardExecution } from '@/lib/sites/card-execution'
+import { siteCheckNotice,siteSummaryNotice } from '@/lib/sites/check-notice'
+import { createSiteActionController,executeSiteAction } from '@/lib/sites/client-actions'
+import { outcomeCoverageLabel,UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import { runBanner } from '@/lib/sites/presentation'
+import { formatAlertDate,NO_ALERT_DELIVERY,siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
+import { RefreshCw } from 'lucide-react'
+import type { Route } from 'next'
+import dynamic from 'next/dynamic'
+import Link from 'next/link'
+import { useRef,useState } from 'react'
+import shellStyles from './SiteShell.module.css'
 
-function isEmptyUncheckedCard(card: BoardCardView) {
-  return card.id !== 'site' && !card.evidenced && !card.incompleteReason && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
-}
-
-function outcomeCardFreshness(outcome: SiteHomeView['outcomes'][number]): string {
-  const when = outcome.lastVerifiedAt ? formatEvidenceTimestamp(outcome.lastVerifiedAt) : null
-  if (!when) return 'No completed verification yet'
-  if (outcome.state === 'COULD_NOT_VERIFY') return `Last attempted ${when}`
-  if (outcome.state === 'STALE') {
-    return `Last verified ${when}. ${outcomeFreshnessDisclosure(outcome.state, outcome.staleAfterMinutes)}`
-  }
-  return `Last verified ${when}`
-}
+const SiteCategoryDetails = dynamic(() => import('./SiteCategoryDetails').then(module => module.SiteCategoryDetails))
+const SiteIntegrationsControls = dynamic(() => import('./SiteIntegrationsControls').then(module => module.SiteIntegrationsControls))
 
 export type SiteBoardView = 'home' | 'timeline' | 'integrations'
 
@@ -132,65 +112,15 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
     setBusy(false)
   }
 
-  const selected = selectedCard ? view.cards.find((card) => card.id === selectedCard) ?? null : null
-  const SelectedIcon = selected ? BOARD_CARD_ICONS[selected.id] : null
-  const selectedFlags = selected ? view.flags.filter((flag) => selected.flagIds.includes(flag.id) || flag.area === selected.id) : []
-  const findingPages = new Set(selectedFlags.map((flag) => flag.pageUrl).filter(Boolean)).size
-  const selectedRecommendations = selected ? (view.recommendations ?? []).filter((item) => item.area === selected.id) : []
-  const cardsById = new Map(view.cards.map((card) => [card.id, card]))
-  const visibleCategories = view.presentation.categories.filter((category) => {
-    const card = cardsById.get(category.id)
-    if (!card || category.id === 'uptime') return false
-    if (ADDABLE_BOARD_CARDS.includes(category.id)) {
-      return card.evidenced || category.flagCount > 0
-    }
-    if (!STARTER_BOARD_CARDS.includes(category.id)) return false
-    return signedIn || checking || !isEmptyUncheckedCard(card)
-  })
-  const confirmedOutcomes = view.outcomes.filter((outcome) => outcome.kind !== 'GENERIC' && outcome.bindings.some(binding => binding.required)).sort((left, right) => {
-    const rank = { FLAG: 0, COULD_NOT_VERIFY: 1, STALE: 2, CLEAR: 3 }
-    return rank[left.state] - rank[right.state]
-  })
-  const pagesNeedingAttention = new Set(view.flags.filter(flag => flag.area === 'site').map(flag => flag.pageUrl ?? view.site.url)).size
-  const summaryItems = [
-    { value: view.presentation.flags.count, label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : view.presentation.flags.count === 1 ? 'Flag' : 'Flags', state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
-  ]
-  const technologies: ToolItem[] = (view.technology?.items ?? []).slice(0, 6).map(item => ({
-    name: item.name,
-    status: view.technology?.status === 'complete' ? 'Detected' : 'Detected in partial check',
-    state: view.technology?.status === 'complete' ? 'healthy' : 'attention',
-  }))
-  const monitoringPoints = siteTrendChecks(view.monitoringTrend).map(item => ({
-    label: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(item.checkedAt)),
-    flagCount: item.status === 'FAILED' || item.completionState === 'PARTIAL' || !item.evidenceAt ? null : item.flagCount,
-  }))
-  const monitoringEvents = (view.monitoringHistory ?? []).toReversed().map(item => ({
-    id: item.id ?? item.checkedAt,
-    title: item.afterFix ? B.history.afterFix : item.status === 'FAILED' || item.completionState === 'PARTIAL' ? B.incomplete : B.complete,
-    detail: item.scope ? [item.trigger === 'SCHEDULED' ? B.history.scheduled : item.trigger === 'MANUAL' ? B.history.manual : item.trigger === 'OTHER' ? B.history.other : null,
-      item.scope === 'SITE' ? B.history.site : item.scope === 'CATEGORY' ? item.targetLabel ?? B.history.unknown : item.scope === 'OUTCOMES' ? B.history.outcomes : item.scope === 'DIAGNOSTIC' ? B.history.diagnostic : B.history.unknown,
-      item.targetLabel].filter(Boolean).join(' · ') : undefined,
-    resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
-    time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
-    dateTime: item.checkedAt,
-    state: item.status === 'FAILED' || item.completionState === 'PARTIAL' || item.result === 'COULD_NOT_VERIFY' || item.scope !== 'SITE' && item.result == null ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
-    flagCount: item.scope && item.scope !== 'SITE' ? undefined : item.flagCount,
-    flags: (item.flags ?? []).map(flag => ({ ...flag, href: `/sites/${siteId}/flags/${flag.id}` })),
-  }))
+  const { selected, selectedFlags, findingPages, selectedRecommendations, cardsById, visibleCategories,
+    confirmedOutcomes, pagesNeedingAttention, summaryItems, technologies, monitoringPoints, timelineEvents } =
+    projectSiteBoard(view, siteId, signedIn, checking, selectedCard)
   const banner = runBanner({
     run: view.presentation.run,
     monitoring: view.presentation.monitoring,
     disconnected,
   })
   const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing')
-  const uptimeEvents = (view.uptimeEvents ?? []).flatMap(incident => [
-    { id: `uptime-down-${incident.id}`, title: U.eventDown, detail: incident.targetUrl, time: formatEvidenceTimestamp(incident.confirmedAt) ?? incident.confirmedAt,
-      dateTime: incident.confirmedAt, state: 'attention' as const, evidenceHref: `/sites/${siteId}#category-uptime`, evidenceLabel: U.details },
-    ...(incident.recoveredAt ? [{ id: `uptime-recovered-${incident.id}`, title: U.eventRecovered, detail: incident.targetUrl,
-      time: formatEvidenceTimestamp(incident.recoveredAt) ?? incident.recoveredAt, dateTime: incident.recoveredAt, state: 'healthy' as const,
-      evidenceHref: `/sites/${siteId}#category-uptime`, evidenceLabel: U.details }] : []),
-  ])
-  const timelineEvents = [...monitoringEvents, ...uptimeEvents].sort((a, b) => Date.parse(b.dateTime) - Date.parse(a.dateTime))
 
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} activeRoute={viewMode} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
@@ -275,57 +205,9 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
       {viewMode === 'integrations' ? <section id="integrations" aria-labelledby="integrations-heading"><div><h2 id="integrations-heading" className="sr-only">Integrations</h2><p className="mt-1 text-sm text-muted-foreground">{B.integrationsBody}</p></div>{ownsSite ? <SiteIntegrationsControls siteId={siteId} initial={view.settings} /> : <p className="mt-4 text-sm text-muted-foreground">Sign in as the website owner to manage integrations.</p>}</section> : null}
 
       <SiteSignupPrompt key={view.audit.id ?? siteId} siteId={siteId} auditId={view.audit.id} checking={view.presentation.run.state === 'running'} paused={Boolean(selectedCard) || viewMode !== 'home'} />
-      <ResponsiveDepth open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedCard(null) }} onCloseAutoFocus={(event) => {
-          event.preventDefault()
-          opener.current?.focus()
-        }}>
-          <DialogTitle className="flex items-center gap-3 pr-12 text-2xl">{SelectedIcon ? <span className="inline-flex h-10 w-10 items-center justify-center rounded-control bg-muted"><SelectedIcon className="h-5 w-5" aria-hidden /></span> : null}{selected?.name}</DialogTitle>
-      {confirmedOutcomes.filter(outcome => !(outcome.kind === 'AVAILABILITY' && outcome.inferenceSource !== 'user' && outcome.name === 'This page loads')).filter(outcome => selected?.id === (outcome.kind === 'AVAILABILITY' ? 'site' : 'conversion')).map((outcome) => (
-        <OutcomeSummaryCard
-          key={outcome.id}
-          compact
-          name={outcome.kind === 'AVAILABILITY' && outcome.inferenceSource !== 'user' && outcome.name === 'This page loads' ? SITE_ACTION_COPY.outcome.availability : outcome.name}
-          href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
-          expectation={outcome.expectation ?? outcome.summary}
-          answer={outcome.kind === 'AVAILABILITY' && outcome.state === 'CLEAR' ? MONITORING_COPY.pageClear : outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined}
-          coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)}
-          freshness={outcomeCardFreshness(outcome)}
-          nextStep={outcome.state === 'STALE' ? staleOutcomeRecovery() : undefined}
-          state={outcome.state}
-          running={outcome.running}
-          label={outcome.enabled ? SITE_BOARD_COPY.websiteCheck : 'Paused'}
-          layout="row"
-          actions={(
-            <div className="flex gap-2">
-              {outcome.state === 'FLAG' && outcome.flagId ? <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${outcome.flagId}`}>Open Flag</Link></Button> : null}
-              {!outcome.running ? <Button size="sm" variant={outcome.state === 'FLAG' ? 'default' : 'outline'} disabled={busy || !outcome.enabled || !outcome.bindings.some((binding) => binding.required)} onClick={() => void verifyOutcome(outcome.id)}>
-                Check again
-              </Button> : null}
-            </div>
-          )}
-        />
-      ))}
-          <DialogDescription>{selectedFlags.length ? `${selectedFlags.length} open Flags` : selected?.answer}</DialogDescription>
-          {selected && !selected.incompleteReason ? checkAction(selected.id) : null}
-          {selected ? (
-            <>
-              <SiteCardFindings key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={[]} />
-              <SiteCheckResults key={`${selected.id}:${view.audit.id}:${selected.checkedAt}:${view.checkResultsNextCursor}`} siteId={siteId} area={selected.id} results={view.checkResults ?? []} nextCursor={view.checkResultsNextCursor} />
-              <RecommendationList recommendations={selectedRecommendations} />
-              {selected.incompleteReason ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border p-3 text-sm"><p>{selected.incompleteReason.replace(/[.!?]?$/, '.')} {SITE_BOARD_COPY.cardRetryExplanation}</p>{checkAction(selected.id)}</div> : null}
-              <section className="mt-2 rounded-card border border-border p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><FileCheck className="h-4 w-4 text-muted-foreground" aria-hidden />{SITE_BOARD_COPY.findingEvidence}</h3>
-              <BoardDetails
-                image={selected.captureUrl ? { src: selected.captureUrl, alt: selected.captureAlt ?? selected.name } : null}
-                checkedAt={selected.checkedAt} sources={selected.sources}
-                coverage={selected.id === 'site' ? 'Page results from the latest check. Areas without sufficient evidence remain unverified.' : selected.coverage ?? (findingPages > 0 ? SITE_BOARD_COPY.findingPageScope(findingPages) : null)}
-                facts={selected.id === 'site' ? [] : selected.facts.filter((fact) => fact !== selected.answer && !view.outcomes.some((outcome) => outcome.name === fact && !outcome.confirmedAt))}
-                pages={selected.id === 'site' ? view.checkedPages ?? [] : undefined}
-              />
-              </section>
-            </>
-          ) : null}
-      </ResponsiveDepth>
+      {selected ? <SiteCategoryDetails selected={selected} selectedFlags={selectedFlags} selectedRecommendations={selectedRecommendations}
+        confirmedOutcomes={confirmedOutcomes} findingPages={findingPages} siteId={siteId} view={view} busy={busy}
+        checkAction={checkAction} verifyOutcome={verifyOutcome} onClose={() => setSelectedCard(null)} restoreFocus={() => opener.current?.focus()} /> : null}
     </SiteShell>
   )
 }

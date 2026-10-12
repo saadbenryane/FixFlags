@@ -20,6 +20,8 @@ const subsystemNames: ReadinessSubsystemName[] = [
   'billing',
   'email',
   'productWatch',
+  'uptime',
+  'automaticAccounts',
 ]
 
 function dependencies(failing?: ReadinessSubsystemName): NonNullable<Parameters<typeof readLaunchReadiness>[0]> {
@@ -59,7 +61,7 @@ describe('readLaunchReadiness', () => {
     deps.storage = async () => { throw new Error('R2 rejected credentials') }
     const result = await readLaunchReadiness(deps)
     expect(result.ok).toBe(false)
-    expect(result.subsystems.storage.detail).toBe('R2 rejected credentials')
+    expect(result.subsystems.storage.detail).toBe('Readiness check could not complete.')
   })
 
   it('fails the free-launch profile when migrations are not ready', async () => {

@@ -7,6 +7,10 @@ supersedes: []
 
 # FixFlags roadmap
 
+## Current delivery: website public validation
+
+The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) records implementation and exact-candidate proof separately. Paid enrollment and customer-facing MCP/CLI are parked for this milestone. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
+
 **Direction accepted 2026-09-21. Outcome responsibility and Safe Signup are implemented locally; launch evidence gates remain open.**
 
 FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**

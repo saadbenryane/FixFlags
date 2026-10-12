@@ -48,6 +48,12 @@ export interface AuditCapability {
  */
 const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
   {
+    id: 'automatic-account-checks', dimension: 'EXPERIENCE', category: 'flow',
+    label: 'Signup, email verification, signed-in pages and account deletion', tool: 'browser-capture', status: 'live',
+    verify: 'npx vitest run lib/sites/accounts',
+    notes: 'Owned Sites, verified mailbox infrastructure, encrypted credentials and supported same-origin forms only. Unsupported or incomplete lifecycle steps remain unknown.',
+  },
+  {
     id: 'search-evidence', dimension: 'REACH', category: 'seo', label: 'Public Search evidence and structured-data inspection',
     tool: 'browser-capture', status: 'live',
 

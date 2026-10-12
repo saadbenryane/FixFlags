@@ -20,7 +20,8 @@ export const siteActionSchemas = {
   connectionSync: z.object({ status: z.enum(['connected', 'mismatch', 'needs_reauth', 'unavailable']), detail: z.string() }).strict(),
   acknowledgement: z.object({ ok: z.literal(true) }).strict(),
   authorize: z.object({ authorizeUrl: z.string().url().refine(url => new URL(url).protocol === 'https:') }).strict(),
-  settings: z.object({ ok: z.literal(true), notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).optional(), notifyOnRecovery: z.boolean().optional(), accountChecksEnabled: z.boolean().optional() }).strict(),
+  settings: z.object({ ok: z.literal(true), notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).optional(), notifyOnRecovery: z.boolean().optional(), accountChecksEnabled: z.boolean().optional() }).strict()
+    .refine(body => body.notificationLevel !== undefined || body.notifyOnRecovery !== undefined || body.accountChecksEnabled !== undefined, 'Missing saved settings'),
   outcome: z.object({ ok: z.literal(true), outcome: z.object({ id: z.string().min(1), name: z.string(), kind: z.string().min(1), environment: z.string().min(1) }) }),
   watch: watchWrite,
   monitoringActivation: z.object({ ok: z.literal(true), interval: watchIntervalSchema,

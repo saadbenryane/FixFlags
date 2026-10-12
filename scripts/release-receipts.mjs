@@ -562,10 +562,13 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
         throw new Error('Deployed smoke revision mismatch')
       }
       const deployment = JSON.parse(readFileSync(deploymentEvidenceFile, 'utf8'))
-      if (deployment.schemaVersion !== 2 || deployment.gitSha !== context.gitSha) {
+      if (![2, 3].includes(deployment.schemaVersion) || deployment.gitSha !== context.gitSha) {
         throw new Error('Deployment attestation revision mismatch')
       }
-      if (deployment.ci?.status !== 'SUCCESS') throw new Error('Candidate CI was not successful')
+      const verification = deployment.schemaVersion === 3 ? deployment.verification : deployment.ci
+      if (verification?.status !== 'SUCCESS' || !Number.isFinite(Date.parse(verification.completedAt))) throw new Error('Candidate verification was not successful')
+      if (deployment.schemaVersion === 3 && (verification.source !== 'local-foundation' || !/^[a-f0-9]{64}$/.test(verification.receiptSha256 ?? '')))
+        throw new Error('Candidate local foundation attestation is invalid')
       const roles = new Map((deployment.services ?? []).map((service) => [service.role, service]))
       for (const role of ['web', 'worker']) {
         const service = roles.get(role)
@@ -574,7 +577,8 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
           service.state !== 'SUCCESS' ||
           service.gitSha !== context.gitSha ||
           !service.transitionedAt ||
-          Date.parse(service.transitionedAt) <= Date.parse(deployment.ci.completedAt)
+          !Number.isFinite(Date.parse(service.transitionedAt)) ||
+          Date.parse(service.transitionedAt) <= Date.parse(verification.completedAt)
         ) {
           throw new Error(`${role} deployment attestation is missing or invalid`)
         }
@@ -582,7 +586,7 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       context.deployed = {
         runningCommit: evidence.runningCommit,
         routeCount: evidence.routeCount,
-        ci: deployment.ci,
+        ...(deployment.schemaVersion === 3 ? { verification } : { ci: deployment.ci }),
         services: deployment.services,
       }
     }

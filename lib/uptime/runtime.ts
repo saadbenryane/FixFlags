@@ -1,3 +1,4 @@
+import { touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { startUptimeWorker } from './queue'
 import { executeUptimeProbe, retainUptimeHistory, scheduleUptimeProbes } from './service'
 import { deliverUptimeNotifications } from './alerts'
@@ -18,12 +19,16 @@ export function startUptimeRuntime() {
         await retainUptimeHistory()
         lastRetention = Date.now()
       }
-    } catch (error) { logger.error('Uptime maintenance failed', error) }
+      await touchWorkerHeartbeat({ uptimeReady: true, lastUptimeSweepAt: new Date().toISOString() })
+    } catch (error) {
+      logger.error('Uptime maintenance failed', error)
+      await touchWorkerHeartbeat({ uptimeReady: false }).catch(heartbeatError => logger.error('Uptime heartbeat failed', heartbeatError))
+    }
     finally { sweeping = false }
   }
   const tick = () => { if (!sweeping && !closed) pendingSweep = sweep() }
   const initial = setTimeout(tick, 1000)
   const timer = setInterval(tick, 30_000)
   initial.unref(); timer.unref()
-  return { close: async () => { closed = true; clearTimeout(initial); clearInterval(timer); await pendingSweep; await worker.close() } }
+  return { close: async () => { closed = true; clearTimeout(initial); clearInterval(timer); await pendingSweep; await touchWorkerHeartbeat({ uptimeReady: false }).catch(error => logger.error('Uptime shutdown heartbeat failed', error)); await worker.close() } }
 }

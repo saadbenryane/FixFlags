@@ -28,7 +28,7 @@ describe('advertised coverage registration', () => {
   })
   it('requires meaningful local scenarios and retains external acceptance obligations', () => {
     const registry = validateAdvertisedCoverage()
-    expect(registry.size).toBe(104)
+    expect(registry.size).toBe(108)
     for (const entry of registry.values()) {
       expect(entry.acceptance.requiredObservations.length).toBeGreaterThan(0)
       expect(entry.acceptance.scenarios).toEqual(expect.arrayContaining(['working', 'failing', 'incomplete', 'repaired']))
@@ -37,6 +37,8 @@ describe('advertised coverage registration', () => {
     expect(registry.get('performance.inp')?.acceptance).toMatchObject({ recovery: 'provider_reporting_window', proofEnvironments: ['local_worker', 'live_provider'] })
     expect(registry.get('conversion.claims')?.acceptance.recovery).toBe('advisory_reassessment')
     expect(registry.get('signup.cleanup')?.acceptance.recovery).toBe('authorized_lifecycle')
+    expect(registry.get('accounts.deletion')?.evaluators).toEqual(['task:automatic-accounts'])
+    expect(registry.get('uptime.history')?.evaluators).toEqual(['projection:uptime'])
     expect(registry.get('uptime.recovery')?.acceptance).toMatchObject({ recovery: 'scheduled_transition', proofEnvironments: ['local_worker', 'live_schedule'] })
   })
   it('refuses a manifest that omits repair, source evidence, or live provider proof', () => {

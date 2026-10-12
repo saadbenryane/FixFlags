@@ -13,7 +13,7 @@ import type { Flag, FlagStatus, ReportCompleteness, Severity } from '@prisma/cli
 import { Prisma } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
 import { hasRecordedRecoveryEvidence, type RecoveryExecution, type RecoveryFlag } from './recovery-evidence'
-import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { readExecutionSpec, type ExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { CHECK_REGISTRY } from './check-registry'
 import { SEARCH_DEFINITIONS } from './search/definitions'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
@@ -192,7 +192,7 @@ async function diagnosticBaseline(input: {
     { executionSpec: { path: ['scope'], equals: 'CATEGORY' } },
     { executionSpec: { path: ['category', 'area'], equals: spec.category.area } },
   ] }] } : siteWideAnalysisAuditWhere
-  const admitted = (flag: Flag) => !spec.category || Object.hasOwn(spec.checks, baseCheckId(flag.checkId) ?? '')
+  const admitted = (flag: Flag) => categoryAdmitsFlag(spec, flag)
   const history = await prisma.improvement.findMany({
     where: { projectId: input.child.projectId, outcomeId: null },
     select: { id: true, occurrences: {
@@ -208,8 +208,9 @@ async function diagnosticBaseline(input: {
       select: { sourceAudit: { select: { improvementOccurrences: { select: { improvementId: true, flag: true } } } } },
     } },
   })
-  const keys = parentMatchKeySet(input.parentFlags), currentKeys = parentMatchKeySet(input.currentFlags)
-  const baseline = [...input.parentFlags]
+  const parentFlags = input.parentFlags.filter(admitted)
+  const keys = parentMatchKeySet(parentFlags), currentKeys = parentMatchKeySet(input.currentFlags)
+  const baseline = [...parentFlags]
   const sourceFlags = spec.category && spec.category.sourceAuditId !== input.parentId ? await prisma.flag.findMany({
     where: { auditId: spec.category.sourceAuditId, audit: { projectId: input.child.projectId } },
   }) : []
@@ -247,6 +248,16 @@ async function diagnosticBaseline(input: {
     ids.add(previous.id)
   }
   return baseline
+}
+
+/** A category receipt describes only the immutable page and responsibility
+ * selection. Historical failures elsewhere remain open on the Site. */
+function categoryAdmitsFlag(spec: ExecutionSpec | null, flag: FlagRow): boolean {
+  if (!spec?.category) return true
+  if (!Object.hasOwn(spec.checks, baseCheckId(flag.checkId) ?? '')) return false
+  const pages = new Set(spec.category.pages.map(normalizeDiffUrl))
+  const affected = flagPageUrls(flag)
+  return affected.length === 0 || affected.some(page => pages.has(page))
 }
 
 /** Read compact responsibility receipts only when absent findings need a recovery decision. */
@@ -458,7 +469,7 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
   const assessedFlagIds = new Set(outcome ? Object.values(outcome).flat().map(flag => flag.id) : [])
   const spec = readExecutionSpec(child.executionSpec)
   const diagnostic = (flag: typeof parentRows[number]) => !outcomeFlagOwner(flag.fingerprint) && !assessedFlagIds.has(flag.id) &&
-    (!spec?.category || Object.hasOwn(spec.checks, baseCheckId(flag.checkId) ?? ''))
+    categoryAdmitsFlag(spec, flag)
   const monitoringFlags = monitoringRows.filter(diagnostic)
   const parentFlags = await diagnosticBaseline({ auditId: monitoringAuditId, parentId: parentAuditId, child,
     parentFlags: parentRows.filter(diagnostic), currentFlags: monitoringFlags })

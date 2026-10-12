@@ -107,6 +107,8 @@ export const PUBLIC_SITE_COPY = {
       analytics: 'An authorized, matching Analytics property and available reports.',
       signup_fixture: 'An authorized safe test setup with reset, cleanup, and a successful dry run.',
       availability: 'A configured page-availability check. Monitoring starts after its schedule is saved.',
+      automatic_accounts: 'An owned Site with automatic account checks enabled and verified receiving infrastructure. Supported same-origin HTTPS forms only.',
+      uptime_probes: 'An owned Site with monitoring enabled. Public HTTP probes run every five minutes; rendered-page verification is separate.',
     },
     extent: {
       checked_scope: 'Evidence for the checked pages and recorded execution.',

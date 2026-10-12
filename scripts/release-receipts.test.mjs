@@ -98,7 +98,7 @@ function passingWatchEvidence(overrides = {}) {
 }
 
 describe('release evidence receipts', () => {
-  it('requires MCP for free launch and rejects mixed profiles, missing journeys and paid stages', () => {
+  it('requires website proof and rejects mixed profiles, missing journeys and paid stages', () => {
     assert.equal(releaseProfile({}), 'free-launch')
     assert.throws(() => releaseProfile({ RELEASE_PROFILE: 'unknown' }), /Unknown release profile/)
     const receipts = requiredReleaseStages().map(stage => receipt(stage, {
@@ -106,9 +106,10 @@ describe('release evidence receipts', () => {
       journeys: (JOURNEYS_BY_STAGE[stage] ?? []).map(id => ({ id, status: 'PASS' })),
     }))
     assert.equal(validateProfileReceipts(receipts, SHA).profile, 'free-launch')
+    assert.equal(receipts.flatMap(value => value.journeys).some(journey => journey.id === 'mcp-full-loop'), false)
     assert.throws(() => validateProfileReceipts(receipts.map(value => ({ ...value,
-      journeys: value.journeys.filter(journey => journey.id !== 'mcp-full-loop'),
-    })), SHA), /Missing PASS evidence.*mcp-full-loop/)
+      journeys: value.journeys.filter(journey => journey.id !== 'outcome-loop'),
+    })), SHA), /Missing PASS evidence.*outcome-loop/)
     assert.throws(() => validateProfileReceipts(receipts.map(value => ({ ...value, profile: 'paid-opening' })), SHA), /profile mismatch/)
     assert.throws(() => validateProfileReceipts([...receipts, receipt('billing-open')], SHA), /Unknown release receipt stage/)
   })

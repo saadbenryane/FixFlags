@@ -1,3 +1,4 @@
+import { deleteExpiredAccountMessages } from '@/lib/sites/accounts/retention'
 import { tryAcquireLock, withSchedulerLease } from './lock'
 import {
   recoverCompletedImprovementProjections,
@@ -130,6 +131,14 @@ async function signalRetentionTick(): Promise<void> {
   }
 }
 
+export async function accountRetentionTick(): Promise<void> {
+  try {
+    await withSchedulerLease('account-message-retention', async signal => {
+      if (!signal.aborted) await deleteExpiredAccountMessages()
+    })
+  } catch (error) { logger.error('Account verification retention failed', error instanceof Error ? error : new Error(String(error))) }
+}
+
 /**
  * Self-hosted scheduler for periodic jobs (stuck-audit recovery + nurture
  * emails + knowledge-graph issue rollup). Runs in every dedicated worker; a
@@ -140,6 +149,11 @@ async function signalRetentionTick(): Promise<void> {
 export function startRecoveryScheduler(): void {
   if (started) return
   started = true
+
+  const initialAccounts = setTimeout(() => void accountRetentionTick(), 5000)
+  initialAccounts.unref?.()
+  const accountRetention = setInterval(() => void accountRetentionTick(), 60_000)
+  accountRetention.unref?.()
 
   const progressiveRecovery = setInterval(() => void progressiveRecoveryTick(), PROGRESSIVE_RECOVERY_INTERVAL_MS)
   progressiveRecovery.unref?.()

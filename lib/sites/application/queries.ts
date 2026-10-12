@@ -1,123 +1,41 @@
-import type { UptimeSummary, UptimeIncidentView } from '@/lib/uptime/domain'
-import { loadUptimeSummary, loadUptimeEvents } from '@/lib/uptime/queries'
-import type { SiteCapture } from '@/lib/sites/captures'
-import { loadAccountChecksView } from '../accounts/store'
-import type { AccountChecksView } from '../accounts/contracts'
-import { loadSiteAnalysisSelection } from './legacy-analysis'
-import type { WatchInterval } from '@/lib/sites/watch-schedule'
-import { resolveLatestAudit, resolvePriorCompletedAudit } from './site-execution'
-import { loadCategoryEvidence, applicableCategoryEvidence, overlayCategoryCoverage } from './category-evidence'
+import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
+import { watchAlertDelivery } from '@/lib/audit/watch-notification'
 import { prisma } from '@/lib/db'
-import { projectCheckResults, type SiteCheckResult } from '@/lib/sites/check-results'
-import type { MonitoringHistoryEntry } from '@/lib/sites/monitoring-history'
-import { loadMonitoringHistory } from './monitoring-history'
-import { loadActiveSiteRuns, type ActiveSiteRun } from './site-execution'
+import { isShopifyConfigured } from '@/lib/shopify/config'
+import { projectSiteActivity } from '@/lib/sites/activity'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
-import { loadExecutionProgress, type ExecutionProgress } from './execution-progress'
+import { buildBoardCards,type BoardCardView } from '@/lib/sites/board-card'
+import { projectCheckResults } from '@/lib/sites/check-results'
+import type { PublicConnection } from '@/lib/sites/connections/match'
+import { connectionCardNotes,loadSiteConnectionViews } from '@/lib/sites/connections/read'
+import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import {
-  buildCoverageFacts,
-  isAuditFinished,
-  isAuditInFlight,
-  type CoverageFact,
+buildCoverageFacts,
+isAuditFinished,
+isAuditInFlight,
+type CoverageFact,
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
-import { loadSiteFlagDetail, loadSiteFindings, loadSiteResolvedFlags } from '@/lib/sites/flags'
 import { walkFinishedFromCoverage } from '@/lib/sites/first-outcome'
+import { loadSiteFindings,loadSiteFlagDetail,loadSiteResolvedFlags } from '@/lib/sites/flags'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
-import type { SiteOutcomeView } from '@/lib/sites/outcomes'
-import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import type { SiteRecord } from '@/lib/sites/types'
 import { siteCardHealth } from '@/lib/sites/site-health'
-import {
-  watchBoardState,
-  watchIsCovered,
-  type WatchBoardState,
-} from '@/lib/sites/watch-state'
-import { watchAlertDelivery, type WatchAlertDeliveryState } from '@/lib/audit/watch-notification'
-import { applyCardEvidence } from './card-evidence'
-import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
-import { connectionCardNotes, loadSiteConnectionViews } from '@/lib/sites/connections/read'
-import type { PublicConnection } from '@/lib/sites/connections/match'
+import type { SiteRecord } from '@/lib/sites/types'
+import { loadUptimeEvents,loadUptimeSummary } from '@/lib/uptime/queries'
+import { loadAccountChecksView } from '../accounts/store'
+import { projectHomePresentation } from '../home-presentation'
+import type { SiteHomeView } from '../site-home'
 import { loadSiteCaptures } from './captures'
-import { loadTechnologyProfile, type TechnologyProfileStatus, type VisibleTechnology } from '@/lib/audit/technology-profile'
-import { isShopifyConfigured } from '@/lib/shopify/config'
-import { projectSiteActivity, type SiteActivity } from '@/lib/sites/activity'
-import {
-  categoryPresentation,
-  flagCountLabel,
-  freshnessLabel,
-  monitoringPresentation,
-  pageCoverageLabel,
-  pagesCardPresentation,
-  resultPresentation,
-  runPresentation,
-  type SitePresentation,
-} from '@/lib/sites/presentation'
+import { applyCardEvidence } from './card-evidence'
+import { applicableCategoryEvidence,loadCategoryEvidence,overlayCategoryCoverage } from './category-evidence'
+import { loadExecutionProgress } from './execution-progress'
+import { loadSiteAnalysisSelection } from './legacy-analysis'
+import { loadMonitoringHistory } from './monitoring-history'
+import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
 
 export type { BoardCardView }
 
-export type SiteHomeView = {
-  schemaVersion: 2
-  captures?: SiteCapture[]
-  uptime?: UptimeSummary | null
-  uptimeEvents?: UptimeIncidentView[]
-  inventoryPageCount: number
-  activeRuns: ActiveSiteRun[]
-  monitoringTrend: MonitoringHistoryEntry[]
-  site: SiteRecord
-  presentation: SitePresentation
-  activity?: SiteActivity
-  recoveryUnavailable?: boolean
-  executionProgress?: ExecutionProgress | null
-  audit: {
-    id: string | null
-    status: string | null
-    progress: number
-    walkFinished: boolean
-    failureCode: string | null
-  }
-  cards: BoardCardView[]
-  flags: SiteFlagSeed[]
-  recommendations: SiteFlagSeed[]
-  resolvedFlags: SiteFlagSeed[]
-  outcomes: SiteOutcomeView[]
-  checkResults?: SiteCheckResult[]
-  checkResultsNextCursor?: string | null
-  technology?: {
-    status: TechnologyProfileStatus
-    detectedAt: string | null
-    items: Array<Pick<VisibleTechnology, 'slug' | 'name' | 'category' | 'confidenceBand'>>
-  }
-  monitoringHistory: MonitoringHistoryEntry[]
-  watch: {
-    state: WatchBoardState
-    interval: WatchInterval | null
-    everyMinutes?: number | null
-    nextRunAt: string | null
-    lastRunAt: string | null
-    lastError: string | null
-    covered: boolean
-    label: string
-    /** Provider acceptance is separate from confirmed inbox delivery. */
-    alert: {
-      state: WatchAlertDeliveryState
-      status: 'NOT_APPLICABLE' | 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | null
-      attempts: number
-      leaseUntil?: string | null
-      at: string | null
-    }
-  }
-  checkedPages?: Array<{ url: string; title: string | null; status: string; checkedAt: string }>
-  settings: {
-    accountChecks?: AccountChecksView
-    notificationLevel: 'FLAGS' | 'CRITICAL_ONLY' | 'OFF' | null
-    notifyOnRecovery: boolean | null
-    shopify: { configured: boolean; state: 'connected' | 'unavailable' | 'not_connected'; domain: string | null }
-    searchConsole: PublicConnection
-    analytics: PublicConnection
-  }
-}
-
+export type { SiteHomeView } from '../site-home'
 
 function factsFromAudit(
   audit: {
@@ -227,7 +145,6 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     pagesComplete: checkedPages.length > 0 && checkedPages.every(page => page.status === 'COMPLETED'),
     outcomes: outcomes.map((outcome) => ({ state: outcome.state, enabled: outcome.enabled })),
   })
-  const siteCardState = health.state
   const captures = await loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null)
   const capture = captures.find(item => item.device === 'desktop')
   const [uptime, uptimeEvents] = options.ownerEvidence && site.projectId ? await Promise.all([
@@ -267,82 +184,9 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     if (categoryInFlight) card.activity = 'checking'
   }
 
-  const watchState = watchBoardState({
-    interval: site.watchInterval,
-    nextRunAt: site.watchNextRunAt,
-    lastError: site.watchLastError,
-    consecutiveFailures: site.watchConsecutiveFailures,
+  const { presentation, watchState, watching, monitoring } = projectHomePresentation({
+    siteId, site, cards, flags, health, coverage, checkedPages, capture, audit, prior, finished, now,
   })
-  const watching = watchIsCovered(watchState)
-  const completedAt = (isAuditFinished(audit?.status) ? audit : prior)?.completedAt?.toISOString() ?? null
-  const pagesReached = checkedPages.filter((page) => page.status === 'COMPLETED').length
-  const pagesExpected = checkedPages.length
-  const evidenceFacts = coverage.filter((fact) => fact.evidenced)
-  const stale = evidenceFacts.length > 0 && evidenceFacts.every((fact) => fact.stale === true)
-  const result = resultPresentation({
-    auditStatus: audit?.status ?? null,
-    healthState: siteCardState,
-    flagCount: flags.length,
-    stale,
-    hasCurrentEvidence: finished && evidenceFacts.some((fact) => !fact.stale),
-    assessmentResult: health.assessment.result,
-  })
-  const monitoring = monitoringPresentation(watchState, site.watchInterval, site.watchEveryMinutes)
-  const projectedRun = runPresentation({
-    auditId: audit?.id ?? null,
-    auditStatus: audit?.status ?? null,
-    startedAt: audit?.startedAt ?? null,
-    failureCode: audit?.failureCode ?? null,
-    reportCompleteness: audit?.reportCompleteness ?? null,
-    failedModules: audit?.failedModules,
-  })
-  const presentation: SitePresentation = {
-    identity: {
-      siteId,
-      name: site.name,
-      host: site.canonicalHost,
-      preview: capture ? {
-        url: capture.url,
-        pageUrl: capture.pageUrl,
-        viewport: capture.viewport,
-        recordedAt: capture.recordedAt,
-      } : null,
-    },
-    result,
-    monitoring,
-    coverage: {
-      pagesReached,
-      pagesExpected,
-      label: pageCoverageLabel(pagesReached, pagesExpected),
-      complete: pagesExpected > 0 && pagesReached === pagesExpected,
-    },
-    freshness: {
-      checkedAt: completedAt,
-      stale,
-      label: freshnessLabel(completedAt, now),
-    },
-    flags: {
-      count: flags.length,
-      label: flagCountLabel(flags.length),
-      fixFirstCount: flags.filter((flag) => flag.priorityBand === 'fix_first').length,
-    },
-    run: projectedRun,
-    categories: [],
-  }
-  const pagesCategory = pagesCardPresentation(presentation)
-  presentation.categories = cards.map((card) => categoryPresentation({
-    id: card.id,
-    name: card.name,
-    state: card.id === 'site' ? pagesCategory.state : card.state,
-    answer: card.id === 'site' ? presentation.coverage.label : card.answer,
-    status: card.id === 'site' ? pagesCategory.status : card.status,
-    flagCount: card.openFlagCount,
-    fixFirstCount: flags.filter((flag) => flag.area === card.id && flag.priorityBand === 'fix_first').length,
-    checkedAt: card.checkedAt,
-    coverageLimitation: card.incompleteReason,
-    siteId,
-    now,
-  })).sort((left, right) => left.rank - right.rank)
 
   // Delivery is read from the most recent Watch alert rather than from the
   // Project, because delivery is a property of one alert and not of the

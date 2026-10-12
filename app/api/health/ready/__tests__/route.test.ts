@@ -5,7 +5,7 @@ const readLaunchReadiness = vi.fn()
 vi.mock('@/lib/health/readiness', () => ({ readLaunchReadiness }))
 
 describe('GET /api/health/ready', () => {
-  beforeEach(() => readLaunchReadiness.mockReset())
+  beforeEach(() => { readLaunchReadiness.mockReset() })
 
   it('returns 200 when every launch subsystem is ready', async () => {
     readLaunchReadiness.mockResolvedValue({ ok: true, checkedAt: 'now', missing: [], subsystems: {} })
@@ -25,5 +25,13 @@ describe('GET /api/health/ready', () => {
     const response = await GET(new Request('https://fixflags.test/api/health/ready'))
     expect(response.status).toBe(503)
     await expect(response.json()).resolves.toMatchObject({ ok: false, missing: ['worker'] })
+  })
+
+  it('does not expose provider secrets from unexpected failures', async () => {
+    readLaunchReadiness.mockRejectedValue(new Error('provider failed using private-api-key'))
+    const { GET } = await import('../route')
+    const response = await GET(new Request('https://fixflags.test/api/health/ready'))
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({ ok: false, error: 'Readiness check could not complete.' })
   })
 })

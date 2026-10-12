@@ -1,134 +1,39 @@
 ---
 status: canonical
 authority: operations
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-12
 supersedes: []
 ---
 
 # Quality
 
-**Version boundary, 2026-09-21:** the [current Site PRD](docs/product-prd.md) and [roadmap](ROADMAP.md) add target acceptance for the independent-monitor direction. Existing report matrices below verify legacy behavior and reusable infrastructure. Their prior readiness labels do not establish new-version completion.
+Completion requires current evidence. The public website completion ledger in [the masterplan](docs/product-masterplan.md#public-website-validation-completion-ledger) owns the release scope. Code and tests own current behavior. Historical reports and test totals are evidence for their original revision only.
 
-For new Site work, exercise URL-to-Site continuity, tenant isolation, Outcome correction, scoped coverage/freshness, independent relevant recovery, idempotent Keep watching, quiet monitoring and entitlement migration. For documentation-only vision preparation, source-fidelity, link, skill and drift checks are the scoped verification equivalent; no deployed readiness claim follows.
+## Required contracts
 
+- Preserve Site identity through analysis, signup, claim, refresh, retry and removal.
+- Enforce ownership at routes and persistence boundaries, including private captures and credentials.
+- Admit execution once, preserve its immutable scope, settle every task and recover after interruption.
+- Open, verify and reopen meaningful Flags through fresh comparable observations. Missing evidence is unknown, never recovery.
+- Keep full Site, category, Outcome, account and diagnostic conclusions separate in current and historical projections.
+- Keep monitoring quiet when clear. Record notification acceptance separately from delivery.
+- Keep account cleanup available independently of routine execution; expire verification tokens independently of user activity.
+- Preserve both themes, responsive reflow, keyboard access, focus restoration, touch actions and readable evidence.
 
-*Verification matrix: risks, required checks, and evidence.*
+## Validation
 
-## The three tiers
+Use the smallest relevant check during implementation. Shared lifecycle and release changes require broader verification. Browser journeys are authorized for this completion assignment; the standing AGENTS.md policy still requires an explicit request for unrelated future work.
 
-| Tier | Question | Current readiness |
-|------|----------|-------------------|
-| Truth | Are audits accurate? | Determine from current accuracy evidence |
-| Strength | Does the platform work reliably? | Determine from current runtime evidence |
-| Touch | Does the product feel world-class? | Legacy receipts do not prove the new Site experience |
+Run TypeScript, lint, relevant unit/component/integration tests and applicable brand, UI, product, route, copy and boundary guards. Scanner fixtures are third-party documents; they must not be confused with product styling. Genuine generated output remains forbidden in tracked source.
 
-Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn within 30d), IMPORTANT (🔶 → affects satisfaction), POLISH (🔵 → nice to have).
+The website release profile requires actual customer-loop, claim, tenancy, authentication, monitoring, accounts, uptime, category and removal proof. Required journeys may not be skipped or replaced with mocked success. MCP/CLI proof remains a separate parked-tools check.
 
-## Verification matrix
+Validate fresh migrations and upgrade compatibility in disposable databases, web and worker builds, the deployment image, actual provider behavior, and the exact candidate revision on deployed web and worker. Local protocol substitutes never establish provider acceptance. Keep CI and Railway Wait for CI disabled until separately authorized.
 
-### Truth — Accuracy
+## Experience evidence
 
-| Risk | Rating | Required check | Evidence |
-|------|--------|---------------|----------|
-| False positives after check changes | ✅ DONE | Real-site regression suite: frozen HTML fixtures with expected flag profiles | 8 fixtures in `accuracy-corpus.ts`; `npm run accuracy:eval` + `report-quality-eval.test.ts` in CI |
-| AI judge hallucinates rubrics | ✅ DONE | Bad schema → hard reject. Empty evidence → discard. Wrong rubric → fail. | `judge-contract.test.ts` + prescription contract; blank evidence discarded in `mergePrescriptionResults` |
-| CheckId never fires | ✅ DONE | Check trigger matrix: every checkId fires from at least one input | All IDs generated from `ALL_CHECK_IDS` and exercised by `checks.test.ts` |
-| Unclear what each check verifies | ✅ DONE | Verification rules for every checkId | All documented |
-| Form validation | ✅ DONE | Form validation ratio test (50% threshold) | `checks.test.ts` asserts IMPORTANT vs POLISH by ratio |
-| Score math edge cases | ✅ DONE | computeRubricScores: all CRITICAL, module failures, PageSpeed unavailable | `checks.test.ts` computeRubricScores suite |
-| Marketing copy violations | ✅ DONE | Banned phrases, no speculation, no fake member counts | Tests pass |
+Verify 320/375/768/1280px, 200/400% zoom/reflow, reduced motion, light/dark themes, touch targets, keyboard focus and loading/empty/partial/error/expired states. Measure LCP, INP and CLS separately in controlled runs and production field data. Target 2.5s, 200ms and 0.1 respectively, with field evidence at the 75th percentile by device category.
 
-### Strength — Reliability
+Five observed representative-user sessions are required. Four must complete analysis, evidence inspection, prompt copying, verification and monitoring configuration without coaching. No participant may interpret missing coverage as proof of health.
 
-| Risk | Rating | Required check | Evidence |
-|------|--------|---------------|----------|
-| Data corruption on persist | ✅ DONE | `persistDeterministicFlags` and `persistTriageResults`: 0 flags, 100 flags, duplicates, AI failures, enrichments | `persist-functions.test.ts` covers all five |
-| Pipeline failures mid-audit | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED. Fail at any step. Timeout halfway. Retry after crash. | `run-audit.test.ts` drives `runAudit` across every path |
-| Billing enforcement leaks | ✅ DONE | Free user gets 402 on paid endpoint. Paying user never gets blocked on owned features. | Route tests for api-keys + projects assert 402/allow |
-| Customer-loop route contracts | ✅ DONE | Checks, report/status/update-review/retry/chat, Watch, Product Signals, and Flag attempts declare method, auth, schema, success, failures, idempotency, and fixture | `lib/api/customer-route-contracts.mjs`; registry rejects validation-only probes as success evidence |
-| Remaining operational route contracts | 🔶 IMPORTANT | Every non-customer route must acquire a real success fixture before it can count as release evidence | Route inventory remains exhaustive; explicit success contracts expand as operational routes enter release scope |
-| Rate limiting | 🔶 IMPORTANT | Anonymous: 1 teaser scan (cookie + IP soft ceiling). Free account: 3 product reviews per month. Paid: plan limit. Redis outage fail-open is intentional availability tradeoff. | Partially implemented |
-| Auth / session integrity | 🔶 IMPORTANT | Claim-before-next, entitlements, re-check never gated | Claim + redirect + monitoring tests; full login/logout E2E still open |
-| CI pipeline | ✅ DONE | CI and local full verification use `scripts/validate.mjs`. | GitHub Actions runs `npm run validate:full` plus browser journeys |
-| Migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Drift detection passes. | Passes |
-| Worker crash recovery | 🔶 IMPORTANT | Worker dies mid-capture → retry. Required evaluation must not skip. | Isolated retry/idempotency plus real Redis application-queue requeue for stale QUEUED and CAPTURING states |
-| Queue job processing | ✅ DONE | Live PostgreSQL/Redis evaluation submits, processes, retries after failure, and checks duplicate-job idempotency. | `npm run agent -- eval recovery` |
-
-### Touch — Experience
-
-| Risk | Rating | Required check | Evidence |
-|------|--------|---------------|----------|
-| Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
-| Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence and deterministic Agent updates while every fix prompt remains absent until authentication. Preview, Timeline, and Canvas stay parked on `/report/[id]`. Contract and Memory live on `/products/[id]`. | access serialization tests, product contract guard, browser matrix, Agent workspace completion plan |
-| Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit E2E tests (not-found state + forward actions) |
-| Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
-| Mobile-responsive layout | ✅ DONE | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Isolated production Playwright matrix passes at 320/375/768/1280px; 200% reflow and reduced motion pass |
-| Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | `ScreenshotWithHighlights` component test (error/retry/success) + E2E stubbed-endpoint test (placeholder, Retry, recovery) |
-| Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion, AA brand contrast | Brand CTA pair is token-level AA; segmented and prompt chrome are 44px; Flag headings are contextual h2/h3. Full launch-width axe remains a release proof gate |
-| Page load performance | 🔶 IMPORTANT | Canonical report loads without unnecessary duplicate report bundles | Production build route output |
-| Coverage thresholds | ✅ DONE | Vitest coverage config | Enforced in full and release validation. Measured 71.01% statements, 65.09% branches, 71.60% functions, and 72.39% lines on 2026-08-11 |
-
-Fresh interface proof on 2026-08-11 found no axe violations across homepage, pricing, and samples in light or dark mode at launch widths.
-Credentialed forbidden, expired, and revoked report paths remain part of the release journey matrix rather than the public interface gate.
-
-## Automated guards
-
-| Guard | Command | What it checks | CI |
-|-------|---------|---------------|----|
-| TypeScript | `npm run typecheck` | Type errors | Yes |
-| ESLint | `npm run lint` | Code quality, a11y, imports | Yes |
-| Unit tests | `npm run test:unit` | Lib-level correctness | Yes |
-| Brand hex | `npm run brand:hex-guard` | Brand color compliance | Yes |
-| UI drift | `npm run ui:drift-guard` | Design system drift | Yes |
-| Product contract | `npm run product:contract-guard` | Stale routes, homepage bloat, prompt/sample/share regressions, focused deep imports | Yes |
-| Parked visibility | `npm run power-tools:visibility-guard` | Power-tool routes remain uniformly unavailable and absent from customer discovery | Yes |
-| Module boundaries | `npm run module:boundary-guard` | Client/server separation, thin customer-loop routes, no runtime dependency cycles, and no parked Canvas APIs | Yes |
-| Route contracts | `npm run routes:contract-guard` | Typed route inventory plus genuine fixture-backed success evidence for the customer loop | Yes |
-| Scan accuracy | `npm run accuracy:eval` | Gold 0 false blockers, builder top-3, demo v1 repair, non-HTML regression | Yes (via `validate.mjs` full gate) |
-| Rendered dogfood accuracy | `npm run accuracy:browser` | Curated live mobile CTA selection, fold geometry, input zoom candidates, and visual-metric false positives | On demand |
-| SEO | `npm run seo:guard` | SEO compliance | Yes |
-| Migration | `npm run db:check` | Migration status | Verify script |
-| Drift | `npm run db:drift` | Schema drift | Verify script |
-| Build | `npm run build` | Next.js production build | Yes |
-| Worker build | `npm run worker:build` | Worker compile | Yes |
-| Docker image | `docker build -t fixflags:local .` | Railway packaging (`npm ci`, Chromium, Next build) | No (run locally when Dockerfile/package*.json change) |
-
-Dormant repository, MCP, CLI, API-key, and deployment-hook implementations are verified separately with `npm run power-tools:verify`.
-That command preserves their engineering health without making them customer-release requirements or shipped-product evidence.
-
-## Monetization blockers
-
-All five now have automated coverage, run in CI via `npm run test:unit`:
-1. ✅ Real-site regression fixtures — `regression-sites.test.ts` (HTML-derivable checks)
-2. ✅ AI judge contract validation — `judge-contract.test.ts` + blank-evidence discard
-3. ✅ Persist layer — `persist-functions.test.ts` (0/100 flags, duplicates, AI-failure fallback, enrichments)
-4. ✅ Pipeline state machine — `run-audit.test.ts` (transitions, fail-at-step, timeout, retry-after-crash)
-5. ✅ Billing gating enforcement — route tests assert 402 for free, allow for paid (`/api/checks`, api-keys, projects)
-
-Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; promote remaining operational routes to explicit fixture-backed contracts as they enter release scope; run manual report contract smoke (below); full-browser adjudication for SSR sites (e.g. linear.app).
-
-**Accuracy completion plan:** [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md)
-
-## Report contract smoke (manual CRITICAL)
-
-Until automated Touch-tier tests cover report chrome:
-
-1. `/report/[id]`: compact identity and score → optional update-review result → complete ranked Fix List with per-issue prompt row. Preview, Timeline, and Canvas stay parked and are not loaded. Product Contract, Memory, and launch gates live on `/products/[id]`. Owner Update review is the verify action. Public evidence is the canonical report URL.
-2. Anonymous report exposes every problem, evidence summary, and deterministic Agent update, exposes no fix prompt body, and presents contextual authentication without replacing the report.
-3. `/report/[id]/details`, sample details, and share details redirect to their canonical surfaces after enforcing the same access contract.
-4. Progressive route shows captures and every verified Flag in the same ranked explorer. COMPLETED holds the frame until refresh. Contract and Timeline are not on the live report.
-5. `/samples` and loading shell never render an empty main area. Homepage and sample do not query production audit rows.
-6. Report evidence is public at `/report/[id]`. There is no password-protected share flow. Copy link in Export shares the canonical URL. Legacy `/share/[token]` links remain readable for compatibility.
-7. Verify 375, 768, and 1280px, keyboard focus, 200% zoom, reduced motion, partial/failure/deleted states.
-
-## Completion standard
-
-Completion requires evidence, not confidence. Before claiming work:
-- [ ] Run `npm run typecheck` — zero errors
-- [ ] Run `npm run lint` — zero errors
-- [ ] Run `npm run test:unit` and record the measured result for that run.
-- [ ] Run relevant guards
-- [ ] Verify actual behavior (not just test pass)
-- [ ] Check edge cases, responsive states, loading/empty/error states
-- [ ] Confirm no secrets written, no fake data, no hardcoded answers
-- [ ] Report UI: run density smoke checklist when touching report chrome
+The owner-approved white labels on #FF5A00 remain a documented 3.13:1 contrast exception. Do not claim full WCAG AA compliance. Report that specific exception separately from all other accessibility defects.

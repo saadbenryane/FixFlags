@@ -10,6 +10,7 @@ import { formatUsd, sumEstimatedCost, getCostOutliers } from '@/lib/billing/cost
 import { countOpenConversations, getAdminUnreadCount } from '@/lib/live-support/sessions'
 import { MarginPanel } from '@/components/admin/MarginPanel'
 import { MetricCard } from '@/components/admin/MetricCard'
+import { loadSiteOperations } from '@/lib/admin/site-operations'
 import { startOf } from '@/lib/admin/date-ranges'
 
 export default async function AdminPage() {
@@ -35,6 +36,7 @@ export default async function AdminPage() {
     openChatSessions,
     inboxUnread,
     costOutliers,
+    siteOperations,
   ] = await Promise.all([
     prisma.audit.count(),
     prisma.audit.count({ where: { createdAt: { gte: todayStart } } }),
@@ -64,6 +66,7 @@ export default async function AdminPage() {
     countOpenConversations(),
     getAdminUnreadCount(),
     getCostOutliers(7),
+    loadSiteOperations(),
   ])
 
   const planMap = Object.fromEntries(planCounts.map((p) => [p.plan, p._count.id]))
@@ -163,6 +166,12 @@ export default async function AdminPage() {
         </div>
       </section>
 
+      <section className="space-y-4">
+        <SectionTitle>Site operations</SectionTitle>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {siteOperations.map(metric => <MetricCard key={metric.label} label={metric.label} value={metric.value} />)}
+        </div>
+      </section>
       <MarginPanel />
 
       <section className="space-y-4">

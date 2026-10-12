@@ -3,8 +3,8 @@ import { PAGE_CHECK_DEFINITIONS } from './checks/definitions'
 import { SEARCH_DEFINITIONS } from './search/definitions'
 import { taskKindSchema } from './progressive/contracts'
 
-export type CoverageEvaluator = `page:${string}` | `search:${string}` | `task:${string}` | 'provider:analytics' | 'projection:availability'
-export type CoverageConfiguration = 'public' | 'pagespeed' | 'search_console' | 'analytics' | 'signup_fixture' | 'availability'
+export type CoverageEvaluator = `page:${string}` | `search:${string}` | `task:${string}` | 'provider:analytics' | 'projection:availability' | 'projection:uptime'
+export type CoverageConfiguration = 'public' | 'pagespeed' | 'search_console' | 'analytics' | 'signup_fixture' | 'availability' | 'automatic_accounts' | 'uptime_probes'
 export type AdvertisedCoverage = {
   id: string; evaluators: readonly CoverageEvaluator[]; configuration: CoverageConfiguration;
   extent: 'checked_scope' | 'heuristic' | 'partial'; limitation: string;
@@ -27,6 +27,8 @@ const applicability: Record<CoverageConfiguration, string> = {
   analytics: 'An authorized matching Analytics property and the recorded provider reporting window.',
   signup_fixture: 'A current authorized reversible fixture, demonstrated success condition, and recorded cleanup.',
   availability: 'An owned enabled availability binding and the account-permitted monitoring cadence.',
+  automatic_accounts: 'An owned private Site, enabled preference, verified mailbox infrastructure and supported same-origin account lifecycle.',
+  uptime_probes: 'An owned Site with monitoring enabled, its current public URL generation and recorded five-minute HTTP observations.',
 }
 
 /** Acceptance requirements are obligations, never evidence that a scenario passed. */
@@ -34,7 +36,7 @@ function acceptanceFor(id: string, evaluators: readonly CoverageEvaluator[], con
   extent: AdvertisedCoverage['extent']): AdvertisedCoverage['acceptance'] {
   const scheduled = /^uptime\.(schedule|incidents|history|recovery)$/.test(id)
   const providerWindow = id === 'performance.inp' || configuration === 'search_console' || configuration === 'analytics'
-  const lifecycle = configuration === 'signup_fixture'
+  const lifecycle = configuration === 'signup_fixture' || configuration === 'automatic_accounts'
   return {
     applicability: applicability[configuration],
     requiredObservations: [...new Set(evaluators.flatMap(evaluator => {
@@ -75,6 +77,7 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['conversion.claims'], ['page:trust-psychology'], 'public', 'heuristic', heuristic),
   ...entries(['conversion.hierarchy', 'conversion.density'], ['page:visual-hierarchy'], 'public', 'heuristic', heuristic),
   ...entries(['conversion.visual-consistency'], ['page:visual-polish'], 'public', 'heuristic', heuristic),
+  ...entries(['accounts.signup', 'accounts.verification', 'accounts.signed-in', 'accounts.deletion'], ['task:automatic-accounts'], 'automatic_accounts', 'checked_scope', 'Supported same-origin HTTPS account flows only. Unsupported fields, identity providers, CAPTCHA and inconclusive deletion remain unverified.'),
   ...entries(['signup.confirmation', 'signup.fixture', 'signup.cleanup'], ['task:bindings'], 'signup_fixture', 'checked_scope', 'Requires a current reversible fixture and authorization. Confirmation is limited to its configured success criterion.'),
   ...entries(['signup.authorization'], ['task:fixture-setup', 'task:bindings'], 'signup_fixture', 'checked_scope', 'Setup runs on the durable task ledger. Authorization requires a recorded successful dry run and cleanup of the exact current fixture version. Real hook and account behavior still requires integration verification.'),
   ...entries(['security.https', 'security.mixed-content'], ['page:security']),
@@ -99,9 +102,9 @@ export const ADVERTISED_COVERAGE: readonly AdvertisedCoverage[] = [
   ...entries(['accessibility.traps'], ['page:keyboard'], 'public', 'checked_scope', 'Bounded page navigation and safely declared menu/dialog opening, arrow navigation, modal boundaries, Escape and restoration are exercised. Other states, nested components, embedded frames and unresolved workflows remain explicit limits.'),
   ...entries(['accessibility.focus'], ['page:keyboard'], 'public', 'partial', 'Actual keyboard focus on the page and safely opened popups is inspected for an outline or computed style change. This does not establish pixel contrast, every custom focus effect, embedded controls, or unopened states.'),
   ...entries(['accessibility.tab-order'], ['page:keyboard'], 'public', 'heuristic', 'Records the exercised Tab sequence and detects positive-tabindex backward jumps. Intended reading order and unopened interaction states require separate review.'),
-  ...entries(['uptime.response', 'uptime.errors', 'uptime.provenance'], ['task:bindings'], 'availability'),
+  ...entries(['uptime.response', 'uptime.errors', 'uptime.provenance'], ['task:bindings', 'projection:uptime'], 'uptime_probes', 'checked_scope', 'Recorded public HTTP observations remain separate from configured rendered-page verification.'),
   ...entries(['uptime.console'], ['page:console']),
-  ...entries(['uptime.schedule', 'uptime.incidents', 'uptime.history', 'uptime.recovery'], ['projection:availability'], 'availability', 'checked_scope', 'Persisted configured availability runs and incident history, not uninterrupted observation between scheduled checks.'),
+  ...entries(['uptime.schedule', 'uptime.incidents', 'uptime.history', 'uptime.recovery'], ['projection:uptime'], 'uptime_probes', 'checked_scope', 'Recorded five-minute public HTTP probes, confirmation and incident history. Missing periods remain unknown; rendered-page verification is separate.'),
 ]
 
 export function validateAdvertisedCoverage(definitions: readonly AdvertisedCoverage[] = ADVERTISED_COVERAGE) {
@@ -115,7 +118,7 @@ export function validateAdvertisedCoverage(definitions: readonly AdvertisedCover
       const [kind, id] = evaluator.split(':')
       const valid = kind === 'page' ? Object.hasOwn(PAGE_CHECK_DEFINITIONS, id)
         : kind === 'search' ? search.has(id) : kind === 'task' ? taskKindSchema.safeParse(id).success
-          : evaluator === 'provider:analytics' || evaluator === 'projection:availability'
+          : evaluator === 'provider:analytics' || evaluator === 'projection:availability' || evaluator === 'projection:uptime'
       if (!valid) throw new Error('Missing coverage evaluator: ' + evaluator)
     }
     const acceptance = definition.acceptance

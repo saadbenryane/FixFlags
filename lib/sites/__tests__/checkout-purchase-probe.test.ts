@@ -66,8 +66,8 @@ describe('unmocked Checkout purchase probe', () => {
   afterAll(async () => {
     if (previousFixture === undefined) delete process.env.FIXFLAGS_CHECKOUT_FIXTURE
     else process.env.FIXFLAGS_CHECKOUT_FIXTURE = previousFixture
-    await closeServer?.()
-    await closeBrowser()
+    try { await closeBrowser() }
+    finally { await closeServer?.() }
   })
 
   beforeEach(() => {
@@ -221,6 +221,7 @@ async function listenFixtures(): Promise<{ origin: string; close: () => Promise<
     origin: `http://127.0.0.1:${address.port}`,
     close: () => new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()))
+      server.closeIdleConnections()
     }),
   }
 }

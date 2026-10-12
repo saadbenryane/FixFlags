@@ -61,7 +61,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
   }
 
   function requestAccountCheck(mode: 'retest' | 'cleanup') {
-    setAccountChecks(current => ({ ...current, accounts: mode === 'retest' ? [{ purpose: 'retained', email: 'test+sample@fixflags.example', state: 'ACTIVE' }] : [],
+    setAccountChecks(current => ({ ...current, canCleanup: mode === 'retest', cleanupUnavailableReason: null, accounts: mode === 'retest' ? [{ purpose: 'retained', email: 'test+sample@fixflags.example', state: 'ACTIVE' }] : [],
       results: [{ kind: mode === 'retest' ? 'signed_in' : 'deletion', state: 'verified', detail: mode === 'retest' ? P.accountResult : P.accountCleanupResult, pageUrl: `https://${C.boardLabel}/account`, evidence: {}, checkedAt: P.checkedAt }],
     }))
     setAccountMessage(mode === 'retest' ? P.retested : P.cleanedUp)

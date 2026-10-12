@@ -68,6 +68,7 @@ describe('worker heartbeat aggregation', () => {
         now
       )
     ).toEqual({
+      uptimeReady: false, accountChecksReady: false, accountConfigurationMatches: false,
       alive: false,
       lastSeenMs: null,
       ageSeconds: null,
@@ -77,5 +78,16 @@ describe('worker heartbeat aggregation', () => {
       configuredConcurrency: 0,
       workers: [],
     })
+  })
+})
+
+
+describe('uptime capability evidence', () => {
+  it('requires a recent successful scheduler sweep from every live worker', () => {
+    const ready = heartbeat('ready', { uptimeReady: true, lastUptimeSweepAt: new Date(now - 30_000).toISOString() })
+    expect(aggregateWorkerHeartbeats([ready], now).uptimeReady).toBe(true)
+    expect(aggregateWorkerHeartbeats([ready, heartbeat('old')], now).uptimeReady).toBe(false)
+    expect(aggregateWorkerHeartbeats([{ ...ready, lastUptimeSweepAt: new Date(now - 91_000).toISOString() }], now).uptimeReady).toBe(false)
+    expect(aggregateWorkerHeartbeats([{ ...ready, lastUptimeSweepAt: 'invalid' }], now).uptimeReady).toBe(false)
   })
 })

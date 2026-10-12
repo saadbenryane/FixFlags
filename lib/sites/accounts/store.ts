@@ -2,9 +2,11 @@ import { testIdentity } from './identity'
 import { randomUUID } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { encryptSecret } from '@/lib/security/crypto'
+import { decryptSecret, encryptSecret } from '@/lib/security/crypto'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { accountChecksEntitled, accountInfrastructureReady, accountCleanupReady, type AccountIntent, type AccountChecksView } from './contracts'
+import { accountPurposeSchema, accountStateSchema } from './contracts'
+import { ACCOUNT_CHECK_COPY as C } from '@/lib/marketing/copy/account-checks'
 
 export async function accountAdmission(projectId: string, mode: AccountIntent['mode'] = 'routine') {
   const ready = mode === 'cleanup' ? accountCleanupReady() : accountInfrastructureReady()
@@ -47,16 +49,28 @@ export async function reserveAccount(input: { projectId: string; origin: string;
 export async function loadAccountChecksView(projectId: string): Promise<AccountChecksView> {
   const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null }, select: {
     accountChecksEnabled: true, user: { select: { role: true, plan: true, subscriptionStatus: true } },
-    testAccounts: { select: { purpose: true, email: true, state: true }, take: 2 },
+    testAccounts: { select: { purpose: true, email: true, state: true, submittedAt: true, encryptedPassword: true }, orderBy: { createdAt: 'asc' }, take: 100 },
     accountCheckReceipts: { orderBy: { createdAt: 'desc' }, take: 100,
       select: { kind: true, state: true, detail: true, pageUrl: true, evidence: true, createdAt: true } },
   } })
   const eligible = accountChecksEntitled(project?.user ?? null), ready = accountInfrastructureReady()
+  const accounts = (project?.testAccounts ?? []).map(account => ({ email: account.email,
+    purpose: accountPurposeSchema.parse(account.purpose), state: accountStateSchema.parse(account.state) }))
+  const hasAccounts = accounts.some(account => account.state !== 'DELETED')
+  let credentialsUsable = accountCleanupReady()
+  if (credentialsUsable) {
+    try {
+      for (const account of project?.testAccounts ?? []) if (account.state !== 'DELETED' && account.submittedAt)
+        decryptSecret(account.encryptedPassword)
+    } catch { credentialsUsable = false }
+  }
+  const canCleanup = Boolean(project && hasAccounts && credentialsUsable)
   const seen = new Set<string>()
   const { accountObservationSchema } = await import('./contracts')
   return { enabled: project?.accountChecksEnabled ?? false, eligible, ready,
-    reason: !eligible ? 'Account checks are available on paid plans and during open beta.' : !ready ? 'Automatic account checks are not available yet.' : null,
-    accounts: project?.testAccounts ?? [], results: (project?.accountCheckReceipts ?? []).flatMap(row => {
+    canCleanup, cleanupUnavailableReason: hasAccounts && !canCleanup ? C.cleanupUnavailable : null,
+    reason: !eligible ? C.notEligible : !ready ? C.notReady : null,
+    accounts, results: (project?.accountCheckReceipts ?? []).flatMap(row => {
       const key = row.kind + ':' + row.pageUrl
       if (seen.has(key)) return []; seen.add(key)
       // Parse only the public-safe observation, not timestamps or persistence fields.

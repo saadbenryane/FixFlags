@@ -12,8 +12,11 @@ export const accountObservationSchema = z.object({
 }).strict()
 export type AccountObservation = z.infer<typeof accountObservationSchema>
 export const accountResultSchema = z.object({ observations: z.array(accountObservationSchema).min(1).max(100) }).strict()
+export const accountPurposeSchema = z.enum(['retained', 'disposable'])
+export const accountStateSchema = z.enum(['RESERVED', 'SUBMITTING', 'VERIFYING', 'ACTIVE', 'DELETING', 'DELETED'])
 export const accountViewSchema = z.object({ enabled: z.boolean(), eligible: z.boolean(), ready: z.boolean(),
-  reason: z.string().nullable(), accounts: z.array(z.object({ purpose: z.string(), email: z.string(), state: z.string() }).strict()).max(2),
+  canCleanup: z.boolean(), cleanupUnavailableReason: z.string().nullable(),
+  reason: z.string().nullable(), accounts: z.array(z.object({ purpose: accountPurposeSchema, email: z.string(), state: accountStateSchema }).strict()).max(100),
   results: z.array(accountObservationSchema.extend({ checkedAt: z.string().datetime() })).max(100),
 }).strict()
 export type AccountChecksView = z.infer<typeof accountViewSchema>

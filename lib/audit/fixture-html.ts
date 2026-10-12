@@ -21,7 +21,10 @@ export function runAccuracyFixtureChecks(fixture: Pick<AccuracyHtmlFixture, 'fil
     const requestedUrl = new URL(input instanceof Request ? input.url : input.toString())
     const status =
       fixture.brokenLinks && DEMO_BROKEN_URLS.has(requestedUrl.toString()) ? 404 : 200
-    return new Response('', { status })
+    const image = requestedUrl.toString() === new URL(meta.ogImage ?? '/missing-image', fixture.url).toString()
+    return new Response(status === 404 ? 'Fixture destination missing' : image
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1"/></svg>'
+      : '<html><body><p>Recorded fixture destination</p></body></html>', { status, headers: { 'content-type': image && status === 200 ? 'image/svg+xml' : 'text/html' } })
   }) as typeof fetch
 
   return runAllChecks(

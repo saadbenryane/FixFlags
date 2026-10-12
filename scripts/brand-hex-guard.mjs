@@ -6,6 +6,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const ROOT = process.cwd()
 const ALLOWED = new Set([
@@ -34,7 +35,15 @@ const ALLOWED_PREFIXES = [
 const SCAN_DIRS = ['app', 'components', 'lib']
 const SKIP = new Set(['node_modules', '.next', 'dist'])
 
-const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g
+const HEX_RE = /#[0-9a-fA-F]{3,8}\b(?!%)/g
+
+export function brandColorViolations(file, source) {
+  if (ALLOWED.has(file) || ALLOWED_PREFIXES.some(prefix => file.startsWith(prefix))) return []
+  // Scanner test documents model third-party websites, not product styling.
+  if (/^lib\/audit\/.*(?:\.test\.tsx?$|\/fixtures\/)/.test(file)) return []
+  const stylingSource = source.replace(/\b(?:href|id)=(['"])[^'"]*\1/g, '')
+  return stylingSource.match(HEX_RE) ?? []
+}
 
 function walk(dir, files = []) {
   for (const name of readdirSync(dir)) {
@@ -47,28 +56,23 @@ function walk(dir, files = []) {
   return files
 }
 
-const violations = []
-
-for (const dir of SCAN_DIRS) {
-  const base = join(ROOT, dir)
-  for (const file of walk(base)) {
-    const rel = relative(ROOT, file)
-    if (ALLOWED.has(rel)) continue
-    if (ALLOWED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue
-    const content = readFileSync(file, 'utf8')
-    const matches = content.match(HEX_RE)
-    if (matches?.length) {
-      violations.push({ file: rel, count: matches.length, sample: matches[0] })
+export function runBrandHexGuard(root = ROOT) {
+  const violations = []
+  for (const dir of SCAN_DIRS) {
+    for (const file of walk(join(root, dir))) {
+      const rel = relative(root, file)
+      const matches = brandColorViolations(rel, readFileSync(file, 'utf8'))
+      if (matches.length) violations.push({ file: rel, count: matches.length, sample: matches[0] })
     }
   }
+  return violations
 }
 
-if (violations.length) {
-  console.error('Brand hex guard failed — use tokens or brand-spec.ts:\n')
-  for (const v of violations) {
-    console.error(`  ${v.file} (${v.count} hex, e.g. ${v.sample})`)
-  }
-  process.exit(1)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const violations = runBrandHexGuard()
+  if (violations.length) {
+    console.error('Brand hex guard failed. Use tokens or brand-spec.ts:')
+    for (const v of violations) console.error(`  ${v.file} (${v.count} hex, e.g. ${v.sample})`)
+    process.exitCode = 1
+  } else console.log('Brand hex guard passed.')
 }
-
-console.log('Brand hex guard passed.')

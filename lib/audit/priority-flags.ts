@@ -62,6 +62,7 @@ function sourceReliabilityWeight(flag: RankableFlag): number {
   ]
   // SEO/sharing/measurement checks have more variable reliability
   const variablePrefixes = [
+    'no-contact-info',
     'security-csp-' ,
     'security-hsts-',
     'security-frame-options-',
@@ -143,6 +144,8 @@ function affectedOutcomesBoost(flag: RankableFlag, contract: ProductContract | n
 // actionable issues. Demoted in Finish Plan ranking so they don't dominate
 // the top-3 on well-built sites where more specific findings matter more.
 const NOISY_POLISH_CHECKS = new Set([
+  // A missing contact hint on one page is advisory context, not a proven failed contact path.
+  'no-contact-info',
   'cookie-consent-absent',
   'skip-link-missing',
   'measurement-ga-gtm-posthog-missing',

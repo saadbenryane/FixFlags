@@ -64,13 +64,14 @@ export function SiteAccountChecksPanel({ initial, enabled, busy = false, onToggl
     <details className={styles.details}><summary>{S.accountDetails}</summary><p>{A.email} {A.retention}</p></details>
     {initial?.reason ? <p className={styles.note}>{initial.reason}</p> : null}
     {initial?.accounts.length ? <dl className={styles.facts}>{initial.accounts.map(account => <div key={account.purpose}>
-      <dt>{account.purpose === 'retained' ? A.retained : A.disposable}</dt><dd>{account.email}</dd><dd>{A.accountStates[account.state as keyof typeof A.accountStates] ?? 'Not verified'}</dd>
+      <dt>{account.purpose === 'retained' ? A.retained : A.disposable}</dt><dd>{account.email}</dd><dd>{A.accountStates[account.state]}</dd>
     </div>)}</dl> : null}
     {initial?.results.length ? <ul className={styles.results}>{initial.results.map(item => <li key={item.kind + item.pageUrl}>
       <strong>{A.kinds[item.kind]}</strong><span data-state={item.state}>{A.states[item.state]}</span><p>{item.detail}</p><time dateTime={item.checkedAt}>{formatEvidenceTimestamp(item.checkedAt)}</time>
     </li>)}</ul> : <p className={styles.note}>{A.none}</p>}
     <div className={styles.actions}><Button variant="outline" disabled={busy || !enabled || !initial?.ready || !initial.eligible} onClick={() => onRequest('retest')}>{A.retest}</Button>
-      <Button variant="ghost" disabled={busy || !initial?.accounts.length || !initial.ready || !initial.eligible} onClick={() => onRequest('cleanup')}>{A.cleanup}</Button></div>
+      <Button variant="ghost" disabled={busy || !initial?.canCleanup} onClick={() => onRequest('cleanup')}>{A.cleanup}</Button></div>
+    {initial?.cleanupUnavailableReason ? <p className={styles.note}>{initial.cleanupUnavailableReason}</p> : null}
     {feedback}
   </SiteSettingsSection>
 }

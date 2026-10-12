@@ -1,5 +1,9 @@
 # Release evidence runbook
 
+The current release profile is website-only public validation with one-website open-beta access. The [completion ledger](product-masterplan.md#public-website-validation-completion-ledger) supersedes broader machine-client launch obligations for this release. Parked MCP/CLI journeys cannot satisfy or block website acceptance. Account lifecycle, uptime, category rechecks, notification recovery, and acknowledged Site removal require actual execution evidence. GitHub Actions CI and Railway Wait for CI remain disabled by explicit release direction. Local verification and exact-revision deployment attestation must identify their actual proof source without manufacturing successful CI checks.
+
+Real receiving configuration remains open: the Resend domain and MX record are verified and receiving is enabled, but the production receiving webhook is disabled. Production automatic-account execution remains disabled until webhook processing and a controlled lifecycle are verified. A natural scheduled production full-check cycle and five observed representative-user sessions also remain required. Accelerated fixtures and automated interaction checks supplement those requirements.
+
 Operational companion to [the launch acceptance criteria in the product
 masterplan](product-masterplan.md#11-launch-acceptance-criteria). That checklist
 is the contract. This file says how each item is actually proven, and which

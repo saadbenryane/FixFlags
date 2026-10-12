@@ -9,9 +9,9 @@ export async function GET(request: Request) {
     const profile = selected === 'commercial' ? 'commercial' : 'free-launch'
     const readiness = await readLaunchReadiness(undefined, profile)
     return NextResponse.json(readiness, { status: readiness.ok ? 200 : 503 })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Unknown error' },
+      { ok: false, error: 'Readiness check could not complete.' },
       { status: 503 }
     )
   }

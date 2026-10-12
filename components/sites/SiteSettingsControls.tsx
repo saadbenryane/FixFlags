@@ -2,7 +2,10 @@
 
 import { SiteAccountChecksControls } from './SiteAccountChecksControls'
 import { SiteMonitoringSettingsPanel, SiteNotificationSettingsPanel, SiteRemovalSettingsPanel, type NotificationLevel } from './SiteSettingsPanels'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { SiteRemovalDialog } from './SiteRemovalDialog'
+import { ACCOUNT_CHECK_COPY as A } from '@/lib/marketing/copy/account-checks'
+import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
 import { SiteMonitoringSchedule } from './SiteMonitoringSchedule'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -30,7 +33,9 @@ export function SiteSettingsControls({
   const router = useRouter()
   const [level, setLevel] = useState<NotificationLevel | null>(initial.notificationLevel)
   const [recovery, setRecovery] = useState<boolean | null>(initial.notifyOnRecovery)
-  const { busy, message, error, submit } = useSiteAction()
+  const { busy, message, error, submit, requestKey, completeIntent } = useSiteAction(`site:${siteId}:settings`)
+  const [removalOpen, setRemovalOpen] = useState(false)
+  const removalOpener = useRef<HTMLElement | null>(null)
   const [paused, setPaused] = useState(watch.state === 'paused')
   useEffect(() => {
     const hash = window.location.hash
@@ -51,13 +56,22 @@ export function SiteSettingsControls({
   async function setMonitoringPaused(value: boolean) {
     await submit(() => executeSiteAction(`/api/sites/${siteId}/watch`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: value ? 'pause' : 'resume' }) }, 'acknowledgement'),
-      () => { setPaused(value); return value ? 'Monitoring paused.' : 'Monitoring resumed.' }, () => router.refresh())
+      () => { setPaused(value); return value ? C.settings.monitoringPaused : C.settings.monitoringResumed }, () => router.refresh())
   }
 
-  async function removeSite() {
-    if (!window.confirm(C.settings.removeConfirmation)) return
-    await submit(() => executeSiteAction(`/api/sites/${siteId}`, { method: 'DELETE' }, 'acknowledgement'),
-      () => { router.push('/dashboard'); return null }, () => router.refresh())
+  async function cleanupAccounts() {
+    await submit(() => executeSiteAction(`/api/sites/${siteId}/account-checks`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey('cleanup') },
+      body: JSON.stringify({ action: 'cleanup' }),
+    }, 'run'), () => { completeIntent('cleanup'); return A.requested }, () => router.refresh())
+  }
+  async function removeSite(remaining: AccountChecksView['accounts']) {
+    const result = await submit(() => executeSiteAction(`/api/sites/${siteId}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(remaining.length ? { acknowledgeRemainingAccounts: true,
+        remainingAccounts: remaining.map(({ email, state }) => ({ email, state })) } : {}),
+    }, 'acknowledgement'), () => { router.push('/dashboard'); return null }, () => router.refresh())
+    if (result.kind === 'refused') { setRemovalOpen(false); router.refresh() }
   }
 
   return (
@@ -75,9 +89,12 @@ export function SiteSettingsControls({
       <SiteNotificationSettingsPanel level={level} recovery={recovery} busy={busy} onChange={(nextLevel, nextRecovery) => void saveNotifications(nextLevel, nextRecovery)} />
 
       <SiteAccountChecksControls siteId={siteId} initial={initial.accountChecks} />
-      {busy ? <p role="status" className="text-sm">Saving settings…</p> : null}
+      {busy ? <p role="status" className="text-sm">{C.settings.saving}</p> : null}
       <SiteActionFeedback message={message} error={error} siteId={siteId} />
-      <SiteRemovalSettingsPanel busy={busy} onRemove={() => void removeSite()} />
+      <SiteRemovalSettingsPanel busy={busy} onRemove={() => { removalOpener.current = document.activeElement as HTMLElement; setRemovalOpen(true) }} />
+      <SiteRemovalDialog open={removalOpen} onOpenChange={setRemovalOpen} accounts={initial.accountChecks} busy={busy}
+        onCleanup={() => void cleanupAccounts()} onRemove={remaining => void removeSite(remaining)}
+        onCloseAutoFocus={event => { event.preventDefault(); removalOpener.current?.focus() }} />
     </div>
   )
 }

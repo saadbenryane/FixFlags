@@ -127,9 +127,8 @@ describe('the Flags view stays a Server Component', () => {
     expect(code('components/sites/SiteFlagsView.tsx')).not.toMatch(/useSearchParams/)
   })
 
-  it('is not marked as a client component, matching the sibling Site settings view', () => {
+  it('keeps the legacy Flags adapter on the server', () => {
     expect(source('components/sites/SiteFlagsView.tsx').trimStart().startsWith("'use client'")).toBe(false)
-    expect(source('components/sites/SiteSettingsView.tsx').trimStart().startsWith("'use client'")).toBe(false)
   })
 })
 
@@ -162,7 +161,8 @@ describe('the tab is read on the server', () => {
 describe('legacy list renderers use canonical workspace views', () => {
   it('places resolved history in Timeline', () => {
     renderFlags('resolved')
-    expect(screen.getByRole('heading', { name: 'Timeline' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Timeline', level: 1 })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Timeline' })).toBeInTheDocument()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
   })
 })

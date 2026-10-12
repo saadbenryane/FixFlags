@@ -10,7 +10,11 @@ config({ path: '.env.local', quiet: true })
 const databaseSource = new URL(process.env.DATABASE_URL ?? '')
 if (!['localhost', '127.0.0.1'].includes(databaseSource.hostname)) throw new Error('Local PostgreSQL required')
 if (!existsSync('.next-e2e/standalone/server.js')) throw new Error('Build the current revision with scripts/next-build.mjs .next-e2e first')
-for (const port of [3145, 3146]) {
+const appPort = Number(process.env.FIXFLAGS_LOCAL_APP_PORT ?? 3145)
+const fixturePort = Number(process.env.FIXFLAGS_LOCAL_FIXTURE_PORT ?? 3146)
+if (![appPort, fixturePort].every(port => Number.isInteger(port) && port > 1024 && port < 65536) || appPort === fixturePort) throw new Error('Choose two distinct local verification ports')
+const appOrigin = `http://127.0.0.1:${appPort}`
+for (const port of [appPort, fixturePort]) {
   const probe = createServer()
   await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(port, '127.0.0.1', resolve) })
   await new Promise(resolve => probe.close(resolve))
@@ -57,25 +61,33 @@ try {
   run('docker', ['run', '--detach', '--name', redisName, '--publish', '127.0.0.1::6379', 'redis:7-alpine', 'redis-server', '--save', '', '--appendonly', 'no']); redisCreated = true
   const port = run('docker', ['port', redisName, '6379/tcp']).split(':').at(-1)
   Object.assign(env, { REDIS_URL: `redis://127.0.0.1:${port}`, FIXFLAGS_LOCAL_RELIABILITY_PROOF: '1', FIXFLAGS_LOCAL_PROVIDER_REFUSAL: '1',
-    NEXT_PUBLIC_APP_URL: 'http://127.0.0.1:3145', BETTER_AUTH_URL: 'http://127.0.0.1:3145', BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
+    NEXT_PUBLIC_APP_URL: appOrigin, BETTER_AUTH_URL: appOrigin, FIXFLAGS_LOCAL_APP_PORT: String(appPort), FIXFLAGS_LOCAL_FIXTURE_PORT: String(fixturePort), BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
     TOKEN_ENCRYPTION_KEY: '11'.repeat(32), OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', PAGESPEED_API_KEY: '',
     R2_ACCESS_KEY_ID: '', R2_SECRET_ACCESS_KEY: '', RESEND_API_KEY: '' })
+  run(process.execPath, ['scripts/build-worker.mjs'], env)
+  receipt.parserBundleSha256 = createHash('sha256').update(readFileSync('dist/worker/check-parser.js')).digest('hex')
   runtime = spawn(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'e2e/support/customer-reliability-runtime.ts'], { env, stdio: ['ignore', runtimeLog, runtimeLog] })
   const deadline = Date.now() + 60_000
   while (true) {
     if (runtime.exitCode !== null) throw new Error('Fixture runtime failed. Inspect its local log.')
     if (Date.now() >= deadline) throw new Error('Fixture runtime did not become ready.')
-    const response = await fetch('http://127.0.0.1:3145/sign-in').catch(() => null)
+    const response = await fetch(`${appOrigin}/sign-in`).catch(() => null)
     if (response?.ok) break
     await new Promise(resolve => setTimeout(resolve, 500))
   }
   console.log('Isolated runtime ready. Running the browser category journey.')
-  const result = run(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', 'e2e/category-recheck.spec.ts', '--project=chromium'], { ...env, E2E_BASE_URL: 'http://127.0.0.1:3145' })
+  const result = run(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', 'e2e/category-recheck.spec.ts', '--project=chromium'], { ...env, E2E_BASE_URL: appOrigin })
   writeFileSync(output + '/playwright.log', result + '\n')
   console.log(result)
   receipt.status = 'passed'
 } catch (error) {
   receipt.status = 'failed'
+  if (created) {
+    const diagnosis = new PrismaClient({ datasourceUrl: disposable.toString() })
+    try { receipt.tasks = await diagnosis.auditVerifierExecution.findMany({
+      where: { workKind: { not: null } }, select: { targetKey: true, workKind: true, workState: true, workAttempts: true, workErrorCode: true, workRetryAt: true, workLeaseUntil: true },
+    }) } finally { await diagnosis.$disconnect() }
+  }
   receipt.error = error instanceof Error ? error.message : String(error)
   throw error
 } finally {

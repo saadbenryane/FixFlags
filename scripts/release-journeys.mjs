@@ -17,7 +17,6 @@ export const REQUIRED_RELEASE_JOURNEYS = [
   'watch-truth',
   'tenant-isolation',
   'site-surfaces',
-  'mcp-full-loop',
   // Access and identity.
   'anonymous-claim',
   'passkey-2fa-recovery',
@@ -31,6 +30,7 @@ export const REQUIRED_RELEASE_JOURNEYS = [
 // Retained for an explicit, non-customer power-tools verification run. These
 // annotations remain valid, but they cannot satisfy or block the web release.
 export const PARKED_POWER_TOOL_JOURNEYS = [
+  'mcp-full-loop',
   'cli-registry-loop',
 ]
 
@@ -45,8 +45,7 @@ export const JOURNEYS_BY_STAGE = {
     'watch-truth',
     'tenant-isolation',
     'site-surfaces',
-    'mcp-full-loop',
-    'anonymous-claim',
+      'anonymous-claim',
     'passkey-2fa-recovery',
   ],
   'billing-open': ['billing-webhook-active'],

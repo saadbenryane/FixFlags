@@ -82,6 +82,8 @@ test('typed MCP manifest and registrations expose stable keys', () => {
 test('tracked generated clutter covers build and browser artifacts', () => {
   assert.deepEqual(collectTrackedGeneratedArtifacts([
     'lib/source.ts',
+    'app/(marketing)/coverage/page.tsx',
+    'app/api/sites/[siteId]/coverage/route.ts',
     '.cache/eslint/changed',
     'coverage/index.html',
     '.next/server/app.js',

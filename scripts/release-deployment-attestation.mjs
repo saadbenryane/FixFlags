@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
+import { chmodSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -36,7 +37,20 @@ export function attestSuccessfulChecks(checkRuns) {
   }
 }
 
-export function attestRailwayDeployment({ deployments, service, role, gitSha, ciCompletedAt }) {
+export function attestLocalFoundation(receipt, gitSha) {
+  const labels = ['clean-install', 'fresh-database', 'full-verification', 'container-build', 'container-ready']
+  if (receipt?.schemaVersion !== 2 || receipt.stage !== 'foundation' || receipt.status !== 'PASS' || receipt.profile !== 'free-launch' || receipt.gitSha !== gitSha)
+    throw new Error('Local foundation proof must be a passing free-launch receipt for the exact candidate')
+  if (JSON.stringify(receipt.commands?.map(command => command.label)) !== JSON.stringify(labels) || receipt.commands.some(command => command.exitCode !== 0))
+    throw new Error('Local foundation command proof is incomplete or failed')
+  if (!/^sha256:[a-f0-9]{64}$/.test(receipt.containerImageDigest ?? '') || !Number.isFinite(Date.parse(receipt.completedAt)) ||
+    !Number.isFinite(Date.parse(receipt.startedAt)) || Date.parse(receipt.completedAt) <= Date.parse(receipt.startedAt))
+    throw new Error('Local foundation image or completion evidence is invalid')
+  return { source: 'local-foundation', status: 'SUCCESS', completedAt: receipt.completedAt, runId: receipt.runId,
+    containerImageDigest: receipt.containerImageDigest }
+}
+
+export function attestRailwayDeployment({ deployments, service, role, gitSha, ciCompletedAt, verificationCompletedAt }) {
   const deployment = deployments
     .filter((candidate) => candidate?.meta?.commitHash === gitSha)
     .sort((left, right) => Date.parse(right.updatedAt ?? '') - Date.parse(left.updatedAt ?? ''))[0]
@@ -45,8 +59,9 @@ export function attestRailwayDeployment({ deployments, service, role, gitSha, ci
     throw new Error(`${service} candidate deployment is not successful`)
   }
   const transitionedAt = deployment.updatedAt
-  if (!transitionedAt || Date.parse(transitionedAt) <= Date.parse(ciCompletedAt)) {
-    throw new Error(`${service} has no successful post-CI deployment transition`)
+  const provenAt = verificationCompletedAt ?? ciCompletedAt
+  if (!transitionedAt || !Number.isFinite(Date.parse(provenAt)) || !Number.isFinite(Date.parse(transitionedAt)) || Date.parse(transitionedAt) <= Date.parse(provenAt)) {
+    throw new Error(`${service} has no successful ${verificationCompletedAt ? 'post-verification' : 'post-CI'} deployment transition`)
   }
   return {
     service,
@@ -60,9 +75,9 @@ export function attestRailwayDeployment({ deployments, service, role, gitSha, ci
   }
 }
 
-export function buildDeploymentAttestation({ gitSha, repository, checkRuns, deploymentsByRole }) {
+export function buildDeploymentAttestation({ gitSha, repository, checkRuns, localFoundation, deploymentsByRole }) {
   if (!/^[a-f0-9]{40}$/.test(gitSha)) throw new Error('Candidate revision must be a full Git SHA')
-  const ci = attestSuccessfulChecks(checkRuns)
+  const verification = localFoundation ? attestLocalFoundation(localFoundation, gitSha) : { source: 'github-checks', ...attestSuccessfulChecks(checkRuns) }
   const services = ['web', 'worker'].map((role) => {
     const input = deploymentsByRole[role]
     if (!input) throw new Error(`${role} Railway deployment evidence is missing`)
@@ -71,14 +86,14 @@ export function buildDeploymentAttestation({ gitSha, repository, checkRuns, depl
       service: input.service,
       role,
       gitSha,
-      ciCompletedAt: ci.completedAt,
+      verificationCompletedAt: verification.completedAt,
     })
   })
   return {
-    schemaVersion: 2,
+    schemaVersion: localFoundation ? 3 : 2,
     gitSha,
     repository,
-    ci,
+    ...(localFoundation ? { verification } : { ci: verification }),
     services,
   }
 }
@@ -88,15 +103,27 @@ function main() {
   if (!target) throw new Error('RELEASE_DEPLOYMENT_EVIDENCE_FILE is required')
   const gitSha = currentGitSha()
   const repository = process.env.RELEASE_GITHUB_REPOSITORY || 'saadbenryane/FixFlags'
-  const checkRunPages = runJson('gh', [
+  const proofSource = process.env.RELEASE_DEPLOYMENT_PROOF ?? 'local-foundation'
+  if (!['local-foundation', 'github-checks'].includes(proofSource)) throw new Error('Unknown deployment proof source')
+  let localFoundation
+  let foundationHash
+  if (proofSource === 'local-foundation') {
+    const file = process.env.RELEASE_FOUNDATION_RECEIPT_FILE ?? path.join(path.dirname(target), 'foundation.json')
+    const stat = lstatSync(file)
+    if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o077) !== 0) throw new Error('Local foundation receipt must be a private regular file')
+    const bytes = readFileSync(file)
+    localFoundation = JSON.parse(bytes.toString('utf8'))
+    foundationHash = createHash('sha256').update(bytes).digest('hex')
+  }
+  const checkRunPages = proofSource === 'github-checks' ? runJson('gh', [
     'api',
     '--paginate',
     '--slurp',
     `repos/${repository}/commits/${gitSha}/check-runs?per_page=100`,
-  ])
+  ]) : []
   const checkRuns = checkRunPages.flatMap((page) => page.check_runs ?? [])
   const environment = process.env.RELEASE_RAILWAY_ENVIRONMENT || 'production'
-  const webService = process.env.RELEASE_RAILWAY_WEB_SERVICE || 'QewOS'
+  const webService = process.env.RELEASE_RAILWAY_WEB_SERVICE || 'FixFlags'
   const workerService = process.env.RELEASE_RAILWAY_WORKER_SERVICE || 'FixFlags Worker'
   const loadDeployments = (service) => runJson('railway', [
     'deployment',
@@ -111,11 +138,13 @@ function main() {
     gitSha,
     repository,
     checkRuns,
+    localFoundation,
     deploymentsByRole: {
       web: { service: webService, deployments: loadDeployments(webService) },
       worker: { service: workerService, deployments: loadDeployments(workerService) },
     },
   })
+  if (foundationHash) evidence.verification.receiptSha256 = foundationHash
   mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 })
   writeFileSync(target, `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 })
   chmodSync(target, 0o600)

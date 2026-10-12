@@ -98,6 +98,7 @@ vi.mock('@/lib/db', () => {
     prisma: {
       $transaction: async (fn: (t: unknown) => unknown) => fn(tx),
       audit: tx.audit,
+      flag: { findMany: async () => [] },
       provisionalSite: tx.provisionalSite,
       project: tx.project,
       $executeRaw: tx.$executeRaw,

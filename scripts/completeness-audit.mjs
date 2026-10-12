@@ -24,7 +24,7 @@ export function collectRegisteredMcpToolKeys(source) {
     .map((match) => match[1])
 }
 
-const GENERATED_ARTIFACT_PATTERN = /(^|\/)(?:node_modules|dist|\.cache|coverage|\.next(?:-[^/]*)?|output|playwright-report|test-results)(?:\/|$)/
+const GENERATED_ARTIFACT_PATTERN = /(^|\/)(?:node_modules|dist|\.cache|\.next(?:-[^/]*)?|output|playwright-report|test-results)(?:\/|$)|^coverage(?:\/|$)/
 
 export function collectTrackedGeneratedArtifacts(files) {
   return files.filter((file) => GENERATED_ARTIFACT_PATTERN.test(file))

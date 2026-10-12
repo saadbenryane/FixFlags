@@ -27,7 +27,7 @@ export function PublicDisclosure({ page, target, summary, children, className }:
   page: string; target: string; summary: string; children: React.ReactNode; className?: string
 }) {
   return <details className={className} onToggle={event => {
-    if (event.currentTarget.open && PUBLIC_PATHS.has(page)) trackEvent('marketing_interaction', { page, action: 'expand', target, journey_id: readOrCreateAnalyticsJourneyId() ?? undefined })
+    if (event.currentTarget.open && PUBLIC_PATHS.has(page) && PUBLIC_PATHS.has(window.location.pathname)) trackEvent('marketing_interaction', { page, action: 'expand', target, journey_id: readOrCreateAnalyticsJourneyId() ?? undefined })
   }}>
     <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{summary}</summary>
     {children}

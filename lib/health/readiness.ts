@@ -1,3 +1,4 @@
+import { accountInfrastructureReady } from '@/lib/sites/accounts/contracts'
 import { readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { prisma } from '@/lib/db'
@@ -22,6 +23,8 @@ export type ReadinessSubsystemName =
   | 'billing'
   | 'email'
   | 'productWatch'
+  | 'uptime'
+  | 'automaticAccounts'
 
 export type ReadinessProfile = 'free-launch' | 'commercial'
 
@@ -233,6 +236,17 @@ function productionDependencies(): ReadinessDependencies {
       Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL),
       'Email delivery is incomplete'
     ),
+    uptime: async () => {
+      const heartbeat = await readWorkerHeartbeat()
+      return heartbeat.alive && heartbeat.uptimeReady
+        ? { ok: true } : { ok: false, detail: 'No current worker has confirmed uptime scheduling' }
+    },
+    automaticAccounts: async () => {
+      if (!accountInfrastructureReady()) return { ok: false, detail: 'Automatic account infrastructure or lifecycle proof is incomplete' }
+      const heartbeat = await readWorkerHeartbeat()
+      return heartbeat.alive && heartbeat.accountChecksReady && heartbeat.accountConfigurationMatches
+        ? { ok: true } : { ok: false, detail: 'Web and worker account capabilities are unavailable or inconsistent' }
+    },
     productWatch: async () => {
       const readiness = productWatchReadiness()
       return readiness.available
@@ -245,8 +259,8 @@ function productionDependencies(): ReadinessDependencies {
 async function safeCheck(check: () => Promise<ReadinessSubsystem>): Promise<ReadinessSubsystem> {
   try {
     return await check()
-  } catch (error) {
-    return { ok: false, detail: error instanceof Error ? error.message : String(error) }
+  } catch {
+    return { ok: false, detail: 'Readiness check could not complete.' }
   }
 }
 

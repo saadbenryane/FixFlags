@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { prisma } from '@/lib/db'
+import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
 
 export async function GET(
   _req: Request,
@@ -22,7 +22,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: Request,
+  request: Request,
   context: { params: Promise<{ siteId: string }> }
 ) {
   try {
@@ -31,26 +31,14 @@ export async function DELETE(
     if (!access.ok) return apiError(access.message, access.status)
     const projectId = access.decision.site.projectId
     if (access.decision.role !== 'owner' || !projectId) return apiError('Claim this Site first.', 403)
-    await prisma.$transaction([
-      prisma.shopifyShop.updateMany({
-        where: { projectId },
-        data: { projectId: null, linkedAt: null },
-      }),
-      prisma.project.update({
-        where: { id: projectId },
-        data: {
-          deletedAt: new Date(),
-          isManaged: false,
-          watchInterval: null,
-          watchEveryMinutes: null,
-          watchNextRunAt: null,
-          watchLeaseUntil: null,
-          watchLastError: null,
-          watchConsecutiveFailures: 0,
-        },
-      }),
-    ])
-    return NextResponse.json({ ok: true })
+    const raw = await request.text()
+    let body: unknown
+    try { body = raw ? JSON.parse(raw) : {} }
+    catch { return apiError('Choose valid Site removal options.', 400) }
+    const parsed = siteRemovalSchema.safeParse(body)
+    if (!parsed.success) return apiError('Choose valid Site removal options.', 400)
+    const result = await removeSite({ projectId, userId: access.decision.site.userId! }, parsed.data)
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     return handleRouteError(error, 'Could not remove Site')
   }

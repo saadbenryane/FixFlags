@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
   createAudit: vi.fn(),
+  flagFindMany: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: mocks.getSession } } }))
@@ -36,9 +37,12 @@ vi.mock('@/lib/db', () => ({
       count: mocks.runCount,
     },
     audit: { findFirst: mocks.auditFindFirst, findUnique: mocks.auditFindUnique },
+    flag: { findMany: mocks.flagFindMany },
   },
 }))
-vi.mock('@/lib/audit/create-audit', () => ({ createAndEnqueueAudit: mocks.createAudit }))
+vi.mock('@/lib/audit/create-audit', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/audit/create-audit')>(), createAndEnqueueAudit: mocks.createAudit,
+}))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}) }))
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
@@ -53,6 +57,7 @@ describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
       decision: { role: 'owner', site: { siteId: 'site-1', projectId: 'project-1' } },
     })
     mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.flagFindMany.mockResolvedValue([])
     mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example/' })
     mocks.runFindUnique.mockResolvedValue(null)
     mocks.runFindFirst.mockResolvedValue(null)

@@ -83,8 +83,10 @@ const server = createServer(async (req, res) => {
   const checkout = url.pathname.endsWith('/checkout')
   res.end(`<!doctype html><html lang="en"><head>${title}<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Find thoughtfully selected outdoor equipment for hiking and camping. Review your cart and continue to checkout safely."><style>body{margin:0;font:18px system-ui;color:#18232c;background:#fafaf8}main{max-width:760px;margin:70px auto;padding:24px}a,button{display:inline-block;padding:16px;background:#163b2f;color:white;border-radius:8px}h1{font-size:40px}</style></head><body><main>${checkout ? `<h1>${broken ? 'Checkout is temporarily unavailable' : 'Checkout'}</h1><p>${broken ? 'Please try again later.' : 'Review your order. This controlled fixture never places an order.'}</p>` : `<h1>Equipment for your next outdoor adventure</h1><p>Choose your hiking pack and continue to checkout. Free shipping on orders over $50.</p><p>Trail Pack — $75</p><a href="${prefix}/checkout">Buy now</a><p>Contact: help@example.invalid</p>`}</main></body></html>`)
 })
-await new Promise<void>(resolve => server.listen(3146, '127.0.0.1', resolve))
-const fixtureOrigin = 'http://127.0.0.1:3146'
+const appPort = Number(process.env.FIXFLAGS_LOCAL_APP_PORT ?? 3145)
+const fixturePort = Number(process.env.FIXFLAGS_LOCAL_FIXTURE_PORT ?? 3146)
+await new Promise<void>(resolve => server.listen(fixturePort, '127.0.0.1', resolve))
+const fixtureOrigin = `http://127.0.0.1:${fixturePort}`
 const nativeFetch = globalThis.fetch
 // Only this worker process maps controlled transports. DNS/SSRF checks remain intact.
 globalThis.fetch = async (input, init) => {
@@ -134,13 +136,19 @@ chromium.launch = async (options) => {
   return browser
 }
 Object.assign(process.env, {
-  NODE_ENV: 'production', NEXT_PUBLIC_APP_URL: 'http://127.0.0.1:3145', BETTER_AUTH_URL: 'http://127.0.0.1:3145',
+  NODE_ENV: 'production', NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${appPort}`, BETTER_AUTH_URL: `http://127.0.0.1:${appPort}`,
   RESEND_API_KEY: 're_local_transport_fixture', RESEND_FROM_EMAIL: 'FixFlags <watch@example.invalid>',
   R2_ACCOUNT_ID: 'local-fixture', R2_ACCESS_KEY_ID: 'local-fixture', R2_SECRET_ACCESS_KEY: 'local-fixture', R2_BUCKET_NAME: 'evidence', R2_PUBLIC_URL: fixtureOrigin,
   R2_S3_ENDPOINT: fixtureOrigin, R2_FORCE_PATH_STYLE: 'true', FIXFLAGS_ALLOW_DEGRADED_LOCAL: 'true',
   PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: chromium.executablePath(),
 })
-// No recovery scheduler: it would inspect unrelated local Sites.
+// This runtime uses a newly allocated disposable database. Production recovery
+// can run here without observing unrelated local or customer Sites.
+const database = new URL(process.env.DATABASE_URL ?? '')
+if (!['127.0.0.1', 'localhost'].includes(database.hostname) || !database.pathname.startsWith('/fixflags_category_journey_'))
+  throw new Error('The reliability scheduler requires its own disposable category database')
+const { startRecoveryScheduler } = await import('../../lib/queue/recovery-scheduler')
+startRecoveryScheduler()
 const { startWorker } = await import('../../lib/queue/worker')
 const worker = startWorker()
 await worker.waitUntilReady()
@@ -148,10 +156,10 @@ const { getAuditBrowser, getBrowserDiagnostics } = await import('../../lib/audit
 const { touchWorkerHeartbeat } = await import('../../lib/queue/worker-heartbeat')
 await getAuditBrowser()
 await touchWorkerHeartbeat({ browserOk: getBrowserDiagnostics().connected, queueState: 'idle' })
-const web = spawn(process.execPath, ['.next-e2e/standalone/server.js'], { env: { ...process.env, PORT: '3145', HOSTNAME: '127.0.0.1', FIXFLAGS_PROCESS_ROLE: 'web' }, stdio: 'inherit' })
+const web = spawn(process.execPath, ['.next-e2e/standalone/server.js'], { env: { ...process.env, PORT: String(appPort), HOSTNAME: '127.0.0.1', FIXFLAGS_PROCESS_ROLE: 'web' }, stdio: 'inherit' })
 await mkdir('.cache', { recursive: true })
 await writeFile('.cache/customer-reliability-runtime.json', JSON.stringify({ token, prefix, redisUrl: redisUrl.toString(), fixtureOrigin }))
-console.log('LOCAL RELIABILITY FIXTURE READY: app 3145, transport 3146; no external email or storage')
+console.log(`LOCAL RELIABILITY FIXTURE READY: app ${appPort}, transport ${fixturePort}; no external email or storage`)
 process.on('SIGTERM', () => { web.kill(); server.close(); void worker.close().finally(async () => { const keys = await isolatedRedis.keys('*'); if (keys.length) await isolatedRedis.del(...keys); await isolatedRedis.quit(); process.exit(0) }) })
 
 }

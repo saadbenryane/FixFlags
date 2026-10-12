@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   attestRailwayDeployment,
+  attestLocalFoundation,
   attestSuccessfulChecks,
   buildDeploymentAttestation,
 } from './release-deployment-attestation.mjs'
@@ -22,6 +23,24 @@ const deployment = {
 }
 
 describe('release deployment attestation', () => {
+  it('requires complete exact-candidate local foundation proof without manufacturing CI', () => {
+    const foundation = { schemaVersion: 2, stage: 'foundation', profile: 'free-launch', status: 'PASS', gitSha: SHA, runId: 'proof-1',
+      startedAt: '2026-08-25T19:00:00.000Z', completedAt: checks[0].completed_at,
+      containerImageDigest: 'sha256:' + 'b'.repeat(64),
+      commands: ['clean-install', 'fresh-database', 'full-verification', 'container-build', 'container-ready'].map(label => ({ label, exitCode: 0 })) }
+    assert.equal(attestLocalFoundation(foundation, SHA).source, 'local-foundation')
+    for (const invalid of [{ ...foundation, gitSha: 'c'.repeat(40) }, { ...foundation, status: 'FAIL' },
+      { ...foundation, commands: foundation.commands.slice(1) }, { ...foundation, completedAt: 'invalid' },
+      { ...foundation, commands: foundation.commands.map(command => ({ ...command, exitCode: 1 })) }])
+      assert.throws(() => attestLocalFoundation(invalid, SHA))
+    const evidence = buildDeploymentAttestation({ gitSha: SHA, repository: 'saadbenryane/FixFlags', localFoundation: foundation,
+      deploymentsByRole: { web: { service: 'web', deployments: [deployment] }, worker: { service: 'worker', deployments: [deployment] } } })
+    assert.equal(evidence.schemaVersion, 3)
+    assert.equal(evidence.ci, undefined)
+    assert.equal(evidence.verification.source, 'local-foundation')
+    assert.throws(() => buildDeploymentAttestation({ gitSha: SHA, repository: 'saadbenryane/FixFlags', localFoundation: foundation,
+      deploymentsByRole: { web: { service: 'web', deployments: [{ ...deployment, updatedAt: foundation.startedAt }] }, worker: { service: 'worker', deployments: [deployment] } } }), /post-verification/)
+  })
   it('requires every GitHub check to complete successfully', () => {
     assert.equal(attestSuccessfulChecks(checks).status, 'SUCCESS')
     assert.throws(

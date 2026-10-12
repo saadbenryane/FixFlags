@@ -22,12 +22,15 @@ export const SITE_ACTION_COPY = {
   refreshPending: 'The action was saved. Refresh to see the latest state.',
   updatesDisconnected: 'Updates disconnected. Your last recorded evidence is still shown.',
   outcome: {
+    noVerification: 'No completed verification yet', lastAttempted: (when: string) => `Last attempted ${when}`,
+    lastVerified: (when: string) => `Last verified ${when}`,
     availability: 'Page availability',
     verifying: 'Checking…', verify: 'Check now', started: 'Check started',
     pausedRunning: 'Paused. The active verification will finish.', paused: 'Outcome paused.',
     enabled: 'Outcome enabled.', enabledVerifying: 'Outcome enabled. Fresh verification started.',
   },
   settings: {
+    saving: 'Saving settings…', monitoringPaused: 'Monitoring paused.', monitoringResumed: 'Monitoring resumed.',
     notificationsSaved: 'Notification preferences saved.', shopifyDisconnected: 'Shopify disconnected from this Site.',
     googleDisconnected: (provider: 'SEARCH_CONSOLE' | 'ANALYTICS') => `${provider === 'SEARCH_CONSOLE' ? 'Search Console' : 'Analytics'} disconnected from this Site.`,
     disconnectedDetail: 'Disconnected. Earlier numbers stay on the Site.',

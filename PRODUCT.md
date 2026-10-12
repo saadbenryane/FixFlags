@@ -7,7 +7,9 @@ supersedes: []
 
 # Current product implementation
 
-**Workspace implementation inventory, reconciled 2026-10-06. Not a production release attestation.**
+**Workspace implementation inventory, reconciled 2026-10-12. Not a production release attestation.**
+
+The current release is the website app with one-website open-beta access. Websites leads to Site Overview, Timeline, Integrations, and Settings. Category evidence, pages, Outcomes, and diagnostics remain contextual depth. Automatic accounts and HTTP uptime are implemented locally, with controlled lifecycle and deployed proof still required. Settings and removal use tenant-scoped commands, and removal explicitly acknowledges unresolved external accounts. MCP, CLI, repository tools, and paid enrollment retain compatibility and the broader vision but are outside customer discovery and website release acceptance. The current requirement and proof status is recorded once in the [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger).
 
 The accepted destination is [the full vision](knowledge/vision.md). [ROADMAP.md](ROADMAP.md) and [the PRD](docs/product-prd.md) define upcoming implementation. This file describes reusable code and current compatibility behavior; it does not freeze the old experience.
 

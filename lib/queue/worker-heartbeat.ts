@@ -1,3 +1,5 @@
+import { accountInfrastructureReady } from '@/lib/sites/accounts/contracts'
+import { accountConfigurationFingerprint } from '@/lib/sites/accounts/configuration'
 import { createWorkerRedis } from './redis'
 import { randomUUID } from 'node:crypto'
 import type Redis from 'ioredis'
@@ -20,6 +22,7 @@ let diagnostics: WorkerDiagnostics = {
   browserOk: false,
   activeBrowserContexts: 0,
   lastSuccessfulBrowserProbeAt: null,
+  uptimeReady: false, lastUptimeSweepAt: null,
   queueState: 'starting',
 }
 
@@ -31,6 +34,8 @@ function getRedis(): Redis {
 }
 
 export interface WorkerDiagnostics {
+  uptimeReady?: boolean
+  lastUptimeSweepAt?: string | null
   browserOk: boolean
   activeBrowserContexts: number
   lastSuccessfulBrowserProbeAt: string | null
@@ -45,6 +50,8 @@ export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
   version?: string
   sha?: string
   supportedScopes?: string[]
+  accountChecksReady?: boolean
+  accountConfigurationFingerprint?: string | null
 }
 
 /** Called by the worker process on start, idle tick, and each job lifecycle event. */
@@ -62,6 +69,8 @@ export async function touchWorkerHeartbeat(
     version: WORKER_VERSION,
     sha: WORKER_SHA,
     supportedScopes: [...executionSpecSchema.shape.scope.options],
+    accountChecksReady: accountInfrastructureReady(),
+    accountConfigurationFingerprint: accountConfigurationFingerprint(),
     ...diagnostics,
   }
   await getRedis().set(
@@ -73,6 +82,9 @@ export async function touchWorkerHeartbeat(
 }
 
 export interface WorkerHeartbeatStatus {
+  uptimeReady: boolean
+  accountChecksReady: boolean
+  accountConfigurationMatches: boolean
   alive: boolean
   lastSeenMs: number | null
   ageSeconds: number | null
@@ -142,6 +154,7 @@ export async function readWorkerHeartbeat(): Promise<WorkerHeartbeatStatus> {
   const keys = await listHeartbeatKeys()
   if (keys.length === 0) {
     return {
+      uptimeReady: false, accountChecksReady: false, accountConfigurationMatches: false,
       alive: false,
       lastSeenMs: null,
       ageSeconds: null,
@@ -174,6 +187,7 @@ export function aggregateWorkerHeartbeats(
   )
   if (aliveRecords.length === 0) {
     return {
+      uptimeReady: false, accountChecksReady: false, accountConfigurationMatches: false,
       alive: false,
       lastSeenMs: null,
       ageSeconds: null,
@@ -186,6 +200,11 @@ export function aggregateWorkerHeartbeats(
   }
   const lastSeenMs = Math.max(...aliveRecords.map((record) => record.lastSeenMs))
   return {
+    uptimeReady: aliveRecords.every(record => record.uptimeReady === true && record.lastUptimeSweepAt != null &&
+      Number.isFinite(Date.parse(record.lastUptimeSweepAt)) && now - Date.parse(record.lastUptimeSweepAt) <= 90_000),
+    accountChecksReady: aliveRecords.every(record => record.accountChecksReady === true),
+    accountConfigurationMatches: accountConfigurationFingerprint() != null && aliveRecords.every(record =>
+      record.accountConfigurationFingerprint === accountConfigurationFingerprint()),
     alive: true,
     lastSeenMs,
     ageSeconds: Math.round((now - lastSeenMs) / 1000),

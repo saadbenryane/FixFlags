@@ -23,7 +23,7 @@ export const SAMPLE_GOOGLE_CONNECTIONS: Record<'SEARCH_CONSOLE' | 'ANALYTICS', P
 }
 
 export const SAMPLE_ACCOUNT_CHECKS: AccountChecksView = {
-  enabled: true, eligible: true, ready: true, reason: DASHBOARD_PREVIEW_COPY.accountSample, accounts: [], results: [],
+  enabled: true, eligible: true, ready: true, canCleanup: false, cleanupUnavailableReason: null, reason: DASHBOARD_PREVIEW_COPY.accountSample, accounts: [], results: [],
 }
 
 const sampleUptimeEnd = Date.parse(DASHBOARD_PREVIEW_COPY.checkedAt)

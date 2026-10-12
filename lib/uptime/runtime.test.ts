@@ -1,3 +1,4 @@
+vi.mock('@/lib/queue/worker-heartbeat', () => ({ touchWorkerHeartbeat: vi.fn().mockResolvedValue(undefined) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ close: vi.fn(), schedule: vi.fn(), alerts: vi.fn(), retention: vi.fn() }))
 vi.mock('./queue', () => ({ startUptimeWorker: () => ({ close: mocks.close }) }))

@@ -19,7 +19,7 @@ import { CustomerMain, customerMobileBarClass } from '@/components/layout/custom
 import { type SitePresentation } from '@/lib/sites/presentation'
 import styles from './SiteShell.module.css'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
-import { SiteChatWidget } from './SiteChatWidget'
+import { LazySiteChat } from './LazySiteChat'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
 
@@ -117,7 +117,7 @@ function SiteShellContent({
     </div>
     <SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} mobile className={cn(customerMobileBarClass, 'md:hidden')}
       renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
-    <SiteChatWidget key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
+    <LazySiteChat key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
       host={host} ownsSite={ownsSite} flagId={chatFlag?.id} flagTitle={chatFlag?.title} />
   </div>
 }

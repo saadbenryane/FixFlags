@@ -5,6 +5,34 @@ reviewed_at: 2026-10-09
 supersedes: []
 ---
 
+
+## Public website validation completion ledger
+
+Accepted owner scope, 2026-10-12: the website app and persistent category board launch with one-website open-beta access. Customer-facing MCP, CLI, repository tools and paid enrollment remain parked. This section supersedes the broader launch sequence and acceptance checklist below for this release; the broader architecture remains the long-term direction.
+
+Implementation and proof are separate. A requirement closes only with evidence from the current candidate. No historical receipt, registration count or passing configuration flag establishes runtime success.
+
+| Requirement | Workspace implementation | Required completion evidence |
+| --- | --- | --- |
+| Trustworthy action contracts and guards | Empty settings receipts rejected; false values retained; route and fixture classification corrected | Focused action, component and guard regressions |
+| Application boundaries | Settings/removal commands; run selection separated from admission; improvement lifecycle modules; pure Site and board projections | Typecheck, lint, boundaries and existing lifecycle tests |
+| Identity and independent recovery | Existing claim, progressive execution, immutable comparison and fix-attempt contracts retained | Real claim, broken/repaired/recurring and interruption journeys |
+| Automatic accounts | Typed lifecycle, independent cleanup capability, stale-acknowledgement removal fencing and scheduled token expiry | Real supported signup, receiving, login/session reuse and disposable deletion |
+| Uptime and monitoring | Existing probes, confirmations, scoped incidents and durable notification receipts retained | Real worker, outage/unknown/recovery, pause/resume and natural full-check cycle |
+| Capability readiness | Recent uptime sweep and matching private account configuration required from live workers | Deployed web/worker capability checks and controlled provider proof |
+| Customer experience | Existing hierarchy preserved; category depth and chat load on demand; keyboard focus remains visible | Responsive, theme, zoom, keyboard, touch, interruption and browser matrix |
+| Public truth | Account and HTTP-probe coverage inventories reconciled with implementation | Copy/link guards and deployed claims review |
+| Website release | MCP/CLI excluded from website journey requirements | Exact-candidate migration, build, image, browser and real-provider receipts |
+| Observed usability | No participant evidence available yet | Five representative participants; four complete the core tasks unaided; none misread uncertainty as health |
+
+### Current evidence status
+
+Implementation in progress. Local checks and provider receipts will be recorded against the frozen candidate. Production has not received these changes. External proof and observed usability remain open until actual evidence exists.
+
+### Preserved accessibility exception
+
+At the owner's explicit request, white text on Bright Flag Orange remains unchanged. Its measured contrast is 3.13:1, below 4.5:1 for small text. Record this exception in interface proof; do not claim full WCAG AA compliance or suppress unrelated accessibility failures.
+
 # FixFlags independent-monitor masterplan
 
 **Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-10-06 against the local Outcome candidate on `main`; exact-SHA production proof remains open.**
@@ -19,7 +47,7 @@ This file owns what to build, in what order, and what may be called launch-ready
 
 ### Free-launch completion checkpoint
 
-The current implementation pass completes the free-launch scope; paid checkout stays closed. `RELEASE_PROFILE=free-launch` is the release default. It requires foundation, fixture binding, credentialed core (including MCP), billing-closed compatibility, external notification proof, and deployed attestation. `RELEASE_PROFILE=paid-opening` additionally requires the existing paid-opening Watch reliability/cost and Stripe stage. Receipts carry the profile and cannot be combined across profiles.
+The current implementation pass completes the free-launch scope; paid checkout stays closed. `RELEASE_PROFILE=free-launch` is the release default. It requires foundation, fixture binding, credentialed website core (MCP/CLI parked), billing-closed compatibility, external notification proof, and deployed attestation. `RELEASE_PROFILE=paid-opening` additionally requires the existing paid-opening Watch reliability/cost and Stripe stage. Receipts carry the profile and cannot be combined across profiles.
 
 Site category depth and MCP now share sanitized recorded execution results. New metadata executions also persist bounded assertion observations; historical module completion never creates individual passes. Outcome attribution uses persisted identity. Missing latest category evidence retains dated prior evidence without certifying current health. Executable Outcomes precede broad diagnostics on Overview; settled monitoring has one header management entry.
 

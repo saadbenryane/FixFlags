@@ -39,6 +39,8 @@ describe('public interaction measurement', () => {
   })
 
   it('measures exploration only when a public detail opens', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST')
+    window.history.replaceState({}, '', '/coverage')
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
     ensureGtagStub()
     const { container } = render(<PublicDisclosure page="/coverage" target="conversion" summary="Explore">Details</PublicDisclosure>)

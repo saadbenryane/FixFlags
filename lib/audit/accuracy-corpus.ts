@@ -103,7 +103,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://cineverse.replit.app',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['h1-missing', 'no-privacy-policy', 'measurement-ga-gtm-posthog-missing'],
+    // Visible trust guidance precedes optional analytics advice at equal severity.
+    // Measurement remains required below so ranking cannot hide its observation.
+    expectedTop3: ['h1-missing', 'no-privacy-policy', 'no-contact-info'],
     knownFalsePositives: [],
     expectedPresent: ['h1-missing', 'measurement-ga-gtm-posthog-missing', 'no-privacy-policy'],
   },

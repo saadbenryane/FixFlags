@@ -14,10 +14,11 @@ describe('persistent account navigation within a website', () => {
     state.pathname = '/sites/site-1/settings'
     render(<SiteAccountRail />)
     expect(screen.getByRole('link', { name: 'Websites' })).toHaveAttribute('aria-current', 'page')
-    for (const label of ['Billing', 'API keys', 'Docs', 'Help', 'Account']) expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
+    for (const label of ['Billing', 'Docs', 'Help', 'Account']) expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'FixFlags' })).toHaveAttribute('href', '/dashboard')
     expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'API keys' })).not.toBeInTheDocument()
   })
   it('only exposes administrator navigation for an administrator', () => {
     state.user!.isAdmin = true

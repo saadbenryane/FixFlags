@@ -16,11 +16,13 @@ import styles from './SiteChatWidget.module.css'
 
 const supportDraftKey = 'fixflags:support:draft'
 
-export function SiteChatWidget({ siteId, host, ownsSite, flagId, flagTitle }: {
-  siteId: string; host: string; ownsSite: boolean; flagId?: string; flagTitle?: string
+export function SiteChatWidget({ siteId, host, ownsSite, flagId, flagTitle, initiallyOpen = false }: {
+  siteId: string; host: string; ownsSite: boolean; flagId?: string; flagTitle?: string; initiallyOpen?: boolean
 }) {
   const support = useSupportContext()
-  const [questionsOpen, setQuestionsOpen] = useState(false)
+  const { openSupportChat, setPanelOpen } = support
+  useEffect(() => { if (initiallyOpen && !ownsSite) openSupportChat() }, [initiallyOpen, ownsSite, openSupportChat])
+  const [questionsOpen, setQuestionsOpen] = useState(initiallyOpen && ownsSite)
   const [mobile, setMobile] = useState(false)
   const [viewport, setViewport] = useState<CSSProperties>({})
   const [supportDraft, setSupportDraft] = useState('')
@@ -73,9 +75,27 @@ export function SiteChatWidget({ siteId, host, ownsSite, flagId, flagTitle }: {
   }, [])
   const endSupportSend = useCallback(() => { supportPending.current = false; setSupportSending(false) }, [])
 
-  function close() { setQuestionsOpen(false); support.setPanelOpen(false) }
+  const uncoveredFocus = useRef<HTMLElement | null>(null)
+  function close() { uncoveredFocus.current = null; setQuestionsOpen(false); support.setPanelOpen(false) }
   function selectSupport() { setQuestionsOpen(false); support.openSupportChat() }
   function selectQuestions() { support.setPanelOpen(false); setQuestionsOpen(true) }
+  useEffect(() => {
+    if (!open || mobile) return
+    const revealFocus = (event: FocusEvent) => {
+      const target = event.target
+      const panel = document.getElementById('site-chat-window')
+      if (!(target instanceof HTMLElement) || !panel || panel.contains(target)) return
+      const focused = target.getBoundingClientRect(), windowRect = panel.getBoundingClientRect()
+      if (focused.right > windowRect.left && focused.left < windowRect.right &&
+        focused.bottom > windowRect.top && focused.top < windowRect.bottom) {
+        uncoveredFocus.current = target
+        setQuestionsOpen(false)
+        setPanelOpen(false)
+      }
+    }
+    document.addEventListener('focusin', revealFocus)
+    return () => document.removeEventListener('focusin', revealFocus)
+  }, [open, mobile, setPanelOpen])
   const unread = data?.session?.unreadByVisitor ?? 0
 
   return <>
@@ -93,7 +113,13 @@ export function SiteChatWidget({ siteId, host, ownsSite, flagId, flagTitle }: {
             event.preventDefault()
             document.querySelector<HTMLTextAreaElement>('#site-chat-window textarea')?.focus({ preventScroll: true })
           }}
-          onCloseAutoFocus={event => { event.preventDefault(); launcher.current?.focus() }}>
+          onCloseAutoFocus={event => {
+            event.preventDefault()
+            const target = uncoveredFocus.current
+            uncoveredFocus.current = null
+            if (target?.isConnected) target.focus({ preventScroll: true })
+            else launcher.current?.focus()
+          }}>
           <header className="shrink-0 px-4 pt-3">
             <div className="flex items-center justify-between gap-2">
               <Dialog.Title className="text-base font-semibold">{C.chatTitle}</Dialog.Title>

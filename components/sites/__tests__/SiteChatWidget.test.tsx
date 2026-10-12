@@ -36,6 +36,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('shared Site chat', () => {
+  it('reveals an obscured background control without stealing its focus or discarding the draft', async () => {
+    render(<Fixture />)
+    await open()
+    const question = screen.getByRole('textbox', { name: 'Your question' })
+    fireEvent.change(question, { target: { value: 'Keep this question' } })
+    const panel = document.getElementById('site-chat-window')!
+    const target = screen.getByRole('button', { name: 'Contact support' })
+    vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ left: 400, right: 800, top: 100, bottom: 600 } as DOMRect)
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({ left: 500, right: 600, top: 200, bottom: 244 } as DOMRect)
+    target.focus()
+    await waitFor(() => expect(document.getElementById('site-chat-window')).toBeNull())
+    await waitFor(() => expect(target).toHaveFocus())
+    await open()
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('Keep this question')
+  })
   it('opens one modeless window, exposes context and preserves drafts between views and close', async () => {
     render(<Fixture flagId="flag-1" />)
     expect(screen.getAllByRole('button', { name: 'Open FixFlags chat' })).toHaveLength(1)
