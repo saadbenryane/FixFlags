@@ -4,7 +4,7 @@ import s from './MarketingPageHeader.module.css'
 
 export function MarketingPageHeader({ eyebrow, title, description, children, id }: {
   eyebrow?: string
-  title: string
+  title: ReactNode
   description?: string
   children?: ReactNode
   id?: string

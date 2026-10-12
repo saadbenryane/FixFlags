@@ -12,7 +12,7 @@ export const LEGAL_PAGE_META = {
 export const ANALYTICS_CONSENT_COPY = {
   title: 'Choose your analytics settings',
   body:
-    'FixFlags uses optional analytics to see how people use FixFlags. We do not load advertising or analytics scripts until you allow them. Necessary cookies keep the product working.',
+    'FixFlags uses optional analytics to see how people use FixFlags. Google Analytics receives basic cookieless measurement signals. Analytics cookies and advertising scripts are enabled only when you allow them. Necessary cookies keep the product working.',
   allow: 'Allow analytics',
   necessaryOnly: 'Only necessary',
 } as const
@@ -74,7 +74,7 @@ export const PRIVACY_SECTIONS = {
   thirdParties: {
     title: 'Third parties',
     body:
-      'We use service providers for hosting, queues, email, evidence storage, payments, and bounded AI processing. Shopify provides shop identity and store access under your authorization. Optional analytics and advertising scripts load only after you allow analytics, and you can change that choice from Cookie settings in the footer. These providers process data on our behalf under their own terms.',
+      'We use service providers for hosting, queues, email, evidence storage, payments, and bounded AI processing. Shopify provides shop identity and store access under your authorization. Google Analytics receives basic cookieless measurement signals. Analytics cookies, additional analytics events, and advertising scripts are enabled only after you allow analytics, and you can change that choice from Cookie settings in the footer. These providers process data on our behalf under their own terms.',
   },
   retentionAndDeletion: {
     title: 'Retention and deletion',

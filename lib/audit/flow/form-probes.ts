@@ -18,6 +18,7 @@ export interface FormProbeResult {
 export async function probeFormValidation(page: Page, options: {
   isolated?: boolean; localValidationToken?: string; deadline?: number; safetyRefused?: () => boolean
   expectedTargets?: Array<{ context: string; selector: string; label: string }>
+  unavailableDependencies?: boolean
 } = {}): Promise<FormProbeResult> {
   const candidates = await page.evaluate(() => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
@@ -36,13 +37,21 @@ export async function probeFormValidation(page: Page, options: {
       if (form.closest('[hidden], [inert]')) continue
       const controls = [...form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), textarea, select')]
       const fields = controls.slice(0, 100).filter(visible) as Array<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-      const incomplete = controls.length > 100 || form.action.length > 2048 || fields.some(field => field.name.length > 200 || field.id.length > 200)
+      const incomplete = controls.length > 100 || form.action.length > 2048 || form.id.length > 200 || (form.getAttribute('name')?.length ?? 0) > 200 || fields.some(field => field.name.length > 200 || field.id.length > 200)
       if (!incomplete && !fields.some(field => field.required || field.getAttribute('aria-required') === 'true')) continue
       const submit = [...form.querySelectorAll('button, input[type="submit"]')].find(element =>
         visible(element) && ((element as HTMLButtonElement).type === 'submit' || !element.getAttribute('type')))
       const label = (form.getAttribute('aria-label') || form.querySelector('legend')?.textContent?.trim() || submit?.textContent?.trim() || 'Conversion form').slice(0, 160)
+      const escape = (value: string) => typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(value) : value.replace(/[^a-zA-Z0-9_-]/g, character => '\\' + character)
+      const segments: string[] = []
+      for (let element: Element | null = form; element && segments.length < 8; element = element.parentElement) {
+        if (element.id) { segments.unshift('#' + escape(element.id)); break }
+        const tag = element.tagName.toLowerCase(), siblings = [...element.parentElement?.children ?? []].filter(child => child.tagName === element!.tagName)
+        segments.unshift(tag + (siblings.length > 1 ? ':nth-of-type(' + (siblings.indexOf(element) + 1) + ')' : ''))
+        if (element.tagName === 'BODY') break
+      }
       form.setAttribute('data-fixflags-form-probe', String(index))
-      candidates.push({ selector: `form[data-fixflags-form-probe="${index}"]`, label, hasSubmit: Boolean(submit), incomplete,
+      candidates.push({ selector: `form[data-fixflags-form-probe="${index}"]`, evidenceSelector: segments.join(' > '), label, hasSubmit: Boolean(submit), incomplete,
         prefilled: fields.some(field => (field.required || field.getAttribute('aria-required') === 'true') &&
           (field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type) ? field.checked : field.value.trim().length > 0)),
         signature: JSON.stringify({ form: (form.getAttribute('name') || form.id || String(index)).slice(0, 200), action: form.action.slice(0, 2048),
@@ -66,18 +75,24 @@ export async function probeFormValidation(page: Page, options: {
     formOverlay?: OverlayBlockerInfo | null): FormProbeResult => ({
     formValidation: disposition === 'passed' ? 'ok' : disposition === 'failed' ? 'broken' : 'skipped',
     formLabel: formMeta.label, feedbackMs, formOverlay,
-    evidence: { version: 1, pageUrl, selector, context, label: formMeta.label, disposition, reason, feedbackMs },
+    evidence: { version: 1, pageUrl, selector: formMeta.evidenceSelector, context, label: formMeta.label, disposition, reason, feedbackMs },
   })
   if (formMeta.incomplete) return finish('unknown', 'observation_incomplete')
   if (formMeta.prefilled) return finish('unknown', 'prefilled_fields')
   if (!formMeta.hasSubmit) return finish('failed', 'missing_submit')
   let requestRefused = false
-  if (options.isolated) await page.route('**', async route => {
-    requestRefused = true
-    await route.abort('blockedbyclient')
-  })
+  if (options.isolated) {
+    const deny = async (route: import('playwright').Route) => { requestRefused = true; await route.abort('blockedbyclient') }
+    // Context routing also covers the first navigation of a popup. The page
+    // guard retains precedence over fixture transports and existing routes.
+    await page.context().route('**', deny)
+    await page.route('**', deny)
+    await page.context().routeWebSocket('**', async socket => { requestRefused = true; await socket.close().catch(() => undefined) })
+    await page.context().setOffline(true)
+    page.context().on('page', async popup => { requestRefused = true; await popup.close().catch(() => undefined) })
+  }
   const refused = () => requestRefused || options.safetyRefused?.() === true
-  let timing: JSHandle<{ setChecker(checker: () => boolean): void; read(): number | null; dispose(): void }> | undefined
+  let timing: JSHandle<{ setChecker(checker: () => boolean): void; read(): number | null; elapsed(): number | null; dispose(): void }> | undefined
   try {
     if (options.isolated) timing = await page.evaluateHandle(sel => {
       const form = document.querySelector(sel)!
@@ -91,6 +106,7 @@ export async function probeFormValidation(page: Page, options: {
       const observer = new MutationObserver(inspect)
       observer.observe(form, { subtree: true, attributes: true, childList: true, characterData: true })
       return { setChecker(value: () => boolean) { checker = value }, read() { inspect(); return clickedAt !== null && feedbackAt !== null ? feedbackAt - clickedAt : null },
+        elapsed() { return clickedAt === null ? null : performance.now() - clickedAt },
         dispose() { observer.disconnect(); cancelAnimationFrame(frame); form.removeEventListener('click', clicked, true) } }
     }, selector)
     const readState = (native: boolean) => page.evaluate(({ sel, native, tracker }) => {
@@ -112,7 +128,7 @@ export async function probeFormValidation(page: Page, options: {
       const referenced = references()
       tracker?.setChecker(localFeedback)
       const outside = [...document.querySelectorAll('[role="alert"], [aria-live="assertive"]')].filter(node => !form.contains(node) && !referenced.includes(node as HTMLElement) && isFeedback(node)).length
-      return { native: nativeInvalid, feedback, outside, text: form.textContent?.slice(0, 64_000),
+      return { native: nativeInvalid, feedback, outside, text: form.textContent?.slice(0, 64_000), textTruncated: (form.textContent?.length ?? 0) > 64_000,
         suppressed: form.hasAttribute('data-fixflags-submit-suppressed') }
     }, { sel: selector, native, tracker: timing ?? null })
 
@@ -121,6 +137,7 @@ export async function probeFormValidation(page: Page, options: {
     if (refused()) return finish('unknown', 'submission_blocked')
     if (baseline.native) return finish('passed', 'native_validation', 0)
     if (baseline.feedback) return finish('unknown', 'preexisting_feedback')
+    let incompleteObservation = baseline.textTruncated
     const observationBudget = Math.max(0, Math.min(2000, (options.deadline ?? Date.now() + 2000) - Date.now()))
     if (!observationBudget) return finish('unknown', 'observation_incomplete')
     if (options.isolated && options.localValidationToken) await page.evaluate(({ sel, token }) => {
@@ -131,24 +148,34 @@ export async function probeFormValidation(page: Page, options: {
     const startedAt = Date.now()
     await submit.click({ timeout: Math.max(1, observationBudget) })
     const observedFeedback = async () => timing ? await timing.evaluate(tracker => tracker.read()) : null
-    while (Date.now() - startedAt <= observationBudget) {
+    const elapsed = async () => timing ? await timing.evaluate(tracker => tracker.elapsed()) : Date.now() - startedAt
+    const stopAt = options.deadline ?? startedAt + observationBudget + 2000
+    while (Date.now() < stopAt) {
       if (refused()) return finish('unknown', 'submission_blocked')
       if (page.url() !== pageUrl) return finish('unknown', 'form_changed')
       const observed = await readState(false)
       if (!observed) return finish('unknown', 'form_changed')
+      incompleteObservation ||= observed.textTruncated
       if (observed.suppressed) return finish('unknown', 'submit_handler_suppressed')
       const measuredFeedback = await observedFeedback()
       if (observed.feedback || measuredFeedback !== null) {
+        if (timing && (measuredFeedback === null || measuredFeedback > observationBudget)) return finish('unknown', 'observation_incomplete')
         const feedbackMs = measuredFeedback ?? Date.now() - startedAt
         await sleep(50)
         return refused() ? finish('unknown', 'submission_blocked') : finish('passed', 'client_feedback', feedbackMs)
       }
       if (observed.outside > baseline.outside || observed.text !== baseline.text) return finish('unknown', 'unscoped_feedback')
+      const observedElapsed = await elapsed()
+      if (observedElapsed === null || observedElapsed >= observationBudget) break
       await sleep(50)
     }
     const lateRead = await observedFeedback()
-    if (lateRead !== null && !refused()) return finish('passed', 'client_feedback', lateRead)
-    return finish(observationBudget === 2000 ? 'failed' : 'unknown', observationBudget === 2000 ? 'missing_feedback' : 'observation_incomplete')
+    if (refused()) return finish('unknown', 'submission_blocked')
+    if (lateRead !== null && lateRead <= observationBudget) return finish('passed', 'client_feedback', lateRead)
+    const observedElapsed = await elapsed()
+    const conclusive = observationBudget === 2000 && observedElapsed !== null && observedElapsed >= observationBudget &&
+      !options.unavailableDependencies && !incompleteObservation
+    return finish(conclusive ? 'failed' : 'unknown', conclusive ? 'missing_feedback' : 'observation_incomplete')
   } catch {
     const overlay = await detectOverlayAtPoint(page, submitSelector).catch(() => null)
     return finish('unknown', 'execution_interrupted', null, overlay)

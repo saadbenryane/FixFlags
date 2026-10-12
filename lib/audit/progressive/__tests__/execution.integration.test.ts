@@ -57,7 +57,7 @@ run('migrated progressive execution', () => {
   let signupCleanupOk = true
   let signupSubmissions = 0
   let pageSpeedMode: 'failed' | 'missing' | 'healthy' | null = null
-  let publicFormMode: 'broken' | 'blocked' | 'socket' | 'hidden' | 'unrelated' | 'outside' | 'slow' | 'healthy' | 'native' | 'prefilled' = 'broken'
+  let publicFormMode: 'broken' | 'blocked' | 'socket' | 'peer' | 'popup' | 'hidden' | 'unrelated' | 'outside' | 'slow' | 'healthy' | 'native' | 'prefilled' = 'broken'
   let publicFormSubmissions = 0
   const server = createServer(async (req, res) => {
     requests.push(req.url!)
@@ -78,6 +78,7 @@ run('migrated progressive execution', () => {
         'form.onsubmit=e=>{if(e.defaultPrevented)return;window.validationCalls++;e.preventDefault();' +
         'if(mode==="blocked")fetch("/public-form-submission",{method:"POST",body:"unauthorized"}).catch(()=>{});' +
         'if(mode==="socket")new WebSocket("wss://example.com/public-form-submission");' +
+        'if(mode==="peer")new RTCPeerConnection();if(mode==="popup")window.open("/public-form-submission");' +
         'if(mode==="outside")setTimeout(()=>{const p=document.createElement("p");p.setAttribute("role","alert");p.textContent="Error outside the form";document.body.append(p)},100);' +
         'if(mode==="slow"||mode==="healthy")setTimeout(()=>{const p=document.getElementById("error");p.hidden=false;p.textContent="Email is required"},mode==="slow"?1400:100)};</script>' +
         '</main></body></html>')
@@ -683,7 +684,7 @@ run('migrated progressive execution', () => {
       await materializeAttentionForAudit(source.id)
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'flow-form-no-validation' } })
       let slowFlag: typeof flag | undefined
-      for (const mode of ['blocked', 'socket', 'hidden', 'prefilled', 'outside', 'unrelated', 'slow', 'healthy'] as const) {
+      for (const mode of ['blocked', 'socket', 'peer', 'popup', 'hidden', 'prefilled', 'outside', 'unrelated', 'slow', 'healthy'] as const) {
         publicFormMode = mode
         const target = mode === 'healthy' ? slowFlag! : flag
         const fixed = await recordSiteFlagFix({ siteId: projectId, flagId: target.id, userId,

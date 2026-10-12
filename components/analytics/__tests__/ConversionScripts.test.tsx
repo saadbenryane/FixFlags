@@ -17,6 +17,7 @@ vi.mock('next/script', () => ({
 
 describe('ConversionScripts consent', () => {
   beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', '')
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', 'AW-test')
     vi.stubEnv('NEXT_PUBLIC_META_PIXEL_ID', 'pixel-test')
   })
@@ -27,6 +28,10 @@ describe('ConversionScripts consent', () => {
     window.history.replaceState({}, '', '/')
     document.documentElement.style.paddingTop = ''
     document.documentElement.style.paddingBottom = ''
+    delete window.dataLayer
+    delete window.gtag
+    delete window.fbq
+    sessionStorage.clear()
     vi.unstubAllEnvs()
   })
 
@@ -91,7 +96,7 @@ describe('ConversionScripts consent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Allow analytics' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('analytics-script')).toHaveLength(3)
+    expect(screen.getAllByTestId('analytics-script')).toHaveLength(2)
     expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=granted`)
     expect(document.cookie).toContain(CLICK_IDS_COOKIE)
   })
@@ -122,5 +127,52 @@ describe('ConversionScripts consent', () => {
     expect(document.documentElement.style.paddingTop).toBe('17px')
     expect(document.documentElement.style.paddingBottom).toBe('23px')
     expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
+  })
+
+  it.each([null, 'denied'])('loads only GA with storage denied for a %s choice', async (choice) => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    if (choice) document.cookie = `${ANALYTICS_CONSENT_COOKIE}=${choice}; Path=/`
+    render(<ConversionScripts />)
+
+    const scripts = await screen.findAllByTestId('analytics-script')
+    expect(scripts).toHaveLength(1)
+    expect(scripts[0]).toHaveAttribute('data-src', 'https://www.googletagmanager.com/gtag/js?id=G-TEST12345')
+    const commands = window.dataLayer!.map((command) => Array.from(command as IArguments))
+    expect(commands[0]).toEqual(['consent', 'default', {
+      analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+    }])
+    expect(commands.filter(([command]) => command === 'config')).toHaveLength(1)
+    expect(commands.some(([, target]) => target === 'AW-test')).toBe(false)
+    expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
+    expect(sessionStorage.length).toBe(0)
+  })
+
+  it('updates Google consent on withdrawal and keeps only cookieless GA loaded', async () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    document.cookie = `${CLICK_IDS_COOKIE}=test-click; Path=/`
+    sessionStorage.setItem('ff:analytics-journey:v1', 'old-journey')
+    render(<ConversionScripts />)
+    await screen.findAllByTestId('analytics-script')
+    const fbq = vi.fn()
+    window.fbq = fbq
+    act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
+    fireEvent.click(await screen.findByRole('button', { name: 'Only necessary' }))
+
+    const commands = window.dataLayer!.map((command) => Array.from(command as IArguments))
+    expect(commands.at(-1)).toEqual(['consent', 'update', {
+      analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+    }])
+    expect(screen.getAllByTestId('analytics-script')).toHaveLength(1)
+    expect(fbq).toHaveBeenCalledWith('consent', 'revoke')
+    expect(document.cookie).not.toContain(CLICK_IDS_COOKIE)
+    expect(sessionStorage.getItem('ff:analytics-journey:v1')).toBeNull()
+
+    act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
+    fireEvent.click(await screen.findByRole('button', { name: 'Allow analytics' }))
+    const updatedCommands = window.dataLayer!.map((command) => Array.from(command as IArguments))
+    expect(updatedCommands.filter(([command, target]) => command === 'config' && target === 'G-TEST12345')).toHaveLength(1)
+    expect(window.dataLayer!.filter((command) => (command as IArguments)[0] === 'js')).toHaveLength(1)
+    expect(fbq).toHaveBeenLastCalledWith('consent', 'grant')
   })
 })

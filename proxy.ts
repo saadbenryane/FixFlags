@@ -75,7 +75,7 @@ function buildCsp(): string {
     "img-src 'self' blob: data: https:",
     "font-src 'self' https://fonts.gstatic.com",
     // ws://localhost:* only needed for dev hot-reload WebSocket
-    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com https://www.facebook.com https://connect.facebook.net https://admin.shopify.com https://*.myshopify.com https://cdn.shopify.com${isDev ? ' ws://localhost:*' : ''}`,
+    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.google.com https://cloudflareinsights.com https://www.facebook.com https://connect.facebook.net https://admin.shopify.com https://*.myshopify.com https://cdn.shopify.com${isDev ? ' ws://localhost:*' : ''}`,
     "frame-src https://*.stripe.com https://js.stripe.com https://www.facebook.com https://admin.shopify.com https://*.myshopify.com",
     "object-src 'none'",
     "base-uri 'self'",

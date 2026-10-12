@@ -1,14 +1,11 @@
 .container { max-width: 1168px; }
-.assurances { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 24px; color: hsl(var(--muted-foreground)); font-size: 13px; }
-.assurances li { display: flex; align-items: center; gap: 7px; }
-.assurances svg { flex-shrink: 0; color: hsl(var(--brand)); }
+.betaHeadline { display: block; color: hsl(var(--brand)); }
+.signupNote { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
 .sections { display: grid; gap: 64px; }
-.studio { margin-top: 28px; text-align: center; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.7; }
-.studio a, .links a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: hsl(var(--foreground)); }
-.studio svg, .links svg { flex-shrink: 0; color: hsl(var(--brand)); }
 .comparison { scroll-margin-top: var(--header-offset); }
-.compareNote { max-width: 760px; margin: 24px auto 0; text-align: center; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.7; }
-.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; margin-top: 16px; font-size: 14px; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 24px; margin-top: 12px; font-size: 13px; }
+.links a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 500; color: hsl(var(--muted-foreground)); }
+.links svg { flex-shrink: 0; color: hsl(var(--brand)); }
 .page a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .page a:focus-visible { outline: 2px solid hsl(var(--focus-ring)); outline-offset: 4px; }
 .faq { max-width: 800px; width: 100%; margin-inline: auto; }

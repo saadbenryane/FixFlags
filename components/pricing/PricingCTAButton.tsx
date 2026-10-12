@@ -4,7 +4,7 @@ import type { Route } from 'next'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { Button, type ButtonProps } from '@/components/ui/button'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy/plans'
 import { trackEvent } from '@/lib/analytics/events'
 import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
@@ -21,6 +21,8 @@ interface Props {
   currentPlan?: string
   waitlistGated?: boolean
   userEmail?: string
+  variant?: ButtonProps['variant']
+  showHint?: boolean
 }
 
 export function PricingCTAButton({
@@ -32,6 +34,8 @@ export function PricingCTAButton({
   currentPlan,
   waitlistGated = isPaidCheckoutGatedClient(),
   userEmail,
+  variant,
+  showHint = true,
 }: Props) {
   const router = useRouter()
   const { user } = useMe()
@@ -95,7 +99,7 @@ export function PricingCTAButton({
     <div className="space-y-2">
       <Button
         className="w-full"
-        variant={highlight ? 'default' : 'outline'}
+        variant={variant ?? (highlight ? 'default' : 'outline')}
         disabled={loading || (isCurrent && isPaidPlan)}
         loading={loading}
         loadingLabel={PRICING.checkoutRedirecting}
@@ -109,7 +113,7 @@ export function PricingCTAButton({
               : BILLING_ACTION_COPY.waitlist.submitPro
             : cta}
       </Button>
-      {isPaidPlan && !isCurrent && (
+      {showHint && isPaidPlan && !isCurrent && (
         <p className="text-3xs text-center text-muted-foreground leading-snug">
           {waitlistGated
             ? BILLING_ACTION_COPY.waitlist.description
@@ -118,7 +122,7 @@ export function PricingCTAButton({
               : PRICING.upgradeSteps}
         </p>
       )}
-      {isPaidPlan && !resolvedLoggedIn && !waitlistGated && (
+      {showHint && isPaidPlan && !resolvedLoggedIn && !waitlistGated && (
         <p className="text-3xs text-center text-muted-foreground">
           <Link href={signUpHref} className="underline hover:text-foreground">
             Sign up first

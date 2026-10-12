@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { MeProvider } from '@/hooks/useMe'
-import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
+import { BILLING_ACTION_COPY, PRICING_CARDS } from '@/lib/marketing/copy/plans'
 
 const push = vi.fn()
 
@@ -32,6 +32,14 @@ describe('PricingCTAButton', () => {
     expect(button).toBeEnabled()
     fireEvent.click(button)
     await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard'))
+  })
+
+  it('sends the public Free offer directly to sign up', () => {
+    push.mockReset()
+    const free = PRICING_CARDS[0]
+    render(<MeProvider initialUser={null}><PricingCTAButton plan={free.plan} cta={free.cta} signUpHref={free.href} isLoggedIn={false} variant="brand" /></MeProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up now' }))
+    expect(push).toHaveBeenCalledWith('/sign-up')
   })
 
   it('sends Studio clicks to the Studio waitlist', () => {

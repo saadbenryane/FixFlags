@@ -69,7 +69,7 @@ export const actionHandlers: TaskHandler[] = [
         try {
           active = true
           const probe = await probeFormValidation(session.page, { isolated: true, localValidationToken: token, deadline,
-            safetyRefused: () => safetyRefused, expectedTargets })
+            safetyRefused: () => safetyRefused, expectedTargets, unavailableDependencies: session.safetyRestrictions.length > 0 })
           const checked = checkFormValidation(probe.evidence)
           const overlays = runOverlayBlockerChecks('form', probe.formOverlay, probe.formLabel).map(flag => ({ ...flag, pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl }))
           return serializeArtifact('flow', flowSchema.parse({ flags: [...checked.flags, ...overlays], formEvidence: probe.evidence,

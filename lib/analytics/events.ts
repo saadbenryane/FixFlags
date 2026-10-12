@@ -3,7 +3,7 @@ import {
   fireMetaPixelEvent,
   getGoogleAdsSignupLabel,
 } from '@/lib/analytics/ad-conversions'
-import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
+import { getGoogleAnalyticsId, initializeGoogleTag, isGaConfigured } from '@/lib/analytics/gtag'
 import { hasAnalyticsConsent } from '@/lib/analytics/consent'
 import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
@@ -247,13 +247,16 @@ export function trackEvent<T extends FunnelEvent>(
     return
   }
   if (!hasAnalyticsConsent()) return
-  if (!ensureGtagStub()) return
   if (!isGaConfigured() && process.env.NODE_ENV === 'production') return
+  if (!initializeGoogleTag()) return
 
-  const eventParams = {
+  const eventParams: Record<string, unknown> = {
     device: deviceClass(),
     ...(params as Record<string, unknown> | undefined),
+    send_to: getGoogleAnalyticsId(),
   }
+  // Email is only for the separate, consented Ads enhanced-conversion call.
+  delete eventParams.email
   try {
     window.gtag!('event', event, eventParams)
   } catch (error) {

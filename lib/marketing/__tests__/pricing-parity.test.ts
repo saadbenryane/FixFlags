@@ -10,7 +10,7 @@ import { TERMS_SECTIONS } from '@/lib/marketing/copy/legal'
 describe('open beta pricing parity', () => {
   it('shows three cards with Free available and highlighted', () => {
     expect(PRICING_CARDS.map(plan => plan.plan)).toEqual(['FREE', 'BUILDER', 'TEAM'])
-    expect(PLANS[0]).toMatchObject({ price: '$0', products: '1 website', highlight: true, cta: 'Start free', href: '/new' })
+    expect(PLANS[0]).toMatchObject({ price: '$0', products: '1 website', highlight: true, cta: 'Sign up now', href: '/sign-up' })
     for (const plan of PLANS.slice(1)) expect(plan).toMatchObject({ badge: 'Coming soon', priceLabel: 'Planned pricing', highlight: false })
   })
   it('uses planned paid prices without rewriting purchased allowances', () => {

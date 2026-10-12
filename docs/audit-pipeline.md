@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: architecture
-reviewed_at: 2026-10-11
+reviewed_at: 2026-10-12
 supersedes: []
 ---
 
@@ -38,6 +38,24 @@ scanner refusal or unproven cleanup remains inconclusive. Confirmed missing
 completion creates a scoped Flag in the same transaction as the binding result.
 Observation receipts retain the criterion type and before/after presence without
 fixture values, DOM contents or credentialed screenshots.
+
+Public form validation runs independently from the CTA walk. An isolated browser
+allows local validation handlers, prevents native submission and denies outbound
+requests, popups and live transports during the probe. Worker, clipboard and
+dialog restrictions make dependent observations inconclusive. Required fields
+with existing values are not submitted. Native constraint rejection or newly
+visible form feedback supplies positive evidence; blocked requests, preexisting
+feedback, changed forms and incomplete observation do not prove a failure or repair.
+Feedback timing and the full negative observation window use the browser's click
+clock, so driver acknowledgement delays cannot manufacture slow or missing feedback.
+
+Form assertions retain the original page and hashed form identity. Explicit fix
+verification and automatic recovery require the same scoped positive proof.
+Removing a form or validating an unrelated form cannot close the original Flag.
+Collection bounds the inventory to 40 forms and 100 descendant controls per form,
+then probes one selected visible form. This does not establish exhaustive coverage
+of embedded, shadow-root or server-dependent validation. Authorized Signup
+fixtures retain their separate submission and cleanup contract.
 
 Scheduled and requested Outcome verification share the same scope comparison.
 A fresh scheduled child may verify an owner's pending fix when it checks the

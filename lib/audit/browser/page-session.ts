@@ -176,6 +176,37 @@ export async function createAuditPage(
     : undefined
   const safetyRestrictions: string[] = [], refusedUrls = new Set<string>()
   const network: NetworkMonitor = attachNetworkMonitor(page, targetUrl)
+  if (options.localFormValidationToken) {
+    const bindingName = '__fixflagsLocalRefusal_' + options.localFormValidationToken.replaceAll('-', '')
+    await context.exposeBinding(bindingName, () => {
+      if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
+      options.onSafetyRefusal?.('protected_action_requires_fixture')
+    })
+    await context.addInitScript(({ bindingName }) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
+      const scope = globalThis as unknown as Record<string, unknown>
+      for (const name of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'WebTransport', 'Worker', 'SharedWorker']) {
+        if (typeof scope[name] !== 'function') continue
+        Object.defineProperty(scope, name, { configurable: false, writable: false, value: function () {
+          void (scope[bindingName] as () => Promise<void>)()
+          throw new DOMException('This local check cannot open a live transport or worker.', 'NotAllowedError')
+        } })
+      }
+      const clipboard = navigator.clipboard
+      if (clipboard) for (const name of ['read', 'readText', 'write', 'writeText']) {
+        if (typeof (clipboard as unknown as Record<string, unknown>)[name] !== 'function') continue
+        Object.defineProperty(Object.getPrototypeOf(clipboard), name, { configurable: false, writable: false, value: function () {
+          void (scope[bindingName] as () => Promise<void>)()
+          return Promise.reject(new DOMException('This local check cannot access the clipboard.', 'NotAllowedError'))
+        } })
+      }
+    }, { bindingName })
+  }
+  if (options.localFormValidationToken) page.on('dialog', async dialog => {
+    if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
+    options.onSafetyRefusal?.('protected_action_requires_fixture')
+    await dialog.dismiss().catch(() => undefined)
+  })
   if (options.readOnlyInteractions || options.localFormValidationToken) await page.routeWebSocket('**', async socket => {
     if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
     options.onSafetyRefusal?.('protected_action_requires_fixture')
@@ -184,7 +215,7 @@ export async function createAuditPage(
 
   await options.configurePage?.(page)
 
-  await page.route('**', async (route) => {
+  const guardRequest = async (route: import('playwright').Route) => {
     const requestUrl = route.request().url()
     // Observe the browser's own attempts without replaying or manufacturing
     // events. These refusals do not make an unrelated customer action fail.
@@ -222,7 +253,14 @@ export async function createAuditPage(
     } catch {
       await route.abort('blockedbyclient')
     }
+  }
+  if (options.localFormValidationToken) await context.route('**', async route => {
+    // The original page already has this guard. Additional pages and worker
+    // requests cannot bypass public-target and mutation checks during load.
+    try { if (route.request().frame().page() === page) return await route.fallback() } catch { /* Requests without a frame still require the guard. */ }
+    await guardRequest(route)
   })
+  await page.route('**', guardRequest)
 
   page.on('console', (msg: ConsoleMessage) => {
     if (msg.type() === 'error') {

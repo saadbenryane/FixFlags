@@ -17,8 +17,8 @@ import {
   writeAnalyticsConsent,
 } from '@/lib/analytics/consent'
 import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy/legal'
-
-const gaId = process.env.NEXT_PUBLIC_GA_ID
+import { getGoogleAnalyticsId, initializeGoogleTag } from '@/lib/analytics/gtag'
+import { ANALYTICS_JOURNEY_STORAGE_KEY } from '@/lib/analytics/journey-id'
 
 /**
  * Capture ad click ids (gclid/fbclid) from the landing URL into a first-party
@@ -45,6 +45,7 @@ function useCaptureClickIds(enabled: boolean) {
 }
 
 export function ConversionScripts() {
+  const gaId = getGoogleAnalyticsId()
   const adsId = getGoogleAdsId()
   const pixelId = getMetaPixelId()
   // Resolve the cookie after hydration so returning visitors never see a stale prompt.
@@ -52,9 +53,21 @@ export function ConversionScripts() {
   const [showPreferences, setShowPreferences] = useState(false)
 
   useEffect(() => {
+    initializeGoogleTag()
     setConsent(readAnalyticsConsent())
     const onConsent = (event: Event) => {
-      setConsent((event as CustomEvent<AnalyticsConsent>).detail)
+      initializeGoogleTag()
+      const choice = (event as CustomEvent<AnalyticsConsent>).detail
+      window.fbq?.('consent', choice === 'granted' ? 'grant' : 'revoke')
+      if (choice === 'denied') {
+        document.cookie = `${CLICK_IDS_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`
+        try {
+          window.sessionStorage.removeItem(ANALYTICS_JOURNEY_STORAGE_KEY)
+        } catch {
+          // Storage can be unavailable in privacy-restricted browsers.
+        }
+      }
+      setConsent(choice)
       setShowPreferences(false)
     }
     const onPreferences = () => setShowPreferences(true)
@@ -70,26 +83,16 @@ export function ConversionScripts() {
   const asking = consent === null || showPreferences
   useCaptureClickIds(enabled)
 
-  const gtagId = gaId || adsId
+  const gtagId = gaId || (enabled ? adsId : undefined)
 
   return (
     <>
-      {enabled && gtagId ? (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`}
-            strategy="afterInteractive"
-          />
-          <Script id="gtag-init" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${gtagId}');
-              ${adsId && adsId !== gaId ? `gtag('config', '${adsId}');` : ''}
-            `}
-          </Script>
-        </>
+      {consent !== undefined && gtagId ? (
+        <Script
+          id="google-tag"
+          src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`}
+          strategy="afterInteractive"
+        />
       ) : null}
       {enabled && pixelId ? (
         <Script id="meta-pixel" strategy="lazyOnload">
