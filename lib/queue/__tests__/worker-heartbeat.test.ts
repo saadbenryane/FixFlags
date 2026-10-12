@@ -89,5 +89,6 @@ describe('uptime capability evidence', () => {
     expect(aggregateWorkerHeartbeats([ready, heartbeat('old')], now).uptimeReady).toBe(false)
     expect(aggregateWorkerHeartbeats([{ ...ready, lastUptimeSweepAt: new Date(now - 91_000).toISOString() }], now).uptimeReady).toBe(false)
     expect(aggregateWorkerHeartbeats([{ ...ready, lastUptimeSweepAt: 'invalid' }], now).uptimeReady).toBe(false)
+    expect(aggregateWorkerHeartbeats([{ ...ready, lastUptimeSweepAt: new Date(now + 1_000).toISOString() }], now).uptimeReady).toBe(false)
   })
 })

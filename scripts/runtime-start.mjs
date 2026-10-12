@@ -1,17 +1,16 @@
 #!/usr/bin/env node
-import { existsSync } from 'node:fs'
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { fileURLToPath } from 'node:url'
-import { config } from 'dotenv'
+import { loadRuntimeEnvironment } from '../lib/runtime/environment.mjs'
+import { runtimeEntry } from './runtime-artifacts.mjs'
 
-if (existsSync('.env.local')) config({ path: '.env.local', override: false })
+loadRuntimeEnvironment(process.env.NODE_ENV || 'production')
 
 const mode = process.argv[2] ?? 'web'
-if (mode !== 'web' && mode !== 'worker') {
-  console.error('Usage: node scripts/runtime-start.mjs <web|worker>')
-  process.exit(1)
-}
+let entry
+try { entry = runtimeEntry(mode) }
+catch (error) { console.error(error.message); process.exit(1) }
 
 const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))
 const migration = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
@@ -19,14 +18,6 @@ const migration = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy'], 
   env: process.env,
 })
 if (migration.status !== 0) process.exit(migration.status ?? 1)
-
-const nextDistDir = process.env.NEXT_DIST_DIR || '.next'
-const webEntry = existsSync('server.js') ? 'server.js' : `${nextDistDir}/standalone/server.js`
-const entry = mode === 'web' ? webEntry : 'dist/worker/index.js'
-if (!existsSync(entry)) {
-  console.error(`Runtime entry is missing: ${entry}`)
-  process.exit(1)
-}
 
 const childEnv = {
   ...process.env,
@@ -41,9 +32,16 @@ if (mode === 'worker') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ status: 'ok' }))
   })
-  healthServer.listen(port, '0.0.0.0', () => {
+  try {
+    await new Promise((resolve, reject) => {
+      healthServer.once('error', reject)
+      healthServer.listen(port, '0.0.0.0', resolve)
+    })
     console.log(`[health] Worker health server listening on port ${port}`)
-  })
+  } catch {
+    console.error(`Worker health port ${port} is unavailable. No worker was started.`)
+    process.exit(1)
+  }
 }
 
 const child = spawn(process.execPath, [entry], {

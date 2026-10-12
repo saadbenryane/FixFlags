@@ -15,21 +15,84 @@ supersedes: []
 - Docker (local Postgres 16 + Redis 7)
 - npm
 
-## Quick start
+## Existing installation
+
+Keep your existing `.env.local` and database. Start the configured local services,
+then the complete application:
+
+```bash
+docker compose up -d --wait --wait-timeout 60
+npm run dev
+```
+
+Wait for `FixFlags web and browser worker ready: http://localhost:3000`, then open
+that address. For another port, use `npm run dev -- --port 3102`; both web and
+worker receive the same local application URLs.
+
+```bash
+npm run dev:status          # Prerequisites, owning session and live worker readiness
+npm run doctor -- --live    # Check the managed URL, including a custom port
+npm run dev:stop            # Stop this checkout's managed runtime and drain active work
+npm run dev                # Start again after the stop completes
+```
+
+Ctrl+C also stops the managed runtime. Active work finishes before Chromium
+closes; shutdown can take up to the longest configured execution deadline plus
+30 seconds. Repeated stop requests do not start another shutdown.
+
+A worker conflict names the owning checkout, host and PID when available. Run
+`npm run dev:stop` from that checkout for a managed runtime. Stop a standalone
+or older unmanaged worker in its owning terminal with Ctrl+C. A missing control
+socket or mismatched ownership never authorizes signalling a recorded PID.
+A crashed worker's ownership lease expires within 45 seconds; do not delete
+heartbeat keys or disable duplicate-worker protection to start another consumer.
+
+## First-time setup
 
 ```bash
 npm install
-cp .env.example .env.local
-# Edit .env.local: configure database, Redis, auth secret and local application URLs
-# Set real provider keys to exercise AI/PageSpeed; their absence must stay visible
-docker compose up -d
-npm run setup          # docker up + generate + migrate + seed
-npm run dev            # Next.js + one dedicated worker
+test -f .env.local || cp .env.example .env.local
+# Configure database, Redis, auth secret and local application URLs in .env.local.
+# Set real provider keys to exercise AI/PageSpeed; missing capabilities remain visible.
+npm run setup              # Wait for Docker health, generate, migrate and seed
+npm run dev
 ```
 
-Open http://localhost:3000, enter a public URL, wait ~60s for results.
+Install a supported Chromium browser if doctor reports it missing. For the
+Playwright-managed browser, use `npx playwright install chromium`.
 
-The default local web process uses Turbopack to reduce compilation delays when opening pages. A page can still take longer on its first visit in development. For web-only development, use `npm run dev:web -- --turbopack`.
+Development uses Turbopack. The first visit to a page may include compilation.
+`npm run dev:web -- --turbopack` deliberately starts only the website and requires
+a separately managed worker for analysis. It is not the remedy for a worker
+ownership conflict.
+
+Environment files follow Next.js precedence: inherited values, mode-specific
+local file, `.env.local`, mode-specific file, then `.env`. Test mode excludes
+`.env.local`. The standalone worker does not overwrite inherited values.
+
+## Local production preview
+
+`npm start` runs a built production web server. Build both processes first:
+
+```bash
+npm run build
+npm run worker:build
+HOSTNAME=127.0.0.1 npm start
+```
+
+In another terminal, start the required compiled worker:
+
+```bash
+WORKER_HEALTH_PORT=8081 npm run worker:start
+```
+
+Stop the development runtime before sharing its Redis with the preview. Keep
+`NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` aligned with the preview origin at
+build and runtime. A custom `NEXT_DIST_DIR` must be the same for build and start.
+Missing runtime entries or static assets fail before migrations, with the
+correct build command. Valid production startup still applies migrations and
+refuses to start if migration deployment fails. Compiled preview processes are
+stopped in their owning terminals, independently of `dev:stop`.
 
 ## Environment variables
 
@@ -42,7 +105,9 @@ See `.env.example` for full list.
 ### Development
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Next.js + one dedicated worker process |
+| `npm run dev` | Next.js + one supervised dedicated worker process |
+| `npm run dev:status` | Prerequisites, runtime ownership and live readiness |
+| `npm run dev:stop` | Graceful stop of this checkout's managed runtime |
 | `npm run dev:web` | Next.js web process only |
 | `npm run dev:all` | Alias for `npm run dev` |
 | `npm run worker` | Standalone audit worker without hot reload (dev default) |

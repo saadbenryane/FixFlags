@@ -28,7 +28,7 @@ function requiredEnv(name: string): string {
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/sign-in')
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 }
 
@@ -183,7 +183,7 @@ test.describe('credentialed revenue journeys', () => {
 
     await page.goto(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}`)
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
+    await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Create account', exact: true }).click()
     await page.waitForURL((url) => url.pathname === `/sites/${siteId}` || url.pathname.startsWith('/sites/'), {
       timeout: 45_000,
@@ -207,6 +207,9 @@ test.describe('credentialed revenue journeys', () => {
     const credentialId = requiredEnv('E2E_WEBAUTHN_CREDENTIAL_ID')
     const privateKey = requiredEnv('E2E_WEBAUTHN_PRIVATE_KEY')
     const userHandle = requiredEnv('E2E_WEBAUTHN_USER_HANDLE')
+    const signCount = Number(requiredEnv('E2E_WEBAUTHN_SIGN_COUNT'))
+    if (!Number.isInteger(signCount) || signCount < 0 || signCount > 0xffffffff)
+      throw new Error('E2E_WEBAUTHN_SIGN_COUNT must be the registered authenticator counter')
 
     const passkeyContext = await browser.newContext()
     const passkeyPage = await passkeyContext.newPage()
@@ -228,12 +231,12 @@ test.describe('credentialed revenue journeys', () => {
         isResidentCredential: true,
         privateKey,
         rpId: new URL(baseURL).hostname,
-        signCount: 0,
+        signCount,
         userHandle,
       },
     })
     await signIn(passkeyPage, email, password)
-    await expect(passkeyPage).toHaveURL(/\/two-factor/)
+    await passkeyPage.waitForURL(/\/two-factor/, { waitUntil: 'load' })
     await passkeyPage.getByRole('button', { name: 'Continue with passkey' }).click()
     await passkeyPage.waitForURL((url) => !url.pathname.startsWith('/two-factor'), {
       timeout: 30_000,

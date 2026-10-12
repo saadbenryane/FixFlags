@@ -67,6 +67,8 @@ COPY --from=builder /app/dist ./dist
 # Runtime helpers. Railway injects configuration; local commands may load .env.local.
 COPY --from=builder /app/scripts/db-run.mjs ./scripts/db-run.mjs
 COPY --from=builder /app/scripts/runtime-start.mjs ./scripts/runtime-start.mjs
+COPY --from=builder /app/scripts/runtime-artifacts.mjs ./scripts/runtime-artifacts.mjs
+COPY --from=builder /app/lib/runtime/environment.mjs ./lib/runtime/environment.mjs
 COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 8080

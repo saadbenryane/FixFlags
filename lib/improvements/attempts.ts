@@ -48,7 +48,7 @@ export async function createImprovementAttempt(input: {
     where: {
       id: input.improvementId,
       projectId: input.projectId,
-      project: { userId: input.userId },
+      project: { userId: input.userId, deletedAt: null },
       occurrences: { some: { auditId: input.sourceAuditId } },
     },
     select: { id: true },
@@ -56,6 +56,12 @@ export async function createImprovementAttempt(input: {
   if (!improvement) throw new Error('Improvement not found for Product')
 
   return executionTransaction(async (tx) => {
+    // Workers lock the owning Site before the Audit and improvement ledger.
+    // Use the same order before taking the attempt lock or Audit foreign keys.
+    const projects = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "projects" WHERE "id" = ${input.projectId}
+        AND "userId" = ${input.userId} AND "deletedAt" IS NULL FOR UPDATE`
+    if (projects.length !== 1) throw new Error('Improvement not found for Product')
     // Attempt creation and result projection share one lock across source
     // reviews, so an older run cannot overwrite a newer recorded repair.
     await tx.$executeRaw`

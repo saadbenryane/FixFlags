@@ -40,7 +40,7 @@ function dependencies(): WorkerRuntimeDependencies & {
       calls.push('worker:start')
       return { close: closeWorker }
     },
-    startScheduler: () => calls.push('scheduler:start'),
+    startScheduler: () => { calls.push('scheduler:start') },
     closeBrowser: async () => {
       calls.push('browser:close')
     },
@@ -78,10 +78,11 @@ describe('standalone worker runtime', () => {
       'heartbeat:touch',
       'worker:start',
       'scheduler:start',
+      'heartbeat:touch',
     ])
   })
 
-  it('clears liveness and closes browser work before the queue worker', async () => {
+  it('drains the queue before closing the browser and clearing liveness', async () => {
     const deps = dependencies()
     const runtime = createWorkerRuntime(deps)
     await runtime.start()
@@ -89,9 +90,9 @@ describe('standalone worker runtime', () => {
     await runtime.shutdown(0)
 
     expect(deps.calls.slice(-4)).toEqual([
-      'heartbeat:clear',
-      'browser:close',
       'worker:close',
+      'browser:close',
+      'heartbeat:clear',
       'exit:0',
     ])
   })
@@ -128,4 +129,48 @@ describe('standalone worker runtime', () => {
     expect(deps.closeWorker).toHaveBeenCalledOnce()
     expect(deps.exit).toHaveBeenCalledOnce()
   })
+  it('holds browser, liveness and ownership while an active job drains', async () => {
+    const deps = dependencies()
+    let complete!: () => void
+    deps.closeWorker.mockImplementation(() => new Promise<void>(resolve => { complete = resolve }))
+    deps.beginShutdown = vi.fn().mockResolvedValue(undefined)
+    deps.releaseOwnership = vi.fn().mockResolvedValue(undefined)
+    const runtime = createWorkerRuntime(deps)
+    await runtime.start()
+    const stopping = runtime.shutdown()
+    await vi.waitFor(() => expect(deps.closeWorker).toHaveBeenCalledOnce())
+    expect(deps.calls).not.toContain('browser:close')
+    expect(deps.calls).not.toContain('heartbeat:clear')
+    expect(deps.releaseOwnership).not.toHaveBeenCalled()
+    complete()
+    await stopping
+    expect(deps.releaseOwnership).toHaveBeenCalledOnce()
+  })
+
+  it('does not initialize browser or consumers after interruption during preflight', async () => {
+    const deps = dependencies()
+    let complete!: () => void
+    deps.preflight = () => new Promise<void>(resolve => { complete = resolve })
+    const runtime = createWorkerRuntime(deps)
+    const starting = runtime.start()
+    const stopping = runtime.shutdown()
+    complete()
+    await Promise.all([starting, stopping])
+    expect(deps.calls).not.toContain('browser:warm')
+    expect(deps.calls).not.toContain('worker:start')
+    expect(deps.exit).toHaveBeenCalledOnce()
+  })
+
+  it('stops consumer intake even if publishing the stopping heartbeat is delayed', async () => {
+    const deps = dependencies()
+    let publish!: () => void
+    deps.beginShutdown = () => new Promise<void>(resolve => { publish = resolve })
+    const runtime = createWorkerRuntime(deps)
+    await runtime.start()
+    const stopping = runtime.shutdown()
+    await vi.waitFor(() => expect(deps.closeWorker).toHaveBeenCalledOnce())
+    publish()
+    await stopping
+  })
+
 })

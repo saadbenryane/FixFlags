@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   projectFindFirst: vi.fn(),
   transaction: vi.fn(),
   executeRaw: vi.fn(),
+  queryRaw: vi.fn(),
   buildUnifiedPlanBundle: vi.fn(),
   mutateProjectIntelligence: vi.fn(),
   appendVerifiedLearning: vi.fn(),
@@ -156,12 +157,14 @@ beforeEach(() => {
         improvementCycle: { upsert: mocks.cycleUpsert },
         improvementCycleEvent: { upsert: mocks.cycleEventUpsert },
         $executeRaw: mocks.executeRaw,
+        $queryRaw: mocks.queryRaw,
       })
     }
     return Promise.all(input as Promise<unknown>[])
   })
   mocks.improvementUpdate.mockResolvedValue({})
   mocks.executeRaw.mockResolvedValue(1)
+  mocks.queryRaw.mockResolvedValue([{ id: 'product-1' }])
   mocks.improvementUpdateMany.mockResolvedValue({ count: 1 })
   mocks.attemptUpdate.mockResolvedValue({})
   mocks.attemptFindFirst.mockResolvedValue(null)
@@ -328,6 +331,14 @@ describe('materializeAttentionForAudit', () => {
 })
 
 describe('createImprovementAttempt', () => {
+  it('refuses a changed owner or removed Site at the persistence boundary', async () => {
+    mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
+    mocks.queryRaw.mockResolvedValue([])
+    await expect(createImprovementAttempt({ improvementId: 'improvement-1', projectId: 'product-1', userId: 'user-1',
+      sourceAuditId: 'review-1', builder: 'site' })).rejects.toThrow('Improvement not found')
+    expect(mocks.attemptCreate).not.toHaveBeenCalled()
+    expect(mocks.improvementUpdate).not.toHaveBeenCalled()
+  })
   const keyed = { improvementId: 'improvement-1', projectId: 'product-1', userId: 'user-1', sourceAuditId: 'review-1', builder: 'site',
     idempotencyKey: 'repair-intent-one', handoffReference: 'flag:flag-1', changeSummary: 'Restored the handler', commitReference: 'commit-one' }
   it.each([null, 'IMPROVED'])('replays a keyed repair without modifying its pending or completed history: %s', async outcome => {
@@ -410,7 +421,7 @@ describe('createImprovementAttempt', () => {
 
     expect(mocks.improvementFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ project: { userId: 'user-1' } }),
+        where: expect.objectContaining({ project: { userId: 'user-1', deletedAt: null } }),
       })
     )
     expect(mocks.improvementUpdate).toHaveBeenCalledWith({

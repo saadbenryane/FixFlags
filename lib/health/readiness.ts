@@ -7,7 +7,7 @@ import { validateAuthEnv } from '@/lib/auth/env'
 import { isBillingFullyConfigured } from '@/lib/billing/config'
 import { productWatchReadiness } from '@/lib/audit/project-watch'
 import { createQueueRedis } from '@/lib/queue/redis'
-import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
+import { readWorkerHeartbeat, type WorkerHeartbeatStatus } from '@/lib/queue/worker-heartbeat'
 import { checkR2Connection } from '@/lib/storage/r2'
 
 export type ReadinessSubsystemName =
@@ -186,6 +186,10 @@ export async function readMigrationReadiness(): Promise<ReadinessSubsystem> {
   return migrationReadiness(compareMigrationLedger(shippedMigrationNames(), applied))
 }
 
+export function workerAcceptsWork(heartbeat: WorkerHeartbeatStatus): boolean {
+  return heartbeat.alive && heartbeat.workers.some(worker => worker.queueState === 'idle' || worker.queueState === 'active')
+}
+
 function productionDependencies(): ReadinessDependencies {
   return {
     database: async () => {
@@ -205,9 +209,9 @@ function productionDependencies(): ReadinessDependencies {
     migrations: () => readMigrationReadiness(),
     worker: async () => {
       const heartbeat = await readWorkerHeartbeat()
-      return heartbeat.alive
+      return workerAcceptsWork(heartbeat)
         ? { ok: true }
-        : { ok: false, detail: 'No current worker heartbeat' }
+        : { ok: false, detail: 'No current worker is accepting work' }
     },
     browser: async () => {
       const heartbeat = await readWorkerHeartbeat()

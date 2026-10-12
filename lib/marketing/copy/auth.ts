@@ -1,4 +1,5 @@
 export const AUTH = {
+  preparingSecureSignIn: 'Preparing secure sign in',
   reportGate: {
     title: 'Your site check is underway',
     subtitle: (hostname?: string | null) =>

@@ -1,73 +1,88 @@
-import dotenv from 'dotenv'
-import { spawn } from 'node:child_process'
 import net from 'node:net'
-import IORedis from 'ioredis'
+import { randomUUID } from 'node:crypto'
+import { setTimeout as delay } from 'node:timers/promises'
+import Redis from 'ioredis'
+import { loadRuntimeEnvironment, developmentEnvironment, shutdownDeadlineMs } from '../lib/runtime/environment.mjs'
+import { freshWorkerHeartbeats, readLocalWorkerOwner, workerConflict } from '../lib/runtime/local-worker.mjs'
+import { localReadiness } from '../lib/runtime/readiness.mjs'
+import { createRuntimeControl } from './local-runtime-control.mjs'
+import { createSupervisor } from './runtime-supervisor.mjs'
 
-dotenv.config({ path: '.env.local', quiet: true })
-const args = process.argv.slice(2)
-const portIndex = args.indexOf('--port')
-const port = Number(portIndex >= 0 ? args[portIndex + 1] : process.env.PORT ?? 3000)
-if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Use --port with a port between 1024 and 65535')
-const origin = `http://localhost:${port}`
-const env = { ...process.env, NODE_ENV: 'development', PORT: String(port), BETTER_AUTH_URL: origin, NEXT_PUBLIC_APP_URL: origin }
-const children = new Set()
-let stopping = false
+loadRuntimeEnvironment('development')
+const runtimeId = randomUUID(), workerId = randomUUID()
+const env = { ...developmentEnvironment(process.argv.slice(2)), FIXFLAGS_LOCAL_RUNTIME_ID: runtimeId, FIXFLAGS_WORKER_ID: workerId }
+const origin = env.NEXT_PUBLIC_APP_URL
+const abort = new AbortController()
+let control, phase = 'preflight', stopPromise, exitCode = 0
+let startupDone
+const startupSettled = new Promise(resolve => { startupDone = resolve })
+const redis = new Redis(env.REDIS_URL, { lazyConnect: true, connectTimeout: 2000, commandTimeout: 3000, maxRetriesPerRequest: 0, retryStrategy: () => null })
+redis.on('error', () => {})
+const supervisor = createSupervisor({ env, shutdownMs: shutdownDeadlineMs(env), onFailure: code => { void stop(code) } })
+
 function stop(code = 0) {
-  if (stopping) return
-  stopping = true
-  for (const child of children) child.kill('SIGTERM')
-  process.exitCode = code
+  exitCode = Math.max(exitCode, code)
+  if (stopPromise) return stopPromise
+  abort.abort()
+  phase = 'stopping'
+  stopPromise = (async () => {
+    const clean = await supervisor.shutdown()
+    await startupSettled
+    redis.disconnect()
+    await control?.close()
+    process.exitCode = clean ? exitCode : 1
+  })()
+  return stopPromise
 }
-process.on('SIGINT', () => stop())
-process.on('SIGTERM', () => stop())
-function launch(command, parameters, overrides = {}) {
-  const child = spawn(command, parameters, { stdio: 'inherit', env: { ...env, ...overrides } })
-  children.add(child)
-  child.on('exit', (code) => { children.delete(child); if (!stopping) stop(code || 1) })
-  child.on('error', (error) => { console.error(error.message); stop(1) })
-  return child
-}
-async function runDoctor() {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['scripts/doctor.mjs'], { stdio: 'inherit', env })
-    child.on('exit', (code) => code === 0 ? resolve() : reject(new Error('Fix the failed prerequisites before starting.')))
-    child.on('error', reject)
-  })
-}
+process.on('SIGINT', () => { void stop() })
+process.on('SIGTERM', () => { void stop() })
+
 async function checkPort() {
   const server = net.createServer()
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, resolve) })
-  await new Promise((resolve) => server.close(resolve))
+  try {
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(Number(env.PORT), resolve) })
+  } catch { throw new Error(`Port ${env.PORT} is occupied. Choose --port <number>. No process was stopped.`) }
+  finally { if (server.listening) await new Promise(resolve => server.close(resolve)) }
 }
-const redis = new IORedis(env.REDIS_URL, { lazyConnect: true, connectTimeout: 2000, maxRetriesPerRequest: 0 })
-try {
-  await checkPort().catch(() => { throw new Error(`Port ${port} is occupied. Choose another port. No process was stopped.`) })
-  await runDoctor()
-  await redis.connect()
-  let cursor = '0'
-  do {
-    const [next, keys] = await redis.scan(cursor, 'MATCH', 'fixflags:worker:heartbeat:*', 'COUNT', 100)
-    cursor = next
-    if (keys.length) throw new Error('A worker already uses this Redis. Stop its owning session before starting another local runtime.')
-  } while (cursor !== '0')
-  launch(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--turbopack', '-p', String(port)], { FIXFLAGS_PROCESS_ROLE: 'web' })
-  launch(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'worker/index.ts'], { FIXFLAGS_PROCESS_ROLE: 'worker', AUDIT_WORKER_CONCURRENCY: '1' })
-  const deadline = Date.now() + 120000
-  let ready = false
-  while (!stopping && Date.now() < deadline) {
-    const response = await fetch(`${origin}/api/health/worker`, { signal: AbortSignal.timeout(3000) }).catch(() => null)
-    const health = response?.ok ? await response.json() : null
-    if (health?.worker?.alive && health.worker.browserOk && health.worker.workerCount === 1) {
-      ready = true
-      console.log(`FixFlags web and browser worker ready: ${origin}`)
-      break
+
+async function run() {
+  try {
+    control = await createRuntimeControl({ runtimeId, status: () => ({ origin, workerId, phase, stopping: abort.signal.aborted }), stop })
+    abort.signal.throwIfAborted()
+    await checkPort()
+    abort.signal.throwIfAborted()
+    const doctor = supervisor.launch(['scripts/doctor.mjs'], { role: 'doctor', transient: true })
+    const result = await doctor.done
+    abort.signal.throwIfAborted()
+    if (result.code !== 0) throw new Error('Fix the failed prerequisites before starting.')
+    await redis.connect()
+    abort.signal.throwIfAborted()
+    const owner = await readLocalWorkerOwner(redis)
+    if (owner || (await freshWorkerHeartbeats(redis)).length) throw new Error(workerConflict(owner))
+    abort.signal.throwIfAborted()
+    phase = 'starting'
+    supervisor.launch(['node_modules/next/dist/bin/next', 'dev', '--turbopack', '-p', env.PORT], { role: 'web', overrides: { FIXFLAGS_PROCESS_ROLE: 'web' } })
+    supervisor.launch(['--import', 'tsx', 'worker/index.ts'], { role: 'worker', overrides: { FIXFLAGS_PROCESS_ROLE: 'worker', AUDIT_WORKER_CONCURRENCY: '1' } })
+    const deadline = Date.now() + 120_000
+    let observation = { ready: false, detail: 'web unavailable' }
+    while (!abort.signal.aborted && Date.now() < deadline) {
+      const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(3000)])
+      const database = await fetch(`${origin}/api/health`, { signal }).catch(() => null)
+      const response = await fetch(`${origin}/api/health/worker`, { signal }).catch(() => null)
+      const health = response?.ok ? await response.json().catch(() => null) : null
+      observation = database?.ok ? localReadiness(health, workerId) : { ready: false, detail: 'web/database health unavailable' }
+      abort.signal.throwIfAborted()
+      if (observation.ready) {
+        phase = 'ready'
+        console.log(`FixFlags web and browser worker ready: ${origin}`)
+        console.log('Stop with Ctrl+C or npm run dev:stop. Inspect with npm run dev:status.')
+        return
+      }
+      await delay(1000, undefined, { signal: abort.signal })
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-  }
-  if (!ready && !stopping) throw new Error('The web and browser worker did not become ready. See the startup errors above.')
-} catch (error) {
-  console.error(error.message)
-  stop(1)
-} finally {
-  redis.disconnect()
+    throw new Error(`Startup readiness timed out: ${observation.detail}. See the child logs above.`)
+  } catch (error) {
+    if (!abort.signal.aborted) { console.error(error.message); void stop(1) }
+  } finally { startupDone() }
 }
+await run()

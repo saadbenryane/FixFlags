@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Fingerprint } from 'lucide-react'
@@ -21,6 +21,8 @@ function TwoFactorForm() {
   const [loading, setLoading] = useState<'passkey' | 'backup' | null>(null)
   const [backupCode, setBackupCode] = useState('')
   const [trustDevice, setTrustDevice] = useState(true)
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => { setHydrated(true) }, [])
 
   async function verifyPasskey() {
     setLoading('passkey')
@@ -69,6 +71,9 @@ function TwoFactorForm() {
     }
   }
 
+  // A visible server-rendered button must not accept a click before its
+  // authentication handler is attached.
+  if (!hydrated) return <AuthCardSkeleton />
   return (
     <AuthCard
       title={AUTH.twoFactor.title}

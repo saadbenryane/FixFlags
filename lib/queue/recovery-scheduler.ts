@@ -12,6 +12,7 @@ import { runGscPull } from '@/lib/growth/gsc-pull'
 import { runGaPull } from '@/lib/growth/ga-pull'
 import { deleteExpiredProductSignals } from '@/lib/signals/product-signals'
 import { logger } from '@/lib/logger'
+import { createTimerScheduler } from './timer-scheduler'
 import { recoverExpiredSiteRuns } from '@/lib/sites/application/run-leases'
 import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
 import { dispatchPendingAudits } from '@/lib/audit/dispatch'
@@ -36,7 +37,7 @@ const ANALYTICS_LOCK_TTL_MS = 25 * 60 * 60 * 1000 // ...but only actually run ~o
 const SIGNAL_RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SIGNAL_RETENTION_LOCK_TTL_MS = 25 * 60 * 60 * 1000
 
-let started = false
+let scheduler: ReturnType<typeof createTimerScheduler> | null = null
 let progressiveRecoveryRunning = false
 
 async function progressiveRecoveryTick(): Promise<void> {
@@ -146,57 +147,24 @@ export async function accountRetentionTick(): Promise<void> {
  * scales safely to any number of workers and needs no external cron.
  * Idempotent; timers are unref'd so they never keep the process alive.
  */
-export function startRecoveryScheduler(): void {
-  if (started) return
-  started = true
-
-  const initialAccounts = setTimeout(() => void accountRetentionTick(), 5000)
-  initialAccounts.unref?.()
-  const accountRetention = setInterval(() => void accountRetentionTick(), 60_000)
-  accountRetention.unref?.()
-
-  const progressiveRecovery = setInterval(() => void progressiveRecoveryTick(), PROGRESSIVE_RECOVERY_INTERVAL_MS)
-  progressiveRecovery.unref?.()
-  const initialProgressive = setTimeout(() => void progressiveRecoveryTick(), 1000)
-  initialProgressive.unref?.()
-
-  const initialRecovery = setTimeout(() => void recoveryTick(), 15_000)
-  initialRecovery.unref?.()
-  const recoveryTimer = setInterval(() => void recoveryTick(), RECOVERY_INTERVAL_MS)
-  recoveryTimer.unref?.()
-
-  const initialWatch = setTimeout(() => void projectWatchTick(), 45_000)
-  initialWatch.unref?.()
-  const watchTimer = setInterval(() => void projectWatchTick(), WATCH_INTERVAL_MS)
-  watchTimer.unref?.()
-
-  const initialIntegrityWatch = setTimeout(() => void integrityWatchTick(), 50_000)
-  initialIntegrityWatch.unref?.()
-  const integrityWatchTimer = setInterval(() => void integrityWatchTick(), WATCH_INTERVAL_MS)
-  integrityWatchTimer.unref?.()
-
-  const initialNurture = setTimeout(() => void nurtureTick(), 60_000)
-  initialNurture.unref?.()
-  const nurtureTimer = setInterval(() => void nurtureTick(), NURTURE_INTERVAL_MS)
-  nurtureTimer.unref?.()
-
-  const initialRollup = setTimeout(() => void growthRollupTick(), 90_000)
-  initialRollup.unref?.()
-  const rollupTimer = setInterval(() => void growthRollupTick(), ROLLUP_INTERVAL_MS)
-  rollupTimer.unref?.()
-
-  const initialAnalytics = setTimeout(() => void analyticsTick(), 120_000)
-  initialAnalytics.unref?.()
-  const analyticsTimer = setInterval(() => void analyticsTick(), ANALYTICS_INTERVAL_MS)
-  analyticsTimer.unref?.()
-
-  const initialSignalRetention = setTimeout(() => void signalRetentionTick(), 150_000)
-  initialSignalRetention.unref?.()
-  const signalRetentionTimer = setInterval(
-    () => void signalRetentionTick(),
-    SIGNAL_RETENTION_INTERVAL_MS
-  )
-  signalRetentionTimer.unref?.()
-
+export function startRecoveryScheduler() {
+  if (scheduler && !scheduler.isStopped()) return scheduler
+  scheduler = createTimerScheduler(error => logger.error('Scheduler callback failed', error))
+  const jobs: Array<[() => Promise<unknown>, number, number]> = [
+    [accountRetentionTick, 5000, 60_000],
+    [progressiveRecoveryTick, 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
+    [recoveryTick, 15_000, RECOVERY_INTERVAL_MS],
+    [projectWatchTick, 45_000, WATCH_INTERVAL_MS],
+    [integrityWatchTick, 50_000, WATCH_INTERVAL_MS],
+    [nurtureTick, 60_000, NURTURE_INTERVAL_MS],
+    [growthRollupTick, 90_000, ROLLUP_INTERVAL_MS],
+    [analyticsTick, 120_000, ANALYTICS_INTERVAL_MS],
+    [signalRetentionTick, 150_000, SIGNAL_RETENTION_INTERVAL_MS],
+  ]
+  for (const [tick, initial, interval] of jobs) {
+    scheduler.schedule(tick, initial)
+    scheduler.schedule(tick, interval, true)
+  }
   logger.info('Recovery scheduler started')
+  return scheduler
 }

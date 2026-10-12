@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AUTH } from '@/lib/marketing/copy/auth'
 
 /**
  * Layout-matched auth fallback used while search params and runtime provider
@@ -10,7 +11,7 @@ export function AuthCardSkeleton() {
     <div
       className="w-full max-w-sm space-y-4"
       role="status"
-      aria-label="Preparing secure sign in"
+      aria-label={AUTH.preparingSecureSignIn}
     >
       <div className="space-y-2 text-center">
         <Skeleton className="mx-auto h-7 w-52" />
@@ -26,7 +27,7 @@ export function AuthCardSkeleton() {
         </CardContent>
       </Card>
       <Skeleton className="mx-auto h-4 w-44" />
-      <span className="sr-only">Preparing secure sign in</span>
+      <span className="sr-only">{AUTH.preparingSecureSignIn}</span>
     </div>
   )
 }

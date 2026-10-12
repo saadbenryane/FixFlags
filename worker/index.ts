@@ -7,6 +7,8 @@ import { getAuditBrowser, getBrowserDiagnostics } from '../lib/audit/screenshot'
 import {
   clearWorkerHeartbeat,
   readWorkerHeartbeat,
+  beginWorkerShutdown,
+  WORKER_ID,
   touchWorkerHeartbeat,
 } from '../lib/queue/worker-heartbeat'
 import { prisma } from '../lib/db'
@@ -15,6 +17,10 @@ import { checkR2Connection } from '../lib/storage/r2'
 import { isProdStorageConfigured } from '../lib/env'
 import { logger } from '../lib/logger'
 import { createWorkerRuntime } from './runtime'
+import { acquireLocalWorkerLease, localWorkerOwner } from '../lib/runtime/local-worker.mjs'
+
+let localLease: Awaited<ReturnType<typeof acquireLocalWorkerLease>> | null = null
+let localRedis: ReturnType<typeof createQueueRedis> | null = null
 
 const runtime = createWorkerRuntime({
   validateEnvironment: validateWorkerEnv,
@@ -33,10 +39,13 @@ const runtime = createWorkerRuntime({
         { message: error instanceof Error ? error.message : 'storage unavailable' }))
     }
     if (process.env.NODE_ENV !== 'production' && process.env.FIXFLAGS_ALLOW_DUPLICATE_WORKERS !== '1') {
+      localRedis = createQueueRedis()
+      await localRedis.connect()
+      localLease = await acquireLocalWorkerLease(localRedis,
+        localWorkerOwner(WORKER_ID, process.env.FIXFLAGS_LOCAL_RUNTIME_ID ?? null),
+        () => { logger.error('Local worker ownership lost; stopping intake'); void runtime.shutdown(1) })
       const heartbeat = await readWorkerHeartbeat()
-      if (heartbeat.alive) {
-        throw new Error('Another local worker is already alive. Set FIXFLAGS_ALLOW_DUPLICATE_WORKERS=1 for intentional concurrency.')
-      }
+      if (heartbeat.alive) throw new Error('An unmanaged worker is already alive on this Redis. Stop its owning terminal with Ctrl+C. No process was stopped.')
     }
   },
   warmBrowser: async () => {
@@ -45,6 +54,10 @@ const runtime = createWorkerRuntime({
   readBrowserDiagnostics: getBrowserDiagnostics,
   touchHeartbeat: touchWorkerHeartbeat,
   clearHeartbeat: clearWorkerHeartbeat,
+  beginShutdown: beginWorkerShutdown,
+  releaseOwnership: async () => {
+    try { await localLease?.release() } finally { localRedis?.disconnect() }
+  },
   startWorker,
   startScheduler: startRecoveryScheduler,
   closeBrowser,

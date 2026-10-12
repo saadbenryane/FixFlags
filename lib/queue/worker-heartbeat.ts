@@ -8,7 +8,7 @@ import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 const HEARTBEAT_PREFIX = 'fixflags:worker:heartbeat:'
 const STALLED_COUNT_KEY = 'fixflags:worker:stalled-count'
 const HEARTBEAT_TTL_SECONDS = 45
-const WORKER_ID =
+export const WORKER_ID =
   process.env.RAILWAY_REPLICA_ID ??
   process.env.FIXFLAGS_WORKER_ID ??
   randomUUID()
@@ -18,6 +18,7 @@ const WORKER_SHA = process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? 
 
 let redis: Redis | null = null
 let stopping = false
+let draining = false
 let diagnostics: WorkerDiagnostics = {
   browserOk: false,
   activeBrowserContexts: 0,
@@ -59,7 +60,7 @@ export async function touchWorkerHeartbeat(
   update?: Partial<WorkerDiagnostics>
 ): Promise<void> {
   if (stopping) return
-  diagnostics = { ...diagnostics, ...update }
+  diagnostics = { ...diagnostics, ...update, ...(draining ? { queueState: 'stopping' as const } : {}) }
   if (update?.browserOk === true) diagnostics.lastSuccessfulBrowserProbeAt = new Date().toISOString()
   const record: WorkerHeartbeatRecord = {
     workerId: WORKER_ID,
@@ -120,6 +121,12 @@ export async function readStalledJobCount(): Promise<number> {
   const value = await getRedis().get(STALLED_COUNT_KEY)
   const count = Number.parseInt(value ?? '0', 10)
   return Number.isFinite(count) && count > 0 ? count : 0
+}
+
+/** Keep a fresh stopping record while consumers finish their active work. */
+export async function beginWorkerShutdown(): Promise<void> {
+  draining = true
+  await touchWorkerHeartbeat({ queueState: 'stopping' })
 }
 
 export async function clearWorkerHeartbeat(): Promise<void> {
@@ -183,7 +190,7 @@ export function aggregateWorkerHeartbeats(
   now = Date.now()
 ): WorkerHeartbeatStatus {
   const aliveRecords = records.filter(
-    (record) => now - record.lastSeenMs <= HEARTBEAT_TTL_SECONDS * 1000
+    (record) => Number.isFinite(record.lastSeenMs) && now >= record.lastSeenMs && now - record.lastSeenMs <= HEARTBEAT_TTL_SECONDS * 1000
   )
   if (aliveRecords.length === 0) {
     return {
@@ -201,7 +208,7 @@ export function aggregateWorkerHeartbeats(
   const lastSeenMs = Math.max(...aliveRecords.map((record) => record.lastSeenMs))
   return {
     uptimeReady: aliveRecords.every(record => record.uptimeReady === true && record.lastUptimeSweepAt != null &&
-      Number.isFinite(Date.parse(record.lastUptimeSweepAt)) && now - Date.parse(record.lastUptimeSweepAt) <= 90_000),
+      Number.isFinite(Date.parse(record.lastUptimeSweepAt)) && now >= Date.parse(record.lastUptimeSweepAt) && now - Date.parse(record.lastUptimeSweepAt) <= 90_000),
     accountChecksReady: aliveRecords.every(record => record.accountChecksReady === true),
     accountConfigurationMatches: accountConfigurationFingerprint() != null && aliveRecords.every(record =>
       record.accountConfigurationFingerprint === accountConfigurationFingerprint()),

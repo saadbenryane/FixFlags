@@ -18,11 +18,20 @@ function validEnv(overrides = {}) {
     E2E_STRIPE_SECRET_KEY: 'sk_test_release_fixture',
     E2E_PAID_OPEN_EXPECTED: 'true',
     RELEASE_WATCH_MAILBOX: 'validationalerts+run-1@fixflags.com',
+    E2E_WEBAUTHN_SIGN_COUNT: '0',
     ...overrides,
   }
 }
 
 describe('release preflight contract', () => {
+  it('requires the actual unsigned registered authenticator counter', () => {
+    for (const counter of ['-1', '1.5', 'NaN', '4294967296']) {
+      assert.ok(validateReleasePreflight(validEnv({ E2E_WEBAUTHN_SIGN_COUNT: counter }), { checkFile: false, stage: 'credentialed-core' }).some(issue => issue.includes('unsigned authenticator counter')))
+    }
+    for (const counter of ['0', '1', '4294967295']) {
+      assert.ok(!validateReleasePreflight(validEnv({ E2E_WEBAUTHN_SIGN_COUNT: counter }), { checkFile: false, stage: 'credentialed-core' }).some(issue => issue.includes('unsigned authenticator counter')))
+    }
+  })
   it('uses canonical database identity independent of credentials and query parameters', () => {
     assert.equal(
       canonicalDatabaseIdentity('postgresql://a:x@DB.TEST/fixflags_release?sslmode=require'),

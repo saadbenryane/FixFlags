@@ -30,5 +30,14 @@ export function startUptimeRuntime() {
   const initial = setTimeout(tick, 1000)
   const timer = setInterval(tick, 30_000)
   initial.unref(); timer.unref()
-  return { close: async () => { closed = true; clearTimeout(initial); clearInterval(timer); await pendingSweep; await touchWorkerHeartbeat({ uptimeReady: false }).catch(error => logger.error('Uptime shutdown heartbeat failed', error)); await worker.close() } }
+  return {
+    close: async () => {
+      closed = true
+      clearTimeout(initial)
+      clearInterval(timer)
+      const workerClosed = worker.close()
+      await Promise.all([pendingSweep, workerClosed])
+      await touchWorkerHeartbeat({ uptimeReady: false }).catch(error => logger.error('Uptime shutdown heartbeat failed', error))
+    },
+  }
 }

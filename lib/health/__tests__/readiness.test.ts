@@ -3,9 +3,23 @@ import {
   compareMigrationLedger,
   readLaunchReadiness,
   shippedMigrationNames,
+  workerAcceptsWork,
   type MigrationLedgerRow,
   type ReadinessSubsystemName,
 } from '@/lib/health/readiness'
+import { aggregateWorkerHeartbeats } from '@/lib/queue/worker-heartbeat'
+
+describe('worker admission readiness', () => {
+  it('keeps a draining worker visible without advertising new execution capacity', () => {
+    const now = Date.now()
+    const record = { workerId: 'owned', lastSeenMs: now, browserOk: true, activeBrowserContexts: 1, configuredConcurrency: 1, queueState: 'stopping' as const }
+    const heartbeat = aggregateWorkerHeartbeats([record], now)
+    expect(heartbeat.alive).toBe(true)
+    expect(workerAcceptsWork(heartbeat)).toBe(false)
+    expect(workerAcceptsWork(aggregateWorkerHeartbeats([{ ...record, queueState: 'active' }], now))).toBe(true)
+    expect(workerAcceptsWork(aggregateWorkerHeartbeats([], now))).toBe(false)
+  })
+})
 
 const subsystemNames: ReadinessSubsystemName[] = [
   'database',

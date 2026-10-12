@@ -1933,6 +1933,7 @@ run('migrated progressive execution', () => {
     const audits: string[] = []
     const comparisons: FlagDiffSummary[] = []
     let titleFlagId = '', titleImprovementId = '', titleAttemptId = '', availabilityFlagId = ''
+    let titleFailureState: { status: string; resolvedInId: string | null } | undefined
     try {
       await prisma.project.update({ where: { id: projectId }, data: { url: pageUrl } })
       await productTransaction(tx => ensureDefaultMonitoring(tx, projectId, userId))
@@ -1972,6 +1973,9 @@ run('migrated progressive execution', () => {
         if (index === 0) {
           const title = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'title-missing' }, include: { improvementOccurrence: true } })
           titleFlagId = title.id; titleImprovementId = title.improvementOccurrence!.improvementId
+          expect(['OPEN', 'REGRESSED']).toContain(title.status)
+          expect(title.resolvedInId).toBeNull()
+          titleFailureState = { status: title.status, resolvedInId: title.resolvedInId }
           availabilityFlagId = (await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, fingerprint: { startsWith: 'outcome:v1:' + availability.id + ':' } } })).id
           titleAttemptId = (await recordSiteFlagFix({ siteId: projectId, flagId: title.id, userId,
             idempotencyKey: 'scheduled-title-fix', changeSummary: 'Restore the title on this page' })).attemptId
@@ -1984,7 +1988,9 @@ run('migrated progressive execution', () => {
             expect.arrayContaining([expect.objectContaining({ detail: expect.objectContaining({ httpStatus: 503, code: 'HTTP_ERROR', finalUrl: pageUrl }) })]))
           expect(summary.inconclusive.map(flag => flag.id)).toContain(titleFlagId)
           expect(summary.inconclusive.map(flag => flag.id)).toContain(availabilityFlagId)
-          expect(await prisma.flag.findUniqueOrThrow({ where: { id: titleFlagId } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+          // Earlier observations may already establish recurrence. Missing
+          // evidence preserves the exact active state instead of rewriting it.
+          expect(await prisma.flag.findUniqueOrThrow({ where: { id: titleFlagId } })).toMatchObject(titleFailureState!)
           expect(await prisma.flag.findUniqueOrThrow({ where: { id: availabilityFlagId } })).toMatchObject({ status: expect.not.stringMatching('FIXED') })
           expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: titleAttemptId } })).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
         }

@@ -10,6 +10,8 @@ supersedes: []
 
 Accepted owner scope, 2026-10-12: the website app and persistent category board launch with one-website open-beta access. Customer-facing MCP, CLI, repository tools and paid enrollment remain parked. This section supersedes the broader launch sequence and acceptance checklist below for this release; the broader architecture remains the long-term direction.
 
+Owner adjustment, 2026-10-13: live Shopify connection testing is excluded from this validation pass. Preserve its existing implementation and compatibility tests. Do not report a live Shopify connection as verified.
+
 Implementation and proof are separate. A requirement closes only with evidence from the current candidate. No historical receipt, registration count or passing configuration flag establishes runtime success.
 
 | Requirement | Workspace implementation | Required completion evidence |

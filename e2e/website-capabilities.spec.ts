@@ -40,7 +40,7 @@ test.describe('controlled website capabilities', () => {
     if (['fixflags.com', 'www.fixflags.com'].includes(origin.hostname)) throw new Error('Capability fixtures must never target production')
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(required('E2E_CAPABILITY_OWNER_EMAIL'))
-    await page.getByLabel('Password').fill(required('E2E_CAPABILITY_OWNER_PASSWORD'))
+    await page.getByLabel('Password', { exact: true }).fill(required('E2E_CAPABILITY_OWNER_PASSWORD'))
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.waitForURL(url => !url.pathname.startsWith('/sign-in'))
   })

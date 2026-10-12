@@ -1,81 +1,100 @@
 import { runBestEffort } from '@/lib/observability/best-effort'
+import { shutdownDeadlineMs } from '../lib/runtime/environment.mjs'
 
 export interface WorkerHandle {
   close(): Promise<unknown>
 }
-
 export interface WorkerRuntimeLogger {
   info(message: string): void
   warn(message: string, details: Record<string, unknown>): void
   error(message: string, details?: unknown): void
 }
-
 export interface WorkerRuntimeDependencies {
   validateEnvironment(): void
   preflight(): Promise<void>
   warmBrowser(): Promise<void>
-  readBrowserDiagnostics(): {
-    connected: boolean
-    activeContexts: number
-  }
-  touchHeartbeat(update: {
-    browserOk: boolean
-    activeBrowserContexts: number
-  }): Promise<void>
+  readBrowserDiagnostics(): { connected: boolean; activeContexts: number }
+  touchHeartbeat(update: { browserOk: boolean; activeBrowserContexts: number; queueState?: 'idle' }): Promise<void>
+  beginShutdown?(): Promise<void>
+  releaseOwnership?(): Promise<void>
   clearHeartbeat(): Promise<void>
   startWorker(): WorkerHandle
-  startScheduler(): void
+  startScheduler(): { stop(): Promise<unknown> } | void
   closeBrowser(): Promise<void>
   exit(code: number): void
   logger: WorkerRuntimeLogger
+  shutdownMs?: number
 }
 
-/**
- * Owns the standalone worker lifecycle without coupling tests to process-level
- * signal handlers. The web runtime never imports or calls this module.
- */
+/** Supervise startup and draining without exposing process globals to tests. */
 export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   let worker: WorkerHandle | null = null
-  let shuttingDown = false
+  let scheduler: ReturnType<WorkerRuntimeDependencies['startScheduler']>
+  let shuttingDown = false, startPromise: Promise<void> | undefined, stopPromise: Promise<void> | undefined
+  let publishedHeartbeat = false
 
-  async function shutdown(exitCode = 0): Promise<void> {
+  async function runStart() {
     if (shuttingDown) return
-    shuttingDown = true
-    dependencies.logger.info('Worker shutting down')
-    await runBestEffort(dependencies.clearHeartbeat, {
-      operation: 'worker_heartbeat_cleanup',
-      logger: dependencies.logger,
-      context: { exitCode },
-    })
-    await dependencies.closeBrowser()
-    await worker?.close()
-    dependencies.exit(exitCode)
-  }
-
-  async function start(): Promise<void> {
     dependencies.validateEnvironment()
     dependencies.logger.info('Worker starting')
-
     await dependencies.preflight()
+    if (shuttingDown) return
     await dependencies.warmBrowser().catch(error => {
       dependencies.logger.warn('Browser unavailable; independent work and automatic browser recovery remain active', {
         error: error instanceof Error ? error.message : String(error),
       })
     })
+    if (shuttingDown) return
     const browser = dependencies.readBrowserDiagnostics()
-    await dependencies.touchHeartbeat({
-      browserOk: browser.connected,
-      activeBrowserContexts: browser.activeContexts,
-    })
-
+    await dependencies.touchHeartbeat({ browserOk: browser.connected, activeBrowserContexts: browser.activeContexts })
+    publishedHeartbeat = true
+    if (shuttingDown) return
     worker = dependencies.startWorker()
-    dependencies.startScheduler()
+    scheduler = dependencies.startScheduler()
+    await dependencies.touchHeartbeat({ browserOk: browser.connected, activeBrowserContexts: browser.activeContexts, queueState: 'idle' })
     dependencies.logger.info('Worker ready, listening for audit jobs')
   }
+  function start() { return startPromise ??= runStart() }
 
-  return {
-    start,
-    shutdown,
-    isShuttingDown: () => shuttingDown,
+  function shutdown(exitCode = 0): Promise<void> {
+    if (stopPromise) return stopPromise
+    shuttingDown = true
+    dependencies.logger.info('Worker stopping intake and draining active work')
+    stopPromise = (async () => {
+      const timeout = setTimeout(() => {
+        dependencies.logger.error('Worker shutdown deadline exceeded; unfinished work is interrupted, not completed')
+        dependencies.exit(1)
+      }, dependencies.shutdownMs ?? shutdownDeadlineMs())
+      // While queues drain, their normal idle heartbeat timer may already be closed.
+      let heartbeatWrite: Promise<void> | undefined
+      const stoppingHeartbeat = () => {
+        if (!publishedHeartbeat || heartbeatWrite) return heartbeatWrite
+        heartbeatWrite = dependencies.beginShutdown?.()
+          .catch(error => dependencies.logger.error('Stopping heartbeat failed', error))
+          .finally(() => { heartbeatWrite = undefined })
+        return heartbeatWrite
+      }
+      const heartbeat = setInterval(stoppingHeartbeat, 15_000)
+      heartbeat.unref?.()
+      try {
+        await startPromise?.catch(() => {})
+        const stoppingPublished = stoppingHeartbeat()
+        // Calling close immediately stops consumer intake; scheduled callbacks then settle.
+        const schedulerStopped = scheduler?.stop()
+        const workerClosed = worker?.close()
+        const settled = await Promise.allSettled([stoppingPublished, schedulerStopped, workerClosed])
+        for (const result of settled) if (result.status === 'rejected') { exitCode = 1; dependencies.logger.error('Worker drain failed', result.reason) }
+        await dependencies.closeBrowser().catch(error => { exitCode = 1; dependencies.logger.error('Browser cleanup failed', error) })
+        clearInterval(heartbeat)
+        await runBestEffort(dependencies.clearHeartbeat, { operation: 'worker_heartbeat_cleanup', logger: dependencies.logger, context: { exitCode } })
+        await dependencies.releaseOwnership?.().catch(error => { exitCode = 1; dependencies.logger.error('Worker ownership cleanup failed', error) })
+      } finally {
+        clearInterval(heartbeat)
+        clearTimeout(timeout)
+      }
+      dependencies.exit(exitCode)
+    })()
+    return stopPromise
   }
+  return { start, shutdown, isShuttingDown: () => shuttingDown }
 }

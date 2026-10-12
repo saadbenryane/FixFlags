@@ -39,6 +39,7 @@ export const CREDENTIALED_CORE_INPUTS = [
   'E2E_WEBAUTHN_CREDENTIAL_ID',
   'E2E_WEBAUTHN_PRIVATE_KEY',
   'E2E_WEBAUTHN_USER_HANDLE',
+  'E2E_WEBAUTHN_SIGN_COUNT',
   'E2E_BILLING_FREE_EMAIL',
   'E2E_BILLING_FREE_PASSWORD',
   'E2E_BILLING_PAID_EMAIL',
@@ -268,6 +269,11 @@ export function validateReleasePreflight(
   }
   if (typedStage === 'fixture-binding' && env.RELEASE_WATCH_MAILBOX && !/^validationalerts\+[a-z0-9-]+@fixflags\.com$/i.test(env.RELEASE_WATCH_MAILBOX))
     issues.push('RELEASE_WATCH_MAILBOX must be a unique controlled receiving alias')
+  if (typedStage === 'credentialed-core' && env.E2E_WEBAUTHN_SIGN_COUNT) {
+    const counter = Number(env.E2E_WEBAUTHN_SIGN_COUNT)
+    if (!Number.isInteger(counter) || counter < 0 || counter > 0xffffffff)
+      issues.push('E2E_WEBAUTHN_SIGN_COUNT must be the registered unsigned authenticator counter')
+  }
   return issues
 }
 

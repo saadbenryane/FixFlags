@@ -1,9 +1,12 @@
-import 'dotenv/config'
+import { loadRuntimeEnvironment } from '../lib/runtime/environment.mjs'
+import { localReadiness } from '../lib/runtime/readiness.mjs'
+import { readRuntimeState, requestRuntimeControl } from './local-runtime-control.mjs'
 import { access } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { PrismaClient } from '@prisma/client'
 import IORedis from 'ioredis'
 
+loadRuntimeEnvironment()
 const results = []
 const PLACEHOLDER_CREDENTIAL =
   /(?:place(?:holder)?|change[-_ ]?me|your[-_ ]?(?:api[-_ ]?)?key|example|dummy|fake|\.\.\.)/i
@@ -101,13 +104,16 @@ await check('worker prerequisites (not liveness)', async () => {
 
 if (process.argv.includes('--live')) {
   await check('live worker and browser', async () => {
-    const origin = process.env.NEXT_PUBLIC_APP_URL
+    const state = await readRuntimeState()
+    const managed = state ? await requestRuntimeControl(state, 'status') : null
+    const origin = managed?.origin ?? process.env.NEXT_PUBLIC_APP_URL
+    const database = await fetch(`${origin}/api/health`, { signal: AbortSignal.timeout(5000) })
+    if (!database.ok) throw new Error('Web/database health unavailable')
     const response = await fetch(`${origin}/api/health/worker`, { signal: AbortSignal.timeout(5000) })
-    const health = await response.json()
-    if (!health.worker?.alive || !health.worker.browserOk || health.worker.workerCount !== 1) {
-      throw new Error('A single healthy browser worker is not running')
-    }
-    return 'single worker heartbeat and successful browser probe confirmed'
+    const health = response.ok ? await response.json() : null
+    const result = localReadiness(health, managed?.workerId ?? process.env.FIXFLAGS_WORKER_ID)
+    if (!result.ready) throw new Error(result.detail)
+    return result.detail
   })
 }
 
