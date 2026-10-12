@@ -65,7 +65,7 @@ function cookieHeader(response: Response): string {
 async function signIn(origin: string, email: string, password: string): Promise<string> {
   const response = await fetch(`${origin}/api/auth/sign-in/email`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin },
     body: JSON.stringify({ email, password }),
   })
   if (!response.ok) throw new Error(`Fixture authentication failed for ${email} (${response.status})`)
@@ -81,7 +81,7 @@ async function createRealReview(
 ): Promise<{ reportId: string; siteId: string }> {
   const created = await fetch(`${origin}/api/checks`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', cookie },
+    headers: { 'content-type': 'application/json', origin, cookie },
     body: JSON.stringify({ url, mode: 'single', source: 'release_fixture' }),
   })
   if (!created.ok) throw new Error(`Fixture Review creation failed (${created.status}): ${await created.text()}`)
