@@ -6,6 +6,8 @@ Real receiving configuration remains open: the Resend domain and MX record are v
 
 The isolated `public-validation` environment permits normal account execution only on its explicit controlled HTTPS origin while the production lifecycle gate remains false. The controlled target has its own database and external email/password signup, verification, session and deletion flows. Its protected controls induce real failures without adding test controls to customer routes. The required website capability journeys use a separate free-beta owner, including explicit acknowledgement when external account deletion remains unavailable.
 
+Fixture binding requires `RELEASE_WATCH_MAILBOX`, a unique `validationalerts+<run>@fixflags.com` receiving alias. External notification proof uses `E2E_RESEND_API_KEY` only in the Node test process to inspect the stored provider message ID, Audit tag, delivery status and message count. No mailbox assertion endpoint substitutes for the actual provider. The fixture accelerates scheduling and remains separate from a natural production cycle. Historical Watch receipts retain null provider IDs when the reference was never recorded.
+
 Operational companion to [the website completion ledger in the product
 masterplan](product-masterplan.md#public-website-validation-completion-ledger). That ledger
 is the contract. This file says how each item is actually proven, and which

@@ -23,6 +23,7 @@ export type ReleaseFixtureConfig = {
   databaseUrl: string
   manifestPath: string
   auditUrl: string
+  watchMailbox: string
 }
 
 export function canonicalDatabaseIdentity(databaseUrl: string): string {
@@ -40,6 +41,9 @@ export function readReleaseFixtureConfig(env = process.env): ReleaseFixtureConfi
     return value
   }
   const targetOrigin = assertNonProductionReleaseTarget(required('RELEASE_ENV_URL'))
+  const watchMailbox = required('RELEASE_WATCH_MAILBOX')
+  if (!/^validationalerts\+[a-z0-9-]+@fixflags\.com$/i.test(watchMailbox))
+    throw new Error('Watch proof requires a unique controlled receiving alias')
   const gitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   return {
     runId: required('RELEASE_RUN_ID'),
@@ -48,6 +52,7 @@ export function readReleaseFixtureConfig(env = process.env): ReleaseFixtureConfi
     databaseUrl: required('RELEASE_FRESH_DATABASE_URL'),
     manifestPath: path.resolve(required('RELEASE_FIXTURE_MANIFEST')),
     auditUrl: required('E2E_AUDIT_URL'),
+    watchMailbox,
   }
 }
 
@@ -103,7 +108,7 @@ async function main() {
   const fixtureEntries: Record<string, Record<string, unknown>> = {}
   try {
     for (const role of RELEASE_FIXTURE_ROLES) {
-      const email = `release-${config.runId}-${role.key.toLowerCase()}@example.test`
+      const email = role.key === 'watch' ? config.watchMailbox : `release-${config.runId}-${role.key.toLowerCase()}@example.test`
       const password = `Ff!${randomBytes(18).toString('base64url')}`
       const passwordHash = await hashPassword(password)
       const user = await prisma.user.upsert({

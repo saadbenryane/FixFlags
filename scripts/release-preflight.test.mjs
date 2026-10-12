@@ -17,6 +17,7 @@ function validEnv(overrides = {}) {
     PRODUCTION_API_KEY: 'ff_production_fixture',
     E2E_STRIPE_SECRET_KEY: 'sk_test_release_fixture',
     E2E_PAID_OPEN_EXPECTED: 'true',
+    RELEASE_WATCH_MAILBOX: 'validationalerts+run-1@fixflags.com',
     ...overrides,
   }
 }

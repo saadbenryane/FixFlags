@@ -461,13 +461,17 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
   let reason = null
   let journeys = []
   let artifacts = []
+  const readCandidate = options.readCandidate ?? (() => ({
+    gitSha: options.gitSha ?? execFileSync('git', ['rev-parse', 'HEAD'], { cwd: workingDirectory, encoding: 'utf8' }).trim(),
+    status: options.repositoryStatus ?? execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: workingDirectory, encoding: 'utf8' }),
+  }))
+  const assertCandidate = () => {
+    const candidate = readCandidate()
+    assertCleanReleaseCandidate(candidate.status)
+    if (candidate.gitSha !== context.gitSha) throw new Error('Candidate revision changed during release verification')
+  }
   try {
-    const repositoryStatus = options.repositoryStatus ?? execFileSync(
-      'git',
-      ['status', '--porcelain', '--untracked-files=all'],
-      { cwd: workingDirectory, encoding: 'utf8' },
-    )
-    assertCleanReleaseCandidate(repositoryStatus)
+    assertCandidate()
     const issues = validateReleasePreflight(env, { stage, checkFile: options.checkFile !== false })
     if (issues.length) throw new Error(`Preflight blocked: ${issues.join('; ')}`)
     context = buildReceiptContext(stage, env, options)
@@ -520,11 +524,13 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
     }
     const executor = options.executor ?? ((executable, args, commandEnv) => spawnSync(executable, args, { cwd: workingDirectory, env: commandEnv, stdio: 'inherit' }))
     for (const [label, executable, args] of (options.commands ?? releaseStageCommands(stage))) {
+      assertCandidate()
       const before = Date.now()
       const result = executor(executable, args, stageEnv)
       const exitCode = typeof result?.status === 'number' ? result.status : 1
       commands.push({ label, exitCode, durationMs: Math.max(0, Date.now() - before) })
       if (exitCode !== 0) throw new Error(`${label} failed with exit code ${exitCode}`)
+      assertCandidate()
     }
     if (JOURNEYS_BY_STAGE[stage]) {
       const report = JSON.parse(readFileSync(playwrightReportPath(env, workingDirectory), 'utf8'))

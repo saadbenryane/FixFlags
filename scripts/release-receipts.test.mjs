@@ -118,6 +118,25 @@ describe('release evidence receipts', () => {
     assert.throws(() => assertCleanReleaseCandidate('?? scripts/new-proof.mjs\n'), /source changes/)
     assert.doesNotThrow(() => assertCleanReleaseCandidate('?? test-results/release/run-1/final.json\n'))
   })
+  it('refuses source edits between release commands', () => {
+    let reads = 0, executions = 0
+    const value = runReleaseStage('deployed', baseEnv(), { workingDirectory: temp(), gitSha: SHA, repositoryStatus: '',
+      readCandidate: () => ({ gitSha: SHA, status: ++reads > 2 ? ' M app/page.tsx\n' : '' }),
+      commands: [['first', 'proof', []], ['second', 'proof', []]], executor: () => { executions++; return { status: 0 } },
+    })
+    assert.equal(value.status, 'FAIL')
+    assert.equal(executions, 1)
+    assert.match(value.reason, /source changes/)
+  })
+  it('refuses a changed revision between release commands', () => {
+    let reads = 0
+    const value = runReleaseStage('deployed', baseEnv(), { workingDirectory: temp(), gitSha: SHA, repositoryStatus: '',
+      readCandidate: () => ({ gitSha: ++reads > 2 ? 'b'.repeat(40) : SHA, status: '' }),
+      commands: [['first', 'proof', []]], executor: () => ({ status: 0 }),
+    })
+    assert.equal(value.status, 'FAIL')
+    assert.match(value.reason, /revision changed/)
+  })
   it('recognizes title annotations and rejects skipped proof', () => {
     assert.deepEqual(Object.keys(inspectPlaywrightJourneys(report(['anonymous-claim']))), ['anonymous-claim'])
     assert.deepEqual(Object.keys(inspectPlaywrightJourneys(report(['mcp-full-loop']))), ['mcp-full-loop'])
@@ -245,6 +264,7 @@ describe('release evidence receipts', () => {
       RELEASE_E2E_TARGET: 'remote',
       RELEASE_FRESH_DATABASE_URL: 'postgresql://release:test@db.test/fixflags_release',
       RELEASE_FIXTURE_MANIFEST: manifestPath,
+      RELEASE_WATCH_MAILBOX: 'validationalerts+run-1@fixflags.com',
     })
     const databaseIdentityHash = buildReceiptContext('fixture-binding', fixtureEnv, { gitSha: SHA }).databaseIdentityHash
     const value = runReleaseStage('fixture-binding', fixtureEnv, {

@@ -87,7 +87,7 @@
   .integrationField li { animation: none; }
   .copyButton:active, .integrationLink:active, .integrationCard:active, .mcpAction:active { transform: none; }
 }
-.loopSection > h2 { max-width: 700px; margin-inline: auto; }
+.loopSection > h2 { max-width: 700px; margin-inline: auto; font-size: clamp(30px, 3.7vw, 48px); font-weight: 600; letter-spacing: -.04em; line-height: 1.14; }
 .loop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-block: 40px 24px; text-align: left; }
 .loop li { min-width: 0; }
 .loop h3 { margin-block: 12px; font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 620; line-height: 1.2; letter-spacing: -.035em; text-wrap: balance; }

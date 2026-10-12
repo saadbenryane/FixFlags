@@ -9,6 +9,7 @@ import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 import { createAuditPage, settleAuditPage } from './browser/page-session'
+import { sharedBrowser } from './browser/shared-browser'
 import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from './browser/accessibility-evidence'
@@ -39,7 +40,13 @@ import {
   type HarvestedEvidence,
 } from './evidence-targets'
 
-let browser: Browser | null = null
+const browserRuntime = sharedBrowser(async () => {
+  try { return await launchBrowser() }
+  catch (error) {
+    if (error instanceof BrowserLaunchError && error.cause !== undefined) return launchBrowser()
+    throw error
+  }
+})
 
 const BROWSER_LAUNCH_ARGS = [
   '--no-sandbox',
@@ -77,9 +84,6 @@ async function launchBrowser(): Promise<Browser> {
       headless: true,
       executablePath,
     })
-    launched.on('disconnected', () => {
-      if (browser === launched) browser = null
-    })
     return launched
   } catch (err) {
     throw new BrowserLaunchError(
@@ -91,30 +95,14 @@ async function launchBrowser(): Promise<Browser> {
 }
 
 export async function getBrowser(): Promise<Browser> {
-  if (browser && browser.isConnected()) return browser
-  // Drop any stale/crashed handle before relaunching.
-  if (browser) {
-    await browser.close().catch(() => {})
-    browser = null
-  }
-  try {
-    browser = await launchBrowser()
-    return browser
-  } catch (err) {
-    // Retry once for a transient launch failure (crashed handle, race). A missing
-    // executable throws without a cause and won't benefit from a retry.
-    if (err instanceof BrowserLaunchError && err.cause !== undefined) {
-      browser = await launchBrowser()
-      return browser
-    }
-    throw err
-  }
+  return browserRuntime.get()
 }
 
 export function getBrowserDiagnostics(): {
   connected: boolean
   activeContexts: number
 } {
+  const browser = browserRuntime.peek()
   return {
     connected: Boolean(browser?.isConnected()),
     activeContexts: browser?.isConnected() ? browser.contexts().length : 0,
@@ -819,10 +807,7 @@ export async function getAuditBrowser(): Promise<Browser> {
 }
 
 export async function closeBrowser() {
-  if (browser) {
-    await browser.close()
-    browser = null
-  }
+  await browserRuntime.close()
 }
 
 export { DESKTOP_VIEWPORT, MOBILE_VIEWPORT }

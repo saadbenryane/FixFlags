@@ -360,7 +360,7 @@ describe('Product Watch', () => {
     )
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: 'child-1', watchNotificationStatus: 'SENDING', watchNotificationAttempts: 1, watchNotificationLeaseUntil: expect.any(Date) }),
-      data: expect.objectContaining({ watchNotificationStatus: 'SENT' }),
+      data: expect.objectContaining({ watchNotificationStatus: 'SENT', watchNotificationProviderId: 'email-1' }),
     }))
   })
 

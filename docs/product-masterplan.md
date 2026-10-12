@@ -20,6 +20,7 @@ Implementation and proof are separate. A requirement closes only with evidence f
 | Identity and independent recovery | Existing claim, progressive execution, immutable comparison and fix-attempt contracts retained | Real claim, broken/repaired/recurring and interruption journeys |
 | Automatic accounts | Typed lifecycle, independent cleanup capability, stale-acknowledgement removal fencing and scheduled token expiry | Real supported signup, receiving, login/session reuse and disposable deletion |
 | Uptime and monitoring | Existing probes, confirmations, scoped incidents and durable notification receipts retained | Real worker, outage/unknown/recovery, pause/resume and natural full-check cycle |
+| Notification provenance | Watch acceptance stores the actual provider message ID and Audit tag; historical unknown IDs remain null | External journey induces a real failure and checks the actual provider's delivery status and matching-message count. Provider delivery does not establish human receipt or reading |
 | Capability readiness | Recent uptime sweep and matching private account configuration required from live workers | Deployed web/worker capability checks and controlled provider proof |
 | Customer experience | Existing hierarchy preserved; category depth and chat load on demand; keyboard focus remains visible | Responsive, theme, zoom, keyboard, touch, interruption and browser matrix |
 | Public truth | Account and HTTP-probe coverage inventories reconciled with implementation | Copy/link guards and deployed claims review |

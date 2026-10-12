@@ -20,6 +20,7 @@ export const FOUNDATION_INPUTS = [
 ]
 
 export const FIXTURE_BINDING_INPUTS = [
+  'RELEASE_WATCH_MAILBOX',
   'RELEASE_E2E_TARGET',
   'RELEASE_ENV_URL',
   'RELEASE_FRESH_DATABASE_URL',
@@ -88,7 +89,7 @@ export const EXTERNAL_INPUTS = [
   'E2E_WATCH_EMAIL',
   'E2E_WATCH_PASSWORD',
   'E2E_WATCH_PROJECT_ID',
-  'E2E_WATCH_MAILBOX_ASSERT_URL',
+  'E2E_RESEND_API_KEY',
 ]
 
 export const DEPLOYED_INPUTS = ['PRODUCTION_URL']
@@ -265,13 +266,8 @@ export function validateReleasePreflight(
       issues.push('E2E_STRIPE_SECRET_KEY must be a Stripe test-mode key')
     }
   }
-  if (typedStage === 'external' && env.E2E_WATCH_MAILBOX_ASSERT_URL) {
-    normalizedOrigin(
-      'E2E_WATCH_MAILBOX_ASSERT_URL',
-      env.E2E_WATCH_MAILBOX_ASSERT_URL,
-      issues
-    )
-  }
+  if (typedStage === 'fixture-binding' && env.RELEASE_WATCH_MAILBOX && !/^validationalerts\+[a-z0-9-]+@fixflags\.com$/i.test(env.RELEASE_WATCH_MAILBOX))
+    issues.push('RELEASE_WATCH_MAILBOX must be a unique controlled receiving alias')
   return issues
 }
 

@@ -317,7 +317,7 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   })
   if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId) return
   await markWatchCompleted(child.projectId, child.completedAt ?? new Date())
-  // Delivery is already confirmed. Historical rows may not have the newer
+  // Provider acceptance is already confirmed. Historical rows may not have the newer
   // recovery classification, but rewriting SENT to PENDING while backfilling
   // would make the same alert eligible for delivery again.
   if (child.watchNotificationStatus === 'SENT') return
@@ -455,6 +455,7 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       from: FROM_EMAIL,
       to: child.user.email,
       subject,
+      tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }],
       html: `<p>Hi${child.user.name ? ` ${escapeEmailHtml(child.user.name)}` : ''},</p><p>${lead}</p>${problem}${checked}<p><a href="${escapeEmailHtml(destination)}">${leadFlag?.id ? 'See evidence and next steps' : 'Open this Site’s Flags'}</a></p>`,
       text: `Hi${child.user.name ? ` ${child.user.name}` : ''},\n\n${regressCount > 0 ? `FixFlags found ${regressCount} problem${regressCount === 1 ? '' : 's'} that need${regressCount === 1 ? 's' : ''} attention on ${host}.` : `An independent check verified recovery on ${host}.`}\n\n${leadFlag?.problem ?? ''}\n${child.completedAt ? `Checked ${child.completedAt.toISOString()}.\n` : ''}\nSee evidence and next steps: ${destination}`,
     }, deliveryOptions).finally(() => clearTimeout(timer))
@@ -465,6 +466,7 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       where: ownedClaim,
       data: {
         watchNotificationStatus: 'SENT',
+        watchNotificationProviderId: data.id,
         watchNotifiedAt: new Date(),
         watchNotificationLastError: null,
         watchNotificationLeaseUntil: null,

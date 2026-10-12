@@ -66,8 +66,8 @@ describe('unmocked Checkout purchase probe', () => {
   afterAll(async () => {
     if (previousFixture === undefined) delete process.env.FIXFLAGS_CHECKOUT_FIXTURE
     else process.env.FIXFLAGS_CHECKOUT_FIXTURE = previousFixture
-    try { await closeBrowser() }
-    finally { await closeServer?.() }
+    try { await closeServer?.() }
+    finally { await closeBrowser() }
   })
 
   beforeEach(() => {

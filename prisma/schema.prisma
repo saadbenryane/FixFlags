@@ -673,6 +673,8 @@ model Audit {
   watchNotificationStatus    WatchNotificationStatus      @default(NOT_APPLICABLE)
   watchNotificationAttempts  Int                          @default(0)
   watchNotificationLastError String?
+  /// Provider acceptance reference, never proof that a person received or read it.
+  watchNotificationProviderId String?
   /// *
   ///    * Lease held by the worker currently delivering the Watch alert. Without
   ///    it a worker death after claiming SENDING strands the alert forever,

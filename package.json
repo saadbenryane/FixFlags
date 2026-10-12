@@ -96,7 +96,7 @@
     "validate:release": "node scripts/validate.mjs release",
     "font:verify": "node scripts/verify-font-runtime.mjs",
     "lint:changed": "node scripts/validate.mjs lint-changed",
-    "test:scripts": "node --test scripts/brand-hex-guard.test.mjs scripts/validate.test.mjs scripts/security-audit.test.mjs scripts/prepare-standalone-runtime.test.mjs scripts/completeness-audit.test.mjs scripts/module-boundary-guard.test.mjs scripts/ui-style-rules.test.mjs scripts/power-tools-visibility-guard.test.mjs scripts/project-agent.test.mjs scripts/agent-coordination.test.mjs scripts/release-preflight.test.mjs scripts/release-receipts.test.mjs scripts/release-journey-contract.test.mjs scripts/release-revision-attestation.test.mjs scripts/release-deployment-attestation.test.mjs scripts/route-contract-registry.test.mjs scripts/route-boundary-smoke.test.mjs scripts/skill-validator.test.mjs",
+    "test:scripts": "node --test scripts/brand-hex-guard.test.mjs scripts/validate.test.mjs scripts/security-audit.test.mjs scripts/prepare-standalone-runtime.test.mjs scripts/completeness-audit.test.mjs scripts/module-boundary-guard.test.mjs scripts/ui-style-rules.test.mjs scripts/power-tools-visibility-guard.test.mjs scripts/project-agent.test.mjs scripts/agent-coordination.test.mjs scripts/release-preflight.test.mjs scripts/release-receipts.test.mjs scripts/release-journey-contract.test.mjs scripts/release-revision-attestation.test.mjs scripts/release-deployment-attestation.test.mjs scripts/route-contract-registry.test.mjs scripts/route-boundary-smoke.test.mjs scripts/skill-validator.test.mjs scripts/website-test-profile.test.mjs",
     "agent": "node scripts/project-agent.mjs",
     "agent:doctor": "node scripts/project-agent.mjs doctor",
     "agent:release-continuity": "node scripts/agent-release-continuity.mjs",
@@ -107,8 +107,8 @@
     "test:agent-benchmark": "node --test scripts/harness-benchmark.test.mjs",
     "agent:eval": "node scripts/agent-evals/main.mjs",
     "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed",
-    "test:website": "vitest run --exclude 'lib/mcp/**' --exclude 'lib/repo-scan/**' --exclude 'app/api/mcp/**' --exclude 'app/api/api-keys/**' --exclude 'app/api/integrations/github/**' --exclude 'app/api/repo-scans/**' --exclude 'app/api/webhooks/railway/**'",
-    "test:coverage:website": "vitest run --coverage --exclude 'lib/mcp/**' --exclude 'lib/repo-scan/**' --exclude 'app/api/mcp/**' --exclude 'app/api/api-keys/**' --exclude 'app/api/integrations/github/**' --exclude 'app/api/repo-scans/**' --exclude 'app/api/webhooks/railway/**'",
+    "test:website": "FIXFLAGS_TEST_PROFILE=website vitest run",
+    "test:coverage:website": "FIXFLAGS_TEST_PROFILE=website vitest run --coverage",
     "verify:website": "node scripts/validate.mjs website"
   },
   "dependencies": {

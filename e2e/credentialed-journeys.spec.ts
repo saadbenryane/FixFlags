@@ -293,65 +293,65 @@ test.describe('credentialed revenue journeys', () => {
     await revoked.close()
   })
 
-  test('[journey:watch-child-notification] Product Watch schedules a full re-check and sends one sandbox email', async ({ browser }) => {
-    test.setTimeout(420_000)
+  test('[journey:watch-child-notification] a measured scheduled failure produces one accepted and provider-delivered alert', async ({ browser }) => {
+    test.setTimeout(600_000)
     const user = await signedInPage(browser, 'E2E_WATCH_EMAIL', 'E2E_WATCH_PASSWORD')
     const projectId = requiredEnv('E2E_WATCH_PROJECT_ID')
-    const before = await user.page.request.get(`/api/projects/${projectId}/watch`)
-    expect(before.ok(), await before.text()).toBe(true)
-    const prior = (await before.json()) as { watchLastRunAt?: string | null }
-
-    const update = await user.page.request.put(`/api/projects/${projectId}/watch`, {
-      data: { interval: 'weekly' },
-    })
-    expect(update.ok(), await update.text()).toBe(true)
-
-    const releaseDatabaseUrl = requiredEnv('RELEASE_FRESH_DATABASE_URL')
-    expect(new URL(releaseDatabaseUrl).pathname).toMatch(/release|test/i)
-    const fixtureDb = new PrismaClient({ datasources: { db: { url: releaseDatabaseUrl } } })
-    await fixtureDb.project.update({
-      where: { id: projectId },
-      data: { watchNextRunAt: new Date(Date.now() - 1_000), watchLeaseUntil: null },
-    })
-
-    await expect.poll(async () => {
-      const response = await user.page.request.get(`/api/projects/${projectId}/watch`)
-      const body = (await response.json()) as { watchLastRunAt?: string | null }
-      return body.watchLastRunAt
-    }, { timeout: 360_000 }).not.toBe(prior.watchLastRunAt ?? null)
-
-    const child = await fixtureDb.audit.findFirst({
-      where: { projectId, recheckTrigger: 'WATCH' },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, parentId: true, status: true, watchNotificationStatus: true },
-    })
-    await fixtureDb.$disconnect()
-    expect(child).toMatchObject({
-      parentId: expect.any(String),
-      status: 'COMPLETED',
-      watchNotificationStatus: 'SENT',
-    })
-
-    const mailboxUrl = new URL(requiredEnv('E2E_WATCH_MAILBOX_ASSERT_URL'))
-    mailboxUrl.searchParams.set('childReportId', child!.id)
-    mailboxUrl.searchParams.set('idempotencyKey', `fixflags-watch-${child!.id}-v1`)
-    const mailbox = await user.page.request.get(mailboxUrl.toString(), {
-      headers: process.env.E2E_WATCH_MAILBOX_TOKEN
-        ? { Authorization: `Bearer ${process.env.E2E_WATCH_MAILBOX_TOKEN}` }
-        : undefined,
-    })
-    expect(mailbox.ok(), await mailbox.text()).toBe(true)
-    const mail = (await mailbox.json()) as {
-      matchingMessages: number
-      childReportId?: string
-      idempotencyKey?: string
+    const database = requiredEnv('RELEASE_FRESH_DATABASE_URL')
+    expect(new URL(database).pathname).toMatch(/release|test/i)
+    const fixtureDb = new PrismaClient({ datasources: { db: { url: database } } })
+    const control = async (missingTitle: boolean) => {
+      const response = await user.page.request.post(requiredEnv('E2E_DEPLOYMENT_TRIGGER_URL'), {
+        headers: { authorization: `Bearer ${requiredEnv('E2E_DEPLOYMENT_TRIGGER_TOKEN')}` }, data: { missingTitle },
+      })
+      expect(response.status()).toBe(200)
     }
-    expect(mail).toMatchObject({
-      matchingMessages: 1,
-      childReportId: child!.id,
-      idempotencyKey: `fixflags-watch-${child!.id}-v1`,
-    })
-    await user.close()
+    type ProviderEmail = { id: string; to: string[]; created_at: string; last_event: string; tags?: Array<{ name: string; value: string }> }
+    const provider = async <T,>(endpoint: string): Promise<T> => {
+      await new Promise(resolve => setTimeout(resolve, 550))
+      const response = await fetch(`https://api.resend.com/${endpoint}`, { headers: { authorization: `Bearer ${requiredEnv('E2E_RESEND_API_KEY')}` }, signal: AbortSignal.timeout(15_000) })
+      expect(response.status, 'Actual provider receipt request').toBe(200)
+      return response.json() as Promise<T>
+    }
+    const beganAt = new Date()
+    try {
+      await control(true)
+      expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
+      // This designated release fixture accelerates scheduling. It does not
+      // establish a natural production full-check cycle.
+      await fixtureDb.project.update({ where: { id: projectId }, data: { watchNextRunAt: new Date(Date.now() - 1000), watchLeaseUntil: null } })
+      await expect.poll(async () => fixtureDb.audit.findFirst({
+        where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt }, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: { not: null } },
+        select: { id: true },
+      }), { timeout: 420_000, intervals: [1000] }).not.toBeNull()
+      const child = await fixtureDb.audit.findFirstOrThrow({ where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt } }, orderBy: { createdAt: 'desc' } })
+      expect(child).toMatchObject({ parentId: expect.any(String), status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: expect.any(String) })
+      expect(child.watchRegressionCount).toBeGreaterThan(0)
+      const providerId = child.watchNotificationProviderId!
+      await expect.poll(async () => (await provider<ProviderEmail>(`emails/${providerId}`)).last_event,
+        { timeout: 120_000, intervals: [2000] }).toBe('delivered')
+      const accepted = await provider<ProviderEmail>(`emails/${providerId}`)
+      expect(accepted.to).toContain(requiredEnv('E2E_WATCH_EMAIL'))
+      expect(accepted.tags).toContainEqual({ name: 'audit_id', value: child.id })
+      const listed = await provider<{ data: ProviderEmail[]; has_more: boolean }>('emails?limit=100')
+      expect(!listed.has_more || listed.data.some(email => new Date(email.created_at).getTime() < beganAt.getTime()),
+        'Provider list must cover the complete observation window').toBe(true)
+      const candidates = listed.data.filter(email => email.to.includes(requiredEnv('E2E_WATCH_EMAIL')) &&
+        new Date(email.created_at).getTime() >= beganAt.getTime())
+      expect(candidates.length, 'Bounded controlled mailbox inspection').toBeLessThan(20)
+      const matches: string[] = []
+      for (const candidate of candidates) {
+        const email = await provider<ProviderEmail>(`emails/${candidate.id}`)
+        if (email.tags?.some(tag => tag.name === 'audit_id' && tag.value === child.id)) matches.push(email.id)
+      }
+      expect(matches).toEqual([providerId])
+      await test.info().attach('independent-notification-receipt', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+        auditId: child.id, providerId, acceptanceRecorded: true, providerDelivery: accepted.last_event,
+        matchingMessages: matches.length, humanReceiptOrRead: false, naturalProductionCycle: false,
+      })) })
+    } finally {
+      try { await control(false) } finally { await fixtureDb.$disconnect(); await user.close() }
+    }
   })
 
   test('[journey:mcp-full-loop] MCP authenticates, runs Outcomes, records a fix, and verifies it', async ({ request }) => {

@@ -10,6 +10,11 @@ const alias = {
 // Several billing gates (isDevUnlimitedScans) bypass plan enforcement in
 // development, which would silently pass the tests that verify those gates.
 const env = { NODE_ENV: 'test' as const }
+const websiteOnly = process.env.FIXFLAGS_TEST_PROFILE === 'website'
+const projectExcludes = ['node_modules', '.next', ...(websiteOnly ? [
+  'lib/mcp/**', 'lib/repo-scan/**', 'app/api/mcp/**', 'app/api/api-keys/**',
+  'app/api/integrations/github/**', 'app/api/repo-scans/**', 'app/api/webhooks/railway/**',
+] : [])]
 
 export default defineConfig({
   test: {
@@ -48,7 +53,7 @@ export default defineConfig({
             'app/report/**/*.test.ts',
             'worker/**/*.test.ts',
           ],
-          exclude: ['node_modules', '.next'],
+          exclude: projectExcludes,
           testTimeout: 30_000,
         },
       },
@@ -60,7 +65,7 @@ export default defineConfig({
           environment: 'jsdom',
           env,
           include: ['hooks/**/*.test.ts'],
-          exclude: ['node_modules', '.next'],
+          exclude: projectExcludes,
           testTimeout: 30_000,
         },
       },
@@ -76,7 +81,7 @@ export default defineConfig({
             'components/**/__tests__/*.test.tsx',
             'app/**/__tests__/*.test.tsx',
           ],
-          exclude: ['node_modules', '.next'],
+          exclude: projectExcludes,
           setupFiles: ['./vitest.setup.ui.ts'],
           testTimeout: 30_000,
         },

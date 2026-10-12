@@ -161,7 +161,12 @@
   .boardSummary { gap: 10px; }
   .boardSummary > a { padding-inline: 10px; }
   .boardIdentity strong { font-size: 13px; }
+  .boardPane button { max-width: 100%; height: auto; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
   .dialog { inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; transform: none; border-radius: 0; padding: 24px 20px; }
+}
+@media (max-width: 359px) {
+  .boardHeader { flex-wrap: wrap; }
+  .boardIdentity { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .home *, .home *::before, .home *::after, .dialog, .dialog * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
