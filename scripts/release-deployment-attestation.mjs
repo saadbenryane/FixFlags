@@ -38,7 +38,7 @@ export function attestSuccessfulChecks(checkRuns) {
 }
 
 export function attestLocalFoundation(receipt, gitSha) {
-  const labels = ['clean-install', 'fresh-database', 'full-verification', 'container-build', 'container-ready']
+  const labels = ['clean-install', 'fresh-database', 'upgrade-database', 'full-verification', 'container-build', 'container-ready']
   if (receipt?.schemaVersion !== 2 || receipt.stage !== 'foundation' || receipt.status !== 'PASS' || receipt.profile !== 'free-launch' || receipt.gitSha !== gitSha)
     throw new Error('Local foundation proof must be a passing free-launch receipt for the exact candidate')
   if (JSON.stringify(receipt.commands?.map(command => command.label)) !== JSON.stringify(labels) || receipt.commands.some(command => command.exitCode !== 0))
@@ -46,6 +46,8 @@ export function attestLocalFoundation(receipt, gitSha) {
   if (!/^sha256:[a-f0-9]{64}$/.test(receipt.containerImageDigest ?? '') || !Number.isFinite(Date.parse(receipt.completedAt)) ||
     !Number.isFinite(Date.parse(receipt.startedAt)) || Date.parse(receipt.completedAt) <= Date.parse(receipt.startedAt))
     throw new Error('Local foundation image or completion evidence is invalid')
+  if (!/^[a-f0-9]{40}$/.test(receipt.previousGitSha ?? '') || !receipt.artifacts?.some(artifact => artifact.label === 'upgrade-evidence' && /^[a-f0-9]{64}$/.test(artifact.sha256)))
+    throw new Error('Local foundation has no exact previous-schema upgrade evidence')
   return { source: 'local-foundation', status: 'SUCCESS', completedAt: receipt.completedAt, runId: receipt.runId,
     containerImageDigest: receipt.containerImageDigest }
 }

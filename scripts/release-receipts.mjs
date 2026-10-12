@@ -80,6 +80,9 @@ const RELEASE_FIXTURE_ENV_KEYS = new Set([
   'E2E_OUTCOME_ID',
   'E2E_DEPLOYMENT_TRIGGER_URL',
   'E2E_DEPLOYMENT_TRIGGER_TOKEN',
+  'E2E_CAPABILITY_SITE_ID',
+  'E2E_CAPABILITY_OWNER_EMAIL',
+  'E2E_CAPABILITY_OWNER_PASSWORD',
 ])
 
 function safeRunId(value) {
@@ -147,6 +150,9 @@ export function hydrateReleaseFixtureEnvironment(env) {
     E2E_SITE_ID: fixtures.pro?.siteId,
     E2E_SITE_OWNER_EMAIL: fixtures.pro?.email,
     E2E_SITE_OWNER_PASSWORD: fixtures.pro?.password,
+    E2E_CAPABILITY_SITE_ID: fixtures.websiteCapabilities?.siteId,
+    E2E_CAPABILITY_OWNER_EMAIL: fixtures.websiteCapabilities?.email,
+    E2E_CAPABILITY_OWNER_PASSWORD: fixtures.websiteCapabilities?.password,
     E2E_OUTCOME_ID: fixtures.pro?.outcomeId,
     RELEASE_ENV_API_KEY: fixtures.pro?.apiKey,
     E2E_STUDIO_EMAIL: fixtures.studio?.email,
@@ -213,6 +219,7 @@ export function releaseStageCommands(stage) {
     return [
       ['clean-install', 'npm', ['ci']],
       ['fresh-database', 'node', ['scripts/release-database.mjs']],
+      ['upgrade-database', 'node', ['scripts/release-upgrade-database.mjs']],
       ['full-verification', 'npm', ['run', 'verify']],
       ['container-build', 'docker', ['build', '-t', 'fixflags:release-check', '.']],
       ['container-ready', 'node', ['scripts/container-smoke.mjs']],
@@ -226,7 +233,7 @@ export function releaseStageCommands(stage) {
   }
   if (JOURNEYS_BY_STAGE[stage]) {
     const grep = (JOURNEYS_BY_STAGE[stage] ?? []).map((id) => `\\[journey:${id}\\]`).join('|')
-    const journeyCommand = ['credentialed-journeys', 'npm', ['run', 'test:e2e:release', '--', '--grep', grep]]
+    const journeyCommand = ['credentialed-journeys', 'npm', ['run', 'test:e2e:release', '--', '--workers=1', '--grep', grep]]
     if (stage === 'billing-open') return [
       ['watch-launch-readiness', 'npm', ['run', 'watch:launch-readiness', '--', '--require-pass', '--release-gate']],
       journeyCommand,
@@ -269,6 +276,7 @@ function fileHash(file) {
 }
 
 export function expectedReleaseArtifactLabels(stage) {
+  if (stage === 'foundation') return ['upgrade-evidence']
   if (stage === 'fixture-binding') return ['release-env-revision', 'fixture-manifest']
   if (stage === 'billing-open') return ['watch-launch-readiness', 'playwright-report']
   if (stage === 'registry-cli') return ['cli-registry-evidence', 'playwright-report']
@@ -491,6 +499,7 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       RELEASE_EXPECTED_GIT_SHA: context.gitSha,
       RELEASE_SMOKE_EVIDENCE_FILE: evidenceFile,
       RELEASE_DEPLOYMENT_EVIDENCE_FILE: deploymentEvidenceFile,
+      RELEASE_UPGRADE_EVIDENCE_FILE: path.join(receiptDirectory(env, workingDirectory), 'foundation-upgrade.json'),
       RELEASE_DOGFOOD_EVIDENCE_FILE: dogfoodEvidenceFile,
       RELEASE_REVISION_EVIDENCE_FILE: revisionEvidenceFile,
       RELEASE_CLI_REGISTRY_EVIDENCE_FILE: cliRegistryEvidenceFile,
@@ -546,6 +555,10 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       context.releaseEnvironmentRevision = revision.runningCommit
     }
     if (stage === 'foundation') {
+      const upgrade = JSON.parse(readFileSync(stageEnv.RELEASE_UPGRADE_EVIDENCE_FILE, 'utf8'))
+      if (upgrade.status !== 'PASS' || upgrade.gitSha !== context.gitSha || upgrade.previousGitSha !== env.RELEASE_PREVIOUS_COMMIT)
+        throw new Error('Upgrade proof does not match the current candidate and previous deployment')
+      context.previousGitSha = upgrade.previousGitSha
       context.containerImageDigest = options.containerImageDigest ?? execFileSync(
         'docker',
         ['image', 'inspect', 'fixflags:release-check', '--format', '{{.Id}}'],
@@ -616,6 +629,7 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       context.watchLaunchReadiness = validateWatchLaunchEvidence(watchEvidence, context)
     }
     const artifactFiles = []
+    if (stage === 'foundation') artifactFiles.push(['upgrade-evidence', stageEnv.RELEASE_UPGRADE_EVIDENCE_FILE])
     if (stage === 'fixture-binding') {
       artifactFiles.push(['release-env-revision', revisionEvidenceFile])
       artifactFiles.push(['fixture-manifest', path.resolve(env.RELEASE_FIXTURE_MANIFEST)])

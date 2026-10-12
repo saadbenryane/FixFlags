@@ -1777,9 +1777,11 @@ run('migrated progressive execution', () => {
       consoleRootErrors = 3; consoleLinkedErrors = 3; consoleDelayMs = 3500
       await getAuditTaskQueue('provider').pause()
       const recurrence = await requestSiteRun({ projectId, userId, outcomeIds: [], scope: 'SITE', source: 'WATCH', url: pageUrl, idempotencyKey: 'console-recurrence' })
+      // Discovery follows completed observations of both viewports. It cannot
+      // be required before their observation horizons have elapsed.
       await vi.waitFor(async () => {
         expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, workKind: 'discovery' } })).toMatchObject({ workState: 'COMPLETED' })
-      }, { timeout: 10_000, interval: 100 })
+      }, { timeout: 30_000, interval: 100 })
       await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['pagespeed', 'google'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
       await vi.waitFor(async () => {
@@ -1798,7 +1800,7 @@ run('migrated progressive execution', () => {
       consoleDesktopUnavailable = false; consoleMobileUnavailable = false; consoleRedirected = false; consoleFlood = false
       await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume(); transport.mockRestore()
     }
-  }, 100_000)
+  }, 180_000)
 
   it.skipIf(process.env.CONSOLE_DB_REQUIRED !== 'true')('bounds real browser console floods without certifying a truncated observation', async () => {
     const transport = fixtureTransport()

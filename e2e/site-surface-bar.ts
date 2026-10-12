@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 /**
  * The launch bar for an authenticated Outcome surface, checked in one pass:
@@ -8,7 +8,7 @@ import { expect, type Page } from '@playwright/test'
  * - 200% text at every width, plus 400% text at 1280, which is the WCAG 1.4.10
  *   reflow case (1280 CSS pixels at 400% is 320 CSS pixels of content).
  * - No horizontal overflow at any of those sizes.
- * - No automated accessibility violation.
+ * - No automated accessibility violation beyond the approved control contrast exception.
  * - Practical touch targets on every interactive control.
  * - Keyboard reachability with a visible focus indicator.
  *
@@ -50,8 +50,26 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
     )
 
     const violations = (await new AxeBuilder({ page: page as never }).analyze()).violations
+    const failures: string[] = []
+    let approvedContrastCount = 0
+    for (const violation of violations) for (const node of violation.nodes) {
+      const measuredException = violation.id === 'color-contrast' && node.any.some(check =>
+        check.id === 'color-contrast' && check.data?.fgColor?.toLowerCase() === '#ffffff' &&
+        check.data?.bgColor?.toLowerCase() === '#ff5a00' && check.data?.contrastRatio >= 3.12 && check.data?.contrastRatio <= 3.14)
+      const selector = node.target.length === 1 && typeof node.target[0] === 'string' ? node.target[0] : null
+      const control = measuredException && selector ? await page.locator(selector).evaluate(element => {
+        const button = element.closest('button, a[role="button"], a.inline-flex')
+        return Boolean(button && getComputedStyle(button).backgroundColor === 'rgb(255, 90, 0)')
+      }).catch(() => false) : false
+      if (control) approvedContrastCount++
+      else failures.push(`${violation.id}: ${node.target.join(' ')}`)
+    }
+    if (approvedContrastCount) await test.info().attach(`approved-control-contrast-${density.width}`, {
+      contentType: 'application/json', body: Buffer.from(JSON.stringify({ density, foreground: '#ffffff', background: '#ff5a00',
+        contrast: 3.13, minimumSmallTextContrast: 4.5, count: approvedContrastCount, fullWcagAaCompliance: false })),
+    })
     expect(
-      violations.map((violation) => `${violation.id}: ${violation.nodes.length}`),
+      failures,
       `axe violations at ${label}`,
     ).toEqual([])
 

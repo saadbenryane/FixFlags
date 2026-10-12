@@ -7,5 +7,6 @@ export function accountConfigurationFingerprint(env: Record<string, string | und
   return createHmac('sha256', env.TOKEN_ENCRYPTION_KEY!).update(JSON.stringify([
     env.ACCOUNT_TEST_EMAIL, env.RESEND_API_KEY, env.RESEND_RECEIVING_WEBHOOK_SECRET,
     env.ACCOUNT_CHECKS_ENABLED, env.ACCOUNT_CHECKS_LIFECYCLE_VERIFIED,
+    env.ACCOUNT_CHECKS_VALIDATION_ORIGIN, env.RAILWAY_ENVIRONMENT_NAME,
   ])).digest('hex')
 }

@@ -159,7 +159,7 @@ async function main() {
     })
     pro.apiKey = generated.rawKey
 
-    for (const key of ['free', 'pro', 'studio', 'share', 'watch'] as const) {
+    for (const key of ['free', 'pro', 'studio', 'share', 'watch', 'websiteCapabilities'] as const) {
       const fixture = fixtureEntries[key]!
       const cookie = await signIn(config.targetOrigin, String(fixture.email), String(fixture.password))
       const review = await createRealReview(config.targetOrigin, cookie, config.auditUrl)

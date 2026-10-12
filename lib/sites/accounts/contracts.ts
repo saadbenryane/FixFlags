@@ -26,10 +26,28 @@ export function accountChecksEntitled(user: { role: string; plan: string; subscr
     ['BUILDER', 'TEAM'].includes(user.plan) && !['PAST_DUE', 'CANCELED', 'UNPAID'].includes(user.subscriptionStatus)))
 }
 export function accountInfrastructureReady(env: Record<string, string | undefined> = process.env) {
-  return env.ACCOUNT_CHECKS_ENABLED === 'true' && env.ACCOUNT_CHECKS_LIFECYCLE_VERIFIED === 'true' &&
+  if (env.ACCOUNT_CHECKS_VALIDATION_ORIGIN && !accountValidationOrigin(env)) return false
+  return env.ACCOUNT_CHECKS_ENABLED === 'true' && (env.ACCOUNT_CHECKS_LIFECYCLE_VERIFIED === 'true' || accountValidationOrigin(env) !== null) &&
     /^[^\s+@]+@[^\s@]+\.[^\s@]+$/.test(env.ACCOUNT_TEST_EMAIL ?? '') &&
     /^[a-fA-F0-9]{64}$/.test(env.TOKEN_ENCRYPTION_KEY ?? '') &&
     Boolean(env.RESEND_API_KEY && env.RESEND_RECEIVING_WEBHOOK_SECRET)
+}
+/** Controlled lifecycle proof uses the normal engine while production remains
+ * gated. The validation environment can act only on its explicit test origin. */
+export function accountValidationOrigin(env: Record<string, string | undefined> = process.env): string | null {
+  if (env.RAILWAY_ENVIRONMENT_NAME !== 'public-validation' || !env.ACCOUNT_CHECKS_VALIDATION_ORIGIN) return null
+  try {
+    const origin = new URL(env.ACCOUNT_CHECKS_VALIDATION_ORIGIN)
+    if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash ||
+      ['fixflags.com', 'www.fixflags.com'].includes(origin.hostname)) return null
+    return origin.origin
+  } catch { return null }
+}
+export function accountExecutionReady(siteUrl: string | undefined, env: Record<string, string | undefined> = process.env) {
+  if (!accountInfrastructureReady(env)) return false
+  const validation = accountValidationOrigin(env)
+  if (!validation) return true
+  try { return Boolean(siteUrl && new URL(siteUrl).origin === validation) } catch { return false }
 }
 /** Existing identities can be cleaned up after new checks are paused. Login
  * and deletion still require their stored credentials to be decryptable. */

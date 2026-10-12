@@ -90,4 +90,3 @@ export function sameExecutionScope(
   return sameSelection(run, selectedIds) &&
     verificationTargetIdentity(run.verificationTarget) === verificationTargetIdentity(verificationTarget)
 }
-

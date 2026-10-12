@@ -54,6 +54,7 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Prisma schema + migrations (needed by `prisma migrate deploy` at startup).
 COPY prisma ./prisma
+COPY scripts/release-fixture ./scripts/release-fixture
 
 # Next.js standalone output (self-contained server.js + bundled node_modules).
 COPY --from=builder /app/.next/standalone ./

@@ -37,4 +37,3 @@ export type VerificationResult = {
   comparable: boolean
   reason: string
 }
-

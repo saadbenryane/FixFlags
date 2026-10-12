@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { decryptSecret, encryptSecret } from '@/lib/security/crypto'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
-import { accountChecksEntitled, accountInfrastructureReady, accountCleanupReady, type AccountIntent, type AccountChecksView } from './contracts'
+import { accountChecksEntitled, accountExecutionReady, accountInfrastructureReady, accountCleanupReady, type AccountIntent, type AccountChecksView } from './contracts'
 import { accountPurposeSchema, accountStateSchema } from './contracts'
 import { ACCOUNT_CHECK_COPY as C } from '@/lib/marketing/copy/account-checks'
 
@@ -13,15 +13,15 @@ export async function accountAdmission(projectId: string, mode: AccountIntent['m
   if (!ready) return undefined
   const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null },
     select: { url: true, accountChecksEnabled: true, accountCheckRevision: true, user: { select: { role: true, plan: true, subscriptionStatus: true } } } })
-  return project && project.user && (mode === 'cleanup' || project.accountChecksEnabled && accountChecksEntitled(project.user))
+  return project && project.user && (mode === 'cleanup' || project.accountChecksEnabled && accountChecksEntitled(project.user) && accountExecutionReady(project.url))
     ? { revision: project.accountCheckRevision, mode, siteUrl: project.url } : undefined
 }
 export async function assertAccountPermission(projectId: string, intent: AccountIntent, db: Prisma.TransactionClient = prisma) {
   const project = await db.project.findFirst({ where: { id: projectId, deletedAt: null, accountCheckRevision: intent.revision,
     ...(intent.mode === 'cleanup' ? {} : { accountChecksEnabled: true }) },
-    select: { user: { select: { role: true, plan: true, subscriptionStatus: true } } } })
+    select: { url: true, user: { select: { role: true, plan: true, subscriptionStatus: true } } } })
   if (!project?.user || (intent.mode === 'cleanup' ? !accountCleanupReady()
-    : !accountChecksEntitled(project.user) || !accountInfrastructureReady())) throw new Error('Account checks are paused or unavailable.')
+    : !accountChecksEntitled(project.user) || !accountExecutionReady(project.url))) throw new Error('Account checks are paused or unavailable.')
 }
 
 export async function reserveAccount(input: { projectId: string; origin: string; purpose: 'retained' | 'disposable';
@@ -48,12 +48,12 @@ export async function reserveAccount(input: { projectId: string; origin: string;
 /** Redacted projection is loaded only for the owning account. */
 export async function loadAccountChecksView(projectId: string): Promise<AccountChecksView> {
   const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null }, select: {
-    accountChecksEnabled: true, user: { select: { role: true, plan: true, subscriptionStatus: true } },
+    url: true, accountChecksEnabled: true, user: { select: { role: true, plan: true, subscriptionStatus: true } },
     testAccounts: { select: { purpose: true, email: true, state: true, submittedAt: true, encryptedPassword: true }, orderBy: { createdAt: 'asc' }, take: 100 },
     accountCheckReceipts: { orderBy: { createdAt: 'desc' }, take: 100,
       select: { kind: true, state: true, detail: true, pageUrl: true, evidence: true, createdAt: true } },
   } })
-  const eligible = accountChecksEntitled(project?.user ?? null), ready = accountInfrastructureReady()
+  const eligible = accountChecksEntitled(project?.user ?? null), ready = accountExecutionReady(project?.url)
   const accounts = (project?.testAccounts ?? []).map(account => ({ email: account.email,
     purpose: accountPurposeSchema.parse(account.purpose), state: accountStateSchema.parse(account.state) }))
   const hasAccounts = accounts.some(account => account.state !== 'DELETED')

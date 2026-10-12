@@ -23,11 +23,15 @@ Implementation and proof are separate. A requirement closes only with evidence f
 | Customer experience | Existing hierarchy preserved; category depth and chat load on demand; keyboard focus remains visible | Responsive, theme, zoom, keyboard, touch, interruption and browser matrix |
 | Public truth | Account and HTTP-probe coverage inventories reconciled with implementation | Copy/link guards and deployed claims review |
 | Website release | MCP/CLI excluded from website journey requirements | Exact-candidate migration, build, image, browser and real-provider receipts |
-| Observed usability | No participant evidence available yet | Five representative participants; four complete the core tasks unaided; none misread uncertainty as health |
+| Observed usability | Owner directed this task to conduct the review independently; no human participants are available | Agent task sessions covering the customer loop and interpretation of incomplete coverage. Identify the observer accurately; do not claim a five-person study |
 
 ### Current evidence status
 
 Implementation in progress. Local checks and provider receipts will be recorded against the frozen candidate. Production has not received these changes. External proof and observed usability remain open until actual evidence exists.
+
+The foundation already deployed at `b09761772f88302546a7b72b0cb29febc4ad0951` is preserved. Completion work is consolidated on `main`. Local verification has exercised the real category browser journey, six claim cases, ten database-backed uptime cases, and all seven formerly gated lifecycle cases. These pre-freeze results guide implementation and do not close exact-candidate deployed requirements. The Resend domain has verified receiving MX configuration; the verification environment has a separate signed webhook. Production account execution remains gated until lifecycle proof completes.
+
+Performance acceptance remains LCP ≤2.5 seconds, INP ≤200 milliseconds, and CLS ≤0.1. Identify controlled measurements separately from production field data, whose 75th percentile must be evaluated by device category.
 
 ### Preserved accessibility exception
 

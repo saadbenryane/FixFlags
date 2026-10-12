@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { accountInfrastructureReady, accountChecksEntitled, needsDisposableTest, accountObservationContext, collapseAccountObservations } from '../contracts'
+import { accountInfrastructureReady, accountExecutionReady, accountChecksEntitled, needsDisposableTest, accountObservationContext, collapseAccountObservations } from '../contracts'
 import { flowFingerprint, testIdentity } from '../identity'
 import { accountRequestAllowed, scopedSessionState } from '../browser'
 
@@ -13,6 +13,17 @@ describe('automatic account policy', () => {
     expect(accountInfrastructureReady(configured)).toBe(true)
     for (const key of Object.keys(configured)) expect(accountInfrastructureReady({ ...configured, [key]: undefined })).toBe(false)
     expect(accountInfrastructureReady({ ...configured, ACCOUNT_TEST_EMAIL: 'checks+tag@example.com' })).toBe(false)
+  })
+  it('permits proof only on the explicitly controlled origin in the isolated validation environment', () => {
+    const validation = { ...configured, ACCOUNT_CHECKS_LIFECYCLE_VERIFIED: 'false', RAILWAY_ENVIRONMENT_NAME: 'public-validation',
+      ACCOUNT_CHECKS_VALIDATION_ORIGIN: 'https://controlled.example.test' }
+    expect(accountExecutionReady('https://controlled.example.test/signup', validation)).toBe(true)
+    expect(accountExecutionReady('https://other.example.test', validation)).toBe(false)
+    expect(accountExecutionReady(undefined, validation)).toBe(false)
+    expect(accountExecutionReady('https://controlled.example.test', { ...validation, RAILWAY_ENVIRONMENT_NAME: 'production' })).toBe(false)
+    for (const origin of ['https://fixflags.com', 'http://controlled.example.test', 'https://controlled.example.test/private', 'invalid'])
+      expect(accountInfrastructureReady({ ...validation, ACCOUNT_CHECKS_VALIDATION_ORIGIN: origin })).toBe(false)
+    expect(accountInfrastructureReady({ ...validation, ACCOUNT_CHECKS_LIFECYCLE_VERIFIED: 'true', ACCOUNT_CHECKS_VALIDATION_ORIGIN: 'invalid' })).toBe(false)
   })
   it('grants beta capability to resolved accounts, never anonymous callers', () => {
     expect(accountChecksEntitled(null)).toBe(false)

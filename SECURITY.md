@@ -7,6 +7,8 @@ supersedes: []
 
 # Security
 
+Controlled automatic-account proof may run on an explicitly configured HTTPS origin only in the isolated Railway `public-validation` environment. This uses normal run admission, credentials, worker execution, and signed receiving webhooks while `ACCOUNT_CHECKS_LIFECYCLE_VERIFIED` remains false. Every routine admission and privileged operation rechecks the Site's origin. Production cannot use this proof mode and remains gated on completed lifecycle evidence. Cleanup of existing identities remains independently available with usable stored credentials.
+
 *Assets, trust boundaries, invariants, and dangerous operations.*
 
 ## Assets

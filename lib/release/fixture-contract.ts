@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import type { Plan, SubscriptionStatus } from '@prisma/client'
 
 export type ReleaseFixtureRole = {
-  key: 'free' | 'pro' | 'studio' | 'share' | 'watch' | 'github' | 'twoFactor' | 'waitlistReleased' | 'waitlistBlocked' | 'nonMember'
+  key: 'free' | 'pro' | 'studio' | 'share' | 'watch' | 'github' | 'twoFactor' | 'waitlistReleased' | 'waitlistBlocked' | 'nonMember' | 'websiteCapabilities'
   plan: Plan
   subscriptionStatus: SubscriptionStatus
 }
@@ -18,6 +18,7 @@ export const RELEASE_FIXTURE_ROLES: ReleaseFixtureRole[] = [
   { key: 'waitlistReleased', plan: 'FREE', subscriptionStatus: 'NONE' },
   { key: 'waitlistBlocked', plan: 'FREE', subscriptionStatus: 'NONE' },
   { key: 'nonMember', plan: 'FREE', subscriptionStatus: 'NONE' },
+  { key: 'websiteCapabilities', plan: 'FREE', subscriptionStatus: 'NONE' },
 ]
 
 export function canonicalReleaseDatabaseIdentity(databaseUrl: string): string {
