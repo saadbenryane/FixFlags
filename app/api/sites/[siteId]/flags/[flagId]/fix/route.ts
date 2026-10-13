@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSiteOwner } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { boardFlagPrompt } from '@/lib/sites/board-card'
 
@@ -18,10 +16,10 @@ export async function POST(
 ) {
   try {
     const { siteId, flagId } = await context.params
-    const access = await requireSiteAccess(siteId)
+    const access = await requireSiteOwner(siteId)
     if (!access.ok) return apiError(access.message, access.status)
-
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+    const userId = access.decision.site.userId
+    if (!userId) return apiError('Claim this Site first.', 403)
     const body = schema.safeParse(await req.json().catch(() => ({})))
     if (!body.success) return apiError('Invalid action', 400)
 
@@ -37,16 +35,13 @@ export async function POST(
       expectedBehavior: detail.flag.expectedBehavior,
     })
 
-    let handoff = null
-    if (session?.user?.id) {
-      const recorded = await executeSiteCommand({
-        type: 'RECORD_FIX_HANDOFF',
-        flagId: detail.flag.sourceFlagId ?? detail.flag.id,
-        userId: session.user.id,
-        builder: 'copy',
-      })
-      handoff = 'handoff' in recorded ? recorded.handoff : null
-    }
+    const recorded = await executeSiteCommand({
+      type: 'RECORD_FIX_HANDOFF',
+      flagId: detail.flag.sourceFlagId ?? detail.flag.id,
+      userId,
+      builder: 'copy',
+    })
+    const handoff = 'handoff' in recorded ? recorded.handoff : null
 
     return NextResponse.json({ ok: true, prompt, handoff })
   } catch (error) {

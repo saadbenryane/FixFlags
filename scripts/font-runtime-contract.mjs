@@ -1,3 +1,14 @@
+import postcss from 'postcss'
+
+/** Match real selector lists, including production optimizer combinations. */
+export function stylesheetHasSelector(css, selector) {
+  let found = false
+  postcss.parse(css).walkRules(rule => {
+    if (rule.selectors.includes(selector)) found = true
+  })
+  return found
+}
+
 /** Inspect actual Next stylesheet links without depending on build filenames. */
 export function fontStylesheetUrls(html, pageUrl) {
   const page = new URL(pageUrl)

@@ -1,6 +1,19 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {fontStylesheetUrls} from './font-runtime-contract.mjs'
+import {fontStylesheetUrls, stylesheetHasSelector} from './font-runtime-contract.mjs'
+
+test('recognizes standalone and optimized grouped font selectors', () => {
+  for (const css of ['.font-variables { --font-sans: "Inter Variable" }', '.font-variables,:root{--font-sans:"Inter Variable"}', '@layer base { :root, .font-variables { --font-sans: "Inter Variable" } }']) {
+    assert.equal(stylesheetHasSelector(css, '.font-variables'), true)
+  }
+  assert.equal(stylesheetHasSelector('.font-variables,:root{color:red}', ':root'), true)
+})
+
+test('does not mistake comments, string values or different selectors for the font rule', () => {
+  for (const css of ['/* .font-variables{color:red} */ body{color:red}', 'body{content:".font-variables{"}', '.font-variables-disabled{color:red}', 'body.font-variables{color:red}', '.font-variables:hover{color:red}']) {
+    assert.equal(stylesheetHasSelector(css, '.font-variables'), false)
+  }
+})
 
 test('discovers Webpack, Turbopack and production stylesheets in rendered order', () => {
   const html = `<link href="/_next/static/css/app/layout.css?v=1&amp;x=2" rel="stylesheet"><link rel='stylesheet' href='/_next/static/chunks/_123._.css'><link rel="preload stylesheet" href="/_next/static/css/abc.css">`

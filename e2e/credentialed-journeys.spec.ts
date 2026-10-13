@@ -5,6 +5,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { PrismaClient } from '@prisma/client'
 import type { SiteHomeView } from '@/lib/sites/site-home'
+import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
 
 const execFileAsync = promisify(execFile)
@@ -303,14 +304,20 @@ test.describe('credentialed revenue journeys', () => {
     await buyer.close()
   })
 
-  test('[journey:billing-revoked] revoked billing removes paid entitlements without hiding owned Reviews', async ({ browser }) => {
+  test('[journey:billing-revoked] canceled subscriptions retain their state and owned evidence under the current access policy', async ({ browser }) => {
+    test.setTimeout(90_000)
     const revoked = await signedInPage(browser, 'E2E_REVOKED_EMAIL', 'E2E_REVOKED_PASSWORD')
     const me = await revoked.page.request.get('/api/me')
     expect(me.ok(), await me.text()).toBe(true)
     const body = (await me.json()) as {
-      user: { entitlements: { canAccessPaidFeatures: boolean; canWatchProduct: boolean } }
+      user: { id: string; entitlements: { canAccessPaidFeatures: boolean; canWatchProduct: boolean } }
     }
-    expect(body.user.entitlements.canAccessPaidFeatures).toBe(false)
+    const db = new PrismaClient({ datasources: { db: { url: requiredEnv('RELEASE_FRESH_DATABASE_URL') } } })
+    try {
+      const stored = await db.user.findUniqueOrThrow({ where: { id: body.user.id }, select: { subscriptionStatus: true } })
+      expect(stored.subscriptionStatus).toBe('CANCELED')
+    } finally { await db.$disconnect() }
+    expect(body.user.entitlements.canAccessPaidFeatures).toBe(OPEN_BETA_ACCESS)
     expect(body.user.entitlements.canWatchProduct).toBe(true)
     const report = await revoked.page.request.get(`/api/reports/${requiredEnv('E2E_REVOKED_REPORT_ID')}/status`)
     expect(report.ok(), await report.text()).toBe(true)

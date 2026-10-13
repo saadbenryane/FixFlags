@@ -4,6 +4,7 @@ import { createWorkerRedis } from './redis'
 import { randomUUID } from 'node:crypto'
 import type Redis from 'ioredis'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
+import { resolveCommitSha } from '@/lib/health/commit-sha'
 
 const HEARTBEAT_PREFIX = 'fixflags:worker:heartbeat:'
 const STALLED_COUNT_KEY = 'fixflags:worker:stalled-count'
@@ -14,7 +15,7 @@ export const WORKER_ID =
   randomUUID()
 const WORKER_BOOTED_AT_MS = Date.now()
 const WORKER_VERSION = process.env.npm_package_version ?? '0.1.0'
-const WORKER_SHA = process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? 'unknown'
+const WORKER_SHA = resolveCommitSha() ?? 'unknown'
 
 let redis: Redis | null = null
 let stopping = false

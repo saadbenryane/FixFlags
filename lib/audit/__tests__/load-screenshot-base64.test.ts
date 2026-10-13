@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, afterEach } from 'vitest'
 
-const { prismaMock } = vi.hoisted(() => ({
+const { prismaMock, readScreenshot } = vi.hoisted(() => ({
+  readScreenshot: vi.fn(),
   prismaMock: {
     audit: { findUnique: vi.fn() },
   },
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+vi.mock('@/lib/storage/screenshots', () => ({ readScreenshot }))
 
 import { loadAuditScreenshotBase64 } from '../load-screenshot-base64'
 
@@ -17,6 +19,7 @@ describe('loadAuditScreenshotBase64', () => {
   beforeEach(() => {
     prismaMock.audit.findUnique.mockReset()
     fetchMock.mockReset()
+    readScreenshot.mockReset()
     vi.stubGlobal('fetch', fetchMock)
   })
 
@@ -30,43 +33,54 @@ describe('loadAuditScreenshotBase64', () => {
     assert.deepEqual(result, { desktopBase64: null, mobileBase64: null })
   })
 
-  it('fetches and base64-encodes desktop and mobile screenshots', async () => {
+  it('reads private recorded desktop and mobile captures directly from storage', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({
       screenshots: [
-        { device: 'DESKTOP', url: 'https://cdn.example/desktop.png' },
-        { device: 'MOBILE', url: 'https://cdn.example/mobile.png' },
+        { device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop?page=p0-g2' },
+        { device: 'MOBILE', url: 'https://fixflags.test/api/screenshots/audit-1/mobile?page=p0-g2' },
       ],
     })
-    fetchMock.mockImplementation(async (url: string) => {
-      const body = url.includes('desktop') ? 'desktop-bytes' : 'mobile-bytes'
-      return new Response(body, { status: 200 })
-    })
+    readScreenshot.mockImplementation(async (_audit: string, device: string) => Buffer.from(device + '-bytes'))
 
     const result = await loadAuditScreenshotBase64('audit-1')
     assert.equal(result.desktopBase64, Buffer.from('desktop-bytes').toString('base64'))
     assert.equal(result.mobileBase64, Buffer.from('mobile-bytes').toString('base64'))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(readScreenshot).toHaveBeenCalledWith('audit-1', 'desktop', 'p0-g2')
+    expect(readScreenshot).toHaveBeenCalledWith('audit-1', 'mobile', 'p0-g2')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('returns null for missing devices and failed fetches', async () => {
+  it('returns null for missing devices and absent stored captures', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({
-      screenshots: [{ device: 'DESKTOP', url: 'https://cdn.example/desktop.png' }],
+      screenshots: [{ device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop' }],
     })
-    fetchMock.mockResolvedValue(new Response('nope', { status: 500 }))
+    readScreenshot.mockResolvedValue(null)
 
     const result = await loadAuditScreenshotBase64('audit-1')
     assert.equal(result.desktopBase64, null)
     assert.equal(result.mobileBase64, null)
   })
 
-  it('swallows fetch exceptions', async () => {
+  it('returns missing evidence when storage cannot be read', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({
-      screenshots: [{ device: 'DESKTOP', url: 'https://cdn.example/desktop.png' }],
+      screenshots: [{ device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop' }],
     })
-    fetchMock.mockRejectedValue(new Error('network down'))
+    readScreenshot.mockRejectedValue(new Error('storage down'))
 
     const result = await loadAuditScreenshotBase64('audit-1')
     assert.equal(result.desktopBase64, null)
+  })
+
+  it.each([
+    'https://fixflags.test/api/screenshots/another-audit/desktop',
+    'https://fixflags.test/api/screenshots/audit-1/mobile',
+    'https://fixflags.test/api/screenshots/audit-1/desktop?page=..%2Fprivate',
+    'https://other.test/unrelated.png',
+  ])('refuses mismatched capture provenance without making an HTTP request: %s', async url => {
+    prismaMock.audit.findUnique.mockResolvedValue({ screenshots: [{ device: 'DESKTOP', url }] })
+    expect(await loadAuditScreenshotBase64('audit-1')).toEqual({ desktopBase64: null, mobileBase64: null })
+    expect(readScreenshot).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 

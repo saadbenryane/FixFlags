@@ -2,15 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const mocks = vi.hoisted(() => ({
-  getSession: vi.fn(),
-  requireSiteAccess: vi.fn(),
+  requireSiteOwner: vi.fn(),
   loadSiteBoardFlag: vi.fn(),
   executeSiteCommand: vi.fn(),
 }))
 
-vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: mocks.getSession } } }))
-vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers()) }))
-vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
+vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.requireSiteOwner }))
 vi.mock('@/lib/sites/application/queries', () => ({ loadSiteBoardFlag: mocks.loadSiteBoardFlag }))
 vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: mocks.executeSiteCommand }))
 
@@ -19,8 +16,7 @@ import { POST } from '@/app/api/sites/[siteId]/flags/[flagId]/fix/route'
 describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } })
-    mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'owner', site: { siteId: 'site-1' } } })
+    mocks.requireSiteOwner.mockResolvedValue({ ok: true, projectId: 'project-1', decision: { role: 'owner', site: { siteId: 'site-1', userId: 'user-1' } } })
     mocks.loadSiteBoardFlag.mockResolvedValue({
       flag: {
         id: 'improvement-1', sourceFlagId: 'flag-1', problem: 'Checkout button is hidden',
@@ -30,6 +26,17 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
       },
     })
     mocks.executeSiteCommand.mockResolvedValue({ ok: true, handoff: { improvementId: 'improvement-1' } })
+  })
+
+  it.each([403, 404])('never loads or returns private prompt data when ownership is refused (%s)', async status => {
+    mocks.requireSiteOwner.mockResolvedValue({ ok: false, status, message: 'Site access refused' })
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(status)
+    expect((await response.json()).prompt).toBeUndefined()
+    expect(mocks.loadSiteBoardFlag).not.toHaveBeenCalled()
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
   it('returns the canonical server prompt and persists a handoff receipt', async () => {

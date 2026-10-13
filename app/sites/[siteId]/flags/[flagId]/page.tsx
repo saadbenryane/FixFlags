@@ -19,6 +19,7 @@ import { verificationResult, verificationResultLabel } from '@/lib/sites/present
 import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { BoardDetails } from '@/components/sites/BoardDetails'
+import { CARE_HOME } from '@/lib/marketing/copy'
 
 function attemptLabel(attempt: Parameters<typeof verificationResult>[0]): string {
   return verificationResultLabel(verificationResult(attempt))
@@ -37,6 +38,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   if (!access.ok) notFound()
 
   const resolvedId = access.decision.site.siteId
+  const ownsSite = access.decision.role === 'owner'
   const detail = await loadSiteBoardFlag(resolvedId, flagId)
   if (!detail) notFound()
 
@@ -200,7 +202,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
               ) : null}
             </div>
 
-            {resolution.kind === 'open' || resolution.kind === 'verifying' ? (
+            {ownsSite && (resolution.kind === 'open' || resolution.kind === 'verifying') ? (
               <aside className="rounded-[17px] border border-border bg-background p-5 shadow-sm sm:p-6 lg:sticky lg:top-6" aria-labelledby="fix-and-verify-heading">
                 <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
                   {SITE_BOARD_COPY.fixAndVerify}
@@ -212,7 +214,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
               </aside>
             ) : null}
 
-            <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
+            {!ownsSite ? <Button asChild variant="outline"><Link href={`/sign-in?next=${encodeURIComponent(`/sites/${resolvedId}/flags/${flag.id}`)}`}>{CARE_HOME.signIn}</Link></Button> : null}
+            {ownsSite ? <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
               <div className="flex items-center gap-3">
                 <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                 <h2 id="verification-history-heading" className="font-semibold">
@@ -246,7 +249,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   })}
                 </ol>
               )}
-            </section>
+            </section> : null}
           </div>
         </FlagResolutionPanel>
       </div>

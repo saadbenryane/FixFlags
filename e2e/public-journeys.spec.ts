@@ -323,18 +323,17 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await page.getByRole('button', { name: 'Analyze' }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Settings', exact: true }).first()).toHaveAttribute(
     'href',
     /\/sign-in\?next=%2Fsites%2F/
   )
   await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'All Sites' })).toHaveCount(0)
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Pages', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open Pages', exact: true })).toBeVisible()
   for (const name of ['Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
     await expect(
-      page.getByRole('button', { name, exact: true }).or(page.getByRole('link', { name, exact: true }))
+      page.getByRole('button', { name: `Open ${name}`, exact: true })
     ).toBeVisible()
   }
 
@@ -373,7 +372,8 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   expect(walkEvents).toHaveLength(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sign in to check again', exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sign in to check again', exact: true }).first()).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
   await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
   await expect(page.getByText('Not watching')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0)

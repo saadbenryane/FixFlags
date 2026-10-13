@@ -61,9 +61,10 @@ function attempt(id: string, builder: string, outcome: string | null) {
 
 describe('Flag verification attempts', () => {
   beforeEach(() => {
+    mocks.recordSiteLifecycleEvent.mockResolvedValue(undefined)
     mocks.requireSiteAccess.mockResolvedValue({
       ok: true,
-      decision: { role: 'viewer', site: { siteId: 'site-1' } },
+      decision: { role: 'owner', site: { siteId: 'site-1' } },
     })
     mocks.loadSiteHome.mockResolvedValue({
       ...siteViewFixture(),
@@ -136,5 +137,17 @@ describe('Flag verification attempts', () => {
         name: /https:\/\/shop\.example\/products\/tote/,
       }),
     ).toHaveAttribute('href', 'https://shop.example/products/tote')
+  })
+
+  it('keeps anonymous evidence visible while requiring sign-in for fixes and private attempts', async () => {
+    mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'site-1' } } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
+    expect(screen.getByText('The cart stayed empty.')).toBeVisible()
+    expect(screen.queryByText('Repair Add to cart.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Copy fix prompt' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Verification history' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
   })
 })

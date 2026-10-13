@@ -1,4 +1,4 @@
-import { fontStylesheetUrls } from './font-runtime-contract.mjs'
+import { fontStylesheetUrls, stylesheetHasSelector } from './font-runtime-contract.mjs'
 const args = process.argv.slice(2)
 const useJson = args.includes('--json')
 const optional = args.includes('--optional')
@@ -46,8 +46,8 @@ const checks = {
   stylesheetStatus: 200,
   stylesheetUrls,
   bodyClassHasFontVariables: /font-variables/.test(pageHtml),
-  hasRootFontVar: /:root\s*\{/.test(stylesheetText),
-  hasFontVariablesRule: /\.font-variables\s*\{/.test(stylesheetText),
+  hasRootFontVar: stylesheetHasSelector(stylesheetText, ':root'),
+  hasFontVariablesRule: stylesheetHasSelector(stylesheetText, '.font-variables'),
   hasFontSansVar: /--font-sans:\s*\"Inter Variable\"/.test(stylesheetText),
   hasFontDisplayVar: /--font-display:\s*\"Inter Tight Variable\"/.test(stylesheetText),
   hasFontMonoVar: /--font-mono:\s*\"JetBrains Mono Variable\"/.test(stylesheetText),

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
+import { readScreenshot } from '@/lib/storage/screenshots'
 
-/** Load stored desktop/mobile screenshot URLs as base64 for AI prescription. */
+/** Read recorded captures from worker-owned storage, without a viewer session. */
 export async function loadAuditScreenshotBase64(
   auditId: string
 ): Promise<{ desktopBase64: string | null; mobileBase64: string | null }> {
@@ -15,20 +16,22 @@ export async function loadAuditScreenshotBase64(
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
 
-  async function fetchBase64(url: string | undefined): Promise<string | null> {
+  async function storedBase64(url: string | undefined, device: 'desktop' | 'mobile'): Promise<string | null> {
     if (!url) return null
     try {
-      const res = await fetch(url)
-      if (!res.ok) return null
-      const buf = Buffer.from(await res.arrayBuffer())
-      return buf.toString('base64')
+      const reference = new URL(url)
+      if (reference.pathname !== `/api/screenshots/${auditId}/${device}`) return null
+      const pageKey = reference.searchParams.get('page')
+      if (pageKey && !/^[a-zA-Z0-9_-]{1,80}$/.test(pageKey)) return null
+      const bytes = await readScreenshot(auditId, device, pageKey)
+      return bytes?.toString('base64') ?? null
     } catch {
       return null
     }
   }
 
   return {
-    desktopBase64: await fetchBase64(desktop?.url),
-    mobileBase64: await fetchBase64(mobile?.url),
+    desktopBase64: await storedBase64(desktop?.url, 'desktop'),
+    mobileBase64: await storedBase64(mobile?.url, 'mobile'),
   }
 }
