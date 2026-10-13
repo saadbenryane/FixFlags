@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { PrismaClient } from '@prisma/client'
+import type { SiteHomeView } from '@/lib/sites/site-home'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
 
 const execFileAsync = promisify(execFile)
@@ -157,7 +158,7 @@ test.describe('credentialed revenue journeys', () => {
   test('[journey:anonymous-claim] anonymous claim keeps prompts private and produces a metered full update-review diff', async ({ page }) => {
     test.setTimeout(420_000)
     const targetUrl = requiredEnv('E2E_AUDIT_URL')
-    const email = `release-${Date.now()}@example.test`
+    const email = `validationalerts+${requiredEnv('RELEASE_RUN_ID').toLowerCase()}-claim@fixflags.com`
     const password = requiredEnv('E2E_SIGNUP_PASSWORD')
 
     await page.goto('/new')
@@ -185,15 +186,29 @@ test.describe('credentialed revenue journeys', () => {
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Create account', exact: true }).click()
-    await page.waitForURL((url) => url.pathname === `/sites/${siteId}` || url.pathname.startsWith('/sites/'), {
+    await page.getByRole('button', { name: 'Maybe later', exact: true }).click()
+    await page.waitForURL((url) => url.pathname === `/sites/${siteId}`, {
       timeout: 45_000,
     })
     await expect(page.getByRole('heading', { name: /Overview|Site settings|Flags/ })).toBeVisible()
+    const claimedResponse = await page.request.get(`/api/sites/${siteId}`)
+    expect(claimedResponse.status()).toBe(200)
+    const claimed = await claimedResponse.json() as SiteHomeView
+    const me = await page.request.get('/api/me')
+    expect(me.status()).toBe(200)
+    expect(claimed.site.userId).toBe((await me.json()).user.id)
+    expect(claimed.audit.id).toBe(reportId)
+    expect(new URL(claimed.site.url).origin).toBe(new URL(targetUrl).origin)
+    const settings = await page.request.patch(`/api/sites/${siteId}/settings`, {
+      data: { accountChecksEnabled: false, notificationLevel: 'OFF', notifyOnRecovery: false },
+    })
+    expect(settings.status(), await settings.text()).toBe(200)
 
     const update = await page.request.post(`/api/reports/${reportId}/re-check`)
     expect(update.status(), await update.text()).toBe(201)
     const updateBody = (await update.json()) as { reportId: string; siteId?: string }
     expect(updateBody.siteId).toBeTruthy()
+    expect(updateBody.siteId).toBe(claimed.site.projectId)
     await waitForReport(page.request, updateBody.reportId)
     await page.goto(`/sites/${updateBody.siteId}`)
     await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
@@ -315,7 +330,7 @@ test.describe('credentialed revenue journeys', () => {
       })
       expect(response.status()).toBe(200)
     }
-    type ProviderEmail = { id: string; to: string[]; created_at: string; last_event: string; tags?: Array<{ name: string; value: string }> }
+    type ProviderEmail = { id: string; to: string[]; created_at: string; last_event: string; html?: string; tags?: Array<{ name: string; value: string }> }
     const provider = async <T,>(endpoint: string): Promise<T> => {
       await new Promise(resolve => setTimeout(resolve, 550))
       const response = await fetch(`https://api.resend.com/${endpoint}`, { headers: { authorization: `Bearer ${requiredEnv('E2E_RESEND_API_KEY')}` }, signal: AbortSignal.timeout(15_000) })
@@ -324,6 +339,10 @@ test.describe('credentialed revenue journeys', () => {
     }
     const beganAt = new Date()
     try {
+      const settings = await user.page.request.patch(`/api/sites/${projectId}/settings`, {
+        data: { notificationLevel: 'FLAGS', notifyOnRecovery: false },
+      })
+      expect(settings.status(), await settings.text()).toBe(200)
       await control(true)
       expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
       // This designated release fixture accelerates scheduling. It does not
@@ -342,6 +361,10 @@ test.describe('credentialed revenue journeys', () => {
       const accepted = await provider<ProviderEmail>(`emails/${providerId}`)
       expect(accepted.to).toContain(requiredEnv('E2E_WATCH_EMAIL'))
       expect(accepted.tags).toContainEqual({ name: 'audit_id', value: child.id })
+      expect(accepted.html, 'Actual provider message uses the shared brand').toContain('/icon-192.png')
+      expect(accepted.html).toContain('See evidence and next steps')
+      expect(accepted.html?.match(/<li>/g)?.length ?? 0, 'All eligible findings appear in the combined message')
+        .toBe(child.watchRegressionCount)
       const listed = await provider<{ data: ProviderEmail[]; has_more: boolean }>('emails?limit=100')
       expect(!listed.has_more || listed.data.some(email => new Date(email.created_at).getTime() < beganAt.getTime()),
         'Provider list must cover the complete observation window').toBe(true)
@@ -359,7 +382,10 @@ test.describe('credentialed revenue journeys', () => {
         matchingMessages: matches.length, humanReceiptOrRead: false, naturalProductionCycle: false,
       })) })
     } finally {
-      try { await control(false) } finally { await fixtureDb.$disconnect(); await user.close() }
+      try {
+        await user.page.request.patch(`/api/sites/${projectId}/settings`, { data: { notificationLevel: 'OFF', notifyOnRecovery: false } })
+        await control(false)
+      } finally { await fixtureDb.$disconnect(); await user.close() }
     }
   })
 

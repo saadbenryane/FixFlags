@@ -49,6 +49,17 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     expect(fixture.send.mock.calls[1][1]).toEqual(fixture.send.mock.calls[0][1])
     expect((await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).status).toBe('SENT')
   })
+
+  it('does not report acceptance when the provider returns no message receipt', async () => {
+    const { receipt } = await receiptFixture()
+    fixture.send.mockResolvedValueOnce({ data: {}, error: null })
+    await deliverUptimeNotifications(now)
+    const recorded = await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })
+    expect(recorded.status).toBe('FAILED')
+    expect(recorded.providerId).toBeNull()
+    expect(recorded.sentAt).toBeNull()
+    expect(recorded.lastError).toBe('Email provider did not confirm acceptance')
+  })
   it('rechecks disabled notifications, recovery preferences, pauses, and target versions', async () => {
     const first = await receiptFixture()
     await db().project.update({ where: { id: first.project.id }, data: { notificationLevel: 'OFF' } })

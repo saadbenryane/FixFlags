@@ -394,6 +394,61 @@ describe('Product Watch', () => {
     }))
   })
 
+  it('combines simultaneous findings and recoveries into one branded provider request', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      recheckTrigger: 'WATCH', completedAt: new Date('2026-10-13T00:00:00Z'),
+      watchRegressionCount: null, watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0,
+      user: { email: 'owner@example.com', name: 'Owner' },
+      project: { watchInterval: 'WEEKLY', notificationLevel: 'FLAGS', notifyOnRecovery: true } })
+    const flag = { checkId: 'title-missing', severity: 'IMPORTANT', confidence: 0.95, status: 'OPEN', rubric: 'SEO' }
+    mocks.getFlagDiffSummary.mockResolvedValue({
+      newIssues: [{ ...flag, id: 'new', problem: 'Missing title' }],
+      regressed: [{ ...flag, id: 'regressed', problem: 'Recurrent metadata failure' }],
+      fixed: [{ ...flag, id: 'fixed', problem: 'Repaired title' }], unchanged: [], inconclusive: [],
+    })
+    await notifyWatchRegression('parent-1', 'child-1')
+    expect(mocks.sendEmail).toHaveBeenCalledOnce()
+    const message = mocks.sendEmail.mock.calls[0]![0]
+    expect(message.subject).toBe('Needs attention on example.com: 2 Flags')
+    for (const problem of ['Missing title', 'Recurrent metadata failure', 'Repaired title']) {
+      expect(message.html).toContain(problem)
+      expect(message.text).toContain(problem)
+    }
+    expect(message.html).toContain('/icon-192.png')
+    expect(message.html).toContain('Recovery verified')
+  })
+
+  it('retries the recorded provider body even after names and templates change', async () => {
+    const payload = { version: 1, from: 'FixFlags <hello@fixflags.com>', to: 'owner@example.com',
+      subject: 'Recorded subject', html: '<p>Recorded evidence</p>', text: 'Recorded evidence',
+      tags: [{ name: 'audit_id', value: 'child-1' }, { name: 'purpose', value: 'watch' }] }
+    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1,
+      watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1, watchNotificationPayload: payload,
+      user: { email: 'owner@example.com', name: 'Updated name' }, project: { watchInterval: 'WEEKLY' } })
+    mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
+    await notifyWatchRegression('parent-1', 'child-1')
+    const { version, ...body } = payload
+    void version
+    expect(mocks.sendEmail).toHaveBeenCalledWith(body,
+      expect.objectContaining({ idempotencyKey: 'fixflags-watch-child-1-v1' }))
+  })
+
+  it('does not send a recorded message to an address that the owner changed', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1,
+      watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1,
+      watchNotificationPayload: { version: 1, from: 'FixFlags <hello@fixflags.com>', to: 'old@example.com',
+        subject: 'Recorded subject', html: '<p>Evidence</p>', text: 'Evidence', tags: [{ name: 'audit_id', value: 'child-1' }] },
+      user: { email: 'owner@example.com', name: 'Owner' }, project: { watchInterval: 'WEEKLY' } })
+    mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
+    await notifyWatchRegression('parent-1', 'child-1')
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+    expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      watchNotificationStatus: 'FAILED', watchNotificationLastError: 'Recorded notification no longer matches its recipient or Audit',
+    }) }))
+  })
+
   it('links a recovery notification to the parent Flag that holds its proof', async () => {
     mocks.auditFindUnique.mockResolvedValue({
       id: 'child-1',

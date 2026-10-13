@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Fingerprint, Loader2, Mail } from 'lucide-react'
-import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy/auth'
 import { Button } from '@/components/ui/button'
@@ -25,7 +24,6 @@ import {
 import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 import { trackEvent } from '@/lib/analytics/events'
-import { runBestEffort } from '@/lib/observability/best-effort'
 
 export type AuthFlowMode = 'signup' | 'signin'
 export type AuthFlowPresentation = 'page' | 'report-dialog' | 'report-gate'
@@ -76,6 +74,7 @@ export function AuthFlow({
   const [mode, setMode] = useState<AuthFlowMode>(initialMode)
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
+  const [formError, setFormError] = useState('')
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => { setHydrated(true) }, [])
   const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
@@ -143,6 +142,7 @@ export function AuthFlow({
   }
 
   function switchMode(nextMode: AuthFlowMode) {
+    setFormError('')
     setMode(nextMode)
     setPassword('')
   }
@@ -166,6 +166,7 @@ export function AuthFlow({
 
   async function handleEmailSubmit(event: React.FormEvent) {
     event.preventDefault()
+    setFormError('')
     markStarted('email')
     setLoading('email')
     try {
@@ -176,20 +177,9 @@ export function AuthFlow({
           password,
         })
         if (error) {
-          toast.error(error.message || AUTH.signUp.error)
+          setFormError(error.message || AUTH.signUp.error)
           return
         }
-        void runBestEffort(
-          () => fetch('/api/email/welcome', { method: 'POST' }),
-          {
-            operation: 'welcome_email_request',
-            logger: {
-              warn(message, details) {
-                console.warn(message, details)
-              },
-            },
-          }
-        )
         trackEvent('signed_up', {
           method: 'email',
           plan: route.plan ?? undefined,
@@ -203,7 +193,7 @@ export function AuthFlow({
           password,
         })
         if (error) {
-          toast.error(error.message || AUTH.signIn.error)
+          setFormError(error.message || AUTH.signIn.error)
           return
         }
         if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
@@ -214,7 +204,7 @@ export function AuthFlow({
       }
       await finishEmailAuth()
     } catch {
-      toast.error(
+      setFormError(
         mode === 'signup' ? AUTH.signUp.unexpectedError : AUTH.signIn.unexpectedError
       )
     } finally {
@@ -223,13 +213,14 @@ export function AuthFlow({
   }
 
   async function handlePasskeySignIn() {
+    setFormError('')
     setLoading('passkey')
     try {
       const { error } = await authClient.signIn.passkey({ autoFill: false })
       if (error) {
         const message = error.message ?? ''
         if (!/cancel|notallowed/i.test(message)) {
-          toast.error(
+          setFormError(
             /not.?found|no.?credential/i.test(message)
               ? AUTH.passkeyErrors.notFound
               : AUTH.passkeyErrors.cancelled
@@ -240,7 +231,7 @@ export function AuthFlow({
       trackEvent('signed_in', { method: 'passkey' })
       await finishEmailAuth()
     } catch {
-      toast.error(AUTH.passkeyErrors.cancelled)
+      setFormError(AUTH.passkeyErrors.cancelled)
     } finally {
       setLoading(null)
     }
@@ -437,6 +428,8 @@ export function AuthFlow({
       ) : (
         emailForm
       )}
+
+      {formError ? <p role="alert" className="break-words rounded-control border border-border bg-muted p-3 text-sm text-foreground">{formError}</p> : null}
 
       <p className="text-center text-sm text-muted-foreground">
         {mode === 'signup' ? AUTH.signUp.footer : AUTH.signIn.footer}{' '}

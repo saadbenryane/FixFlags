@@ -1,12 +1,14 @@
 import { createServer } from 'node:http'
 import { randomBytes, randomUUID, createHash, scryptSync, timingSafeEqual } from 'node:crypto'
 import { PrismaClient } from '@prisma/client'
+import { parseEmailBudget, reserveVerificationEmail } from './email-budget.mjs'
 
 // Separate controlled website, never a customer route or an application fixture.
 const origin = new URL(process.env.RELEASE_TARGET_ORIGIN ?? '').origin
 const database = new URL(process.env.DATABASE_URL ?? '')
 const token = process.env.RELEASE_TARGET_CONTROL_TOKEN
 const mailbox = process.env.RELEASE_TARGET_MAILBOX ?? 'validationchecks@fixflags.com'
+const emailBudget = parseEmailBudget(process.env.RELEASE_TARGET_EMAIL_BUDGET)
 if (new URL(origin).protocol !== 'https:' || database.pathname !== '/fixflags_release_target' || !token || token.length < 32 || !process.env.RESEND_API_KEY)
   throw new Error('An isolated release-target database, HTTPS origin, provider and control token are required')
 const db = new PrismaClient()
@@ -22,6 +24,8 @@ await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS release_target_accounts (
 await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS release_target_sessions (
   token_hash text PRIMARY KEY, account_id text REFERENCES release_target_accounts(id), expires_at timestamptz NOT NULL)`)
 await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS release_target_settings (id integer PRIMARY KEY, value jsonb NOT NULL)`)
+await db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS release_target_email_budget (id integer PRIMARY KEY, used integer NOT NULL DEFAULT 0 CHECK (used >= 0))`)
+await db.$executeRaw`INSERT INTO release_target_email_budget (id, used) VALUES (1, 0) ON CONFLICT DO NOTHING`
 await db.$executeRaw`INSERT INTO release_target_settings (id, value) VALUES (1, '{"broken":false,"missingTitle":false,"outage":false,"deletionUnavailable":false}'::jsonb) ON CONFLICT DO NOTHING`
 
 async function settings() { return (await db.$queryRaw`SELECT value FROM release_target_settings WHERE id = 1`)[0].value }
@@ -72,7 +76,8 @@ const server = createServer(async (request, response) => {
       }
       const counts = await db.$queryRaw`SELECT count(*)::int AS total, count(*) FILTER (WHERE deleted_at IS NULL)::int AS remaining,
         count(*) FILTER (WHERE verified_at IS NOT NULL)::int AS verified, count(*) FILTER (WHERE provider_email_id IS NOT NULL)::int AS sent FROM release_target_accounts`
-      return json(response, 200, { configuration: await settings(), accounts: counts[0] })
+      const budget = (await db.$queryRaw`SELECT used FROM release_target_email_budget WHERE id = 1`)[0]
+      return json(response, 200, { configuration: await settings(), accounts: counts[0], emailBudget: { limit: emailBudget, used: budget.used } })
     }
     const config = await settings()
     if (config.outage) return page(response, '<h1>Controlled outage</h1>', config, 503)
@@ -93,6 +98,8 @@ const server = createServer(async (request, response) => {
         return redirect(response, '/dashboard', await sessionCookie(account.id))
       }
       if (account) return page(response, accountForm('signup', 'Registration failed, identity already exists'), config, 409)
+      if (!await reserveVerificationEmail(db, emailBudget))
+        return page(response, '<h1>Email verification unavailable</h1><p>The controlled email budget is closed or exhausted.</p>', config, 503)
       const id = randomUUID(), salt = randomBytes(16).toString('hex'), hash = passwordHash(password, salt), verification = randomBytes(32).toString('hex'), verificationHash = digest(verification)
       await db.$executeRaw`INSERT INTO release_target_accounts (id, email, password_hash, salt, verification_hash, verification_expires_at)
         VALUES (${id}, ${email}, ${hash}, ${salt}, ${verificationHash}, now() + interval '15 minutes')`

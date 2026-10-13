@@ -49,6 +49,31 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
     }
   })
 
+  it('does not request a second welcome email after signup sends its verification email', async () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    const onAuthenticated = vi.fn()
+    authClient.signUp.email.mockResolvedValue({ data: { user: { id: 'new-user' } }, error: null })
+    try {
+      render(<AuthFlow mode="signup" onAuthenticated={onAuthenticated} />)
+      fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+      fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'StrongPassword123!' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }))
+      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce())
+      expect(fetch).not.toHaveBeenCalled()
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('keeps a failed sign-in message beside the controls until the next attempt', async () => {
+    authClient.signIn.email.mockResolvedValue({ data: null, error: { message: 'Invalid email or password' } })
+    render(<AuthFlow mode="signin" />)
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'owner@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'WrongPassword123!' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid email or password'))
+    expect(screen.getByLabelText('Email')).toHaveValue('owner@example.com')
+  })
+
   it('orders Google and GitHub before the inline email form', () => {
     render(
       <AuthFlow

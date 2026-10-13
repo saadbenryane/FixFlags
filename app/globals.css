@@ -15,6 +15,7 @@
   }
 
   body {
+    padding-bottom: var(--bottom-notice-inset, 0px);
     @apply text-foreground antialiased;
     background-color: hsl(var(--background));
     font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
@@ -25,6 +26,11 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-padding-bottom: calc(var(--bottom-notice-inset, 0px) + 16px);
+    scroll-padding-top: calc(var(--header-height-marketing, 4.5rem) + 12px);
   }
 
   /* Fixed-viewport surface gradient. A pseudo-element instead of
@@ -146,3 +152,13 @@
   }
 }
 
+
+/* A short zoomed viewport needs scrolling space for focused controls. */
+@media (max-height: 360px) {
+  body [data-primary-navigation] {
+    position: relative;
+  }
+  html {
+    scroll-padding-top: 16px;
+  }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { ThemeProvider } from 'next-themes'
-import { Toaster } from 'sonner'
+import { Notifications } from '@/components/system/Notifications'
 import { OfflineNotice } from '@/components/system/OfflineNotice'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 
@@ -17,7 +17,7 @@ export function Providers({
       <MeProvider initialUser={initialUser}>
         {children}
         <OfflineNotice />
-        <Toaster richColors position="bottom-right" />
+        <Notifications />
       </MeProvider>
     </ThemeProvider>
   )

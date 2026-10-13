@@ -109,6 +109,7 @@ export function stripInternalAuditFields<T extends Record<string, unknown>>(
     performanceData,
     consoleErrors,
     scanAccessEncrypted,
+    watchNotificationPayload,
     gclid,
     fbclid,
     leadSyncedAt,
@@ -126,6 +127,7 @@ export function stripInternalAuditFields<T extends Record<string, unknown>>(
   void performanceData
   void consoleErrors
   void scanAccessEncrypted
+  void watchNotificationPayload
   void gclid
   void fbclid
   void leadSyncedAt

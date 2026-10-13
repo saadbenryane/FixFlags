@@ -5,6 +5,7 @@ import { BRAND } from '@/lib/marketing/copy/brand'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import { uptimeEligible } from './service'
 import { logger } from '@/lib/logger'
+import { emailLayout, escapeEmailHtml } from '@/lib/email/layout'
 
 /** Receipt identity is also the provider idempotency key. Preferences are rechecked at delivery. */
 export async function deliverUptimeNotifications(now = new Date(), limit = 20) {
@@ -35,8 +36,10 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20) {
       const body = receipt.kind === 'DOWN' ? UPTIME_COPY.email.downBody(incident.targetUrl, incident.confirmedAt.toISOString(), href)
         : UPTIME_COPY.email.recoveryBody(incident.targetUrl, incident.recoveredAt!.toISOString(), href)
       const { data, error } = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`,
-        to: project.user.email, subject, text: body }, { idempotencyKey: `uptime-${receipt.id}` })
+        to: project.user.email, subject, text: body,
+        html: emailLayout(body.split('\n\n').map(paragraph => `<p>${escapeEmailHtml(paragraph)}</p>`).join('')) }, { idempotencyKey: `uptime-${receipt.id}` })
       if (error) throw new Error(error.message)
+      if (!data?.id) throw new Error('Email provider did not confirm acceptance')
       await prisma.uptimeNotification.updateMany({ where: { id: receipt.id, leaseUntil }, data: {
         status: 'SENT', sentAt: new Date(), providerId: data?.id ?? null, lastError: null, leaseUntil: null,
       } })

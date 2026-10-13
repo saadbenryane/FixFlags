@@ -272,6 +272,7 @@ export async function createAndEnqueueAudit(
     // Anonymous analysis retains its public-report contract. Owned Site runs
     // and credentialed captures contain tenant evidence, not public shares.
     isPublic: !options.runRequestId && !options.runRequestAdmission && !resolvedScanAccess &&
+      (!userId || Boolean(options.retryParent)) &&
       (!options.retryParent || parentAudit?.isPublic === true),
     projectId,
     scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,

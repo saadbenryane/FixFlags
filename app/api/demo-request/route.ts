@@ -26,14 +26,6 @@ function demoNotifyEmail(): string | undefined {
   return process.env.DEMO_NOTIFY_EMAIL || process.env.ADMIN_NOTIFICATION_EMAIL
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-}
-
 function normalizeWebsite(raw: string): string | null {
   const trimmed = raw.trim()
   if (!trimmed) return null
@@ -73,12 +65,12 @@ async function sendDemoEmails(input: {
         to: notifyTo,
         subject: DEMO_EMAILS.notify.subject(planName),
         html: DEMO_EMAILS.notify.html({
-          name: escapeHtml(input.name),
-          email: escapeHtml(input.email),
-          website: escapeHtml(input.website),
+          name: input.name,
+          email: input.email,
+          website: input.website,
           planLabel: planName,
           siteCount: input.siteCount,
-          note: input.note ? escapeHtml(input.note) : null,
+          note: input.note ?? null,
         }),
       })
       if (error) throw new Error(error.message)
@@ -95,7 +87,7 @@ async function sendDemoEmails(input: {
       from: FROM_EMAIL,
       to: input.email,
       subject: DEMO_EMAILS.confirm.subject,
-      html: DEMO_EMAILS.confirm.html(escapeHtml(input.name), planName),
+      html: DEMO_EMAILS.confirm.html(input.name, planName),
     })
     if (error) throw new Error(error.message)
     confirmed = true

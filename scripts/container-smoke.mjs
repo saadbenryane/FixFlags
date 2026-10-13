@@ -132,6 +132,10 @@ try {
     return response.ok && body?.ok === true && body?.subsystems?.worker?.ok === true
   })
 
+  const revision = await fetch(`${baseUrl}/api/health`).then(response => response.json())
+  if (!process.env.RELEASE_EXPECTED_GIT_SHA || revision.commit !== process.env.RELEASE_EXPECTED_GIT_SHA)
+    throw new Error('Candidate image does not report the frozen source revision')
+
   const fontProof = spawnSync(process.execPath, ['scripts/verify-font-runtime.mjs', baseUrl], {
     encoding: 'utf8', timeout: 60_000,
   })
@@ -143,7 +147,9 @@ try {
   }).then((response) => response.json())
   if (
     workerHealth?.worker?.workerCount !== 1 ||
-    workerHealth?.worker?.browserOk !== true
+    workerHealth?.worker?.browserOk !== true ||
+    !Array.isArray(workerHealth?.worker?.workers) || workerHealth.worker.workers.length !== 1 ||
+    workerHealth.worker.workers.some(replica => replica.sha !== process.env.RELEASE_EXPECTED_GIT_SHA)
   ) {
     throw new Error(
       `Dedicated worker topology was not observed: ${JSON.stringify(workerHealth)}`

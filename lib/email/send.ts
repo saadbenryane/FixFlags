@@ -2,6 +2,7 @@ import { resend } from '@/lib/email/client'
 import { prisma } from '@/lib/db'
 import { NURTURE_EMAILS, NEWSLETTER_EMAIL, KEEP_REPORT_EMAIL, type NurtureEmailType } from './templates'
 import { BRAND } from '@/lib/marketing/copy'
+import { isReservedEmailRecipient } from './recipient'
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
@@ -22,11 +23,13 @@ export async function sendNurtureEmail(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, name: true, plan: true },
+    select: { email: true, emailVerified: true, name: true, plan: true },
   })
   if (!user) {
     return { sent: false, reason: 'user_not_found' }
   }
+  if (!user.emailVerified) return { sent: false, reason: 'email_not_verified' }
+  if (isReservedEmailRecipient(user.email)) return { sent: false, reason: 'reserved_recipient_domain' }
 
   await prisma.emailLog.upsert({
     where: { userId_emailType: { userId, emailType } },
@@ -41,9 +44,10 @@ export async function sendNurtureEmail(
       to: user.email,
       subject: template.subject,
       html: template.html(user.name ?? ''),
-    })
+    }, { idempotencyKey: `fixflags-nurture-${userId}-${emailType}` })
 
     if (error) throw new Error(error.message)
+    if (!data?.id) throw new Error('Email provider did not confirm acceptance')
 
     await prisma.emailLog.update({
       where: { userId_emailType: { userId, emailType } },

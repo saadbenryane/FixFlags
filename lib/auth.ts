@@ -6,6 +6,8 @@ import { passkey } from '@better-auth/passkey'
 import { prisma } from './db'
 import { getEnv } from './env'
 import { resend } from '@/lib/email/client'
+import { emailButtonStyle, emailLayout, escapeEmailHtml } from '@/lib/email/layout'
+import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { deleteUserProductData } from '@/lib/account/cleanup'
 import { recordSignupConversion } from '@/lib/analytics/signup-conversion'
 import { BRAND } from '@/lib/marketing/copy'
@@ -45,17 +47,17 @@ export const auth = betterAuth({
       if (!resend) {
         throw new Error('Password reset email is not configured (RESEND_API_KEY missing)')
       }
-      void resend.emails.send({
+      const copy = NOTIFICATION_EMAIL_COPY.passwordReset
+      const greeting = `Hi${user.name ? ` ${user.name}` : ''},`
+      const { data, error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: user.email,
-        subject: `Reset your ${BRAND.name} password`,
-        html: `
-          <p>Hi${user.name ? ` ${user.name}` : ''},</p>
-          <p>Click the link below to reset your password. This link expires in one hour.</p>
-          <p><a href="${url}">Reset password</a></p>
-          <p>If you did not request this, you can ignore this email.</p>
-        `,
+        subject: copy.subject,
+        html: emailLayout(`<p>${escapeEmailHtml(greeting)}</p><p>${copy.body}</p><p><a href="${escapeEmailHtml(url)}" style="${emailButtonStyle}">${copy.action}</a></p><p>${copy.unrequested}</p>`),
+        text: `${greeting}\n\n${copy.body}\n\n${copy.action}: ${url}\n\n${copy.unrequested}`,
       })
+      if (error) throw new Error(error.message)
+      if (!data?.id) throw new Error('Email provider did not confirm acceptance')
     },
   },
   emailVerification: {
@@ -63,16 +65,15 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       if (!resend) throw new Error('Email verification is not configured')
-      const { error } = await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: user.email,
-        subject: `Verify your ${BRAND.name} email`,
-        html: `
-          <p>Verify your email to activate your ${BRAND.name} account.</p>
-          <p><a href="${url}">Verify email</a></p>
-        `,
+        subject: NOTIFICATION_EMAIL_COPY.verification.subject,
+        html: emailLayout(`<p>${NOTIFICATION_EMAIL_COPY.verification.body}</p><p><a href="${escapeEmailHtml(url)}" style="${emailButtonStyle}">${NOTIFICATION_EMAIL_COPY.verification.action}</a></p>`),
+        text: `${NOTIFICATION_EMAIL_COPY.verification.body}\n\n${NOTIFICATION_EMAIL_COPY.verification.action}: ${url}`,
       })
       if (error) throw new Error(error.message)
+      if (!data?.id) throw new Error('Email provider did not confirm acceptance')
     },
   },
   socialProviders: {
@@ -100,16 +101,16 @@ export const auth = betterAuth({
       },
       sendDeleteAccountVerification: async ({ user, url }) => {
         if (!resend) throw new Error('Account deletion email is not configured')
-        const { error } = await resend.emails.send({
+        const copy = NOTIFICATION_EMAIL_COPY.deletion
+        const { data, error } = await resend.emails.send({
           from: FROM_EMAIL,
           to: user.email,
-          subject: `Confirm ${BRAND.name} account deletion`,
-          html: `
-            <p>This permanently deletes your ${BRAND.name} account, reports, screenshots, and API keys.</p>
-            <p><a href="${url}">Confirm account deletion</a></p>
-          `,
+          subject: copy.subject,
+          html: emailLayout(`<p>${copy.body}</p><p><a href="${escapeEmailHtml(url)}" style="${emailButtonStyle}">${copy.action}</a></p>`),
+          text: `${copy.body}\n\n${copy.action}: ${url}`,
         })
         if (error) throw new Error(error.message)
+        if (!data?.id) throw new Error('Email provider did not confirm acceptance')
       },
     },
     additionalFields: {

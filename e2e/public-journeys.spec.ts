@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { inspectAccessibilityViolations } from './approved-contrast'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
+import type { SiteHomeView } from '@/lib/sites/site-home'
 
 // The shared browser-process memory cache can serve a previously-loaded
 // screenshot (200) without hitting a route stub, making failure-injection
@@ -11,6 +12,35 @@ import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
 test.use({ launchOptions: { args: ['--disable-http-cache'] } })
 
 const widths = [320, 375, 768, 1280]
+
+for (const height of [900, 225]) {
+  test(`consent and copy feedback leave focused controls reachable at 375x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height })
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.goto('/')
+    const consent = page.getByRole('dialog', { name: 'Choose your analytics settings' })
+    await expect(consent).toBeVisible()
+    const copy = page.getByRole('button', { name: /Copy fix prompt for/ }).first()
+    await copy.click()
+    const choice = consent.getByRole('button', { name: 'Only necessary', exact: true })
+    await choice.focus()
+    await expect.poll(() => choice.evaluate(element => {
+      const box = element.getBoundingClientRect()
+      const visible = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      return Boolean(visible && element.contains(visible))
+    })).toBe(true)
+    await choice.click()
+    await expect(consent).toHaveCount(0)
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => {
+      const focused = document.activeElement
+      if (!(focused instanceof HTMLElement)) return false
+      const box = focused.getBoundingClientRect()
+      const visible = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      return Boolean(visible && focused.contains(visible))
+    })).toBe(true)
+  })
+}
 
 test('homepage first-value entry is usable by keyboard', async ({ page }) => {
   const hydrated = page.waitForResponse((response) => response.url().includes('/api/me'))
@@ -292,7 +322,7 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await page.getByRole('textbox', { name: 'Website URL' }).first().fill(targetUrl)
   await page.getByRole('button', { name: 'Analyze' }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
-  await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sign in' }).first()).toHaveAttribute(
     'href',
@@ -319,10 +349,7 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   }, { timeout: 240_000 }).toBe('COMPLETED')
 
   const board = await page.request.get(`/api/sites/${siteId}`)
-  const boardBody = (await board.json().catch(() => null)) as {
-    audit?: { id?: string | null }
-    flags?: unknown[]
-  } | null
+  const boardBody = (await board.json()) as SiteHomeView
   const reportId = boardBody?.audit?.id
   expect(reportId).toBeTruthy()
 
@@ -331,32 +358,34 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   const teaserStatus = await page.request.get(`/api/reports/${reportId}/status`)
   const teaserBody = (await teaserStatus.json().catch(() => null)) as {
     progress?: number
-    partialFlags?: unknown[]
+    partialFlags?: Array<Record<string, unknown>>
     actionTimeline?: Array<{ kind?: string }>
   } | null
   expect(Array.isArray(teaserBody?.partialFlags)).toBe(true)
+  for (const finding of teaserBody?.partialFlags ?? []) {
+    for (const key of ['agentPrompt', 'cursorPrompt', 'claudePrompt', 'lovablePrompt', 'boltPrompt']) {
+      expect(finding[key] ?? null, `Anonymous ${key} remains private`).toBeNull()
+    }
+  }
   const walkEvents = (teaserBody?.actionTimeline ?? []).filter(
     (event) => event.kind === 'flow' || event.kind === 'journey'
   )
   expect(walkEvents).toHaveLength(0)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
   await expect(page.getByText('Not watching')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0)
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
 
-  const flagLinks = page.locator('a[href*="/flags/"]')
-  const openFlag = page.getByText('See what happened')
-  const flagsNav = page.getByRole('navigation', { name: 'Site' }).getByRole('button', { name: /Flags/ })
-  await expect
-    .poll(
-      async () => (await flagLinks.count()) + (await openFlag.count()) + (await flagsNav.count()),
-      { timeout: 180_000 }
-    )
-    .toBeGreaterThan(0)
-  await expect(page.getByRole('button', { name: PUBLIC_SITE_COPY.samplePage.copy, exact: true })).toBeVisible()
+  // A healthy target need not produce a Flag. Existing findings still cannot
+  // expose a private fix prompt through the anonymous action endpoint.
+  for (const flag of boardBody.flags) {
+    const response = await page.request.post(`/api/sites/${siteId}/flags/${flag.id}/fix`, { data: { action: 'copy' } })
+    expect([401, 403], await response.text()).toContain(response.status())
+    expect((await response.json()).prompt).toBeUndefined()
+  }
   await expect(page.getByRole('button', { name: /verify|mark fixed/i })).toHaveCount(0)
 
   await page.goto('/new')

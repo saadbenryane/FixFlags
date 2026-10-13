@@ -97,6 +97,7 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
     expect(results.filter((result) => result.reused)).toHaveLength(1)
     expect(results.every((result) => result.parentId === null)).toBe(true)
     expect(await prisma.audit.count({ where: { userId, skipUsageCount: false } })).toBe(1)
+    expect((await prisma.audit.findUniqueOrThrow({ where: { id: results[0]!.auditId } })).isPublic).toBe(false)
     expect(queueAdd).toHaveBeenCalledTimes(1)
   })
 

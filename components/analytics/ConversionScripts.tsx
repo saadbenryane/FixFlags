@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
 import Script from 'next/script'
 import { getGoogleAdsId, getMetaPixelId } from '@/lib/analytics/ad-conversions'
 import {
@@ -81,6 +82,8 @@ export function ConversionScripts() {
 
   const enabled = consent === 'granted'
   const asking = consent === null || showPreferences
+  const notice = useRef<HTMLDivElement>(null)
+  useFixedBottomNotice(notice, asking, 10)
   useCaptureClickIds(enabled)
 
   const gtagId = gaId || (enabled ? adsId : undefined)
@@ -112,10 +115,12 @@ export function ConversionScripts() {
       ) : null}
       {asking ? (
         <div
+          ref={notice}
+          data-fixed-bottom-notice="analytics"
           role="dialog"
           aria-label={ANALYTICS_CONSENT_COPY.title}
           aria-describedby="analytics-consent-description"
-          className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:p-5"
+          className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--bottom-notice-offset,0px))] z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:p-5"
         >
           <p className="text-sm font-semibold text-foreground">{ANALYTICS_CONSENT_COPY.title}</p>
           <p id="analytics-consent-description" className="mt-1 text-xs leading-relaxed text-muted-foreground">

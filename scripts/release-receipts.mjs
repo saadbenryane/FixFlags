@@ -141,6 +141,9 @@ export function hydrateReleaseFixtureEnvironment(env) {
     E2E_BILLING_FREE_EMAIL: fixtures.free?.email,
     E2E_BILLING_FREE_PASSWORD: fixtures.free?.password,
     E2E_FREE_REPORT_ID: fixtures.free?.reportId,
+    E2E_REVOKED_EMAIL: fixtures.revoked?.email,
+    E2E_REVOKED_PASSWORD: fixtures.revoked?.password,
+    E2E_REVOKED_REPORT_ID: fixtures.revoked?.reportId,
     E2E_BILLING_PAID_EMAIL: fixtures.pro?.email,
     E2E_BILLING_PAID_PASSWORD: fixtures.pro?.password,
     E2E_PRO_EMAIL: fixtures.pro?.email,
@@ -235,7 +238,7 @@ export function releaseStageCommands(stage) {
         'lib/audit/capture/__tests__/diagnostic-browser.integration.test.ts']],
       ['uptime-persistence', 'node', ['scripts/verify-progressive-execution.mjs', '--uptime', '--only',
         'lib/uptime/service.integration.test.ts', 'lib/uptime/alerts.integration.test.ts']],
-      ['container-build', 'docker', ['build', '-t', 'fixflags:release-check', '.']],
+      ['container-build', 'node', ['scripts/build-release-container.mjs']],
       ['container-ready', 'node', ['scripts/container-smoke.mjs']],
     ]
   }

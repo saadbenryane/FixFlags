@@ -1,10 +1,12 @@
 import { refreshStaleGoogleContext } from '@/lib/sites/connections/google'
-import { type User, type Prisma } from '@prisma/client'
+import { type User, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
-import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy'
+import { siteNotificationEmail } from '@/lib/email/site-notification'
+import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
 import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
@@ -311,6 +313,7 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       watchNotificationStatus: true,
       watchNotificationAttempts: true,
       watchNotificationLeaseUntil: true,
+      watchNotificationPayload: true,
       user: { select: { email: true, name: true } },
       project: { select: { watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
     },
@@ -424,40 +427,32 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   const ownedClaim = { id: childAuditId, watchNotificationStatus: 'SENDING' as const,
     watchNotificationAttempts: child.watchNotificationAttempts + 1, watchNotificationLeaseUntil: claimLease }
 
-  const host = (() => {
-    try { return new URL(child.url).hostname } catch { return child.url }
-  })()
-
-  const subject = regressCount > 0
-    ? `Needs attention on ${host}: ${regressCount} Flag${regressCount === 1 ? '' : 's'}`
-    : `Recovery verified on ${host}`
-  const lead = regressCount > 0
-    ? `FixFlags found <strong>${regressCount}</strong> problem${regressCount === 1 ? '' : 's'} that need${regressCount === 1 ? 's' : ''} attention on <strong>${escapeEmailHtml(host)}</strong>.`
-    : `An independent check verified ${alertRecoveryCount === 1 ? 'a recovery' : `<strong>${alertRecoveryCount}</strong> recoveries`} on <strong>${escapeEmailHtml(host)}</strong>.`
-  // Recovered rows live on the parent. Use the same eligible items for counts,
-  // problem text and the exact Flag link; never link a filtered-out finding.
-  const leadFlag = [...alertRegressions, ...alertRecoveries].find((flag) => flag.id)
-  const destination = leadFlag?.id
-    ? `${SITE_URL}/sites/${encodeURIComponent(child.projectId)}/flags/${encodeURIComponent(leadFlag.id)}?source=watch-email`
-    : `${SITE_URL}/sites/${encodeURIComponent(child.projectId)}/flags?source=watch-email`
-  const problem = leadFlag?.problem ? `<p><strong>${escapeEmailHtml(leadFlag.problem)}</strong></p>` : ''
-  const checked = child.completedAt
-    ? `<p>Checked ${escapeEmailHtml(child.completedAt.toISOString())}.</p>` : ''
-
   try {
     if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
+    const payload = child.watchNotificationPayload == null
+      ? watchEmailPayloadSchema.parse({ version: 1, from: FROM_EMAIL, to: child.user.email,
+        ...siteNotificationEmail({ projectId: child.projectId, url: child.url, name: child.user.name,
+          checkedAt: child.completedAt, regressions: alertRegressions, recoveries: alertRecoveries }),
+        tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }] })
+      : watchEmailPayloadSchema.parse(child.watchNotificationPayload)
+    if (payload.to !== child.user.email || !payload.tags.some(tag => tag.name === 'audit_id' && tag.value === child.id))
+      throw new Error('Recorded notification no longer matches its recipient or Audit')
+    if (child.watchNotificationPayload == null) {
+      const saved = await prisma.audit.updateMany({
+        where: { ...ownedClaim, watchNotificationPayload: { equals: Prisma.DbNull } },
+        data: { watchNotificationPayload: payload },
+      })
+      if (saved.count !== 1) return
+    }
+    const { version, ...message } = payload
+    void version
     // The installed SDK forwards request options to fetch. Abort the actual
     // request, rather than leaving it running after a Promise timeout.
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(new Error('Watch notification provider deadline')), NOTIFICATION_PROVIDER_TIMEOUT_MS)
     const deliveryOptions = { idempotencyKey: `fixflags-watch-${child.id}-v1`, signal: controller.signal }
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: child.user.email,
-      subject,
-      tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }],
-      html: `<p>Hi${child.user.name ? ` ${escapeEmailHtml(child.user.name)}` : ''},</p><p>${lead}</p>${problem}${checked}<p><a href="${escapeEmailHtml(destination)}">${leadFlag?.id ? 'See evidence and next steps' : 'Open this Site’s Flags'}</a></p>`,
-      text: `Hi${child.user.name ? ` ${child.user.name}` : ''},\n\n${regressCount > 0 ? `FixFlags found ${regressCount} problem${regressCount === 1 ? '' : 's'} that need${regressCount === 1 ? 's' : ''} attention on ${host}.` : `An independent check verified recovery on ${host}.`}\n\n${leadFlag?.problem ?? ''}\n${child.completedAt ? `Checked ${child.completedAt.toISOString()}.\n` : ''}\nSee evidence and next steps: ${destination}`,
+      ...message,
     }, deliveryOptions).finally(() => clearTimeout(timer))
     // The provider SDK resolves rejected requests with an error, rather than throwing.
     if (error) throw new Error(error.message)
@@ -535,10 +530,4 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
     }
   }
   return audits.length
-}
-
-function escapeEmailHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]!)
 }

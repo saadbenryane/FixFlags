@@ -18,8 +18,10 @@ COPY . .
 
 ARG NEXT_PUBLIC_GA_ID=
 ARG NEXT_PUBLIC_APP_URL=https://fixflags.com
+ARG GIT_COMMIT_SHA=
 ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+    GIT_COMMIT_SHA=$GIT_COMMIT_SHA \
     NODE_OPTIONS=--max-old-space-size=4096
 
 RUN npx prisma generate \
@@ -34,8 +36,10 @@ RUN npm prune --omit=dev
 # no full node_modules tree (standalone bundles its own).
 FROM node:22-bookworm-slim
 
+ARG GIT_COMMIT_SHA=
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium \
+    GIT_COMMIT_SHA=$GIT_COMMIT_SHA \
     NODE_ENV=production
 
 # Chromium + fonts (needed by Playwright at runtime) + openssl (needed by Prisma).

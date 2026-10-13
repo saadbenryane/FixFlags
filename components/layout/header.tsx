@@ -81,6 +81,7 @@ export function Header({
 
   return (
     <header
+      data-primary-navigation
       data-surface={isMarketing && !scrolled ? 'clear' : 'frosted'}
       className={cn(
         'sticky top-0 z-navbar border-0',

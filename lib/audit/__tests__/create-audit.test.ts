@@ -624,6 +624,31 @@ describe('createAndEnqueueAudit', () => {
     expect(prismaMock.runRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'run-1', projectId: 'project-1', requestedByUserId: 'user-1', auditId: null } }))
   })
 
+  it('creates the first signed-in analysis privately before a Site request exists', async () => {
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
+  })
+
+  it('keeps an ordinary owned recheck private when its historical parent is public', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED',
+      projectId: 'project-1', scanAccessEncrypted: null, isPublic: true })
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1' })
+    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
+  })
+
+  it('preserves public evidence visibility for an explicit retry of a public failed report', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', status: 'FAILED',
+      projectId: 'project-1', scanAccessEncrypted: null, reviewDepth: 1, isPublic: true })
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1', retryParent: true,
+      skipUsageCount: true, reuseActiveManual: false })
+    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(true)
+  })
+
+  it('retains the public contract of an anonymous first analysis', async () => {
+    await createAndEnqueueAudit({ url: AUDIT_URL, visitorKey: 'private-visitor' })
+    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(true)
+  })
+
   it('inherits encrypted scan access from the parent project', async () => {
     const config = { httpBasic: { username: 'preview', password: 'secret' } }
     const encrypted = encryptScanAccess(config)

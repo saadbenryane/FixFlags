@@ -164,8 +164,18 @@ async function main() {
     })
     pro.apiKey = generated.rawKey
 
-    for (const key of ['free', 'pro', 'studio', 'share', 'watch', 'websiteCapabilities'] as const) {
+    for (const key of ['free', 'pro', 'studio', 'share', 'watch', 'websiteCapabilities', 'revoked'] as const) {
       const fixture = fixtureEntries[key]!
+      const target = new URL(config.auditUrl)
+      // Fixture provisioning exercises real analysis without sending routine
+      // alerts or creating email-verified identities on every release rerun.
+      // The account and notification journeys explicitly enable their scope.
+      await prisma.project.upsert({
+        where: { userId_canonicalHost: { userId: String(fixture.userId), canonicalHost: target.hostname } },
+        create: { userId: String(fixture.userId), canonicalHost: target.hostname, url: config.auditUrl,
+          name: target.hostname, accountChecksEnabled: false, notificationLevel: 'OFF', notifyOnRecovery: false },
+        update: { accountChecksEnabled: false, notificationLevel: 'OFF', notifyOnRecovery: false },
+      })
       const cookie = await signIn(config.targetOrigin, String(fixture.email), String(fixture.password))
       const review = await createRealReview(config.targetOrigin, cookie, config.auditUrl)
       fixture.reportId = review.reportId
@@ -201,7 +211,10 @@ async function main() {
       databaseIdentityHash: databaseIdentityHash(config.databaseUrl),
       createdAt: new Date().toISOString(),
       fixtures: fixtureEntries,
-      externalRequired: ['stripe-active', 'stripe-revoked', 'github-oauth', 'mailbox', 'webauthn'],
+      externalRequired: [
+        'mailbox', 'webauthn', 'google-connection',
+        ...(process.env.RELEASE_PROFILE === 'paid-opening' ? ['stripe-active'] : []),
+      ],
     }
     await mkdir(path.dirname(config.manifestPath), { recursive: true, mode: 0o700 })
     await writeFile(config.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 })
