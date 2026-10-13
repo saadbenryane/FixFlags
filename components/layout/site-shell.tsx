@@ -97,7 +97,7 @@ export function SiteShell({
               showNavigation={showHeaderNavigation}
             />
             <ActiveAuditBanner />
-            <CustomerMain>
+            <CustomerMain className={variant === 'marketing' ? 'min-h-[calc(100dvh-var(--header-height-marketing))]' : undefined}>
               {children}
             </CustomerMain>
           </>

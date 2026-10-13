@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderToString } from 'react-dom/server'
 
 const push = vi.hoisted(() => vi.fn())
 const retry = vi.hoisted(() => vi.fn())
@@ -37,6 +38,15 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
       error: false,
       retry,
     })
+  })
+
+  it('does not expose active authentication controls before hydration', () => {
+    for (const mode of ['signin', 'signup'] as const) {
+      const html = renderToString(<AuthFlow mode={mode} />)
+      expect(html).toContain('Preparing secure sign in')
+      expect(html).not.toContain('<input')
+      expect(html).not.toContain('<button')
+    }
   })
 
   it('orders Google and GitHub before the inline email form', () => {

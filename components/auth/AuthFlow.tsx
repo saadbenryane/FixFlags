@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthCardSkeleton } from '@/components/auth/AuthCardSkeleton'
 import {
   buildPostLoginQuery,
   useAuthRedirect,
@@ -75,6 +76,8 @@ export function AuthFlow({
   const [mode, setMode] = useState<AuthFlowMode>(initialMode)
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => { setHydrated(true) }, [])
   const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
   const [showEmailForm, setShowEmailForm] = useState(false)
   const signupStartedRef = useRef(false)
@@ -242,6 +245,9 @@ export function AuthFlow({
       setLoading(null)
     }
   }
+
+  // Authentication controls become available only after their handlers attach.
+  if (!hydrated) return <AuthCardSkeleton />
 
   const title = isDialog
     ? dialogTitle ?? AUTH.reportGate.title

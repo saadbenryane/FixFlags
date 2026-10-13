@@ -164,7 +164,7 @@ test.describe('credentialed revenue journeys', () => {
     await page.getByLabel('Website URL').first().fill(targetUrl)
     await page.getByRole('button', { name: 'Analyze' }).first().click()
     await page.waitForURL(/\/sites\//, { timeout: 30_000 })
-    await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
     await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
     const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
     await expect.poll(async () => {
@@ -188,7 +188,7 @@ test.describe('credentialed revenue journeys', () => {
     await page.waitForURL((url) => url.pathname === `/sites/${siteId}` || url.pathname.startsWith('/sites/'), {
       timeout: 45_000,
     })
-    await expect(page.getByRole('heading', { name: /Your board|Site settings|Flags/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Overview|Site settings|Flags/ })).toBeVisible()
 
     const update = await page.request.post(`/api/reports/${reportId}/re-check`)
     expect(update.status(), await update.text()).toBe(201)
@@ -196,7 +196,7 @@ test.describe('credentialed revenue journeys', () => {
     expect(updateBody.siteId).toBeTruthy()
     await waitForReport(page.request, updateBody.reportId)
     await page.goto(`/sites/${updateBody.siteId}`)
-    await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
     await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
   })
 

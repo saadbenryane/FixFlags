@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { ACCOUNT_CHECK_COPY } from '@/lib/marketing/copy/account-checks'
+import type { SiteHomeView } from '@/lib/sites/site-home'
 import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
 import type { UptimeHistory } from '@/lib/uptime/domain'
 
@@ -8,7 +9,11 @@ const required = (name: string) => {
   if (!value) throw new Error(`${name} is required for website capability proof`)
   return value
 }
-type Home = { audit: { id: string }; flags: Array<{ id: string; checkId: string }>; resolvedFlags: Array<{ checkId: string }>; accountChecks: AccountChecksView }
+type Home = Pick<SiteHomeView, 'audit' | 'flags' | 'resolvedFlags' | 'settings'>
+const accounts = (view: Home): AccountChecksView => {
+  expect(view.settings.accountChecks, 'Site account projection is available').toBeDefined()
+  return view.settings.accountChecks!
+}
 async function home(request: APIRequestContext, siteId: string): Promise<Home> {
   const response = await request.get(`/api/sites/${siteId}`)
   expect(response.status(), await response.text()).toBe(200)
@@ -72,7 +77,7 @@ test.describe('controlled website capabilities', () => {
     expect(saved.status()).toBe(200)
     const key = `account-lifecycle:${required('RELEASE_RUN_ID')}`
     const admitted = await run(page.request, siteId, 'account-checks', { action: 'retest' }, key)
-    const first = (await home(page.request, siteId)).accountChecks
+    const first = accounts(await home(page.request, siteId))
     expect(first.accounts.filter(account => account.purpose === 'retained')).toEqual([expect.objectContaining({ state: 'ACTIVE' })])
     expect(first.accounts.filter(account => account.purpose === 'disposable')).toEqual([expect.objectContaining({ state: 'DELETED' })])
     for (const kind of ['signup', 'verification', 'signed_in', 'deletion'])
@@ -81,13 +86,13 @@ test.describe('controlled website capabilities', () => {
     expect(replay.status()).toBe(200)
     expect((await replay.json()).runId).toBe(admitted.runId)
     await run(page.request, siteId, 'account-checks', { action: 'retest' }, `account-reuse:${required('RELEASE_RUN_ID')}`)
-    expect((await home(page.request, siteId)).accountChecks.accounts.find(account => account.purpose === 'retained')?.email)
+    expect(accounts(await home(page.request, siteId)).accounts.find(account => account.purpose === 'retained')?.email)
       .toBe(first.accounts.find(account => account.purpose === 'retained')!.email)
     expect((await page.request.patch(`/api/sites/${siteId}/settings`, { data: { accountChecksEnabled: false } })).status()).toBe(200)
-    expect((await home(page.request, siteId)).accountChecks.canCleanup).toBe(true)
+    expect(accounts(await home(page.request, siteId)).canCleanup).toBe(true)
     expect((await page.request.post(`/api/sites/${siteId}/account-checks`, { headers: { 'Idempotency-Key': 'refused-retest' }, data: { action: 'retest' } })).status()).toBe(409)
     await run(page.request, siteId, 'account-checks', { action: 'cleanup' }, `account-cleanup:${required('RELEASE_RUN_ID')}`)
-    expect((await home(page.request, siteId)).accountChecks.accounts.every(account => account.state === 'DELETED')).toBe(true)
+    expect(accounts(await home(page.request, siteId)).accounts.every(account => account.state === 'DELETED')).toBe(true)
   })
 
   test('[journey:uptime-lifecycle] natural probe cadence, confirmed outage and independent recovery', async ({ page }) => {
@@ -124,7 +129,7 @@ test.describe('controlled website capabilities', () => {
     try {
       await control(page.request, { deletionUnavailable: true })
       await run(page.request, siteId, 'account-checks', { action: 'cleanup' }, `unresolved-cleanup:${required('RELEASE_RUN_ID')}`)
-      const remaining = (await home(page.request, siteId)).accountChecks.accounts.filter(account => account.state !== 'DELETED')
+      const remaining = accounts(await home(page.request, siteId)).accounts.filter(account => account.state !== 'DELETED')
       expect(remaining.length).toBeGreaterThan(0)
       expect((await page.request.delete(`/api/sites/${siteId}`, { data: {} })).status()).toBe(409)
       expect((await page.request.delete(`/api/sites/${siteId}`, { data: { acknowledgeRemainingAccounts: true, remainingAccounts: [] } })).status()).toBe(409)

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
+import type { SiteHomeView } from '@/lib/sites/site-home'
 import { flagMatchesOutcome } from '@/lib/sites/outcome-state'
 import { assertKeyboardReachesTheSurface, assertSiteSurfaceMeetsLaunchBar } from './site-surface-bar'
 
@@ -48,32 +49,7 @@ function envOr(name: string, fallbackName: string): string {
   return process.env[name]?.trim() || requiredEnv(fallbackName)
 }
 
-type SiteHome = {
-  outcomes: Array<{
-    id: string
-    name: string
-    kind: string
-    state: string
-    summary: string
-    flagId: string | null
-    pageUrls: string[]
-    coverage: unknown
-  }>
-  flags: Array<{
-    id: string
-    sourceFlagId: string | null
-    improvementId: string | null
-    checkId: string | null
-    pageUrl: string | null
-    problem: string
-    evidence: string
-    fix: string
-    status: string
-  }>
-  watch: { interval: string | null; nextRunAt: string | null; covered: boolean; label: string }
-  watching: boolean
-  coverageSummary: string
-}
+type SiteHome = Pick<SiteHomeView, 'outcomes' | 'flags' | 'watch' | 'presentation'>
 
 type RunView = {
   id: string
@@ -215,7 +191,7 @@ test.describe('Outcome customer loop', () => {
     // The Site leads with its important Outcomes and states coverage honestly.
     const start = await loadHome(ownerRequest, siteId)
     expect(start.outcomes.length, 'a claimed Site has Outcomes').toBeGreaterThan(0)
-    expect(start.coverageSummary.length).toBeGreaterThan(0)
+    expect(start.presentation.coverage.label.length).toBeGreaterThan(0)
     const outcomeId = targetOutcomeId(start)
     // The Outcome under test must be independently executable, not a heuristic leftover.
     expect(flagForOutcome(start, outcomeId).outcome).toBeTruthy()
@@ -329,7 +305,7 @@ test.describe('Outcome customer loop', () => {
 
     const before = await loadHome(ownerRequest, siteId)
     const outcomeId = targetOutcomeId(before)
-    expect(before.watching, 'this Site is being watched').toBe(true)
+    expect(before.watch.covered, 'this Site is being watched').toBe(true)
     expect(before.watch.interval, 'Watch states its cadence').toBeTruthy()
     expect(before.watch.nextRunAt, 'Watch states when it will next run').toBeTruthy()
 

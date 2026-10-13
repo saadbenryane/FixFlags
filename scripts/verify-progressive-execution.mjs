@@ -47,7 +47,10 @@ try {
     'lib/audit/progressive/__tests__/dispatch.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts', ...arguments_,
   ]
   if (!suites.some(argument => !argument.startsWith('-'))) throw new Error('Choose at least one focused verification suite')
-  const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run',
+  // Global scheduler and recovery suites share this disposable database.
+  // Serialize files so one fixture cannot consume another file's work; tests
+  // still exercise concurrent requests and worker deliveries within each suite.
+  const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', '--no-file-parallelism',
     ...suites], {
     ...env, REDIS_URL: `redis://127.0.0.1:${port}`, PROGRESSIVE_EXECUTION_DB_REQUIRED: 'true',
     ...(uptime ? { UPTIME_TEST_DATABASE_URL: disposable.toString() } : {}),
