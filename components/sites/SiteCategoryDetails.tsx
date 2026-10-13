@@ -63,20 +63,22 @@ export function SiteCategoryDetails({ selected, selectedFlags, selectedRecommend
           {selected && !selected.incompleteReason ? checkAction(selected.id) : null}
           {selected ? (
             <>
+              {selected.id === 'site' ? <BoardDetails checkedAt={selected.checkedAt} sources={selected.sources}
+                coverage="Page results from the latest check. Areas without sufficient evidence remain unverified."
+                pages={view.checkedPages ?? []} /> : null}
               <SiteCardFindings key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={[]} />
               <SiteCheckResults key={`${selected.id}:${view.audit.id}:${selected.checkedAt}:${view.checkResultsNextCursor}`} siteId={siteId} area={selected.id} results={view.checkResults ?? []} nextCursor={view.checkResultsNextCursor} />
               <RecommendationList recommendations={selectedRecommendations} />
               {selected.incompleteReason ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border p-3 text-sm"><p>{selected.incompleteReason.replace(/[.!?]?$/, '.')} {SITE_BOARD_COPY.cardRetryExplanation}</p>{checkAction(selected.id)}</div> : null}
-              <section className="mt-2 rounded-card border border-border p-4">
+              {selected.id !== 'site' ? <section className="mt-2 rounded-card border border-border p-4">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><FileCheck className="h-4 w-4 text-muted-foreground" aria-hidden />{SITE_BOARD_COPY.findingEvidence}</h3>
               <BoardDetails
                 image={selected.captureUrl ? { src: selected.captureUrl, alt: selected.captureAlt ?? selected.name } : null}
                 checkedAt={selected.checkedAt} sources={selected.sources}
-                coverage={selected.id === 'site' ? 'Page results from the latest check. Areas without sufficient evidence remain unverified.' : selected.coverage ?? (findingPages > 0 ? SITE_BOARD_COPY.findingPageScope(findingPages) : null)}
-                facts={selected.id === 'site' ? [] : selected.facts.filter((fact) => fact !== selected.answer && !view.outcomes.some((outcome) => outcome.name === fact && !outcome.confirmedAt))}
-                pages={selected.id === 'site' ? view.checkedPages ?? [] : undefined}
+                coverage={selected.coverage ?? (findingPages > 0 ? SITE_BOARD_COPY.findingPageScope(findingPages) : null)}
+                facts={selected.facts.filter((fact) => fact !== selected.answer && !view.outcomes.some((outcome) => outcome.name === fact && !outcome.confirmedAt))}
               />
-              </section>
+              </section> : null}
             </>
           ) : null}
       </ResponsiveDepth>)

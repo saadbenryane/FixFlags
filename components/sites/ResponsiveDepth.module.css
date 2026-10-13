@@ -1,0 +1,6 @@
+.depth { overscroll-behavior: contain; overflow-wrap: anywhere; }
+.depth :global([data-dialog-title]) { padding-right: 44px; }
+@media (max-width: 639px) {
+  .depth { padding: calc(20px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+  .depth :global([data-dialog-close]) { top: calc(8px + env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); }
+}

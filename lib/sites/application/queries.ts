@@ -25,7 +25,7 @@ import { loadUptimeEvents,loadUptimeSummary } from '@/lib/uptime/queries'
 import { loadAccountChecksView } from '../accounts/store'
 import { projectHomePresentation } from '../home-presentation'
 import type { SiteHomeView } from '../site-home'
-import { loadSiteCaptures } from './captures'
+import { loadSiteCaptures, loadSiteCheckedPages } from './captures'
 import { applyCardEvidence } from './card-evidence'
 import { applicableCategoryEvidence,loadCategoryEvidence,overlayCategoryCoverage } from './category-evidence'
 import { loadExecutionProgress } from './execution-progress'
@@ -97,7 +97,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     loadSiteFindings(site),
     listSiteOutcomes(site),
     countSitePages(site),
-    audit ? prisma.auditPage.findMany({ where: { auditId: audit.id }, orderBy: { position: 'asc' }, select: { url: true, title: true, status: true, updatedAt: true } }) : [],
+    audit ? loadSiteCheckedPages(audit.id) : [],
     site.projectId ? prisma.project.findUnique({
       where: { id: site.projectId },
       select: {

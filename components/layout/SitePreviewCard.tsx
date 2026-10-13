@@ -17,6 +17,9 @@ export function SitePreviewCard({ host, captures }: { host: string; captures: re
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const opener = useRef<HTMLButtonElement>(null)
   const capture = captures.find(item => item.device === device)
+  const dimensions = capture?.viewport.match(/^(\d+)\s*×\s*(\d+)$/)
+  const width = Number(dimensions?.[1]) || 1280
+  const height = Number(dimensions?.[2]) || 720
   const image = useRef<HTMLImageElement>(null)
   const available = capture && capture.url !== failedUrl
   useEffect(() => {
@@ -28,14 +31,13 @@ export function SitePreviewCard({ host, captures }: { host: string; captures: re
     </div></div>
     {available ? <button ref={opener} type="button" className={styles.imageButton} aria-label={C.openCapture(host)} onClick={() => setOpen(true)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img ref={image} src={capture.url} alt="" width={1280} height={720} onError={() => setFailedUrl(capture.url)} data-device={device} />
+      <img ref={image} src={capture.url} alt="" width={width} height={height} onError={() => setFailedUrl(capture.url)} data-device={device} />
       <span className={styles.enlarge}><Maximize2 size={16} aria-hidden /></span>
     </button> : <div className={styles.empty}><Globe2 size={24} aria-hidden /><p>{capture ? C.captureUnavailable : C.noCapture}</p></div>}
-    {capture ? <div className={styles.caption}><span>{capture.previous ? C.previousCapture : C.latestCapture}</span><time dateTime={capture.recordedAt ?? undefined}>{capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}</time><span className={styles.pageUrl}>{capture.pageUrl}</span></div> : null}
     {capture ? <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }} className="max-w-4xl">
-      <DialogTitle>{host}</DialogTitle><DialogDescription>{capture.pageUrl} · {capture.viewport}{capture.recordedAt ? ` · ${formatEvidenceTimestamp(capture.recordedAt)}` : ''}</DialogDescription>
+      <DialogTitle>{host}</DialogTitle><DialogDescription>{capture.previous ? C.previousCapture : C.latestCapture} · {capture.pageUrl} · {capture.viewport} · {capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}</DialogDescription>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={capture.url} alt={C.openCapture(host)} width={1280} height={720} className="h-auto max-w-full" />
+      <img src={capture.url} alt={C.openCapture(host)} width={width} height={height} className="h-auto max-w-full" />
     </ResponsiveDepth> : null}
   </section>
 }

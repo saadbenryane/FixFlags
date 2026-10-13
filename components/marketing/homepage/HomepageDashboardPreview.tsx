@@ -1,36 +1,36 @@
 'use client'
 
-import { useState } from 'react'
-import { Copy, Radio, RefreshCw } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Copy, RefreshCw } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
-import { BoardCard, BoardGrid, BoardStatus, BoardSummaryStrip } from '@/components/sites/BoardCard'
-import { SitePreviewCard } from '@/components/layout/SitePreviewCard'
+import { BoardCard } from '@/components/sites/BoardCard'
+import { SiteOverview } from '@/components/sites/SiteOverview'
+import { SiteCheckSections } from '@/components/sites/SiteCheckSections'
+import { SiteMonitoringMenu } from '@/components/sites/SiteMonitoringMenu'
 import { UptimeCard } from '@/components/uptime/UptimeCard'
 import { SiteWorkspaceNavigation, SITE_ROUTES, type SiteRoute } from '@/components/sites/SiteWorkspaceNavigation'
 import { SiteMonitoringHistory } from '@/components/sites/SiteMonitoringHistory'
 import { MonitoringScheduleEditor } from '@/components/sites/MonitoringScheduleEditor'
 import { SiteIntegrationsPanel, type GoogleProvider } from '@/components/sites/SiteIntegrationsPanel'
 import { SiteAccountChecksPanel, SiteMonitoringSettingsPanel, SiteNotificationSettingsPanel, SiteRemovalSettingsPanel, type NotificationLevel } from '@/components/sites/SiteSettingsPanels'
-import { TechnologyStrip } from '@/components/sites/SiteTooling'
-import { nextCheckCompactLabel, nextCheckLabel, scheduleLabel, scheduleMilliseconds, type MonitoringSchedule } from '@/lib/sites/monitoring-schedule'
+import { nextCheckLabel, scheduleLabel, scheduleMilliseconds, type MonitoringSchedule } from '@/lib/sites/monitoring-schedule'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { MONITORING_SCHEDULE_COPY as M } from '@/lib/marketing/copy/monitoring'
 import { SITE_SETTINGS_COPY as Settings } from '@/lib/marketing/copy/site-settings'
-import { SITE_WORKSPACE_COPY as W } from '@/lib/marketing/copy/workspace'
 import { DASHBOARD_PREVIEW_COPY as P, SAMPLE_ACCOUNT_CHECKS, SAMPLE_GOOGLE_CONNECTIONS, SAMPLE_UPTIME, sampleUptimeHistory } from '@/lib/marketing/copy/dashboard-preview'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS, sampleFlagsForCategory, type SampleCategory, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
 import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
-import shellStyles from '@/components/sites/SiteShell.module.css'
 import s from './CareHomepage.module.css'
 
 export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
   onOpen: (card: SiteCardArea) => void; onOpenFlag: (card: SampleCategory, flag: SampleFlagId) => void; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void;
 }) {
   const [view, setView] = useState<SiteRoute>('home')
+  const navigationItems = useRef(new Map<SiteRoute, HTMLButtonElement>())
   const [notifications, setNotifications] = useState<NotificationLevel>('FLAGS')
   const [recovery, setRecovery] = useState(true)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -43,16 +43,13 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
   const [integrationMessage, setIntegrationMessage] = useState<string | null>(null)
   const [accountMessage, setAccountMessage] = useState<string | null>(null)
   const nextRunAt = schedule && !paused ? new Date(Math.max(0, scheduleMilliseconds(schedule) - 15 * 60_000)).toISOString() : null
-  const nextCheck = nextCheckCompactLabel(nextRunAt, 0)
   const timeline = C.monitoring.timeline.map(event => ({ ...event, dateTime: `2026-09-${event.id.slice(-2)}T09:00:00.000Z`, flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: () => {
     const category = S.categories.find(card => sampleFlagsForCategory(card).includes(flag.id as SampleFlagId))
     if (category) onOpenFlag(category, flag.id as SampleFlagId)
   } })) : [] }))
-  const summaryItems = S.summaryItems.map(item => 'id' in item && item.id === 'monitoring' ? { ...item, label: paused ? 'Paused' : scheduleLabel(schedule), detail: nextCheck, accessibleDetail: nextCheckLabel(nextRunAt, 0), state: schedule && !paused ? 'healthy' as const : 'unknown' as const } : item)
-  const attention = S.categories.filter(card => card.id !== 'uptime' && card.flagCount > 0)
-  const other = S.categories.filter(card => card.id !== 'uptime' && card.flagCount === 0).sort((a, b) => Number(a.state === 'unknown') - Number(b.state === 'unknown'))
-  const renderCard = (card: SampleCategory) => <BoardCard key={card.id} name={card.name} status={card.status} state={card.state} answer={card.answer} detail={card.context} icon={card.id} flagCount={card.flagCount} freshness={S.freshness}
-    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, href: '#product', onOpen: () => onOpenFlag(card, flag), copyAction: <button type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></button> }))} onOpen={() => onOpen(card.id)} layout="row" />
+  const summaryItems = S.summaryItems.filter(item => !('id' in item) || item.id !== 'monitoring')
+  const renderCard = (card: SampleCategory, layout: 'card' | 'row') => <BoardCard key={card.id} compact name={card.name} status={card.status} state={card.state} answer={card.answer} detail={layout === 'row' ? card.context : undefined} icon={card.id} flagCount={card.flagCount} freshness={S.freshness}
+    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, href: '#product', onOpen: () => onOpenFlag(card, flag), copyAction: <button type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></button> }))} onOpen={() => onOpen(card.id)} layout={layout} />
 
   function updateConnection(provider: GoogleProvider, connected: boolean) {
     setConnections(current => ({ ...current, [provider]: { ...current[provider], status: connected ? 'connected' : 'revoked', propertyLabel: connected ? provider === 'SEARCH_CONSOLE' ? `https://${C.boardLabel}/` : C.boardLabel : null, lastSyncedAt: connected ? P.checkedAt : null } }))
@@ -72,27 +69,26 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
     <aside className={s.boardSidebar}>
       <div className={s.boardBrand}><span className={s.boardBrandLockup}><Logo size="sm" /></span><span className={s.boardBrandMark}><Logo variant="mark" size="sm" /></span></div>
       <div className={s.sampleIdentity}><strong>{C.boardHost}</strong><span>{C.boardLabel}</span><small>{S.freshness}</small></div>
-      <SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} renderItem={({ id, label, selected, className, content }) => <button key={id} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</button>} />
-      <button type="button" className={s.sampleCadence} onClick={() => { setView('settings'); setScheduleOpen(true) }} aria-label={`${W.analysisCadence}: ${paused ? 'Paused' : scheduleLabel(schedule)}`}><Radio size={15} aria-hidden /><span><small>{W.analysisCadence}</small>{paused ? 'Paused' : scheduleLabel(schedule)}</span></button>
+      <SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} renderItem={({ id, label, selected, className, content }) => <button key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</button>} />
     </aside>
-    <div className={s.boardMain}>
+    <div className={s.boardMain} data-site-content>
       <div className={s.boardHeader}><div className={s.boardIdentity}><h3>{SITE_ROUTES.find(([id]) => id === view)?.[1]}</h3></div>
-        <div className={s.boardSummary}><a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden /></a><BoardStatus state="problem" label={`${S.summary} on this website`} count={S.summaryItems[0].value} onOpen={() => { setView('home'); requestAnimationFrame(() => document.getElementById('sample-website-checks')?.focus()) }} /></div>
+        <div className={s.boardSummary}><SiteMonitoringMenu label={paused ? 'Paused' : scheduleLabel(schedule)} state={schedule && !paused ? 'healthy' : 'unknown'} nextCheck={nextCheckLabel(nextRunAt, 0)} onManage={() => { setView('settings'); setScheduleOpen(true) }} /><a href="#analyze" aria-label="Recheck website" title="Recheck website"><RefreshCw size={15} aria-hidden /></a></div>
       </div>
       {view === 'home' ? <>
-        <div className={shellStyles.previewSummary}>
-          <SitePreviewCard host={C.boardLabel} captures={[{ auditId: 'sample', device: 'desktop', previous: false, url: HOMEPAGE_EVIDENCE.site, pageUrl: `https://${C.boardLabel}/`, viewport: '1280 × 720', recordedAt: P.checkedAt }]} />
-          <section className={shellStyles.findings} aria-label="Findings summary"><h2>{W.findings}</h2>
-            <BoardSummaryStrip items={summaryItems} label={S.summaryLabel} onSelect={item => {
-              if (item.id === 'monitoring') { setView('settings'); requestAnimationFrame(() => document.getElementById('watch')?.focus()) }
-              else if (item.id === 'pages') onOpen('site')
-              else { setView('home'); document.getElementById('sample-website-checks')?.focus() }
-            }} />
-            <p>{P.findings}</p><div className={s.previewToolLogos}><TechnologyStrip items={S.technologies} label={null} onSelect={() => setView('integrations')} /></div>
-          </section>
-        </div>
-        <div id="sample-website-checks" tabIndex={-1}><UptimeCard siteId="sample" summary={{ ...SAMPLE_UPTIME, enabled: Boolean(schedule) && !paused, state: schedule && !paused ? SAMPLE_UPTIME.state : 'paused' }} historySource={sampleUptimeHistory} />
-          <BoardGrid className={s.resultRows} layout="rows">{[...attention, ...other].map(renderCard)}</BoardGrid></div>
+        <SiteOverview host={C.boardLabel} captures={[
+          { auditId: 'sample', device: 'desktop', previous: false, url: HOMEPAGE_EVIDENCE.site, pageUrl: `https://${C.boardLabel}/`, viewport: '720 × 440', recordedAt: P.checkedAt },
+          { auditId: 'sample', device: 'mobile', previous: false, url: HOMEPAGE_EVIDENCE.siteMobile, pageUrl: `https://${C.boardLabel}/`, viewport: '390 × 844', recordedAt: P.checkedAt },
+        ]}
+          summaryItems={summaryItems} summaryLabel={S.summaryLabel} technologies={S.technologies}
+          onSelectSummary={item => {
+            if (item.id === 'pages') onOpen('site')
+            else { setView('home'); document.getElementById('sample-website-checks')?.focus() }
+          }} onSelectTechnology={() => { setView('integrations'); requestAnimationFrame(() => navigationItems.current.get('integrations')?.focus()) }} />
+        <div id="sample-website-checks" tabIndex={-1}><SiteCheckSections
+          items={S.categories.filter(card => card.id !== 'uptime').map(card => ({ id: card.id, flagCount: card.flagCount,
+            healthy: card.state === 'healthy' && card.flagCount === 0, render: layout => renderCard(card, layout) }))}
+          uptime={<UptimeCard siteId="sample" summary={{ ...SAMPLE_UPTIME, enabled: Boolean(schedule) && !paused, state: schedule && !paused ? SAMPLE_UPTIME.state : 'paused' }} historySource={sampleUptimeHistory} />} /></div>
       </> : null}
       {view === 'timeline' ? <section className={s.boardPane} aria-label={S.navigation.timeline}><p className={s.paneDescription}>{M.historyBody}</p><SiteMonitoringHistory points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} /></section> : null}
       {view === 'integrations' ? <section className={s.boardPane} aria-label={S.navigation.integrations}><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>

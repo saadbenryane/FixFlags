@@ -1,0 +1,14 @@
+.overview { container: site-overview / inline-size; min-width: 0; margin-bottom: 28px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.findings { display: grid; min-width: 0; }
+.notice { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+@container site-overview (min-width: 560px) {
+  .layout.withTools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .withTools > :first-child { grid-column: 1 / -1; }
+  .findings dl { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 1fr; }
+}
+@container site-overview (min-width: 820px) {
+  .layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .layout.withTools { grid-template-columns: minmax(0, 1.4fr) minmax(0, .7fr) minmax(0, .95fr); }
+  .withTools > :first-child { grid-column: auto; }
+}

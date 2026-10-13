@@ -1,6 +1,6 @@
 .card { min-width: 0; padding: 12px 18px 16px; border: 1px solid hsl(var(--border) / .65); border-radius: var(--radius-board-panel); background: hsl(var(--background)); }
 .card[data-state='offline'] { border-color: hsl(var(--brand) / .65); }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 44px; margin-bottom: 12px; border-radius: var(--radius-control); text-align: left; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 44px; margin-bottom: 4px; border-radius: var(--radius-control); text-align: left; }
 .header:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .header > span { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
 .header strong { font-size: 13px; font-weight: 550; }
@@ -8,8 +8,8 @@
 .state i, .legend i { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: hsl(var(--muted-foreground) / .35); }
 .state i[data-state='online'], .legend i[data-state='online'] { background: hsl(var(--success)); }
 .state i[data-state='offline'], .legend i[data-state='offline'] { background: hsl(var(--brand)); }
-.marks { display: flex; gap: 3px; align-items: center; height: 46px; }
-.marks span { flex: 1; min-width: 0; height: 34px; border-radius: 3px; background: hsl(var(--muted-foreground) / .13); }
+.marks { display: flex; gap: 3px; align-items: center; height: 30px; }
+.marks span { flex: 1; min-width: 0; height: 22px; border-radius: 3px; background: hsl(var(--muted-foreground) / .13); }
 .marks span[data-state='online'] { background: hsl(var(--success) / .65); }
 .marks span[data-state='offline'] { background: hsl(var(--brand)); }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 12px; color: hsl(var(--muted-foreground)); font-size: 11px; }

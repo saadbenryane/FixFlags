@@ -7,7 +7,7 @@ supersedes: []
 
 # FixFlags card-board experience
 
-**CUSTOMER BOARD CONTRACT, reconciled 2026-10-07 with owner testing.** The selected Site Overview uses the flat category rows. Visitor-action cards use the existing Outcome domain; website-health cards retain their distinct evidence scope. This is design acceptance, not a production release claim.
+**CUSTOMER BOARD CONTRACT, reconciled 2026-10-13 with owner feedback.** The selected Site Overview uses rows for Flags and unfinished checks, followed by Uptime and a compact grid of healthy checks. Visitor-action cards use the existing Outcome domain; website-health cards retain their distinct evidence scope. This is design acceptance, not a production release claim.
 
 **Your software runs. FixFlags watches.** One Site, clear Outcomes, and broader Product health underneath.
 
@@ -49,7 +49,7 @@ Health cards answer whether something works. Context cards explain what is happe
 | Unknown         | Missing, unavailable, insufficient or expired evidence       | Gray signal and explanation/recovery                                                                                                 |
 | Checking        | Activity independent of health                               | Brand orange ring and actual work description                                                                                        |
 
-Card anatomy: one category label, one answer, one status signal, and the Flag count at the bottom left when Flags are the result. The card is one navigation target. One overall result lives in the board header with freshness and coverage. Full screenshots, timestamps, sources, checked pages, and Flag links live in responsive depth: a dialog on desktop and a full-height sheet on mobile. Depth traps focus, supports Escape, and restores focus to the opener.
+Card anatomy: one category label, one answer, one status signal, and the Flag count at the bottom left when Flags are the result. The card is one navigation target. Overall counts appear once in the summary beside the complete captured viewport. Monitoring belongs in an expandable header control beside refresh. Site identity and the last-check time belong in the sidebar; capture URL, time, viewport, and previous-capture provenance appear in responsive depth. Never use line separators or repeat the count in a Findings heading and attention sentence. Depth traps focus, supports Escape, and restores focus to the opener.
 
 The Site detail reads actual AuditPage results for the resolved latest audit, behind the existing Site access check. Queued, partial and failed pages stay distinct from completed pages. Older unresolved Improvements retain their originating Flag evidence and check identity, so counts, category cards and detail links agree. Never replace missing evidence with a healthy claim.
 
@@ -59,7 +59,7 @@ In production, checking retains the last known health result and its time. Stale
 
 ## Grid and interaction system
 
-October 10 shared refinement: regular category cards use one category label, an 18px UI-type answer, concise context, and a single visible status in the footer with one whole-card target. Unknown/checking states retain their status rather than implying a passing count. The homepage sample and owned workspace use flat category rows at every viewport. Every category and its findings remain accessible on mobile. Shared Flag-preview mode remains compatible.
+October 13 shared refinement: regular category cards use one category label, a UI-type answer, concise context, and a single visible status with one whole-card target. Unknown/checking states retain their status rather than implying a passing count. The homepage sample and owned workspace share the same overview and category layout: rows for Flags and unfinished checks, Uptime, then a compact grid for healthy checks. Desktop pairs the summary with the complete capture; mobile stacks them. Use whitespace and surface tone for grouping, never line separators. Every category and its findings remain accessible on mobile. Shared Flag-preview mode remains compatible.
 
 The prototype illustrates a 12-column desktop grid, standard and wide cards, and a phone priority stream. Its dimensions, radii and palette are reference values, not instructions to restyle current production cards. Production card geometry belongs to `components/sites/BoardCard.module.css`; shared visual conventions and approved bright-orange buttons with white labels belong to [DESIGN.md](../DESIGN.md). Preserve the current neutral surfaces and restrained shadows. Earlier brown-orange and olive-gray prototype styling is superseded.
 
