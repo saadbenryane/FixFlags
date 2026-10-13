@@ -3,6 +3,7 @@
 import { useId, type ReactNode } from 'react'
 import { Bell, Clock3, UserRound, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { SiteSettingsSection } from './SiteSettingsSection'
 import { SITE_SETTINGS_COPY as S } from '@/lib/marketing/copy/site-settings'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
@@ -49,7 +50,7 @@ export function SiteNotificationSettingsPanel({ level, recovery, busy = false, o
       <div className={styles.field}><label htmlFor={id}>{S.emailMe}</label><select id={id} value={level} disabled={busy} onChange={event => onChange(event.target.value as NotificationLevel, recovery)}>
         <option value="FLAGS">{S.levels.FLAGS}</option><option value="CRITICAL_ONLY">{S.levels.CRITICAL_ONLY}</option><option value="OFF">{S.levels.OFF}</option>
       </select></div>
-      <label className={styles.toggle}><input type="checkbox" checked={recovery} disabled={busy || level === 'OFF'} onChange={event => onChange(level, event.target.checked)} /><span>{S.recovery}</span></label>
+      <label className={styles.toggle}><Checkbox checked={recovery} disabled={busy || level === 'OFF'} onCheckedChange={checked => onChange(level, checked === true)} /><span>{S.recovery}</span></label>
     </>}
   </SiteSettingsSection>
 }
@@ -60,7 +61,7 @@ export function SiteAccountChecksPanel({ initial, enabled, busy = false, onToggl
 }) {
   return <SiteSettingsSection id="account-checks">
     <PanelHeading icon={UserRound} title={A.title} description={A.body} />
-    <label className={styles.toggle}><input type="checkbox" role="switch" checked={enabled} disabled={busy || !initial?.eligible} onChange={event => onToggle(event.target.checked)} /><span>{A.enabled}</span></label>
+    <label className={styles.toggle}><Checkbox role="switch" checked={enabled} disabled={busy || !initial?.eligible} onCheckedChange={checked => onToggle(checked === true)} /><span>{A.enabled}</span></label>
     <details className={styles.details}><summary>{S.accountDetails}</summary><p>{A.email} {A.retention}</p></details>
     {initial?.reason ? <p className={styles.note}>{initial.reason}</p> : null}
     {initial?.accounts.length ? <dl className={styles.facts}>{initial.accounts.map(account => <div key={account.purpose}>

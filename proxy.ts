@@ -50,9 +50,9 @@ export function isParkedPowerToolPath(pathname: string): boolean {
 }
 
 /**
- * Edge-safe presence check for the better-auth session cookie. Middleware runs
- * on the edge runtime, so it must NOT import '@/lib/auth' (that pulls Prisma /
- * node:path into the edge bundle and crashes at runtime). This is only a UX
+ * Lightweight presence check for the better-auth session cookie. Keep the
+ * request proxy independent of '@/lib/auth', Prisma and provider clients.
+ * This is only a UX
  * gate to bounce logged-out users to sign-in; every protected page/route still
  * validates the session server-side, so a present-but-invalid cookie is caught
  * there. Matches both the dev name (`better-auth.session_token`) and the
@@ -85,7 +85,7 @@ function buildCsp(): string {
   return csp
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (isParkedPowerToolPath(request.nextUrl.pathname)) {
     return new NextResponse(null, { status: 404 })
   }

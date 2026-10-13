@@ -288,15 +288,16 @@ test.describe('Outcome customer loop', () => {
     const owner = await signInOwner(browser)
     const siteId = requiredEnv('E2E_SITE_ID')
     const home = await loadHome(owner.page.request, siteId)
-    const { outcome, matches } = flagForOutcome(home, targetOutcomeId(home))
+    const { outcome } = flagForOutcome(home, targetOutcomeId(home))
+    expect(home.flags.length, 'Flag detail must be included in the surface review').toBeGreaterThan(0)
 
     const paths = [
       `/sites/${siteId}`,
       `/sites/${siteId}/flags`,
       `/sites/${siteId}/outcomes/${outcome.id}`,
+      `/sites/${siteId}/flags/${home.flags[0]!.id}`,
       `/sites/${siteId}/settings`,
     ]
-    if (matches[0]) paths.push(`/sites/${siteId}/flags/${matches[0].id}`)
 
     for (const path of paths) {
       await assertSiteSurfaceMeetsLaunchBar(owner.page, path)

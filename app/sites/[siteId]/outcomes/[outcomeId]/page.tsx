@@ -43,7 +43,7 @@ export default async function OutcomeDetailPage({ params }: {
       checking={outcome.running}
     >
       <div className="mx-auto w-full max-w-4xl space-y-6">
-        <Link href={`/sites/${home.site.siteId}`} className="text-sm text-muted-foreground hover:text-foreground">
+        <Link href={`/sites/${home.site.siteId}`} className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">
           {OUTCOME_DETAIL_COPY.back}
         </Link>
 

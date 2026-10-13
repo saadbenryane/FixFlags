@@ -30,7 +30,7 @@ Controlled automatic-account proof may run on an explicitly configured HTTPS ori
 
 ## Trust boundaries
 
-1. **Edge ↔ Server:** Edge middleware (`proxy.ts`) runs on Vercel Edge Runtime. Must NOT import Prisma/Node modules. Only checks cookie presence (not validity) for UX gating. Server validates session on every protected route.
+1. **Request proxy ↔ Application:** Next.js 16 runs `proxy.ts` on its Node runtime. Keep this entrypoint dependency-free, without Prisma, authentication services or provider clients. It checks cookie presence (not validity) for UX gating. Server validates session on every protected route.
 2. **Client ↔ Server:** All API routes validate authentication server-side. Cookie-based session. CSRF protection via same-site cookies.
 3. **Worker ↔ Queue:** BullMQ uses Redis. No additional auth on local Redis. Production Redis should require `AUTH`.
 4. **External ↔ Application:** Stripe webhooks via signature verification. Cron endpoints via `CRON_SECRET` bearer token. MCP via API key (hashed, prefixed `ff_live_`).
@@ -44,8 +44,8 @@ Controlled automatic-account proof may run on an explicitly configured HTTPS ori
 - Passkeys via `@better-auth/passkey` (WebAuthn). Users register passkeys in Settings, sign in with passkey, or use passkey as the second factor after password.
 - Optional passkey 2FA via better-auth `twoFactor` plugin (`skipVerificationOnEnable`, TOTP disabled). Email/password sign-in with `twoFactorEnabled` issues a challenge cookie; completion is passkey assertion or a one-time backup code. Enabling 2FA requires at least one registered passkey.
 - Session cookie: `better-auth.session_token` (dev), `__Secure-*` / `__Host-*` (production)
-- No Prisma import on edge — `proxy.ts` does cookie-presence check only
-- Protected pages (`/admin/`, `/settings/`) gated by middleware; server validates session on API routes
+- `proxy.ts` does cookie-presence checks only and must not import Prisma or authentication services.
+- Protected pages (`/admin/`, `/settings/`) are gated by the request proxy; server validates session on API routes.
 - admin role configured via `ADMIN_USER_IDS` env var
 - Newly created developer keys carry an explicit MCP permission set and a 30, 90, or 365 day expiry. The default is read-only evidence for 90 days. CLI device approval issues a 90-day key for the complete Fix → Verify workflow. Existing empty-scope account keys retain their historical full-access behavior until the owner replaces or revokes them; every non-empty scope set is enforced even without an OAuth audience.
 - MCP host validation uses the configured app origin, not the incoming request URL or Host header as its authority. Loopback aliases are accepted only for an explicitly configured loopback app. Browser origins must match the configured protocol and port; nonbrowser clients may omit Origin.
@@ -151,7 +151,7 @@ Product Signal ingestion is the explicit exception.
 | Schema changes | `npm run db:check` + `npm run db:drift` |
 | env.example changes | Review for secrets exposure |
 | Worker index.ts changes | Full audit cycle test |
-| Middleware/proxy.ts changes | Verify edge compatibility (no Node imports) |
+| Request proxy changes | Verify cookie gating, headers and dependency isolation; preserve server-side authorization |
 | Stripe webhook handler | Verify signature verification + plan sync on payment_failed |
 | AI prompt changes | Verify prompt injection safety |
 

@@ -48,13 +48,13 @@ Next.js App Router routes: marketing pages, auth, authenticated dashboard, audit
 | `twitter-image.jpg` | Twitter/X large-image share card |
 
 ## Integration Points
-- **Middleware:** `middleware.ts` → `proxy.ts` (edge runtime, CSP, auth gating)
+- **Request proxy:** `proxy.ts` (Node runtime, CSP, cookie gating)
 - **Data fetching:** Server components fetch directly via Prisma; client components use SWR
 - **Auth:** `lib/auth.ts` (better-auth) for session validation
 - **API routes:** Import business logic from `lib/`
 
 ## Invariants
-- Edge middleware must NOT import Prisma/Node (edge runtime limitation)
+- The request proxy must not import Prisma or authentication services. Protected routes validate sessions server-side.
 - `/post-login` is the single post-auth landing (claims anonymous audits, sets `includeAi`)
 - Report UI passes `productContract`, `actionTimeline`, and flag `source` into `AuditReport`
 - Marketing pages use `lib/marketing/copy.ts` for all text

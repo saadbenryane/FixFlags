@@ -20,6 +20,7 @@ import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { BoardDetails } from '@/components/sites/BoardDetails'
 import { CARE_HOME } from '@/lib/marketing/copy'
+import styles from './FlagDetailPage.module.css'
 
 function attemptLabel(attempt: Parameters<typeof verificationResult>[0]): string {
   return verificationResultLabel(verificationResult(attempt))
@@ -112,7 +113,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   return (
     <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
-      <div className="mx-auto w-full max-w-5xl lg:pr-24 2xl:pr-0">
+      <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="-ml-4 text-muted-foreground" asChild>
             <Link href={`/sites/${resolvedId}#category-${flag.area}`}>
@@ -134,7 +135,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             </p>
           ) : null}
 
-          <div className={resolution.kind === 'open' || resolution.kind === 'verifying' ? 'mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start' : 'mt-6 space-y-6'}>
+          <div className={`${styles.evidenceGrid} ${resolution.kind === 'open' || resolution.kind === 'verifying' ? styles.withActions : ''}`}>
             <div className="space-y-6">
               <section className="overflow-hidden rounded-[17px] border border-border bg-background shadow-sm" aria-labelledby="flag-evidence-heading">
                 <div className="flex items-center gap-3 border-b border-border/70 px-5 py-4 sm:px-6">

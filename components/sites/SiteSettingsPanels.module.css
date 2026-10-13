@@ -14,10 +14,10 @@
 .facts dd { margin-top: 5px; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
 .field { display: grid; gap: 8px; margin-top: 20px; font-size: 13px; font-weight: 500; }
 .field select { min-width: 0; min-height: 44px; width: 100%; padding: 0 12px; border: 1px solid hsl(var(--border)); border-radius: var(--radius-control); background: hsl(var(--background)); font-weight: 400; }
-.field select:focus-visible, .toggle input:focus-visible, .details summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.field select:focus-visible, .details summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .toggle { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; margin-top: 16px; padding-block: 10px; font-size: 13px; line-height: 1.6; }
-.toggle input { flex-shrink: 0; width: 16px; height: 16px; margin-top: 3px; accent-color: hsl(var(--brand)); }
-.toggle:has(input:disabled) { color: hsl(var(--muted-foreground)); }
+.toggle > span { min-width: 0; padding-top: 10px; }
+.toggle:has(button:disabled) { color: hsl(var(--muted-foreground)); }
 .details { font-size: 12px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
 .details summary { width: fit-content; min-height: 36px; padding-block: 8px; cursor: pointer; }
 .details p { margin-top: 4px; }

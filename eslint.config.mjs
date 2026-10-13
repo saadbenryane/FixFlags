@@ -36,7 +36,9 @@ const config = [
       ...nextPlugin.flatConfig.coreWebVitals.rules,
       ...reactPlugin.configs.recommended.rules,
       ...reactPlugin.configs['jsx-runtime'].rules,
-      ...reactHooksPlugin.configs.recommended.rules,
+      // Preserve the established hook checks while React Compiler remains disabled.
+      'react-hooks/rules-of-hooks': reactHooksPlugin.configs.recommended.rules['react-hooks/rules-of-hooks'],
+      'react-hooks/exhaustive-deps': reactHooksPlugin.configs.recommended.rules['react-hooks/exhaustive-deps'],
       ...jsxA11yPlugin.configs.recommended.rules,
       'react/prop-types': 'off',
     },

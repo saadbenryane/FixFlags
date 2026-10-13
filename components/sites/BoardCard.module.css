@@ -48,11 +48,11 @@
 .rowRecovery p { flex: 1 1 240px; min-width: 0; margin: 0; overflow-wrap: anywhere; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
 .rowFlagList { display: grid; grid-column: 1 / -1; gap: 3px; margin: -3px 0 0; padding: 0; list-style: none; }
 .summaryPages .summaryDetail { grid-column: 1 / -1; }
-.rowFlagList li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 40px; padding: 2px 0; border-radius: 9px; background: transparent; transition: background-color 150ms; }
+.rowFlagList li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 44px; padding: 2px 0; border-radius: 9px; background: transparent; transition: background-color 150ms; }
 .rowFlagList li:first-child { margin-top: 3px; }
 .rowFlagList li:hover, .rowFlagList li:focus-within { background: hsl(var(--muted) / .75); }
 .rowWithFlags .rowTrailing { margin-right: 12px; }
-.rowFlagName { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px; padding-left: 10px; color: inherit; text-align: left; text-decoration: none; }
+.rowFlagName { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding-left: 10px; color: inherit; text-align: left; text-decoration: none; }
 .rowFlagName::before { content: ''; width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: hsl(var(--brand)); }
 .rowFlagName:focus-visible, .rowFlagOpen:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .rowFlagActions { display: inline-flex; align-items: center; gap: 2px; }
@@ -60,8 +60,8 @@
 .rowCopyAction { opacity: 0; transition: opacity 150ms; }
 .rowFlagList li:hover .rowCopyAction, .rowFlagList li:focus-within .rowCopyAction { opacity: 1; }
 @media (hover: none) { .rowCopyAction { opacity: 1; } }
-.rowFlagActions button { min-width: 32px; min-height: 32px; padding: 0; }
-.rowFlagOpen { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: hsl(var(--brand)); }
+.rowFlagActions button { min-width: 44px; min-height: 44px; padding: 0; }
+.rowFlagOpen { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 8px; color: hsl(var(--brand)); }
 .rowFlagOpen:hover { background: hsl(var(--muted)); }
 .rowFlagList strong { overflow-wrap: anywhere; font-size: 15px; font-weight: 600; line-height: 1.35; letter-spacing: -.014em; }
 .outcomeRow { grid-template-columns: minmax(0, 1fr) auto; cursor: default; }
@@ -174,7 +174,7 @@
   .rowFlagList { grid-column: 1 / -1; grid-row: 2; }
   .rowFlagName { padding-left: 4px; font-size: 14px; }
   .rowFlagName strong { font-size: 14px; }
-  .rowFlagActions button, .rowFlagOpen { min-width: 40px; min-height: 44px; }
+  .rowFlagActions button, .rowFlagOpen { min-width: 44px; min-height: 44px; }
   .outcomeRow { grid-template-columns: minmax(0, 1fr) auto; min-height: 132px; }
   .outcomeRowActions { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; }
   .card { min-height: 144px; padding: 16px; }

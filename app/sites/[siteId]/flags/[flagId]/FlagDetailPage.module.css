@@ -1,0 +1,5 @@
+.layout { container-type: inline-size; container-name: flag-detail; }
+.evidenceGrid { display: grid; gap: 24px; margin-top: 24px; }
+@container flag-detail (min-width: 56rem) {
+  .withActions { grid-template-columns: minmax(0, 1fr) 22rem; align-items: start; }
+}

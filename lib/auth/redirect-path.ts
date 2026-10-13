@@ -1,7 +1,7 @@
 import type { Route } from 'next'
 import { headers } from 'next/headers'
 
-/** Path + query for post-login redirect (set by middleware). */
+/** Path and query for post-login redirect, set by the request proxy. */
 export async function getRequestedPath(fallback = '/dashboard'): Promise<string> {
   const headersList = await headers()
   const pathname = headersList.get('x-pathname')

@@ -51,4 +51,4 @@ Core business logic for FixFlags: audit engine, queue, billing, graph, prompts, 
 - **App routes:** `app/api/` imports from `lib/` for business logic
 - **Components:** `components/` imports data-shaping utilities from `lib/`
 - **Workers:** `lib/queue/` and `worker/` import audit pipeline from `lib/audit/`
-- **Edge middleware:** `proxy.ts` must NOT import from `lib/` (edge runtime limitation)
+- **Request proxy:** `proxy.ts` may use dependency-free helpers, but must not import Prisma or authentication services.

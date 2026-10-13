@@ -16,7 +16,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | Entry Point        | File                           | Purpose                                                 |
 | ------------------ | ------------------------------ | ------------------------------------------------------- |
 | Next.js bootstrap  | `app/layout.tsx`               | Root layout, providers, global styles                   |
-| Edge middleware    | `middleware.ts` → `proxy.ts`   | CSP, HSTS, auth gating, rate limiting                   |
+| Request proxy      | `proxy.ts`                    | CSP, HSTS, auth gating, rate limiting                   |
 | Audit pipeline     | `lib/audit/runner.ts`          | Pipeline orchestration and completion behavior          |
 | Task contracts     | `lib/audit/task-contracts.ts`  | Check-to-plan and re-check-to-diff application outcomes |
 | Queue processor    | `lib/queue/worker.ts`          | BullMQ audit job processor                              |
@@ -85,7 +85,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Editor integration behavior** → `lib/integrations/editor-catalog.ts` and `lib/integrations/editor-config.ts`
 - **Auth pages** → `app/(auth)/` (sign-in, sign-up, password reset)
 - **Dashboard pages** → `app/(app)/` (authenticated user area)
-- **Edge middleware** → `proxy.ts` (CSP, HSTS, auth gating; no Prisma/Node imports)
+- **Request proxy** → `proxy.ts` (CSP, HSTS, cookie gating; no Prisma or authentication service imports)
 - **AI prompts** → `lib/prompts/system-prompt.ts` (keep system/user split for cache)
 - **Validation scripts** → `scripts/` (read `scripts/codemap.md`)
 - **Guard scripts** → `scripts/brand-hex-guard.mjs`, `scripts/ui-drift-guard.mjs`, `scripts/seo-guard.mjs`
@@ -120,7 +120,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 
 ## Integration Notes
 
-- **Edge middleware** (`proxy.ts`) must stay Prisma-free (edge runtime limitation)
+- **Request proxy** (`proxy.ts`) must stay Prisma-free; every protected route validates its session separately.
 - **Knowledge graph** (`graph_*` tables) is internal-only; public pages read through `lib/graph/queries.ts`
 - **Marketing copy** is centralized under `lib/marketing/copy/`; components import through the barrel or the relevant surface module
 - **Design tokens** use semantic names (`bg-card`, `text-brand`); raw hex only in `tokens.css` and `brand-spec.ts`

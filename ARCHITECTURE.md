@@ -18,7 +18,7 @@ Next.js 15 application (App Router) with:
 - Redis 7 queue (BullMQ 5) for async audit processing
 - Required dedicated worker process for audits, Chromium, recovery, and scheduled work
 - Redis worker heartbeats for browser readiness and active-context diagnostics
-- Edge middleware for security headers + auth gating
+- Request proxy for security headers and cookie-presence gating
 - Docker-based local development
 
 FixFlags is a modular monolith. Customer-loop code is divided into Reviews,
@@ -184,7 +184,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 - **Library:** better-auth 1.6 with Prisma adapter
 - **Providers:** Email/password + Google OAuth + GitHub OAuth (runtime-resolved)
 - **Session:** Cookie-based, edge-safe presence check in `proxy.ts`
-- **Middleare:** (`proxy.ts`) sets CSP, HSTS, X-Frame-Options, CORS. Gates `/admin/` and `/settings/`.
+- **Request proxy:** `proxy.ts` sets CSP, HSTS, X-Frame-Options and CORS. It gates `/admin/` and `/settings/`; protected routes validate sessions separately.
 - **Roles:** `user` (default), `admin` (via `ADMIN_USER_IDS`)
 - **Plans:** FREE, BUILDER (Pro), TEAM (Studio)
 - **API keys:** Hashed, prefixed `ff_live_`, for MCP access
@@ -270,7 +270,7 @@ The old Improvement-cycle-first architecture proposal is superseded. [docs/site-
 - Public Review boundaries are `/api/checks` and `/api/reports/[id]/*`; native browser context enters only through the origin-bound `/api/products/[id]/signals` contract.
 - Product Signals accept a fixed privacy-bounded schema and remain observations until Product judgment uses them.
 
-- No Prisma/Node imports on edge runtime (proxy.ts)
+- Keep `proxy.ts` independent of Prisma, authentication services and provider clients.
 - `serverExternalPackages`: playwright, @prisma/client, prisma, better-auth, bullmq, ioredis, @anthropic-ai/sdk, etc.
 - R2 is required for production screenshots. Missing R2 → service boots, scans fail with clear message.
 - Missing AI keys may be an explicit local degraded mode. Production startup and `/api/health/ready` reject the incomplete launch capability.
