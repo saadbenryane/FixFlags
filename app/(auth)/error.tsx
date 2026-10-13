@@ -19,7 +19,7 @@ export default function AuthError({
       description={SYSTEM_COPY.errors.auth.body}
       returnHref="/"
       returnLabel={SYSTEM_COPY.actions.home}
-      shell="marketing"
+      shell="none"
     />
   )
 }

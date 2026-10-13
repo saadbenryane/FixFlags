@@ -115,7 +115,7 @@ export function ConversionScripts() {
           role="dialog"
           aria-label={ANALYTICS_CONSENT_COPY.title}
           aria-describedby="analytics-consent-description"
-          className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md motion-safe:animate-soft-reveal sm:p-5"
+          className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:p-5"
         >
           <p className="text-sm font-semibold text-foreground">{ANALYTICS_CONSENT_COPY.title}</p>
           <p id="analytics-consent-description" className="mt-1 text-xs leading-relaxed text-muted-foreground">

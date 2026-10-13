@@ -19,7 +19,7 @@ export default function AdminPageError({
       description={SYSTEM_COPY.errors.admin.body}
       returnHref="/admin"
       returnLabel="Admin"
-      shell="admin"
+      shell="none"
     />
   )
 }

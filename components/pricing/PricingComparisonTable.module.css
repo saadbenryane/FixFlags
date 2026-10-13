@@ -7,7 +7,7 @@
 .planHeading h3 { display: flex; align-items: center; gap: 9px; font-family: var(--font-display), sans-serif; font-size: 28px; font-weight: 620; line-height: 1.1; letter-spacing: -.04em; }
 .planHeading h3 svg { flex-shrink: 0; color: hsl(var(--brand)); }
 .status { flex-shrink: 0; padding: 6px 9px; border-radius: var(--radius-pill); background: hsl(var(--background) / .7); color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 550; }
-.plan[data-featured='true'] .status { background: hsl(var(--brand) / .09); color: hsl(var(--brand)); }
+.plan[data-featured='true'] .status { background: hsl(var(--brand) / .09); color: hsl(var(--brand-strong)); }
 .price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
 .price > span:first-child { font-size: clamp(44px, 5vw, 56px); line-height: 1.05; letter-spacing: -.05em; }
 .price > span:last-child:not(:first-child) { font-size: 12px; color: hsl(var(--muted-foreground)); }

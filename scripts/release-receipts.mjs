@@ -163,6 +163,8 @@ export function hydrateReleaseFixtureEnvironment(env) {
     E2E_WATCH_EMAIL: fixtures.watch?.email,
     E2E_WATCH_PASSWORD: fixtures.watch?.password,
     E2E_WATCH_PROJECT_ID: fixtures.watch?.projectId,
+    E2E_GATE_NON_MEMBER_EMAIL: fixtures.nonMember?.email,
+    E2E_GATE_NON_MEMBER_PASSWORD: fixtures.nonMember?.password,
     E2E_GATE_MEMBER_RELEASED_ENTRY_ID: fixtures.waitlistReleased?.entryId,
     E2E_GATE_MEMBER_BLOCKED_ENTRY_ID: fixtures.waitlistBlocked?.entryId,
   }

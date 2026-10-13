@@ -46,8 +46,8 @@
   --accent-foreground: 240 8% 5%;
 
   /* Links & focus */
-  --link: 217 91% 60%;
-  --link-hover: 217 91% 52%;
+  --link: 217 91% 44%;
+  --link-hover: 217 91% 38%;
   --focus-ring: 21 100% 38%;
   --ring: var(--focus-ring);
 
@@ -189,7 +189,7 @@
 
   --brand: 21.1765 100% 50%;
   --brand-foreground: 0 0% 100%;
-  --brand-strong: 18 100% 32%;
+  --brand-strong: var(--brand);
   --brand-hover: 21 100% 40%;
   --brand-muted: 21 30% 12%;
   --brand-border: 21 35% 24%;

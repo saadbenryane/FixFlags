@@ -15,6 +15,7 @@ export const BRAND_HEX = {
   warning: '#FACC15',
   error: '#FF4444',
   info: '#3B82F6',
+  link: '#0A58D6',
   gray200: '#E6E6E8',
   gray400: '#A7A8B2',
   gray600: '#61646B',
@@ -34,6 +35,7 @@ export const BRAND_HEX_DARK = {
   warning: '#FACC15',
   error: '#FF4444',
   info: '#3B82F6',
+  link: '#74B1FB',
   gray200: '#2A2C30',
   gray400: '#61646B',
   gray600: '#A7A8B2',
@@ -67,7 +69,7 @@ export const brandLight: BrandPalette = {
   brand: BRAND_HEX.primary,
   brandForeground: BRAND_HEX.background,
   border: BRAND_HEX.border,
-  link: BRAND_HEX.info,
+  link: BRAND_HEX.link,
   success: BRAND_HEX.success,
   destructive: BRAND_HEX.error,
   grades: {
@@ -88,7 +90,7 @@ export const brandDark: BrandPalette = {
   brand: BRAND_HEX_DARK.primary,
   brandForeground: BRAND_HEX.background,
   border: BRAND_HEX_DARK.border,
-  link: BRAND_HEX_DARK.info,
+  link: BRAND_HEX_DARK.link,
   success: BRAND_HEX_DARK.success,
   destructive: BRAND_HEX_DARK.error,
   grades: {

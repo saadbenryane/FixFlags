@@ -40,6 +40,18 @@ function resolveVariables(value: string, values: Map<string, string>): string {
   })
 }
 
+function contrast(foreground: string, background: string) {
+  const luminance = (hex: string) => {
+    const channels = [1, 3, 5].map(offset => {
+      const channel = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+    })
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+  }
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a)
+  return (values[0] + 0.05) / (values[1] + 0.05)
+}
+
 describe('shared design contract', () => {
   it.each([false, true])('keeps CSS and non-CSS brand identity aligned (dark: %s)', dark => {
     const values = themeValues(dark)
@@ -49,6 +61,15 @@ describe('shared design contract', () => {
     expect(brand.brandForeground).toBe(brandLight.background)
     expect(manifestColors.theme_color).toBe(brandLight.brand)
     expect(hslHex(values.get('--logo-tile-background')!)).toBe(brandLight.background)
+    expect(hslHex(values.get('--link')!)).toBe(brand.link)
+    for (const surface of [brand.background, brand.card]) {
+      expect(contrast(brand.link, surface)).toBeGreaterThanOrEqual(4.5)
+      const strong = hslHex(resolveVariables(values.get('--brand-strong')!, values))
+      expect(contrast(strong, surface)).toBeGreaterThanOrEqual(4.5)
+    }
+    // The explicitly approved control exception must remain precisely documented.
+    expect(contrast(brand.brandForeground, brand.brand)).toBeGreaterThanOrEqual(3.12)
+    expect(contrast(brand.brandForeground, brand.brand)).toBeLessThanOrEqual(3.14)
   })
 
   it('generates resolvable semantic styles in both themes without changing board geometry or layers', async () => {

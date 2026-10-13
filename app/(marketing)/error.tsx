@@ -19,7 +19,7 @@ export default function MarketingError({
       description={SYSTEM_COPY.errors.marketing.body}
       returnHref="/"
       returnLabel={SYSTEM_COPY.actions.home}
-      shell="marketing"
+      shell="none"
     />
   )
 }

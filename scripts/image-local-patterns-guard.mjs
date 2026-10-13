@@ -17,6 +17,7 @@ const REQUIRED_LOCAL_PATTERNS = [
   '/api/screenshots/**',
   '/brand/**',
   '/marketing/**',
+  '/samples/observations/**',
 ]
 
 const SCAN_DIRS = ['app', 'components']

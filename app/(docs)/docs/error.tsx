@@ -21,7 +21,7 @@ export default function DocsError({
       description={SYSTEM_COPY.errors.docs.body}
       returnHref="/docs"
       returnLabel={SYSTEM_COPY.actions.docsHome}
-      shell="marketing"
+      shell="none"
     >
       <p className="text-sm text-muted-foreground">
         <TextLink href={'/docs/troubleshooting' as Route}>Troubleshooting guide</TextLink>

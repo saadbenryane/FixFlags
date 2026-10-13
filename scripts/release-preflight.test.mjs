@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { canonicalDatabaseIdentity, CREDENTIALED_CORE_INPUTS, REQUIRED_RELEASE_INPUTS, validateReleasePreflight } from './release-preflight.mjs'
+import { canonicalDatabaseIdentity, CREDENTIALED_CORE_INPUTS, FOUNDATION_INPUTS, REQUIRED_RELEASE_INPUTS, validateReleasePreflight } from './release-preflight.mjs'
 
 function validEnv(overrides = {}) {
   return {
@@ -24,6 +24,14 @@ function validEnv(overrides = {}) {
 }
 
 describe('release preflight contract', () => {
+  it('keeps parked and paid-enrollment credentials out of website acceptance', () => {
+    const env = validEnv()
+    for (const name of ['E2E_API_KEY', 'E2E_SHARE_PASSWORD', 'E2E_BILLING_PAID_EMAIL', 'E2E_BILLING_PAID_PASSWORD', 'E2E_STUDIO_EMAIL', 'E2E_STUDIO_PASSWORD']) delete env[name]
+    assert.deepEqual(validateReleasePreflight(env, { checkFile: false, stage: 'credentialed-core' }), [])
+    const closed = validEnv({ E2E_PAID_OPEN_EXPECTED: 'false' })
+    for (const name of ['E2E_STRIPE_SECRET_KEY', 'E2E_ADMIN_EMAIL', 'E2E_ADMIN_PASSWORD', 'E2E_GATE_MEMBER_RELEASED_ENTRY_ID', 'E2E_GATE_MEMBER_BLOCKED_ENTRY_ID']) delete closed[name]
+    assert.deepEqual(validateReleasePreflight(closed, { checkFile: false, stage: 'billing-closed' }), [])
+  })
   it('requires the actual unsigned registered authenticator counter', () => {
     for (const counter of ['-1', '1.5', 'NaN', '4294967296']) {
       assert.ok(validateReleasePreflight(validEnv({ E2E_WEBAUTHN_SIGN_COUNT: counter }), { checkFile: false, stage: 'credentialed-core' }).some(issue => issue.includes('unsigned authenticator counter')))
@@ -66,7 +74,7 @@ describe('release preflight contract', () => {
 
   it('keeps unrelated credential requirements out of foundation', () => {
     const env = validEnv()
-    for (const name of CREDENTIALED_CORE_INPUTS) delete env[name]
+    for (const name of CREDENTIALED_CORE_INPUTS) if (!FOUNDATION_INPUTS.includes(name)) delete env[name]
     assert.deepEqual(validateReleasePreflight(env, { checkFile: false, stage: 'foundation' }), [])
   })
 

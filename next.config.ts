@@ -100,6 +100,9 @@ const nextConfig: NextConfig = {
       {
         pathname: '/marketing/**',
       },
+      {
+        pathname: '/samples/observations/**',
+      },
     ],
     remotePatterns: [
       {

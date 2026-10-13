@@ -11,8 +11,11 @@ export async function inspectAccessibilityViolations(page: Page, violations: Res
       check.data?.bgColor?.toLowerCase() === '#ff5a00' && check.data?.contrastRatio >= 3.12 && check.data?.contrastRatio <= 3.14)
     const selector = node.target.length === 1 && typeof node.target[0] === 'string' ? node.target[0] : null
     const control = measuredException && selector ? await page.locator(selector).evaluate(element => {
-      const button = element.closest('button, a[role="button"], a.inline-flex')
-      return Boolean(button && getComputedStyle(button).backgroundColor === 'rgb(255, 90, 0)')
+      const button = element.closest('button, a[href]')
+      if (!button) return false
+      const style = getComputedStyle(button), rect = button.getBoundingClientRect()
+      return style.backgroundColor === 'rgb(255, 90, 0)' && rect.height >= 43.99 &&
+        (button.tagName === 'BUTTON' || ['inline-flex', 'flex'].includes(style.display))
     }).catch(() => false) : false
     if (control) approvedContrastCount++
     else failures.push(`${violation.id}: ${node.target.join(' ')}`)

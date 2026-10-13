@@ -19,7 +19,7 @@ export default function AppError({
       description={SYSTEM_COPY.errors.app.body}
       returnHref="/dashboard"
       returnLabel={SYSTEM_COPY.actions.dashboard}
-      shell="app"
+      shell="none"
     />
   )
 }
