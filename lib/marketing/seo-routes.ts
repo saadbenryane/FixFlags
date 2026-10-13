@@ -1,5 +1,6 @@
 import { SEO } from './copy'
 import { PUBLIC_OFFER } from './copy/public-offer'
+import { PUBLIC_RESEARCH_COPY } from './copy/research'
 
 export type SeoPageKey = keyof typeof SEO
 
@@ -49,6 +50,7 @@ export type LlmsSection = {
   title: string
   links: ReadonlyArray<{ path: string; label: string; note?: string }>
   optional?: boolean
+  requiresReviewedResearch?: boolean
 }
 
 export const LLMS_SECTIONS: readonly LlmsSection[] = [
@@ -101,8 +103,9 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   },
   {
     title: 'Flag Library',
+    requiresReviewedResearch: true,
     links: [
-      { path: '/issues', label: 'Issues we detect', note: 'Frequency, fixes, and affected frameworks' },
+      { path: '/issues', label: 'Issues we detect', note: PUBLIC_RESEARCH_COPY.llmsLibraryNote },
     ],
   },
   {

@@ -2,6 +2,7 @@
 
 import { SITE_SETTINGS_COPY as S } from '@/lib/marketing/copy/site-settings'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
+import { SiteResearchConsentSettings } from '@/components/sites/SiteResearchConsentSettings'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { useSiteResource } from '@/hooks/useSiteResource'
 import { SiteShell } from '@/components/sites/SiteShell'
@@ -22,6 +23,7 @@ export function SiteSettingsView({ siteId, view: initial }: { siteId: string; vi
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <SiteSettingsControls siteId={siteId} initial={view.settings} watch={view.watch} />
+      <SiteResearchConsentSettings key={siteId} siteId={siteId} />
       </div>
     </SiteShell>
   )

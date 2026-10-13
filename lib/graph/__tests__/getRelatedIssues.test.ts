@@ -1,159 +1,29 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('@/lib/growth/research-permissions', () => ({ hasCurrentResearchPermissions: vi.fn().mockResolvedValue(true) }))
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { researchFixture } from './fixtures/public-research'
+const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { growthArtifact: { findUnique } } }))
+import { getRelatedIssues } from '../related'
+import { PUBLIC_RESEARCH_KIND } from '../public-research'
 
-const { prismaMock } = vi.hoisted(() => ({
-  prismaMock: {
-    issue: {
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-    },
-    $queryRaw: vi.fn(),
-  },
-}))
-
-vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
-
-import { getRelatedIssues } from '@/lib/graph/related'
-
-describe('getRelatedIssues', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+describe('reviewed related issues', () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-13T00:00:00Z')) })
+  afterEach(() => vi.useRealTimers())
+  it('prioritizes same-rubric issues, then approved framework overlap', async () => {
+    const payload = researchFixture()
+    payload.issues.push(
+      { ...payload.issues[0], checkId: 'mobile-lcp-critical', rubric: 'EXPERIENCE', siteCount: 40, occurrenceCount: 45 },
+      { ...payload.issues[0], checkId: 'skip-link-missing', topFrameworks: [] },
+    )
+    findUnique.mockResolvedValue({ kind: PUBLIC_RESEARCH_KIND, payload })
+    expect(await getRelatedIssues('security-headers-missing')).toMatchObject([
+      { href: '/issues/skip-link-missing', reason: 'Same Reach rubric' },
+      { href: '/issues/mobile-lcp-critical', reason: 'Shared technology stack' },
+    ])
+    expect(await getRelatedIssues('unpublished-check')).toEqual([])
   })
-
-  it('returns empty array when current issue is not found', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue(null)
-
-    const result = await getRelatedIssues('nonexistent-check')
-    expect(result).toEqual([])
-    expect(prismaMock.issue.findFirst).toHaveBeenCalledWith({
-      where: { checkId: 'nonexistent-check' },
-      orderBy: { siteCount: 'desc' },
-      select: { rubric: true, id: true },
-    })
-  })
-
-  it('returns same-rubric issues when enough exist', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      rubric: 'MESSAGE',
-      id: 'issue_1',
-    })
-
-    prismaMock.issue.findMany.mockResolvedValue([
-      { checkId: 'cta-vague', problemTemplate: 'CTA stays vague', siteCount: 10 },
-      { checkId: 'audience-not-named', problemTemplate: 'Audience never named', siteCount: 8 },
-      { checkId: 'outcome-buried', problemTemplate: 'Outcome buried below fold', siteCount: 6 },
-    ])
-
-    const result = await getRelatedIssues('hero-value-unclear')
-
-    expect(result).toHaveLength(3)
-    expect(result[0].title).toBe('CTA stays vague')
-    expect(result[0].reason).toBe('Same Message rubric')
-    expect(result[0].href).toBe('/issues/cta-vague')
-    expect(result[0].siteCount).toBe(10)
-    expect(result[1].href).toBe('/issues/audience-not-named')
-    expect(result[2].href).toBe('/issues/outcome-buried')
-
-    expect(prismaMock.issue.findMany).toHaveBeenCalledWith({
-      where: {
-        rubric: 'MESSAGE',
-        AND: [
-          { checkId: { not: 'hero-value-unclear' } },
-          { checkId: { not: { contains: '::page:' } } },
-        ],
-        siteCount: { gte: 3 },
-      },
-      distinct: ['checkId'],
-      orderBy: { siteCount: 'desc' },
-      take: 3,
-      select: { checkId: true, problemTemplate: true, siteCount: true },
-    })
-
-    expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
-  })
-
-  it('falls back to shared technology when fewer than 3 same-rubric', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      rubric: 'EXPERIENCE',
-      id: 'issue_2',
-    })
-
-    prismaMock.issue.findMany.mockResolvedValue([
-      { checkId: 'mobile-lcp-critical', problemTemplate: 'Mobile LCP is slow', siteCount: 15 },
-    ])
-
-    prismaMock.$queryRaw.mockResolvedValue([
-      { checkId: 'security-headers-missing', problemTemplate: 'Security headers missing', siteCount: 20 },
-    ])
-
-    const result = await getRelatedIssues('color-contrast-poor')
-
-    expect(result).toHaveLength(2)
-    expect(result[0].href).toBe('/issues/mobile-lcp-critical')
-    expect(result[0].reason).toBe('Same Experience rubric')
-    expect(result[1].href).toBe('/issues/security-headers-missing')
-    expect(result[1].reason).toBe('Shared technology stack')
-
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1)
-  })
-
-  it('deduplicates when shared-tech returns already-listed issue', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      rubric: 'REACH',
-      id: 'issue_3',
-    })
-
-    prismaMock.issue.findMany.mockResolvedValue([
-      { checkId: 'slow-3g-blank-screen', problemTemplate: 'Blank screen on 3G', siteCount: 20 },
-      { checkId: 'mobile-lcp-critical', problemTemplate: 'Slow LCP on mobile', siteCount: 18 },
-    ])
-
-    prismaMock.$queryRaw.mockResolvedValue([
-      { checkId: 'slow-3g-blank-screen', problemTemplate: 'Blank screen on 3G', siteCount: 20 },
-      { checkId: 'skip-link-missing', problemTemplate: 'No skip link', siteCount: 12 },
-    ])
-
-    const result = await getRelatedIssues('render-blocking-resources')
-
-    expect(result).toHaveLength(3)
-    expect(result[0].href).toBe('/issues/slow-3g-blank-screen')
-    expect(result[1].href).toBe('/issues/mobile-lcp-critical')
-    expect(result[2].href).toBe('/issues/skip-link-missing')
-  })
-
-  it('excludes page variants and duplicate check IDs from public links', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      rubric: 'MESSAGE',
-      id: 'issue_5',
-    })
-    prismaMock.issue.findMany.mockResolvedValue([
-      { checkId: 'cta-dead-link', problemTemplate: 'CTA is broken', siteCount: 8 },
-      { checkId: 'cta-dead-link', problemTemplate: 'CTA is broken elsewhere', siteCount: 7 },
-      { checkId: 'cta-dead-link::page:1', problemTemplate: 'CTA page variant', siteCount: 6 },
-    ])
-    prismaMock.$queryRaw.mockResolvedValue([
-      { checkId: 'cta-dead-link::page:2', problemTemplate: 'Another page variant', siteCount: 6 },
-      { checkId: 'skip-link-missing', problemTemplate: 'No skip link', siteCount: 5 },
-    ])
-
-    const result = await getRelatedIssues('messaging-no-audience')
-
-    expect(result.map((link) => link.href)).toEqual([
-      '/issues/cta-dead-link',
-      '/issues/skip-link-missing',
-    ])
-  })
-
-  it('returns empty array when no issues exist at all (same rubric returns nothing, no shared tech)', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      rubric: 'MESSAGE',
-      id: 'issue_4',
-    })
-
-    prismaMock.issue.findMany.mockResolvedValue([])
-    prismaMock.$queryRaw.mockResolvedValue([])
-
-    const result = await getRelatedIssues('unique-issue')
-
-    expect(result).toHaveLength(0)
+  it('returns no links when the release is unavailable', async () => {
+    findUnique.mockResolvedValue(null)
+    expect(await getRelatedIssues('security-headers-missing')).toEqual([])
   })
 })

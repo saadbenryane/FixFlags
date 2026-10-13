@@ -1,0 +1,25 @@
+{
+  "observationStart": "2026-10-13T16:53:18.783Z",
+  "observationEnd": "2026-10-13T17:06:30.534Z",
+  "method": "Unauthenticated public HTTPS GETs",
+  "browserExecuted": false,
+  "directDatabaseAccess": false,
+  "mutatingRequestsSent": false,
+  "homepage": { "url": "https://fixflags.com/", "status": 200, "canonical": "https://fixflags.com", "robots": "index, follow" },
+  "www": { "status": 308, "destination": "https://fixflags.com/" },
+  "sitemap": { "url": "https://fixflags.com/sitemap.xml", "status": 200, "advertisedUrls": 104, "issueDetailUrls": 45, "indexedUrls": null },
+  "robots": { "url": "https://fixflags.com/robots.txt", "status": 200, "privateRouteExclusionsPresent": true },
+  "issueIndex": { "url": "https://fixflags.com/issues", "status": 200, "canonical": "https://fixflags.com/issues", "robots": "index, follow" },
+  "sampledIssuePages": [
+    { "url": "https://fixflags.com/issues/security-headers-missing", "status": 200, "displayedSiteCount": 13, "minimumSample": 3, "examplesSectionPresent": true, "reviewedScopePresent": false, "datasetMarkupCount": 1 },
+    { "url": "https://fixflags.com/issues/color-contrast-poor", "status": 200, "displayedSiteCount": 12, "minimumSample": 3, "examplesSectionPresent": true, "reviewedScopePresent": false, "datasetMarkupCount": 1 }
+  ],
+  "llms": { "url": "https://fixflags.com/llms.txt", "status": 200, "issueLibraryAdvertised": true, "reviewedReleaseQualifierPresent": false },
+  "limitations": [
+    "Two sampled issue pages do not establish every issue page's behavior.",
+    "Public HTML confirms displayed behavior, not source owners, consent or permission provenance.",
+    "No customer example identifiers or page contents were retained.",
+    "Sitemap advertisement and indexing directives do not prove search-engine indexing.",
+    "Local publication safeguards are not deployed. Production remediation requires authorization."
+  ]
+}

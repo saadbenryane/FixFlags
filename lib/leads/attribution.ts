@@ -27,14 +27,15 @@ const CLIENT_SOURCES = new Set<AuditSource>([
 
 export function inferAuditSource(pathname: string | null | undefined): AuditSource {
   if (!pathname) return 'UNKNOWN'
+  const within = (root: string) => pathname === root || pathname.startsWith(`${root}/`)
   if (pathname === '/' || pathname.startsWith('/#')) return 'HOMEPAGE'
-  if (pathname.startsWith('/dashboard')) return 'DASHBOARD'
-  if (pathname.startsWith('/report') || pathname.startsWith('/audit')) return 'REPORT'
-  if (pathname.startsWith('/tools/')) return 'TOOL_PAGE'
-  if (pathname.startsWith('/issue/')) return 'ISSUE_PAGE'
-  if (pathname.startsWith('/benchmark/')) return 'BENCHMARK_PAGE'
+  if (within('/dashboard')) return 'DASHBOARD'
+  if (within('/report') || within('/audit')) return 'REPORT'
+  if (within('/tools')) return 'TOOL_PAGE'
+  if (within('/issues') || within('/issue')) return 'ISSUE_PAGE'
+  if (within('/benchmarks') || within('/benchmark')) return 'BENCHMARK_PAGE'
   if (pathname.startsWith('/pricing')) return 'UNKNOWN'
-  if (pathname.startsWith('/api/mcp')) return 'MCP'
+  if (within('/api/mcp')) return 'MCP'
   if (pathname.startsWith('/api/')) return 'API'
   return 'UNKNOWN'
 }

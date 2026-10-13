@@ -206,6 +206,14 @@ export function issuePageSchema(input: {
   siteCount: number
   occurrenceCount: number
   path: string
+  research?: {
+    windowStart: string
+    windowEnd: string
+    reviewedAt: string
+    sampleSiteCount: number
+    methodology: string
+    limitations: string[]
+  }
 }) {
   const url = `${SITE_URL}${input.path}`
   return {
@@ -228,6 +236,7 @@ export function issuePageSchema(input: {
         },
         isPartOf: { '@id': WEBSITE_ID },
         publisher: { '@id': ORG_ID },
+        ...(input.research ? { dateModified: input.research.reviewedAt } : {}),
       },
       {
         '@type': 'Dataset',
@@ -236,7 +245,11 @@ export function issuePageSchema(input: {
         description: `Observed across ${input.siteCount} audited sites (${input.occurrenceCount} occurrences).`,
         url,
         creator: { '@id': ORG_ID },
-        measurementTechnique: 'FixFlags automated product audit',
+        measurementTechnique: input.research?.methodology ?? 'FixFlags automated product audit',
+        ...(input.research ? {
+          temporalCoverage: `${input.research.windowStart}/${input.research.windowEnd}`,
+          abstract: input.research.limitations.join(' '),
+        } : {}),
         variableMeasured: [
           {
             '@type': 'PropertyValue',
@@ -248,6 +261,7 @@ export function issuePageSchema(input: {
             name: 'occurrenceCount',
             value: input.occurrenceCount,
           },
+          ...(input.research ? [{ '@type': 'PropertyValue', name: 'sampleSiteCount', value: input.research.sampleSiteCount }] : []),
         ],
       },
     ],
