@@ -1,3 +1,4 @@
+import { fontStylesheetUrls } from './font-runtime-contract.mjs'
 const args = process.argv.slice(2)
 const useJson = args.includes('--json')
 const optional = args.includes('--optional')
@@ -32,22 +33,18 @@ if (optional && !isFixFlagsPage) {
   skip('port is serving a different application')
   process.exit(0)
 }
-const layoutMatch = pageHtml.match(/href="([^"]*\/app\/layout\.css\?v=[^"]+)"/)
-if (!layoutMatch) {
-  fail('could not find app layout stylesheet link in HTML')
-}
-
-const stylesheetUrl = new URL(layoutMatch[1], pageUrl).toString()
-const stylesheetResponse = await fetch(stylesheetUrl)
-if (!stylesheetResponse.ok) {
-  fail(`failed to load layout stylesheet: ${stylesheetResponse.status} ${stylesheetResponse.statusText}`)
-}
-
-const stylesheetText = await stylesheetResponse.text()
+const stylesheetUrls = fontStylesheetUrls(pageHtml, pageUrl)
+if (!stylesheetUrls.length) fail('could not find Next stylesheet links in HTML')
+const stylesheetTexts = await Promise.all(stylesheetUrls.map(async url => {
+  const stylesheet = await fetch(url)
+  if (!stylesheet.ok) fail(`failed to load stylesheet: ${stylesheet.status} ${stylesheet.statusText}`)
+  return stylesheet.text()
+}))
+const stylesheetText = stylesheetTexts.join('\n')
 const checks = {
   pageStatus: response.status,
-  stylesheetStatus: stylesheetResponse.status,
-  stylesheetUrl,
+  stylesheetStatus: 200,
+  stylesheetUrls,
   bodyClassHasFontVariables: /font-variables/.test(pageHtml),
   hasRootFontVar: /:root\s*\{/.test(stylesheetText),
   hasFontVariablesRule: /\.font-variables\s*\{/.test(stylesheetText),
@@ -59,25 +56,30 @@ const checks = {
 import { chromium } from 'playwright'
 
 const browser = await chromium.launch({ headless: true })
+let runtime
+try {
 const page = await browser.newPage()
+page.setDefaultTimeout(15_000)
 await page.goto(pageUrl, { waitUntil: 'load' })
+await page.waitForSelector('h1', { state: 'visible' })
+await page.evaluate(() => document.fonts.ready)
 await page.waitForFunction(() => {
   return (
     document.body.classList.contains('font-variables') &&
     getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim().length > 0
   )
 })
-const runtime = await page.evaluate(() => {
+runtime = await page.evaluate(() => {
   return {
     bodyClass: document.body.className,
     bodyFont: getComputedStyle(document.body).fontFamily,
     rootFont: getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim(),
     rootDisplayFont: getComputedStyle(document.documentElement).getPropertyValue('--font-display').trim(),
     rootMonoFont: getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim(),
-    h1Font: getComputedStyle(document.querySelector('h1') || document.body).fontFamily,
+    h1Font: getComputedStyle(document.querySelector('h1')).fontFamily,
   }
 })
-await browser.close()
+} finally { await browser.close() }
 
 const runtimeChecks = {
   bodyFontInter: runtime.bodyFont.includes('Inter Variable'),
@@ -111,7 +113,7 @@ if (useJson) {
   console.log('PASS: font runtime contract')
   console.log(`page status: ${checks.pageStatus}`)
   console.log(`stylesheet status: ${checks.stylesheetStatus}`)
-  console.log(`stylesheet: ${checks.stylesheetUrl}`)
+  console.log(`stylesheet: ${checks.stylesheetUrls.join(', ')}`)
   console.log(`body class: ${runtime.bodyClass}`)
   console.log(`body font: ${runtime.bodyFont}`)
   console.log(`h1 font: ${runtime.h1Font}`)

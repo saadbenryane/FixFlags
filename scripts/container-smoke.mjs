@@ -132,6 +132,12 @@ try {
     return response.ok && body?.ok === true && body?.subsystems?.worker?.ok === true
   })
 
+  const fontProof = spawnSync(process.execPath, ['scripts/verify-font-runtime.mjs', baseUrl], {
+    encoding: 'utf8', timeout: 60_000,
+  })
+  if (fontProof.status !== 0) throw new Error('Candidate image font proof failed: ' + (fontProof.stderr || fontProof.stdout))
+  console.log(fontProof.stdout.trim())
+
   const workerHealth = await fetch(`${baseUrl}/api/health/worker`, {
     signal: AbortSignal.timeout(10_000),
   }).then((response) => response.json())
