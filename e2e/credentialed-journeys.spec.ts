@@ -372,6 +372,13 @@ test.describe('credentialed revenue journeys', () => {
       expect(accepted.html).toContain('See evidence and next steps')
       expect(accepted.html?.match(/<li>/g)?.length ?? 0, 'All eligible findings appear in the combined message')
         .toBe(child.watchRegressionCount)
+      const evidenceLinks = [...(accepted.html ?? '').matchAll(/href="([^"]+)"/g)]
+        .map(match => new URL(match[1].replaceAll('&amp;', '&')))
+        .filter(url => url.pathname.startsWith(`/sites/${projectId}/flags/`))
+      expect(evidenceLinks.length, 'Actual notification links return to the same Site').toBeGreaterThan(0)
+      for (const url of evidenceLinks) expect(url.origin).toBe(new URL(requiredEnv('RELEASE_ENV_URL')).origin)
+      await user.page.goto(evidenceLinks[0].href)
+      await expect(user.page.getByRole('heading', { name: 'What FixFlags saw', exact: true })).toBeVisible()
       const listed = await provider<{ data: ProviderEmail[]; has_more: boolean }>('emails?limit=100')
       expect(!listed.has_more || listed.data.some(email => new Date(email.created_at).getTime() < beganAt.getTime()),
         'Provider list must cover the complete observation window').toBe(true)

@@ -1,9 +1,20 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { siteNotificationEmail } from '../site-notification'
 import { brandLight } from '@/lib/design/brand-spec'
 import { DEMO_EMAILS, KEEP_REPORT_EMAIL, NURTURE_EMAILS } from '../templates'
 
 describe('combined Site notification', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  it('returns to the originating app instead of sending verification customers to production', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://validation.fixflags.test/')
+    const message = siteNotificationEmail({ projectId: 'site-1', url: 'https://example.com', name: null, checkedAt: null,
+      regressions: [{ id: 'flag-1', problem: 'The observed failure' }], recoveries: [] })
+    const evidence = 'https://validation.fixflags.test/sites/site-1/flags/flag-1?source=watch-email'
+    expect(message.html).toContain(evidence)
+    expect(message.text).toContain(evidence)
+    expect(message.html).not.toContain('https://fixflags.com/sites/')
+  })
   it('escapes customer fields exactly once and keeps onboarding claims consistent with beta access', () => {
     const confirmation = DEMO_EMAILS.confirm.html('R&D <team>', 'Studio')
     expect(confirmation).toContain('R&amp;D &lt;team&gt;')

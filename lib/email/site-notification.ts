@@ -1,4 +1,4 @@
-import { SITE_URL } from '@/lib/marketing/copy/brand'
+import { getAppUrl } from '@/lib/get-app-url'
 import { brandLight } from '@/lib/design/brand-spec'
 import { NOTIFICATION_EMAIL_COPY as C } from '@/lib/marketing/copy/notification-emails'
 import { emailButtonStyle, emailLayout, escapeEmailHtml } from './layout'
@@ -9,7 +9,8 @@ export function siteNotificationEmail(input: {
   regressions: Finding[]; recoveries: Finding[];
 }) {
   const host = new URL(input.url).hostname
-  const href = (id?: string) => `${SITE_URL}/sites/${encodeURIComponent(input.projectId)}/flags${id ? `/${encodeURIComponent(id)}` : ''}?source=watch-email`
+  const appUrl = getAppUrl()
+  const href = (id?: string) => `${appUrl}/sites/${encodeURIComponent(input.projectId)}/flags${id ? `/${encodeURIComponent(id)}` : ''}?source=watch-email`
   const leadFlag = [...input.regressions, ...input.recoveries].find(flag => flag.id)
   const lead = C.lead(host, input.regressions.length, input.recoveries.length)
   const greeting = `Hi${input.name ? ` ${input.name}` : ''},`

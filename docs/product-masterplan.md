@@ -14,6 +14,8 @@ Owner adjustment, 2026-10-13: live Shopify connection testing is excluded from t
 
 Owner adjustment, 2026-10-13: protect the Resend allowance during verification. Routine release fixtures must not send alerts or create email-verified test identities. Keep automatic-account proof paused until the final bounded lifecycle pass. The controlled target has a persistent allocation of at most five verification sends, closed by default. Enable only one designated combined-alert proof. Customer findings discovered in one check belong in one branded summary, with verified recoveries included when requested. Signup sends one branded verification email and does not automatically request a separate welcome email.
 
+Combined-message evidence links use the configured app origin. The live notification journey must open a real finding from the provider's saved HTML in that same app and tenant; a branded message with an unreachable production link from verification cannot satisfy acceptance.
+
 Implementation and proof are separate. A requirement closes only with evidence from the current candidate. No historical receipt, registration count or passing configuration flag establishes runtime success.
 
 | Requirement | Implementation | Missing work | Focused verification | Deployed evidence |
