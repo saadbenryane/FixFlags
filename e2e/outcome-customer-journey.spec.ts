@@ -30,7 +30,7 @@ import { assertKeyboardReachesTheSurface, assertSiteSurfaceMeetsLaunchBar } from
  *   E2E_GATE_NON_MEMBER_EMAIL / _PASSWORD: a second, unrelated owner
  *
  * Optional env:
- *   E2E_OUTCOME_ID: defaults to the Site's rendered-page availability Outcome.
+ *   E2E_OUTCOME_ID: defaults to the Site's HTTP availability Outcome.
  */
 
 const credentialedEnabled =
@@ -165,7 +165,7 @@ function targetOutcomeId(home: SiteHome): string {
     (outcome) => outcome.kind === 'AVAILABILITY' && outcome.pageUrls.length > 0,
   )
   if (!executable) {
-    throw new Error('This Site has no supported rendered-page availability Outcome to verify')
+    throw new Error('This Site has no supported HTTP availability Outcome to verify')
   }
   return executable.id
 }

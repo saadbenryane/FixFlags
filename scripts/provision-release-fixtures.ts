@@ -199,7 +199,7 @@ async function main() {
         select: { id: true },
       })
       if (!outcome) {
-        throw new Error(`Fixture Site ${review.siteId} has no supported rendered-page availability Outcome`)
+        throw new Error(`Fixture Site ${review.siteId} has no supported HTTP availability Outcome`)
       }
       fixture.outcomeId = outcome.id
     }
