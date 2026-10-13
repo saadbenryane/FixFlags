@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
-import { Menu, Radio } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { SiteAccountRail } from '@/components/layout/SiteAccountRail'
@@ -20,6 +20,8 @@ import { type SitePresentation } from '@/lib/sites/presentation'
 import styles from './SiteShell.module.css'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { LazySiteChat } from './LazySiteChat'
+import { SiteMonitoringMenu } from './SiteMonitoringMenu'
+import { nextCheckLabel } from '@/lib/sites/monitoring-schedule'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
 
@@ -97,19 +99,17 @@ function SiteShellContent({
           <SheetTrigger asChild><Button variant="outline" size="sm"><Menu size={16} aria-hidden />{SITE_WORKSPACE_COPY.siteMenu}</Button></SheetTrigger>
           <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all pr-6">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
             {navigation('Website drawer', () => setNavigationOpen(false))}
-            {ownsSite ? <Link href={`/sites/${siteId}/settings#watch`} onClick={() => setNavigationOpen(false)} className="mt-auto flex min-h-11 items-center gap-2 text-sm"><Radio size={15} aria-hidden /><span>{SITE_WORKSPACE_COPY.analysisCadence}: {watch.interval ? presentation?.monitoring.label ?? watch.label : SITE_WORKSPACE_COPY.monitoringOff}</span></Link> : null}
           </SheetContent>
         </Sheet>
       </div>
-      {ownsSite ? <Link href={`/sites/${siteId}/settings#watch`} className={styles.cadence} aria-label={`${SITE_WORKSPACE_COPY.analysisCadence}: ${watch.interval ? presentation?.monitoring.label ?? watch.label : SITE_WORKSPACE_COPY.monitoringOff}`}>
-        <Radio size={15} aria-hidden /><span><small>{SITE_WORKSPACE_COPY.analysisCadence}</small>{watch.interval ? presentation?.monitoring.label ?? watch.label : SITE_WORKSPACE_COPY.monitoringOff}</span>
-      </Link> : null}
     </aside>
-    <div className={styles.canvas}>
+    <div className={styles.canvas} data-site-content>
       <CustomerMain className="space-y-5">
         <header className={styles.header}><div className="min-w-0"><h1>{viewTitle}</h1>
           {title !== host && description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div>
-          {headerAction ? <div className={styles.actions}>{headerAction}</div> : null}
+          <div className={styles.actions}><SiteMonitoringMenu label={watch.label}
+            state={watch.state === 'watching' ? 'healthy' : watch.state === 'delayed' || watch.state === 'quota' ? 'attention' : 'unknown'}
+            nextCheck={() => nextCheckLabel(watch.nextRunAt, Date.now())} manageHref={ownsSite ? `/sites/${siteId}/settings#watch` as Route : undefined} />{headerAction}</div>
         </header>
         {statusMessage ? <p role="status" className="text-sm">{statusMessage}</p> : null}
         {children}

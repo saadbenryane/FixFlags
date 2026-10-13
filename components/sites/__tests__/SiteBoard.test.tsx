@@ -204,6 +204,28 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
   })
 
+  it('keeps header monitoring collapsed and restores focus after Escape', () => {
+    renderBoard(signedInUser)
+    const monitoring = screen.getByRole('button', { name: 'Monitoring: Not monitored' })
+    expect(monitoring).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(monitoring)
+    expect(screen.getByRole('region', { name: 'Monitoring' })).toHaveTextContent('No next check scheduled')
+    expect(screen.getByRole('link', { name: 'Edit schedule' })).toHaveAttribute('href', '/sites/p_example/settings#watch')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('region', { name: 'Monitoring' })).not.toBeInTheDocument()
+    expect(monitoring).toHaveFocus()
+    fireEvent.click(monitoring)
+    fireEvent.pointerDown(document.body)
+    expect(monitoring).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('shows monitoring information without owner controls to a visitor', () => {
+    renderBoard(null)
+    fireEvent.click(screen.getByRole('button', { name: 'Monitoring: Not monitored' }))
+    expect(screen.getByRole('region', { name: 'Monitoring' })).toHaveTextContent('No next check scheduled')
+    expect(screen.queryByRole('link', { name: 'Edit schedule' })).not.toBeInTheDocument()
+  })
+
   it('keeps incomplete Search visible for a visitor even without usable evidence', async () => {
     render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={boardView({
       cards: [card({ id: 'search', name: 'Search', state: 'unknown', evidenced: false,
@@ -212,6 +234,24 @@ describe('SiteBoard chrome', () => {
     const search = screen.getByRole('article', { name: 'Search' })
     expect(within(search).getByText('Unfinished checks: Crawl access.')).toBeVisible()
     expect(within(search).getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
+  })
+
+  it('keeps unfinished checks in rows and puts healthy checks after Uptime', () => {
+    const view = boardView({ cards: [
+      card({ id: 'security', name: 'Security', state: 'healthy', evidenced: true, answer: 'Protected' }),
+      card({ id: 'search', name: 'Search', state: 'healthy', evidenced: true, answer: 'Crawl access checked', incompleteReason: 'Unfinished checks: Page titles.' }),
+      card({ id: 'conversion', name: 'Conversion', state: 'problem', openFlagCount: 1, answer: 'Cart stays empty' }),
+    ] })
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    const conversion = screen.getByRole('article', { name: 'Conversion' })
+    const search = screen.getByRole('article', { name: 'Search' })
+    expect(conversion.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(within(search).getByText('Unfinished checks: Page titles.')).toBeVisible()
+    const uptime = screen.getByRole('article', { name: 'Uptime' })
+    expect(search.compareDocumentPosition(uptime)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(uptime.compareDocumentPosition(screen.getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    const findings = screen.getByRole('region', { name: 'Findings summary' })
+    expect(screen.getByRole('region', { name: 'Website preview' }).compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('starts a fresh Search category check and retains saved results on refusal', async () => {
@@ -628,6 +668,22 @@ describe('SiteBoard chrome', () => {
     expect(within(pages).getByText('1 needs attention')).toBeVisible()
   })
 
+  it('opens page-specific previews from the Pages summary before detailed check results', async () => {
+    const base = boardView()
+    const view = boardView({ presentation: { ...base.presentation, coverage: { pagesReached: 2, pagesExpected: 2, label: '2 pages', complete: true } },
+      checkedPages: [
+        { url: 'https://example.com/', title: 'Home', status: 'COMPLETED', checkedAt: '2026-10-12T12:00:00Z', capture: { url: '/api/screenshots/audit-1/desktop?page=home', viewport: '1280 × 720', recordedAt: '2026-10-12T12:00:00Z' } },
+        { url: 'https://example.com/contact', title: 'Contact', status: 'PARTIAL', checkedAt: '2026-10-12T12:00:00Z' },
+      ] })
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    const summary = screen.getByRole('group', { name: 'Website status summary' })
+    fireEvent.click(within(summary).getByRole('button', { name: '2 Pages' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('img', { name: 'Captured page: Home' })).toHaveAttribute('src', '/api/screenshots/audit-1/desktop?page=home')
+    expect(within(dialog).getByRole('img', { name: 'Preview of Contact: No screenshot recorded' })).toBeVisible()
+    expect(within(dialog).getByText('Partial')).toBeVisible()
+  })
+
   it('shows real monitoring history in the same Site shell', async () => {
     const view = boardView({
       monitoringHistory: [
@@ -814,7 +870,8 @@ describe('SiteBoard chrome', () => {
     renderBoard(signedInUser)
     expect(screen.queryByRole('link', { name: CARE_HOME.signIn })).not.toBeInTheDocument()
     expect(within(screen.getByRole('complementary', { name: 'App' })).getByRole('link', { name: 'Websites' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Website analysis: Not scheduled' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
+    fireEvent.click(screen.getByRole('button', { name: 'Monitoring: Not monitored' }))
+    expect(screen.getByRole('link', { name: 'Edit schedule' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
     expect(screen.queryByRole('button', { name: 'Turn on monitoring' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Security' })).toBeInTheDocument()
@@ -1127,7 +1184,7 @@ describe('an undelivered Watch alert', () => {
     )
     expect(screen.getByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).toBeInTheDocument()
     // The board must still say checks are happening. Delivery failed, not coverage.
-    expect(screen.getByRole('link', { name: 'Website analysis: Weekly' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Monitoring: Weekly' })).toBeInTheDocument()
     expect(screen.getByText(/keeps checking/i)).toBeInTheDocument()
   })
 

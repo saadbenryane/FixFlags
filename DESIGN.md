@@ -44,13 +44,17 @@ Use existing semantic tokens before adding values. Add a shared token for a repe
 | Surface | Current treatment |
 | --- | --- |
 | Marketing | Whitespace, display hierarchy and section tone; existing special illustrations and connection panels retain their local composition |
-| Site board and homepage sample | Neutral flat cards, restrained hover shadows, board-specific radii, and orange outlines for flagged categories |
+| Site board and homepage sample | Neutral flat cards, restrained hover shadows, board-specific radii, and status dots and counts for flagged categories |
 | Existing report and glass surfaces | Shared Card/Surface variants, glass tokens and nested radii; these do not define the Site board recipe |
 | Controls and functional data | Borders where needed for inputs, tables, dialogs and progress/detail panels |
 
 Shared identity does not require identical card sizes, backgrounds or typography across these families. Keep board card and panel radii separate from the glass-card radius. Inner glass radii use the existing outer-radius-minus-gap tokens.
 
-Marketing and Site narrative hierarchy uses spacing, tone and type before divider lines. Keep existing functional borders and approved special compositions. Interaction placement and category anatomy belong to the Site interface contract.
+Never use line separators. Group content with whitespace, typography, and surface tone. Card outlines, input boundaries, and focus rings define their controls; do not use standalone horizontal or vertical rules to separate content. Interaction placement and category anatomy belong to the Site interface contract.
+
+Give each piece of overview information one primary location. Site identity and the last-check time belong in the sidebar. Overall counts appear once in the summary, without a repeated Findings heading or attention sentence. At desktop widths, the website capture, vertically stacked Flags and Pages, and counted detected tools align in one row when their evidence is available. The tools card shows up to four names and the actual remaining count, with the full recorded inventory in depth. Monitoring is a compact header control beside refresh, with schedule details disclosed on demand. The website preview shows the complete capture; URL, capture time, viewport, and previous-capture provenance remain available when it is enlarged. The homepage sample and real Site use the same shared components and layout.
+
+Pages depth leads with previews for the recorded pages. Each thumbnail must use that page's own capture from its source audit. Missing or failed captures retain an explicit empty state, never a substitute screenshot. Result and Flag modals contain evidence and relevant fix actions, without an Analyze your website promotion.
 
 ## Layout and motion
 
@@ -58,6 +62,7 @@ Marketing overview pages share `MarketingPageHeader`: centered Inter Tight displ
 
 - Keep responsive containers and spacing in the shared Container and Section primitives where they apply. Their variants intentionally use different widths and rhythms.
 - Reflow real-length names, answers and status controls without overlap. Preserve mobile access to the same content and actions; do not impose fixed card heights to hide wrapping.
+- On phones, keep Site identity and navigation labels visible. Let toolbar controls wrap, keep disclosures inside the available content area, and respect device safe areas in full-height details and fixed navigation.
 - Marketing uses its existing canvas and section tints. The shared shell's minimal grid is an app/admin treatment, not a marketing hero background.
 - Motion communicates state, expansion or feedback. Preserve current homepage connection-card motion and its reduced-motion/mobile behavior; do not reintroduce unused ambient orb animations.
 - App, report, dashboard and admin surfaces idle without decorative animation. Loading indicators may animate while work is running.
@@ -67,6 +72,7 @@ Marketing overview pages share `MarketingPageHeader`: centered Inter Tight displ
 ## Interaction and validation
 
 - Preserve rest, hover, keyboard focus, active, disabled and loading states. Keep Button loading/slot behavior and existing dialog focus trapping, Escape dismissal and focus restoration.
+- Returning from a Flag to its page list restores the prior scroll position and result focus. Switching views from a disclosure keeps keyboard focus in the destination view.
 - Use 44px hit targets for shared controls. Keep icon actions accessible by name and preserve touch access to actions otherwise revealed on hover.
 - Preserve semantic heading order, form labels, status announcements and Radix screen-reader behavior. Use the existing EmptyState and RouteErrorPage primitives.
 - Use lucide-react for interface icons and approved assets for brand and third-party marks. Decorative media must not become fabricated customer evidence.

@@ -14,6 +14,11 @@ Use the smallest amount of project context needed for the task. Explicit user di
 - Never use em dashes in responses, product copy, documentation, or comments. Use commas, periods, or parentheses instead.
 - When the user provides exact wording, preserve it. Do not paraphrase or invent replacement copy unless asked.
 
+## Design rules
+
+- Never use line separators. Use whitespace, typography, and surface tone to group content. See [DESIGN.md](DESIGN.md).
+- Give each piece of overview information one primary location. Do not repeat counts, site identity, or check times in headings, captions, and status sentences.
+
 ## Working safely
 
 - Check `git status --short` before writing and preserve unrelated changes.

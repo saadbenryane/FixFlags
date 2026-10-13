@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Route } from 'next'
-import { ArrowLeft, ArrowRight, Copy, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Copy } from 'lucide-react'
 import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 import { BoardStatus } from '@/components/sites/BoardCard'
+import { PageCapturePreview } from '@/components/sites/PageCapturePreview'
 import { showFixPromptCopied } from '@/components/sites/FixPromptToast'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
@@ -23,20 +24,42 @@ export function CareHomepage() {
   const [manualPrompt, setManualPrompt] = useState<string | null>(null)
   const opener = useRef<HTMLElement | null>(null)
   const heading = useRef<HTMLHeadingElement | null>(null)
+  const resultId = useId()
+  const flagOpener = useRef<string | null>(null)
+  const categoryScroll = useRef(0)
   const selectedCard = S.categories.find(card => card.id === selected)
   const selectedFlag = flag ? SAMPLE_FLAGS[flag] : null
   const prompt = selectedFlag?.prompt ?? C.workflow.instructions
   const openCard = (card: HomepageDetailCard) => {
     opener.current = document.activeElement as HTMLElement
+    flagOpener.current = null; categoryScroll.current = 0
     setSelected(card); setFlag(null); setManualPrompt(null); setCopyResult(null)
   }
-  const openFlag = (id: SampleFlagId) => {
+  const focusHeading = () => {
+    const dialog = heading.current?.closest<HTMLElement>('[role="dialog"]')
+    if (dialog) dialog.scrollTop = 0
+    heading.current?.focus({ preventScroll: true })
+  }
+  const openFlag = (id: SampleFlagId, trigger: HTMLButtonElement) => {
+    flagOpener.current = trigger.id
+    categoryScroll.current = trigger.closest<HTMLElement>('[role="dialog"]')?.scrollTop ?? 0
     setFlag(id); setCopyResult(null)
-    requestAnimationFrame(() => heading.current?.focus())
+    requestAnimationFrame(focusHeading)
   }
   const openSampleFlag = (card: typeof S.categories[number], id: SampleFlagId) => {
     opener.current = document.activeElement as HTMLElement
+    flagOpener.current = null; categoryScroll.current = 0
     setSelected(card.id); setFlag(id); setManualPrompt(null); setCopyResult(null)
+  }
+  const backToCategory = () => {
+    setFlag(null); setManualPrompt(null); setCopyResult(null)
+    requestAnimationFrame(() => {
+      const trigger = flagOpener.current ? document.getElementById(flagOpener.current) : null
+      if (!trigger) { focusHeading(); return }
+      const dialog = trigger.closest<HTMLElement>('[role="dialog"]')
+      if (dialog) dialog.scrollTop = categoryScroll.current
+      trigger.focus({ preventScroll: true })
+    })
   }
   const copyFlag = async (source: HomepageCopySource, text: string = C.workflow.instructions, card?: typeof S.categories[number], id?: SampleFlagId) => {
     try {
@@ -64,10 +87,9 @@ export function CareHomepage() {
     <HomepageIntegrationsSection />
     <HomepageFinalSection />
     <ResponsiveDepth open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
-      {flag ? <button type="button" className={s.backButton} onClick={() => { setFlag(null); setManualPrompt(null); setCopyResult(null); requestAnimationFrame(() => heading.current?.focus()) }}><ArrowLeft size={16} aria-hidden="true" />Back to {selectedCard?.name ?? 'area'}</button> : null}
+      {flag ? <button type="button" className={s.backButton} onClick={backToCategory}><ArrowLeft size={16} aria-hidden="true" />Back to {selectedCard?.name ?? 'area'}</button> : null}
       <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
       <DialogDescription>{selectedFlag?.scope ?? selectedCard?.context ?? ''}</DialogDescription>
-      {!flag && selectedCard ? <a className={s.categoryRecheck} href="#analyze" onClick={() => { opener.current = document.getElementById('audit-url-care-hero'); setSelected(null) }}><RefreshCw size={15} aria-hidden="true" />Recheck {selectedCard.name}</a> : null}
       {selectedFlag ? <>
         <dl className={s.flagFacts}>
           <div><dt>{S.observedLabel}</dt><dd>{selectedFlag.observed}</dd></div>
@@ -85,15 +107,15 @@ export function CareHomepage() {
       </> : selectedCard ? <>
         <div className={s.depthAnswer}><strong>{selectedCard.answer}</strong><BoardStatus state={selectedCard.state} label={selectedCard.status} showText /></div>
         <h3 className={s.resultsTitle}>{S.resultsTitle}</h3>
-        <ul className={s.resultList}>{selectedCard.results.map(result => <li key={result.label}>
-          <div><strong>{result.label}</strong><span data-result={result.status}>{result.status}</span></div><p>{result.detail}</p>
-          {result.status === 'Flag' && (result.flag ?? selectedCard.flag) ? <button type="button" aria-label={`View Flag for ${result.label}`} onClick={() => openFlag((result.flag ?? selectedCard.flag)!)}>{S.detailAction}<ArrowRight size={16} aria-hidden="true" /></button> : null}
+        <ul className={`${s.resultList} ${selectedCard.id === 'site' ? s.pageResults : ''}`}>{selectedCard.results.map((result, index) => <li key={result.label}>
+          {selectedCard.id === 'site' && result.label.startsWith('/') ? <PageCapturePreview page={result.label} capture={result.capture} /> : null}
+          <div className={s.resultHeading}><strong>{result.label}</strong><span data-result={result.status}>{result.status}</span></div><p>{result.detail}</p>
+          {result.status === 'Flag' && (result.flag ?? selectedCard.flag) ? <button id={`${resultId}-${index}`} type="button" aria-label={`View Flag for ${result.label}`} onClick={event => openFlag((result.flag ?? selectedCard.flag)!, event.currentTarget)}>{S.detailAction}<ArrowRight size={16} aria-hidden="true" /></button> : null}
         </li>)}</ul>
         <p className={s.scope}>{selectedCard.scope}</p>
         {selectedCard.connection ? <aside className={s.contextConnection}><Link href={selectedCard.connection.href as Route}>{selectedCard.connection.label}<ArrowRight size={14} aria-hidden="true" /></Link><p>{selectedCard.connection.body}</p><small>{S.connections}</small></aside> : null}
       </> : null}
       {manualPrompt ? <div className={s.manualCopy}><label htmlFor="sample-guidance">{S.guidanceLabel}</label><textarea id="sample-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
-      <a className={s.textLink} href="#analyze" onClick={() => { opener.current = document.getElementById('audit-url-care-hero'); setSelected(null) }}>{S.analyzeAction}<ArrowRight size={16} aria-hidden="true" /></a>
     </ResponsiveDepth>
   </div>
 }

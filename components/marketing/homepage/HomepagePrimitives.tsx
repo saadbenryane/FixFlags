@@ -9,6 +9,7 @@ export const HOMEPAGE_EVIDENCE = {
   failed: '/marketing/evidence/purchase-broken.png',
   passed: '/marketing/evidence/purchase-verified.png',
   site: '/marketing/evidence/site-home.png',
+  siteMobile: '/marketing/evidence/site-home-mobile.png',
 } as const
 
 export function HomepageIntro({ label, title, body }: { label?: string; title: string; body?: React.ReactNode }) {
