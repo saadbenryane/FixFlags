@@ -1928,7 +1928,12 @@ run('migrated progressive execution', () => {
   it.skipIf(process.env.SCHEDULED_SITE_CARE_REQUIRED !== 'true')('refreshes broad Site evidence and bound incidents through scheduled care, then reuses fresh evidence for uptime', async () => {
     releaseResources()
     const transport = fixtureTransport()
-    const originalProject = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+    // This scenario begins with a fresh incident. Earlier scenarios deliberately
+    // retain failures on other pages, which cannot be cleared by this scope.
+    const userId = 'scheduled-care-user-' + suffix
+    const projectId = 'scheduled-care-project-' + suffix
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: projectId, userId, name: 'Scheduled care fixture', url: origin + '/', canonicalHost: 'example.com' } })
     const pageUrl = origin + '/monitored', tick = new Date()
     const audits: string[] = []
     const comparisons: FlagDiffSummary[] = []
@@ -1973,7 +1978,7 @@ run('migrated progressive execution', () => {
         if (index === 0) {
           const title = await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: 'title-missing' }, include: { improvementOccurrence: true } })
           titleFlagId = title.id; titleImprovementId = title.improvementOccurrence!.improvementId
-          expect(['OPEN', 'REGRESSED']).toContain(title.status)
+          expect(title.status).toBe('OPEN')
           expect(title.resolvedInId).toBeNull()
           titleFailureState = { status: title.status, resolvedInId: title.resolvedInId }
           availabilityFlagId = (await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, fingerprint: { startsWith: 'outcome:v1:' + availability.id + ':' } } })).id
@@ -2036,7 +2041,7 @@ run('migrated progressive execution', () => {
         watchNotificationStatus: 'FAILED',
       })
     } finally {
-      await prisma.project.update({ where: { id: projectId }, data: { url: originalProject.url } })
+      await prisma.user.delete({ where: { id: userId } })
       availabilityStatus = 200; availabilityChallenged = false; monitoredTitleMissing = true; monitoredUnavailable = false
       await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume(); transport.mockRestore()
     }

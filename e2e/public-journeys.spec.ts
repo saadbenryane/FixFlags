@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { inspectAccessibilityViolations } from './approved-contrast'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
+import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
 
 // The shared browser-process memory cache can serve a previously-loaded
 // screenshot (200) without hitting a route stub, making failure-injection
@@ -50,21 +52,26 @@ for (const width of widths) {
     expect(errors).toEqual([])
   })
 
-  test(`canonical sample exposes one evidence-backed Site Flag at ${width}px`, async ({ page }) => {
+  test(`canonical sample exposes dated evidence and an independent recovery criterion at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.goto('/samples')
 
-    await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'One Site, one evidence-backed Flag' })).toBeVisible()
-    await expect(page.getByText('1 Flag', { exact: true }).first()).toBeVisible()
-    for (const heading of ['Pages', 'Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
-      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
-    }
-    await expect(page.getByText('Fixture evidence', { exact: true })).toBeVisible()
-    await expect(page.getByText('Proposed change', { exact: true })).toBeVisible()
-    await expect(page.getByText('Verify succeeds when', { exact: true })).toBeVisible()
+    await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
+    const sample = page.locator('[data-testid="sample-site"]:visible')
+    await expect(sample).toHaveCount(1)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(PUBLIC_SITE_COPY.samplePage.title)
+    await expect(sample).toHaveAttribute('data-observation', /^curated-sample-/)
+    for (const heading of ['observed', 'fix', 'prompt', 'verification'] as const)
+      await expect(sample.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage[heading], exact: true })).toBeVisible()
+    const image = sample.getByRole('img', { name: PUBLIC_SITE_COPY.samplePage.imageAlt })
+    await image.scrollIntoViewIfNeeded()
+    await expect.poll(() => image.evaluate(element => element instanceof HTMLImageElement && element.complete && element.naturalWidth > 0)).toBe(true)
+    await expect(sample.getByText(PUBLIC_SITE_COPY.samplePage.verificationBody)).toBeVisible()
+    await sample.getByText(PUBLIC_SITE_COPY.samplePage.provenance, { exact: true }).click()
+    await expect(sample.getByText(PUBLIC_SITE_COPY.samplePage.provenanceBody)).toBeVisible()
+    await expect(sample.locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/)
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -76,6 +83,10 @@ for (const width of widths) {
       .locator('button, input, select, textarea, [role="button"], [role="tab"], header a[href], footer a[href]')
       .evaluateAll((elements) => elements
         .filter((element) => {
+          // Next's development-only shadow toolbar is framework tooling.
+          // Every customer control remains subject to the touch requirement.
+          const root = element.getRootNode()
+          if (root instanceof ShadowRoot && root.host.tagName === 'NEXTJS-PORTAL') return false
           const rect = element.getBoundingClientRect()
           const style = getComputedStyle(element)
           // Chromium can report an exact 44px CSS target a fraction below 44px.
@@ -96,7 +107,7 @@ for (const width of [320, 375]) {
   test(`mobile sample and primary action remain responsive at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/samples')
-    await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
+    await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
 
     const header = page.getByRole('banner')
     const logo = header.getByRole('link', { name: 'FixFlags' })
@@ -118,16 +129,17 @@ for (const width of [320, 375]) {
 test('legacy sample details redirects to the canonical Site sample', async ({ page }) => {
   await page.goto('/samples/details')
   await expect(page).toHaveURL(/\/samples(?:\?flag=[^#]+)?$/)
-  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
+  await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
 })
 
 test('curated sample demonstrates evidence, a proposed change, and a success condition', async ({ page }) => {
   await page.goto('/samples')
-  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
-  await expect(page.getByText('Evidence', { exact: true })).toBeVisible()
-  await expect(page.getByText('Proposed change', { exact: true })).toBeVisible()
-  await expect(page.getByText('Verify succeeds when', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /copy prompt/i })).toHaveCount(0)
+  await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
+  await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.observed, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.fix, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.verification, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: PUBLIC_SITE_COPY.samplePage.copy, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /verify|mark fixed/i })).toHaveCount(0)
 })
 
 test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
@@ -137,6 +149,7 @@ test('canonical sample reflows at 200% text size and respects reduced motion', a
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%'
   })
+  await page.evaluate(() => document.fonts.ready)
 
   const dimensions = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
@@ -188,14 +201,16 @@ test('unknown share tokens render an unavailable or not-found state', async ({ p
   ).toBeVisible()
 })
 
-test('parked power-tool docs and setup surfaces return not found', async ({ request }) => {
+test('parked power-tool help stays closed and website connection Docs remain available', async ({ request, page }) => {
   for (const path of [
     '/help/mcp-and-editors',
-    '/docs/integrations',
   ]) {
     const response = await request.get(path, { maxRedirects: 0 })
     expect(response.status(), path).toBe(404)
   }
+  await page.goto('/docs/integrations')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Integration guides')
+  await expect(page.getByRole('heading', { name: 'Available integrations' })).toBeVisible()
 })
 
 test('/help/mcp redirects to the help hub', async ({ request }) => {
@@ -218,7 +233,9 @@ test('auth and pricing entry points render without client errors', async ({ page
   pricingPage.on('pageerror', recordError)
   await pricingPage.goto('/pricing')
   await expect(pricingPage.getByText('$49', { exact: true })).toBeVisible()
-  await expect(pricingPage.getByRole('link', { name: 'Join the Studio waitlist' })).toBeVisible()
+  await pricingPage.getByRole('button', { name: BILLING_ACTION_COPY.waitlist.submitStudio, exact: true }).click()
+  await expect(pricingPage).toHaveURL(/\/waitlist\/studio$/)
+  await expect(pricingPage.getByRole('heading', { level: 1 })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -339,7 +356,8 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
       { timeout: 180_000 }
     )
     .toBeGreaterThan(0)
-  await expect(page.getByRole('button', { name: /copy prompt/i })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: PUBLIC_SITE_COPY.samplePage.copy, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /verify|mark fixed/i })).toHaveCount(0)
 
   await page.goto('/new')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')
@@ -387,7 +405,7 @@ for (const route of AXE_ROUTES) {
 
 test('accessibility: completed Site sample has no axe violations', async ({ page }) => {
   await page.goto('/samples')
-  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
+  await expect(page.locator('[data-testid="sample-site"]:visible')).toBeVisible()
   const results = await new AxeBuilder({ page: page as never }).analyze()
   expect((await inspectAccessibilityViolations(page, results.violations)).failures).toEqual([])
 })
@@ -435,9 +453,12 @@ for (const width of DENSITY_WIDTHS) {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/samples')
+    await page.locator('[data-testid="sample-site"]:visible').waitFor()
+    await page.evaluate(() => document.fonts.ready)
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%'
     })
+    await page.evaluate(() => document.fonts.ready)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
     const dimensions = await page.evaluate(() => ({
@@ -464,6 +485,7 @@ for (const width of DENSITY_WIDTHS) {
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%'
     })
+    await page.evaluate(() => document.fonts.ready)
     await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible()
 
     const dimensions = await page.evaluate(() => ({
