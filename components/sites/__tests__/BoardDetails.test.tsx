@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { BoardDetails } from '../BoardDetails'
 
 describe('card evidence', () => {
@@ -26,5 +26,20 @@ describe('card evidence', () => {
     render(<BoardDetails checkedAt="2026-10-07T12:00:00Z" sources={['FixFlags browser']} />)
     expect(screen.queryByRole('heading', { name: 'What was checked' })).not.toBeInTheDocument()
     expect(screen.getByText('FixFlags browser')).toBeVisible()
+  })
+  it('uses each page capture independently and preserves a missing or failed capture', () => {
+    render(<BoardDetails pages={[
+      { url: 'https://example.com/', title: 'Home', status: 'COMPLETED', capture: { url: '/api/screenshots/audit/desktop?page=home', viewport: '1280 × 720', recordedAt: null } },
+      { url: 'https://example.com/contact', title: 'Contact', status: 'PARTIAL', capture: { url: '/api/screenshots/audit/mobile?page=contact', viewport: '390 × 844', recordedAt: null } },
+      { url: 'https://example.com/shop', title: 'Shop', status: 'FAILED' },
+    ]} />)
+    expect(screen.getByRole('img', { name: 'Captured page: Home' })).toHaveAttribute('src', '/api/screenshots/audit/desktop?page=home')
+    const contact = screen.getByRole('img', { name: 'Captured page: Contact' })
+    expect(contact).toHaveAttribute('src', '/api/screenshots/audit/mobile?page=contact')
+    expect(screen.getByRole('img', { name: 'Preview of Shop: No screenshot recorded' })).toBeVisible()
+    fireEvent.error(contact)
+    expect(screen.getByRole('img', { name: 'Preview of Contact: Screenshot unavailable' })).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Captured page: Home' })).toBeVisible()
+    expect(screen.getByText('Partial')).toBeVisible()
   })
 })

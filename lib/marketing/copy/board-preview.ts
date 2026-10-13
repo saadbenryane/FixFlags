@@ -1,4 +1,11 @@
 export const BOARD_PREVIEW_COPY = {
+  detectedTools: 'Detected tools',
+  viewTools: 'View detected tools',
+  tools: (count: number) => count === 1 ? 'Tool' : 'Tools',
+  moreTools: (count: number) => `+${count} more`,
+  pagePreview: (page: string) => `Preview of ${page}`,
+  capturedPage: (page: string) => `Captured page: ${page}`,
+  noPageCapture: 'No screenshot recorded',
   pages: 'Pages',
   pagesNeedAttention: (count: number) => `${count} ${count === 1 ? 'needs' : 'need'} attention`,
   noPageFlags: 'No page Flags',

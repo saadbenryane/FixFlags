@@ -46,4 +46,16 @@ describe('authoritative Site refresh contract', () => {
     expect(() => readSiteHomeView({ ...fixture, uptime: { ...fixture.uptime, segments: [{ ...fixture.uptime!.segments[0], checked: -1 }] } }, 'fixture-site')).toThrow()
   })
 
+  it('retains page captures across refresh and rejects unsafe URLs or invalid capture times', () => {
+    const fixture = siteViewFixture()
+    fixture.checkedPages = [
+      { url: fixture.site.url, title: 'Home', status: 'COMPLETED', checkedAt: '2026-10-12T10:00:00Z', capture: { url: '/api/screenshots/fixture-audit/desktop?page=home', viewport: '1280 × 720', recordedAt: '2026-10-12T10:00:00Z' } },
+      { url: 'https://example.com/contact', title: 'Contact', status: 'PARTIAL', checkedAt: '2026-10-12T10:00:00Z', capture: null },
+    ]
+    expect(readSiteHomeView(JSON.parse(JSON.stringify(fixture)), 'fixture-site').checkedPages).toEqual(fixture.checkedPages)
+    const page = fixture.checkedPages[0]
+    expect(() => readSiteHomeView({ ...fixture, checkedPages: [{ ...page, capture: { ...page.capture, url: 'javascript:alert(1)' } }] }, 'fixture-site')).toThrow()
+    expect(() => readSiteHomeView({ ...fixture, checkedPages: [{ ...page, capture: { ...page.capture, recordedAt: 'unknown' } }] }, 'fixture-site')).toThrow()
+  })
+
 })

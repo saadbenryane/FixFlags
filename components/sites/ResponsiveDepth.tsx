@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import styles from './ResponsiveDepth.module.css'
 
 /** Desktop dialog, full-height sheet on a phone. Focus trap comes from the dialog. */
 export const responsiveDepthClass =
@@ -23,7 +24,7 @@ export function ResponsiveDepth({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(responsiveDepthClass, className)} onCloseAutoFocus={onCloseAutoFocus}>
+      <DialogContent className={cn(responsiveDepthClass, styles.depth, className)} onCloseAutoFocus={onCloseAutoFocus}>
         {children}
       </DialogContent>
     </Dialog>

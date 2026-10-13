@@ -18,7 +18,6 @@ import {
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { AvatarMenu } from '@/components/layout/AvatarMenu'
@@ -121,8 +120,7 @@ export function SidebarNav({
   return (
     <nav className="flex flex-col gap-1" aria-label="Main">
       {PRIMARY_ITEMS.map(renderItem)}
-      <Separator className="my-2" />
-      {secondaryItems.map(renderItem)}
+      <div className="mt-3 flex flex-col gap-1">{secondaryItems.map(renderItem)}</div>
     </nav>
   )
 }
@@ -131,7 +129,7 @@ export function SidebarFooter({ compact = false }: { compact?: boolean }) {
   const { user } = useMe()
 
   return (
-    <div className={cn('shrink-0 border-t border-border/60 py-3', compact ? 'px-2' : 'px-4')}>
+    <div className={cn('shrink-0 py-3', compact ? 'px-2' : 'px-4')}>
       <div className={cn('flex', compact ? 'flex-col items-center gap-1' : 'flex-col gap-3')}>
         {compact ? (
           <Tooltip>
@@ -170,8 +168,8 @@ export function SidebarFooter({ compact = false }: { compact?: boolean }) {
 export function DesktopSidebar({ showAdmin }: { showAdmin?: boolean }) {
   return (
     <TooltipProvider delayDuration={150}>
-      <aside className="fixed inset-y-0 z-navbar hidden w-48 flex-col border-r border-border/50 bg-background md:flex">
-        <div className="flex h-[var(--header-height)] shrink-0 items-center justify-center border-b border-border/40">
+      <aside className="fixed inset-y-0 z-navbar hidden w-48 flex-col bg-background md:flex">
+        <div className="flex h-[var(--header-height)] shrink-0 items-center justify-center">
           <Logo variant="lockup" size="sm" href="/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -197,7 +195,7 @@ export function MobileSidebar({ showAdmin }: { showAdmin?: boolean }) {
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>
-        <div className="flex h-[var(--header-height)] shrink-0 items-center border-b border-border/40 px-4">
+        <div className="flex h-[var(--header-height)] shrink-0 items-center px-4">
           <Logo variant="lockup" size="md" href="/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-4">

@@ -1,0 +1,4 @@
+.preview { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 120px; overflow: hidden; border-radius: var(--radius-control); background: hsl(var(--muted) / .4); }
+.preview img { display: block; width: 100%; height: auto; max-height: 200px; object-fit: contain; }
+.preview:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.empty { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; min-height: 120px; border-radius: var(--radius-control); background: hsl(var(--muted) / .4); color: hsl(var(--muted-foreground)); font-size: 12px; }

@@ -266,7 +266,7 @@ export type SampleCategory = {
   flagCount: number
   scope: string
   checkedAt: string | null
-  results: readonly { label: string; status: string; detail: string; flag?: SampleFlagId }[]
+  results: readonly { label: string; status: string; detail: string; flag?: SampleFlagId; capture?: { src: string; alt: string } }[]
   flag?: 'availability' | 'checkout'
   flags?: readonly SampleFlagId[]
   connection?: { label: string; body: string; href: string }
@@ -313,7 +313,7 @@ export const HOMEPAGE_SAMPLE = {
   analyzeAction: 'Analyze your website',
   resultsTitle: 'Results in this area',
   evidenceAction: 'Scope and evidence',
-  detailAction: 'View Flag and evidence',
+  detailAction: 'View Flag',
   fixTitle: 'Fix prompt',
   fixBody: 'Give your AI the prompt to fix it.',
   mcpAction: 'Learn about MCP',
@@ -344,7 +344,7 @@ export const HOMEPAGE_SAMPLE = {
   categories: [
     { id: 'site', name: CARD_CATALOG.site.name, state: 'problem', answer: '2 pages need attention', context: '12 pages scanned', status: '2 Flags', flagCount: 2, flag: 'availability', flags: ['availability', 'contact'],
       scope: '12 public pages, including the homepage, product pages, and pricing.', checkedAt: '2026-09-14T09:00:00Z',
-      results: [ { label: '/pricing', status: 'Flag', flag: 'availability', detail: 'The pricing page returned HTTP 404.' }, { label: '/contact', status: 'Flag', flag: 'contact', detail: 'The contact page took 4.2 seconds to show its main content on mobile.' }, { label: '10 other pages', status: 'Checked', detail: 'The other public pages opened successfully.' } ] },
+      results: [ { label: '/pricing', status: 'Flag', flag: 'availability', detail: 'The pricing page returned HTTP 404.', capture: { src: '/marketing/evidence/pricing-unavailable.png', alt: 'Pricing page showing a 404 response' } }, { label: '/contact', status: 'Flag', flag: 'contact', detail: 'The contact page took 4.2 seconds to show its main content on mobile.' }, { label: '10 other pages', status: 'Checked', detail: 'The other public pages opened successfully.' } ] },
     { id: 'conversion', name: CARD_CATALOG.conversion.name, state: 'problem', answer: CART_EXAMPLE.title, context: 'Add to cart · 0 items in the cart', status: '1 Flag', flagCount: 1, flag: 'checkout',
       scope: 'Product → Add to cart → cart → checkout entry. No payment or real order.', checkedAt: '2026-09-14T09:00:00Z',
       results: [ { label: 'Add to cart', status: 'Flag', detail: CART_EXAMPLE.observed }, { label: 'Signup', status: 'Not verified', detail: 'Account checks are shown separately when the website supports signup.' } ],

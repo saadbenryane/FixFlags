@@ -1,0 +1,15 @@
+.control { position: relative; min-width: 0; }
+.trigger { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-control); background: hsl(var(--muted) / .45); color: hsl(var(--muted-foreground)); font-size: 12px; }
+.trigger span { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.trigger svg { flex-shrink: 0; }
+.trigger > svg:first-child { color: hsl(var(--muted-foreground)); }
+.trigger[data-state='healthy'] > svg:first-child { color: hsl(var(--success)); }
+.trigger[data-state='attention'] > svg:first-child { color: hsl(var(--brand)); }
+.trigger:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.trigger:focus-visible, .manage:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.trigger[aria-expanded='true'] > svg:last-child { transform: rotate(180deg); }
+.panel { position: absolute; z-index: var(--z-dropdown); top: calc(100% + 8px); right: 0; display: grid; gap: 10px; width: 240px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: 18px; border-radius: var(--radius-board-panel); background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); box-shadow: var(--shadow-raised); text-align: left; white-space: normal; }
+.panel strong { font-size: 13px; font-weight: 600; }
+.panel p { margin: 0; font-size: 12px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.manage { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-control); background: hsl(var(--muted)); color: hsl(var(--foreground)); font-size: 12px; font-weight: 550; }
+.manage:hover { background: hsl(var(--accent)); }

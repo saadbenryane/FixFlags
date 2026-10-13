@@ -105,7 +105,7 @@ export function BoardGrid({ children, className, layout = 'grid' }: { children: 
 export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {
   state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void; showText?: boolean
 }) {
-  const content = <>{count > 0 ? <><span>{count} {count === 1 ? 'Flag' : 'Flags'}</span>{state === 'checking' ? <span>{text}</span> : null}</> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
+  const content = <>{count > 0 ? <><span className={styles.flagCount}>{count} {count === 1 ? 'Flag' : 'Flags'}</span>{state === 'checking' ? <span>{text}</span> : null}</> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
   const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
   return onOpen
     ? <button type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</button>
@@ -175,6 +175,7 @@ export function BoardCard({
     showFlagPreview ? styles.flagPreviewCard : '',
     showFlagPreview && (state === 'attention' || state === 'problem') ? styles.flagPreviewOpen : '',
     showFlagPreview && state === 'healthy' ? styles.flagPreviewClear : '',
+    compact && layout === 'card' && state === 'healthy' && !checking && !incompleteReason ? styles.healthyCard : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -187,6 +188,7 @@ export function BoardCard({
   const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
   const hiddenPreviewCount = Math.max(0, previewFlags.length - visiblePreviewFlags.length)
   const freshnessLabel = freshness ?? boardCardFreshnessText(checkedAt ?? null)
+  const cardFooter = footer ?? (compact && state === 'healthy' && !checking ? freshnessLabel : null)
 
   if (layout === 'row') {
     const clear = state === 'healthy' && count === 0 && !checking && !incompleteReason
@@ -258,7 +260,7 @@ export function BoardCard({
       ) : <strong className={metric ? styles.metric : styles.answer}>{answer}</strong>}
       {!showFlagPreview && detail ? <span className={styles.detail}>{detail}</span> : null}
       {incompleteReason ? <span className={styles.incompleteNote}>{incompleteReason}</span> : null}
-      {footer ? <span className={styles.footer}>{footer}</span> : null}
+      {cardFooter ? <span className={styles.footer}>{cardFooter}</span> : null}
       {href && !onOpen ? (
         <span className={styles.action}>
           <span className={compact ? 'sr-only' : undefined}>{openLabel}</span>

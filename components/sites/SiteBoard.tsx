@@ -3,15 +3,15 @@
 
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
-import { SitePreviewCard } from '@/components/layout/SitePreviewCard'
-import { BoardGrid,BoardSummaryStrip,ProductBoardCard } from '@/components/sites/BoardCard'
+import { ProductBoardCard } from '@/components/sites/BoardCard'
+import { SiteOverview } from '@/components/sites/SiteOverview'
+import { SiteCheckSections } from '@/components/sites/SiteCheckSections'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
 import { SiteMonitoringHistory } from '@/components/sites/SiteMonitoringHistory'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteSignupPrompt } from '@/components/sites/SiteSignupPrompt'
-import { TechnologyStrip } from '@/components/sites/SiteTooling'
 import { Button } from '@/components/ui/button'
 import { UptimeCard } from '@/components/uptime/UptimeCard'
 import { useMe } from '@/hooks/useMe'
@@ -19,7 +19,6 @@ import { useSiteResource } from '@/hooks/useSiteResource'
 import { SITE_BOARD_COPY,WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
-import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { outcomeCardFreshness,projectSiteBoard } from '@/lib/sites/board-view'
 import { type SiteCardArea } from '@/lib/sites/card-areas'
@@ -34,7 +33,6 @@ import type { Route } from 'next'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRef,useState } from 'react'
-import shellStyles from './SiteShell.module.css'
 
 const SiteCategoryDetails = dynamic(() => import('./SiteCategoryDetails').then(module => module.SiteCategoryDetails))
 const SiteIntegrationsControls = dynamic(() => import('./SiteIntegrationsControls').then(module => module.SiteIntegrationsControls))
@@ -158,26 +156,19 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <div className={shellStyles.previewSummary}>
-          <SitePreviewCard host={view.presentation.identity.host} captures={view.captures ?? []} />
-          <section className={shellStyles.findings} aria-label="Findings summary">
-            <h2>{SITE_WORKSPACE_COPY.findings}</h2>
-            <BoardSummaryStrip items={summaryItems} onSelect={() => {
-              const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')
-              target?.focus({ preventScroll: true }); target?.scrollIntoView({ behavior: 'instant', block: 'start' })
-            }} />
-            <p>{checking ? SITE_ACTION_COPY.execution.live : view.presentation.result.label}</p>
-            {!checking && view.presentation.freshness.checkedAt ? <p>{view.presentation.freshness.label}</p> : null}
-            <TechnologyStrip items={technologies} label={null} />
-          </section>
-        </div>
-        {ownsSite ? <div id="category-uptime" tabIndex={-1} className="pb-3"><UptimeCard siteId={siteId} summary={view.uptime ?? null}
+        <SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} summaryItems={summaryItems}
+          notice={['flags', 'clear'].includes(view.presentation.result.state) ? undefined : checking ? SITE_ACTION_COPY.execution.live : view.presentation.result.label}
+          technologies={technologies} onSelectSummary={item => {
+            if (item.id === 'pages') { opener.current = document.activeElement as HTMLElement; setSelectedCard('site'); return }
+            const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')
+            target?.focus({ preventScroll: true }); target?.scrollIntoView({ behavior: 'instant', block: 'start' })
+          }} />
+        <SiteCheckSections uptime={ownsSite ? <div id="category-uptime" tabIndex={-1}><UptimeCard siteId={siteId} summary={view.uptime ?? null}
           verification={confirmedOutcomes.filter(outcome => outcome.kind === 'AVAILABILITY' && outcome.inferenceSource !== 'user' && outcome.name === 'This page loads').map(outcome => <OutcomeSummaryCard key={outcome.id}
             compact layout="row" name={SITE_ACTION_COPY.outcome.availability} expectation={outcome.expectation ?? outcome.summary} coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)} href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
             answer={outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined} freshness={outcomeCardFreshness(outcome)}
             state={outcome.state} running={outcome.running} />)} /></div> : null}
-        <BoardGrid layout="rows">
-            {visibleCategories.map((category) => {
+            items={visibleCategories.map((category) => {
               const card = cardsById.get(category.id)!
               const execution = checking ? cardExecution(card.id, view.executionProgress) : null
               const displayCard = {
@@ -192,12 +183,13 @@ export function SiteBoard({ siteId, initial, viewMode = 'home' }: { siteId: stri
                 openFlagCount: category.flagCount,
                 ...(card.id === 'site' ? { facts: [], captureUrl: null, captureAlt: null } : {}),
               }
-              return <div key={card.id} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact layout="row" card={displayCard} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => <SitePromptCopyButton siteId={siteId} flagId={flag.id} compact iconOnly />} onOpen={() => {
+              return { id: card.id, flagCount: category.flagCount,
+                healthy: !checking && displayCard.state === 'healthy' && category.flagCount === 0 && displayCard.activity !== 'checking' && !card.incompleteReason,
+                render: (layout: 'card' | 'row') => <div id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact layout={layout} card={displayCard} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => <SitePromptCopyButton siteId={siteId} flagId={flag.id} compact iconOnly />} onOpen={() => {
                 opener.current = document.activeElement as HTMLElement
                 setSelectedCard(card.id)
-              }} /></div>
-            })}
-        </BoardGrid>
+              }} /></div> }
+            })} />
       </section> : null}
 
       {viewMode === 'timeline' ? <section id="timeline" aria-labelledby="timeline-heading"><h2 id="timeline-heading" className="sr-only">Timeline</h2><SiteMonitoringHistory points={monitoringPoints} events={timelineEvents} emptyMessage={B.noHistory} /></section> : null}

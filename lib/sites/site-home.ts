@@ -72,7 +72,7 @@ export type SiteHomeView = {
       at: string | null
     }
   }
-  checkedPages?: Array<{ url: string; title: string | null; status: string; checkedAt: string }>
+  checkedPages?: Array<{ url: string; title: string | null; status: string; checkedAt: string; capture?: { url: string; viewport: string; recordedAt: string | null } | null }>
   settings: {
     accountChecks?: AccountChecksView
     notificationLevel: 'FLAGS' | 'CRITICAL_ONLY' | 'OFF' | null

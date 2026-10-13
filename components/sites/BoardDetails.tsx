@@ -4,8 +4,10 @@ import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import styles from './BoardDetails.module.css'
 import { useState } from 'react'
+import { PageCapturePreview } from './PageCapturePreview'
+import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 
-export type CheckedPage = { url: string; title: string | null; status: string; checkedAt?: string }
+export type CheckedPage = { url: string; title: string | null; status: string; checkedAt?: string; capture?: { url: string; viewport: string; recordedAt: string | null } | null }
 
 export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, sources, coverage, facts = [], pages, children }: {
   image?: { src: string; alt: string } | null
@@ -29,6 +31,7 @@ export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, s
       {coverage ? <p>{coverage}</p> : null}
       {facts.length > 0 ? <ul>{[...new Set(facts)].filter(fact => fact !== coverage).map(fact => <li key={fact}>{fact}</li>)}</ul> : null}
       {pages ? pages.length > 0 ? <ul className={styles.pages}>{pages.map(page => <li key={page.url}>
+        <PageCapturePreview page={page.title || page.url} capture={page.capture ? { src: page.capture.url, alt: B.capturedPage(page.title || page.url) } : null} />
         <a href={page.url} target="_blank" rel="noopener noreferrer">{page.title || page.url}<small>{page.title ? page.url : null}</small></a>
         <span>{page.status === 'COMPLETED' ? 'Checked' : page.status === 'PARTIAL' ? 'Partial' : page.status === 'FAILED' ? 'Could not check' : 'In progress'}{page.checkedAt ? <small>{formatEvidenceTimestamp(page.checkedAt)}</small> : null}</span>
       </li>)}</ul> : <p>{C.noPages}</p> : null}

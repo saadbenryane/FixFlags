@@ -8,6 +8,7 @@ import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { UPTIME_COPY as U } from '@/lib/marketing/copy/uptime'
 import type { ToolItem } from '@/components/sites/SiteTooling'
+import type { BoardSummaryItem } from '@/components/sites/BoardCard'
 function isEmptyUncheckedCard(card: BoardCardView) {
   return card.id !== 'site' && !card.evidenced && !card.incompleteReason && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
 }
@@ -42,10 +43,13 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, signedIn: b
     return rank[left.state] - rank[right.state]
   })
   const pagesNeedingAttention = new Set(view.flags.filter(flag => flag.area === 'site').map(flag => flag.pageUrl ?? view.site.url)).size
-  const summaryItems = [
+  const summaryItems: BoardSummaryItem[] = [
     { value: view.presentation.flags.count, label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : view.presentation.flags.count === 1 ? 'Flag' : 'Flags', state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
   ]
-  const technologies: ToolItem[] = (view.technology?.items ?? []).slice(0, 6).map(item => ({
+  const recordedPageCount = view.checkedPages?.length ?? view.presentation.coverage.pagesReached
+  if (!checking && recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: B.pages,
+    detail: pagesNeedingAttention ? B.pagesNeedAttention(pagesNeedingAttention) : undefined, state: pagesNeedingAttention ? 'attention' : 'unknown' })
+  const technologies: ToolItem[] = (view.technology?.items ?? []).map(item => ({
     name: item.name,
     status: view.technology?.status === 'complete' ? 'Detected' : 'Detected in partial check',
     state: view.technology?.status === 'complete' ? 'healthy' : 'attention',
