@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import {
-  QUALITY_PRESCRIPTION_SCHEMA_OPENAI,
+  prescriptionProviderJsonSchema,
+  parsePrescriptionProviderOutput,
   flagPrescriptionSchema,
 } from '@/lib/audit/judge-prescription-schema'
 
@@ -26,13 +27,16 @@ function collectRequired(node: unknown, path: string[] = []): Array<{ path: stri
   return hits
 }
 
-describe('QUALITY_PRESCRIPTION_SCHEMA_OPENAI strict mode', () => {
-  it('lists every flagPrescription property in required (OpenAI strict)', () => {
-    const hits = collectRequired(QUALITY_PRESCRIPTION_SCHEMA_OPENAI)
-    const flagItem = hits.find((h) => h.path.includes('flagPrescriptions') && h.path.includes('items'))
-    assert.ok(flagItem, 'expected flagPrescriptions items required array')
+describe('prescription provider identity contract', () => {
+  it.each(['openai', 'anthropic'] as const)('requires every exact admitted identity and payload field for %s', provider => {
+    const keys = Array.from({ length: 12 }, (_, index) => `flag-${index}`)
+    const schema = prescriptionProviderJsonSchema([...keys, keys[0]], provider)
+    const hits = collectRequired(schema)
+    const flagMap = hits.find(hit => hit.path === 'flagPrescriptions')!
+    assert.deepEqual(flagMap.required, keys)
+    const flagItem = hits.find((h) => h.path === 'flagPrescriptions.flag-0')!
+    assert.ok(flagItem, 'expected keyed prescription payload')
     for (const key of [
-      'flagKey',
       'evidence',
       'whyItMatters',
       'fix',
@@ -46,6 +50,29 @@ describe('QUALITY_PRESCRIPTION_SCHEMA_OPENAI strict mode', () => {
     ]) {
       assert.ok(flagItem.required.includes(key), `missing required ${key}`)
     }
+    assert.equal(flagItem.required.includes('flagKey'), false)
+    const objects = schema.properties as Record<string, { additionalProperties: boolean }>
+    assert.equal(objects.flagPrescriptions.additionalProperties, false)
+  })
+
+  const payload = () => ({ evidence: 'The recorded button is hidden outside the mobile viewport.', whyItMatters: 'Visitors cannot continue to the cart.', fix: '1. Move the button into view.\n2. Keep its existing label.', agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null, verificationRule: 'Verify the button at the same viewport.' })
+  const rubrics = ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Address the recorded findings.', cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null }))
+
+  it('preserves exact identities independently of provider property order and repeated occurrences', () => {
+    const parsed = parsePrescriptionProviderOutput({ flagPrescriptions: { 'flag-b': payload(), 'flag-a': payload() }, rubricPrescriptions: rubrics }, ['flag-a', 'flag-b', 'flag-a'])
+    assert.deepEqual(parsed.flagPrescriptions.map(item => item.flagKey), ['flag-a', 'flag-b'])
+    assert.equal(parsed.flagPrescriptions[0].evidence, payload().evidence)
+  })
+
+  it('refuses missing, invented and nested replacement identities instead of fabricating prescriptions', () => {
+    for (const flagPrescriptions of [{ 'flag-a': payload() }, { 'flag-a': payload(), 'flag-b': payload(), 'flag-c': payload() }, { 'flag-a': { ...payload(), flagKey: 'flag-z' }, 'flag-b': payload() }]) {
+      assert.throws(() => parsePrescriptionProviderOutput({ flagPrescriptions, rubricPrescriptions: rubrics }, ['flag-a', 'flag-b']), /Invalid prescription output/)
+    }
+  })
+
+  it('accepts a genuinely empty Flag set and rejects an empty admitted key', () => {
+    assert.deepEqual(parsePrescriptionProviderOutput({ flagPrescriptions: {}, rubricPrescriptions: rubrics }, []).flagPrescriptions, [])
+    assert.throws(() => prescriptionProviderJsonSchema([' '], 'openai'), /nonempty/)
   })
 
   it('accepts null agentPrompt in zod parse', () => {

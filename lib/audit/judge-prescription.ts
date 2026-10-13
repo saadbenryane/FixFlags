@@ -1,9 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import {
-  prescriptionOutputSchema,
-  QUALITY_PRESCRIPTION_TOOL,
-  QUALITY_PRESCRIPTION_SCHEMA_OPENAI,
+  prescriptionProviderJsonSchema,
+  parsePrescriptionProviderOutput,
   type PrescriptionOutput,
 } from './judge-prescription-schema'
 import {
@@ -50,11 +49,8 @@ function parsePrescriptionOutput(
   raw: unknown,
   existingFlags: ExistingFlagForPrescription[]
 ): PrescriptionOutput {
-  const parsed = prescriptionOutputSchema.safeParse(raw)
-  if (!parsed.success) {
-    throw new Error(`Invalid prescription output: ${parsed.error.message}`)
-  }
-  return validatePrescriptionOutput(parsed.data, existingFlags)
+  const parsed = parsePrescriptionProviderOutput(raw, existingFlags.map(flag => flag.flagKey))
+  return validatePrescriptionOutput(parsed, existingFlags)
 }
 
 export function validatePrescriptionOutput(
@@ -122,6 +118,13 @@ function sharesEvidenceTokens(
   return overlap >= 2
 }
 
+function sharesRecordedTarget(fix: string, problem: string, evidence: string): boolean {
+  const common = new Set(['the', 'and', 'for', 'with', 'from', 'this', 'that', 'has', 'have', 'are', 'was', 'were', 'will', 'can', 'its', 'your', 'before', 'after', 'when', 'where', 'should', 'would', 'without', 'into', 'all', 'any', 'not', 'page', 'website', 'site', 'issue', 'problem', 'missing', 'current', 'currently', 'user', 'users', 'visitor', 'visitors', 'customer', 'customers', 'make', 'more', 'improve', 'ensure'])
+  const source = tokenizeForOverlap(`${problem} ${evidence}`)
+  const matching = [...tokenizeForOverlap(fix)].filter(token => !common.has(token) && source.has(token))
+  return matching.length >= 2
+}
+
 function validateFixQuality(
   rx: {
     flagKey: string
@@ -136,9 +139,9 @@ function validateFixQuality(
   const fix = rx.fix.trim()
 
   const lines = fix.split('\n').filter((l) => l.trim().length > 0)
-  if (lines.length < 2) {
+  if (lines.length === 0) {
     throw new JudgeContractError(
-      `fix for ${rx.flagKey} must contain at least 2 numbered steps, got ${lines.length} line(s)`
+      `fix for ${rx.flagKey} must contain a concrete action`
     )
   }
 
@@ -148,21 +151,25 @@ function validateFixQuality(
       `${existing.problem} ${existing.evidence}`
     )
 
+  const actionText = fix.toLowerCase()
+  const namesRecordedTarget = existing != null && sharesRecordedTarget(fix, existing.problem, existing.evidence)
+
   const hasSpecificity =
     fix.includes('→') ||
-    fix.includes('replace') ||
-    fix.includes('change') ||
-    fix.includes('update') ||
-    fix.includes('add') ||
-    fix.includes('remove') ||
-    fix.includes('delete') ||
-    fix.includes('set') ||
+    actionText.includes('replace') ||
+    actionText.includes('change') ||
+    actionText.includes('update') ||
+    actionText.includes('add') ||
+    actionText.includes('remove') ||
+    actionText.includes('delete') ||
+    actionText.includes('set') ||
     fix.includes('href=') ||
     fix.includes('alt=') ||
     fix.includes('content=') ||
     fix.includes('class=') ||
     (fix.includes('aria-') && findingLooksLikeA11yInteraction) ||
     fix.includes('`') ||
+    namesRecordedTarget ||
     /\b(title|description|og:|meta|h1|h2|button|link|nav|header|footer|section|img|input|form)\b/i.test(
       fix
     )
@@ -232,7 +239,8 @@ async function runAnthropicPrescription(
             cache_control: { type: 'ephemeral' },
           },
         ],
-        tools: [QUALITY_PRESCRIPTION_TOOL],
+        tools: [{ name: 'quality_prescription', description: 'Generate fix prompts and evidence for an already-diagnosed audit',
+          input_schema: prescriptionProviderJsonSchema(context.existingFlags.map(flag => flag.flagKey), 'anthropic') as Anthropic.Tool.InputSchema }],
         tool_choice: { type: 'tool', name: 'quality_prescription' },
         messages: [
           {
@@ -345,7 +353,7 @@ async function runOpenAIPrescription(
           json_schema: {
             name: 'quality_prescription',
             strict: true,
-            schema: QUALITY_PRESCRIPTION_SCHEMA_OPENAI,
+            schema: prescriptionProviderJsonSchema(context.existingFlags.map(flag => flag.flagKey), 'openai'),
           },
         },
         messages: [
@@ -402,11 +410,19 @@ function isPrescriptionAttemptRetryable(err: unknown): boolean {
 
 const PRESCRIPTION_BATCH_SIZE = 12
 
-function chunkFlags<T>(items: T[], size: number): T[][] {
+export function prescriptionFlagBatches<T extends { flagKey: string }>(items: T[], size: number): T[][] {
+  if (!Number.isInteger(size) || size < 1) throw new Error('Prescription batch size must be positive')
   if (items.length === 0) return [[]]
+  const occurrences = new Map<string, T[]>()
+  for (const item of items) {
+    const group = occurrences.get(item.flagKey) ?? []
+    group.push(item)
+    occurrences.set(item.flagKey, group)
+  }
+  const groups = [...occurrences.values()]
   const batches: T[][] = []
-  for (let i = 0; i < items.length; i += size) {
-    batches.push(items.slice(i, i + size))
+  for (let i = 0; i < groups.length; i += size) {
+    batches.push(groups.slice(i, i + size).flat())
   }
   return batches
 }
@@ -433,11 +449,11 @@ export async function runPrescriptionWithRetry(
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
   const flags = context.existingFlags
-  if (flags.length <= PRESCRIPTION_BATCH_SIZE) {
+  const batches = prescriptionFlagBatches(flags, PRESCRIPTION_BATCH_SIZE)
+  if (batches.length === 1) {
     return runPrescriptionBatch(context, desktopBase64, mobileBase64, maxTimeoutMs)
   }
 
-  const batches = chunkFlags(flags, PRESCRIPTION_BATCH_SIZE)
   const flagPrescriptions: PrescriptionOutput['flagPrescriptions'] = []
   let rubricPrescriptions: PrescriptionOutput['rubricPrescriptions'] = []
   let inputTokens = 0

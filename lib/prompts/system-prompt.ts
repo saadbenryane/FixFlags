@@ -321,7 +321,7 @@ ${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${contex
 Rubric grades from triage:
 ${context.rubrics.map((r) => `- ${r.name}: ${r.grade}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
 
-Existing flags (prescribe for EVERY one using its flagKey):
+Existing flags (return flagPrescriptions as an object with every unique exact flagKey below as a required property; each value contains its prescription, without repeating flagKey inside it):
 ${context.existingFlags.map((f) => {
     const lines = [`[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`]
     if (f.pageUrl) lines.push(`  Page: ${f.pageUrl}`)

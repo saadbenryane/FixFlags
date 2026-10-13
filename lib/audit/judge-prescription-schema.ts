@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type Anthropic from '@anthropic-ai/sdk'
 import { rubricNameSchema } from './judge-schema'
 import { toJsonSchema, toOpenApiNullableSchema, stripFormatKeyword } from './zod-json-schema'
 
@@ -69,18 +68,28 @@ export const prescriptionOutputSchema = z.object({
 
 export type PrescriptionOutput = z.infer<typeof prescriptionOutputSchema>
 
-export const QUALITY_PRESCRIPTION_SCHEMA = toOpenApiNullableSchema(
-  toJsonSchema(prescriptionOutputSchema)
-) as Record<string, unknown>
-
-export const QUALITY_PRESCRIPTION_TOOL: Anthropic.Tool = {
-  name: 'quality_prescription',
-  description: 'Generate fix prompts and evidence for an already-diagnosed audit',
-  input_schema: QUALITY_PRESCRIPTION_SCHEMA as Anthropic.Tool.InputSchema,
+/** The provider cannot omit or invent an admitted Flag identity. */
+function providerOutputSchema(flagKeys: string[]) {
+  const entry = flagPrescriptionSchema.omit({ flagKey: true }).strict()
+  const keys = [...new Set(flagKeys)]
+  if (keys.some(key => !key.trim())) throw new Error('Prescription Flag keys must be nonempty')
+  return z.object({
+    flagPrescriptions: z.object(Object.fromEntries(keys.map(key => [key, entry]))).strict(),
+    rubricPrescriptions: prescriptionOutputSchema.shape.rubricPrescriptions,
+  }).strict()
 }
 
-const prescriptionBaseJsonSchema = toJsonSchema(prescriptionOutputSchema)
+export function prescriptionProviderJsonSchema(flagKeys: string[], provider: 'openai' | 'anthropic') {
+  const schema = toJsonSchema(providerOutputSchema(flagKeys))
+  return (provider === 'openai' ? stripFormatKeyword(schema) : toOpenApiNullableSchema(schema)) as Record<string, unknown>
+}
 
-export const QUALITY_PRESCRIPTION_SCHEMA_OPENAI = stripFormatKeyword(
-  prescriptionBaseJsonSchema
-) as Record<string, unknown>
+/** Normalize actual keyed provider content into the existing stored contract. */
+export function parsePrescriptionProviderOutput(raw: unknown, flagKeys: string[]): PrescriptionOutput {
+  const parsed = providerOutputSchema(flagKeys).safeParse(raw)
+  if (!parsed.success) throw new Error(`Invalid prescription output: ${parsed.error.message}`)
+  return {
+    flagPrescriptions: Object.entries(parsed.data.flagPrescriptions).map(([flagKey, prescription]) => ({ ...prescription, flagKey })),
+    rubricPrescriptions: parsed.data.rubricPrescriptions,
+  }
+}

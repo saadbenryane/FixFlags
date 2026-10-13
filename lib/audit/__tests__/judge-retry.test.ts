@@ -2,7 +2,25 @@ import { describe, it } from 'vitest'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import assert from 'node:assert/strict'
 import { isRetryableJudgeError } from '@/lib/audit/judge'
-import { validatePrescriptionOutput } from '@/lib/audit/judge-prescription'
+import { validatePrescriptionOutput, prescriptionFlagBatches } from '@/lib/audit/judge-prescription'
+
+describe('prescription occurrence batching', () => {
+  it('keeps every occurrence of one Flag key in the same batch and preserves all page evidence', () => {
+    const rows = Array.from({ length: 13 }, (_, index) => ({ flagKey: `flag-${index}`, pageUrl: `/page-${index}` }))
+    rows.push({ flagKey: 'flag-0', pageUrl: '/another-page' })
+    const batches = prescriptionFlagBatches(rows, 12)
+    assert.equal(batches.length, 2)
+    assert.deepEqual(batches.flat().filter(row => row.flagKey === 'flag-0').map(row => row.pageUrl), ['/page-0', '/another-page'])
+    assert.equal(batches.filter(batch => batch.some(row => row.flagKey === 'flag-0')).length, 1)
+    assert.deepEqual(batches.flat().map(row => row.pageUrl).sort(), rows.map(row => row.pageUrl).sort())
+    for (const batch of batches) assert.ok(new Set(batch.map(row => row.flagKey)).size <= 12)
+  })
+
+  it('does not create missing observations and rejects an invalid batch allocation', () => {
+    assert.deepEqual(prescriptionFlagBatches([], 12), [[]])
+    assert.throws(() => prescriptionFlagBatches([{ flagKey: 'flag-1' }], 0), /positive/)
+  })
+})
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'
 
 describe('isRetryableJudgeError', () => {
@@ -57,6 +75,23 @@ describe('isRetryableJudgeError', () => {
 
 describe('validatePrescriptionOutput', () => {
   const makeFlag = (flagKey: string): any => ({ flagKey, id: `id-${flagKey}` })
+
+  it('accepts one precise action while refusing blank or nonspecific advice', () => {
+    const prescription = { flagKey: 'title-missing', evidence: 'The recorded product page has an empty title tag.', whyItMatters: 'Visitors cannot identify the product in their browser tab.', fix: 'Set the empty <title> to the recorded product name.', verificationRule: 'Reload the same page and verify its title.' }
+    const output = { flagPrescriptions: [prescription], rubricPrescriptions: ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Address the recorded findings.' })) }
+    assert.equal(validatePrescriptionOutput(output as any, [makeFlag('title-missing')]), output)
+    for (const fix of ['', 'Make it better.']) {
+      assert.throws(() => validatePrescriptionOutput({ ...output, flagPrescriptions: [{ ...prescription, fix }] } as any, [makeFlag('title-missing')]), JudgeContractError)
+    }
+  })
+
+  it('recognizes a recorded HTTP target without requiring a frontend selector', () => {
+    const existing = { ...makeFlag('security-headers-missing'), problem: 'Required security headers are absent.', evidence: 'The response lacks Content-Security-Policy and Strict-Transport-Security headers.' }
+    const prescription = { flagKey: existing.flagKey, evidence: existing.evidence, whyItMatters: 'The browser lacks the recorded transport and content protections.', fix: 'Configure Content-Security-Policy and Strict-Transport-Security on the response.', verificationRule: 'Fetch the same URL and verify both response headers.' }
+    const output = { flagPrescriptions: [prescription], rubricPrescriptions: ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Address the recorded findings.' })) }
+    assert.equal(validatePrescriptionOutput(output as any, [existing]), output)
+    assert.throws(() => validatePrescriptionOutput({ ...output, flagPrescriptions: [{ ...prescription, fix: 'Improve the website for your customers.' }] } as any, [existing]), /lacks specificity/)
+  })
 
   it('passes when outputs match existing flags exactly', () => {
     const output = {
