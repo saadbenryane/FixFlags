@@ -148,9 +148,9 @@ export async function runAiReview(auditId: string): Promise<void> {
       mobileScreenshot: Boolean(mobileBase64),
       metadata: true,
       aiAssessment: true,
-      desktopPageSpeed: evidence?.desktopPageSpeed ?? true,
-      mobilePageSpeed: evidence?.mobilePageSpeed ?? true,
-      flowScan: evidence?.flowScan ?? Boolean(audit.flowData),
+      desktopPageSpeed: evidence?.desktopPageSpeed === true,
+      mobilePageSpeed: evidence?.mobilePageSpeed === true,
+      flowScan: evidence?.flowScan === true,
     },
   })
   })

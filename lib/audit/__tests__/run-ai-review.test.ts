@@ -193,6 +193,16 @@ describe('runAiReview', () => {
     expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ auditId: 'a1' }))
   })
 
+  it.each([null, {}, { desktopPageSpeed: true }])('preserves missing observations during prescription completion: %j', async evidenceCoverage => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, evidenceCoverage, flowData: {} })
+    await runAiReview('a1')
+    expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ evidence: expect.objectContaining({
+      desktopPageSpeed: evidenceCoverage?.desktopPageSpeed === true,
+      mobilePageSpeed: false,
+      flowScan: false,
+    }) }))
+  })
+
   it('records AI_REVIEW_FAILED and rethrows on prescription errors', async () => {
     mocks.runPrescriptionWithRetry.mockRejectedValue(new Error('provider exploded'))
     await assert.rejects(() => runAiReview('a1'), /provider exploded/)
