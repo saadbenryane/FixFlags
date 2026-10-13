@@ -70,7 +70,7 @@
       "description": "Review tenant isolation, public reads, webhooks, secrets, and middleware.",
       "sources": [
         { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Security contract." },
-        { "path": "middleware.ts", "status": "supporting", "authority": "architecture", "reason": "Request boundary." },
+        { "path": "proxy.ts", "status": "supporting", "authority": "architecture", "reason": "Request boundary." },
         { "path": "lib/graph/queries.ts", "status": "supporting", "authority": "architecture", "reason": "Public graph read boundary." }
       ],
       "commands": ["npm run security:audit"]
