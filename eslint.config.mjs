@@ -33,7 +33,7 @@ const config = [
       import: importPlugin,
     },
     rules: {
-      ...nextPlugin.flatConfig.coreWebVitals.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
       ...reactPlugin.configs.recommended.rules,
       ...reactPlugin.configs['jsx-runtime'].rules,
       // Preserve the established hook checks while React Compiler remains disabled.
