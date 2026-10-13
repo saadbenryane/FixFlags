@@ -23,15 +23,14 @@ import { assertKeyboardReachesTheSurface, assertSiteSurfaceMeetsLaunchBar } from
  * Required env (see scripts/release-preflight.mjs for the full list):
  *   E2E_CREDENTIALED / E2E_BASE_URL / RELEASE_FRESH_DATABASE_URL
  *   RELEASE_ALLOW_DATABASE_RESET
- *   E2E_SITE_OWNER_EMAIL / E2E_SITE_OWNER_PASSWORD — the claimed Site's owner
- *   E2E_SITE_ID                                   — the claimed Site
- *   E2E_DEPLOYMENT_TRIGGER_URL / _TOKEN           — the controlled release
+ *   E2E_SITE_OWNER_EMAIL / E2E_SITE_OWNER_PASSWORD: the claimed Site's owner
+ *   E2E_SITE_ID: the claimed Site
+ *   E2E_DEPLOYMENT_TRIGGER_URL / _TOKEN: the controlled release
  *     fixture that induces and repairs the failure being verified
- *   E2E_GATE_NON_MEMBER_EMAIL / _PASSWORD         — a second, unrelated owner
+ *   E2E_GATE_NON_MEMBER_EMAIL / _PASSWORD: a second, unrelated owner
  *
  * Optional env:
- *   E2E_OUTCOME_ID — defaults to the Site's first independently executable
- *     Outcome, so a release run does not have to pin an id.
+ *   E2E_OUTCOME_ID: defaults to the Site's rendered-page availability Outcome.
  */
 
 const credentialedEnabled =
@@ -99,19 +98,19 @@ async function waitForRunResult(
   expected: string,
   timeoutMs = 420_000,
 ): Promise<RunView> {
-  await expect
-    .poll(
-      async () => {
-        const response = await request.get(`/api/sites/${siteId}/runs/${runId}`)
-        if (response.status() !== 200) return `HTTP_${response.status()}`
-        const run = (await response.json()) as RunView
-        if (run.status !== 'COMPLETED') return `run:${run.status}`
-        return run.result
-      },
-      { timeout: timeoutMs, message: `Outcome never reached ${expected}` },
-    )
-    .toBe(expected)
-  return (await (await request.get(`/api/sites/${siteId}/runs/${runId}`)).json()) as RunView
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const response = await request.get(`/api/sites/${siteId}/runs/${runId}`)
+    expect(response.status(), await response.text()).toBe(200)
+    const run = (await response.json()) as RunView
+    expect(run.status, `Outcome run ${runId} failed`).not.toBe('FAILED')
+    if (run.status === 'COMPLETED') {
+      expect(run.result, `Completed Outcome run ${runId}`).toBe(expected)
+      return run
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
+  }
+  throw new Error(`Outcome run ${runId} did not settle within ${timeoutMs}ms`)
 }
 
 /**
@@ -125,7 +124,7 @@ async function setFixtureBroken(
 ): Promise<void> {
   const response = await request.post(requiredEnv('E2E_DEPLOYMENT_TRIGGER_URL'), {
     headers: { authorization: `Bearer ${requiredEnv('E2E_DEPLOYMENT_TRIGGER_TOKEN')}` },
-    data: input,
+    data: { ...input, broken: false, outage: input.broken },
   })
   expect(response.ok(), await response.text()).toBe(true)
 }
@@ -163,10 +162,10 @@ function targetOutcomeId(home: SiteHome): string {
   const pinned = process.env.E2E_OUTCOME_ID?.trim()
   if (pinned) return pinned
   const executable = home.outcomes.find(
-    (outcome) => outcome.kind !== 'GENERIC' && outcome.pageUrls.length > 0,
+    (outcome) => outcome.kind === 'AVAILABILITY' && outcome.pageUrls.length > 0,
   )
   if (!executable) {
-    throw new Error('This Site has no independently executable Outcome to verify')
+    throw new Error('This Site has no supported rendered-page availability Outcome to verify')
   }
   return executable.id
 }
@@ -195,80 +194,89 @@ test.describe('Outcome customer loop', () => {
     const outcomeId = targetOutcomeId(start)
     // The Outcome under test must be independently executable, not a heuristic leftover.
     expect(flagForOutcome(start, outcomeId).outcome).toBeTruthy()
+    expect(flagForOutcome(start, outcomeId).outcome.kind).toBe('AVAILABILITY')
 
-    // 1. Clear. FixFlags exercised the Outcome itself and reached a trustworthy conclusion.
-    const clearRun = await startRun(ownerRequest, siteId, outcomeId, 'clear')
-    const cleared = await waitForRunResult(ownerRequest, siteId, clearRun.runId, 'CLEAR')
-    expect(cleared.outcomes[0]?.summary, 'a Clear states its evidence').toBeTruthy()
+    try {
 
-    const afterClear = await loadHome(ownerRequest, siteId)
-    expect(flagForOutcome(afterClear, outcomeId).matches, 'a Clear Outcome has no open Flag').toEqual([])
+      // 1. Clear. FixFlags exercised the Outcome itself and reached a trustworthy conclusion.
+      const clearRun = await startRun(ownerRequest, siteId, outcomeId, 'clear')
+      const cleared = await waitForRunResult(ownerRequest, siteId, clearRun.runId, 'CLEAR')
+      expect(cleared.outcomes[0]?.summary, 'a Clear states its evidence').toBeTruthy()
 
-    // 2. An induced, independently caught failure produces a Flag for that Outcome.
-    await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId: outcomeId, broken: true })
-    const flagRun = await startRun(ownerRequest, siteId, outcomeId, 'flag')
-    await waitForRunResult(ownerRequest, siteId, flagRun.runId, 'FLAG')
+      const afterClear = await loadHome(ownerRequest, siteId)
+      expect(flagForOutcome(afterClear, outcomeId).matches, 'a Clear Outcome has no open Flag').toEqual([])
 
-    const afterFlag = await loadHome(ownerRequest, siteId)
-    const flagged = flagForOutcome(afterFlag, outcomeId)
-    expect(flagged.outcome.state).toBe('FLAG')
-    expect(flagged.matches.length, 'one Outcome failure is one Flag').toBe(1)
-    const flagId = flagged.matches[0]!.id
+      // 2. An induced, independently caught failure produces a Flag for that Outcome.
+      await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId: outcomeId, broken: true })
+      const flagRun = await startRun(ownerRequest, siteId, outcomeId, 'flag')
+      await waitForRunResult(ownerRequest, siteId, flagRun.runId, 'FLAG')
 
-    // The Flag carries its proof and its limit, never a score.
-    expect(flagged.matches[0]!.evidence.length).toBeGreaterThan(0)
-    expect(flagged.matches[0]!.fix.length).toBeGreaterThan(0)
+      const afterFlag = await loadHome(ownerRequest, siteId)
+      const flagged = flagForOutcome(afterFlag, outcomeId)
+      expect(flagged.outcome.state).toBe('FLAG')
+      expect(flagged.matches.length, 'one Outcome failure is one Flag').toBe(1)
+      const flagId = flagged.matches[0]!.id
 
-    await owner.page.goto(`/sites/${siteId}/flags/${flagId}`)
-    await expect(owner.page.getByText(flagged.matches[0]!.problem, { exact: false }).first()).toBeVisible()
+      // The Flag carries its proof and its limit, never a score.
+      expect(flagged.matches[0]!.evidence.length).toBeGreaterThan(0)
+      expect(flagged.matches[0]!.fix.length).toBeGreaterThan(0)
 
-    // 3. Taking the fix elsewhere must not move the verdict. Recording is not proving.
-    const handoff = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/fix`, {
-      data: { action: 'copy' },
-    })
-    expect(handoff.status(), await handoff.text()).toBe(200)
-    const afterHandoff = await loadHome(ownerRequest, siteId)
-    expect(flagForOutcome(afterHandoff, outcomeId).outcome.state, 'a handoff is not a verdict').toBe('FLAG')
-    expect(flagForOutcome(afterHandoff, outcomeId).matches.length, 'the Flag stays open').toBe(1)
+      await owner.page.goto(`/sites/${siteId}/flags/${flagId}`)
+      await expect(owner.page.getByText(flagged.matches[0]!.problem, { exact: false }).first()).toBeVisible()
 
-    // 4. Verify against an unrepaired fixture stays open. Absence is not recovery.
-    const blocked = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
-    expect(blocked.status(), await blocked.text()).toBe(200)
-    const blockedRun = (await blocked.json()) as { runId: string; attemptId: string | null }
-    expect(blockedRun.runId, 'verify starts a fresh independent run').toBeTruthy()
-    await waitForRunResult(ownerRequest, siteId, blockedRun.runId, 'FLAG')
+      // 3. Taking the fix elsewhere must not move the verdict. Recording is not proving.
+      const handoff = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/fix`, {
+        data: { action: 'copy' },
+      })
+      expect(handoff.status(), await handoff.text()).toBe(200)
+      const afterHandoff = await loadHome(ownerRequest, siteId)
+      expect(flagForOutcome(afterHandoff, outcomeId).outcome.state, 'a handoff is not a verdict').toBe('FLAG')
+      expect(flagForOutcome(afterHandoff, outcomeId).matches.length, 'the Flag stays open').toBe(1)
 
-    const afterFailedVerify = await loadHome(ownerRequest, siteId)
-    expect(flagForOutcome(afterFailedVerify, outcomeId).outcome.state).toBe('FLAG')
-    expect(flagForOutcome(afterFailedVerify, outcomeId).matches.length, 'a failed Verify leaves the Flag open')
-      .toBe(1)
+      // 4. Verify against an unrepaired fixture stays open. Absence is not recovery.
+      const blocked = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
+      expect(blocked.status(), await blocked.text()).toBe(200)
+      const blockedRun = (await blocked.json()) as { runId: string; attemptId: string | null }
+      expect(blockedRun.runId, 'verify starts a fresh independent run').toBeTruthy()
+      await waitForRunResult(ownerRequest, siteId, blockedRun.runId, 'FLAG')
 
-    // 5. A comparable recovery resolves the same Flag.
-    await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId, broken: false })
-    const recovery = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
-    expect(recovery.status(), await recovery.text()).toBe(200)
-    const recoveryRun = (await recovery.json()) as { runId: string }
-    await waitForRunResult(ownerRequest, siteId, recoveryRun.runId, 'CLEAR')
+      const afterFailedVerify = await loadHome(ownerRequest, siteId)
+      expect(flagForOutcome(afterFailedVerify, outcomeId).outcome.state).toBe('FLAG')
+      expect(flagForOutcome(afterFailedVerify, outcomeId).matches.length, 'a failed Verify leaves the Flag open')
+        .toBe(1)
 
-    const afterRecovery = await loadHome(ownerRequest, siteId)
-    expect(flagForOutcome(afterRecovery, outcomeId).outcome.state, 'a proven recovery is Clear').toBe('CLEAR')
-    expect(
-      flagForOutcome(afterRecovery, outcomeId).matches,
-      'a resolved Flag stops being an open Flag',
-    ).toEqual([])
+      // 5. A comparable recovery resolves the same Flag.
+      await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId, broken: false })
+      const recovery = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
+      expect(recovery.status(), await recovery.text()).toBe(200)
+      const recoveryRun = (await recovery.json()) as { runId: string }
+      await waitForRunResult(ownerRequest, siteId, recoveryRun.runId, 'CLEAR')
 
-    // 6. Recurrence reopens the same Flag identity rather than opening a second one.
-    await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId, broken: true })
-    const recurRun = await startRun(ownerRequest, siteId, outcomeId, 'recur')
-    await waitForRunResult(ownerRequest, siteId, recurRun.runId, 'FLAG')
+      const afterRecovery = await loadHome(ownerRequest, siteId)
+      expect(flagForOutcome(afterRecovery, outcomeId).outcome.state, 'a proven recovery is Clear').toBe('CLEAR')
+      expect(
+        flagForOutcome(afterRecovery, outcomeId).matches,
+        'a resolved Flag stops being an open Flag',
+      ).toEqual([])
 
-    const afterRecurrence = await loadHome(ownerRequest, siteId)
-    const recurred = flagForOutcome(afterRecurrence, outcomeId)
-    expect(recurred.outcome.state).toBe('FLAG')
-    expect(recurred.matches.length, 'recurrence is one Flag, not a pile').toBe(1)
-    expect(recurred.matches[0]!.id, 'recurrence keeps the Flag identity').toBe(flagId)
+      // 6. Recurrence reopens the same Flag identity rather than opening a second one.
+      await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId, broken: true })
+      const recurRun = await startRun(ownerRequest, siteId, outcomeId, 'recur')
+      await waitForRunResult(ownerRequest, siteId, recurRun.runId, 'FLAG')
 
-    await owner.close()
+      const afterRecurrence = await loadHome(ownerRequest, siteId)
+      const recurred = flagForOutcome(afterRecurrence, outcomeId)
+      expect(recurred.outcome.state).toBe('FLAG')
+      expect(recurred.matches.length, 'recurrence is one Flag, not a pile').toBe(1)
+      expect(recurred.matches[0]!.id, 'recurrence keeps the Flag identity').toBe(flagId)
+
+    } finally {
+      try {
+        await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId: outcomeId, broken: false })
+      } finally {
+        await owner.close()
+      }
+    }
   })
 
   test('[journey:site-surfaces] Home, Flags, Outcome, Flag, and Settings meet the launch bar', async ({

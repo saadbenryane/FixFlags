@@ -81,9 +81,9 @@ function SiteShellContent({
 
   return <div className={cn(styles.workspace, signedIn && styles.withAccount)}>
     <SiteAccountRail />
-    <div className={styles.mobileAccount}><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
+    <header className={styles.mobileAccount} aria-label={SITE_WORKSPACE_COPY.accountMenu}><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
       {signedIn ? <MobileSidebar showAdmin={user?.isAdmin} /> : <SiteChromeAuth />}
-    </div>
+    </header>
     <aside className={styles.websiteSidebar} aria-label={SITE_WORKSPACE_COPY.siteMenu}>
       {!signedIn ? <div className={styles.anonymousBrand}><Logo variant="lockup" size="sm" /></div> : null}
       <div className={styles.identity}>

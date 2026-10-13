@@ -192,14 +192,14 @@ async function main() {
         where: {
           projectId: audit.projectId,
           enabled: true,
-          kind: { not: 'GENERIC' },
+          kind: 'AVAILABILITY',
           bindings: { some: { enabled: true, required: true } },
         },
         orderBy: [{ criticality: 'asc' }, { createdAt: 'asc' }],
         select: { id: true },
       })
       if (!outcome) {
-        throw new Error(`Fixture Site ${review.siteId} has no independently executable Outcome`)
+        throw new Error(`Fixture Site ${review.siteId} has no supported rendered-page availability Outcome`)
       }
       fixture.outcomeId = outcome.id
     }
