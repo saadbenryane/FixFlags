@@ -48,7 +48,7 @@ function envOr(name: string, fallbackName: string): string {
   return process.env[name]?.trim() || requiredEnv(fallbackName)
 }
 
-type SiteHome = Pick<SiteHomeView, 'outcomes' | 'flags' | 'watch' | 'presentation'>
+type SiteHome = Pick<SiteHomeView, 'outcomes' | 'flags' | 'watch' | 'presentation' | 'activeRuns'>
 
 type RunView = {
   id: string
@@ -235,8 +235,9 @@ test.describe('Outcome customer loop', () => {
 
       // 4. Verify against an unrepaired fixture stays open. Absence is not recovery.
       const blocked = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
-      expect(blocked.status(), await blocked.text()).toBe(200)
-      const blockedRun = (await blocked.json()) as { runId: string; attemptId: string | null }
+      expect(blocked.status(), await blocked.text()).toBe(202)
+      const blockedRun = (await blocked.json()) as { runId: string; accepted: boolean }
+      expect(blockedRun.accepted).toBe(true)
       expect(blockedRun.runId, 'verify starts a fresh independent run').toBeTruthy()
       await waitForRunResult(ownerRequest, siteId, blockedRun.runId, 'FLAG')
 
@@ -248,8 +249,9 @@ test.describe('Outcome customer loop', () => {
       // 5. A comparable recovery resolves the same Flag.
       await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId, broken: false })
       const recovery = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
-      expect(recovery.status(), await recovery.text()).toBe(200)
-      const recoveryRun = (await recovery.json()) as { runId: string }
+      expect(recovery.status(), await recovery.text()).toBe(202)
+      const recoveryRun = (await recovery.json()) as { runId: string; accepted: boolean }
+      expect(recoveryRun.accepted).toBe(true)
       await waitForRunResult(ownerRequest, siteId, recoveryRun.runId, 'CLEAR')
 
       const afterRecovery = await loadHome(ownerRequest, siteId)
@@ -338,32 +340,56 @@ test.describe('Outcome customer loop', () => {
 
   test('[journey:tenant-isolation] another owner cannot read, run, or verify this Site', async ({
     browser,
+    request,
   }) => {
-    test.setTimeout(300_000)
+    test.setTimeout(900_000)
     const siteId = requiredEnv('E2E_SITE_ID')
     const owner = await signInOwner(browser)
-    const home = await loadHome(owner.page.request, siteId)
-    const outcomeId = targetOutcomeId(home)
-    const foreignFlag = flagForOutcome(home, outcomeId).matches[0]
-    await owner.close()
-
-    const stranger = await signInStranger(browser)
-
-    expect((await stranger.page.request.get(`/api/sites/${siteId}`)).status(), 'no Site read').not.toBe(200)
-    expect(
-      (await stranger.page.request.post(`/api/sites/${siteId}/runs`, {
-        headers: { 'idempotency-key': `stranger:${Date.now()}` },
-        data: { outcomeIds: [outcomeId] },
-      })).status(),
-      'no Outcome run',
-    ).not.toBe(202)
-    if (foreignFlag) {
-      expect(
-        (await stranger.page.request.post(`/api/sites/${siteId}/flags/${foreignFlag.id}/verify`, { data: {} })).status(),
-        'no Flag verify',
-      ).not.toBe(200)
+    let alteredFixture = false
+    let outcomeId: string
+    let flagId: string
+    try {
+      await expect.poll(async () => (await loadHome(owner.page.request, siteId)).activeRuns.length,
+        { timeout: 420_000, message: 'The previous Site execution must settle before the tenancy fixture' }).toBe(0)
+      let home = await loadHome(owner.page.request, siteId)
+      outcomeId = targetOutcomeId(home)
+      if (!home.flags.length) {
+        await setFixtureBroken(request, { journey: 'tenant-isolation', siteId, flagId: outcomeId, broken: true })
+        alteredFixture = true
+        const run = await startRun(owner.page.request, siteId, outcomeId, 'tenancy-fixture')
+        await waitForRunResult(owner.page.request, siteId, run.runId, 'FLAG')
+        home = await loadHome(owner.page.request, siteId)
+      }
+      expect(home.flags.length, 'tenancy verification requires an actual owned Flag').toBeGreaterThan(0)
+      flagId = home.flags[0]!.id
+    } finally {
+      try {
+        if (alteredFixture) await setFixtureBroken(request, { journey: 'tenant-isolation', siteId, flagId: siteId, broken: false })
+      } finally {
+        await owner.close()
+      }
     }
 
-    await stranger.close()
+    const stranger = await signInStranger(browser)
+    try {
+      expect((await stranger.page.request.get(`/api/sites/${siteId}`)).status(), 'no Site read').toBe(404)
+      expect(
+        (await stranger.page.request.post(`/api/sites/${siteId}/runs`, {
+          headers: { 'idempotency-key': `stranger:${Date.now()}` },
+          data: { outcomeIds: [outcomeId] },
+        })).status(),
+        'no Outcome run',
+      ).toBe(404)
+      expect(
+        (await stranger.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })).status(),
+        'no Flag verify',
+      ).toBe(404)
+      expect(
+        (await stranger.page.request.post(`/api/sites/${siteId}/flags/${flagId}/fix`, { data: { action: 'copy' } })).status(),
+        'no private fix prompt',
+      ).toBe(404)
+    } finally {
+      await stranger.close()
+    }
   })
 })
