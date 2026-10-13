@@ -27,7 +27,8 @@ import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
-import { MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
+import { getIndexableIssueCheckIds, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
+import { runIssueRollup } from '@/lib/growth/issue-rollup'
 
 const RATE_LIMIT_MS = 5_000
 const IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1_000
@@ -143,83 +144,13 @@ export interface SelfSeedResult {
   readyForProgrammatic: number
 }
 
-async function runIssueRollup(): Promise<{ issues: number; examples: number }> {
-  const rows = await prisma.$queryRaw<
-    Array<{ checkId: string; occurrence_count: bigint; site_count: bigint; framework_count: bigint }>
-  >`
-    SELECT
-      i."checkId" AS "checkId",
-      COUNT(io.id)::bigint                                   AS occurrence_count,
-      COUNT(DISTINCT io."siteId")::bigint                     AS site_count,
-      COUNT(DISTINCT st."technologyId")::bigint               AS framework_count
-    FROM "graph_issue" i
-    LEFT JOIN "graph_issue_occurrence" io ON io."issueId" = i.id
-    LEFT JOIN "graph_site_technology"  st ON st."siteId"   = io."siteId"
-    GROUP BY i."checkId"
-  `
-
-  let issues = 0
-  for (const row of rows) {
-    await prisma.issue.updateMany({
-      where: { checkId: row.checkId },
-      data: {
-        occurrenceCount: Number(row.occurrence_count),
-        siteCount: Number(row.site_count),
-        frameworkCount: Number(row.framework_count),
-      },
-    })
-    issues += 1
-  }
-
-  const checkIds = await prisma.issue.groupBy({ by: ['checkId'] })
-  let examples = 0
-  for (const { checkId } of checkIds) {
-    const ex = await prisma.$queryRaw<
-      Array<{ hostname: string; pageRole: string; severity: string }>
-    >`
-      SELECT s.hostname AS hostname,
-             COALESCE(p.role, 'other') AS "pageRole",
-             f.severity AS severity
-      FROM "graph_issue_occurrence" io
-      JOIN "graph_issue" i ON i.id = io."issueId"
-      JOIN "graph_site" s ON s.id = io."siteId"
-      JOIN "flags" f ON f.id = io."flagId"
-      LEFT JOIN "graph_page" p ON p."siteId" = s.id AND p.url = f."pageUrl"
-      WHERE i."checkId" = ${checkId}
-      ORDER BY io."observedAt" DESC
-      LIMIT 3
-    `
-    await prisma.issue.updateMany({
-      where: { checkId },
-      data: {
-        examples: ex.map((e) => ({
-          hostname: e.hostname.replace(/^www\./, ''),
-          pageRole: e.pageRole,
-          severity: e.severity,
-        })),
-      },
-    })
-    examples += 1
-  }
-
-  return { issues, examples }
-}
-
 async function reportProgrammaticReadiness(): Promise<number> {
-  const issuesReady = await prisma.issue.count({
-    where: { siteCount: { gte: MIN_SAMPLE_SIZE } },
-  })
-
+  const approvedIssues = await getIndexableIssueCheckIds()
+  const issuesReady = approvedIssues.length
   if (issuesReady > 0) {
-    const top = await prisma.issue.findMany({
-      where: { siteCount: { gte: MIN_SAMPLE_SIZE } },
-      orderBy: { siteCount: 'desc' },
-      take: 5,
-      select: { checkId: true, problemTemplate: true, siteCount: true },
-    })
-    console.log(`[self-seed]   issues ready for programmatic pages (>= ${MIN_SAMPLE_SIZE} sites):`)
-    for (const i of top) {
-      console.log(`   - ${i.checkId}: ${i.siteCount} sites — "${i.problemTemplate.slice(0, 80)}"`)
+    console.log(`[self-seed] approved public issues (>= ${MIN_SAMPLE_SIZE} sites):`)
+    for (const issue of approvedIssues.slice(0, 5)) {
+      console.log(`   - ${issue.checkId}: ${issue.siteCount} sites`)
     }
   }
 
@@ -244,7 +175,7 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
     readyForProgrammatic: 0,
   }
 
-  console.log(`[self-seed] ${dryRun ? 'DRY RUN — ' : ''}starting with ${SEED_URLS.length} URLs`)
+  console.log(`[self-seed] ${dryRun ? 'DRY RUN - ' : ''}starting with ${SEED_URLS.length} URLs`)
 
   const queue = getAuditQueue()
   const createdAuditIds: Array<{ auditId: string; url: string; display: string }> = []
@@ -255,7 +186,7 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
 
     const normalized = normalizeAuditUrl(rawUrl)
     if (!normalized.ok) {
-      console.warn(`[self-seed]   SKIP  ${rawUrl} — ${normalized.error}`)
+      console.warn(`[self-seed]   SKIP  ${rawUrl} - ${normalized.error}`)
       result.skipped++
       continue
     }
@@ -264,7 +195,7 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
 
     const recent = await hasRecentSeedAudit(url)
     if (recent) {
-      console.log(`[self-seed]   SKIP  ${display} — recent SEED audit exists`)
+      console.log(`[self-seed]   SKIP  ${display} - recent SEED audit exists`)
       result.skipped++
       continue
     }
@@ -298,28 +229,28 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
         }
       )
 
-      console.log(`[self-seed]   OK    ${display} — audit ${audit.id.slice(0, 8)}`)
+      console.log(`[self-seed]   OK    ${display} - audit ${audit.id.slice(0, 8)}`)
       result.created++
       createdAuditIds.push({ auditId: audit.id, url, display })
 
       await sleep(RATE_LIMIT_MS)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
-      console.error(`[self-seed]   FAIL  ${display} — ${msg}`)
+      console.error(`[self-seed]   FAIL  ${display} - ${msg}`)
       result.failed++
       result.errors.push({ url, error: msg })
     }
   }
 
   console.log(
-    `[self-seed] phase 1 done — ` +
+    `[self-seed] phase 1 done - ` +
       `${result.created} created, ${result.skipped} skipped, ${result.failed} failed ` +
       `(${result.attempted} total)`
   )
 
   // ── Phase 2: Poll ───────────────────────────────────────────────────
   if (!dryRun && createdAuditIds.length > 0) {
-    console.log(`[self-seed] phase 2 — polling ${createdAuditIds.length} audits to completion...`)
+    console.log(`[self-seed] phase 2 - polling ${createdAuditIds.length} audits to completion...`)
 
     for (const { auditId, url, display } of createdAuditIds) {
       result.polled++
@@ -336,13 +267,13 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
           const msg = out.timedOut ? ' completed (barely within window)' : ' completed'
           console.log(`[self-seed]   OK    ${display}${msg}`)
         } else {
-          console.warn(`[self-seed]   FAIL  ${display} — status: ${out.status}`)
+          console.warn(`[self-seed]   FAIL  ${display} - status: ${out.status}`)
           result.failed++
           result.errors.push({ url, error: `Audit ended with status ${out.status}` })
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
-        console.error(`[self-seed]   FAIL  ${display} — poll error: ${msg}`)
+        console.error(`[self-seed]   FAIL  ${display} - poll error: ${msg}`)
         result.failed++
         result.errors.push({ url, error: msg })
       }
@@ -352,17 +283,17 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
   result.timedOut = result.polled - result.completed
 
   console.log(
-    `[self-seed] phase 2 done — ${result.completed} completed, ` +
+    `[self-seed] phase 2 done - ${result.completed} completed, ` +
       `${result.timedOut} timed/errored out`
   )
 
   // ── Phase 3: Rollup ─────────────────────────────────────────────────
   if (!dryRun && result.completed > 0) {
-    console.log(`[self-seed] phase 3 — running issue rollup...`)
+    console.log(`[self-seed] phase 3 - running issue rollup...`)
     try {
       result.issueRollup = await runIssueRollup()
       console.log(
-        `[self-seed]   rollup done — ${result.issueRollup.issues} issues, ${result.issueRollup.examples} examples`
+        `[self-seed]   rollup done - ${result.issueRollup.issues} issues, ${result.issueRollup.examples} examples`
       )
     } catch (error) {
       console.error('[self-seed]   rollup failed:', error)
@@ -371,7 +302,7 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
 
   // ── Phase 4: Report ─────────────────────────────────────────────────
   if (!dryRun) {
-    console.log(`[self-seed] phase 4 — programmatic page readiness...`)
+    console.log(`[self-seed] phase 4 - programmatic page readiness...`)
     try {
       result.readyForProgrammatic = await reportProgrammaticReadiness()
     } catch (error) {
@@ -380,7 +311,7 @@ export async function runSelfSeed(): Promise<SelfSeedResult> {
   }
 
   console.log(
-    `[self-seed] done — ` +
+    `[self-seed] done - ` +
       `${result.created} created, ${result.skipped} skipped, ${result.failed} failed, ` +
       `${result.completed} completed, ${result.readyForProgrammatic} issues above threshold`
   )

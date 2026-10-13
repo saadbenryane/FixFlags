@@ -56,6 +56,11 @@ export const TERMS_SECTIONS = {
 } as const
 
 export const PRIVACY_SECTIONS = {
+  research: {
+    title: 'Optional website quality research',
+    body:
+      'Site owners can separately allow new check findings and independently verified fix outcomes to contribute to anonymized, aggregated public research. This is off by default, applies only to observations collected after the owner opts in, and does not affect monitoring. Domains, URLs, screenshots, page content, prompts, account details, and connected analytics or search data are excluded. Research requires review and at least 20 distinct websites. Owners can withdraw in Site settings. FixFlags then stops using that Site in research and withholds affected public research until it is reviewed again. Permission records remain in private Site history. Copies of already published aggregate research held by others cannot be recalled.',
+  },
   collect: {
     title: 'What we collect',
     body:

@@ -13,6 +13,12 @@ describe('audit attribution', () => {
     assert.equal(inferAuditSource('/report/abc'), 'REPORT')
     assert.equal(inferAuditSource('/api/mcp'), 'MCP')
     assert.equal(inferAuditSource('/pricing'), 'UNKNOWN')
+    for (const path of ['/issues', '/issues/security-headers-missing', '/issue/legacy']) assert.equal(inferAuditSource(path), 'ISSUE_PAGE')
+    for (const path of ['/benchmarks', '/benchmarks/react', '/benchmark/legacy']) assert.equal(inferAuditSource(path), 'BENCHMARK_PAGE')
+    assert.equal(inferAuditSource('/tools/meta-preview'), 'TOOL_PAGE')
+    assert.equal(inferAuditSource('/issues-private'), 'UNKNOWN')
+    assert.equal(inferAuditSource('/reporting'), 'UNKNOWN')
+    assert.equal(inferAuditSource('/api/mcp-other'), 'API')
   })
 
   it('builds attribution with explicit source and UTM params', () => {
