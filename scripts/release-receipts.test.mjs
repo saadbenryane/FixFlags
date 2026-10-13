@@ -342,7 +342,7 @@ describe('release evidence receipts', () => {
         } else {
           commandOrder.push('credentialed-journeys')
           writeFileSync(
-            path.join(directory, 'playwright.json'),
+            path.join(directory, 'billing-open-playwright.json'),
             JSON.stringify(report(['billing-webhook-active'])),
           )
         }
@@ -379,7 +379,7 @@ describe('release evidence receipts', () => {
             gitSha: SHA,
           }))
         } else {
-          writeFileSync(path.join(directory, 'playwright.json'), JSON.stringify(report(['cli-registry-loop'])))
+          writeFileSync(path.join(directory, 'registry-cli-playwright.json'), JSON.stringify(report(['cli-registry-loop'])))
         }
         return { status: 0 }
       },
@@ -457,7 +457,7 @@ describe('release evidence receipts', () => {
     const workingDirectory = temp()
     const directory = path.join(workingDirectory, 'test-results', 'release', 'run-1')
     mkdirSync(directory, { recursive: true })
-    writeFileSync(path.join(directory, 'playwright.json'), JSON.stringify(report(['anonymous-claim'])))
+    writeFileSync(path.join(directory, 'credentialed-core-playwright.json'), JSON.stringify(report(['anonymous-claim'])))
     const value = runReleaseStage('credentialed-core', baseEnv(Object.fromEntries([
       'E2E_AUDIT_URL','E2E_SIGNUP_PASSWORD','E2E_2FA_EMAIL','E2E_2FA_PASSWORD','E2E_2FA_BACKUP_CODE','E2E_WEBAUTHN_CREDENTIAL_ID','E2E_WEBAUTHN_PRIVATE_KEY','E2E_WEBAUTHN_USER_HANDLE','E2E_BILLING_FREE_EMAIL','E2E_BILLING_FREE_PASSWORD','E2E_BILLING_PAID_EMAIL','E2E_BILLING_PAID_PASSWORD','E2E_SHARE_OWNER_EMAIL','E2E_SHARE_OWNER_PASSWORD','E2E_SHARE_REPORT_ID','E2E_SHARE_PASSWORD','E2E_API_KEY',
     ].map((name) => [name, 'fixture']))), { workingDirectory, gitSha: SHA, repositoryStatus: '', commands: [] })

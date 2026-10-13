@@ -30,8 +30,20 @@ const localRuntimeEnv = {
   ...(credentialedDatabaseUrl ? { DATABASE_URL: credentialedDatabaseUrl } : {}),
 }
 
+function artifactSegment(value: string | undefined, fallback: string) {
+  const segment = value ?? fallback
+  if (!/^[a-zA-Z0-9._-]+$/.test(segment) || segment === '.' || segment === '..')
+    throw new Error('Browser artifact scope must be a safe directory segment')
+  return segment
+}
+const browserRun = artifactSegment(process.env.RELEASE_RUN_ID, 'local')
+const browserStage = artifactSegment(process.env.RELEASE_JOURNEY_STAGE, 'manual')
+
 export default defineConfig({
   testDir: './e2e',
+  // Playwright clears this directory at startup. Keep durable release receipts
+  // and every other stage outside the directory it owns.
+  outputDir: `test-results/browser/${browserRun}/${browserStage}`,
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',

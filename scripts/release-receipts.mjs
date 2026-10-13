@@ -124,8 +124,8 @@ export function receiptDirectory(env = process.env, workingDirectory = process.c
   return path.join(workingDirectory, 'test-results', 'release', safeRunId(env.RELEASE_RUN_ID))
 }
 
-function playwrightReportPath(env, workingDirectory) {
-  return path.join(receiptDirectory(env, workingDirectory), 'playwright.json')
+function playwrightReportPath(stage, env, workingDirectory) {
+  return path.join(receiptDirectory(env, workingDirectory), `${stage}-playwright.json`)
 }
 
 export function hydrateReleaseFixtureEnvironment(env) {
@@ -535,7 +535,7 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       assertCandidate()
     }
     if (JOURNEYS_BY_STAGE[stage]) {
-      const report = JSON.parse(readFileSync(playwrightReportPath(env, workingDirectory), 'utf8'))
+      const report = JSON.parse(readFileSync(playwrightReportPath(stage, env, workingDirectory), 'utf8'))
       journeys = requireStageJourneys(stage, report)
     }
     if (stage === 'production-dogfood') {
@@ -655,7 +655,7 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       artifactFiles.push(['fixture-manifest', path.resolve(env.RELEASE_FIXTURE_MANIFEST)])
     }
     if (JOURNEYS_BY_STAGE[stage]) {
-      artifactFiles.push(['playwright-report', playwrightReportPath(env, workingDirectory)])
+      artifactFiles.push(['playwright-report', playwrightReportPath(stage, env, workingDirectory)])
     }
     if (stage === 'billing-open') {
       artifactFiles.push(['watch-launch-readiness', watchReadinessEvidenceFile])
