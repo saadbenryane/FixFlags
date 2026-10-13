@@ -8,13 +8,21 @@ export async function loadAuditScreenshotBase64(
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
     select: {
-      screenshots: { select: { device: true, url: true } },
+      screenshots: {
+        where: { OR: [{ page: { position: 0 } }, { pageId: null }] },
+        orderBy: [{ recordedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
+        select: { device: true, url: true },
+      },
     },
   })
   if (!audit) return { desktopBase64: null, mobileBase64: null }
 
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
+  let matchingMobile = false
+  try {
+    matchingMobile = Boolean(desktop && mobile && new URL(desktop.url).searchParams.get('page') === new URL(mobile.url).searchParams.get('page'))
+  } catch { /* An invalid reference cannot identify the same capture generation. */ }
 
   async function storedBase64(url: string | undefined, device: 'desktop' | 'mobile'): Promise<string | null> {
     if (!url) return null
@@ -32,6 +40,6 @@ export async function loadAuditScreenshotBase64(
 
   return {
     desktopBase64: await storedBase64(desktop?.url, 'desktop'),
-    mobileBase64: await storedBase64(mobile?.url, 'mobile'),
+    mobileBase64: matchingMobile ? await storedBase64(mobile?.url, 'mobile') : null,
   }
 }

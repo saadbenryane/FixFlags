@@ -9,6 +9,7 @@ import { PrismaClient } from '@prisma/client'
 import { hashPassword } from 'better-auth/crypto'
 import { scanLimitForPlan, deepReviewLimitForPlan } from '../lib/billing/plans'
 import { generateApiKey } from '../lib/security/api-keys'
+import { ANALYSIS_RECOVERY_MS } from '../lib/audit/progressive/contracts'
 import {
   assertNonProductionReleaseTarget,
   canonicalReleaseDatabaseIdentity,
@@ -90,7 +91,7 @@ async function createRealReview(
   const siteId = String(createdBody.siteId ?? '')
   if (!reportId) throw new Error('Fixture Review creation returned no reportId')
   if (!siteId) throw new Error('Fixture Review creation returned no siteId')
-  const deadline = Date.now() + 360_000
+  const deadline = Date.now() + ANALYSIS_RECOVERY_MS + 30_000
   while (Date.now() < deadline) {
     const status = await fetch(`${origin}/api/reports/${reportId}/status`, { headers: { cookie } })
     if (!status.ok) throw new Error(`Fixture Review status failed (${status.status})`)

@@ -48,6 +48,12 @@ describe('loadAuditScreenshotBase64', () => {
     expect(readScreenshot).toHaveBeenCalledWith('audit-1', 'desktop', 'p0-g2')
     expect(readScreenshot).toHaveBeenCalledWith('audit-1', 'mobile', 'p0-g2')
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(prismaMock.audit.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      select: { screenshots: expect.objectContaining({
+        where: { OR: [{ page: { position: 0 } }, { pageId: null }] },
+        orderBy: [{ recordedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
+      }) },
+    }))
   })
 
   it('returns null for missing devices and absent stored captures', async () => {
@@ -69,6 +75,17 @@ describe('loadAuditScreenshotBase64', () => {
 
     const result = await loadAuditScreenshotBase64('audit-1')
     assert.equal(result.desktopBase64, null)
+  })
+
+  it('never pairs a previous mobile capture with the current desktop generation', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ screenshots: [
+      { device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop?page=p0-g2' },
+      { device: 'MOBILE', url: 'https://fixflags.test/api/screenshots/audit-1/mobile?page=p0-g1' },
+    ] })
+    readScreenshot.mockResolvedValue(Buffer.from('fresh-desktop'))
+    expect(await loadAuditScreenshotBase64('audit-1')).toEqual({ desktopBase64: Buffer.from('fresh-desktop').toString('base64'), mobileBase64: null })
+    expect(readScreenshot).toHaveBeenCalledTimes(1)
+    expect(readScreenshot).toHaveBeenCalledWith('audit-1', 'desktop', 'p0-g2')
   })
 
   it.each([
