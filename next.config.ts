@@ -16,6 +16,8 @@ function localGitSha(): string | undefined {
 // present at `next build`, only as runtime env on the deployed service.
 
 const nextConfig: NextConfig = {
+  // Repository guidance is maintained canonically in AGENTS.md.
+  agentRules: false,
   env: {
     GIT_COMMIT_SHA:
       process.env.GIT_COMMIT_SHA ||

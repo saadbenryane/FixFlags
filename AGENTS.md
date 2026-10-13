@@ -39,3 +39,7 @@ Use the smallest amount of project context needed for the task. Explicit user di
 - Exercise the real path when the risk justifies it and state any remaining uncertainty.
 
 Environment and commands: [DEVELOPMENT.md](DEVELOPMENT.md). Coordination details: [.agents/README.md](.agents/README.md).
+
+## Framework reference
+
+Read the relevant version-matched guide in `node_modules/next/dist/docs/` before changing Next.js APIs or conventions. The repository maintains this guide directly; `agentRules: false` prevents the development server from rewriting it.
