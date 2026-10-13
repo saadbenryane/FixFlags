@@ -9,6 +9,12 @@ function rect(left: number, top: number, width: number, height: number): DOMRect
 }
 
 describe('monitoring panel placement', () => {
+  it('keeps monitoring settings behind an explicit customer navigation', () => {
+    render(<SiteMonitoringMenu label="Off" state="unknown" nextCheck="No monitoring schedule" manageHref="/sites/example/settings#watch" />)
+    expect(screen.queryByRole('link', { name: 'Manage' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Monitoring: Off' }))
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/sites/example/settings#watch')
+  })
   it('stays within narrow content and opens above a trigger near the bottom of the screen', () => {
     render(<div data-site-content><SiteMonitoringMenu label="Every 3 hours" state="healthy" nextCheck="Next check in 2 hours" /></div>)
     const trigger = screen.getByRole('button', { name: 'Monitoring: Every 3 hours' })
