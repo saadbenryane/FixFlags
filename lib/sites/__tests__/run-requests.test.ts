@@ -3,6 +3,7 @@ vi.mock('node:crypto', async () => ({ ...await vi.importActual('node:crypto'), r
 vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 const mocks = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
   fixtureFindFirst: vi.fn(), taskFindFirst: vi.fn(), outcomeFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
   runFindUnique: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    user: { findUnique: mocks.userFindUnique },
     outcomeFixture: { findFirst: mocks.fixtureFindFirst }, auditVerifierExecution: { findFirst: mocks.taskFindFirst },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
@@ -73,6 +75,12 @@ const ownedOutcome = {
 }
 
 describe('RunRequest tenant boundary and idempotency', () => {
+  it.each(['SUSPENDED', 'DELETING'])('refuses work for a %s customer before run admission', async (lifecycleStatus) => {
+    mocks.userFindUnique.mockResolvedValue({ id: 'user-1', lifecycleStatus })
+    await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', scope: 'SITE', outcomeIds: [], source: 'WEB' })).rejects.toMatchObject({ status: 403, code: 'ACCOUNT_UNAVAILABLE' })
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+  })
   it('freezes category checks against the latest full-site inventory without selecting other responsibilities', async () => {
     mocks.outcomeFindMany.mockResolvedValue([])
     mocks.auditFindFirst.mockImplementation(async (query: { select?: { pages?: unknown } }) => query.select?.pages
@@ -113,6 +121,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
   })
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.userFindUnique.mockResolvedValue({ id: 'user-1', lifecycleStatus: 'ACTIVE' })
     mocks.outcomeFindMany.mockResolvedValue([ownedOutcome])
     mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example/' })
     mocks.runFindUnique.mockResolvedValue(null)

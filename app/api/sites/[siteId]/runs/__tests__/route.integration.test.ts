@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 vi.mock('node:crypto', async importOriginal => ({ ...await importOriginal<typeof import('node:crypto')>(), randomUUID: () => 'run-care' }))
 
 const mocks = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
   getSession: vi.fn(),
   requireSiteAccess: vi.fn(),
   outcomeFindMany: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers(
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
 vi.mock('@/lib/db', () => ({
   prisma: {
+    user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
     runRequest: {
@@ -51,6 +53,7 @@ import { POST } from '@/app/api/sites/[siteId]/runs/route'
 describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.userFindUnique.mockResolvedValue({ id: 'user-1', lifecycleStatus: 'ACTIVE' })
     mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } })
     mocks.requireSiteAccess.mockResolvedValue({
       ok: true,

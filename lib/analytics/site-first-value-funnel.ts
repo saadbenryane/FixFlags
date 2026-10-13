@@ -7,6 +7,7 @@ const RESULT_PREFIX = 'first_useful_result:'
 type StartEventRow = {
   idempotencyKey: string
   properties: unknown
+  createdAt?: Date
 }
 
 type AuditRow = {
@@ -46,13 +47,15 @@ export type LandingJourneyArtifact = {
   fetchedAt: string
   startDate: string
   endDate: string
+  reportingTimeZone: string | null
+  providerLimited?: boolean
   journeyIds: string[]
   unattributedEventCount: number
   rowLimitReached: boolean
 }
 
 export type LandingFirstValueFunnel = {
-  status: LandingJourneyArtifact['status'] | 'missing'
+  status: LandingJourneyArtifact['status'] | 'missing' | 'incomparable'
   fetchedAt: string | null
   startDate: string | null
   endDate: string | null
@@ -66,6 +69,7 @@ export type LandingFirstValueFunnel = {
   instrumentedStarts: number
   unattributedEventCount: number
   rowLimitReached: boolean
+  providerLimited: boolean
 }
 
 function eventAuditId(idempotencyKey: string, prefix: string): string | null {
@@ -116,18 +120,41 @@ export function parseLandingJourneyArtifact(payload: unknown): LandingJourneyArt
         : null,
     )
     .filter((journeyId): journeyId is string => isAnalyticsJourneyId(journeyId))
+  const providerLimited = record.providerLimited === true
+  const unattributedEventCount = record.unattributedEventCount ?? 0
+  if (typeof unattributedEventCount !== 'number' || !Number.isSafeInteger(unattributedEventCount) || unattributedEventCount < 0) return null
 
   return {
-    status: record.status,
+    status: record.status === 'unavailable' ? 'unavailable' :
+      record.status === 'partial' || providerLimited || record.rowLimitReached === true ||
+      unattributedEventCount > 0 || journeyIds.length !== record.journeys.length ? 'partial' : 'available',
     fetchedAt: record.fetchedAt,
     startDate: record.startDate,
     endDate: record.endDate,
+    reportingTimeZone: typeof record.reportingTimeZone === 'string' ? record.reportingTimeZone : null,
+    providerLimited,
     journeyIds: [...new Set(journeyIds)],
-    unattributedEventCount:
-      typeof record.unattributedEventCount === 'number'
-        ? Math.max(0, record.unattributedEventCount)
-        : 0,
+    unattributedEventCount,
     rowLimitReached: record.rowLimitReached === true,
+  }
+}
+
+function calendarDate(value: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(value)
+  const part = (type: string) => parts.find((item) => item.type === type)?.value
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+function hasComparableLandingWindow(artifact: LandingJourneyArtifact | null | undefined): artifact is LandingJourneyArtifact & { reportingTimeZone: string } {
+  if (!artifact?.reportingTimeZone || artifact.status === 'unavailable') return false
+  try {
+    for (const date of [artifact.startDate, artifact.endDate]) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) return false
+    }
+    return artifact.startDate <= artifact.endDate &&
+      artifact.endDate <= calendarDate(new Date(artifact.fetchedAt), artifact.reportingTimeZone)
+  } catch {
+    return false
   }
 }
 
@@ -151,6 +178,7 @@ export function calculateSiteFirstValueFunnel(input: {
   audits: AuditRow[]
   results: ResultEventRow[]
   landingArtifact?: LandingJourneyArtifact | null
+  landingStarts?: StartEventRow[]
 }): SiteFirstValueFunnel {
   const startedIds = new Set(
     input.starts
@@ -214,16 +242,30 @@ export function calculateSiteFirstValueFunnel(input: {
   const startedJourneyIds = new Set<string>()
   const resultJourneyIds = new Set<string>()
   const claimedJourneyIds = new Set<string>()
-  if (landingJourneyIds && input.landingArtifact?.status !== 'unavailable') {
-    for (const [auditId, journeyId] of journeyByAuditId) {
+  const landingStarts = input.landingStarts ?? input.starts
+  const comparableLanding = hasComparableLandingWindow(input.landingArtifact) &&
+    landingStarts.every((event) => !isAnonymousStart(event.properties) ||
+      Boolean(event.createdAt && Number.isFinite(event.createdAt.getTime())))
+  if (landingJourneyIds && comparableLanding) {
+    const artifact = input.landingArtifact!
+    const allResultIds = new Set(input.results.map((result) => eventAuditId(result.idempotencyKey, RESULT_PREFIX)))
+    const allAuditsById = new Map(input.audits.map((audit) => [audit.id, audit]))
+    for (const event of landingStarts) {
+      if (!isAnonymousStart(event.properties) || !event.createdAt ||
+        !Number.isFinite(event.createdAt.getTime()) || event.createdAt > new Date(artifact.fetchedAt)) continue
+      const eventDate = calendarDate(event.createdAt, artifact.reportingTimeZone!)
+      if (eventDate < artifact.startDate || eventDate > artifact.endDate) continue
+      const auditId = eventAuditId(event.idempotencyKey, START_PREFIX)
+      const journeyId = eventJourneyId(event.properties)
+      if (!auditId || !journeyId) continue
       if (!landingJourneyIds.has(journeyId)) continue
       startedJourneyIds.add(journeyId)
-      if (resultIds.has(auditId)) resultJourneyIds.add(journeyId)
-      if (auditsById.get(auditId)?.userId) claimedJourneyIds.add(journeyId)
+      if (allResultIds.has(auditId)) resultJourneyIds.add(journeyId)
+      if (allAuditsById.get(auditId)?.userId) claimedJourneyIds.add(journeyId)
     }
   }
   const landingSessions =
-    input.landingArtifact && input.landingArtifact.status !== 'unavailable'
+    comparableLanding
       ? landingJourneyIds!.size
       : null
   return {
@@ -240,7 +282,8 @@ export function calculateSiteFirstValueFunnel(input: {
         right.started - left.started || left.source.localeCompare(right.source),
     ),
     landing: {
-      status: input.landingArtifact?.status ?? 'missing',
+      status: input.landingArtifact && input.landingArtifact.status !== 'unavailable' && !comparableLanding
+        ? 'incomparable' : input.landingArtifact?.status ?? 'missing',
       fetchedAt: input.landingArtifact?.fetchedAt ?? null,
       startDate: input.landingArtifact?.startDate ?? null,
       endDate: input.landingArtifact?.endDate ?? null,
@@ -250,20 +293,21 @@ export function calculateSiteFirstValueFunnel(input: {
         landingSessions === null ? null : resultJourneyIds.size,
       claimedSessions: landingSessions === null ? null : claimedJourneyIds.size,
       startRate:
-        landingSessions === null
+        landingSessions === null || landingSessions === 0
           ? null
           : percentage(startedJourneyIds.size, landingSessions),
       resultRate:
-        landingSessions === null
+        landingSessions === null || landingSessions === 0
           ? null
           : percentage(resultJourneyIds.size, landingSessions),
       claimRate:
-        landingSessions === null
+        landingSessions === null || landingSessions === 0
           ? null
           : percentage(claimedJourneyIds.size, landingSessions),
       instrumentedStarts: journeyByAuditId.size,
       unattributedEventCount: input.landingArtifact?.unattributedEventCount ?? 0,
       rowLimitReached: input.landingArtifact?.rowLimitReached ?? false,
+      providerLimited: input.landingArtifact?.providerLimited ?? false,
     },
   }
 }
@@ -272,20 +316,24 @@ export function calculateSiteFirstValueFunnel(input: {
 export async function loadSiteFirstValueFunnel(
   since: Date,
 ): Promise<SiteFirstValueFunnel> {
-  const [starts, landingArtifactRow] = await Promise.all([
-    prisma.siteLifecycleEvent.findMany({
-      where: { name: 'analyze_started', createdAt: { gte: since } },
-      select: { idempotencyKey: true, properties: true },
-    }),
-    prisma.growthArtifact.findUnique({
-      where: { path: 'ga/rolling-28d/landing-journeys' },
-      select: { payload: true },
-    }),
-  ])
+  const landingArtifactRow = await prisma.growthArtifact.findUnique({
+    where: { path: 'ga/rolling-28d/landing-journeys' },
+    select: { payload: true },
+  })
   const landingArtifact = parseLandingJourneyArtifact(landingArtifactRow?.payload)
+  // One extra UTC day covers the earliest midnight in any GA reporting timezone.
+  // Actual membership is checked against GA calendar dates below, without guessing offsets.
+  const querySince = hasComparableLandingWindow(landingArtifact)
+    ? new Date(Math.min(since.getTime(), Date.parse(`${landingArtifact.startDate}T00:00:00Z`) - 86_400_000))
+    : since
+  const allStarts = await prisma.siteLifecycleEvent.findMany({
+    where: { name: 'analyze_started', createdAt: { gte: querySince } },
+    select: { idempotencyKey: true, properties: true, createdAt: true },
+  })
+  const starts = allStarts.filter((event) => event.createdAt >= since)
   const auditIds = [
     ...new Set(
-      starts
+      allStarts
         .filter((event) => isAnonymousStart(event.properties))
         .map((event) => eventAuditId(event.idempotencyKey, START_PREFIX))
         .filter((auditId): auditId is string => Boolean(auditId)),
@@ -298,6 +346,7 @@ export async function loadSiteFirstValueFunnel(
       audits: [],
       results: [],
       landingArtifact,
+      landingStarts: allStarts,
     })
   }
 
@@ -323,5 +372,5 @@ export async function loadSiteFirstValueFunnel(
     }),
   ])
 
-  return calculateSiteFirstValueFunnel({ starts, audits, results, landingArtifact })
+  return calculateSiteFirstValueFunnel({ starts, audits, results, landingArtifact, landingStarts: allStarts })
 }

@@ -30,6 +30,7 @@ export type ReadinessProfile = 'free-launch' | 'commercial'
 
 export type ReadinessSubsystem = {
   ok: boolean
+  enabled?: boolean
   detail?: string
 }
 
@@ -246,6 +247,8 @@ function productionDependencies(): ReadinessDependencies {
         ? { ok: true } : { ok: false, detail: 'No current worker has confirmed uptime scheduling' }
     },
     automaticAccounts: async () => {
+      if (process.env.ACCOUNT_CHECKS_ENABLED === 'false')
+        return { ok: false, enabled: false, detail: 'Automatic account checks are disabled by configuration.' }
       if (!accountInfrastructureReady()) return { ok: false, detail: 'Automatic account infrastructure or lifecycle proof is incomplete' }
       const heartbeat = await readWorkerHeartbeat()
       return heartbeat.alive && heartbeat.accountChecksReady && heartbeat.accountConfigurationMatches
@@ -284,7 +287,8 @@ export async function readLaunchReadiness(
   const subsystems = Object.fromEntries(names.map((name, index) => [name, values[index]])) as LaunchReadiness['subsystems']
   const required = profile === 'commercial'
     ? names
-    : names.filter((name) => name !== 'billing')
+    : names.filter((name) => name !== 'billing' &&
+      !(name === 'automaticAccounts' && subsystems[name].enabled === false))
   const missing = required.filter((name) => !subsystems[name].ok)
   const value = { ok: missing.length === 0, profile, checkedAt: new Date().toISOString(), missing, subsystems }
   if (useCache) cached = { expiresAt: Date.now() + CACHE_MS, value }

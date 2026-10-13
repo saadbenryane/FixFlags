@@ -23,7 +23,7 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     audit: { findUnique: mocks.auditFindUnique, update: mocks.auditUpdate,
       updateMany: mocks.auditUpdateMany, findUniqueOrThrow: async () => ({ executionGeneration: 1 }) },
-    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: async () => [{ id: 'a1' }], audit: { update: mocks.auditUpdate } }),
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: async () => [{ id: 'a1', lifecycleStatus: 'ACTIVE', deletedAt: null, cleanup: false }], audit: { update: mocks.auditUpdate } }),
     user: { findUnique: mocks.userFindUnique },
   },
 }))

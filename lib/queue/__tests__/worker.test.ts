@@ -79,6 +79,8 @@ vi.mock('@/lib/db', () => ({
 let capturedProcessor: ((job: any) => Promise<any>) | undefined
 let lastWorkerOpts: any
 
+vi.mock('@/lib/admin/runtime', () => ({ startAdminOperationRuntime: () => ({ close: vi.fn(async () => undefined) }) }))
+
 vi.mock('@/lib/uptime/runtime', () => ({ startUptimeRuntime: () => ({ close: vi.fn(async () => undefined) }) }))
 
 vi.mock('@/lib/audit/progressive/runtime', () => ({ startProgressiveWorkers: () => ({ close: vi.fn(async () => undefined) }) }))

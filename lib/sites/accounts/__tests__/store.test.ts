@@ -25,7 +25,7 @@ describe('durable account reservation', () => {
     await expect(accountAdmission('p1', 'routine')).resolves.toBeUndefined()
     const tx = { project: { findFirst: db.project } }
     await expect(assertAccountPermission('p1', { revision: 3, mode: 'cleanup' }, tx as never)).resolves.toBeUndefined()
-    expect(db.project).toHaveBeenLastCalledWith(expect.objectContaining({ where: { id: 'p1', deletedAt: null, accountCheckRevision: 3 } }))
+    expect(db.project).toHaveBeenLastCalledWith(expect.objectContaining({ where: { id: 'p1', accountCheckRevision: 3 } }))
     await expect(assertAccountPermission('p1', { revision: 3, mode: 'routine' }, tx as never)).rejects.toThrow('paused or unavailable')
     await expect(reserveAccount({ ...input, intent: { revision: 3, mode: 'cleanup' } })).rejects.toThrow('cannot reserve')
     expect(db.create).not.toHaveBeenCalled()

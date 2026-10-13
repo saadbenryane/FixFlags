@@ -106,6 +106,10 @@ beforeEach(() => {
   prismaMock.audit.count.mockResolvedValue(0)
     prismaMock.user.findUnique.mockResolvedValue({
     id: 'user-1',
+    lifecycleStatus: 'ACTIVE',
+    entitlementGrants: [],
+    licensedSiteQuantity: 0,
+    auditsLimit: 3,
     plan: 'FREE',
     role: 'USER',
     subscriptionStatus: 'ACTIVE',

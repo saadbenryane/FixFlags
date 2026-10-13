@@ -14,10 +14,8 @@ describe('estimateLlmCostUsd', () => {
     assert.ok(cost > 0)
   })
 
-  it('splits tokens evenly across comma-separated models', () => {
-    const single = estimateLlmCostUsd('gpt-4o-mini', 100_000, 10_000)
-    const multi = estimateLlmCostUsd('gpt-4o-mini,gpt-4o-mini', 100_000, 10_000)
-    assert.equal(single, multi)
+  it('keeps aggregate multi-model token usage unpriced without model allocation', () => {
+    assert.equal(estimateLlmCostUsd('gpt-4o-mini,gpt-4o-mini', 100_000, 10_000), null)
   })
 
   it('returns 0 for zero tokens', () => {

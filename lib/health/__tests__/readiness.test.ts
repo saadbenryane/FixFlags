@@ -63,6 +63,21 @@ describe('readLaunchReadiness', () => {
     expect(commercial).toMatchObject({ ok: false, profile: 'commercial', missing: ['billing'] })
   })
 
+  it('serves the free beta while explicitly disabled automatic accounts remain unavailable', async () => {
+    const deps = dependencies()
+    deps.automaticAccounts = async () => ({ ok: false, enabled: false, detail: 'Automatic account checks are disabled by configuration.' })
+    const free = await readLaunchReadiness(deps, 'free-launch')
+    expect(free.ok).toBe(true)
+    expect(free.subsystems.automaticAccounts).toMatchObject({ ok: false, enabled: false })
+    const commercial = await readLaunchReadiness(deps, 'commercial')
+    expect(commercial).toMatchObject({ ok: false, missing: ['automaticAccounts'] })
+  })
+
+  it('requires automatic account readiness unless the capability is explicitly disabled', async () => {
+    const result = await readLaunchReadiness(dependencies('automaticAccounts'), 'free-launch')
+    expect(result).toMatchObject({ ok: false, missing: ['automaticAccounts'] })
+  })
+
   it('names each unavailable launch subsystem', async () => {
     const result = await readLaunchReadiness(dependencies('worker'))
     expect(result.ok).toBe(false)

@@ -9,6 +9,7 @@ vi.mock('node:crypto', async importOriginal => ({ ...await importOriginal<typeof
  */
 
 const mocks = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
   outcomeFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
   runFindUnique: vi.fn(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
     runRequest: {
@@ -70,6 +72,7 @@ const TRIGGERS = [
 describe('trigger equivalence', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.userFindUnique.mockResolvedValue({ id: 'user-1', lifecycleStatus: 'ACTIVE' })
     mocks.outcomeFindMany.mockResolvedValue([ownedOutcome])
     mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example/' })
     mocks.runFindUnique.mockResolvedValue(null)

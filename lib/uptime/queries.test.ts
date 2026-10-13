@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const db = vi.hoisted(() => ({ monitor: vi.fn(), project: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { uptimeMonitor: { findUnique: db.monitor }, project: { findUnique: db.project } } }))
-import { loadUptimeHistory } from './queries'
+const db = vi.hoisted(() => ({ monitor: vi.fn(), project: vi.fn(), probes: vi.fn(), incidents: vi.fn(), incidentCount: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { uptimeMonitor: { findUnique: db.monitor }, project: { findUnique: db.project },
+  uptimeProbe: { findMany: db.probes }, uptimeIncident: { findMany: db.incidents, count: db.incidentCount } } }))
+import { loadUptimeHistory, loadUptimeSummary } from './queries'
+import { uptimeSummarySchema } from './contracts'
 const project = { id: 'owned-project', url: 'https://example.com/', deletedAt: null, watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-20T12:00:00Z'),
   user: { id: 'owner', role: 'admin', plan: 'FREE', subscriptionStatus: null } }
-beforeEach(() => { db.monitor.mockResolvedValue(null); db.project.mockResolvedValue(project) })
+beforeEach(() => {
+  vi.clearAllMocks()
+  db.monitor.mockResolvedValue(null); db.project.mockResolvedValue(project)
+  db.probes.mockResolvedValue([]); db.incidents.mockResolvedValue([]); db.incidentCount.mockResolvedValue(0)
+})
 describe('Uptime before the first recorded observation', () => {
   it('shows truthful gaps without creating a monitor or probe on read', async () => {
     const history = await loadUptimeHistory(project.id)
@@ -19,5 +25,24 @@ describe('Uptime before the first recorded observation', () => {
   it('distinguishes a paused schedule from missing evidence', async () => {
     db.project.mockResolvedValue({ ...project, watchNextRunAt: null })
     expect(await loadUptimeHistory(project.id)).toMatchObject({ enabled: false, state: 'paused' })
+  })
+})
+
+describe('Uptime summary reads', () => {
+  it('uses the same facts as history without loading detailed probes or incidents', async () => {
+    const now = new Date('2026-10-13T12:00:00Z')
+    db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url, project,
+      enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null })
+    db.probes.mockResolvedValue([{ id: 'probe_1', targetUrl: project.url, scheduledAt: now, observedAt: now,
+      attempt: 1, result: 'ONLINE', confirmed: false, reason: 'response_received', statusCode: 200, durationMs: 50, finalUrl: project.url }])
+    const summary = await loadUptimeSummary(project.id, now)
+    expect(summary).toMatchObject({ enabled: true, state: 'online', lastCheckedAt: now.toISOString(), openIncidentCount: 0 })
+    expect(db.probes).toHaveBeenCalledOnce()
+    expect(db.probes).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ result: true, confirmed: true }) }))
+    expect(db.incidents).not.toHaveBeenCalled()
+    const history = await loadUptimeHistory(project.id, '24h', null, now)
+    expect(summary).toEqual(uptimeSummarySchema.parse(history))
+    expect(history!.probes).toHaveLength(1)
+    expect(db.incidents).toHaveBeenCalledOnce()
   })
 })

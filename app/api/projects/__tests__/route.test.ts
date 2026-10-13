@@ -33,6 +33,11 @@ import { POST } from '@/app/api/projects/route'
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user-1',
+    lifecycleStatus: 'ACTIVE',
+    entitlementGrants: [],
+    licensedSiteQuantity: 0,
+    auditsLimit: 3,
+    deepReviewsLimit: 1,
     role: 'user',
     plan: 'FREE',
     subscriptionStatus: 'ACTIVE',

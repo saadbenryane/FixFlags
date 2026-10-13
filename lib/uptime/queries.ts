@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { currentUptimeState, uptimeTimeline, type ProbeResult, type UptimeHistory, type UptimeProbeView, type UptimeState, type UptimeSummary } from './domain'
-import { uptimeEligible } from './service'
+import { uptimeEligible } from './eligibility'
 import { uptimeHistorySchema, uptimeSummarySchema } from './contracts'
 
 function windowStart(window: UptimeHistory['window'], now: Date) {
@@ -10,7 +10,7 @@ function windowStart(window: UptimeHistory['window'], now: Date) {
 }
 const projectionInclude = { project: { include: { user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } } } } } as const
 
-export async function loadUptimeHistory(projectId: string, window: UptimeHistory['window'] = '24h', cursor: string | null = null, now = new Date()): Promise<UptimeHistory | null> {
+async function readUptime(projectId: string, window: UptimeHistory['window'], cursor: string | null, now: Date, includeHistory: boolean): Promise<UptimeHistory | null> {
   const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId }, include: projectionInclude })
   if (!monitor) {
     const project = await prisma.project.findUnique({ where: { id: projectId }, include: { user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } } } })
@@ -35,10 +35,10 @@ export async function loadUptimeHistory(projectId: string, window: UptimeHistory
   }
   const [samples, rows, incidents, openIncidentCount] = await Promise.all([
     prisma.uptimeProbe.findMany({ where: scope, select: { scheduledAt: true, observedAt: true, attempt: true, result: true, confirmed: true }, take: 18_000, orderBy: { observedAt: 'desc' } }),
-    prisma.uptimeProbe.findMany({ where: { ...scope, ...(before ? { OR: [{ observedAt: { lt: before.observedAt, gte: from } }, { observedAt: before.observedAt, id: { lt: before.id } }] } : {}) },
-      orderBy: [{ observedAt: 'desc' }, { id: 'desc' }], take: 101 }),
-    prisma.uptimeIncident.findMany({ where: { monitorId: monitor.id, startedAt: { lte: now }, OR: [{ confirmedAt: { gte: from } }, { recoveredAt: null, supersededAt: null }, { recoveredAt: { gte: from } }] },
-      orderBy: { confirmedAt: 'desc' }, take: 100 }),
+    includeHistory ? prisma.uptimeProbe.findMany({ where: { ...scope, ...(before ? { OR: [{ observedAt: { lt: before.observedAt, gte: from } }, { observedAt: before.observedAt, id: { lt: before.id } }] } : {}) },
+      orderBy: [{ observedAt: 'desc' }, { id: 'desc' }], take: 101 }) : [],
+    includeHistory ? prisma.uptimeIncident.findMany({ where: { monitorId: monitor.id, startedAt: { lte: now }, OR: [{ confirmedAt: { gte: from } }, { recoveredAt: null, supersededAt: null }, { recoveredAt: { gte: from } }] },
+      orderBy: { confirmedAt: 'desc' }, take: 100 }) : [],
     prisma.uptimeIncident.count({ where: { monitorId: monitor.id, version: monitor.version, recoveredAt: null, supersededAt: null } }),
   ])
   const enabled = uptimeEligible(monitor.project)
@@ -55,9 +55,13 @@ export async function loadUptimeHistory(projectId: string, window: UptimeHistory
     nextCursor: rows.length > 100 ? probes.at(-1)!.id : null })
 }
 
+export function loadUptimeHistory(projectId: string, window: UptimeHistory['window'] = '24h', cursor: string | null = null, now = new Date()): Promise<UptimeHistory | null> {
+  return readUptime(projectId, window, cursor, now, true)
+}
+
 export async function loadUptimeSummary(projectId: string, now = new Date()): Promise<UptimeSummary | null> {
-  const history = await loadUptimeHistory(projectId, '24h', null, now)
-  return history ? uptimeSummarySchema.parse(history) : null
+  const projection = await readUptime(projectId, '24h', null, now, false)
+  return projection ? uptimeSummarySchema.parse(projection) : null
 }
 
 export async function loadUptimeEvents(projectId: string) {

@@ -265,6 +265,8 @@ FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=2 npm run worker:start
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 
+The free-launch readiness profile requires enabled capabilities. Automatic account checks explicitly disabled with `ACCOUNT_CHECKS_ENABLED=false` remain reported as unavailable and do not block that profile. Commercial readiness still requires them. Enabling account checks requires complete infrastructure and lifecycle proof.
+
 The former customer-triggered Railway deployment review remains parked with the other power tools.
 Scheduled Watch is the supported automated review trigger.
 
