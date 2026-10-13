@@ -38,7 +38,7 @@ function domainFrom(url: string | null | undefined): string {
  * mine for concrete product improvements.
  */
 export async function buildFeedbackDigest(
-  options: FeedbackDigestOptions = {}
+  options: FeedbackDigestOptions = {},
 ): Promise<FeedbackDigestResult> {
   const days = Math.min(Math.max(options.days ?? 30, 1), 365)
   const since = new Date(Date.now() - days * DAY_MS)
@@ -51,7 +51,10 @@ export async function buildFeedbackDigest(
       include: {
         lead: { select: { normalizedDomain: true, latestScore: true } },
         user: { select: { email: true, plan: true } },
-        messages: { orderBy: { createdAt: 'asc' }, select: { role: true, body: true, createdAt: true } },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          select: { role: true, body: true, createdAt: true },
+        },
       },
     }),
     prisma.auditFeedback.findMany({
@@ -85,7 +88,7 @@ export async function buildFeedbackDigest(
   lines.push(`# ${BRAND.name} - user feedback digest`)
   lines.push('')
   lines.push(
-    `_Window: last ${days} day${days === 1 ? '' : 's'} (since ${since.toISOString().slice(0, 10)}). Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC._`
+    `_Window: last ${days} day${days === 1 ? '' : 's'} (since ${since.toISOString().slice(0, 10)}). Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC._`,
   )
   lines.push('')
 
@@ -98,7 +101,9 @@ export async function buildFeedbackDigest(
   lines.push('## Summary')
   lines.push('')
   lines.push(`- Conversations: **${sessions.length}**`)
-  lines.push(`- Report reactions: **${reportReactions.length}** (👍 ${reportUp} / 👎 ${reportDown})`)
+  lines.push(
+    `- Report reactions: **${reportReactions.length}** (👍 ${reportUp} / 👎 ${reportDown})`,
+  )
   lines.push(`- Flag reactions: **${flagReactions.length}** (👍 ${flagUp} / 👎 ${flagDown})`)
   lines.push('')
 
@@ -209,7 +214,7 @@ export async function buildFeedbackDigest(
     `You are helping improve **${BRAND.name}**. Based on the conversations and reactions above, ` +
       'identify recurring themes, rank the top product and audit-quality issues by frequency and ' +
       'severity, and propose concrete, actionable improvements. Call out any flags that users ' +
-      'repeatedly mark as wrong so we can fix or retune those checks.'
+      'repeatedly mark as wrong so we can fix or retune those checks.',
   )
   lines.push('')
 

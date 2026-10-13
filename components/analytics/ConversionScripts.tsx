@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
 import Script from 'next/script'
 import { getGoogleAdsId, getMetaPixelId } from '@/lib/analytics/ad-conversions'
@@ -34,8 +35,9 @@ function useCaptureClickIds(enabled: boolean) {
     const fbclid = params.get('fbclid')
     if (!gclid && !fbclid) return
 
-    const existingRaw = document.cookie
-      .match(new RegExp(`(?:^|; )${CLICK_IDS_COOKIE}=([^;]+)`))?.[1]
+    const existingRaw = document.cookie.match(
+      new RegExp(`(?:^|; )${CLICK_IDS_COOKIE}=([^;]+)`),
+    )?.[1]
     const existing = parseClickIds(existingRaw ? decodeURIComponent(existingRaw) : null)
     const value = serializeClickIds({
       gclid: gclid ?? existing.gclid,
@@ -46,6 +48,8 @@ function useCaptureClickIds(enabled: boolean) {
 }
 
 export function ConversionScripts() {
+  const pathname = usePathname(),
+    privateAdmin = pathname === '/admin' || pathname?.startsWith('/admin/') === true
   const gaId = getGoogleAnalyticsId()
   const adsId = getGoogleAdsId()
   const pixelId = getMetaPixelId()
@@ -53,7 +57,15 @@ export function ConversionScripts() {
   const [consent, setConsent] = useState<AnalyticsConsent | null>()
   const [showPreferences, setShowPreferences] = useState(false)
 
+  useLayoutEffect(() => {
+    if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = privateAdmin
+    window.fbq?.(
+      'consent',
+      privateAdmin ? 'revoke' : readAnalyticsConsent() === 'granted' ? 'grant' : 'revoke',
+    )
+  }, [privateAdmin, gaId])
   useEffect(() => {
+    if (privateAdmin) return
     initializeGoogleTag()
     setConsent(readAnalyticsConsent())
     const onConsent = (event: Event) => {
@@ -78,16 +90,17 @@ export function ConversionScripts() {
       window.removeEventListener(ANALYTICS_CONSENT_EVENT, onConsent)
       window.removeEventListener(ANALYTICS_PREFERENCES_EVENT, onPreferences)
     }
-  }, [])
+  }, [privateAdmin])
 
-  const enabled = consent === 'granted'
-  const asking = consent === null || showPreferences
+  const enabled = !privateAdmin && consent === 'granted'
+  const asking = !privateAdmin && (consent === null || showPreferences)
   const notice = useRef<HTMLDivElement>(null)
   useFixedBottomNotice(notice, asking, 10)
   useCaptureClickIds(enabled)
 
   const gtagId = gaId || (enabled ? adsId : undefined)
 
+  if (privateAdmin) return null
   return (
     <>
       {consent !== undefined && gtagId ? (
@@ -123,7 +136,10 @@ export function ConversionScripts() {
           className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--bottom-notice-offset,0px))] z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:p-5"
         >
           <p className="text-sm font-semibold text-foreground">{ANALYTICS_CONSENT_COPY.title}</p>
-          <p id="analytics-consent-description" className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          <p
+            id="analytics-consent-description"
+            className="mt-1 text-xs leading-relaxed text-muted-foreground"
+          >
             {ANALYTICS_CONSENT_COPY.body}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

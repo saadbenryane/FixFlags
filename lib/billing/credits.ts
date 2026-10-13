@@ -55,20 +55,17 @@ export async function consumePurchasedCredit(tx: Prisma.TransactionClient, userI
   return true
 }
 
-export async function refundPurchasedCredit(
-  tx: Prisma.TransactionClient,
-  stripePaymentIntentId: string
-): Promise<boolean> {
-  const purchase = await tx.creditPurchase.findFirst({
-    where: { stripePaymentIntentId, status: 'PAID', creditsRemaining: { gt: 0 } },
-  })
-  if (!purchase) return false
-
-  await tx.creditPurchase.update({
-    where: { id: purchase.id },
-    data: { status: 'REFUNDED', creditsRemaining: 0 },
-  })
-  return true
+export function refundedCreditBalance(input:{purchased:number;remaining:number;previouslyRefunded:number;refundedMinor:number;paidMinor:number}) {
+ if(!Number.isSafeInteger(input.refundedMinor)||!Number.isSafeInteger(input.paidMinor)||input.paidMinor<=0||input.refundedMinor<0||input.refundedMinor>input.paidMinor)throw new Error('Invalid provider refund totals')
+ const refunded=Math.max(input.previouslyRefunded,Math.min(input.purchased,Math.ceil(input.purchased*input.refundedMinor/input.paidMinor)))
+ return {refunded,remaining:Math.max(0,input.remaining-(refunded-input.previouslyRefunded)),fullyRefunded:refunded>=input.purchased}
+}
+export async function refundPurchasedCredit(tx:Prisma.TransactionClient,stripePaymentIntentId:string,amounts:{refundedMinor:number;paidMinor:number}):Promise<boolean> {
+ const purchase=await tx.creditPurchase.findFirst({where:{stripePaymentIntentId,status:{in:['PAID','REFUNDED']}}})
+ if(!purchase)return false
+ const balance=refundedCreditBalance({purchased:purchase.creditsPurchased,remaining:purchase.creditsRemaining,previouslyRefunded:purchase.creditsRefunded,...amounts})
+ await tx.creditPurchase.update({where:{id:purchase.id},data:{status:balance.fullyRefunded?'REFUNDED':'PAID',creditsRemaining:balance.remaining,creditsRefunded:balance.refunded}})
+ return true
 }
 
 export async function wouldBlockNewCheckWithCredits(

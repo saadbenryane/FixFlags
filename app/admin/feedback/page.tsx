@@ -1,9 +1,10 @@
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import { Suspense } from 'react'
 import { prisma } from '@/lib/db'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FeedbackHub } from '@/components/admin/FeedbackHub'
-import { closeOrphanSupportSessions, getAdminUnreadCount } from '@/lib/live-support/sessions'
+import { getAdminUnreadCount } from '@/lib/live-support/sessions'
 import type { FlagReactionGroup, ReportReactionItem } from '@/components/admin/ReactionsList'
 
 function domainFrom(url: string | null | undefined): string {
@@ -16,7 +17,7 @@ function domainFrom(url: string | null | undefined): string {
 }
 
 export default async function AdminFeedbackPage() {
-  await closeOrphanSupportSessions().catch(() => 0)
+  await requireAdminPage()
 
   const [reportRows, flagRows, unread] = await Promise.all([
     prisma.auditFeedback.findMany({
@@ -41,7 +42,7 @@ export default async function AdminFeedbackPage() {
         },
       },
     }),
-    getAdminUnreadCount().catch(() => 0),
+    getAdminUnreadCount(),
   ])
 
   const reportSummary = {
@@ -90,8 +91,8 @@ export default async function AdminFeedbackPage() {
   return (
     <Container variant="wide" className="space-y-6 py-8">
       <PageHeader
-        title="Feedback & Support"
-        description="Live chat, report reactions, Flag reactions, and a copyable digest."
+        title="Support"
+        description="Conversations, customer feedback, and authorized exports."
       />
       <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
         <FeedbackHub

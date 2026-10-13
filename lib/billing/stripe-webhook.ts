@@ -1,3 +1,4 @@
+import { appendAdminActivity } from '@/lib/admin/activity'
 import { createHash } from 'node:crypto'
 import type Stripe from 'stripe'
 import type {
@@ -13,6 +14,7 @@ import { markWaitlistConverted } from '@/lib/billing/waitlist'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
+import { recordBillingSubscriptionSnapshot, recordPaidInvoice, recordProviderRefund } from './ledger'
 
 export class StripeWebhookProcessError extends Error {
   constructor(message: string, readonly status: number) {
@@ -195,6 +197,17 @@ async function recordSubscriptionLifecycle(
       occurredAt: new Date(event.created * 1000),
     },
   })
+  if (!result.stale) await recordBillingSubscriptionSnapshot(tx, subscription, result.userId, new Date(event.created * 1000), 'WEBHOOK')
+}
+
+/** A provider read is recorded as reconciliation, never as an invented webhook. */
+export async function syncSubscriptionFromProvider(subscription: Stripe.Subscription, operationId: string) {
+  return prisma.$transaction(async tx => {
+    const observedAt = new Date()
+    const result = await processSubscription(tx, subscription, observedAt)
+    if (!result.stale) await recordBillingSubscriptionSnapshot(tx, subscription, result.userId, observedAt, 'ADMIN_RECONCILIATION')
+    return { userId: result.userId, plan: result.plan, status: result.status, operationId }
+  })
 }
 
 function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
@@ -240,6 +253,14 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
   const paymentFailedBox: { current: PaymentFailedNotify | null } = { current: null }
   const replayBox = { current: false }
 
+  const completeRefunds:Stripe.Refund[]=[]
+  if(event.type==='charge.refunded'){
+    const charge=event.data.object
+    completeRefunds.push(...(charge.refunds?.data??[]))
+    if(charge.refunds?.has_more){let cursor=completeRefunds.at(-1)?.id
+      while(cursor){const page=await getStripe().refunds.list({charge:charge.id,limit:100,starting_after:cursor},{timeout:15000,maxNetworkRetries:0});completeRefunds.push(...page.data);if(!page.has_more)break;cursor=page.data.at(-1)?.id}
+    }
+  }
   await prisma.$transaction(async (tx) => {
     const eventOccurredAt = new Date(event.created * 1000)
     const alreadyProcessed = await tx.processedStripeEvent.findUnique({
@@ -292,8 +313,10 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
         }
         break
       }
+      case 'invoice.paid':
       case 'invoice.payment_succeeded': {
         const synced = await syncSubscriptionFromInvoice(tx, event.data.object, eventOccurredAt)
+        await recordPaidInvoice(tx,event.data.object,synced?.result.userId??null,eventOccurredAt)
         if (synced) {
           await recordSubscriptionLifecycle(
             tx,
@@ -316,8 +339,29 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
       }
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
+        const paymentReference = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
+        const payment = paymentReference ? await tx.billingLedgerEntry.findFirst({ where: { paymentReference, kind: { not: 'REFUND' } } }) : null
+        for (const refund of completeRefunds) {
+          await recordProviderRefund(tx, refund, { userId: payment?.userId ?? null, customerId: typeof charge.customer === 'string' ? charge.customer : charge.customer?.id ?? null,
+            subscriptionId: payment?.subscriptionId, planAtPayment: payment?.planAtPayment },eventOccurredAt)
+        }
         if (typeof charge.payment_intent === 'string') {
-          await refundPurchasedCredit(tx, charge.payment_intent)
+          await refundPurchasedCredit(tx, charge.payment_intent,{refundedMinor:completeRefunds.filter(r=>r.status==='succeeded').reduce((sum,r)=>sum+r.amount,0),paidMinor:charge.amount})
+        }
+        break
+      }
+      case 'refund.created':
+      case 'refund.updated':
+      case 'refund.failed': {
+        const refund=event.data.object,paymentReference=typeof refund.payment_intent==='string'?refund.payment_intent:refund.payment_intent?.id
+        const payment=paymentReference?await tx.billingLedgerEntry.findFirst({where:{paymentReference,kind:{not:'REFUND'}}}):null
+        await recordProviderRefund(tx,refund,{userId:payment?.userId??null,customerId:payment?.customerId??null,subscriptionId:payment?.subscriptionId,planAtPayment:payment?.planAtPayment},eventOccurredAt)
+        const operationId=refund.metadata?.adminOperationId
+        const confirmed=refund.status==='succeeded',failed=refund.status==='failed'||refund.status==='canceled'
+        if(operationId&&(confirmed||failed)){
+          const operation=await tx.adminOperation.findFirst({where:{id:operationId,action:'BILLING_REFUND',status:{in:['RUNNING','INDETERMINATE']}}})
+          if(operation){const changed=await tx.adminOperation.updateMany({where:{id:operation.id,status:{in:['RUNNING','INDETERMINATE']}},data:{status:confirmed?'SUCCEEDED':'FAILED',providerReference:refund.id,result:{refundId:refund.id,state:refund.status!,amountMinor:refund.amount,currency:refund.currency},errorCode:failed?'PROVIDER_REFUND_FAILED':null,errorMessage:failed?'The provider confirmed that this refund failed.':null,completedAt:new Date(),executionToken:null,leaseUntil:null}})
+          if(changed.count)await appendAdminActivity(tx,operation,'PROVIDER_OUTCOME_CONFIRMED',{providerId:refund.id,state:refund.status,eventId:event.id})}
         }
         break
       }
@@ -327,8 +371,13 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
           const existingPurchase = await tx.creditPurchase.findUnique({
             where: { stripeSessionId: session.id },
           })
+          if(session.payment_status !== 'paid') break
           if (existingPurchase && existingPurchase.status === 'PAID') break
           if (existingPurchase) {
+            const paymentReference=typeof session.payment_intent==='string'?session.payment_intent:session.payment_intent?.id
+            if(paymentReference)await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fixflags:payment-receipt:${paymentReference}`}))`
+            const priorPayment=paymentReference?await tx.billingLedgerEntry.findFirst({where:{paymentReference,kind:{not:'REFUND'}}}):null
+            if(!priorPayment && session.amount_total !== null && session.currency && paymentReference) await tx.billingLedgerEntry.upsert({where:{kind_providerId:{kind:'CREDIT_PAYMENT',providerId:session.id}},create:{providerId:session.id,kind:'CREDIT_PAYMENT',userId:existingPurchase.userId,customerId:typeof session.customer==='string'?session.customer:session.customer?.id,paymentReference,amountMinor:session.amount_total,currency:session.currency,status:'SUCCEEDED',occurredAt:eventOccurredAt},update:{}})
             await tx.creditPurchase.update({
               where: { id: existingPurchase.id },
               data: {

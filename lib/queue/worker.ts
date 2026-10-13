@@ -18,6 +18,7 @@ import { runIntegrityImprove } from '../integrity/improve'
 import { reportOperationalError } from '../observability/report-error'
 import { startProgressiveWorkers } from '../audit/progressive/runtime'
 import { readExecutionSpec } from '../sites/domain/execution-spec'
+import { startAdminOperationRuntime } from '@/lib/admin/runtime'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -208,8 +209,9 @@ export function startWorker() {
 
   const tasks = startProgressiveWorkers()
   const uptime = startUptimeRuntime()
+  const adminOperations = startAdminOperationRuntime()
   const closeAuditWorker = worker.close.bind(worker)
-  worker.close = async force => { clearInterval(heartbeatTimer); await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close()]) }
+  worker.close = async force => { clearInterval(heartbeatTimer); await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()]) }
   return worker
 }
 

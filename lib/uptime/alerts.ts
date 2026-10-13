@@ -3,14 +3,16 @@ import { prisma } from '@/lib/db'
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy/brand'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
-import { uptimeEligible } from './service'
+import { uptimeEligible } from './eligibility'
 import { logger } from '@/lib/logger'
 import { emailLayout, escapeEmailHtml } from '@/lib/email/layout'
 
 /** Receipt identity is also the provider idempotency key. Preferences are rechecked at delivery. */
-export async function deliverUptimeNotifications(now = new Date(), limit = 20) {
+export async function deliverUptimeNotifications(now = new Date(), limit = 20, onlyReceiptId?: string) {
   const receipts = await prisma.uptimeNotification.findMany({ where: {
-    status: { in: ['PENDING', 'FAILED', 'SENDING'] }, attempts: { lt: 8 }, nextAttemptAt: { lte: now },
+    incident: { monitor: { project: { user: { lifecycleStatus: 'ACTIVE' } } } },
+    ...(onlyReceiptId ? { id: onlyReceiptId } : {}),
+    status: { in: ['PENDING', 'FAILED', 'SENDING'] }, attempts: { lt: prisma.uptimeNotification.fields.maxAttempts }, nextAttemptAt: { lte: now },
     OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
   }, orderBy: { nextAttemptAt: 'asc' }, take: limit })
   for (const receipt of receipts) {

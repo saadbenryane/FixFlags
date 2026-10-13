@@ -1,3 +1,5 @@
+import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { createHash, randomBytes } from 'node:crypto'
 import { SITE_URL } from '@/lib/marketing/copy/brand'
 import { normalizeAuditUrl } from '@/lib/audit/url'
@@ -5,7 +7,13 @@ import { prisma } from '@/lib/db'
 import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
 import { toolDefinition, type McpScope } from '@/lib/mcp/tool-manifest'
 
-export const MCP_SCOPES = ['sites:read', 'runs:read', 'runs:write', 'flags:read', 'flags:write'] as const
+export const MCP_SCOPES = [
+  'sites:read',
+  'runs:read',
+  'runs:write',
+  'flags:read',
+  'flags:write',
+] as const
 const CODE_TTL_MS = 5 * 60 * 1000
 const ACCESS_TTL_MS = 60 * 60 * 1000
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -60,15 +68,14 @@ export function requiredToolScope(tool: string | null): McpScope | null {
   return toolDefinition(tool)?.scope ?? null
 }
 
-export function wwwAuthenticate(input: {
-  error?: 'invalid_token' | 'invalid_request' | 'insufficient_scope'
-  scope?: string
-  description?: string
-} = {}): string {
-  const parts = [
-    'Bearer realm="FixFlags"',
-    `resource_metadata="${protectedResourceMetadataUrl()}"`,
-  ]
+export function wwwAuthenticate(
+  input: {
+    error?: 'invalid_token' | 'invalid_request' | 'insufficient_scope'
+    scope?: string
+    description?: string
+  } = {},
+): string {
+  const parts = ['Bearer realm="FixFlags"', `resource_metadata="${protectedResourceMetadataUrl()}"`]
   if (input.error) parts.push(`error="${input.error}"`)
   if (input.scope) parts.push(`scope="${input.scope}"`)
   if (input.description) parts.push(`error_description="${input.description.replaceAll('"', '')}"`)
@@ -96,7 +103,9 @@ export function isAllowedRedirect(uri: string): boolean {
     const url = new URL(uri)
     if (url.username || url.password || url.hash) return false
     if (url.protocol === 'https:') return true
-    return url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
+    return (
+      url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
+    )
   } catch {
     return false
   }
@@ -128,7 +137,10 @@ export function authorizationServerDocument() {
   }
 }
 
-export async function redirectAllowedForClient(clientId: string, redirectUri: string): Promise<boolean> {
+export async function redirectAllowedForClient(
+  clientId: string,
+  redirectUri: string,
+): Promise<boolean> {
   if (!isAllowedRedirect(redirectUri)) return false
   if (clientId.startsWith('https://')) {
     const safe = normalizeAuditUrl(clientId)
@@ -139,10 +151,20 @@ export async function redirectAllowedForClient(clientId: string, redirectUri: st
       headers: { accept: 'application/json' },
     }).catch(() => null)
     if (!response?.ok) return false
-    const body = await response.json().catch(() => null) as { client_id?: string; redirect_uris?: unknown } | null
-    return body?.client_id === clientId && Array.isArray(body.redirect_uris) && body.redirect_uris.includes(redirectUri)
+    const body = (await response.json().catch(() => null)) as {
+      client_id?: string
+      redirect_uris?: unknown
+    } | null
+    return (
+      body?.client_id === clientId &&
+      Array.isArray(body.redirect_uris) &&
+      body.redirect_uris.includes(redirectUri)
+    )
   }
-  const client = await prisma.oAuthClient.findUnique({ where: { id: clientId }, select: { redirectUris: true } })
+  const client = await prisma.oAuthClient.findUnique({
+    where: { id: clientId },
+    select: { redirectUris: true },
+  })
   return Boolean(client?.redirectUris.includes(redirectUri))
 }
 
@@ -155,51 +177,62 @@ export async function issueAuthorizationCode(input: {
   scopes: string[]
 }): Promise<string> {
   const code = randomBytes(32).toString('base64url')
-  await prisma.oAuthAuthorizationCode.create({
-    data: {
-      codeHash: hashApiKey(code),
-      userId: input.userId,
-      clientId: input.clientId,
-      redirectUri: input.redirectUri,
-      codeChallenge: input.codeChallenge,
-      resource: input.resource,
-      scopes: input.scopes,
-      expiresAt: new Date(Date.now() + CODE_TTL_MS),
-    },
+  await prisma.$transaction(async (tx) => {
+    await requireActiveAccountForWrite(tx, input.userId)
+    await tx.oAuthAuthorizationCode.create({
+      data: {
+        codeHash: hashApiKey(code),
+        userId: input.userId,
+        clientId: input.clientId,
+        redirectUri: input.redirectUri,
+        codeChallenge: input.codeChallenge,
+        resource: input.resource,
+        scopes: input.scopes,
+        expiresAt: new Date(Date.now() + CODE_TTL_MS),
+      },
+    })
   })
   return code
 }
 
 async function issueTokenPair(userId: string, resource: string, scopes: string[]) {
-  const access = generateApiKey()
-  await prisma.apiKey.create({
-    data: {
-      userId,
-      name: 'MCP access',
-      keyHash: access.keyHash,
-      prefix: access.prefix,
-      lastFour: access.lastFour,
-      scopes,
-      audience: resource,
-      expiresAt: new Date(Date.now() + ACCESS_TTL_MS),
-    },
-  })
-  const refresh = randomBytes(32).toString('base64url')
-  await prisma.oAuthRefreshToken.create({
-    data: {
-      tokenHash: hashApiKey(refresh),
-      userId,
-      audience: resource,
-      scopes,
-      expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
-    },
-  })
-  return {
-    access_token: access.rawKey,
-    token_type: 'Bearer' as const,
-    expires_in: ACCESS_TTL_MS / 1000,
-    refresh_token: refresh,
-    scope: scopes.join(' '),
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await requireActiveAccountForWrite(tx, userId)
+      const access = generateApiKey()
+      await tx.apiKey.create({
+        data: {
+          userId,
+          name: 'MCP access',
+          keyHash: access.keyHash,
+          prefix: access.prefix,
+          lastFour: access.lastFour,
+          scopes,
+          audience: resource,
+          expiresAt: new Date(Date.now() + ACCESS_TTL_MS),
+        },
+      })
+      const refresh = randomBytes(32).toString('base64url')
+      await tx.oAuthRefreshToken.create({
+        data: {
+          tokenHash: hashApiKey(refresh),
+          userId,
+          audience: resource,
+          scopes,
+          expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+        },
+      })
+      return {
+        access_token: access.rawKey,
+        token_type: 'Bearer' as const,
+        expires_in: ACCESS_TTL_MS / 1000,
+        refresh_token: refresh,
+        scope: scopes.join(' '),
+      }
+    })
+  } catch (error) {
+    if (error instanceof SiteRunRefusal && error.code === 'ACCOUNT_UNAVAILABLE') return null
+    throw error
   }
 }
 
@@ -211,10 +244,16 @@ export async function exchangeAuthorizationCode(input: {
   resource: string
 }) {
   if (!audienceMatches(input.resource, mcpResource())) return null
-  const row = await prisma.oAuthAuthorizationCode.findUnique({ where: { codeHash: hashApiKey(input.code) } })
+  const row = await prisma.oAuthAuthorizationCode.findUnique({
+    where: { codeHash: hashApiKey(input.code) },
+  })
   if (!row || row.consumedAt || row.expiresAt.getTime() <= Date.now()) return null
   if (row.clientId !== input.clientId || row.redirectUri !== input.redirectUri) return null
-  if (!audienceMatches(row.resource, input.resource) || !pkceMatches(input.codeVerifier, row.codeChallenge)) return null
+  if (
+    !audienceMatches(row.resource, input.resource) ||
+    !pkceMatches(input.codeVerifier, row.codeChallenge)
+  )
+    return null
   const consumed = await prisma.oAuthAuthorizationCode.updateMany({
     where: { id: row.id, consumedAt: null },
     data: { consumedAt: new Date() },
@@ -225,7 +264,9 @@ export async function exchangeAuthorizationCode(input: {
 
 export async function exchangeRefreshToken(input: { refreshToken: string; resource: string }) {
   if (!audienceMatches(input.resource, mcpResource())) return null
-  const row = await prisma.oAuthRefreshToken.findUnique({ where: { tokenHash: hashApiKey(input.refreshToken) } })
+  const row = await prisma.oAuthRefreshToken.findUnique({
+    where: { tokenHash: hashApiKey(input.refreshToken) },
+  })
   if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now()) return null
   if (!audienceMatches(row.audience, input.resource)) return null
   const revoked = await prisma.oAuthRefreshToken.updateMany({

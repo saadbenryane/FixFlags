@@ -17,9 +17,13 @@ export const siteRemovalSchema = z.object({
 }).strict()
 
 type Owner = { projectId: string; userId: string }
-export async function saveSiteSettings(owner: Owner, input: z.infer<typeof siteSettingsWriteSchema>) {
+type Transaction = import('@prisma/client').Prisma.TransactionClient
+async function settingsTransaction<T>(tx: Transaction | undefined, run: (client: Transaction) => Promise<T>): Promise<T> {
+  return tx ? run(tx) : prisma.$transaction(run)
+}
+export async function saveSiteSettings(owner: Owner, input: z.infer<typeof siteSettingsWriteSchema>, transaction?: Transaction) {
   const changes = siteSettingsWriteSchema.parse(input)
-  await prisma.$transaction(async tx => {
+  await settingsTransaction(transaction, async tx => {
     const result = await tx.project.updateMany({
       where: { id: owner.projectId, userId: owner.userId, deletedAt: null },
       data: { ...changes, ...(changes.accountChecksEnabled !== undefined ? { accountCheckRevision: { increment: 1 } } : {}) },
@@ -39,9 +43,9 @@ function accountSnapshot(accounts: Array<{ email: string; state: string }>) {
 
 /** Serialize removal with account reservation, then fence all outstanding work.
  * Acknowledgement records the owner's decision; it never certifies deletion. */
-export async function removeSite(owner: Owner, input: z.infer<typeof siteRemovalSchema> = {}) {
+export async function removeSite(owner: Owner, input: z.infer<typeof siteRemovalSchema> = {}, transaction?: Transaction) {
   const acknowledgement = siteRemovalSchema.parse(input)
-  await prisma.$transaction(async tx => {
+  await settingsTransaction(transaction, async tx => {
     const projects = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "projects" WHERE "id" = ${owner.projectId}
         AND "userId" = ${owner.userId} AND "deletedAt" IS NULL FOR UPDATE`

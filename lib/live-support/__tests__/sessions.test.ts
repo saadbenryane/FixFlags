@@ -100,6 +100,7 @@ describe('live-support serialize', () => {
 
     const message = serializeMessage({
       id: 'msg_1',
+      sequence: BigInt(2),
       role: 'VISITOR',
       body: 'Hello',
       createdAt: new Date('2026-07-20T12:01:00Z'),

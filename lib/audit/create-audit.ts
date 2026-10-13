@@ -1,3 +1,4 @@
+import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { prisma } from '@/lib/db'
 import { dispatchAudit } from './dispatch'
 import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
@@ -6,7 +7,6 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { AuditStatus, Prisma } from '@prisma/client'
 import type { RecheckTrigger } from '@prisma/client'
 import {
-  getEffectiveScanLimit,
   hasUnlimitedScans,
   isAdminUser,
   isUnlimitedScanLimit,
@@ -42,6 +42,7 @@ import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
 import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domain-actor'
 
 export interface CreateAuditOptions {
   url: string
@@ -82,6 +83,7 @@ export interface CreateAuditOptions {
   runRequestId?: string
   runRequestAdmission?: Prisma.RunRequestUncheckedCreateInput
   executionSpec?: ExecutionSpec
+  operator?: AdminDomainActor
   /** Internal retry admission, authorized against this exact terminal Audit by its transport. */
   retryParent?: boolean
 }
@@ -323,7 +325,7 @@ export async function createAndEnqueueAudit(
         throw new ParentAuditError('Run admission does not match this Site', 400)
       if (row.reused) throw new ParentAuditError('This verification already has an execution. Inspect its recorded result.', 409)
     }
-    const site = await ensureSiteForAudit({ url, auditId: row.id, userId, projectId, sessionKey: visitorKey || null }, tx)
+    const site = await ensureSiteForAudit({ allowRemovedForCleanup: Boolean(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup'), url, auditId: row.id, userId, projectId, sessionKey: visitorKey || null }, tx)
     if (!site.siteId?.trim()) throw new Error('Site board identity was empty after admission')
     return { ...row, site }
   }
@@ -334,7 +336,10 @@ export async function createAndEnqueueAudit(
       try {
         audit = await prisma.$transaction(
           async (tx) => {
-            {
+            const cleanup = Boolean(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup')
+            const policy = await loadEffectiveEntitlements(userId,tx)
+            if(!policy || !policy.available && !cleanup) throw new ParentAuditError('This account cannot start new work.',403)
+            if (!cleanup) {
               try {
                 const ownedProject = await ensureProductProject(userId, url, tx)
                 if (options.parentId && projectId && projectId !== ownedProject.id) {
@@ -348,8 +353,12 @@ export async function createAndEnqueueAudit(
                 throw error
               }
             }
+            if(cleanup && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new ParentAuditError('Cleanup Site not found.',404)
             const user = await rollUserUsagePeriod(tx, userId)
             if (!user) throw new Error('User not found')
+            if (options.operator && projectId) await assertAdminDomainActor(options.operator, userId, projectId, tx)
+            if (user.lifecycleStatus !== 'ACTIVE' && !(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup'))
+              throw new ParentAuditError('This account cannot start new work.', 403)
 
             if (options.verificationAttemptId) {
               await tx.$executeRaw`
@@ -399,7 +408,7 @@ export async function createAndEnqueueAudit(
                 projectId: intent.projectId, source: intent.source!, idempotencyKey: intent.idempotencyKey,
               } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true, selections: { select: { outcomeId: true } } } })
               if (existing) {
-                if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== userId)
+                if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== (options.operator?.actorId ?? userId))
                   throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
                 if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
                 throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort())
@@ -437,7 +446,7 @@ export async function createAndEnqueueAudit(
               !hasUnlimitedScans(user) &&
               !isAdminUser(user)
             ) {
-              const limit = getEffectiveScanLimit(user)
+              const limit = policy.scanLimit ?? -1
               if (!isUnlimitedScanLimit(limit)) {
                 const pending = await tx.audit.count({
                   where: {
@@ -453,7 +462,7 @@ export async function createAndEnqueueAudit(
                     ? { ...user, plan: 'FREE' as const }
                     : user
 
-                const gate = await wouldBlockNewCheckWithCredits(gateUser, pending)
+                const gate = await wouldBlockNewCheckWithCredits({ ...gateUser, plan: policy.plan, auditsLimit: policy.scanLimit ?? -1 }, pending)
                 if (!gate.allowed) {
                   throw new AuditLimitError(
                     gate.code === 'TOKEN_LIMIT' ? 'TOKEN_LIMIT' : 'UPGRADE_REQUIRED',
@@ -471,11 +480,11 @@ export async function createAndEnqueueAudit(
             }
 
             const created = await tx.audit.create({
-              data: { ...data, projectId, journeyReviewIncluded: true },
+              data: { ...data, projectId, planAtAdmission: user.plan, journeyReviewIncluded: true },
               select: { id: true, parentId: true },
             })
             if (options.runRequestAdmission) {
-              if (options.runRequestAdmission.projectId !== projectId || options.runRequestAdmission.requestedByUserId !== userId)
+              if (options.runRequestAdmission.projectId !== projectId || options.runRequestAdmission.requestedByUserId !== (options.operator?.actorId ?? userId))
                 throw new ParentAuditError('Run admission does not match this Site owner', 400)
               if (executionSpec.fixtureSetup) {
                 const setup = executionSpec.fixtureSetup

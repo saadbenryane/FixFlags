@@ -9,6 +9,7 @@ import { AuditUrlError } from '@/lib/audit/url'
 import { AuditLimitError } from '@/lib/audit/create-audit'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
+import { AdminActionError } from '@/lib/admin/errors'
 
 export interface ApiErrorBody {
   code: UsageLimitCode | string
@@ -35,6 +36,7 @@ export function apiError(
 }
 
 export function handleRouteError(err: unknown, fallback = 'Something went wrong'): NextResponse {
+  if (err instanceof AdminActionError) return apiError(err.message, err.status, { code: err.code })
   const requestId = randomUUID()
   logger.error('API route error', err instanceof Error ? err : new Error(String(err)))
 

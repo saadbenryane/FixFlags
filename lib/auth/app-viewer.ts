@@ -15,7 +15,7 @@ export const getAppViewer = cache(async () => {
     where: { id: session.user.id },
     select: meUserSelect,
   })
-  return user ? { session, user } : null
+  return user?.lifecycleStatus === 'ACTIVE' ? { session, user } : null
 })
 
 export const getAppMeUser = cache(async () => {

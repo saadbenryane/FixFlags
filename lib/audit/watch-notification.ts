@@ -36,6 +36,7 @@ export type WatchAlertDeliveryState = 'none' | 'delivering' | 'accepted' | 'unde
 export function watchAlertDelivery(input: {
   status: WatchNotificationStatusLike | null | undefined
   attempts: number
+  attemptCeiling?:number
   leaseUntil?: Date | string | null
   now?: Date
 }): WatchAlertDeliveryState {
@@ -47,12 +48,12 @@ export function watchAlertDelivery(input: {
     const leaseExpired = leaseUntil != null
       && !Number.isNaN(leaseUntil.getTime())
       && leaseUntil <= (input.now ?? new Date())
-    if (input.attempts >= WATCH_NOTIFICATION_ATTEMPT_LIMIT && leaseExpired) {
+    if (input.attempts >= (input.attemptCeiling ?? WATCH_NOTIFICATION_ATTEMPT_LIMIT) && leaseExpired) {
       return 'undelivered'
     }
     return 'delivering'
   }
   if (status === 'PENDING') return 'delivering'
   // FAILED. Terminal only once the retries are genuinely spent.
-  return input.attempts >= WATCH_NOTIFICATION_ATTEMPT_LIMIT ? 'undelivered' : 'delivering'
+  return input.attempts >= (input.attemptCeiling ?? WATCH_NOTIFICATION_ATTEMPT_LIMIT) ? 'undelivered' : 'delivering'
 }

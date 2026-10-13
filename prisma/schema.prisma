@@ -13,6 +13,9 @@ model User {
   name                     String?
   emailVerified            Boolean                      @default(false)
   role                     String                       @default("user")
+  lifecycleStatus          AccountLifecycleStatus       @default(ACTIVE)
+  lifecycleRevision        Int                          @default(0)
+  suspendedAt              DateTime?
   plan                     Plan                         @default(FREE)
   auditsUsed               Int                          @default(0)
   auditsLimit              Int                          @default(3)
@@ -71,6 +74,9 @@ model User {
   requestedRuns            RunRequest[]                 @relation("RunRequester")
   oauthAuthorizationCodes  OAuthAuthorizationCode[]
   oauthRefreshTokens       OAuthRefreshToken[]
+  entitlementGrants        EntitlementGrant[]
+  billingLedger            BillingLedgerEntry[]
+  billingSnapshots         BillingSubscriptionSnapshot[]
 
   @@map("users")
 }
@@ -671,6 +677,8 @@ model Audit {
   /// proven quiet without confusing it with a requested recovery notification.
   watchRecoveryCount         Int?
   watchNotificationStatus    WatchNotificationStatus      @default(NOT_APPLICABLE)
+  watchNotificationAttemptCeiling Int @default(5)
+  planAtAdmission Plan?
   watchNotificationAttempts  Int                          @default(0)
   watchNotificationLastError String?
   /// Provider acceptance reference, never proof that a person received or read it.
@@ -1023,9 +1031,13 @@ model SupportSession {
   lastNotifiedAt  DateTime?
   unreadByAgent   Int                  @default(0)
   unreadByVisitor Int                  @default(0)
+  nextMessageSequence BigInt           @default(0)
+  agentReadThrough    BigInt           @default(0)
+  visitorReadThrough  BigInt           @default(0)
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   messages        SupportMessage[]
+  drafts          SupportDraft[]
   assignedAgent   User?                @relation("SupportSessionAgent", fields: [assignedAgentId], references: [id])
   lead            Lead?                @relation(fields: [leadId], references: [id])
   tenant          SupportTenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1119,10 +1131,14 @@ model SupportMessage {
   role      SupportMessageRole
   body      String
   senderId  String?
+  sequence  BigInt
+  requestKey String?
   createdAt DateTime           @default(now())
   session   SupportSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
+  @@unique([sessionId, sequence])
+  @@unique([sessionId, senderId, requestKey])
   @@map("support_messages")
 }
 
@@ -1161,20 +1177,22 @@ model AuditRunCost {
   llmInputTokens           Int      @default(0)
   llmOutputTokens          Int      @default(0)
   llmModel                 String?
-  llmCostUsd               Decimal  @db.Decimal(10, 6)
+  llmCostUsd               Decimal? @db.Decimal(10, 6)
   pagespeedCalls           Int      @default(0)
   pagesReviewed            Int      @default(0)
   openCheckRequests        Int      @default(0)
-  estimatedCostUsd         Decimal  @db.Decimal(10, 6)
+  estimatedCostUsd         Decimal? @db.Decimal(10, 6)
+  planAtRun                Plan?
+  pricingBasis             CostPricingBasis @default(LEGACY_ESTIMATE)
   createdAt                DateTime @default(now())
   triageInputTokens        Int      @default(0)
   triageOutputTokens       Int      @default(0)
   triageModel              String?
-  triageCostUsd            Decimal  @default(0) @db.Decimal(10, 6)
+  triageCostUsd            Decimal? @default(0) @db.Decimal(10, 6)
   prescriptionInputTokens  Int      @default(0)
   prescriptionOutputTokens Int      @default(0)
   prescriptionModel        String?
-  prescriptionCostUsd      Decimal  @default(0) @db.Decimal(10, 6)
+  prescriptionCostUsd      Decimal? @default(0) @db.Decimal(10, 6)
   audit                    Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
   @@map("audit_run_costs")
@@ -1605,6 +1623,7 @@ model CreditPurchase {
   stripePaymentIntentId String?
   packId                String
   creditsPurchased      Int
+  creditsRefunded Int @default(0)
   creditsRemaining      Int
   priceUsdCents         Int
   status                CreditPurchaseStatus @default(PENDING)
@@ -2843,6 +2862,7 @@ model UptimeNotification {
   incidentId    String
   kind          String
   status        String         @default("PENDING")
+  maxAttempts Int @default(8)
   attempts      Int            @default(0)
   nextAttemptAt DateTime       @default(now())
   leaseUntil    DateTime?
@@ -2855,4 +2875,164 @@ model UptimeNotification {
   @@unique([incidentId, kind])
   @@index([status, nextAttemptAt, leaseUntil])
   @@map("uptime_notifications")
+}
+
+
+enum AccountLifecycleStatus {
+  ACTIVE
+  SUSPENDED
+  DELETING
+}
+
+enum CostPricingBasis {
+  LEGACY_ESTIMATE
+  CONFIGURED_ESTIMATE
+  UNPRICED
+}
+
+enum AdminOperationStatus {
+  SUPERSEDED
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  INDETERMINATE
+}
+
+model AdminOperation {
+  id                 String @id @default(uuid())
+  action             String
+  actorId            String
+  actorSessionId     String
+  actorAuthenticatedAt DateTime
+  targetType         String
+  targetId           String
+  ownerId            String?
+  reason             String
+  input              Json
+  expectedRevision   String
+  providerRevision   String?
+  idempotencyKey     String
+  requestHash        String
+  intentExpiresAt    DateTime
+  status             AdminOperationStatus @default(QUEUED)
+  result             Json?
+  providerReference  String?
+  executionToken     String?
+  leaseUntil         DateTime?
+  attempts           Int @default(0)
+  errorCode          String?
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  completedAt        DateTime?
+  events             AdminActivityEvent[]
+  evidenceGrant      AdminEvidenceGrant?
+  @@unique([actorId, idempotencyKey])
+  @@index([status, leaseUntil, createdAt])
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("admin_operations")
+}
+
+/// Append-only operator events contain identifiers and redacted changes, never credentials.
+model AdminActivityEvent {
+  id           String @id @default(uuid())
+  sequence     BigInt @unique @default(autoincrement())
+  operationId  String
+  actorId      String
+  action       String
+  targetType   String
+  targetId     String
+  type         String
+  detail       Json
+  occurredAt   DateTime @default(now())
+  operation    AdminOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  @@index([occurredAt(sort: Desc), id])
+  @@index([targetType, targetId, occurredAt(sort: Desc)])
+  @@map("admin_activity_events")
+}
+
+model AdminEvidenceGrant {
+  id          String @id @default(uuid())
+  operationId String @unique
+  actorId     String
+  sessionId   String
+  auditId     String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  operation   AdminOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  @@index([actorId, sessionId, auditId, expiresAt])
+  @@map("admin_evidence_grants")
+}
+
+model EntitlementGrant {
+  id                   String @id @default(uuid())
+  userId               String
+  operationId          String @unique
+  grantedBy            String
+  plan                 Plan?
+  siteAllowance        Int?
+  scanAllowance        Int?
+  deepReviewAllowance  Int?
+  allowedWatchIntervals String[] @default([])
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  createdAt            DateTime @default(now())
+  user                 User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt, expiresAt])
+  @@map("entitlement_grants")
+}
+
+/// Provider amounts retain currency and payment-time attribution. They are not plan-price estimates.
+model BillingLedgerEntry {
+  id                   String @id @default(uuid())
+  providerId           String
+  kind                 String
+  userId               String?
+  customerId           String?
+  subscriptionId       String?
+  paymentReference     String?
+  planAtPayment        Plan?
+  amountMinor          Int
+  currency             String
+  status               String
+  recurring            Boolean @default(false)
+  occurredAt           DateTime
+  recordedAt           DateTime @default(now())
+  user                 User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@unique([kind, providerId])
+  @@index([occurredAt, status, currency])
+  @@index([userId, occurredAt(sort: Desc)])
+  @@map("billing_ledger_entries")
+}
+
+model BillingSubscriptionSnapshot {
+  subscriptionId    String @id
+  userId            String?
+  customerId        String
+  status            String
+  cancelAt DateTime?
+  scheduleId String?
+  cancelAtPeriodEnd Boolean
+  currentPeriodEnd  DateTime?
+  items             Json
+  observedAt        DateTime
+  source            String
+  user              User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([userId, status])
+  @@map("billing_subscription_snapshots")
+}
+
+model SupportDraft {
+  id        String @id @default(uuid())
+  actorId   String
+  sessionId String
+  body      String
+  revision  Int @default(1)
+  updatedAt DateTime @updatedAt
+  session   SupportSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  @@unique([actorId, sessionId])
+  @@index([updatedAt])
+  @@map("support_drafts")
 }

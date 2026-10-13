@@ -1,7 +1,10 @@
+import { AdminActionButton } from '@/components/admin/AdminActionButton'
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
+import { RetryAuditButton } from '@/components/admin/RetryAuditButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
@@ -18,6 +21,7 @@ export default async function AdminAuditDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const admin = await requireAdminPage()
   const { id } = await params
   const audit = await prisma.audit.findUnique({
     where: { id },
@@ -43,12 +47,15 @@ export default async function AdminAuditDetailPage({
     <Container variant="report" className="py-8 space-y-6">
       <PageHeader title="Check detail" description={audit.url}>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/report/${audit.id}`}>View report</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`/api/reports/${audit.id}/logs`} download>Download logs</a>
-          </Button>
+          {audit.status === 'FAILED' && audit.userId && audit.projectId && audit.executionSpec && (
+            <RetryAuditButton auditId={audit.id} />
+          )}
+          {(audit.isPublic || audit.userId === admin.id) && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/report/${audit.id}`}>View report</Link>
+            </Button>
+          )}
+          <AdminActionButton action="EVIDENCE_ACCESS" targetId={audit.id} />
         </div>
       </PageHeader>
 
@@ -58,32 +65,33 @@ export default async function AdminAuditDetailPage({
         {audit.failureCode && <Badge variant="destructive">{audit.failureCode}</Badge>}
       </div>
 
-      {audit.rubrics.length > 0 && (() => {
-        const rubricSources = audit.rubrics.map((r) => ({
-          name: r.name,
-          grade: r.grade,
-          score: r.score,
-          flags: r.flags.map((f) => ({ severity: f.severity })),
-        }))
-        const rubrics = computeRubricsFromRows(rubricSources)
-        const shareStatus = computeShareStatusFromRubrics(rubricSources)
-        return (
-          <div className="flex flex-wrap gap-2">
-            <Badge className={shareStatusColor(shareStatus)}>
-              {shareStatusLabel(shareStatus)}
-            </Badge>
-            {RUBRIC_ORDER.map((name) => {
-              const r = rubrics.find((rr) => rr.name === name)
-              if (!r) return null
-              return (
-                <Badge key={name} className={rubricStatusColor(r.status)}>
-                  {rubricLabel(name)}: {r.status}
-                </Badge>
-              )
-            })}
-          </div>
-        )
-      })()}
+      {audit.rubrics.length > 0 &&
+        (() => {
+          const rubricSources = audit.rubrics.map((r) => ({
+            name: r.name,
+            grade: r.grade,
+            score: r.score,
+            flags: r.flags.map((f) => ({ severity: f.severity })),
+          }))
+          const rubrics = computeRubricsFromRows(rubricSources)
+          const shareStatus = computeShareStatusFromRubrics(rubricSources)
+          return (
+            <div className="flex flex-wrap gap-2">
+              <Badge className={shareStatusColor(shareStatus)}>
+                {shareStatusLabel(shareStatus)}
+              </Badge>
+              {RUBRIC_ORDER.map((name) => {
+                const r = rubrics.find((rr) => rr.name === name)
+                if (!r) return null
+                return (
+                  <Badge key={name} className={rubricStatusColor(r.status)}>
+                    {rubricLabel(name)}: {r.status}
+                  </Badge>
+                )
+              })}
+            </div>
+          )
+        })()}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card variant="solid">
@@ -93,7 +101,9 @@ export default async function AdminAuditDetailPage({
           <CardContent className="space-y-1 text-sm">
             {audit.runCost ? (
               <>
-                <p>Est. cost: <strong>{formatUsd(audit.runCost.estimatedCostUsd)}</strong></p>
+                <p>
+                  Est. cost: <strong>{formatUsd(audit.runCost.estimatedCostUsd)}</strong>
+                </p>
                 <p className="text-muted-foreground">
                   {audit.runCost.llmInputTokens.toLocaleString()} in /{' '}
                   {audit.runCost.llmOutputTokens.toLocaleString()} out tokens
@@ -118,9 +128,7 @@ export default async function AdminAuditDetailPage({
             <p className="font-mono text-xs break-all">{audit.id}</p>
             <p className="text-muted-foreground">User: {audit.user?.email ?? 'Anonymous'}</p>
             <p className="text-muted-foreground">Plan: {audit.user?.plan ?? '-'}</p>
-            {audit.errorMsg && (
-              <p className="text-destructive text-xs mt-2">{audit.errorMsg}</p>
-            )}
+            {audit.errorMsg && <p className="text-destructive text-xs mt-2">{audit.errorMsg}</p>}
           </CardContent>
         </Card>
       </div>

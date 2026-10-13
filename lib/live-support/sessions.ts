@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { appendSupportMessage } from './ordered-messages'
 import { SUPPORT_WELCOME_MESSAGE } from '@/lib/help/sla'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
 import { resolveLeadIdForSession } from '@/lib/live-support/resolve-lead-context'
@@ -95,12 +96,10 @@ export async function resumeOrCreateSession(input: {
           ...(input.visitorEmail ? { visitorEmail: input.visitorEmail } : {}),
         },
       })
-      const created = await tx.supportMessage.create({
-        data: {
+      const created = await appendSupportMessage(tx, {
           sessionId: updated.id,
           role: 'VISITOR',
           body: firstMessage,
-        },
       })
       return tx.supportSession.update({
         where: { id: updated.id },
@@ -126,6 +125,7 @@ export async function resumeOrCreateSession(input: {
         transcriptSummary: input.transcriptSummary ?? null,
         status: 'WAITING',
         unreadByAgent: 1,
+        nextMessageSequence: 2,
       },
     })
 
@@ -134,6 +134,7 @@ export async function resumeOrCreateSession(input: {
         sessionId: createdSession.id,
         role: 'SYSTEM',
         body: SUPPORT_WELCOME_MESSAGE,
+        sequence: 1,
       },
     })
 
@@ -142,6 +143,7 @@ export async function resumeOrCreateSession(input: {
         sessionId: createdSession.id,
         role: 'VISITOR',
         body: firstMessage,
+        sequence: 2,
       },
     })
 
@@ -164,7 +166,7 @@ export async function getSessionForVisitor(sessionId: string, visitorToken: stri
   })
 }
 
-export async function listAdminSessions(filter?: 'open' | 'closed' | 'all') {
+export async function listAdminSessions(filter?: 'open' | 'closed' | 'all', page = 1) {
   const tenant = await getDefaultSupportTenant()
   const statusFilter =
     filter === 'closed'
@@ -175,11 +177,13 @@ export async function listAdminSessions(filter?: 'open' | 'closed' | 'all') {
 
   const sessions = await prisma.supportSession.findMany({
     where: { tenantId: tenant.id, ...statusFilter },
-    orderBy: [{ lastMessageAt: 'desc' }, { updatedAt: 'desc' }],
-    take: 200,
+    orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
+    skip: (page-1)*50,
+    take: 51,
     include: {
       lead: { select: { normalizedDomain: true, latestScore: true, status: true } },
       user: { select: { email: true, plan: true } },
+      project: { select: { id: true, name: true, url: true } },
     },
   })
 
@@ -211,9 +215,9 @@ export async function listAdminSessions(filter?: 'open' | 'closed' | 'all') {
 
   return sessions.map((session) => ({
     ...session,
-    project: sessionAuditIds.length
+    project: session.project ?? (sessionAuditIds.length
       ? projectByAuditId.get(extractAuditIdFromPageUrl(session.pageUrl ?? null) ?? '') ?? null
-      : null,
+      : null),
   }))
 }
 

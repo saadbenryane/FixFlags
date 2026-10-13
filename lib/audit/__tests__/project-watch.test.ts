@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Resend } from 'resend'
 
 const mocks = vi.hoisted(() => ({
+  userFindUnique:vi.fn(),
   projectFindMany: vi.fn(),
   projectUpdate: vi.fn(),
   projectUpdateMany: vi.fn(),
@@ -19,11 +20,13 @@ const mocks = vi.hoisted(() => ({
   recordSiteLifecycleEvent: vi.fn(),
   initializeDefaultMonitoring: vi.fn(),
   ensureDefaultMonitoring: vi.fn(),
+  refreshGoogleContext: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
     $transaction: mocks.transaction,
+    user:{findUnique:mocks.userFindUnique},
     project: {
       findMany: mocks.projectFindMany,
       findFirst: mocks.projectFindFirst,
@@ -31,6 +34,7 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.projectUpdateMany,
     },
     audit: {
+      fields:{watchNotificationAttemptCeiling:'ceiling-field'},
       findFirst: mocks.auditFindFirst,
       findUnique: mocks.auditFindUnique,
       findMany: mocks.auditFindMany,
@@ -48,8 +52,10 @@ vi.mock('@/lib/billing/product-transaction', () => ({ productTransaction: (opera
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: mocks.recordSiteLifecycleEvent }))
+vi.mock('@/lib/sites/connections/google', () => ({ refreshDueGoogleContexts: mocks.refreshGoogleContext }))
 
 import {
+  classifyWatchResult,
   notifyWatchRegression,
   processDueProjectWatches,
   retryPendingWatchNotifications,
@@ -63,7 +69,7 @@ const project = {
   watchInterval: 'WEEKLY',
   watchNextRunAt: new Date('2026-07-22T10:00:00.000Z'),
   watchConsecutiveFailures: 0,
-  user: { id: 'user-1', plan: 'TEAM', role: 'user', subscriptionStatus: 'ACTIVE' },
+  user: { lifecycleStatus:'ACTIVE',entitlementGrants:[],licensedSiteQuantity:0,auditsLimit:3,deepReviewsLimit:1,id: 'user-1', plan: 'TEAM', role: 'user', subscriptionStatus: 'ACTIVE' },
 }
 
 describe('Product Watch', () => {
@@ -72,6 +78,7 @@ describe('Product Watch', () => {
     vi.stubEnv('REDIS_URL', 'redis://watch.test')
     vi.stubEnv('RESEND_API_KEY', 're_watch_test')
     vi.stubEnv('RESEND_FROM_EMAIL', 'watch@example.test')
+    mocks.userFindUnique.mockImplementation(async()=>{const first=await mocks.projectFindFirst.mock.results.at(-1)?.value;const many=await mocks.projectFindMany.mock.results.at(-1)?.value;return {...project.user,...(many?.[0]?.user??{}),...(first?.user??{})}})
     mocks.projectFindMany.mockResolvedValue([project])
     mocks.projectUpdate.mockResolvedValue(project)
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
@@ -82,6 +89,7 @@ describe('Product Watch', () => {
     mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user, watchInterval: project.watchInterval })
     mocks.siteOutcomeFindMany.mockResolvedValue([])
     mocks.requestScheduledSiteRun.mockResolvedValue({ runId: 'run-1', auditId: 'child-1', reused: false })
+    mocks.refreshGoogleContext.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -107,6 +115,22 @@ describe('Product Watch', () => {
     vi.stubEnv('RESEND_API_KEY', '')
     vi.stubEnv('RESEND_FROM_EMAIL', '')
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'weekly' })).toEqual({ ok: true })
+  })
+
+  it('admits the next due Site and saves both schedules without waiting for Google context', async () => {
+    mocks.projectFindMany.mockResolvedValue([project, { ...project, id: 'project-2' }])
+    let finish!: () => void
+    mocks.refreshGoogleContext.mockReturnValue(new Promise<void>(resolve => { finish = resolve }))
+    const scheduling = processDueProjectWatches()
+    try {
+      await vi.waitFor(() => expect(mocks.requestScheduledSiteRun).toHaveBeenCalledTimes(2), { timeout: 200, interval: 10 })
+      expect(await scheduling).toMatchObject({ enqueued: 2, errors: 0 })
+      expect(mocks.projectUpdateMany.mock.calls.filter(([input]) => input.data.watchConsecutiveFailures === 0)).toHaveLength(2)
+      expect(mocks.refreshGoogleContext).not.toHaveBeenCalled()
+    } finally {
+      finish()
+      await scheduling
+    }
   })
 
   it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with its duration', async (interval, everyMinutes, stored) => {
@@ -320,8 +344,8 @@ describe('Product Watch', () => {
       completedAt: new Date('2026-07-22T12:00:00.000Z'),
       watchRegressionCount: 1,
       watchNotificationStatus: 'SENT',
-      watchNotificationAttempts: 1,
-      user: { email: 'owner@example.com', name: 'Owner' },
+      watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
     })
     mocks.getFlagDiffSummary.mockResolvedValue({
@@ -343,8 +367,8 @@ describe('Product Watch', () => {
       completedAt: new Date('2026-07-22T12:00:00.000Z'),
       watchRegressionCount: null,
       watchNotificationStatus: null,
-      watchNotificationAttempts: 0,
-      user: { email: 'owner@example.com', name: 'Owner' },
+      watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
     })
     mocks.getFlagDiffSummary.mockResolvedValue({
@@ -373,8 +397,8 @@ describe('Product Watch', () => {
       completedAt: new Date('2026-07-22T12:00:00.000Z'),
       watchRegressionCount: null,
       watchNotificationStatus: null,
-      watchNotificationAttempts: 0,
-      user: { email: 'owner@example.com', name: 'Owner' },
+      watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
     })
     mocks.getFlagDiffSummary.mockResolvedValue({
@@ -394,11 +418,34 @@ describe('Product Watch', () => {
     }))
   })
 
+  it('persists a due alert without making a provider request or consuming an attempt', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: null, watchRecoveryCount: null,
+      watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com' }, project: { notificationLevel: 'FLAGS' } })
+    mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], regressed: [],
+      newIssues: [{ checkId: 'title-missing', severity: 'IMPORTANT', confidence: 1, status: 'OPEN' }] })
+    await classifyWatchResult(null, 'child-1')
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+    expect(mocks.auditUpdateMany).toHaveBeenCalledOnce()
+    expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
+      watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING',
+    } }))
+  })
+
+  it('admits notification delivery only after the durable monitoring projection receipt', async () => {
+    mocks.auditFindMany.mockResolvedValue([])
+    await retryPendingWatchNotifications()
+    expect(mocks.auditFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      improvementProjectedAt: { not: null },
+    }) }))
+  })
+
   it('combines simultaneous findings and recoveries into one branded provider request', async () => {
     mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
       recheckTrigger: 'WATCH', completedAt: new Date('2026-10-13T00:00:00Z'),
-      watchRegressionCount: null, watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0,
-      user: { email: 'owner@example.com', name: 'Owner' },
+      watchRegressionCount: null, watchNotificationStatus: 'PENDING', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY', notificationLevel: 'FLAGS', notifyOnRecovery: true } })
     const flag = { checkId: 'title-missing', severity: 'IMPORTANT', confidence: 0.95, status: 'OPEN', rubric: 'SEO' }
     mocks.getFlagDiffSummary.mockResolvedValue({
@@ -424,8 +471,8 @@ describe('Product Watch', () => {
       tags: [{ name: 'audit_id', value: 'child-1' }, { name: 'purpose', value: 'watch' }] }
     mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1,
-      watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1, watchNotificationPayload: payload,
-      user: { email: 'owner@example.com', name: 'Updated name' }, project: { watchInterval: 'WEEKLY' } })
+      watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1, watchNotificationPayload: payload,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Updated name' }, project: { watchInterval: 'WEEKLY' } })
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
     await notifyWatchRegression('parent-1', 'child-1')
     const { version, ...body } = payload
@@ -437,10 +484,10 @@ describe('Product Watch', () => {
   it('does not send a recorded message to an address that the owner changed', async () => {
     mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1,
-      watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1,
+      watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
       watchNotificationPayload: { version: 1, from: 'FixFlags <hello@fixflags.com>', to: 'old@example.com',
         subject: 'Recorded subject', html: '<p>Evidence</p>', text: 'Evidence', tags: [{ name: 'audit_id', value: 'child-1' }] },
-      user: { email: 'owner@example.com', name: 'Owner' }, project: { watchInterval: 'WEEKLY' } })
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' }, project: { watchInterval: 'WEEKLY' } })
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
     await notifyWatchRegression('parent-1', 'child-1')
     expect(mocks.sendEmail).not.toHaveBeenCalled()
@@ -458,8 +505,8 @@ describe('Product Watch', () => {
       completedAt: new Date('2026-07-22T12:00:00.000Z'),
       watchRegressionCount: null,
       watchNotificationStatus: null,
-      watchNotificationAttempts: 0,
-      user: { email: 'owner@example.com', name: 'Owner' },
+      watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: {
         watchInterval: 'WEEKLY',
         notificationLevel: 'ALL',
@@ -501,8 +548,8 @@ describe('Product Watch', () => {
         id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
         recheckTrigger: 'WATCH', completedAt: new Date('2026-10-10T12:00:00Z'),
         watchRegressionCount: 1, watchRecoveryCount: 0,
-        watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1,
-        user: { email: 'owner@example.test', name: 'Owner <img src=x>' },
+        watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
+        user: { lifecycleStatus:'ACTIVE',email: 'owner@example.test', name: 'Owner <img src=x>' },
         project: { notificationLevel: 'CRITICAL_ONLY', notifyOnRecovery: true },
       })
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [important, critical], regressed: [] })
@@ -548,8 +595,8 @@ describe('Product Watch', () => {
         completedAt: new Date('2026-07-22T12:00:00.000Z'),
         watchRegressionCount: 1,
         watchNotificationStatus: 'PENDING',
-        watchNotificationAttempts: 0,
-        user: { email: 'owner@example.test', name: 'Owner' },
+        watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
+        user: { lifecycleStatus:'ACTIVE',email: 'owner@example.test', name: 'Owner' },
         project: { watchInterval: 'WEEKLY' },
       })
       mocks.getFlagDiffSummary.mockResolvedValue({
@@ -604,7 +651,7 @@ describe('Product Watch', () => {
         OR: [
           {
             watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
-            watchNotificationAttempts: { lt: 5 },
+            watchNotificationAttempts: { lt: 'ceiling-field' },
           },
           {
             watchNotificationStatus: 'SENDING',
@@ -696,9 +743,9 @@ describe('Product Watch', () => {
       completedAt: new Date('2026-07-22T12:00:00.000Z'),
       watchRegressionCount: 1,
       watchNotificationStatus: 'SENDING' as const,
-      watchNotificationAttempts: 1,
+      watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
       watchNotificationClaimedAt: new Date('2026-07-22T12:00:00.000Z'),
-      user: { email: 'owner@example.test', name: 'Owner' },
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.test', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' as const },
     }
 
@@ -786,7 +833,7 @@ describe('Product Watch', () => {
       const expired = new Date(Date.now() - 60_000)
       mocks.auditFindUnique.mockResolvedValue({
         ...strandedChild,
-        watchNotificationAttempts: 5,
+        watchNotificationAttemptCeiling:5,watchNotificationAttempts: 5,
         watchNotificationLeaseUntil: expired,
       })
 

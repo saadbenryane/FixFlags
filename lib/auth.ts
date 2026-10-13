@@ -27,6 +27,15 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
   databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const account = await prisma.user.findUnique({ where: { id: session.userId }, select: { lifecycleStatus: true } })
+          if (!account || account.lifecycleStatus !== 'ACTIVE') throw new APIError('FORBIDDEN', { message: 'This account is unavailable.' })
+          return { data: session }
+        },
+      },
+    },
     user: {
       create: {
         // Fires once per signup (email + OAuth). Fire-and-forget: signup must
@@ -117,11 +126,14 @@ export const auth = betterAuth({
       plan: {
         type: 'string',
         defaultValue: 'FREE',
+        input: false,
       },
       role: {
         type: 'string',
         defaultValue: 'user',
+        input: false,
       },
+      lifecycleStatus: { type: 'string', defaultValue: 'ACTIVE', input: false },
     },
   },
   hooks: {

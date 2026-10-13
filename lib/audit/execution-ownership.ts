@@ -50,11 +50,11 @@ export async function renewExecution(owner: ExecutionOwnership): Promise<boolean
 async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: ExecutionOwnership): Promise<void> {
   // Commands and workers share Project -> Audit -> task lock order. Removal
   // can fence queued work without deadlocking an account reservation.
-  const projects = await tx.$queryRaw<Array<{ id: string; deletedAt: Date | null }>>`
-    SELECT p."id", p."deletedAt" FROM "projects" p JOIN "audits" a ON a."projectId" = p."id"
+  const projects = await tx.$queryRaw<Array<{ id: string; deletedAt: Date | null; lifecycleStatus: string; cleanup: boolean }>>`
+    SELECT p."id", p."deletedAt", u."lifecycleStatus", (a."executionSpec"#>>'{scope}'='ACCOUNT_CHECKS' AND a."executionSpec"#>>'{accountChecks,mode}'='cleanup') AS cleanup FROM "projects" p JOIN "users" u ON u.id=p."userId" JOIN "audits" a ON a."projectId" = p."id"
     WHERE a."id" = ${owner.auditId} FOR UPDATE OF p
   `
-  if (projects.some(project => project.deletedAt)) throw new ExecutionOwnershipLost()
+  if (projects.some(project => !project.cleanup && (project.deletedAt || project.lifecycleStatus !== 'ACTIVE'))) throw new ExecutionOwnershipLost()
   if (owner.taskId) {
     // Writers lock the parent before the task to preserve one lock order.
     const parent = await tx.$queryRaw<Array<{ id: string }>>`

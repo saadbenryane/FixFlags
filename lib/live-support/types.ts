@@ -8,6 +8,7 @@ export interface SupportMessageDto {
   role: SupportMessageRole
   body: string
   createdAt: string
+  sequence: string
   senderId?: string | null
 }
 

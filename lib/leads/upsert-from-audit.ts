@@ -28,7 +28,7 @@ export async function upsertLeadFromAudit(auditId: string): Promise<void> {
     const domain = audit.normalizedDomain ?? normalizeDomain(audit.url)
     if (!domain) return
 
-    const scanCostUsd = audit.runCost?.estimatedCostUsd.toNumber() ?? 0
+    const scanCostUsd = audit.runCost?.estimatedCostUsd?.toNumber() ?? 0
     const now = audit.completedAt ?? new Date()
     const sourceLabel = audit.source !== 'UNKNOWN' ? audit.source.toLowerCase() : undefined
 

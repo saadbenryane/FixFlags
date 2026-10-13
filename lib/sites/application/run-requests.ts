@@ -15,6 +15,8 @@ import { canonicalExecutionOutcomes,executionIntentHash } from './execution-spec
 import { activeRunWhere,reclaimExpiredRuns,RUN_LEASE_MS } from './run-leases'
 import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
 import { resolveRunExecution,validateRunSelection } from './run-selection'
+import { requireActiveAccount } from '@/lib/auth/account-availability'
+import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 export { getOwnedRun } from './run-queries'
 export { markOutcomeRunsCouldNotVerify,reconcileOutcomeRunsForAudit } from './run-reconciliation'
 
@@ -64,9 +66,16 @@ export async function requestSiteRun(input: RunInput): Promise<{
   outcomeIds: string[]
   reused: boolean
 }> {
+  if (!(input.operator && input.scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup')) await requireActiveAccount(input.userId)
+  if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId)
   const selection = validateRunSelection(input)
   const { scope, environment } = selection
   const { selectedIds, first, fixture, auditUrl, executionSpec, requestHash } = await resolveRunExecution(input, selection)
+  if (input.expectedResponsibilityHash) {
+    const { admittedResponsibilityHash } = await import('./run-retry')
+    if (admittedResponsibilityHash(executionSpec) !== input.expectedResponsibilityHash)
+      throw new SiteRunRefusal('This run’s admitted scope cannot be reproduced with the current configuration. Start a new check with its current scope.', 409, 'RETRY_SCOPE_CHANGED')
+  }
   const matchesIntent = (run: { requestHash?: string | null; executionSpec?: unknown; selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null }) => {
     const admitted = readExecutionSpec(run.executionSpec)
     if (admitted && admitted.scope !== executionSpec.scope) return false
@@ -153,7 +162,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
         selections: selectedIds.length
           ? { create: selectedIds.map((outcomeId) => ({ outcomeId })) }
           : undefined,
-        requestedByUserId: input.userId,
+        requestedByUserId: input.operator?.actorId ?? input.userId,
         source: input.source,
         idempotencyKey: requestedKey,
         context: safeContext(input.context),
@@ -202,6 +211,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       reuseActiveManual: false,
       runRequestId: run.id,
       runRequestAdmission: runAdmission,
+      operator: input.operator,
       executionSpec,
       attribution: buildAttribution({
         url: auditUrl,

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const account = vi.hoisted(() => ({ id: 'beta-user', role: 'user', plan: 'FREE' as const, subscriptionStatus: 'NONE', auditsLimit: 3, auditsUsed: 1000 }))
+const account = vi.hoisted(() => ({ lifecycleStatus:'ACTIVE',licensedSiteQuantity:0,entitlementGrants:[],deepReviewsLimit:1,id: 'beta-user', role: 'user', plan: 'FREE' as const, subscriptionStatus: 'NONE', auditsLimit: 3, auditsUsed: 1000 }))
 const db = vi.hoisted(() => ({
   $transaction: vi.fn(), $executeRaw: vi.fn(),
   user: { findUnique: vi.fn(), update: vi.fn() },

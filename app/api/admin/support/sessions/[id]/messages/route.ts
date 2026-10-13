@@ -1,82 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { handleRouteError, apiError } from '@/lib/api/errors'
 import { requireAdmin, isAdminResponse } from '@/lib/auth/require-admin'
-import {
-  listMessages,
-  sendAgentMessage,
-  markReadByAgent,
-  serializeMessage,
-} from '@/lib/live-support'
 import { prisma } from '@/lib/db'
-import { recordRateLimit } from '@/lib/security/rate-limit'
-
-const postSchema = z.object({
-  body: z.string().min(1).max(4000),
-})
-
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const admin = await requireAdmin()
-    if (isAdminResponse(admin)) return admin
-
-    const { id } = await params
-    const session = await prisma.supportSession.findUnique({ where: { id } })
-    if (!session) return apiError('Not found', 404)
-
-    const messages = await listMessages(id)
-    return NextResponse.json({ messages: messages.map(serializeMessage) })
-  } catch (err) {
-    return handleRouteError(err)
-  }
+import { apiError, handleRouteError } from '@/lib/api/errors'
+import { serializeMessage, markReadByAgent } from '@/lib/live-support/messages'
+import { requireAdminOrigin, adminPrivateHeaders } from '@/lib/admin/http'
+function cursor(value: string | null) {
+  if (!value || !/^\d{1,19}$/.test(value)) throw new Error('Invalid message cursor')
+  return BigInt(value)
 }
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin()
-    if (isAdminResponse(admin)) return admin
-
+    const actor = await requireAdmin()
+    if (isAdminResponse(actor)) return actor
     const { id } = await params
-    const body = await req.json().catch(() => ({}))
-    const parsed = postSchema.safeParse(body)
-    if (!parsed.success) {
-      return apiError(parsed.error.issues[0]?.message ?? 'Invalid message', 400)
-    }
-
-    const limit = await recordRateLimit({
-      scope: 'support-agent',
-      identifier: admin.id,
-      limit: 120,
-      windowSeconds: 3600,
+    const session = await prisma.supportSession.findUnique({
+      where: { id },
+      select: { agentReadThrough: true, unreadByAgent: true },
     })
-    if (limit.exceeded) {
-      return apiError('Rate limit exceeded', 429)
+    if (!session) return apiError('Conversation not found', 404)
+    const after = req.nextUrl.searchParams.get('after'),
+      before = req.nextUrl.searchParams.get('before')
+    if (after && before) return apiError('Choose one message cursor', 400)
+    const ascending = Boolean(after) || (!before && session.unreadByAgent > 0)
+    let sequence: { gt?: bigint; lt?: bigint } | undefined
+    try {
+      sequence = after
+        ? { gt: cursor(after) }
+        : before
+          ? { lt: cursor(before) }
+          : session.unreadByAgent > 0
+            ? { gt: session.agentReadThrough }
+            : undefined
+    } catch {
+      return apiError('Invalid message cursor', 400)
     }
-
-    const message = await sendAgentMessage(id, admin.id, parsed.data.body)
-    return NextResponse.json({ message: serializeMessage(message) }, { status: 201 })
+    const rows = await prisma.supportMessage.findMany({
+      where: { sessionId: id, sequence },
+      orderBy: { sequence: ascending ? 'asc' : 'desc' },
+      take: 51,
+      select: { id: true, role: true, body: true, createdAt: true, senderId: true, sequence: true },
+    })
+    const more = rows.length > 50,
+      limited = rows.slice(0, 50),
+      messages = ascending ? limited : limited.reverse()
+    return NextResponse.json(
+      {
+        messages: messages.map(serializeMessage),
+        more,
+        oldest: messages[0]?.sequence.toString() ?? null,
+        newest: messages.at(-1)?.sequence.toString() ?? null,
+      },
+      { headers: adminPrivateHeaders },
+    )
   } catch (err) {
     return handleRouteError(err)
   }
 }
-
-export async function PATCH(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST() {
+  const actor = await requireAdmin()
+  if (isAdminResponse(actor)) return actor
+  return apiError('Review and confirm replies through the admin action service.', 409)
+}
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAdmin()
-    if (isAdminResponse(admin)) return admin
-
-    const { id } = await params
-    await markReadByAgent(id)
-    return NextResponse.json({ ok: true })
+    requireAdminOrigin(req)
+    const actor = await requireAdmin()
+    if (isAdminResponse(actor)) return actor
+    const { through } = await req.json()
+    if (typeof through !== 'string' || !/^\d{1,19}$/.test(through))
+      return apiError('A read cursor is required', 400)
+    await markReadByAgent((await params).id, BigInt(through))
+    return NextResponse.json({ ok: true }, { headers: adminPrivateHeaders })
   } catch (err) {
     return handleRouteError(err)
   }

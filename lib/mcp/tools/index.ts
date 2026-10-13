@@ -25,7 +25,7 @@ export async function validateApiKey(key: string | null) {
     where: { keyHash: hashApiKey(key) },
     include: { user: true },
   })
-  if (!apiKey || apiKey.revokedAt) return null
+  if (!apiKey || apiKey.revokedAt || apiKey.user.lifecycleStatus !== 'ACTIVE') return null
   if (apiKey.expiresAt && apiKey.expiresAt.getTime() <= Date.now()) return null
   await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsed: new Date() } })
   return {

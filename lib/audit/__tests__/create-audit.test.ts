@@ -82,6 +82,7 @@ const AUDIT_URL = 'https://example.com/'
 function signedInUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user-1',
+    lifecycleStatus:'ACTIVE',entitlementGrants:[],licensedSiteQuantity:0,
     email: 'user@example.com',
     plan: 'FREE',
     role: 'USER',

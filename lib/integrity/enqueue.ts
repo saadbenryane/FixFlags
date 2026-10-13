@@ -22,7 +22,7 @@ export async function enqueueIntegrityProbe(pathId: string, trigger = 'install')
     await getAuditQueue().add(
       'integrity-probe',
       { pathId, trigger },
-      { jobId: `integrity-${pathId}-${trigger}-${Date.now()}` }
+      { jobId: trigger.startsWith('admin-')?`integrity-${pathId}-${trigger}`:`integrity-${pathId}-${trigger}-${Date.now()}` }
     )
   } catch (error) {
     logger.error('Failed to enqueue integrity probe', {

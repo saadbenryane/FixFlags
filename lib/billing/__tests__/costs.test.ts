@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { Prisma, Plan } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 vi.mock('@/lib/db', () => ({
   prisma: {
@@ -12,6 +12,7 @@ vi.mock('@/lib/db', () => ({
       groupBy: vi.fn(),
     },
     audit: {
+      findUniqueOrThrow: vi.fn(async()=>({planAtAdmission:'FREE'})),
       findMany: vi.fn(),
     },
     user: {
@@ -31,8 +32,6 @@ import {
   sumEstimatedCost,
   sumEstimatedCostForDomain,
   decimalCost,
-  sumEstimatedCostByPlan,
-  sumRevenueByPlan,
   getCostOutliers,
 } from '@/lib/billing/costs'
 import { prisma } from '@/lib/db'
@@ -42,10 +41,6 @@ const mockUpdate = vi.mocked(prisma.auditRunCost.update)
 const mockFindUnique = vi.mocked(prisma.auditRunCost.findUnique)
 const mockFindMany = vi.mocked(prisma.auditRunCost.findMany)
 const mockAggregate = vi.mocked(prisma.auditRunCost.aggregate)
-const mockGroupBy = vi.mocked(prisma.auditRunCost.groupBy)
-const mockAuditFindMany = vi.mocked(prisma.audit.findMany)
-const mockUserFindMany = vi.mocked(prisma.user.findMany)
-const mockCreditFindMany = vi.mocked(prisma.creditPurchase.findMany)
 
 beforeEach(() => {
   vi.stubEnv('LLM_COST_INPUT_PER_MTOK', '')
@@ -149,44 +144,9 @@ describe('estimateLlmCostUsd', () => {
     })
   })
 
-  describe('multi-model comma-separated', () => {
-    it('splits tokens evenly across two models', () => {
-      const cost = estimateLlmCostUsd(
-        'gpt-4o-mini, claude-sonnet-5',
-        2_000_000,
-        2_000_000
-      )
-      const single = estimateLlmCostUsd('gpt-4o-mini', 1_000_000, 1_000_000) +
-        estimateLlmCostUsd('claude-sonnet-5', 1_000_000, 1_000_000)
-      expect(cost).toBeCloseTo(single, 10)
-    })
-
-    it('splits cache tokens evenly across models', () => {
-      const cost = estimateLlmCostUsd(
-        'gpt-4o-mini, claude-sonnet-5',
-        0,
-        0,
-        2_000_000,
-        2_000_000
-      )
-      const expected =
-        estimateLlmCostUsd('gpt-4o-mini', 0, 0, 1_000_000, 1_000_000) +
-        estimateLlmCostUsd('claude-sonnet-5', 0, 0, 1_000_000, 1_000_000)
-      expect(cost).toBeCloseTo(expected, 10)
-    })
-
-    it('handles three models', () => {
-      const cost = estimateLlmCostUsd(
-        'gpt-4o-mini, claude-sonnet-5, claude-haiku-4-5',
-        3_000_000,
-        0
-      )
-      const expected =
-        estimateLlmCostUsd('gpt-4o-mini', 1_000_000, 0) +
-        estimateLlmCostUsd('claude-sonnet-5', 1_000_000, 0) +
-        estimateLlmCostUsd('claude-haiku-4-5', 1_000_000, 0)
-      expect(cost).toBeCloseTo(expected, 10)
-    })
+  describe('unattributed models',()=>{
+    it('does not fabricate a token split between models',()=>{expect(estimateLlmCostUsd('gpt-4o-mini, claude-sonnet-5',2000000,2000000)).toBeNull()})
+    it('leaves unallocated cache usage unpriced',()=>{expect(estimateLlmCostUsd('gpt-4o-mini, claude-sonnet-5',0,0,2000000,2000000)).toBeNull()})
   })
 
   describe('edge cases', () => {
@@ -194,9 +154,9 @@ describe('estimateLlmCostUsd', () => {
       expect(estimateLlmCostUsd('gpt-4o-mini', 0, 0)).toBe(0)
     })
 
-    it('falls back to default rate for unknown model', () => {
+    it('leaves unknown models unpriced', () => {
       const cost = estimateLlmCostUsd('unknown-model-x', 1_000_000, 1_000_000)
-      expect(cost).toBeCloseTo(18, 10)
+      expect(cost).toBeNull()
     })
 
     it('env override replaces input rate', () => {
@@ -312,7 +272,7 @@ describe('persistAuditRunCost', () => {
       const existing = {
         triageInputTokens: 800,
         triageOutputTokens: 200,
-        triageCostUsd: new Prisma.Decimal(0.001),
+        pricingBasis:'CONFIGURED_ESTIMATE',triageCostUsd: new Prisma.Decimal(0.001),
         triageModel: 'gpt-4o-mini',
         durationMs: 3000,
         pagespeedCalls: 1,
@@ -385,79 +345,6 @@ describe('sumEstimatedCostForDomain', () => {
   it('returns 0 when no matching audits', async () => {
     mockAggregate.mockResolvedValue({ _sum: { estimatedCostUsd: null } } as never)
     expect(await sumEstimatedCostForDomain('missing.com')).toBe(0)
-  })
-})
-
-describe('sumEstimatedCostByPlan', () => {
-  it('returns zeroed map when no costs', async () => {
-    mockGroupBy.mockResolvedValue([] as never)
-    const result = await sumEstimatedCostByPlan(new Date())
-    expect(result).toEqual({ FREE: 0, BUILDER: 0, TEAM: 0 })
-  })
-
-  it('aggregates costs by user plan', async () => {
-    mockGroupBy.mockResolvedValue([
-      { auditId: 'a1', _sum: { estimatedCostUsd: new Prisma.Decimal(10) } },
-      { auditId: 'a2', _sum: { estimatedCostUsd: new Prisma.Decimal(20) } },
-    ] as never)
-    mockAuditFindMany.mockResolvedValue([
-      { id: 'a1', userId: 'u1' },
-      { id: 'a2', userId: 'u2' },
-    ] as never)
-    mockUserFindMany.mockResolvedValue([
-      { id: 'u1', plan: 'BUILDER' as Plan },
-      { id: 'u2', plan: 'TEAM' as Plan },
-    ] as never)
-
-    const result = await sumEstimatedCostByPlan(new Date())
-    expect(result.BUILDER).toBeCloseTo(10, 10)
-    expect(result.TEAM).toBeCloseTo(20, 10)
-    expect(result.FREE).toBe(0)
-  })
-})
-
-describe('sumRevenueByPlan', () => {
-  it('returns zeroed result when no users', async () => {
-    mockUserFindMany.mockResolvedValueOnce([] as never)
-    mockCreditFindMany.mockResolvedValue([] as never)
-    mockUserFindMany.mockResolvedValueOnce([] as never)
-
-    const result = await sumRevenueByPlan(new Date())
-    expect(result.FREE).toEqual({ subscriptions: 0, creditPacks: 0, total: 0 })
-    expect(result.BUILDER).toEqual({ subscriptions: 0, creditPacks: 0, total: 0 })
-    expect(result.TEAM).toEqual({ subscriptions: 0, creditPacks: 0, total: 0 })
-  })
-
-  it('sums subscription revenue by plan', async () => {
-    mockUserFindMany
-      .mockResolvedValueOnce([
-        { plan: 'BUILDER' },
-        { plan: 'BUILDER' },
-        { plan: 'TEAM' },
-      ] as never)
-    mockCreditFindMany.mockResolvedValue([] as never)
-    mockUserFindMany.mockResolvedValueOnce([] as never)
-
-    const result = await sumRevenueByPlan(new Date())
-    expect(result.BUILDER.subscriptions).toBe(78)
-    expect(result.TEAM.subscriptions).toBe(129)
-    expect(result.FREE.subscriptions).toBe(0)
-  })
-
-  it('includes credit pack revenue when user also has subscription', async () => {
-    mockUserFindMany.mockResolvedValueOnce([
-      { plan: 'BUILDER' },
-    ] as never)
-    mockCreditFindMany.mockResolvedValue([
-      { userId: 'u1', priceUsdCents: 500 },
-    ] as never)
-    mockUserFindMany.mockResolvedValueOnce([
-      { id: 'u1', plan: 'BUILDER' as Plan },
-    ] as never)
-
-    const result = await sumRevenueByPlan(new Date())
-    expect(result.BUILDER.creditPacks).toBeCloseTo(5, 10)
-    expect(result.BUILDER.total).toBeCloseTo(39 + 5, 10)
   })
 })
 

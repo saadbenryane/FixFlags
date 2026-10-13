@@ -122,21 +122,21 @@ describe('refundPurchasedCredit', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('voids the matching paid purchase', async () => {
-    creditPurchaseMock.findFirst.mockResolvedValueOnce({ id: 'pack-1' })
+    creditPurchaseMock.findFirst.mockResolvedValueOnce({ id: 'pack-1', creditsPurchased:10,creditsRemaining:7,creditsRefunded:0 })
     creditPurchaseMock.update.mockResolvedValueOnce({})
 
     await expect(
-      refundPurchasedCredit(tx as never, 'pi_123')
+      refundPurchasedCredit(tx as never, 'pi_123',{refundedMinor:1500,paidMinor:1500})
     ).resolves.toBe(true)
     expect(creditPurchaseMock.update).toHaveBeenCalledWith({
       where: { id: 'pack-1' },
-      data: { status: 'REFUNDED', creditsRemaining: 0 },
+      data: { status: 'REFUNDED', creditsRemaining: 0, creditsRefunded:10 },
     })
   })
 
   it('returns false when no purchase matches the payment intent', async () => {
     creditPurchaseMock.findFirst.mockResolvedValueOnce(null)
-    await expect(refundPurchasedCredit(tx as never, 'pi_missing')).resolves.toBe(false)
+    await expect(refundPurchasedCredit(tx as never, 'pi_missing',{refundedMinor:1500,paidMinor:1500})).resolves.toBe(false)
     expect(creditPurchaseMock.update).not.toHaveBeenCalled()
   })
 })

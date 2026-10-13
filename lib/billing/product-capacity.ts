@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { siteCarePolicy } from '@/lib/sites/application/care-policy'
+import { loadEffectiveEntitlements } from './effective-entitlements'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { randomUUID } from 'node:crypto'
 
@@ -21,15 +21,9 @@ export async function assertCanCreateProduct(
     )
   `
 
-  const user = await tx.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, subscriptionStatus: true, role: true },
-  })
-  if (!user) throw new Error('Account not found')
-
-  // The Site cap is one product decision, read from the care policy. Enforcing it
-  // here from a second re-derivation is how a plan and its limit drift apart.
-  const limit = siteCarePolicy(user).maxSites
+  const policy = await loadEffectiveEntitlements(userId, tx)
+  if(!policy || !policy.available) throw new Error('This account cannot create Sites.')
+  const limit = policy.maxSites
   if (limit === null) return
 
   const count = await tx.project.count({ where: { userId, deletedAt: null } })

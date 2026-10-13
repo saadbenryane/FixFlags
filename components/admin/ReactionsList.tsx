@@ -57,7 +57,9 @@ export function ReactionsList({ reportSummary, reportComments, flagGroups }: Pro
 
   const visibleFlagGroups = (
     flagFilter === 'downvoted' ? flagGroups.filter((g) => g.down > 0) : flagGroups
-  ).slice().sort((a, b) => b.down - a.down || b.up - a.up)
+  )
+    .slice()
+    .sort((a, b) => b.down - a.down || b.up - a.up)
 
   return (
     <div className="space-y-8">
@@ -91,8 +93,8 @@ export function ReactionsList({ reportSummary, reportComments, flagGroups }: Pro
                   </span>
                 </div>
                 {r.comment && <p className="text-sm">{r.comment}</p>}
-                <TextLink href={`/report/${r.auditId}`} className="text-xs">
-                  View report &rarr;
+                <TextLink href={`/admin/audits/${r.auditId}`} className="text-xs">
+                  View check detail &rarr;
                 </TextLink>
               </Card>
             ))}
@@ -142,7 +144,7 @@ export function ReactionsList({ reportSummary, reportComments, flagGroups }: Pro
                   {g.evidence}
                 </div>
                 {g.comments.length > 0 && (
-                  <ul className="space-y-1 border-l-2 border-border pl-3">
+                  <ul className="space-y-1  border-border pl-3">
                     {g.comments.map((c, i) => (
                       <li key={i} className="text-sm text-muted-foreground">
                         “{c}”

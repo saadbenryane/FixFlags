@@ -41,6 +41,8 @@ export type RunInput = {
   outcomeIds: string[]
   userId: string
   source: RunRequestSource
+  operator?: import('@/lib/admin/domain-actor').AdminDomainActor
+  expectedResponsibilityHash?: string
   /** Broad Site care derives enabled bindings; callers do not select them. */
   scope?: 'OUTCOMES' | 'SITE' | 'CATEGORY' | 'FIXTURE_SETUP' | 'ACCOUNT_CHECKS'
   categoryArea?: CategoryArea

@@ -1,3 +1,4 @@
+vi.mock('@/lib/billing/effective-entitlements',()=>({loadEffectiveEntitlements:vi.fn(async()=>null)}))
 import { describe, expect, it, vi } from 'vitest'
 
 const getCheckUsage = vi.hoisted(() => vi.fn())

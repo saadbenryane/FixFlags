@@ -33,6 +33,7 @@ export function validateRunSelection(input: RunInput) {
 
 export async function resolveRunExecution(input: RunInput, selection: ReturnType<typeof validateRunSelection>) {
   const { scope, environment } = selection
+  const cleanup = Boolean(input.operator && scope === 'ACCOUNT_CHECKS' && input.accountMode === 'cleanup')
   let { selectedIds } = selection
   const outcomes = await prisma.siteOutcome.findMany({
     where: {
@@ -41,7 +42,7 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
         bindings: { some: { enabled: true, required: true } } } : { id: { in: selectedIds } }),
       projectId: input.projectId,
       enabled: true,
-      project: { userId: input.userId, deletedAt: null },
+      project: { userId: input.userId, ...(cleanup ? {} : { deletedAt: null }) },
     },
     include: {
       project: { select: { url: true } },
@@ -58,7 +59,7 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
   }
   const first = outcomes.find((outcome) => outcome.id === selectedIds[0]) ?? null
   const project = first?.project ?? await prisma.project.findFirst({
-    where: { id: input.projectId, userId: input.userId, deletedAt: null },
+    where: { id: input.projectId, userId: input.userId, ...(cleanup ? {} : { deletedAt: null }) },
     select: { url: true },
   })
   if (!project) throw new SiteRunRefusal('Site not found', 404)

@@ -1,89 +1,46 @@
 'use client'
-
 import { useState } from 'react'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import type { LeadStatus } from '@prisma/client'
-
-/** Workflow statuses first. QUALIFIED remains for legacy rows only. */
-const STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'CONVERTED', 'DISQUALIFIED', 'QUALIFIED']
-
-interface LeadEditorProps {
+import { Textarea } from '@/components/ui/textarea'
+import { AdminActionButton } from './AdminActionButton'
+export function LeadEditor({
+  domain,
+  initialStatus,
+  initialNotes,
+}: {
   domain: string
   initialStatus: LeadStatus
   initialNotes: string | null
-}
-
-export function LeadEditor({ domain, initialStatus, initialNotes }: LeadEditorProps) {
-  const [status, setStatus] = useState(initialStatus)
-  const [notes, setNotes] = useState(initialNotes ?? '')
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/admin/leads/${encodeURIComponent(domain)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, notes }),
-      })
-      if (res.ok) {
-        toast.success('Lead updated')
-      } else {
-        toast.error('Failed to update lead')
-      }
-    } finally {
-      setSaving(false)
-    }
-  }
-
+}) {
+  const [status, setStatus] = useState(initialStatus),
+    [notes, setNotes] = useState(initialNotes ?? '')
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="lead-status" className="text-sm font-medium">
-          Status
-        </label>
-        <Select
+      <label className="block space-y-2 text-sm">
+        Status
+        <select
+          className="h-11 w-full rounded-input border bg-background px-3"
           value={status}
-          onValueChange={(v) => setStatus(v as LeadStatus)}
+          onChange={(e) => setStatus(e.target.value as LeadStatus)}
         >
-          <SelectTrigger id="lead-status" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s === 'QUALIFIED' ? 'QUALIFIED (legacy)' : s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="lead-notes" className="text-sm font-medium">
-          Notes
-        </label>
+          {['NEW', 'CONTACTED', 'CONVERTED', 'DISQUALIFIED', 'QUALIFIED'].map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label htmlFor="lead-notes" className="block space-y-2 text-sm">
+        Notes
         <Textarea
           id="lead-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          maxLength={10000}
           rows={5}
-          placeholder="Outbound notes, context, next steps…"
         />
-      </div>
-
-      <Button onClick={() => void save()} disabled={saving}>
-        {saving ? 'Saving…' : 'Save changes'}
-      </Button>
+      </label>
+      <AdminActionButton action="LEAD_UPDATE" targetId={domain} input={{ status, notes }} />
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -18,6 +19,7 @@ export default async function AdminLeadDetailPage({
 }: {
   params: Promise<{ domain: string }>
 }) {
+  await requireAdminPage()
   const { domain: encoded } = await params
   const normalizedDomain = decodeURIComponent(encoded)
   const canonical = normalizeDomain(normalizedDomain)
@@ -56,8 +58,7 @@ export default async function AdminLeadDetailPage({
     },
   })
 
-  const avgCostPerScan =
-    lead.scanCount > 0 ? lead.totalCostUsd.toNumber() / lead.scanCount : 0
+  const avgCostPerScan = lead.scanCount > 0 ? lead.totalCostUsd.toNumber() / lead.scanCount : 0
   const potential = deriveLeadPotential({
     linkedUserId: lead.linkedUserId,
     scanCount: lead.scanCount,
@@ -65,10 +66,7 @@ export default async function AdminLeadDetailPage({
 
   return (
     <Container variant="report" className="space-y-8 py-8">
-      <PageHeader
-        title={lead.normalizedDomain}
-        description={lead.latestUrl ?? undefined}
-      >
+      <PageHeader title={lead.normalizedDomain} description={lead.latestUrl ?? undefined}>
         <Button variant="outline" asChild>
           <Link href="/admin/leads">All leads</Link>
         </Button>
@@ -119,7 +117,9 @@ export default async function AdminLeadDetailPage({
             {lead.linkedUser && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Account</span>
-                <span>{lead.linkedUser.email}</span>
+                <TextLink href={`/admin/users?q=${encodeURIComponent(lead.linkedUser.id)}`}>
+                  {lead.linkedUser.email}
+                </TextLink>
               </div>
             )}
             {lead.source && (
@@ -148,7 +148,7 @@ export default async function AdminLeadDetailPage({
       {lead.supportSessions.length > 0 && (
         <section className="space-y-3">
           <SectionTitle>Chat sessions</SectionTitle>
-          <Card variant="solid" className="divide-y">
+          <Card variant="solid" className="">
             {lead.supportSessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -159,7 +159,9 @@ export default async function AdminLeadDetailPage({
                     </span>
                   )}
                 </div>
-                <TextLink href={`/admin/feedback?tab=conversations&session=${s.id}`}>Open in inbox</TextLink>
+                <TextLink href={`/admin/feedback?tab=conversations&session=${s.id}`}>
+                  Open in inbox
+                </TextLink>
               </div>
             ))}
           </Card>
@@ -175,40 +177,43 @@ export default async function AdminLeadDetailPage({
             </CardContent>
           </Card>
         ) : (
-        <Card variant="solid" className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left px-4 py-3 font-medium">URL</th>
-                <th className="text-left px-4 py-3 font-medium">Score</th>
-                <th className="text-left px-4 py-3 font-medium">Est. cost</th>
-                <th className="text-left px-4 py-3 font-medium">User</th>
-                <th className="text-left px-4 py-3 font-medium">Completed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audits.map((audit) => (
-                <tr key={audit.id} className="border-b last:border-0">
-                  <td className="px-4 py-3">
-                    <TextLink href={`/admin/audits/${audit.id}`} className="truncate block max-w-xs">
-                      {audit.url}
-                    </TextLink>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">{audit.score ?? '–'}</td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
-                    {audit.runCost ? formatUsd(audit.runCost.estimatedCostUsd) : '–'}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {audit.user?.email ?? 'Anonymous'}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {audit.completedAt ? new Date(audit.completedAt).toLocaleString() : '–'}
-                  </td>
+          <Card variant="solid" className="p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className=" bg-muted/50">
+                  <th className="text-left px-4 py-3 font-medium">URL</th>
+                  <th className="text-left px-4 py-3 font-medium">Score</th>
+                  <th className="text-left px-4 py-3 font-medium">Est. cost</th>
+                  <th className="text-left px-4 py-3 font-medium">User</th>
+                  <th className="text-left px-4 py-3 font-medium">Completed</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+              </thead>
+              <tbody>
+                {audits.map((audit) => (
+                  <tr key={audit.id} className=" ">
+                    <td className="px-4 py-3">
+                      <TextLink
+                        href={`/admin/audits/${audit.id}`}
+                        className="truncate block max-w-xs"
+                      >
+                        {audit.url}
+                      </TextLink>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">{audit.score ?? '–'}</td>
+                    <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                      {audit.runCost ? formatUsd(audit.runCost.estimatedCostUsd) : '–'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {audit.user?.email ?? 'Anonymous'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {audit.completedAt ? new Date(audit.completedAt).toLocaleString() : '–'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
         )}
       </section>
     </Container>

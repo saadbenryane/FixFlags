@@ -13,6 +13,7 @@ import { productTransaction } from '@/lib/billing/product-transaction'
  */
 export async function ensureSiteForAudit(input: {
   url: string
+  allowRemovedForCleanup?: boolean
   auditId: string
   userId?: string | null
   projectId?: string | null
@@ -39,7 +40,7 @@ export async function ensureSiteForAudit(input: {
         deletedAt: true,
       },
     })
-    if (!project || project.deletedAt) throw new Error('Project not found for Site')
+    if (!project || project.deletedAt && !input.allowRemovedForCleanup) throw new Error('Project not found for Site')
     return {
       siteId: encodeSiteId({ kind: 'project', projectId: project.id }),
       kind: 'project',

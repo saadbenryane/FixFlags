@@ -1,0 +1,1 @@
+ALTER TYPE "AdminOperationStatus" ADD VALUE 'SUPERSEDED';

@@ -1,53 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { requireAdmin, isAdminResponse } from '@/lib/auth/require-admin'
-import { updateSessionStatus, serializeSession } from '@/lib/live-support'
+import { serializeSession } from '@/lib/live-support'
 import { prisma } from '@/lib/db'
-import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
-const patchSchema = z.object({
-  status: z.enum(['OPEN', 'WAITING', 'ACTIVE', 'CLOSED']),
-})
-
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const admin = await requireAdmin()
-    if (isAdminResponse(admin)) return admin
-
-    const { id } = await params
-    const body = await req.json().catch(() => ({}))
-    const parsed = patchSchema.safeParse(body)
-    if (!parsed.success) {
-      return apiError('Invalid request', 400)
-    }
-
-    const existing = await prisma.supportSession.findUnique({ where: { id } })
-    if (!existing) return apiError('Not found', 404)
-
-    const session = await updateSessionStatus(id, parsed.data.status, admin.id)
-    if (parsed.data.status === 'CLOSED' && existing.status !== 'CLOSED' && existing.projectId) {
-      await recordSiteLifecycleEvent({
-        name: 'support_resolved',
-        idempotencyKey: `support-resolved:${existing.id}`,
-        userId: existing.userId,
-        projectId: existing.projectId,
-        properties: { hadFlag: Boolean(existing.flagId) },
-      })
-    }
-    return NextResponse.json({ session: serializeSession(session) })
-  } catch (err) {
-    return handleRouteError(err)
-  }
+export async function PATCH() {
+  const actor = await requireAdmin()
+  if (isAdminResponse(actor)) return actor
+  return apiError('Review and confirm conversation changes through the admin action service.', 409)
 }
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await requireAdmin()
     if (isAdminResponse(admin)) return admin
@@ -56,19 +19,28 @@ export async function GET(
     const session = await prisma.supportSession.findUnique({
       where: { id },
       include: {
+        assignedAgent: { select: { name: true, email: true } },
+        project: { select: { id: true, name: true, url: true } },
         lead: { select: { normalizedDomain: true, latestScore: true, status: true } },
-        user: { select: { email: true, plan: true, name: true } },
+        user: { select: { id: true, email: true, plan: true, name: true } },
       },
     })
     if (!session) return apiError('Not found', 404)
 
-    return NextResponse.json({
-      session: {
-        ...serializeSession(session),
-        lead: session.lead,
-        user: session.user,
+    return NextResponse.json(
+      {
+        session: {
+          ...serializeSession(session),
+          lead: session.lead,
+          user: session.user,
+          project: session.project,
+          assignedAgentId: session.assignedAgentId,
+          assignee: session.assignedAgent,
+          currentAdminId: admin.id,
+        },
       },
-    })
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   } catch (err) {
     return handleRouteError(err)
   }

@@ -5,8 +5,8 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 /** Called under the owning Project lock. Completed facts remain immutable;
  * unfinished admissions settle with uncertainty and lose their write leases. */
-export async function cancelSiteExecutions(tx: Prisma.TransactionClient, projectId: string, now: Date) {
-  const errorCode = 'SITE_REMOVED', errorMessage = SITE_ACTION_COPY.removedDuringCheck
+export async function cancelSiteExecutions(tx: Prisma.TransactionClient, projectId: string, now: Date, interruption?: { code: string; message: string }) {
+  const errorCode = interruption?.code ?? 'SITE_REMOVED', errorMessage = interruption?.message ?? SITE_ACTION_COPY.removedDuringCheck
   const runs = await tx.runRequest.findMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] } },
     select: { id: true, auditId: true, environment: true, executionSpec: true, selections: { select: { outcomeId: true } } } })
   const audits = await tx.audit.findMany({ where: { projectId, status: { notIn: ['COMPLETED', 'FAILED'] } }, select: { id: true } })

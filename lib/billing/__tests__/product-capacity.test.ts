@@ -15,6 +15,7 @@ function client(account: CareAccount, count: number) {
     $executeRaw: vi.fn().mockResolvedValue(1),
     user: {
       findUnique: vi.fn().mockResolvedValue({
+        id:'user-1',lifecycleStatus:'ACTIVE',licensedSiteQuantity:0,entitlementGrants:[],auditsLimit:3,deepReviewsLimit:1,
         plan: account.plan ?? 'FREE',
         subscriptionStatus: account.subscriptionStatus ?? 'ACTIVE',
         role: account.role ?? 'user',

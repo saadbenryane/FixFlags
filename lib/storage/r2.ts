@@ -140,11 +140,12 @@ export async function deleteAuditScreenshots(auditIds: string[]): Promise<void> 
     } while (continuationToken)
   }
   for (let index = 0; index < objects.length; index += 1_000) {
-    await r2.send(
+    const deleted = await r2.send(
       new DeleteObjectsCommand({
         Bucket: process.env.R2_BUCKET_NAME!,
         Delete: { Objects: objects.slice(index, index + 1_000), Quiet: true },
       })
     )
+    if(deleted.Errors?.length)throw new Error(`Private capture deletion failed for ${deleted.Errors.length} objects. Customer data is retained for reconciliation.`)
   }
 }

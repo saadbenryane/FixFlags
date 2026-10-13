@@ -1,3 +1,5 @@
+const routeState=vi.hoisted(()=>({pathname:'/'}))
+vi.mock('next/navigation',()=>({usePathname:()=>routeState.pathname}))
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,6 +19,7 @@ vi.mock('next/script', () => ({
 
 describe('ConversionScripts consent', () => {
   beforeEach(() => {
+    routeState.pathname='/'
     vi.stubEnv('NEXT_PUBLIC_GA_ID', '')
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_ID', 'AW-test')
     vi.stubEnv('NEXT_PUBLIC_META_PIXEL_ID', 'pixel-test')
@@ -175,4 +178,8 @@ describe('ConversionScripts consent', () => {
     expect(window.dataLayer!.filter((command) => (command as IArguments)[0] === 'js')).toHaveLength(1)
     expect(fbq).toHaveBeenLastCalledWith('consent', 'grant')
   })
+})
+
+describe('private administrator surfaces',()=>{
+ it('does not load scripts or show a marketing prompt in admin',()=>{routeState.pathname='/admin/users/private-customer';vi.stubEnv('NEXT_PUBLIC_GA_ID','G-PRIVATE');render(<ConversionScripts />);expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument();expect(screen.queryByText(ANALYTICS_CONSENT_COPY.title)).not.toBeInTheDocument();expect((window as unknown as Record<string,unknown>)['ga-disable-G-PRIVATE']).toBe(true);routeState.pathname='/';vi.unstubAllEnvs()})
 })

@@ -11,6 +11,8 @@ import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'
 type UsagePeriodUser = Pick<
   User,
   | 'id'
+  | 'lifecycleStatus'
+  | 'licensedSiteQuantity'
   | 'role'
   | 'plan'
   | 'subscriptionStatus'

@@ -40,11 +40,13 @@ describe('GET /api/admin/support/sessions', () => {
 
   it('lists open sessions for admins and honors filter', async () => {
     const response = await GET(
-      new NextRequest('http://localhost/api/admin/support/sessions?filter=closed')
+      new NextRequest('http://localhost/api/admin/support/sessions?filter=closed'),
     )
     expect(response.status).toBe(200)
-    expect(listAdminSessions).toHaveBeenCalledWith('closed')
+    expect(listAdminSessions).toHaveBeenCalledWith('closed', 1)
     expect(await response.json()).toEqual({
+      page: 1,
+      hasNext: false,
       sessions: [
         {
           id: 'session-1',

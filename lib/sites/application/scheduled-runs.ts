@@ -11,7 +11,7 @@ import { readExecutionSpec } from '../domain/execution-spec'
  * broad observations avoid duplicate collection; bindings retain their cadence. */
 export async function requestScheduledSiteRun(input: {
   projectId: string; userId: string; interval: WatchInterval; everyMinutes?: number | null;
-  scheduledAt: Date; now: Date;
+  scheduledAt: Date; now: Date; operator?: import('@/lib/admin/domain-actor').AdminDomainActor;
 }) {
   const project = await prisma.project.findFirst({ where: { id: input.projectId, userId: input.userId, deletedAt: null }, select: { url: true } })
   if (!project) throw new SiteRunRefusal('Site not found', 404)
@@ -38,8 +38,8 @@ export async function requestScheduledSiteRun(input: {
     where: { projectId: input.projectId, enabled: true, environment: 'production',
       bindings: { some: { enabled: true, required: true } } }, select: { id: true }, orderBy: { id: 'asc' },
   }) : []
-  return requestSiteRun({ projectId: input.projectId, userId: input.userId, source: 'WATCH', scope,
+  return requestSiteRun({ projectId: input.projectId, userId: input.userId, source: 'WATCH', scope, operator:input.operator,
     outcomeIds: outcomes.map(outcome => outcome.id), idempotencyKey: key,
-    context: { cadence: input.interval, ...(input.interval === 'custom' ? { everyMinutes: input.everyMinutes } : {}) },
+    context: { ...(input.operator?{adminOperationId:input.operator.operationId}:{}), cadence: input.interval, ...(input.interval === 'custom' ? { everyMinutes: input.everyMinutes } : {}) },
   })
 }

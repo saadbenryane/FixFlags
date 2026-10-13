@@ -11,13 +11,13 @@ import { ACCOUNT_CHECK_COPY as C } from '@/lib/marketing/copy/account-checks'
 export async function accountAdmission(projectId: string, mode: AccountIntent['mode'] = 'routine') {
   const ready = mode === 'cleanup' ? accountCleanupReady() : accountInfrastructureReady()
   if (!ready) return undefined
-  const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null },
+  const project = await prisma.project.findFirst({ where: { id: projectId, ...(mode === 'cleanup' ? {} : { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } }) },
     select: { url: true, accountChecksEnabled: true, accountCheckRevision: true, user: { select: { role: true, plan: true, subscriptionStatus: true } } } })
   return project && project.user && (mode === 'cleanup' || project.accountChecksEnabled && accountChecksEntitled(project.user) && accountExecutionReady(project.url))
     ? { revision: project.accountCheckRevision, mode, siteUrl: project.url } : undefined
 }
 export async function assertAccountPermission(projectId: string, intent: AccountIntent, db: Prisma.TransactionClient = prisma) {
-  const project = await db.project.findFirst({ where: { id: projectId, deletedAt: null, accountCheckRevision: intent.revision,
+  const project = await db.project.findFirst({ where: { id: projectId, ...(intent.mode === 'cleanup' ? {} : { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } }), accountCheckRevision: intent.revision,
     ...(intent.mode === 'cleanup' ? {} : { accountChecksEnabled: true }) },
     select: { url: true, user: { select: { role: true, plan: true, subscriptionStatus: true } } } })
   if (!project?.user || (intent.mode === 'cleanup' ? !accountCleanupReady()

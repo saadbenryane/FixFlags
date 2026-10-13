@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import { prisma } from '@/lib/db'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -6,10 +8,15 @@ import { Card } from '@/components/ui/card'
 export const dynamic = 'force-dynamic'
 
 export default async function AdminShopsPage() {
+  await requireAdminPage()
   const shops = await prisma.shopifyShop.findMany({
     orderBy: { installedAt: 'desc' },
     take: 100,
-    include: {
+    select: {
+      id: true,
+      name: true,
+      shopDomain: true,
+      uninstalledAt: true,
       paths: {
         select: { health: true, label: true, lastVerifiedAt: true },
       },
@@ -33,7 +40,9 @@ export default async function AdminShopsPage() {
                   : 'UNKNOWN'
             return (
               <Card key={shop.id} className="p-4">
-                <p className="font-medium">{shop.name ?? shop.shopDomain}</p>
+                <p className="font-medium">
+                  <Link href={`/admin/shops/${shop.id}`}>{shop.name ?? shop.shopDomain}</Link>
+                </p>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">{shop.shopDomain}</p>
                 <p className="mt-2 text-sm">
                   {shop.uninstalledAt ? 'Uninstalled' : worst} · {shop.paths.length} paths

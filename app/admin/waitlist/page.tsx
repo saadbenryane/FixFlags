@@ -1,3 +1,5 @@
+import { AdminActionButton } from '@/components/admin/AdminActionButton'
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { prisma } from '@/lib/db'
@@ -18,9 +20,9 @@ export default async function AdminWaitlistPage({
 }: {
   searchParams: Promise<{ plan?: string }>
 }) {
+  await requireAdminPage()
   const params = await searchParams
-  const planFilter =
-    params.plan === 'BUILDER' || params.plan === 'TEAM' ? params.plan : undefined
+  const planFilter = params.plan === 'BUILDER' || params.plan === 'TEAM' ? params.plan : undefined
 
   const rows = await listWaitlistRows(planFilter)
   const proCount = await prisma.paidPlanWaitlistEntry.count({ where: { plan: 'BUILDER' } })
@@ -37,8 +39,7 @@ export default async function AdminWaitlistPage({
     return (
       <span className="text-3xs text-muted-foreground">
         <span className="font-medium text-foreground">T1 {tiers.tier1}</span> ·{' '}
-        <span className="font-medium text-foreground">T2 {tiers.tier2}</span> · None{' '}
-        {tiers.noTier}
+        <span className="font-medium text-foreground">T2 {tiers.tier2}</span> · None {tiers.noTier}
       </span>
     )
   }
@@ -53,7 +54,12 @@ export default async function AdminWaitlistPage({
     )
   }
 
-  function releaseBadge(grants: { granted: number; grantedBatch1: number; grantedBatch2: number; converted: number }) {
+  function releaseBadge(grants: {
+    granted: number
+    grantedBatch1: number
+    grantedBatch2: number
+    converted: number
+  }) {
     return (
       <span className="text-3xs text-muted-foreground">
         Granted <span className="font-medium text-foreground">{grants.granted}</span>
@@ -93,9 +99,11 @@ export default async function AdminWaitlistPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant={planFilter === undefined ? 'default' : 'outline'} size="sm" asChild>
-          <Link href={'/admin/waitlist' as Route}>All ({proCount + studioCount})</Link>
-        </Button>
+        <AdminActionButton
+          action="DATA_EXPORT"
+          targetId="waitlist"
+          input={{ ...(planFilter ? { plan: planFilter } : {}) }}
+        />
         <Button variant={planFilter === 'BUILDER' ? 'default' : 'outline'} size="sm" asChild>
           <Link href={'/admin/waitlist?plan=BUILDER' as Route}>
             Pro ({proCount}) {planFilter === 'BUILDER' && batchBadge(proBatches)}

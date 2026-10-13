@@ -1,3 +1,4 @@
+import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
@@ -6,7 +7,11 @@ import { generateApiKey, MAX_ACTIVE_API_KEYS } from '@/lib/security/api-keys'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { isApiKeyClient } from '@/lib/mcp/builders'
-import { developerKeyExpiresAt, developerKeyExpiryDays, developerKeyPreset } from '@/lib/mcp/developer-key-policy'
+import {
+  developerKeyExpiresAt,
+  developerKeyExpiryDays,
+  developerKeyPreset,
+} from '@/lib/mcp/developer-key-policy'
 
 export async function GET() {
   try {
@@ -77,34 +82,36 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const activeCount = await prisma.apiKey.count({
-      where: {
-        userId: session.user.id,
-        revokedAt: null,
-        audience: null,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
+    const generated = generateApiKey()
+    const apiKey = await prisma.$transaction(async (tx) => {
+      await requireActiveAccountForWrite(tx, session.user.id)
+      const activeCount = await tx.apiKey.count({
+        where: {
+          userId: session.user.id,
+          revokedAt: null,
+          audience: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+      })
+      if (activeCount >= MAX_ACTIVE_API_KEYS) return null
+      return tx.apiKey.create({
+        data: {
+          userId: session.user.id,
+          name: name || 'Default',
+          client,
+          keyHash: generated.keyHash,
+          prefix: generated.prefix,
+          lastFour: generated.lastFour,
+          scopes: [...preset.scopes],
+          expiresAt: developerKeyExpiresAt(expiresInDays),
+        },
+      })
     })
-    if (activeCount >= MAX_ACTIVE_API_KEYS) {
+    if (!apiKey)
       return apiError(`You can have up to ${MAX_ACTIVE_API_KEYS} active API keys`, 409, {
         code: 'API_KEY_LIMIT',
         action: 'revoke_key',
       })
-    }
-
-    const generated = generateApiKey()
-    const apiKey = await prisma.apiKey.create({
-      data: {
-        userId: session.user.id,
-        name: name || 'Default',
-        client,
-        keyHash: generated.keyHash,
-        prefix: generated.prefix,
-        lastFour: generated.lastFour,
-        scopes: [...preset.scopes],
-        expiresAt: developerKeyExpiresAt(expiresInDays),
-      },
-    })
 
     return NextResponse.json(
       {
@@ -117,7 +124,7 @@ export async function POST(req: NextRequest) {
         scopes: apiKey.scopes,
         expiresAt: apiKey.expiresAt,
       },
-      { status: 201 }
+      { status: 201 },
     )
   } catch (err) {
     return handleRouteError(err, 'Failed to create API key')

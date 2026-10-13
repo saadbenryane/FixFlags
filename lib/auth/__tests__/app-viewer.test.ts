@@ -18,6 +18,7 @@ import { getAppMeUser, getAppViewer } from '@/lib/auth/app-viewer'
 
 const viewerUser = {
   id: 'user-1',
+  lifecycleStatus:'ACTIVE',
   email: 'owner@example.com',
   name: 'Owner',
   plan: 'FREE',

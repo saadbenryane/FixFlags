@@ -1,49 +1,42 @@
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
-import { AUDIT_CAPABILITIES, capabilitySummary, type AuditDimension } from '@/lib/audit/capability-matrix'
-import { StatValue } from '@/components/admin/StatValue'
+import {
+  AUDIT_CAPABILITIES,
+  capabilitySummary,
+  type AuditDimension,
+} from '@/lib/audit/capability-matrix'
 import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 
-/** Growth target for monitoring progress */
-const PAYING_USER_TARGET = 100
-
 export default async function OperatingPlanPage() {
+  await requireAdminPage()
   const monthAgo = startOf(30)
 
-  const [
-    paidUsers,
-    completedRootAuditsMonth,
-    rechecksMonth,
-    flagStatusCounts,
-    launchReadinessCounts,
-  ] = await Promise.all([
-    prisma.user.count({ where: { plan: { not: 'FREE' } } }),
-    prisma.audit.count({
-      where: { status: 'COMPLETED', parentId: null, createdAt: { gte: monthAgo } },
-    }),
-    prisma.audit.count({
-      where: { status: 'COMPLETED', parentId: { not: null }, createdAt: { gte: monthAgo } },
-    }),
-    prisma.flag.groupBy({
-      by: ['status'],
-      _count: { id: true },
-      where: { audit: { createdAt: { gte: monthAgo } } },
-    }),
-    prisma.audit.groupBy({
-      by: ['launchReadinessState'],
-      _count: { id: true },
-      where: { status: 'COMPLETED', createdAt: { gte: monthAgo } },
-    }),
-  ])
-
-  const growthPct = Math.min(100, pct(paidUsers, PAYING_USER_TARGET))
+  const [completedRootAuditsMonth, rechecksMonth, flagStatusCounts, launchReadinessCounts] =
+    await Promise.all([
+      prisma.audit.count({
+        where: { status: 'COMPLETED', parentId: null, createdAt: { gte: monthAgo } },
+      }),
+      prisma.audit.count({
+        where: { status: 'COMPLETED', parentId: { not: null }, createdAt: { gte: monthAgo } },
+      }),
+      prisma.flag.groupBy({
+        by: ['status'],
+        _count: { id: true },
+        where: { audit: { createdAt: { gte: monthAgo } } },
+      }),
+      prisma.audit.groupBy({
+        by: ['launchReadinessState'],
+        _count: { id: true },
+        where: { status: 'COMPLETED', createdAt: { gte: monthAgo } },
+      }),
+    ])
 
   const recheckRate = pct(rechecksMonth, completedRootAuditsMonth)
 
@@ -54,7 +47,7 @@ export default async function OperatingPlanPage() {
   const openFlags = flagMap['OPEN'] ?? 0
 
   const readinessMap = Object.fromEntries(
-    launchReadinessCounts.map((r) => [r.launchReadinessState, r._count.id])
+    launchReadinessCounts.map((r) => [r.launchReadinessState, r._count.id]),
   )
   const totalReadinessAudits = launchReadinessCounts.reduce((sum, r) => sum + r._count.id, 0)
   const readinessRows = [
@@ -82,26 +75,6 @@ export default async function OperatingPlanPage() {
       <PageHeader title="Operating plan" />
 
       <section className="space-y-4">
-        <SectionTitle>Growth progress</SectionTitle>
-        <Card variant="solid">
-          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs text-muted-foreground font-medium">
-              Paying users toward {PAYING_USER_TARGET}-user target
-            </CardTitle>
-            <Badge variant="default">
-              {paidUsers.toLocaleString()} / {PAYING_USER_TARGET}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatValue>
-              {paidUsers.toLocaleString()} / {PAYING_USER_TARGET}
-            </StatValue>
-            <Progress value={growthPct} />
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-4">
         <SectionTitle>Core loop health (30d): Flag, Fix, Re-check</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <MetricCard
@@ -109,14 +82,19 @@ export default async function OperatingPlanPage() {
             value={`${recheckRate}%`}
             detail={
               <p className="text-xs text-muted-foreground">
-                {rechecksMonth.toLocaleString()} rechecks / {completedRootAuditsMonth.toLocaleString()} completed audits
+                {rechecksMonth.toLocaleString()} rechecks /{' '}
+                {completedRootAuditsMonth.toLocaleString()} completed audits
               </p>
             }
           />
           <MetricCard
             label="Flags fixed"
             value={`${pct(fixedFlags, totalFlagsMonth)}%`}
-            detail={<p className="text-xs text-muted-foreground">{fixedFlags.toLocaleString()} of {totalFlagsMonth.toLocaleString()} flags</p>}
+            detail={
+              <p className="text-xs text-muted-foreground">
+                {fixedFlags.toLocaleString()} of {totalFlagsMonth.toLocaleString()} flags
+              </p>
+            }
           />
           <MetricCard label="Flags open" value={openFlags.toLocaleString()} />
           <MetricCard label="Flags regressed" value={regressedFlags.toLocaleString()} />
@@ -133,10 +111,14 @@ export default async function OperatingPlanPage() {
                 <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-brand rounded-full transition-[width]"
-                    style={{ width: `${Math.max(pct(r.value, totalReadinessAudits), r.value > 0 ? 1 : 0)}%` }}
+                    style={{
+                      width: `${Math.max(pct(r.value, totalReadinessAudits), r.value > 0 ? 1 : 0)}%`,
+                    }}
                   />
                 </div>
-                <span className="font-mono text-sm tabular-nums w-14 text-right">{r.value.toLocaleString()}</span>
+                <span className="font-mono text-sm tabular-nums w-14 text-right">
+                  {r.value.toLocaleString()}
+                </span>
               </div>
             ))}
           </CardContent>
@@ -146,8 +128,9 @@ export default async function OperatingPlanPage() {
       <section className="space-y-4">
         <SectionTitle>Scan roadmap build-out</SectionTitle>
         <p className="text-xs text-muted-foreground">
-          Live from <code className="font-mono">lib/audit/capability-matrix.ts</code> (source of truth for
-          docs/scan-roadmap.md). Run <code className="font-mono">npm run audit:capabilities</code> for the full breakdown.
+          Live from <code className="font-mono">lib/audit/capability-matrix.ts</code> (source of
+          truth for docs/scan-roadmap.md). Run{' '}
+          <code className="font-mono">npm run audit:capabilities</code> for the full breakdown.
         </p>
         <div className="grid grid-cols-3 gap-4">
           <MetricCard label="Live" value={capSummary.byStatus.live} />
@@ -156,19 +139,32 @@ export default async function OperatingPlanPage() {
         </div>
         {capSummary.unmapped.length > 0 && (
           <p className="text-xs text-destructive">
-            {capSummary.unmapped.length} check id(s) not mapped to a capability: {capSummary.unmapped.join(', ')}
+            {capSummary.unmapped.length} check id(s) not mapped to a capability:{' '}
+            {capSummary.unmapped.join(', ')}
           </p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {byDimension.map((d) => (
             <Card key={d.dimension} variant="solid">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground font-medium">{d.dimension}</CardTitle>
+                <CardTitle className="text-xs text-muted-foreground font-medium">
+                  {d.dimension}
+                </CardTitle>
               </CardHeader>
               <CardContent className="flex gap-2 flex-wrap">
-                <Badge variant="default" size="sm">{d.live} live</Badge>
-                {d.partial > 0 && <Badge variant="secondary" size="sm">{d.partial} partial</Badge>}
-                {d.planned > 0 && <Badge variant="outline" size="sm">{d.planned} planned</Badge>}
+                <Badge variant="default" size="sm">
+                  {d.live} live
+                </Badge>
+                {d.partial > 0 && (
+                  <Badge variant="secondary" size="sm">
+                    {d.partial} partial
+                  </Badge>
+                )}
+                {d.planned > 0 && (
+                  <Badge variant="outline" size="sm">
+                    {d.planned} planned
+                  </Badge>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -181,7 +177,9 @@ export default async function OperatingPlanPage() {
           <span>docs/offering.md</span>
           <span>docs/business-model.md</span>
           <span>docs/scan-roadmap.md</span>
-          <Link href="/admin/analytics" className="underline hover:text-foreground">/admin/analytics &rarr;</Link>
+          <Link href="/admin/analytics" className="underline hover:text-foreground">
+            /admin/analytics &rarr;
+          </Link>
         </div>
       </section>
     </Container>

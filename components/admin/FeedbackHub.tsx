@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { AdminInbox } from '@/components/admin/AdminInbox'
-import { ReactionsList, type ReportReactionItem, type FlagReactionGroup } from '@/components/admin/ReactionsList'
+import {
+  ReactionsList,
+  type ReportReactionItem,
+  type FlagReactionGroup,
+} from '@/components/admin/ReactionsList'
 import { FeedbackDigestPanel } from '@/components/admin/FeedbackDigestPanel'
 
 type TabKey = 'conversations' | 'reactions' | 'digest'
@@ -25,19 +28,17 @@ export function FeedbackHub({ reactions, reactionCount, unread }: Props) {
   const router = useRouter()
   const initial = searchParams.get('tab')
   const hasSession = Boolean(searchParams.get('session'))
-  const [tab, setTab] = useState<TabKey>(
-    hasSession
-      ? 'conversations'
-      : initial === 'reactions' || initial === 'digest'
-        ? initial
-        : 'conversations'
-  )
+  const tab: TabKey = hasSession
+    ? 'conversations'
+    : initial === 'reactions' || initial === 'digest'
+      ? initial
+      : 'conversations'
 
   function onChange(next: string) {
     const value = next as TabKey
-    setTab(value)
     const params = new URLSearchParams(Array.from(searchParams.entries()))
     params.set('tab', value)
+    if (value !== 'conversations') params.delete('session')
     router.replace(`/admin/feedback?${params.toString()}`, { scroll: false })
   }
 

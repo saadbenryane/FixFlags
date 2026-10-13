@@ -363,7 +363,7 @@ export async function loadWatchLaunchReadiness(
       assessments: run.assessments.map((assessment) => ({ state: assessment.state })),
       audit: run.audit ? {
         ...run.audit,
-        estimatedCostUsd: run.audit.runCost?.estimatedCostUsd.toNumber() ?? null,
+        estimatedCostUsd: run.audit.runCost?.estimatedCostUsd?.toNumber() ?? null,
         flags: run.audit.flags.map((flag) => ({
           ...flag,
           improvementId: flag.improvementOccurrence?.improvementId ?? null,

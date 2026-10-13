@@ -5,17 +5,19 @@ import { notifyAdminOfVisitorMessage } from '@/lib/live-support/notify'
 import { SupportError } from '@/lib/live-support/errors'
 import { logger } from '@/lib/logger'
 import { extractFlagIdFromPageUrl, extractSiteIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
+import { appendSupportMessage } from './ordered-messages'
 
 export async function listMessages(sessionId: string) {
   return prisma.supportMessage.findMany({
     where: { sessionId },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { sequence: 'asc' },
     select: {
       id: true,
       role: true,
       body: true,
       createdAt: true,
       senderId: true,
+      sequence: true,
     },
   })
 }
@@ -38,12 +40,10 @@ export async function sendVisitorMessage(sessionId: string, body: string) {
       throw new SupportError('Session is closed', 'SESSION_CLOSED', 409)
     }
 
-    const created = await tx.supportMessage.create({
-      data: {
+    const created = await appendSupportMessage(tx, {
         sessionId,
         role: 'VISITOR',
         body: trimmed,
-      },
     })
 
     await tx.supportSession.update({
@@ -65,7 +65,7 @@ export async function sendVisitorMessage(sessionId: string, body: string) {
   return message
 }
 
-export async function sendAgentMessage(sessionId: string, senderId: string, body: string) {
+export async function sendAgentMessage(sessionId: string, senderId: string, body: string, requestKey: string) {
   const trimmed = await onBeforeAgentReply(body.trim())
   if (!trimmed) {
     throw new SupportError('Message cannot be empty', 'EMPTY_MESSAGE', 400)
@@ -80,13 +80,12 @@ export async function sendAgentMessage(sessionId: string, senderId: string, body
       throw new SupportError('Session not found', 'SESSION_NOT_FOUND', 404)
     }
 
-    const created = await tx.supportMessage.create({
-      data: {
+    const created = await appendSupportMessage(tx, {
         sessionId,
         role: 'AGENT' satisfies SupportMessageRole,
         body: trimmed,
         senderId,
-      },
+        requestKey,
     })
 
     await tx.supportSession.update({
@@ -110,10 +109,14 @@ export async function markReadByVisitor(sessionId: string) {
   })
 }
 
-export async function markReadByAgent(sessionId: string) {
-  await prisma.supportSession.update({
-    where: { id: sessionId },
-    data: { unreadByAgent: 0 },
+export async function markReadByAgent(sessionId: string, through: bigint) {
+  await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "support_sessions" WHERE "id" = ${sessionId} FOR UPDATE`
+    const session = await tx.supportSession.findUniqueOrThrow({ where: { id: sessionId }, select: { agentReadThrough: true, nextMessageSequence: true } })
+    if (through > session.nextMessageSequence || through < BigInt(0)) throw new SupportError('Invalid read cursor', 'INVALID_CURSOR', 400)
+    if (through <= session.agentReadThrough) return
+    const unread = await tx.supportMessage.count({ where: { sessionId, role: 'VISITOR', sequence: { gt: through } } })
+    await tx.supportSession.update({ where: { id: sessionId }, data: { agentReadThrough: through, unreadByAgent: unread } })
   })
 }
 
@@ -123,6 +126,7 @@ export function serializeMessage(message: {
   body: string
   createdAt: Date
   senderId: string | null
+  sequence: bigint
 }) {
   return {
     id: message.id,
@@ -130,6 +134,7 @@ export function serializeMessage(message: {
     body: message.body,
     createdAt: message.createdAt.toISOString(),
     senderId: message.senderId,
+    sequence: message.sequence.toString(),
   }
 }
 

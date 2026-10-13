@@ -19,8 +19,16 @@ export function AdminTable({
   }
 
   return (
-    <Card variant="solid" className="overflow-hidden p-0">
-      <table className="w-full text-sm">{children}</table>
+    <Card variant="solid" className="min-w-0 p-0">
+      <div
+        className="overflow-x-auto rounded-[inherit]"
+        role="region"
+        aria-label="Admin records"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The overflow region needs keyboard scrolling.
+        tabIndex={0}
+      >
+        <table className="w-full text-sm">{children}</table>
+      </div>
     </Card>
   )
 }
@@ -28,27 +36,27 @@ export function AdminTable({
 export function AdminTableHead({ children }: { children: React.ReactNode }) {
   return (
     <thead>
-      <tr className="border-b bg-muted/50">{children}</tr>
+      <tr className=" bg-muted/50">{children}</tr>
     </thead>
   )
 }
 
-export function AdminTableHeaderCell({ children, className }: { children?: React.ReactNode; className?: string }) {
-  return <th className={cn('text-left px-4 py-3 font-medium', className)}>{children}</th>
-}
-
-export function AdminTableRow({
+export function AdminTableHeaderCell({
   children,
-  index,
+  className,
 }: {
-  children: React.ReactNode
-  index: number
+  children?: React.ReactNode
+  className?: string
 }) {
   return (
-    <tr className={cn('border-b last:border-0', index % 2 === 0 ? '' : 'bg-muted/20')}>
+    <th scope="col" className={cn('text-left px-4 py-3 font-medium', className)}>
       {children}
-    </tr>
+    </th>
   )
+}
+
+export function AdminTableRow({ children, index }: { children: React.ReactNode; index: number }) {
+  return <tr className={cn(' ', index % 2 === 0 ? '' : 'bg-muted/20')}>{children}</tr>
 }
 
 export function AdminTableCell({

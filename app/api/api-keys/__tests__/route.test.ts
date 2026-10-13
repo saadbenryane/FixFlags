@@ -2,6 +2,7 @@ import { describe, it, vi, expect, beforeEach, afterEach } from 'vitest'
 import type { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
+  $transaction:vi.fn(),$queryRaw:vi.fn(),
   apiKey: { count: vi.fn(), create: vi.fn(), findMany: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
@@ -36,6 +37,8 @@ const postReq = {
 describe('POST /api/api-keys', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    prismaMock.$transaction.mockImplementation(async callback=>callback(prismaMock))
+    prismaMock.$queryRaw.mockResolvedValue([{id:'user-1'}])
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.apiKey.count.mockResolvedValue(0)
     prismaMock.apiKey.findMany.mockResolvedValue([])

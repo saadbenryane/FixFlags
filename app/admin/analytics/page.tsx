@@ -1,3 +1,4 @@
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,6 +55,7 @@ const WATCH_GATE_LABELS = {
 } as const
 
 export default async function AdminAnalyticsPage() {
+  await requireAdminPage()
   const todayStart = startOf(0)
   const weekAgo = startOf(7)
   const monthAgo = startOf(30)
@@ -148,53 +150,60 @@ export default async function AdminAnalyticsPage() {
     trafficSources,
     siteLifecycleCounts,
     firstValueFunnel,
-  ] =
-    await Promise.all([
-      prisma.user.findMany({
-        where: { plan: { not: 'FREE' }, subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
-        select: { plan: true },
-      }),
-      prisma.subscriptionLifecycleEvent.findMany({
-        where: { occurredAt: { gte: monthAgo } },
-        select: {
-          userId: true,
-          previousPlan: true,
-          plan: true,
-          occurredAt: true,
-        },
-        orderBy: { occurredAt: 'asc' },
-      }),
-      prisma.subscriptionLifecycleEvent.findFirst({
-        select: { occurredAt: true },
-        orderBy: { occurredAt: 'asc' },
-      }),
-      prisma.audit.findMany({
-        where: { status: 'COMPLETED', createdAt: { gte: monthAgo }, startedAt: { not: null }, completedAt: { not: null } },
-        select: { startedAt: true, completedAt: true },
-      }),
-      prisma.audit.groupBy({
-        by: ['utmSource'],
-        _count: { _all: true },
-        where: { createdAt: { gte: monthAgo } },
-        orderBy: { _count: { utmSource: 'desc' } },
-      }),
-      prisma.siteLifecycleEvent.groupBy({
-        by: ['name'],
-        _count: { _all: true },
-        where: { createdAt: { gte: monthAgo } },
-      }),
-      loadSiteFirstValueFunnel(monthAgo),
-    ])
+  ] = await Promise.all([
+    prisma.user.findMany({
+      where: { plan: { not: 'FREE' }, subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
+      select: { plan: true },
+    }),
+    prisma.subscriptionLifecycleEvent.findMany({
+      where: { occurredAt: { gte: monthAgo } },
+      select: {
+        userId: true,
+        previousPlan: true,
+        plan: true,
+        occurredAt: true,
+      },
+      orderBy: { occurredAt: 'asc' },
+    }),
+    prisma.subscriptionLifecycleEvent.findFirst({
+      select: { occurredAt: true },
+      orderBy: { occurredAt: 'asc' },
+    }),
+    prisma.audit.findMany({
+      where: {
+        status: 'COMPLETED',
+        createdAt: { gte: monthAgo },
+        startedAt: { not: null },
+        completedAt: { not: null },
+      },
+      select: { startedAt: true, completedAt: true },
+    }),
+    prisma.audit.groupBy({
+      by: ['utmSource'],
+      _count: { _all: true },
+      where: { createdAt: { gte: monthAgo } },
+      orderBy: { _count: { utmSource: 'desc' } },
+    }),
+    prisma.siteLifecycleEvent.groupBy({
+      by: ['name'],
+      _count: { _all: true },
+      where: { createdAt: { gte: monthAgo } },
+    }),
+    loadSiteFirstValueFunnel(monthAgo),
+  ])
 
   const mrr = activePaidUsers.reduce(
     (sum, u) => sum + planPriceUsd(u.plan as keyof typeof PLAN_DEFINITIONS),
-    0
+    0,
   )
   const paidUserCount = activePaidUsers.length
   const hasCompleteLifecycleWindow =
     firstSubscriptionEvent !== null && firstSubscriptionEvent.occurredAt <= monthAgo
-  const { newMrr, expansionMrr, churnedMrr, churnedUsers, churnRate } =
-    subscriptionMetrics(subscriptionTransitions, paidUserCount, hasCompleteLifecycleWindow)
+  const { newMrr, expansionMrr, churnedMrr, churnedUsers, churnRate } = subscriptionMetrics(
+    subscriptionTransitions,
+    paidUserCount,
+    hasCompleteLifecycleWindow,
+  )
 
   const avgAuditDurationSeconds =
     completedAuditsMonth.length > 0
@@ -207,9 +216,7 @@ export default async function AdminAnalyticsPage() {
   const trafficSourceRows = trafficSources
     .map((row) => ({ source: row.utmSource || 'Direct / unknown', count: row._count._all }))
     .slice(0, 8)
-  const lifecycleCount = new Map(
-    siteLifecycleCounts.map((row) => [row.name, row._count._all])
-  )
+  const lifecycleCount = new Map(siteLifecycleCounts.map((row) => [row.name, row._count._all]))
 
   const improvementValue = calculateImprovementValueMetrics(improvementValueRows, {
     activeProductCount,
@@ -248,17 +255,33 @@ export default async function AdminAnalyticsPage() {
         </Link>
       </PageHeader>
 
+      <nav aria-label="Growth areas" className="flex flex-wrap gap-4 text-sm">
+        <Link href="/admin/leads" className="underline">
+          Leads
+        </Link>
+        <Link href="/admin/waitlist" className="underline">
+          Waitlist
+        </Link>
+        <Link href="/admin/analytics/waitlist" className="underline">
+          Waitlist trends
+        </Link>
+      </nav>
       <section className="space-y-4">
         <SectionTitle>Watch launch evidence</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
-          A 14-day, 100-execution production cohort. Missing evidence stays collecting or unavailable;
-          it never counts as a pass. Paid access remains waitlisted until every gate passes.
+          A 14-day, 100-execution production cohort. Missing evidence stays collecting or
+          unavailable; it never counts as a pass. Paid access remains waitlisted until every gate
+          passes.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Overall gate"
             value={watchLaunchReadiness.status}
-            detail={<span className="text-xs text-muted-foreground">As of {watchLaunchReadiness.asOf.slice(0, 10)} UTC</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                As of {watchLaunchReadiness.asOf.slice(0, 10)} UTC
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
@@ -269,18 +292,28 @@ export default async function AdminAnalyticsPage() {
           />
           <MetricCard
             label="Terminal completion"
-            value={watchLaunchReadiness.metrics.terminalCompletionRate === null
-              ? 'N/A'
-              : `${watchLaunchReadiness.metrics.terminalCompletionRate.toFixed(2)}%`}
-            detail={<span className="text-xs text-muted-foreground">99% required · target outages excluded</span>}
+            value={
+              watchLaunchReadiness.metrics.terminalCompletionRate === null
+                ? 'N/A'
+                : `${watchLaunchReadiness.metrics.terminalCompletionRate.toFixed(2)}%`
+            }
+            detail={
+              <span className="text-xs text-muted-foreground">
+                99% required · target outages excluded
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
             label="Projected daily-care COGS"
-            value={watchLaunchReadiness.metrics.projectedDailyCareCostUsd === null
-              ? 'N/A'
-              : `$${watchLaunchReadiness.metrics.projectedDailyCareCostUsd.toFixed(2)}`}
-            detail={<span className="text-xs text-muted-foreground">per Site / month · $12 maximum</span>}
+            value={
+              watchLaunchReadiness.metrics.projectedDailyCareCostUsd === null
+                ? 'N/A'
+                : `$${watchLaunchReadiness.metrics.projectedDailyCareCostUsd.toFixed(2)}`
+            }
+            detail={
+              <span className="text-xs text-muted-foreground">per Site / month · $12 maximum</span>
+            }
             variant="subtle"
           />
         </div>
@@ -290,9 +323,14 @@ export default async function AdminAnalyticsPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {Object.entries(watchLaunchReadiness.gates).map(([key, gate]) => (
-              <div key={key} className="grid gap-1 border-b border-border/40 pb-3 last:border-0 last:pb-0 sm:grid-cols-[11rem_6rem_1fr] sm:gap-3">
+              <div
+                key={key}
+                className="grid gap-1  border-border/40 pb-3  last:pb-0 sm:grid-cols-[11rem_6rem_1fr] sm:gap-3"
+              >
                 <span>{WATCH_GATE_LABELS[key as keyof typeof WATCH_GATE_LABELS]}</span>
-                <span className="font-mono text-xs uppercase text-muted-foreground">{gate.status}</span>
+                <span className="font-mono text-xs uppercase text-muted-foreground">
+                  {gate.status}
+                </span>
                 <span className="text-muted-foreground">{gate.summary}</span>
               </div>
             ))}
@@ -303,8 +341,9 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Site lifecycle activity (last 30 days)</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
-          Durable, idempotent server-event volume without URLs, prompts, evidence, or email addresses.
-          These events describe different actions and are not a sequential conversion funnel.
+          Durable, idempotent server-event volume without URLs, prompts, evidence, or email
+          addresses. These events describe different actions and are not a sequential conversion
+          funnel.
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {SITE_LIFECYCLE_EVENTS.map((event) => (
@@ -319,18 +358,29 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Customer value cycle cohort (cycles created in the last 30 days)</SectionTitle>
+        <SectionTitle>
+          Customer value cycle cohort (cycles created in the last 30 days)
+        </SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Generated"
             value={improvementValue.generated.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{improvementValue.recommended} delivered</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {improvementValue.recommended} delivered
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
             label="Accepted"
             value={improvementValue.accepted.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{improvementValue.acceptedExplicit} explicit · {improvementValue.acceptedInferred} inferred</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {improvementValue.acceptedExplicit} explicit · {improvementValue.acceptedInferred}{' '}
+                inferred
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
@@ -341,13 +391,18 @@ export default async function AdminAnalyticsPage() {
           <MetricCard
             label="Outcome issued"
             value={improvementValue.outcomeIssued.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{improvementValue.improved} improved</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {improvementValue.improved} improved
+              </span>
+            }
             variant="subtle"
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Cohort n={improvementValue.cohortSize}; {improvementValue.matureCycleCount} cycles are at least seven days old.
-          Active Site means a Site with a completed check in the last 30 days (n={improvementValue.activeProductCount}).
+          Cohort n={improvementValue.cohortSize}; {improvementValue.matureCycleCount} cycles are at
+          least seven days old. Active Site means a Site with a completed check in the last 30 days
+          (n={improvementValue.activeProductCount}).
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -394,9 +449,11 @@ export default async function AdminAnalyticsPage() {
           />
           <MetricCard
             label="Fully loaded check cost / improved"
-            value={improvementValue.fullyLoadedReviewCostPerImprovedUsd === null
-              ? 'N/A'
-              : `$${improvementValue.fullyLoadedReviewCostPerImprovedUsd.toFixed(2)}`}
+            value={
+              improvementValue.fullyLoadedReviewCostPerImprovedUsd === null
+                ? 'N/A'
+                : `$${improvementValue.fullyLoadedReviewCostPerImprovedUsd.toFixed(2)}`
+            }
             variant="subtle"
           />
         </div>
@@ -404,14 +461,18 @@ export default async function AdminAnalyticsPage() {
           <MetricCard
             label="Sites with a second cycle"
             value={improvementValue.productsWithSecondCycle.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{watchedProducts} under Watch</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">{watchedProducts} under Watch</span>
+            }
             variant="subtle"
           />
           <MetricCard
             label="Verification cost / outcome"
-            value={improvementValue.outcomeReviewCostPerOutcomeUsd === null
-              ? 'N/A'
-              : `$${improvementValue.outcomeReviewCostPerOutcomeUsd.toFixed(2)}`}
+            value={
+              improvementValue.outcomeReviewCostPerOutcomeUsd === null
+                ? 'N/A'
+                : `$${improvementValue.outcomeReviewCostPerOutcomeUsd.toFixed(2)}`
+            }
             variant="subtle"
           />
           <MetricCard
@@ -423,7 +484,9 @@ export default async function AdminAnalyticsPage() {
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle className="text-sm">Verification outcomes</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-sm">Verification outcomes</CardTitle>
+            </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 text-sm">
               {Object.entries(improvementValue.outcomes).map(([label, count]) => (
                 <div key={label} className="flex justify-between gap-3">
@@ -434,7 +497,9 @@ export default async function AdminAnalyticsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-sm">Why recommendations were declined</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-sm">Why recommendations were declined</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {Object.entries(improvementValue.rejections).map(([reason, count]) => (
                 <div key={reason} className="flex justify-between gap-3">
@@ -448,23 +513,29 @@ export default async function AdminAnalyticsPage() {
           </Card>
         </div>
         <p className="max-w-4xl text-xs text-muted-foreground">
-          Generated, delivered, accepted, attempted, outcome-issued, and improved are separate append-only events.
-          Copying instructions and Agent answers do not count as acceptance or verification.
+          Generated, delivered, accepted, attempted, outcome-issued, and improved are separate
+          append-only events. Copying instructions and Agent answers do not count as acceptance or
+          verification.
         </p>
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Consenting landing-to-value cohort (latest GA4 rolling 28 days)</SectionTitle>
+        <SectionTitle>
+          Consenting landing-to-value journeys (latest GA4 observation window)
+        </SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
-          One opaque journey ID joins a consented homepage session to the exact anonymous Site start,
-          first useful result, and later claim. It is created only after analytics consent, lasts for one
-          browser tab, and contains no visitor cookie, URL, account, or customer content.
+          One opaque journey ID joins a consented homepage journey to the exact anonymous Site
+          start, first useful result, and later claim. It is created only after analytics consent,
+          lasts for one browser tab, and contains no visitor cookie, URL, account, or customer
+          content.
         </p>
         {firstValueFunnel.landing.landingSessions === null ? (
           <Card>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-              No joinable GA4 journey export is available yet. Configure the <code>journey_id</code> event
-              dimension, deploy the instrumentation, and run the GA pull. Missing telemetry is not counted as zero.
+              No comparable GA4 journey export is available yet. The export needs a valid
+              observation window and reporting timezone. Configure the <code>journey_id</code> event
+              dimension, deploy the instrumentation, and run the GA pull. Missing telemetry is not
+              counted as zero.
               {firstValueFunnel.landing.instrumentedStarts > 0
                 ? ` ${firstValueFunnel.landing.instrumentedStarts} recent anonymous starts already carry the server-side journey key.`
                 : ''}
@@ -474,34 +545,55 @@ export default async function AdminAnalyticsPage() {
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
-                label="Consenting landing sessions"
+                label="Consenting landing journeys"
                 value={firstValueFunnel.landing.landingSessions.toLocaleString()}
                 variant="subtle"
               />
               <MetricCard
-                label="Anonymous Sites started"
+                label="Journeys with a Site start"
                 value={(firstValueFunnel.landing.startedSessions ?? 0).toLocaleString()}
-                detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.landing.startRate}% of landing sessions</span>}
+                detail={
+                  <span className="text-xs text-muted-foreground">
+                    {firstValueFunnel.landing.startRate === null
+                      ? 'No observed landing journeys'
+                      : `${firstValueFunnel.landing.startRate}% of landing journeys`}
+                  </span>
+                }
                 variant="subtle"
               />
               <MetricCard
-                label="First useful result"
+                label="Journeys with useful evidence"
                 value={(firstValueFunnel.landing.firstUsefulResultSessions ?? 0).toLocaleString()}
-                detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.landing.resultRate}% of landing sessions</span>}
+                detail={
+                  <span className="text-xs text-muted-foreground">
+                    {firstValueFunnel.landing.resultRate === null
+                      ? 'No observed landing journeys'
+                      : `${firstValueFunnel.landing.resultRate}% of landing journeys`}
+                  </span>
+                }
                 variant="subtle"
               />
               <MetricCard
-                label="Claimed later"
+                label="Journeys claimed later"
                 value={(firstValueFunnel.landing.claimedSessions ?? 0).toLocaleString()}
-                detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.landing.claimRate}% of landing sessions</span>}
+                detail={
+                  <span className="text-xs text-muted-foreground">
+                    {firstValueFunnel.landing.claimRate === null
+                      ? 'No observed landing journeys'
+                      : `${firstValueFunnel.landing.claimRate}% of landing journeys`}
+                  </span>
+                }
                 variant="subtle"
               />
             </div>
             <p className="max-w-4xl text-xs text-muted-foreground">
-              GA window {firstValueFunnel.landing.startDate} to {firstValueFunnel.landing.endDate}; fetched {firstValueFunnel.landing.fetchedAt}.
-              {' '}{firstValueFunnel.landing.instrumentedStarts} recent anonymous starts carry a journey key.
+              GA window {firstValueFunnel.landing.startDate} to {firstValueFunnel.landing.endDate};
+              fetched {firstValueFunnel.landing.fetchedAt}.{' '}
+              {firstValueFunnel.landing.instrumentedStarts} recent anonymous starts carry a journey
+              key. Joined starts use the GA observation dates and export cutoff; subsequent results
+              and claims follow those exact starts.
               {firstValueFunnel.landing.status === 'partial'
-                ? ` This cohort is partial${firstValueFunnel.landing.unattributedEventCount > 0 ? ` because GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key` : ''}${firstValueFunnel.landing.rowLimitReached ? ' because the journey export reached its row limit' : ''}.`
+                ? ` This cohort is partial${firstValueFunnel.landing.unattributedEventCount > 0 ? ` because GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key` : ''}${firstValueFunnel.landing.rowLimitReached ? ' because the journey export reached its row limit' : ''}${firstValueFunnel.landing.providerLimited ? ' because GA4 reports thresholding, sampling, or grouped-row data loss' : ''}.`
                 : ''}
             </p>
           </>
@@ -511,8 +603,9 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Anonymous Site first-value cohort (started in the last 30 days)</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
-          Each start is fixed by its immutable server event, then matched to the same check&apos;s first useful
-          result and later account claim. Claiming a Site never removes its start from this denominator.
+          Each start is fixed by its immutable server event, then matched to the same check&apos;s
+          first useful result and later account claim. Claiming a Site never removes its start from
+          this denominator.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -523,38 +616,60 @@ export default async function AdminAnalyticsPage() {
           <MetricCard
             label="First useful result"
             value={firstValueFunnel.firstUsefulResult.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.resultRate}% of starts</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {firstValueFunnel.resultRate}% of starts
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
             label="Claimed after start"
             value={firstValueFunnel.claimed.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.claimRate}% of starts</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {firstValueFunnel.claimRate}% of starts
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
             label="Failed before useful result"
             value={firstValueFunnel.failedBeforeResult.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.stillRunning} pending or missing result</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {firstValueFunnel.stillRunning} pending or missing result
+              </span>
+            }
             variant="subtle"
           />
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle className="text-sm">Cohort by acquisition source</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-sm">Cohort by acquisition source</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {firstValueFunnel.sources.length === 0 ? (
                 <p className="text-muted-foreground">No anonymous Site starts in this period.</p>
               ) : (
                 <>
-                  <div className="grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] gap-3 border-b pb-2 text-xs text-muted-foreground">
-                    <span>Source</span><span className="text-right">Start</span><span className="text-right">Result</span><span className="text-right">Claim</span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] gap-3  pb-2 text-xs text-muted-foreground">
+                    <span>Source</span>
+                    <span className="text-right">Start</span>
+                    <span className="text-right">Result</span>
+                    <span className="text-right">Claim</span>
                   </div>
                   {firstValueFunnel.sources.slice(0, 8).map((row) => (
-                    <div key={row.source} className="grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] items-center gap-3">
+                    <div
+                      key={row.source}
+                      className="grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] items-center gap-3"
+                    >
                       <span className="truncate text-muted-foreground">{row.source}</span>
                       <span className="text-right font-mono tabular-nums">{row.started}</span>
-                      <span className="text-right font-mono tabular-nums">{row.firstUsefulResult}</span>
+                      <span className="text-right font-mono tabular-nums">
+                        {row.firstUsefulResult}
+                      </span>
                       <span className="text-right font-mono tabular-nums">{row.claimed}</span>
                     </div>
                   ))}
@@ -565,9 +680,15 @@ export default async function AdminAnalyticsPage() {
           <MetricCard
             label="Unlinked leads (domains)"
             value={anonUnlinkedLeads.toLocaleString()}
-            detail={firstValueFunnel.missingAudit > 0
-              ? <span className="text-xs text-destructive">{firstValueFunnel.missingAudit} cohort records missing their check</span>
-              : <span className="text-xs text-muted-foreground">Cohort records reconciled</span>}
+            detail={
+              firstValueFunnel.missingAudit > 0 ? (
+                <span className="text-xs text-destructive">
+                  {firstValueFunnel.missingAudit} cohort records missing their check
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Cohort records reconciled</span>
+              )
+            }
             action={
               <Link href="/admin/leads" className="text-xs text-brand underline">
                 Open leads &rarr;
@@ -581,7 +702,8 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Account and check totals (all time)</SectionTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          These are independent database totals, not sequential funnel steps. Use the GA4 event funnel for stage-to-stage conversion.
+          These are independent database totals, not sequential funnel steps. Use the GA4 event
+          funnel for stage-to-stage conversion.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
@@ -612,19 +734,28 @@ export default async function AdminAnalyticsPage() {
           <MetricCard
             label="New + expansion MRR (30d)"
             value={`$${(newMrr + expansionMrr).toLocaleString()}`}
-            detail={<span className="text-xs text-muted-foreground">${newMrr} new · ${expansionMrr} expansion</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                ${newMrr} new · ${expansionMrr} expansion
+              </span>
+            }
             variant="subtle"
           />
           <MetricCard
             label="Churn (30d)"
             value={churnRate === null ? 'N/A' : `${churnRate.toFixed(1)}%`}
-            detail={<span className="text-xs text-muted-foreground">{churnedUsers} accounts · ${churnedMrr} MRR</span>}
+            detail={
+              <span className="text-xs text-muted-foreground">
+                {churnedUsers} accounts · ${churnedMrr} MRR
+              </span>
+            }
             variant="subtle"
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Revenue transitions come from idempotent Stripe lifecycle events. Churn remains N/A until a
-          complete 30-day event window exists; historical transitions are not invented during migration.
+          Revenue transitions come from idempotent Stripe lifecycle events. Churn remains N/A until
+          a complete 30-day event window exists; historical transitions are not invented during
+          migration.
         </p>
       </section>
 
@@ -634,7 +765,9 @@ export default async function AdminAnalyticsPage() {
           {periodStats.map((p) => (
             <Card key={p.label} variant="solid">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground font-medium">{p.label}</CardTitle>
+                <CardTitle className="text-xs text-muted-foreground font-medium">
+                  {p.label}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div>
@@ -664,7 +797,9 @@ export default async function AdminAnalyticsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetricCard
             label="Average check duration"
-            value={avgAuditDurationSeconds === null ? 'N/A' : `${avgAuditDurationSeconds.toFixed(1)}s`}
+            value={
+              avgAuditDurationSeconds === null ? 'N/A' : `${avgAuditDurationSeconds.toFixed(1)}s`
+            }
             detail={<span className="text-xs text-muted-foreground">Target: under 30s</span>}
             variant="subtle"
           />
@@ -695,9 +830,17 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Measurement contract</SectionTitle>
         <div className="rounded-card bg-muted/30 p-4 text-sm text-muted-foreground space-y-1">
-          <p>Server lifecycle events are the source of truth for product conversion, verification, Watch delivery, Agent escalation, and support resolution.</p>
-          <p>Consent-aware browser events remain useful for landing, acquisition source, signup intent, and pricing interest. They are not used to infer that a Flag was fixed.</p>
-          <p className="pt-2 text-xs">Event version: 1. Private properties are rejected before persistence.</p>
+          <p>
+            Server lifecycle events are the source of truth for product conversion, verification,
+            Watch delivery, Agent escalation, and support resolution.
+          </p>
+          <p>
+            Consent-aware browser events remain useful for landing, acquisition source, signup
+            intent, and pricing interest. They are not used to infer that a Flag was fixed.
+          </p>
+          <p className="pt-2 text-xs">
+            Event version: 1. Private properties are rejected before persistence.
+          </p>
         </div>
       </section>
     </Container>

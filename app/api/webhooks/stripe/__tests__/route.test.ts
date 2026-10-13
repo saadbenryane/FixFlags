@@ -38,6 +38,8 @@ const {
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    billingSubscriptionSnapshot:{findUnique:vi.fn(async()=>null),upsert:vi.fn(async()=>({}))},
+    billingLedgerEntry:{findUnique:vi.fn(async()=>null),findFirst:vi.fn(async()=>null),upsert:vi.fn(async()=>({}))},
     processedStripeEvent: {
       findUnique: mockFindUniqueProcessed,
       create: mockCreateProcessed,
@@ -60,7 +62,10 @@ vi.mock('@/lib/db', () => ({
     },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) =>
       cb({
-        processedStripeEvent: {
+        $executeRaw:vi.fn(),
+        billingSubscriptionSnapshot:{findUnique:vi.fn(async()=>null),upsert:vi.fn(async()=>({}))},
+    billingLedgerEntry:{findUnique:vi.fn(async()=>null),findFirst:vi.fn(async()=>null),upsert:vi.fn(async()=>({}))},
+    processedStripeEvent: {
           findUnique: mockFindUniqueProcessed,
           create: mockCreateProcessed,
         },
@@ -378,7 +383,7 @@ describe('POST /api/webhooks/stripe', () => {
           id: 'cs_1',
           customer: 'cus_1',
           payment_intent: 'pi_1',
-          metadata: { type: 'credit_pack', userId: 'user_1', packId: 'pack_10', credits: '10' },
+          payment_status:'paid',metadata: { type: 'credit_pack', userId: 'user_1', packId: 'pack_10', credits: '10' },
         },
       },
     }

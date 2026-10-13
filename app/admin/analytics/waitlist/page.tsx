@@ -1,3 +1,4 @@
+import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import Link from 'next/link'
 import {
   AdminTable,
@@ -22,6 +23,7 @@ import {
 const PLAN_LABELS: Record<string, string> = { BUILDER: 'Pro', TEAM: 'Studio' }
 
 export default async function AdminWaitlistAnalyticsPage() {
+  await requireAdminPage()
   const data = await getWaitlistConversionData()
   const dateStamp = new Date().toISOString().slice(0, 10)
 
@@ -75,7 +77,9 @@ export default async function AdminWaitlistAnalyticsPage() {
               value={stage.count.toLocaleString()}
               detail={
                 stage.key === 'signups' ? (
-                  <span className="text-xs text-muted-foreground">Joined the paid plan waitlist</span>
+                  <span className="text-xs text-muted-foreground">
+                    Joined the paid plan waitlist
+                  </span>
                 ) : (
                   <span className="text-xs text-muted-foreground">
                     {stage.delta < 0
@@ -99,9 +103,9 @@ export default async function AdminWaitlistAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Cap fill-status</SectionTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Tiers are snapshots at join time, assigned by join order under a per-plan lock: the first 500
-          members of each plan hold a 25% slot, the next 500 a 15% slot. Remaining capacity is the cap
-          minus claimed slots.
+          Tiers are snapshots at join time, assigned by join order under a per-plan lock: the first
+          500 members of each plan hold a 25% slot, the next 500 a 15% slot. Remaining capacity is
+          the cap minus claimed slots.
         </p>
         <AdminTable emptyMessage="No waitlist entries yet." isEmpty={data.capRows.length === 0}>
           <AdminTableHead>

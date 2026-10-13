@@ -1,3 +1,4 @@
+import { escapeCsvCell } from '@/lib/security/csv'
 import type { Plan } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
@@ -205,7 +206,7 @@ export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
       row.creditsExhausted ? 'yes' : 'no',
       row.segment,
     ]
-      .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+      .map(escapeCsvCell)
       .join(',')
   )
   return [headers.join(','), ...lines].join('\n')

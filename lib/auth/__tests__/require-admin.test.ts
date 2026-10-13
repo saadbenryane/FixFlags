@@ -8,7 +8,7 @@ vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/auth', () => ({
   auth: { api: { getSession } },
 }))
-vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: prismaUserFindUnique } } }))
+vi.mock('@/lib/db', () => ({ prisma: { session: {findFirst:vi.fn(async()=>({id:'session',createdAt:new Date()}))}, user: { findUnique: prismaUserFindUnique } } }))
 
 vi.mock('@/lib/env', () => ({ getEnv: () => ({ ADMIN_USER_IDS: ['admin-1'] }) }))
 
@@ -34,31 +34,31 @@ describe('requireAdmin', () => {
   })
 
   it('rejects signed-in users who are not admins', async () => {
-    getSession.mockResolvedValueOnce({ user: { id: 'user-1' } })
-    prismaUserFindUnique.mockResolvedValueOnce({ id: 'user-1', role: 'user', email: 'u@e.com' })
+    getSession.mockResolvedValueOnce({ session:{id:'session'}, user: { id: 'user-1' } })
+    prismaUserFindUnique.mockResolvedValueOnce({ id: 'user-1', lifecycleStatus:'ACTIVE',role: 'user', email: 'u@e.com' })
     const result = await requireAdmin()
     expect(result).toBeInstanceOf(NextResponse)
     expect((result as NextResponse).status).toBe(403)
   })
 
   it('allows role admins', async () => {
-    getSession.mockResolvedValueOnce({ user: { id: 'user-1' } })
-    prismaUserFindUnique.mockResolvedValueOnce({ id: 'user-1', role: 'admin', email: 'a@e.com' })
+    getSession.mockResolvedValueOnce({ session:{id:'session'}, user: { id: 'user-1' } })
+    prismaUserFindUnique.mockResolvedValueOnce({ id: 'user-1', lifecycleStatus:'ACTIVE',role: 'admin', email: 'a@e.com' })
     const result = await requireAdmin()
     expect(isAdminResponse(result)).toBe(false)
     expect(result).toMatchObject({ id: 'user-1', role: 'admin' })
   })
 
   it('allows users listed in ADMIN_USER_IDS', async () => {
-    getSession.mockResolvedValueOnce({ user: { id: 'admin-1' } })
-    prismaUserFindUnique.mockResolvedValueOnce({ id: 'admin-1', role: 'user', email: 'a@e.com' })
+    getSession.mockResolvedValueOnce({ session:{id:'session'}, user: { id: 'admin-1' } })
+    prismaUserFindUnique.mockResolvedValueOnce({ id: 'admin-1', lifecycleStatus:'ACTIVE',role: 'user', email: 'a@e.com' })
     const result = await requireAdmin()
     expect(isAdminResponse(result)).toBe(false)
     expect(result).toMatchObject({ id: 'admin-1' })
   })
 
   it('rejects when the user row is gone', async () => {
-    getSession.mockResolvedValueOnce({ user: { id: 'user-1' } })
+    getSession.mockResolvedValueOnce({ session:{id:'session'}, user: { id: 'user-1' } })
     prismaUserFindUnique.mockResolvedValueOnce(null)
     const result = await requireAdmin()
     expect(result).toBeInstanceOf(NextResponse)

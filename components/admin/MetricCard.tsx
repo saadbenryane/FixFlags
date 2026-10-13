@@ -22,9 +22,7 @@ export function MetricCard({
   return (
     <Card variant={variant} className={className}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-medium text-muted-foreground">
-          {label}
-        </CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent className={cn((detail || action) && 'space-y-2')}>
         <StatValue>{value}</StatValue>

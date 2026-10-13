@@ -1,22 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
-import { allowedWatchIntervals } from '@/lib/auth/entitlements'
-import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { logger } from '@/lib/logger'
 import { enqueueUptimeProbe, type UptimeJob } from './queue'
 import { probeUptime } from './probe'
 import { UPTIME_INTERVAL_MS, UPTIME_RETENTION_MS, uptimeTransition } from './domain'
 import type { ProbeObservation } from './domain'
-import type { Project, User, UptimeMonitor } from '@prisma/client'
-
-type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watchInterval' | 'watchNextRunAt'> & {
-  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
-}
-export function uptimeEligible(project: MonitoringProject) {
-  const interval = fromStoredWatchInterval(project.watchInterval)
-  return !project.deletedAt && Boolean(project.watchNextRunAt) && interval !== null && allowedWatchIntervals(project.user).includes(interval)
-}
+import type { UptimeMonitor } from '@prisma/client'
+import { uptimeEligible, type MonitoringProject } from './eligibility'
 const slot = (now: Date) => new Date(Math.floor(now.getTime() / UPTIME_INTERVAL_MS) * UPTIME_INTERVAL_MS)
 const nextSlot = (now: Date) => new Date(slot(now).getTime() + UPTIME_INTERVAL_MS)
 const projectInclude = { user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } } } as const
@@ -42,9 +33,9 @@ async function syncMonitor(snapshot: UptimeMonitor, project: MonitoringProject, 
 }
 
 /** Bounded sweeps plus durable due fields recover enqueue failures without a catch-up burst. */
-export async function scheduleUptimeProbes(now = new Date(), limit = 100) {
+export async function scheduleUptimeProbes(now = new Date(), limit = 100, onlyProjectId?: string) {
   const projects = await prisma.project.findMany({
-    where: { deletedAt: null, watchInterval: { not: null }, watchNextRunAt: { not: null }, uptimeMonitor: null },
+    where: { ...(onlyProjectId?{id:onlyProjectId}:{}), user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchInterval: { not: null }, watchNextRunAt: { not: null }, uptimeMonitor: null },
     include: projectInclude, orderBy: { createdAt: 'asc' }, take: limit,
   })
   for (const project of projects) {
@@ -54,7 +45,8 @@ export async function scheduleUptimeProbes(now = new Date(), limit = 100) {
       create: { projectId: project.id, targetUrl: target.url, nextProbeAt: slot(now) } })
   }
   const due = await prisma.uptimeMonitor.findMany({
-    where: { OR: [{ nextProbeAt: { lte: now } }, { confirmationDueAt: { lte: now } }],
+    where: { ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: { user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchInterval: { not: null }, watchNextRunAt: { not: null } },
+      OR: [{ nextProbeAt: { lte: now } }, { confirmationDueAt: { lte: now } }],
       AND: [{ OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }] }] },
     include: { project: { include: projectInclude } }, orderBy: { nextProbeAt: 'asc' }, take: limit,
   })
