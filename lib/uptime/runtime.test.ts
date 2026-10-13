@@ -18,15 +18,22 @@ describe('independent Uptime worker maintenance', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(mocks.schedule).toHaveBeenCalledTimes(2); expect(mocks.close).toHaveBeenCalledOnce()
   })
-  it('waits for an in-flight sweep before closing queue resources and avoids overlapping sweeps', async () => {
-    let resolve!: () => void
+  it('stops intake immediately and waits for both the active sweep and queue drain', async () => {
+    let resolve!: () => void, drain!: () => void
+    mocks.close.mockReturnValue(new Promise<void>(done => { drain = done }))
     mocks.schedule.mockReturnValue(new Promise<void>(done => { resolve = done }))
     const runtime = startUptimeRuntime()
     await vi.advanceTimersByTimeAsync(61_000)
     expect(mocks.schedule).toHaveBeenCalledOnce()
     const closing = runtime.close()
-    expect(mocks.close).not.toHaveBeenCalled()
-    resolve(); await closing
     expect(mocks.close).toHaveBeenCalledOnce()
+    let settled = false
+    void closing.then(() => { settled = true })
+    resolve()
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(settled).toBe(false)
+    expect(mocks.schedule).toHaveBeenCalledOnce()
+    drain(); await closing
+    expect(settled).toBe(true)
   })
 })

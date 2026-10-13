@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { inspectAccessibilityViolations } from './approved-contrast'
 
 // The shared browser-process memory cache can serve a previously-loaded
 // screenshot (200) without hitting a route stub, making failure-injection
@@ -8,34 +9,6 @@ import AxeBuilder from '@axe-core/playwright'
 test.use({ launchOptions: { args: ['--disable-http-cache'] } })
 
 const widths = [320, 375, 768, 1280]
-
-/** Current shipped homepage/pricing/sample chrome. Do not treat these as regressions. */
-function unexpectedAxeViolations<T extends { id: string; nodes: Array<{ target: unknown }> }>(
-  violations: T[]
-): T[] {
-  return violations.filter((violation) => {
-    if (violation.id === 'color-contrast') return false
-    if (violation.id === 'aria-prohibited-attr') {
-      return !violation.nodes.some((node) =>
-        JSON.stringify(node.target).includes('aria-label')
-      )
-    }
-    return true
-  })
-}
-
-function formatAxeViolations(
-  violations: Array<{
-    id: string
-    impact?: string | null
-    nodes: Array<{ target: unknown; failureSummary?: string }>
-  }>
-) {
-  return unexpectedAxeViolations(violations).map((violation) => {
-    const target = violation.nodes[0]?.target
-    return `${violation.id} (${violation.impact}): ${JSON.stringify(target)} · ${violation.nodes[0]?.failureSummary ?? 'no failure summary'}`
-  })
-}
 
 test('homepage first-value entry is usable by keyboard', async ({ page }) => {
   const hydrated = page.waitForResponse((response) => response.url().includes('/api/me'))
@@ -53,6 +26,8 @@ for (const width of widths) {
   test(`homepage has no horizontal overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -406,7 +381,7 @@ for (const route of AXE_ROUTES) {
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     }
     const results = await new AxeBuilder({ page: page as never }).analyze()
-    expect(formatAxeViolations(results.violations)).toEqual([])
+    expect((await inspectAccessibilityViolations(page, results.violations)).failures).toEqual([])
   })
 }
 
@@ -414,7 +389,7 @@ test('accessibility: completed Site sample has no axe violations', async ({ page
   await page.goto('/samples')
   await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
   const results = await new AxeBuilder({ page: page as never }).analyze()
-  expect(formatAxeViolations(results.violations)).toEqual([])
+  expect((await inspectAccessibilityViolations(page, results.violations)).failures).toEqual([])
 })
 
 test('accessibility: key marketing surfaces pass in light and dark at launch widths', async ({ page }) => {
@@ -429,10 +404,13 @@ test('accessibility: key marketing surfaces pass in light and dark at launch wid
       await page.emulateMedia({ colorScheme })
       for (const route of routes) {
         await page.goto(route)
+        await page.evaluate(theme => localStorage.setItem('theme', theme), colorScheme)
+        await page.reload()
+        await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${colorScheme}\\b`))
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
         const results = await new AxeBuilder({ page: page as never }).analyze()
         violations.push(
-          ...formatAxeViolations(results.violations).map(
+          ...(await inspectAccessibilityViolations(page, results.violations)).failures.map(
             (violation) => `${route} ${colorScheme} ${width}px: ${violation}`
           )
         )

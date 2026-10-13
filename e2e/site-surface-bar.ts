@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { inspectAccessibilityViolations } from './approved-contrast'
 
 /**
  * The launch bar for an authenticated Outcome surface, checked in one pass:
@@ -41,6 +42,13 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
     await page.setViewportSize({ width: density.width, height: 900 })
     await page.emulateMedia({ colorScheme: density.colorScheme, reducedMotion: 'reduce' })
     await page.goto(url)
+    // next-themes defaults to light, so OS media emulation alone does not
+    // establish that the customer's saved dark theme was rendered.
+    await page.evaluate(theme => localStorage.setItem('theme', theme), density.colorScheme)
+    await page.reload()
+    await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${density.colorScheme}\\b`))
+    await page.getByRole('heading', { level: 1 }).waitFor({ state: 'visible' })
+    await page.evaluate(() => document.fonts.ready)
     await setTextZoom(page, density.textPercent)
 
     const geometry = await page.evaluate(() => ({
@@ -52,20 +60,7 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
     )
 
     const violations = (await new AxeBuilder({ page: page as never }).analyze()).violations
-    const failures: string[] = []
-    let approvedContrastCount = 0
-    for (const violation of violations) for (const node of violation.nodes) {
-      const measuredException = violation.id === 'color-contrast' && node.any.some(check =>
-        check.id === 'color-contrast' && check.data?.fgColor?.toLowerCase() === '#ffffff' &&
-        check.data?.bgColor?.toLowerCase() === '#ff5a00' && check.data?.contrastRatio >= 3.12 && check.data?.contrastRatio <= 3.14)
-      const selector = node.target.length === 1 && typeof node.target[0] === 'string' ? node.target[0] : null
-      const control = measuredException && selector ? await page.locator(selector).evaluate(element => {
-        const button = element.closest('button, a[role="button"], a.inline-flex')
-        return Boolean(button && getComputedStyle(button).backgroundColor === 'rgb(255, 90, 0)')
-      }).catch(() => false) : false
-      if (control) approvedContrastCount++
-      else failures.push(`${violation.id}: ${node.target.join(' ')}`)
-    }
+    const { failures, approvedContrastCount } = await inspectAccessibilityViolations(page, violations)
     if (approvedContrastCount) await test.info().attach(`approved-control-contrast-${density.width}`, {
       contentType: 'application/json', body: Buffer.from(JSON.stringify({ density, foreground: '#ffffff', background: '#ff5a00',
         contrast: 3.13, minimumSmallTextContrast: 4.5, count: approvedContrastCount, fullWcagAaCompliance: false })),
@@ -100,6 +95,8 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
 export async function assertKeyboardReachesTheSurface(page: Page, url: string): Promise<void> {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto(url)
+  await page.getByRole('heading', { level: 1 }).waitFor({ state: 'visible' })
+  await page.evaluate(() => document.fonts.ready)
   await page.locator('body').click({ position: { x: 2, y: 2 } })
   await page.evaluate(() => {
     ;(document.activeElement as HTMLElement | null)?.blur()
