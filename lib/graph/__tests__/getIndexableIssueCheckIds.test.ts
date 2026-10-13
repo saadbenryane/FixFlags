@@ -1,40 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('@/lib/growth/research-permissions', () => ({ hasCurrentResearchPermissions: vi.fn().mockResolvedValue(true) }))
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { researchFixture } from './fixtures/public-research'
+const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { growthArtifact: { findUnique } } }))
+import { getIndexableIssueCheckIds } from '../queries'
+import { PUBLIC_RESEARCH_KIND } from '../public-research'
 
-const { prismaMock } = vi.hoisted(() => ({
-  prismaMock: {
-    $queryRaw: vi.fn(),
-  },
-}))
-
-vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
-
-import { getIndexableIssueCheckIds } from '@/lib/graph/queries'
-
-describe('getIndexableIssueCheckIds', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns rows ordered per query layer', async () => {
-    const rows = [
-      { checkId: 'mobile-lcp-critical', siteCount: 10, lastSeenAt: new Date('2026-07-20T10:00:00Z') },
-      { checkId: 'security-headers-missing', siteCount: 8, lastSeenAt: new Date('2026-07-20T09:00:00Z') },
-    ]
-
-    prismaMock.$queryRaw.mockResolvedValue(rows)
-
-    const result = await getIndexableIssueCheckIds()
-
-    expect(result).toEqual(rows)
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1)
+describe('research sitemap eligibility', () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-13T00:00:00Z')) })
+  afterEach(() => vi.useRealTimers())
+  it('uses the observation date and counts from the approved release', async () => {
+    findUnique.mockResolvedValue({ kind: PUBLIC_RESEARCH_KIND, payload: researchFixture() })
+    expect(await getIndexableIssueCheckIds()).toEqual([{ checkId: 'security-headers-missing', siteCount: 25, lastSeenAt: new Date('2026-09-30T00:00:00Z') }])
   })
-
-  it('defensively excludes per-page check variants from public URLs', async () => {
-    prismaMock.$queryRaw.mockResolvedValue([
-      { checkId: 'cta-dead-link', siteCount: 8, lastSeenAt: new Date('2026-09-08T10:00:00Z') },
-      { checkId: 'cta-dead-link::page:1', siteCount: 7, lastSeenAt: new Date('2026-09-08T09:00:00Z') },
-    ])
-
-    await expect(getIndexableIssueCheckIds()).resolves.toEqual([
-      { checkId: 'cta-dead-link', siteCount: 8, lastSeenAt: new Date('2026-09-08T10:00:00Z') },
-    ])
+  it('excludes the whole release if any check is a page variant', async () => {
+    const payload = researchFixture()
+    payload.issues[0].checkId += '::page:1'
+    findUnique.mockResolvedValue({ kind: PUBLIC_RESEARCH_KIND, payload })
+    expect(await getIndexableIssueCheckIds()).toEqual([])
+  })
+  it('does not advertise an expired dataset', async () => {
+    findUnique.mockResolvedValue({ kind: PUBLIC_RESEARCH_KIND, payload: researchFixture() })
+    vi.setSystemTime(new Date('2026-11-01T00:00:00Z'))
+    expect(await getIndexableIssueCheckIds()).toEqual([])
   })
 })

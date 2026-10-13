@@ -57,7 +57,8 @@ describe('technical discovery', () => {
     expect(text.startsWith(`# ${BRAND.name}\n\n> ${BRAND.oneLiner}\n`)).toBe(true)
     for (const section of LLMS_SECTIONS) {
       for (const link of section.links) {
-        expect(text).toContain(`](${baseUrl}${link.path})`)
+        if (section.requiresReviewedResearch) expect(text).not.toContain(`](${baseUrl}${link.path})`)
+        else expect(text).toContain(`](${baseUrl}${link.path})`)
       }
     }
     expect(text).toContain(`](${baseUrl}/blog)`)
@@ -84,12 +85,28 @@ describe('technical discovery', () => {
     }
   })
 
-  it('serves a cacheable, plain-text AI discovery index', async () => {
+  it('serves current reviewed research in a noncached plain-text discovery index', async () => {
     const response = await GET()
-    expect(dynamic).toBe('force-static')
+    expect(dynamic).toBe('force-dynamic')
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
-    expect(await response.text()).toBe(buildLlmsTxt())
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(await response.text()).toBe(buildLlmsTxt({ hasReviewedResearch: true }))
+  })
+
+  it('withholds unavailable or withdrawn research on the next request and preserves other public resources', async () => {
+    const approved = await GET()
+    expect(await approved.text()).toContain(`](${baseUrl}/issues)`)
+    vi.mocked(getIndexableIssueCheckIds).mockResolvedValue([])
+    const withdrawn = await GET()
+    const text = await withdrawn.text()
+    expect(text).not.toContain(`](${baseUrl}/issues)`)
+    expect(text).toContain(`](${baseUrl}/docs)`)
+    expect(text).toContain(`](${baseUrl}/tools/meta-preview)`)
+    vi.mocked(getIndexableIssueCheckIds).mockRejectedValue(new Error('private database detail'))
+    const unavailable = await GET()
+    expect(unavailable.status).toBe(200)
+    expect(await unavailable.text()).toBe(buildLlmsTxt())
   })
 
   it('lists canonical marketing, help, blog, and eligible issue URLs without duplicates', async () => {

@@ -29,7 +29,44 @@ import { AuditInput } from '@/components/audit/AuditInput'
 describe('AuditInput scan handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
     readOrCreateAnalyticsJourneyId.mockReturnValue(null)
+  })
+
+  it('keeps the research surface separate from a real external campaign in the check and GA start', async () => {
+    window.history.replaceState({}, '', '/?ff_entry=issue_page&utm_source=newsletter&utm_medium=email&utm_campaign=quality')
+    startScanWithHandoff.mockImplementation(async (options) => {
+      options.onStarted?.({ reportId: 'research-start', reused: false, isLoggedIn: false })
+      return { ok: true, siteId: 'research-site', reportId: 'research-start' }
+    })
+    render(<MeProvider initialUser={null}><AuditInput variant="landing" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({
+      source: 'issue_page', utmSource: 'newsletter', utmMedium: 'email', utmCampaign: 'quality',
+    }) }))
+    expect(trackStartedAudit).toHaveBeenCalledWith(expect.objectContaining({ source: 'issue_page', utmSource: 'newsletter' }))
+  })
+
+  it.each([
+    ['landing', undefined, 'ff_entry=untrusted', 'homepage'],
+    ['landing', undefined, 'ff_entry=issue_page&ff_entry=tool_page', 'homepage'],
+    ['landing', 'tool_page', 'ff_entry=issue_page', 'tool_page'],
+    ['default', undefined, 'ff_entry=issue_page', 'dashboard'],
+  ] as const)('does not let a query marker replace explicit or private entry context (%s, %s)', async (variant, source, query, expected) => {
+    window.history.replaceState({}, '', `/?${query}`)
+    startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site', reportId: 'audit' })
+    render(<MeProvider initialUser={null}><AuditInput variant={variant} source={source} /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff.mock.calls[0][0].body.source).toBe(expected)
+    expect(startScanWithHandoff.mock.calls[0][0].body.utmMedium).toBeUndefined()
   })
 
   it('hands one consented journey key to the check and exact GA start event', async () => {

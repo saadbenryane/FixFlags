@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Heading, Lead, Muted, Body } from '@/components/ui/typography'
-import { getIssuePage, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
+import { getIssuePage } from '@/lib/graph/queries'
 import { getRelatedIssues } from '@/lib/graph/related'
 import { issuePageSchema } from '@/lib/marketing/structured-data'
 import { buildIssuePageMetadata } from '@/lib/marketing/metadata'
@@ -17,15 +17,21 @@ import {
   rubricLabel,
 } from '@/lib/marketing/issue-page'
 import { rubricBadgeClasses } from '@/lib/rubric-icons'
+import { PUBLIC_RESEARCH_COPY } from '@/lib/marketing/copy/research'
+import { publicResearchEntryHref, withCampaignTags, type CampaignQuery } from '@/lib/analytics/entry-surface'
 
 interface Props {
   params: Promise<{ checkId: string }>
+  searchParams?: Promise<CampaignQuery>
 }
+
+// Permission expiry must be checked on each request.
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { checkId } = await params
   const data = await getIssuePage(checkId)
-  if (!data) return { title: 'Not Found' }
+  if (!data) return { title: 'Not Found', robots: { index: false, follow: false } }
 
   const title = issuePageTitle(data)
   const description = issuePageDescription(data)
@@ -33,11 +39,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildIssuePageMetadata({ checkId, title, description })
 }
 
-export default async function IssuePage({ params }: Props) {
+export default async function IssuePage({ params, searchParams }: Props) {
   const { checkId } = await params
   const data = await getIssuePage(checkId)
 
   if (!data) notFound()
+  const campaign = await searchParams ?? {}
 
   const relatedIssues = await getRelatedIssues(checkId)
 
@@ -52,6 +59,7 @@ export default async function IssuePage({ params }: Props) {
     siteCount: data.siteCount,
     occurrenceCount: data.occurrenceCount,
     path,
+    research: data.research,
   })
 
   return (
@@ -77,6 +85,19 @@ export default async function IssuePage({ params }: Props) {
                 sites ({data.occurrenceCount} total occurrences)
               </Lead>
             </div>
+
+            <Card variant="solid">
+              <CardContent className="p-6 space-y-3">
+                <Heading as="h2" className="text-lg">{PUBLIC_RESEARCH_COPY.scopeTitle}</Heading>
+                <Body className="text-muted-foreground">{data.research.methodology}</Body>
+                <Muted>
+                  {PUBLIC_RESEARCH_COPY.window(data.research.sampleSiteCount, data.research.windowStart, data.research.windowEnd)}
+                </Muted>
+                <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                  {data.research.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
+                </ul>
+              </CardContent>
+            </Card>
 
             {/* Fix */}
             <Card variant="solid">
@@ -146,7 +167,7 @@ export default async function IssuePage({ params }: Props) {
                     {relatedIssues.map((link) => (
                       <Link
                         key={link.href}
-                        href={link.href as Route}
+                        href={withCampaignTags(link.href, campaign) as Route}
                         className="flex items-center justify-between gap-4 rounded-card border border-border/40 bg-background/50 px-4 py-3 transition-colors hover:border-border"
                       >
                         <div className="min-w-0">
@@ -168,28 +189,13 @@ export default async function IssuePage({ params }: Props) {
               </Card>
             )}
 
-            {/* Methodology */}
-            <Card variant="solid">
-              <CardContent className="p-6 space-y-2">
-                <Heading as="h2" className="text-lg">
-                  About this data
-                </Heading>
-                <Muted>
-                  This page is generated from FixFlags check data across{' '}
-                  <strong className="text-foreground">{data.siteCount}</strong> distinct sites.
-                  Sample sizes below {MIN_SAMPLE_SIZE} sites are excluded to maintain quality.
-                  Data refreshes as new checks complete.
-                </Muted>
-              </CardContent>
-            </Card>
-
             {/* CTA */}
             <div className="text-center space-y-3 pt-4 border-t border-border/30">
               <Body className="text-muted-foreground">
                 Check if your site has this Flag.
               </Body>
               <Button asChild variant="default" size="lg">
-                <Link href={`/?utm_source=issue&utm_medium=organic&utm_campaign=${checkId}`}>
+                <Link href={publicResearchEntryHref('issue_page', campaign) as Route}>
                   Run a free check
                 </Link>
               </Button>
