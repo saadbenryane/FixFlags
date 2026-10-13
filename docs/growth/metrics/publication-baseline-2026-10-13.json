@@ -1,0 +1,20 @@
+{
+  "verifiedAt": "2026-10-13",
+  "method": "Read-only Railway deployment metadata",
+  "service": "FixFlags",
+  "environment": "production",
+  "latestSuccessfulDeployment": {
+    "id": "958f330a-d826-4b2b-9bdd-fe9bef283cbc",
+    "createdAt": "2026-10-12T21:44:03.079Z",
+    "commit": "b09761772f88302546a7b72b0cb29febc4ad0951",
+    "status": "SUCCESS"
+  },
+  "newerFailedDeployment": {
+    "id": "9fea762c-94ac-464b-8ce1-340e5a3208ec",
+    "commit": "a274d5853d4b8851885c060433dab06fd0026d06",
+    "status": "FAILED"
+  },
+  "privateVariablesOrLogsRetained": false,
+  "productionMutated": false,
+  "limitation": "The public readiness endpoint returned 200 but did not expose a commit identifier; source attribution uses Railway metadata."
+}
