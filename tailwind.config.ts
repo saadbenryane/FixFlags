@@ -63,6 +63,7 @@ const config: Config = {
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
+          control: 'hsl(var(--destructive-control))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
         success: {

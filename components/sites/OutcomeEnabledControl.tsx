@@ -29,8 +29,8 @@ export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running }: {
   }
 
   return (
-    <div>
-      <Button variant="outline" disabled={busy} onClick={() => void update()}>
+    <div className="min-w-0 max-w-full">
+      <Button className="h-auto min-h-11 max-w-full whitespace-normal py-2" variant="outline" disabled={busy} onClick={() => void update()}>
         {enabled ? OUTCOME_DETAIL_COPY.pause : OUTCOME_DETAIL_COPY.enable}
       </Button>
       <p className="mt-2 max-w-md text-xs text-muted-foreground">{OUTCOME_DETAIL_COPY.pauseHelp}</p>

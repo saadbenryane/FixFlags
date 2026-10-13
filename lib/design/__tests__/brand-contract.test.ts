@@ -62,6 +62,9 @@ describe('shared design contract', () => {
     expect(manifestColors.theme_color).toBe(brandLight.brand)
     expect(hslHex(values.get('--logo-tile-background')!)).toBe(brandLight.background)
     expect(hslHex(values.get('--link')!)).toBe(brand.link)
+    const destructiveFill = hslHex(resolveVariables(values.get('--destructive-control')!, values))
+    const destructiveLabel = hslHex(resolveVariables(values.get('--destructive-foreground')!, values))
+    expect(contrast(destructiveLabel, destructiveFill)).toBeGreaterThanOrEqual(4.5)
     for (const surface of [brand.background, brand.card]) {
       expect(contrast(brand.link, surface)).toBeGreaterThanOrEqual(4.5)
       const strong = hslHex(resolveVariables(values.get('--brand-strong')!, values))

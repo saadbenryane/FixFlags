@@ -56,6 +56,7 @@
   --input: 240 4% 90%;
   /* Accessible for small destructive text and white-on-destructive controls. */
   --destructive: 0 72% 43%;
+  --destructive-control: 0 72% 43%;
   --destructive-foreground: 0 0% 98%;
   --success: 142 71% 45%;
   --success-foreground: 0 0% 98%;
@@ -217,6 +218,7 @@
   --popover-foreground: 210 14% 97%;
   --input: 220 6% 18%;
   --destructive: 0 84% 62%;
+  --destructive-control: 0 72% 43%;
   --destructive-foreground: 0 0% 98%;
   --success: 152 60% 48%;
   --success-foreground: 0 0% 98%;

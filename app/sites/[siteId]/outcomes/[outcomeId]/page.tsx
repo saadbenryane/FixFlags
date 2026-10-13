@@ -68,7 +68,7 @@ export default async function OutcomeDetailPage({ params }: {
                   : 'None yet'}
               </p>
             </div>
-            <div className="flex flex-col items-start gap-3 sm:items-end">
+            <div className="flex min-w-0 max-w-full flex-col items-start gap-3 sm:items-end">
               <VerifyOutcomeButton
                 siteId={home.site.siteId}
                 outcomeId={outcome.id}
@@ -130,7 +130,7 @@ export default async function OutcomeDetailPage({ params }: {
               {relatedFlags.map((flag) => (
                 <li key={flag.id} className="rounded-card border border-brand p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <Link href={`/sites/${home.site.siteId}/flags/${flag.id}`} className="text-sm font-medium hover:underline">{flag.problem}</Link>
+                    <Link href={`/sites/${home.site.siteId}/flags/${flag.id}`} className="inline-flex min-h-11 max-w-full items-center text-sm font-medium hover:underline">{flag.problem}</Link>
                     <span className="text-xs text-muted-foreground">{flag.status === 'FIXED' ? 'Resolved' : 'Active'}</span>
                   </div>
                 </li>

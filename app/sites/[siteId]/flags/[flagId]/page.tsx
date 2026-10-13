@@ -129,7 +129,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}
-              <Link href={`/sites/${resolvedId}/outcomes/${relatedOutcome.id}`} className="font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
+              <Link href={`/sites/${resolvedId}/outcomes/${relatedOutcome.id}`} className="inline-flex min-h-11 max-w-full items-center font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
                 {relatedOutcome.name}
               </Link>
             </p>
@@ -168,11 +168,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                         <dt className="text-xs text-muted-foreground">{(flag.affectedPageCount ?? affectedPaths.length) > 1 ? 'Affected pages' : 'Page'}</dt>
                         <dd className="mt-1 min-w-0 break-words font-medium">
                           {affectedPaths.length === 1 ? (
-                            <a href={affectedPaths[0]} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="break-all">{affectedPaths[0]}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a>
+                            <a href={affectedPaths[0]} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{affectedPaths[0]}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a>
                           ) : affectedPaths.length > 1 ? (
                             <details>
                               <summary className="min-h-11 cursor-pointer py-2 text-sm">View all {affectedPaths.length} pages</summary>
-                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><a href={path} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="break-all">{path}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a></li>)}</ul>
+                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><a href={path} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{path}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a></li>)}</ul>
                             </details>
                           ) : (
                             'This Site, page not recorded'
