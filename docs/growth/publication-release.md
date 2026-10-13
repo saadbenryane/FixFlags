@@ -1,7 +1,7 @@
 # Research publication boundary, local review cut
 
-Branch: `codex/research-publication-boundary`.
-Base: `a274d5853d4b8851885c060433dab06fd0026d06`.
+Branch: `codex/research-publication-live`.
+Base: `b09761772f88302546a7b72b0cb29febc4ad0951`, the latest successful production web deployment verified through Railway metadata.
 
 Live public issue pages still display the older three-site threshold and examples.
 Their permission provenance is unverified. The dated public observation is in
@@ -27,15 +27,27 @@ analytics reports and unrelated design work remain in the original checkout.
 No environment files, credentials, customer datasets or schema/dependency changes
 are included.
 
-Verification passed on this committed baseline: 138 focused tests, two isolated
-local PostgreSQL checks, nonincremental type checking, targeted lint, the SEO guard
-and diff whitespace checks. No browser or E2E tests ran. Installed dependencies
-were shared temporarily with the original checkout for these checks.
+Verification passed against the live baseline and its exact lockfile: 138 focused
+tests, two isolated local PostgreSQL checks and a full Next.js 15.5.27 production
+build with standalone packaging. The build performed lint and type checks.
+Research pages, sitemap and llms.txt are absent from the prerender manifest.
+No browser or E2E tests ran. Fixture configuration used unreachable loopback
+services and no production credentials. The fixture-built bundle is not a
+deployment artifact; production must build the source with its own configuration.
 
-This is a local review cut, not a deployment. Before release, compare the base with
-the actual production revision and complete the applicable release checks within
-the user's testing constraints. Deployment, production artifact changes, counter
+This is a local review cut, not a deployment. Railway reports deployment
+`958f330a-d826-4b2b-9bdd-fe9bef283cbc` at the selected live base as successful,
+while the newer `a274d585` web deployment failed. The earlier review branch based
+on that newer revision is retained but is not the production candidate. The live
+cut excludes 254 unrelated files between those baselines. Recheck production
+revision before releasing and follow the user's testing constraints. Deployment, production artifact changes, counter
 refreshes, data removal and public publication require explicit authorization.
 No existing customer is opted in, and no approved research dataset is installed.
 Post-release observation must confirm withholding, discovery and consent behavior.
 External copies of already published material cannot be recalled by this patch.
+
+The proposed production action is a web-service source deployment only. It does
+not update the worker, install a research artifact, refresh graph counters or
+change any existing permission. With no eligible reviewed release, current issue
+detail pages and research discovery links will be withheld. Owner opt-in remains
+off by default. No production action is authorized or performed yet.
