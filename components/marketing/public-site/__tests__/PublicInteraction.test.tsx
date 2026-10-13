@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PublicLink, PublicDisclosure } from '../PublicInteraction'
 import { SampleFixPrompt } from '../SampleFixPrompt'
@@ -67,6 +67,10 @@ describe('sample fix prompt', () => {
     fireEvent.click(screen.getByRole('button', { name: PUBLIC_SITE_COPY.samplePage.copy }))
     const prompt = await screen.findByRole('textbox', { name: PUBLIC_SITE_COPY.samplePage.prompt })
     expect(prompt).toHaveValue('Recorded fix guidance')
-    expect(prompt).toHaveFocus()
+    await waitFor(() => {
+      expect(prompt).toHaveFocus()
+      expect((prompt as HTMLTextAreaElement).selectionStart).toBe(0)
+      expect((prompt as HTMLTextAreaElement).selectionEnd).toBe('Recorded fix guidance'.length)
+    })
   })
 })

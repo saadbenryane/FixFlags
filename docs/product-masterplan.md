@@ -58,6 +58,8 @@ Its selected no-mail customer journeys passed passkey/2FA recovery, monitoring t
 
 At 08:03 UTC on 2026-10-13, read-only Resend usage remained at 90 daily units and the controlled target retained a zero-send budget. Forty-five focused email cases passed using mocked delivery, including combined findings and recoveries, branding, immutable retry bodies and deduplication. No live mail was used for these checks.
 
+Candidate `a002cc25` passed its isolated 16-case database/browser supplement and persistent email-budget proof with zero provider calls. Its foundation gate failed because a sample-prompt test asserted focus before the passive effect completed. Preserve that failure. The behavior check must await focus and require the entire prompt to be selected, rather than accepting the field's presence alone. Rerun the next frozen candidate.
+
 The foundation already deployed at `b09761772f88302546a7b72b0cb29febc4ad0951` is preserved. Completion work is consolidated on `main`. Local verification has exercised the real category browser journey, six claim cases, ten database-backed uptime cases, and all seven formerly gated lifecycle cases. These pre-freeze results guide implementation and do not close exact-candidate deployed requirements. The Resend domain has verified receiving MX configuration; the verification environment has a separate signed webhook. Production account execution remains gated until lifecycle proof completes.
 
 Performance acceptance remains LCP ≤2.5 seconds, INP ≤200 milliseconds, and CLS ≤0.1. Identify controlled measurements separately from production field data, whose 75th percentile must be evaluated by device category.
