@@ -54,6 +54,16 @@ next-env.d.ts
 # local browser-proof screenshots and JSON readouts
 .agents/artifacts/
 
+# local agent receipts, never startup instructions or branch-tracked history
+/.agents/GOAL*
+/.agents/BOARD-archive.md
+/.agents/sessions/**
+/.agents/handoffs/**
+/.agents/history/**
+/.agents/learnings/**
+!/.agents/**/README.md
+!/.agents/**/TEMPLATE.md
+
 # Archon live Work (operational — not branch-tracked)
 .archon/board.md
 # Local Codex harness telemetry can contain account-specific usage data.

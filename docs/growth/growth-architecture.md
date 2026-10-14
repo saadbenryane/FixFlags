@@ -1,11 +1,20 @@
 # Architecture
 
-_Last reconciled: 2026-09-08_
+_Publication and measurement boundaries reconciled: 2026-10-13. Historical
+roadmap sections below remain target designs where they differ from code._
 
 Status: **Growth system active. GSC/GA4 exports, sample-gated issue pages,
 related issue links, structured data, and dynamic issue sitemap inclusion
 exist in code. Recurring experiment closure and production ranking proof are
 still incomplete.**
+
+**Locally verified correction, not production evidence:** public issue reads now
+require a reviewed, permitted aggregate `GrowthArtifact`, with at least 20
+distinct sites and an expiry. Graph volume, raw Flag copy, and hostname examples
+cannot publish pages. See [research-governance.md](research-governance.md).
+The GA journey join now matches the export's calendar window and reporting
+timezone. Unverifiable windows withhold rates; provider sampling and thresholding
+remain explicit. Tab journey IDs are not GA sessions or distinct visitors.
 
 The accepted Site, Outcomes, Flags, and ongoing-care direction in the root
 `ROADMAP.md` supersedes legacy Product/report wording in historical sections.
@@ -139,9 +148,10 @@ the inputs that Layer 3's public pages consume.
 
 ### 2a. Issue frequency rollup (IMPLEMENTED)
 
-`scripts/growth/issue-frequencies.ts` — recomputes `Issue.occurrenceCount`,
-`Issue.siteCount`, `Issue.frameworkCount`, and `Issue.examples` from the raw
-`IssueOccurrence` log. Runs every 6 hours via the self-hosted scheduler.
+`scripts/growth/issue-frequencies.ts` recomputes internal counters from distinct
+occurrences and sites, counts current frameworks, and clears hostname examples.
+These counters cannot authorize a public release. The seed command uses the
+same implementation. The existing scheduler checks every six hours with a 23-hour rollup lock.
 
 ### 2b. Benchmark snapshots (NOT IMPLEMENTED)
 
@@ -263,11 +273,8 @@ audits; new audits get them automatically via the finalize hook.
 
 ### Rollup path
 
-`scripts/growth/issue-frequencies.ts` recomputes `Issue.occurrenceCount`,
-`Issue.siteCount`, `Issue.frameworkCount`, and `Issue.examples` from the raw
-`IssueOccurrence` log. Runs nightly (once wired into the self-hosted
-scheduler in `lib/queue/`, see `growth-roadmap.md` Phase 2). Idempotent — safe to
-run any number of times.
+`scripts/growth/issue-frequencies.ts` invokes the shared internal rollup described
+in Layer 2a. It clears identifiable examples and does not publish a dataset.
 
 ### Backfill
 
@@ -348,7 +355,8 @@ the sitemap without manual intervention.
 **Current design:** `app/sitemap.ts` reads from the knowledge graph:
 
 - Static routes (from `INDEXABLE_ROUTES`) — unchanged
-- Issue routes: `Issue.findMany({ where: { siteCount: { gte: MIN_SAMPLE_SIZE } } })`
+- Issue routes: reviewed entries from `getIndexableIssueCheckIds()`, backed by
+  the approved aggregate artifact, never raw `Issue` counters
 - Benchmark routes: future, when the public family exists and passes its gate
 - Tool routes: hardcoded (small, stable set)
 
@@ -385,22 +393,29 @@ audit, signup, or payment.
 
 **Implemented foundation:** two mechanisms:
 
-**1. UTM parameters on all public surface links:**
+**1. Internal surface markers, separate from external campaign tags:**
 
 ```
-/issues/[checkId]?utm_source=issue&utm_medium=organic&utm_campaign=[checkId]
-/tools/meta-preview?utm_source=tool&utm_medium=organic&utm_campaign=meta-preview
-/benchmarks/[scope]?utm_source=benchmark&utm_medium=organic&utm_campaign=[scope]
+/?ff_entry=issue_page
+/?ff_entry=tool_page
+/?ff_entry=benchmark_page
 ```
 
-**2. Audit source tracking:**
-The `Audit.source` enum already exists (`HOMEPAGE`, `DASHBOARD`, `REPORT`,
-`API`, `MCP`, `UNKNOWN`). Extend it with:
+Issue index, related links and analysis CTAs carry incoming `utm_source`,
+`utm_medium` and `utm_campaign` only when present and unambiguous. An internal
+click does not manufacture an `organic` channel or replace a real external
+campaign. Earlier internally generated issue/organic UTMs are ambiguous historical
+labels and must not be treated as verified search acquisition. The finite marker
+adds no visitor ID, cookie or stored browsing history.
 
-- `ISSUE_PAGE` — audit started from an issue page
-- `BENCHMARK_PAGE` — audit started from a benchmark page
-- `TOOL_PAGE` — audit started from a free tool
-- `REPORT_INDEX` — audit started from the reports index
+**2. Audit source tracking:** `Audit.source` already includes `ISSUE_PAGE`,
+`BENCHMARK_PAGE` and `TOOL_PAGE`, alongside the existing product entry values.
+The homepage input can receive a known public `ff_entry` marker when it has no
+explicit source; explicit component sources and private forms take precedence.
+Both the check request and consented start event use the same entry source.
+Source inference recognizes canonical plural research paths and existing singular
+aliases. These declarations describe an entry surface, not a verified discovery
+channel or causal attribution. No `REPORT_INDEX` source is implemented.
 
 Source values and UTM capture exist. A verified rollup joining the complete
 `source page -> Site analysis -> signup -> payment` path is still missing, so

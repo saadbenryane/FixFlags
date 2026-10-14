@@ -18,4 +18,4 @@ When consulting a session:
 - promote durable truth into code, tests, or the canonical document;
 - never copy raw prompts, customer data, secrets, or full tool logs into a new record.
 
-The [archive](archive/) and dated receipts are historical unless a current canonical source explicitly links them for a bounded purpose.
+Retired archives and dated receipts were removed from the checkout. Tracked historical evidence remains available in Git history. Future scoped receipts are local and ignored by Git.

@@ -7,9 +7,9 @@ supersedes: []
 
 # Product experience review
 
-**Implementation update, October 10:** the founder approved the four-moment homepage and comprehensive shared board. The generic proposed headline and numerical free-access grant below are superseded; retain “Your software runs. FixFlags watches.” No commercial changes. Current delivery and validation live in the [existing handoff](../.agents/handoffs/homepage-experience.md). Research below remains historical evidence.
+**Implementation update, October 10:** the founder approved the four-moment homepage and comprehensive shared board. The generic proposed headline and numerical free-access grant below are superseded; retain “Your software runs. FixFlags watches.” No commercial changes. Current delivery follows the canonical product sources; the retired handoff remains in Git history. Research below remains historical evidence.
 
-The October 10 strategic assignment builds on the preparation below: research the market, recommend positioning and a comprehensive experience, and propose temporary free validation access. Application code, production entitlements and payments remain unchanged. Founder-approved principles live in vision, strategy and DESIGN.md; recommendations here are not approved decisions. [Canonical sources](../CANONICAL-SOURCES.md) own authority; [the handoff](../.agents/handoffs/homepage-experience.md) owns continuation.
+The October 10 strategic assignment builds on the preparation below: research the market, recommend positioning and a comprehensive experience, and propose temporary free validation access. Application code, production entitlements and payments remain unchanged. Founder-approved principles live in vision, strategy and DESIGN.md; recommendations here are not approved decisions. [Canonical sources](../CANONICAL-SOURCES.md) own authority; the retired handoff remains in Git history.
 
 ## Verified preparation retained
 

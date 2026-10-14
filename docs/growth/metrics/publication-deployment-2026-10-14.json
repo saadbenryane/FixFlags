@@ -1,0 +1,111 @@
+{
+  "observedAt": "2026-10-14T09:58:05.071Z",
+  "method": "Unauthenticated public HTTPS GETs",
+  "browserExecuted": false,
+  "databaseWritten": false,
+  "webDeployment": "488d8bcd-6aee-4919-bd63-d517aebb123f",
+  "initialUploadDeployment": "b48c026e-183a-4086-8c62-e1586b2966c8",
+  "sourceCommit": "74e35e344ea45376f1f1143410b0049e580317fe",
+  "approvedPatch": "cfe9754da99b719a0f0272c6a30a5eb9af28e2ec",
+  "publicationChecksPassed": true,
+  "routes": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "cacheControl": null,
+      "healthy": true,
+      "commit": "74e35e344ea45376f1f1143410b0049e580317fe",
+      "migrationsReady": true
+    },
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "cacheControl": null,
+      "ready": true
+    },
+    {
+      "path": "/issues",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robots": [
+        "noindex, follow"
+      ],
+      "datasetMarkupCount": 0,
+      "examplesSectionPresent": false,
+      "notFoundMarkerPresent": false
+    },
+    {
+      "path": "/issues/security-headers-missing",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robots": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "datasetMarkupCount": 0,
+      "examplesSectionPresent": false,
+      "notFoundMarkerPresent": true
+    },
+    {
+      "path": "/issues/color-contrast-poor",
+      "status": 200,
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robots": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "datasetMarkupCount": 0,
+      "examplesSectionPresent": false,
+      "notFoundMarkerPresent": true
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "advertisedUrls": 58,
+      "issueDetailUrls": 0
+    },
+    {
+      "path": "/llms.txt",
+      "status": 200,
+      "cacheControl": "no-store",
+      "issueLibraryAdvertised": false
+    },
+    {
+      "path": "/api/sites/publication-proof/research-consent",
+      "status": 401,
+      "cacheControl": null
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "cacheControl": "s-maxage=31536000",
+      "researchScopePresent": true
+    }
+  ],
+  "limitations": [
+    "Two sampled issue routes do not establish every route individually. Shared eligibility guards are covered by focused tests.",
+    "Next.js streamed not-found responses retain HTTP 200 and add noindex. Status alone does not establish content availability.",
+    "No authenticated consent mutation, customer account or browser flow was exercised in production.",
+    "Sitemap exclusion and noindex directives do not prove search-engine removal or recall external copies."
+  ],
+  "worker": {
+    "deploymentId": "4d53e66a-2f58-4ffe-b884-aa7cbc294858",
+    "createdAt": "2026-10-14T09:42:41.854Z",
+    "commit": "62cad129afa010d14b4e166456aa28b12679b13b",
+    "status": "SUCCESS",
+    "codeRevisionUnchanged": true,
+    "deploymentIdentityUnchanged": false,
+    "deployedByThisTask": false,
+    "note": "An independent worker redeployment was created before this task submitted its first web deployment. This task issued only web deployment and web revision metadata commands."
+  },
+  "releaseConfigurationChange": {
+    "service": "FixFlags",
+    "key": "GIT_COMMIT_SHA",
+    "value": "74e35e344ea45376f1f1143410b0049e580317fe",
+    "secret": false
+  },
+  "authenticatedConsentMutationsSent": false,
+  "researchArtifactInstalled": false,
+  "graphCountersRefreshed": false
+}

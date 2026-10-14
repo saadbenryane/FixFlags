@@ -1,0 +1,435 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-14T09:55:02.982847+00:00",
+  "status": "worker configuration synced and redeployed successfully",
+  "commit": "62cad129afa010d14b4e166456aa28b12679b13b",
+  "branch": "main",
+  "merged": true,
+  "pushed": true,
+  "services": {
+    "web": {
+      "status": "SUCCESS",
+      "deploymentId": "b48c026e-183a-4086-8c62-e1586b2966c8",
+      "commit": null,
+      "previousAdminRelease": {
+        "status": "SUCCESS",
+        "deploymentId": "f7498350-10bd-4244-848c-f3c21ab2802f",
+        "commit": "62cad129afa010d14b4e166456aa28b12679b13b"
+      },
+      "concurrentDeployment": {
+        "deploymentId": "488d8bcd-6aee-4919-bd63-d517aebb123f",
+        "statusAtObservation": "BUILDING"
+      }
+    },
+    "worker": {
+      "status": "SUCCESS",
+      "deploymentId": "4d53e66a-2f58-4ffe-b884-aa7cbc294858",
+      "commit": "62cad129afa010d14b4e166456aa28b12679b13b"
+    }
+  },
+  "verification": {
+    "websiteTestsPassed": 7494,
+    "websiteTestsFailed": 0,
+    "databaseGatedTestsSkippedInWebsiteRun": 108,
+    "affectedCredentialTestsPassed": 66,
+    "runtimeScriptTestsPassed": 157,
+    "postgresExecutionFenceTestsPassed": 3,
+    "coverage": {
+      "statements": 70.57,
+      "branches": 65.89,
+      "functions": 71.05,
+      "lines": 73.58,
+      "existingThresholdsPassed": true
+    },
+    "dockerImageBuiltAt": "7b80d0b3173f4da494a6fc83e67a8072352b2851",
+    "subsequentCandidateChanges": "Monitoring tests only. Railway built and deployed the final commit.",
+    "productionReadOnlyProbes": [
+      {
+        "path": "/api/health",
+        "status": 200,
+        "body": {
+          "healthy": true,
+          "ok": true,
+          "status": "ok",
+          "database": "ok",
+          "commit": "62cad129afa010d14b4e166456aa28b12679b13b",
+          "pipelineVersion": "2.4.0",
+          "storageConfigured": true,
+          "billingConfigured": true,
+          "aiConfigured": true,
+          "aiProviderChain": [
+            "openai",
+            "anthropic"
+          ],
+          "aiConfiguredProviders": [
+            "openai"
+          ],
+          "productWatch": {
+            "available": true,
+            "error": null
+          },
+          "emailConfigured": true,
+          "workerConfigured": true,
+          "rateLimit": {
+            "redisDown": false,
+            "redisDownSince": null,
+            "lastError": null
+          },
+          "migrations": {
+            "ok": true
+          }
+        }
+      },
+      {
+        "path": "/api/health/ready",
+        "status": 200,
+        "body": {
+          "ok": true,
+          "profile": "free-launch",
+          "checkedAt": "2026-10-13T18:34:52.752Z",
+          "missing": [],
+          "subsystems": {
+            "database": {
+              "ok": true
+            },
+            "redis": {
+              "ok": true
+            },
+            "migrations": {
+              "ok": true
+            },
+            "worker": {
+              "ok": true
+            },
+            "browser": {
+              "ok": true
+            },
+            "storage": {
+              "ok": true
+            },
+            "ai": {
+              "ok": true
+            },
+            "pagespeed": {
+              "ok": true
+            },
+            "auth": {
+              "ok": true
+            },
+            "billing": {
+              "ok": true
+            },
+            "email": {
+              "ok": true
+            },
+            "uptime": {
+              "ok": true
+            },
+            "automaticAccounts": {
+              "ok": false,
+              "enabled": false,
+              "detail": "Automatic account checks are disabled by configuration."
+            },
+            "productWatch": {
+              "ok": true
+            }
+          }
+        }
+      },
+      {
+        "path": "/api/health/ready?profile=commercial",
+        "status": 503,
+        "body": {
+          "ok": false,
+          "profile": "commercial",
+          "checkedAt": "2026-10-13T18:34:53.354Z",
+          "missing": [
+            "automaticAccounts"
+          ],
+          "subsystems": {
+            "database": {
+              "ok": true
+            },
+            "redis": {
+              "ok": true
+            },
+            "migrations": {
+              "ok": true
+            },
+            "worker": {
+              "ok": true
+            },
+            "browser": {
+              "ok": true
+            },
+            "storage": {
+              "ok": true
+            },
+            "ai": {
+              "ok": true
+            },
+            "pagespeed": {
+              "ok": true
+            },
+            "auth": {
+              "ok": true
+            },
+            "billing": {
+              "ok": true
+            },
+            "email": {
+              "ok": true
+            },
+            "uptime": {
+              "ok": true
+            },
+            "automaticAccounts": {
+              "ok": false,
+              "enabled": false,
+              "detail": "Automatic account checks are disabled by configuration."
+            },
+            "productWatch": {
+              "ok": true
+            }
+          }
+        }
+      },
+      {
+        "path": "/admin",
+        "status": 307,
+        "location": "/sign-in?next=%2Fadmin",
+        "redirectsToSignIn": true
+      },
+      {
+        "path": "/admin/operations",
+        "status": 307,
+        "location": "/sign-in?next=%2Fadmin%2Foperations",
+        "redirectsToSignIn": true
+      },
+      {
+        "path": "/api/admin/operators",
+        "status": 401,
+        "unauthenticatedAccessDenied": true
+      },
+      {
+        "path": "/api/admin/support/sessions",
+        "status": 401,
+        "unauthenticatedAccessDenied": true
+      },
+      {
+        "path": "/api/admin/evidence/deployment-boundary-check",
+        "status": 401,
+        "unauthenticatedAccessDenied": true
+      }
+    ]
+  },
+  "preservedLocalDrafts": [
+    "components/sites/SiteBoard.tsx",
+    "components/sites/__tests__/SiteBoard.test.tsx",
+    "lib/marketing/copy/board-preview.ts"
+  ],
+  "operatingPolicy": {
+    "automaticAccountChecks": "Remain disabled and are reported unavailable.",
+    "paidEnrollment": "Remains closed.",
+    "stripeMode": "Existing test mode is preserved.",
+    "commercialReadiness": "Remains unavailable while automatic account lifecycle proof is incomplete."
+  },
+  "workerConfigurationSync": {
+    "requestedAction": "Copy the production web service shared authentication, encryption, and Stripe configuration to the worker, retaining Stripe test mode, then redeploy the worker from main.",
+    "settings": [
+      "TOKEN_ENCRYPTION_KEY",
+      "BETTER_AUTH_SECRET",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_BUILDER_PRICE_ID",
+      "STRIPE_TEAM_PRICE_ID",
+      "BILLING_REQUIRED"
+    ],
+    "approvalStatus": "Approved by the user on 2026-10-14",
+    "configurationChanged": true,
+    "recoveryPlan": "Encrypt a snapshot of the previous selected worker settings using the canonical web encryption key before replacing them.",
+    "approvalAnswer": "Approve worker configuration sync",
+    "configurationReceipt": {
+      "at": "2026-10-14T09:41:12.301Z",
+      "changedKeys": [
+        "TOKEN_ENCRYPTION_KEY",
+        "BETTER_AUTH_SECRET",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_BUILDER_PRICE_ID",
+        "STRIPE_TEAM_PRICE_ID",
+        "BILLING_REQUIRED"
+      ],
+      "canonicalSource": "production web",
+      "encryptedAccountInventory": {
+        "accounts": 0,
+        "encryptedAccountSessions": 0
+      },
+      "billingMode": "test",
+      "verified": true,
+      "recoverySnapshot": "/Users/saadbenryane/Code/FixFlags/.data/operations/recovery/admin-worker-configuration-backup-1791970853582.encrypted.json"
+    },
+    "compatibilityAfterSync": {
+      "encryptedInputsCompatible": true,
+      "stripeMode": "test",
+      "billingRequired": "true"
+    },
+    "stripeReadOnlyCheck": {
+      "mode": "test",
+      "readOnly": true,
+      "prices": [
+        {
+          "setting": "STRIPE_BUILDER_PRICE_ID",
+          "active": true,
+          "currency": "usd",
+          "recurringInterval": "month"
+        },
+        {
+          "setting": "STRIPE_TEAM_PRICE_ID",
+          "active": true,
+          "currency": "usd",
+          "recurringInterval": "month"
+        }
+      ]
+    },
+    "redeployment": {
+      "id": "4d53e66a-2f58-4ffe-b884-aa7cbc294858",
+      "status": "SUCCESS",
+      "commit": "62cad129afa010d14b4e166456aa28b12679b13b",
+      "previousWorkerStatus": "REMOVED"
+    },
+    "state": "completed",
+    "evidenceBeforeSync": {
+      "webToWorkerEncryptionCompatible": false,
+      "workerStripeKeyMissing": true,
+      "encryptedAccountInventory": {
+        "accounts": 0,
+        "encryptedAccountSessions": 0
+      }
+    },
+    "configurationBlocksResolved": [
+      "Worker execution of encrypted support replies",
+      "Admin billing mutations and billing cancellation during customer erasure"
+    ],
+    "automaticReview": {
+      "priorRejection": "Persistent production secret and billing configuration replacement was rejected because merge and deploy did not specifically authorize these changes.",
+      "resolvedBy": "Explicit user approval on 2026-10-14"
+    },
+    "verification": {
+      "webHealth": {
+        "healthy": true,
+        "ok": true,
+        "status": "ok",
+        "database": "ok",
+        "commit": null,
+        "pipelineVersion": "2.4.0",
+        "storageConfigured": true,
+        "billingConfigured": true,
+        "aiConfigured": true,
+        "aiProviderChain": [
+          "openai",
+          "anthropic"
+        ],
+        "aiConfiguredProviders": [
+          "openai"
+        ],
+        "productWatch": {
+          "available": true,
+          "error": null
+        },
+        "emailConfigured": true,
+        "workerConfigured": true,
+        "rateLimit": {
+          "redisDown": false,
+          "redisDownSince": null,
+          "lastError": null
+        },
+        "migrations": {
+          "ok": true
+        }
+      },
+      "webReadiness": {
+        "ok": true,
+        "profile": "free-launch",
+        "checkedAt": "2026-10-14T09:50:29.869Z",
+        "missing": [],
+        "subsystems": {
+          "database": {
+            "ok": true
+          },
+          "redis": {
+            "ok": true
+          },
+          "migrations": {
+            "ok": true
+          },
+          "worker": {
+            "ok": true
+          },
+          "browser": {
+            "ok": true
+          },
+          "storage": {
+            "ok": true
+          },
+          "ai": {
+            "ok": true
+          },
+          "pagespeed": {
+            "ok": true
+          },
+          "auth": {
+            "ok": true
+          },
+          "billing": {
+            "ok": true
+          },
+          "email": {
+            "ok": true
+          },
+          "uptime": {
+            "ok": true
+          },
+          "automaticAccounts": {
+            "ok": false,
+            "enabled": false,
+            "detail": "Automatic account checks are disabled by configuration."
+          },
+          "productWatch": {
+            "ok": true
+          }
+        }
+      },
+      "workerHealth": {
+        "status": "ok"
+      },
+      "encryptionCompatibility": {
+        "encryptedInputsCompatible": true,
+        "stripeMode": "test",
+        "billingRequired": "true"
+      },
+      "stripeReadOnlyPrices": {
+        "mode": "test",
+        "readOnly": true,
+        "prices": [
+          {
+            "setting": "STRIPE_BUILDER_PRICE_ID",
+            "active": true,
+            "currency": "usd",
+            "recurringInterval": "month"
+          },
+          {
+            "setting": "STRIPE_TEAM_PRICE_ID",
+            "active": true,
+            "currency": "usd",
+            "recurringInterval": "month"
+          }
+        ]
+      }
+    },
+    "verificationLimits": [
+      "Configuration compatibility was verified without production support messages or billing mutations.",
+      "A separate web deployment replaced the prior release during verification. The live web endpoint is healthy but currently returns a null commit ID; its current source SHA could not be independently confirmed."
+    ]
+  }
+}

@@ -343,3 +343,348 @@ sitelinks until proven otherwise. Title those pages with the brand name.
 1. Deploy `SEO-CRAWL-001` and `SEO-SNIPPET-001` together.
 2. Run `npm run growth:verify-live`.
 3. Compare page×query on 2026-09-15 before any Flag or tool title pass.
+
+---
+
+## [2026-10-13] Reviewed research publication and comparable journey measurement
+
+**Objective:** Strengthen the intelligence and growth system without exposing
+customer evidence or presenting incompatible measurement windows as a funnel.
+
+**Changes made:** Public issue readers now use a reviewed aggregate release in
+the existing `GrowthArtifact` store. Source, permitted-use and copy-review
+references remain private. Twenty distinct sites, check versions, consistent
+counts, explicit scope, limitations and expiry are enforced. The library,
+related links, sitemap and detail pages share the boundary. Identifiable
+examples are withheld, and legacy benchmark rows cannot become public research.
+A local validation command prepares review without storage or publication.
+The shared rollup counts distinct observations and current frameworks; the
+seed script's competing rollup was removed.
+
+GA journey exports retain reporting timezone and provider limitations. The
+server join loads the complete GA observation window independently of the
+operational start cohort, follows exact starts to results and later claims,
+and withholds rates for unverifiable windows or empty denominators. Admin copy
+uses tab journeys rather than sessions.
+
+**Measured impact:** Local regression and PostgreSQL fixture evidence establish
+these correctness and privacy boundaries. Three observations across two sites
+remain three observations with multiple technologies and fingerprint rows;
+inactive frameworks and hosting are excluded. The local validator accepts a
+synthetic valid release and rejects an identifiable extra field. No dataset was
+stored or published. Development data has graph observations but no approved
+research release. Local reporting credentials and property configuration are
+absent. No current production acquisition, retention, paid conversion, verified
+fix-success, or search improvement is established.
+
+**What we learned:** Observation volume does not establish sample diversity or
+publication permission. Removing `www` does not anonymize a hostname. A journey
+key alone does not make mismatched reporting windows comparable, and tab
+journeys are not visitors or GA sessions. Permission-reference validation is
+structural; a real reviewer must verify the underlying permission and public copy.
+
+**Next evidence required:** Operator-authorized deployment and production
+privacy assessment; a genuinely permitted, reviewed research cohort; fresh
+read-only GA4/GSC exports; and measured lifecycle outcomes before scaling
+acquisition or making public quality comparisons. Historical roadmap sections
+that publish automatically from raw graph volume are superseded by the boundary
+in `research-governance.md`. Work is locally verified, not deployed.
+
+## [2026-10-13] Google reporting access verified and search totals corrected
+
+**Evidence:** The production worker has the reporting configuration. Read-only
+GA4 and Search Console requests succeeded for 2026-09-15 through 2026-10-12:
+45 reported GA users, 48 sessions, 70 pageviews; 5 finalized web-search clicks
+and 81 impressions. `metrics/reporting-access-2026-10-13.json` contains the
+aggregate-only response and limitations. No production database data, provider
+settings or credentials were written. This supersedes the earlier local-only
+access assessment, not the privacy publication boundary.
+
+**Implementation:** Added a repeatable aggregate reporting inspector, restricted
+to known FixFlags properties and read-only scopes. Search exports now query
+property totals separately from visible query rows, preserve returned-query
+coverage, withhold unsupported indexed-page counts, and distinguish page-level
+aggregation. GA/GSC summaries retain exact requested dates; inclusive windows
+now contain the requested calendar-day count. Existing reports cannot be
+compared blindly across the definition change.
+
+**Permission finding:** Account settings, Site settings, their write schema, and
+current privacy copy contain no recorded public research opt-in. Analytics
+cookie consent and Google connection consent serve their existing product
+purposes. Neither is a reviewed public-research release grant.
+
+**Limits and next work:** The new exporter behavior is locally verified and
+awaits authorized deployment. Google access is confirmed, but acquisition to
+Site value or revenue is still unjoined. The sample does not establish a growth
+improvement, indexing census, or website-quality benchmark. Keep raw customer
+evidence behind the reviewed research boundary while using the now-verified
+first-party reports to prioritize measured acquisition work.
+
+
+## [2026-10-13] Site research permission connected to publication eligibility
+
+**Implemented:** Added an off-by-default checkbox in Site settings and an
+owner-only read/write API. It covers only new observations, aggregate findings
+and independently verified fix outcomes. Private evidence, URLs, prompts,
+account details and connected-provider data remain excluded. Existing private
+Site lifecycle storage records versioned grants and withdrawals; no schema
+migration or monitoring change is needed.
+
+Public readers now require a private source manifest tied to the reviewed
+release. They recheck current owner, Site origin and base path, latest grant, prospective
+source audit dates, completed source runs and actual distinct-site diversity.
+Withdrawal, deletion, owner/domain changes and regranting withhold stale
+releases. A repeat save preserves the same grant. The privacy page explains
+scope, withdrawal and the limit on recalling external copies.
+
+Issue counts must match distinct deterministic source findings with confidence
+of at least 0.8, available by the review time. Framework cells must match
+versioned technology observations on the affected source audits. Connected
+search checks are excluded from this permission scope. These checks establish
+source and count consistency; detector accuracy, source-version equivalence and
+free-form copy privacy still need review.
+
+**Evidence:** Focused API, component, consent and permission tests cover default
+off, owner enforcement, current wording, withdrawal, failed saves, stale grants,
+foreign/pre-consent sources and missing manifests. A real isolated local
+PostgreSQL fixture with 20 synthetic Sites admits the permitted cohort, rejects
+a foreign owner, withholds it after withdrawal, and does not revive it when
+consent is enabled again. The fixture is not a real research dataset. Final
+verification passed 77 focused tests, the PostgreSQL integration check, type
+checking and targeted lint.
+
+**Status:** Locally implemented and verified. No production consent was changed,
+no customer was opted in, and no dataset was published. Earlier statements that
+settings contain no research opt-in describe the pre-change implementation.
+Owner permission now has a concrete path; public research still needs genuinely
+permitted observations, source evidence, adequate samples and review.
+
+## [2026-10-13] Customer value reporting uses original outcome references
+
+**Finding:** The value calculator treated absent cost records as zero and priced
+older outcome events through a fix attempt's current verification pointer. A
+retry could therefore replace an earlier run's cost. Outcome distributions also
+kept the first inconclusive result after a later improvement.
+
+**Implemented:** Missing, invalid, conflicting and later-recorded estimates now
+withhold cost ratios and expose coverage. Outcome distributions use the latest
+issued result per cycle; time to outcome still uses the first result. Future
+records and invalid durations are excluded. Shared run costs are counted once.
+The aggregate-only `loadCustomerValueReport` resolves each outcome event's
+recorded audit ID, verifies Site lineage, and uses one read-only, repeatable-read
+transaction. The local inspector refuses remote database targets and suppresses
+private database errors. `metrics.md` records its definitions, limitations and
+the previously verified provider baseline.
+
+**Evidence:** 23 focused tests and an isolated PostgreSQL fixture passed. The
+fixture exercised the actual report command, an inconclusive result followed by
+an improved retry, distinct cost accounting, missing-cost withholding and an
+output with no source identifiers. Type checking and targeted lint passed.
+These synthetic checks prove behavior, not customer outcomes or economics.
+
+**Remaining:** No production database was read or changed. The existing admin
+cost projection lacks event audit IDs and now yields N/A; integration with the
+new projection waits for the active admin writer's scope. The new command is
+usable locally now. Acquisition-to-verified-value and revenue joins still need
+actual authorized product data; another generated cycle is not human retention.
+
+## [2026-10-13] Internal research clicks no longer invent organic acquisition
+
+**Finding:** Issue index and CTA links generated `issue/organic` campaign tags
+for every visitor. The homepage form then recorded `HOMEPAGE`, obscuring the
+research entry surface. Source inference also missed canonical plural paths.
+
+**Implemented:** Research navigation preserves existing external campaign tags
+and never creates them. The analysis CTA uses the finite `ff_entry` marker;
+both the request and consented start event record that declared public surface.
+Explicit form sources and private entry contexts retain precedence. Canonical
+plural issue/benchmark paths and existing singular aliases are recognized.
+Ambiguous and invalid query values are ignored. No cookie, persistent browsing
+state, identifier or additional event was added. Removed the redundant issue
+methodology block that claimed automatic refresh without release review.
+
+**Evidence:** 37 focused attribution, handoff and research-page tests passed,
+with a further three-page-test check after removing the unsupported refresh
+claim. Type checking and targeted lint passed. The checks exercise generated
+links, preserved campaign values, the actual request body and start callback.
+
+**Limit:** Entry declarations are not verified discovery channels or causal
+attribution. Earlier issue/organic labels remain ambiguous historical data.
+The change is local and awaits authorized deployment and observation; no
+acquisition or conversion improvement has been measured.
+
+## [2026-10-13] Initial analysis to repair evidence joined in a fixed cohort
+
+**Implemented:** The existing local value inspector now has an `acquisition`
+mode. It follows immutable anonymous start identities through useful-result and
+exact claim receipts to the initial Flag occurrence, matching Improvement and
+attempt, and a completed independent verification in the same Site and owner.
+Counts use seven-day mature analysis cohorts and finite entry surfaces. Seeds,
+follow-up analyses and signed-in starts are excluded. Missing sources stay in
+the denominator; invalid lineage withholds shares. Missing exact claim evidence
+is unclassified. Stages are independent evidence counts, not a conversion funnel.
+
+New anonymous ownership transitions emit an idempotent private `analysis_claimed`
+receipt after the existing migration commits. Telemetry failure does not fail
+the claim. Already-owned retries cannot backfill a false transition timestamp.
+No model migration, cookie, customer configuration or public endpoint was added.
+Reports use one repeatable-read, read-only snapshot and export no source IDs,
+visitor keys, raw campaigns, URLs or customer content.
+
+**Evidence:** 44 focused cohort, claim, event and HMAC tests passed. Isolated
+PostgreSQL checks exercised both inspector modes, real claim-receipt persistence
+and timestamp idempotence, a source-to-verification join, rejected self-reported
+results and exclusion of a later monitoring source. Type checking and targeted
+lint passed. All fixtures were synthetic and isolated from existing tables.
+
+**Remaining:** This measures repairs tied to the initial analysis, not all later
+monitoring value, human retention, revenue or causal channel returns. Those
+require additional explicit cohort definitions and actual authorized records.
+The original goal remains incomplete. No production cohort was inspected or
+changed, nothing was deployed, and no public research was published. New claim
+receipts require authorized deployment and observation before business outcomes
+can be measured; legacy Site-only claim receipts remain ambiguous.
+
+## [2026-10-13] Live discovery gap verified and LLM research links governed
+
+**Evidence:** Public HTTPS reads found a valid homepage canonical and a 308
+www-to-apex redirect. The sitemap advertises 104 URLs, including 45 issue detail
+pages. Two sampled pages show 13/12 sites, a three-site threshold, examples and
+Dataset markup without the reviewed scope. Permission provenance remains
+unverified. Sitemap inclusion does not prove indexing. The aggregate receipt
+`metrics/public-discovery-2026-10-13.json` retains no customer examples or content.
+
+**Implemented:** LLM discovery resolves current reviewed research through the
+same reader as sitemap and pages. The builder excludes research by default.
+Dynamic no-store responses recheck eligibility; missing research or a failed
+read preserves public guides and tools. The research note describes reviewed
+aggregates without promising unavailable framework comparisons.
+
+**Validation and remaining:** 16 focused discovery, copy and published-content
+tests, the SEO guard, type checking and targeted lint passed. Production was
+read, not changed. Local publication safeguards await authorized deployment;
+existing public material and external copies require a production assessment.
+Do not count the live older path as governed research.
+
+## [2026-10-13] Publication safeguards isolated for review
+
+The managed worktree at
+`/Users/saadbenryane/.codex/worktrees/growth-publication-boundary/FixFlags` holds
+local branch `codex/research-publication-boundary`, commit
+`1a941f706388de484b95c3ef103742119abe8e69`, based on `a274d585`.
+Its 48 selected files contain publication/consent protection, research entry
+attribution, diagnostic rollup corrections, focused tests and a release brief.
+Broader analytics, product, admin and design work remains in the original
+checkout. No environment files or schema/dependency changes were copied.
+
+On the committed baseline, 138 focused tests and two isolated PostgreSQL checks
+passed, together with type checking, targeted lint and the SEO guard. The
+worktree is clean and the commit's path inventory matches the explicit selection.
+`docs/growth/publication-release.md` records scope and release limitations. Nothing
+was pushed or deployed. Production-base comparison and applicable release
+validation remain necessary before an authorized deployment.
+
+## [2026-10-13] Publication candidate corrected to the actual live revision
+
+Read-only Railway metadata reports production web deployment `958f330a` at
+`b09761772f88302546a7b72b0cb29febc4ad0951` as successful. The newer `a274d585`
+deployment failed. Consequently the earlier `1a941f70` review cut is not the
+production candidate: it would also include 254 unrelated changed files.
+
+The same publication patch now sits on the live baseline in local branch
+`codex/research-publication-live`, current commit `cfe9754d`, in the attached
+publication worktree. The earlier branch is preserved. Exact live-lockfile
+installation, Prisma client generation, 138 focused tests, two isolated
+PostgreSQL checks, the full Next.js 15.5.27 web build with standalone packaging,
+worker compilation and the SEO guard passed. The research pages, sitemap and LLM
+index are absent from the prerender manifest. No schema, dependency or Dockerfile
+changes are introduced relative to production.
+
+Build configuration was synthetic, with unreachable loopback services and no
+production credentials. Its bundle must not be deployed; an authorized release
+must rebuild source with production configuration. The proposed action is a
+web-service deployment only, with no worker deployment, counter refresh,
+artifact installation or automatic consent change. No production action has
+occurred. The release brief and safe baseline receipt are in that worktree.
+
+## [2026-10-13] Continuing Site value includes later monitoring repairs
+
+The local value inspector now accepts `sites` mode. It follows each Site's first
+retained exact claim for seven days, choosing the first receipt before applying
+the cohort interval. It counts completed production scheduled checks, issue
+cycles, attempts, independent system-issued improvement, monitoring requested
+after improvement, and owner-attributed WEB follow-up after one day. Unlike the
+initial-analysis report, repair evidence can come from later monitoring audits.
+Both reports use shared occurrence, attempt and verification lineage checks.
+
+Source and verification audits must be completed, ownership and Site links must
+match, and timestamps must be coherent. Inconsistent or deleted evidence
+withholds shares. Validation runs are excluded. A later completed check does not
+prove sustained recovery; owner-attributed follow-up does not establish a human
+return, retention or revenue. The repeatable-read report is read-only, bounded
+and aggregate-only. Definitions and the command are in `metrics.md`.
+
+Thirty-seven focused tests and two isolated PostgreSQL integrations passed,
+including the actual inspector command and a later-source repair followed by
+monitoring. Targeted lint and whitespace checks passed. The full checkout type
+check currently fails in concurrent admin/schema work, with no diagnostics in
+the acquisition or continuing-value reporting files. No browser tests ran.
+
+Only synthetic local fixtures were measured. Production cohorts, paid conversion
+and business impact remain unmeasured. Nothing was deployed or published. The
+publication candidate remains `cfe9754d`, with deployment approval pending.
+
+## [2026-10-13] Commercial measurement awaits payment provenance and release
+
+Inspection confirmed that subscription lifecycle prices/status cannot establish
+collected revenue. Concurrent billing work adds a payment ledger, but its invoice
+writer does not retain Stripe live/test or out-of-band settlement provenance.
+Both paid-event types enter that writer. Stripe's official invoice and event
+references confirm why a paid invoice is insufficient evidence of live Stripe
+cash collection. The actionable finding and required measurement boundary are
+saved in `metrics.md`; no billing code or another writer's changes were edited.
+Provider-history reconciliation writes records and was not invoked.
+
+The publication candidate is still clean at `cfe9754d`. Deployment authorization
+has remained pending across the release-review turn, continuing-value turn and
+this assessment. Local reporting is verified with synthetic fixtures, Google
+discovery access is verified, and research permission/publication gates are
+implemented. Production release, subsequent consented evidence collection,
+authorized operational measurement and commercial provenance remain necessary
+before claiming the complete intelligence loop or business impact. No deployment,
+public research, campaign or production mutation has occurred.
+
+## [2026-10-14] Authorized research safeguards deployed to the web service
+
+The user authorized the reviewed web patch. Production had advanced to `62cad129`
+before that answer, so the approved patch was applied to that live revision.
+All 45 runtime files are byte-identical to the approved candidate. No schema,
+migration, dependency, Dockerfile or Railway configuration changes were introduced.
+The source is saved as `74e35e344ea45376f1f1143410b0049e580317fe` on local branch
+`codex/research-publication-current`; the originally reviewed branch is preserved.
+
+Fresh checks passed: 138 focused tests, two isolated PostgreSQL integrations,
+targeted lint, the SEO guard, Next.js 16.4.0 production build with type checking
+and standalone packaging, and worker compilation. No browser or E2E tests ran.
+Railway rebuilt source with the existing production configuration. The initial
+upload succeeded, but its runtime lacked a revision identifier. Setting the
+web-only non-secret `GIT_COMMIT_SHA` and redeploying that same release produced
+successful deployment `488d8bcd-6aee-4919-bd63-d517aebb123f`. Public health now
+reports the exact source SHA and successful readiness and migration checks.
+
+Public HTTP reads confirm a noindex issue library, no issue detail sitemap URLs,
+no research advertisement in llms.txt, and authentication on the consent API.
+Two sampled issue routes render noindex not-found states with no examples or
+Dataset markup. Next.js streaming retains HTTP 200 for these not-found responses,
+as documented in the installed framework guide. Search-engine removal and recall
+of external copies are not established. Aggregate evidence is saved in
+`metrics/publication-deployment-2026-10-14.json` without customer content.
+
+An independent worker redeployment, `4d53e66a`, was created at 09:42 UTC before
+this task's first web upload at 09:44 UTC. It succeeded on the same reported source
+commit, `62cad129`. This task issued no worker deployment commands. No consent
+mutation, research artifact installation, graph refresh, campaign or main-branch
+push was performed. The research choice remains off by default. The deployment permission
+block is resolved; an eligible consented dataset and measured business outcomes
+remain unavailable. Broader analytics changes in the original checkout were not
+included in this publication release.

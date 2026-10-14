@@ -1,0 +1,36 @@
+{
+  "fetchedAt": "2026-10-13T13:44:01.487Z",
+  "observationWindow": {
+    "startDate": "2026-09-15",
+    "endDate": "2026-10-12"
+  },
+  "databaseWritten": false,
+  "ga4": {
+    "status": "report-read-succeeded",
+    "property": "541892062",
+    "reportingTimeZone": "Africa/Casablanca",
+    "providerLimited": false,
+    "metrics": {
+      "totalUsers": 45,
+      "sessions": 48,
+      "screenPageViews": 70,
+      "engagementRate": 0.08333333333333333
+    },
+    "limitations": [
+      "Reported GA users and sessions may omit unconsented activity. No Site or revenue attribution established."
+    ]
+  },
+  "searchConsole": {
+    "status": "report-read-succeeded",
+    "property": "sc-domain:fixflags.com",
+    "metrics": {
+      "clicks": 5,
+      "impressions": 81,
+      "ctr": 0.06172839506172839,
+      "averagePosition": 3.271604938271605
+    },
+    "limitations": [
+      "Web search, finalized data only. Recent days may not yet be available. Average position is not a live rank."
+    ]
+  }
+}

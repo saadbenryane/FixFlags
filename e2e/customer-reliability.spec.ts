@@ -144,7 +144,7 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     const shot = await page.request.get(shotPath); expect(shot.status()).toBe(200)
     expect(shot.headers()['cache-control']).toContain('private'); expect((await shot.body()).subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
     const stranger = await browser.newContext({ baseURL, ignoreHTTPSErrors: true })
-    expect((await stranger.request.get(shotPath)).status()).toBe(403)
+    expect((await stranger.request.get(shotPath)).status()).toBe(404)
     expect((await stranger.request.get(exactCapture)).status()).toBe(403)
     expect((await stranger.request.get(`/api/sites/${projectId}`)).status()).not.toBe(200)
     const foreign = await db.user.create({ data: { email: `reliability-stranger-${nonce}@example.invalid`, name: 'Other owner', emailVerified: true } })
@@ -152,7 +152,7 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
       await db.account.create({ data: { userId: foreign.id, accountId: foreign.id, providerId: 'credential', password: await hashPassword(password) } })
       expect((await stranger.request.post('/api/auth/sign-in/email', { headers: { Origin: baseURL }, data: { email: foreign.email, password } })).ok()).toBe(true)
       expect((await stranger.request.get(exactCapture)).status()).toBe(403)
-      expect((await stranger.request.get(shotPath)).status()).toBe(403)
+      expect((await stranger.request.get(shotPath)).status()).toBe(404)
       expect((await stranger.request.post(`/api/sites/${projectId}/flags/${flagId}/verify`, { data: {} })).status()).not.toBe(202)
     } finally { await stranger.close(); await db.user.delete({ where: { id: foreign.id } }) }
     expect((await page.request.get(`${runtime.fixtureOrigin}/evidence/screenshots/${audit!.id}/p0-desktop.png`)).status()).toBe(403)
