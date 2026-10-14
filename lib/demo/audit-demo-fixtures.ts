@@ -94,7 +94,8 @@ export async function isDemoDevServerRunning(
     const res = await fetch(`${baseUrl.replace(/\/$/, '')}/demo`, {
       signal: AbortSignal.timeout(3000),
     })
-    return res.ok
+    if (!res.ok) return false
+    return (await res.text()).includes('data-fixflags-demo="original"')
   } catch {
     return false
   }

@@ -48,7 +48,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
   const inputFontSize = smallInputFont ? '14px' : '16px'
 
   return (
-    <div className="demo-root">
+    <div data-fixflags-demo={fixture.versionLabel} className="demo-root">
       {slowBundle ? (
         <script
           dangerouslySetInnerHTML={{
