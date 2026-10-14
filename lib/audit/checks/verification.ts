@@ -84,9 +84,12 @@ export function scopedAssertionForTarget(input: {
       if (checkId === 'mobile-input-zoom') {
         const original = targets.data.filter(target => typeof target.selector === 'string' && target.selector.length > 0)
         if (!original.length) return undefined
-        const observed = matched.flatMap(candidate => candidate!.assertion.targets ?? [])
-        for (const selector of new Set(original.map(target => target.selector))) {
-          if (observed.filter(target => target.selector === selector).length < original.filter(target => target.selector === selector).length) return undefined
+        for (const context of new Set(original.map(target => target.context))) {
+          const scoped = original.filter(target => target.context === context)
+          const observed = matched.find(candidate => candidate!.assertion.context === context)!.assertion.targets ?? []
+          for (const selector of new Set(scoped.map(target => target.selector))) {
+            if (observed.filter(target => target.selector === selector).length < scoped.filter(target => target.selector === selector).length) return undefined
+          }
         }
       }
       return { assertion: { ...matched[0]!.assertion, passed: matched.every(candidate => candidate!.assertion.passed), complete: true,

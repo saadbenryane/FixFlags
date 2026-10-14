@@ -79,6 +79,18 @@ describe('native page observation comparison', () => {
     const missing = make(true)
     missing.assertions[0].targets = []
     expect(scopedAssertionForTarget({ receipt: missing, checkId: flag.checkId, flag: before.flags[0] })).toBeUndefined()
+    const repeated = { ...before.flags[0], evidenceTargets: [...before.flags[0].evidenceTargets!, ...before.flags[0].evidenceTargets!] }
+    expect(scopedAssertionForTarget({ receipt: make(true), checkId: flag.checkId, flag: repeated })).toBeUndefined()
+    const enough = make(true)
+    enough.assertions[0].targets = [...enough.assertions[0].targets!, ...enough.assertions[0].targets!]
+    expect(scopedAssertionForTarget({ receipt: enough, checkId: flag.checkId, flag: repeated })?.assertion.passed).toBe(true)
+    const peer = make(true, { ...mobile, pageUrl: url + 'about', finalUrl: url + 'about' })
+    const peerContext = peer.assertions[0].context!
+    const multiPage = { ...before.flags[0], evidenceTargets: [...before.flags[0].evidenceTargets!, { ...before.flags[0].evidenceTargets![0], context: peerContext }] }
+    peer.assertions[0].targets = []
+    expect(scopedAssertionForTarget({ receipt: enough, receipts: [peer], checkId: flag.checkId, flag: multiPage })).toBeUndefined()
+    peer.assertions[0].targets = [{ selector: '#email', label: 'Email' }]
+    expect(scopedAssertionForTarget({ receipt: make(true), receipts: [peer], checkId: flag.checkId, flag: multiPage })?.assertion.passed).toBe(true)
     const missingDesktop = scopeRenderedPageEvidence({ module: 'layout', flags: [], assertions: [assertion], mobile })
     expect(missingDesktop.assertions[0].complete).toBe(false)
   })
