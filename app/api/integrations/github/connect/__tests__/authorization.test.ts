@@ -13,7 +13,8 @@ vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }))
 import { GET as connect } from '../route'
 import { GET as callback } from '../../callback/route'
 import { POST as disconnect } from '../../disconnect/route'
-const destination = '/sites/owned-site/integrations'
+const siteDestination = '/sites/owned-site?view=integrations'
+const destination = '/settings/integrations?next=' + encodeURIComponent(siteDestination)
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.session.mockResolvedValue({ user: { id: 'owner' } }); mocks.user.mockResolvedValue({ id: 'owner' })
@@ -23,13 +24,13 @@ beforeEach(() => {
 })
 it('continues anonymous authorization through the exact Site integration destination', async () => {
   mocks.session.mockResolvedValue(null)
-  const response = await connect(new NextRequest('https://fixflags.com/api/integrations/github/connect?next=' + encodeURIComponent(destination)))
+  const response = await connect(new NextRequest('https://fixflags.com/api/integrations/github/connect?next=' + encodeURIComponent(siteDestination)))
   const location = new URL(response.headers.get('location')!)
   expect(location.pathname).toBe('/sign-in'); expect(location.searchParams.get('next')).toBe(destination)
   expect(mocks.state).not.toHaveBeenCalled()
 })
 it('signs the authenticated owner and destination before provider authorization', async () => {
-  const response = await connect(new NextRequest('https://fixflags.com/api/integrations/github/connect?next=' + encodeURIComponent(destination)))
+  const response = await connect(new NextRequest('https://fixflags.com/api/integrations/github/connect?next=' + encodeURIComponent(siteDestination)))
   expect(mocks.state).toHaveBeenCalledWith('owner', destination)
   expect(new URL(response.headers.get('location')!).hostname).toBe('github.com')
 })
@@ -49,7 +50,7 @@ it('returns a verified callback to the same Site after saving authorization', as
   const response = await callback(new NextRequest('https://fixflags.com/api/integrations/github/callback?state=signed&code=code'))
   expect(mocks.save).toHaveBeenCalledWith('owner', 'code')
   const location = new URL(response.headers.get('location')!)
-  expect(location.pathname).toBe(destination); expect(location.searchParams.get('connected')).toBe('1')
+  expect(location.pathname).toBe('/settings/integrations'); expect(location.searchParams.get('next')).toBe(siteDestination); expect(location.searchParams.get('connected')).toBe('1')
 })
 it('requires a session before revoking authorization', async () => {
   mocks.session.mockResolvedValue(null)
