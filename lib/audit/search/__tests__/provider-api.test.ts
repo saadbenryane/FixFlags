@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/db', () => ({ prisma: {} }))
 import { inspectSearchUrl, querySearchAnalytics, SearchConsoleError } from '@/lib/integrations/google-search-console'
-import { searchPropertyCoversUrl } from '@/lib/sites/connections/match'
+import { searchPropertyCoversUrl } from '@/lib/sites/connections/report-scope'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Search Console transport and property contracts', () => {
   it('preserves separate indexing and rich-results sections', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ inspectionResult: {
-      indexStatusResult: { verdict: 'PASS', lastCrawlTime: '2026-10-01T12:00:00Z' },
+      indexStatusResult: { verdict: 'PASS', pageFetchState: 'SUCCESSFUL', lastCrawlTime: '2026-10-01T12:00:00Z' },
       richResultsResult: { verdict: 'FAIL', detectedItems: [{ richResultType: 'Product' }] },
     } }))))
     expect(await inspectSearchUrl('private-token', 'sc-domain:example.com', 'https://example.com/'))
-      .toMatchObject({ indexStatusResult: { verdict: 'PASS' }, richResultsResult: { verdict: 'FAIL' } })
+      .toMatchObject({ indexStatusResult: { verdict: 'PASS', pageFetchState: 'SUCCESSFUL' }, richResultsResult: { verdict: 'FAIL' } })
   })
   it('uses an exact page filter rather than site-wide top rows', async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ rows: [] })))

@@ -7,6 +7,7 @@ import { assertionForTarget } from './verification'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 
 const url = 'https://example.com/'
+const renderedScope = { pageUrl: url, finalUrl: url, profile: 'fixture-desktop', access: 'public' }
 const base = '<!doctype html><html lang="en"><head><title>Useful information</title></head><body><main><h1>Useful information</h1>'
 const analytics = '<script>window.gtag=function(){};gtag("config","G-LOCAL123")</script>'
 const healthy = '<a href="/privacy">Privacy policy</a><a href="mailto:help@example.com">Email support</a><div id="cookie-settings">Cookie settings</div>'
@@ -18,7 +19,8 @@ describe('public trust observations and independent repair', () => {
     expect(runTrustChecks(url, broken).map(flag => flag.checkId)).toEqual(['no-privacy-policy', 'no-contact-info', 'cookie-consent-absent'])
     expect(runTrustChecks(url, repaired)).toEqual([])
     expect(Object.values(publicTrustObservations(broken)).map(assertion => assertion.passed)).toEqual([false, false, false])
-    const checked = await runAllChecks(url, repaired, null, null, [], undefined, undefined, undefined, undefined, true, ['trust'])
+    const original = await runAllChecks(url, broken, null, null, [], undefined, undefined, undefined, undefined, true, ['trust'], { renderedScope })
+    const checked = await runAllChecks(url, repaired, null, null, [], undefined, undefined, undefined, undefined, true, ['trust'], { renderedScope })
     expect(checked.failedModules).toEqual([])
     expect(checked.executions[0].assertions?.map(assertion => assertion.passed)).toEqual([true, true, true])
     const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'trust', pageUrl: url,
@@ -28,7 +30,7 @@ describe('public trust observations and independent repair', () => {
       checks: { 'no-privacy-policy': 1, 'no-contact-info': 1, 'cookie-consent-absent': 1 }, outcomes: [], verificationTarget: null }
     for (const checkId of ['no-privacy-policy', 'no-contact-info', 'cookie-consent-absent']) {
       expect(assertionForTarget(receipt, checkId)?.passed).toBe(true)
-      const input = { auditId: 'after', executionSpec: spec, flag: { checkId, pageUrl: url },
+      const input = { auditId: 'after', executionSpec: spec, flag: { ...original.flags.find(flag => flag.checkId === checkId)!, pageUrl: url },
         executions: [{ targetKey: 'module:trust', status: 'COMPLETED', detail: receipt }] }
       expect(hasRecordedRecoveryEvidence(input)).toBe(true)
       expect(hasRecordedRecoveryEvidence({ ...input, flag: { checkId, pageUrl: url + 'other' } })).toBe(false)

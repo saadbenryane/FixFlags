@@ -1,3 +1,5 @@
+import { integrationRelease } from '@/lib/integrations/release-policy'
+import { SITE_CONNECTION_COPY } from '@/lib/marketing/copy/site-connections'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -45,10 +47,11 @@ export async function GET(_request: Request, context: { params: Promise<{ siteId
 
 export async function POST(request: Request, context: { params: Promise<{ siteId: string }> }) {
   try {
-    if (!isShopifyConfigured()) return apiError('Shopify connections are temporarily unavailable.', 503)
     const { siteId } = await context.params
     const owner = await ownerContext(siteId)
     if ('error' in owner) return owner.error
+    if (integrationRelease('shopify') !== 'available') return apiError(SITE_CONNECTION_COPY.comingSoonBody, 409, { code: 'INTEGRATION_COMING_SOON' })
+    if (!isShopifyConfigured()) return apiError('Shopify connections are temporarily unavailable.', 503)
     const parsed = connectSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) return apiError('Enter a store like your-store.myshopify.com.', 400)
     const shop = normalizeShopDomain(parsed.data.shop)

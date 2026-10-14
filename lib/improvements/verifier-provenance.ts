@@ -131,6 +131,8 @@ export async function recordTargetedPageVerifierExecutions(input: {
       const checkId = baseCheckId(flag.checkId)
       if (!checkId || flag.source === 'AI' || checkId.startsWith('journey-')) continue
       if (SEARCH_HANDLED_CHECK_IDS.has(checkId)) continue
+      // Ordinary capture does not establish a throttled timing observation.
+      if (registeredCheck(checkId)?.module === 'slow-replay') continue
       if (flag.pageUrl && !samePage(flag.pageUrl, input.pageUrl)) continue
       if (!flag.pageUrl && !input.primary) continue
       const tool = CHECK_TOOL.get(checkId)
@@ -180,62 +182,4 @@ export async function recordTargetedPageVerifierExecutions(input: {
     recorded += 1
   }
   return recorded
-}
-
-function journeyCheckMatchesType(checkId: string, journeyType: string): boolean {
-  if (journeyType === 'multi-step-funnel') return checkId.startsWith('journey-funnel-')
-  if (journeyType === 'contact-support') return checkId.startsWith('journey-contact-')
-  return checkId.startsWith(`journey-${journeyType}-`)
-}
-
-/** Records a journey target only after that exact journey completed and revisited its scope. */
-export async function recordTargetedJourneyVerifierExecutions(input: {
-  auditId: string
-  journeyType: string
-  visitedUrls: string[]
-}, db: DbClient = prisma): Promise<number> {
-  if (db === prisma && currentExecutionOwnership()) return executionWrite(tx => recordTargetedJourneyVerifierExecutions(input, tx))
-  const audit = await db.audit.findUnique({ where: { id: input.auditId }, select: { parentId: true } })
-  if (!audit?.parentId) return 0
-  const attempts = await db.improvementAttempt.findMany({
-    where: { sourceAuditId: audit.parentId, outcome: null },
-    select: { improvement: { select: { occurrences: {
-      where: { auditId: audit.parentId },
-      select: { flag: { select: {
-        source: true, checkId: true, fingerprint: true, pageUrl: true,
-      } } },
-    } } } },
-  })
-  const visited = new Set(input.visitedUrls.map(normalizeUrl))
-  const targets = new Map<string, {
-    source: string; checkId: string; fingerprint: string | null; pageUrl: string | null
-  }>()
-  for (const attempt of attempts) {
-    for (const occurrence of attempt.improvement.occurrences) {
-      const flag = occurrence.flag
-      const checkId = baseCheckId(flag.checkId)
-      if (!checkId || flag.source !== 'JOURNEY' || !journeyCheckMatchesType(checkId, input.journeyType)) continue
-      if (flag.pageUrl && !visited.has(normalizeUrl(flag.pageUrl))) continue
-      targets.set(`${checkId}:${verifierScopeKey(flag.pageUrl)}`, {
-        source: flag.source, checkId, fingerprint: flag.fingerprint, pageUrl: flag.pageUrl,
-      })
-    }
-  }
-  for (const target of targets.values()) {
-    await recordVerifierExecution({
-      auditId: input.auditId,
-      source: target.source,
-      checkId: target.checkId,
-      fingerprint: target.fingerprint,
-      pageUrl: target.pageUrl,
-      status: 'COMPLETED',
-      evidenceReference: {
-        kind: 'journey-verifier-execution',
-        reviewId: input.auditId,
-        journeyType: input.journeyType,
-        visitedScope: target.pageUrl ? normalizeUrl(target.pageUrl) : 'product',
-      },
-    }, db)
-  }
-  return targets.size
 }

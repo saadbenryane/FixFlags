@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCombinedTriageOutput, productScoresFromFlags, reviewedPagesHaveFullPageSpeed } from '../pipeline/combine-pages'
+import { buildCombinedTriageOutput, collapsedPageFlags, productScoresFromFlags, reviewedPagesHaveFullPageSpeed } from '../pipeline/combine-pages'
 import type { PageRun } from '../pipeline/types'
 import type { TriageOutput } from '../judge-triage-schema'
 import type { TriageResult } from '../judge-triage'
@@ -160,6 +160,19 @@ describe('productScoresFromFlags', () => {
     ])
 
     expect(scores).toEqual(together)
+  })
+
+  it('uses the same page-scoped overlap rules for finalized findings and their score', () => {
+    const root = 'https://example.com/', pricing = 'https://example.com/pricing'
+    const finding = (checkId: string, pageUrl: string): DeterministicFlag => ({ checkId, pageUrl, rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT', problem: 'Heading missing', evidence: 'Captured heading absent', fix: 'Add a heading', confidence: 1, source: 'DETERMINISTIC' })
+    const specific = finding('h1-missing', root), pricingIssue = finding('hierarchy-no-headline', pricing)
+    const raw = [pageRunWithFlags(finding('hierarchy-no-headline', root), specific), pageRunWithFlags(pricingIssue)]
+    const expected = [pageRunWithFlags(specific), pageRunWithFlags(pricingIssue)]
+    expect(collapsedPageFlags(raw).map(flag => [flag.checkId, flag.affectedPaths])).toEqual([
+      ['h1-missing', [root]], ['hierarchy-no-headline', [pricing]],
+    ])
+    expect(productScoresFromFlags(raw)).toEqual(productScoresFromFlags(expected))
   })
 
   it('does not dilute a severe checkout Flag with healthy marketing pages', () => {

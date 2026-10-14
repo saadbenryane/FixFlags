@@ -10,11 +10,11 @@ import {
 
 describe('URL-first public product scope', () => {
   it.each([
-    '/settings/integrations',
     '/onboarding/plans',
     '/report/repo/scan-1',
     '/help/mcp-and-editors/mcp-setup',
-    '/api/integrations/github/connect',
+    '/api/integrations/github/repos',
+    '/api/integrations/github/select',
     '/api/integrations/gsc/connect',
     '/api/products/product-1/signals',
     '/api/projects/project-1/watch',
@@ -58,6 +58,10 @@ describe('URL-first public product scope', () => {
     '/',
     '/dashboard',
     '/settings',
+    '/settings/integrations',
+    '/api/integrations/github/connect',
+    '/api/integrations/github/callback',
+    '/api/integrations/github/disconnect',
     '/api/api-keys',
     '/api/cli/auth/device',
     '/api/mcp',
@@ -77,6 +81,7 @@ describe('URL-first public product scope', () => {
       '/docs/site-care',
       '/docs/fix-with-ai',
       '/docs/integrations',
+      '/docs/integrations/github',
       '/docs/integrations/shopify',
       '/docs/integrations/google-analytics',
       '/docs/integrations/google-search-console',

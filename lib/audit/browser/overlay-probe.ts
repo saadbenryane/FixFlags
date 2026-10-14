@@ -95,7 +95,7 @@ export async function detectObscuringElementAtPoint(
   })
 }
 
-async function probeCoverAtPoint(
+export async function probeCoverAtPoint(
   page: Page,
   targetSelector: string,
   requireOverlayLook: boolean

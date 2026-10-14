@@ -28,10 +28,10 @@ function isShopifyEmbeddedPath(pathname: string): boolean {
 const PARKED_POWER_TOOL_PREFIXES = [
   '/report/repo',
   '/dashboard/mcp-analytics',
-  '/settings/integrations',
   '/onboarding/plans',
   '/help/mcp-and-editors',
-  '/api/integrations/github',
+  '/api/integrations/github/repos',
+  '/api/integrations/github/select',
   '/api/integrations/gsc',
   '/api/products',
   '/api/projects',

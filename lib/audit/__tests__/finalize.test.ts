@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   persistAuditRunCost: vi.fn(),
   diffFlagsAgainstParent: vi.fn(),
   persistFlagDiffSummary: vi.fn(),
+  classifyWatchResult: vi.fn(),
   notifyWatchRegression: vi.fn(),
   materializeAttentionForAudit: vi.fn(),
   reconcileImprovementVerification: vi.fn(),
@@ -38,7 +39,7 @@ vi.mock('@/lib/billing/costs', () => ({
   persistAuditRunCost: mocks.persistAuditRunCost,
 }))
 
-vi.mock('@/lib/audit/project-watch', () => ({ notifyWatchRegression: mocks.notifyWatchRegression }))
+vi.mock('@/lib/audit/project-watch', () => ({ classifyWatchResult: mocks.classifyWatchResult, notifyWatchRegression: mocks.notifyWatchRegression }))
 
 vi.mock('@/lib/audit/diff-flags', () => ({
   diffFlagsAgainstParent: mocks.diffFlagsAgainstParent,
@@ -96,7 +97,7 @@ describe('persistImprovementCycle', () => {
   it('classifies a completed first Watch without waiting for comparison history', async () => {
     mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
     await persistImprovementCycle('first-watch', null)
-    assert.deepEqual(mocks.notifyWatchRegression.mock.calls.at(-1), [null, 'first-watch'])
+    assert.deepEqual(mocks.classifyWatchResult.mock.calls.at(-1), [null, 'first-watch'])
   })
 
   beforeEach(() => resetMocks())
@@ -109,6 +110,8 @@ describe('persistImprovementCycle', () => {
 
     await persistImprovementCycle('audit-1', 'parent-1')
 
+    expect(mocks.classifyWatchResult).toHaveBeenCalledWith('parent-1', 'audit-1')
+    expect(mocks.notifyWatchRegression).not.toHaveBeenCalled()
     expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledTimes(1)
     expect(mocks.materializeAttentionForAudit).toHaveBeenCalledTimes(1)
     expect(mocks.reconcileImprovementVerification).toHaveBeenCalledTimes(1)
@@ -149,13 +152,13 @@ describe('persistImprovementCycle', () => {
   it('classifies notifications only after both evidence projections commit and leaves failed classification retryable', async () => {
     mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
     await persistImprovementCycle('broad-watch', 'parent')
-    expect(mocks.notifyWatchRegression).toHaveBeenCalledWith('parent', 'broad-watch')
-    expect(mocks.runRequestFindMany.mock.invocationCallOrder[0]).toBeLessThan(mocks.notifyWatchRegression.mock.invocationCallOrder[0])
-    expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.notifyWatchRegression.mock.invocationCallOrder[0])
+    expect(mocks.classifyWatchResult).toHaveBeenCalledWith('parent', 'broad-watch')
+    expect(mocks.runRequestFindMany.mock.invocationCallOrder[0]).toBeLessThan(mocks.classifyWatchResult.mock.invocationCallOrder[0])
+    expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.classifyWatchResult.mock.invocationCallOrder[0])
     expect(mocks.reconcileImprovementVerification.mock.invocationCallOrder[0]).toBeLessThan(mocks.persistFlagDiffSummary.mock.invocationCallOrder[0])
-    expect(mocks.persistFlagDiffSummary.mock.invocationCallOrder[0]).toBeLessThan(mocks.notifyWatchRegression.mock.invocationCallOrder[0])
+    expect(mocks.persistFlagDiffSummary.mock.invocationCallOrder[0]).toBeLessThan(mocks.classifyWatchResult.mock.invocationCallOrder[0])
     mocks.auditUpdateMany.mockClear()
-    mocks.notifyWatchRegression.mockRejectedValueOnce(new Error('classification persistence failed'))
+    mocks.classifyWatchResult.mockRejectedValueOnce(new Error('classification persistence failed'))
     await expect(persistImprovementCycle('broad-watch', 'parent')).rejects.toThrow('classification persistence failed')
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
   })
@@ -164,7 +167,7 @@ describe('persistImprovementCycle', () => {
     mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
     mocks.persistFlagDiffSummary.mockRejectedValueOnce(new Error('Comparison storage unavailable'))
     await expect(persistImprovementCycle('broad-watch', 'parent')).rejects.toThrow('Comparison storage unavailable')
-    expect(mocks.notifyWatchRegression).not.toHaveBeenCalled()
+    expect(mocks.classifyWatchResult).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
   })
 })
@@ -242,6 +245,17 @@ describe('persistAuditFailedModules', () => {
       data: { failedModules: Prisma.JsonNull },
     })
   })
+})
+
+describe('recorded coverage gaps during finalization', () => {
+  beforeEach(() => resetMocks())
+  afterEach(() => vi.restoreAllMocks())
+  it.each([{ name: 'triage', finalize: finalizeTriageAudit }, { name: 'prescription', finalize: finalizeAudit },
+    { name: 'deterministic', finalize: finalizeDeterministicOnly }])('preserves partial completion despite available collectors: $name', async ({ finalize }) => {
+      mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, failedModules: ['performance'] })
+      await finalize(BASE_INPUT)
+      expect(mocks.auditUpdate.mock.calls[0][0].data).toMatchObject({ status: 'COMPLETED', reportCompleteness: 'PARTIAL' })
+    })
 })
 
 describe('finalizeTriageAudit', () => {

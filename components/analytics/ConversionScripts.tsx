@@ -56,6 +56,7 @@ export function ConversionScripts() {
   // Resolve the cookie after hydration so returning visitors never see a stale prompt.
   const [consent, setConsent] = useState<AnalyticsConsent | null>()
   const [showPreferences, setShowPreferences] = useState(false)
+  const preferencesOpener = useRef<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
     if (gaId) (window as unknown as Record<string, unknown>)[`ga-disable-${gaId}`] = privateAdmin
@@ -82,8 +83,13 @@ export function ConversionScripts() {
       }
       setConsent(choice)
       setShowPreferences(false)
+      preferencesOpener.current?.focus({ preventScroll: true })
+      preferencesOpener.current = null
     }
-    const onPreferences = () => setShowPreferences(true)
+    const onPreferences = () => {
+      preferencesOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      setShowPreferences(true)
+    }
     window.addEventListener(ANALYTICS_CONSENT_EVENT, onConsent)
     window.addEventListener(ANALYTICS_PREFERENCES_EVENT, onPreferences)
     return () => {
@@ -95,6 +101,12 @@ export function ConversionScripts() {
   const enabled = !privateAdmin && consent === 'granted'
   const asking = !privateAdmin && (consent === null || showPreferences)
   const notice = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!showPreferences) return
+    const choice = notice.current?.querySelector<HTMLButtonElement>('button')
+    choice?.focus({ preventScroll: true })
+    choice?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
+  }, [showPreferences])
   useFixedBottomNotice(notice, asking, 10)
   useCaptureClickIds(enabled)
 

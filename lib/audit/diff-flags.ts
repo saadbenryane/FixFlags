@@ -18,7 +18,7 @@ import { CHECK_REGISTRY } from './check-registry'
 import { SEARCH_DEFINITIONS } from './search/definitions'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
-import { siteWideAnalysisAuditWhere, siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
+import { siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
 import { FLAG_COMPARISON_TARGET, flagComparisonSchema, readFlagComparison, type FlagDiffSummary } from './flag-comparison'
 
 export type { FlagDiffSummaryItem } from './flag-types'
@@ -188,23 +188,27 @@ async function diagnosticBaseline(input: {
 }): Promise<Flag[]> {
   const spec = readExecutionSpec(input.child.executionSpec)
   if (!spec || !['SITE', 'CATEGORY'].includes(spec.scope) || !input.child.projectId || !input.child.createdAt || input.child.parentId !== input.parentId) return input.parentFlags
-  const historyScope = spec.category ? { OR: [siteWideAnalysisAuditWhere, { AND: [
-    { executionSpec: { path: ['scope'], equals: 'CATEGORY' } },
-    { executionSpec: { path: ['category', 'area'], equals: spec.category.area } },
-  ] }] } : siteWideAnalysisAuditWhere
+  // An incident belongs to its Site, including discoveries from a targeted or
+  // historical analysis. Broad-run eligibility governs report baselines, not
+  // whether a previously verified incident can recur.
+  const historyAudit = {
+    projectId: input.child.projectId, id: { not: input.auditId }, status: 'COMPLETED',
+    createdAt: { lt: input.child.createdAt }, AND: [siteAnalysisAuditWhere,
+      spec.environment === 'production' ? { OR: [
+        { executionSpec: { path: ['environment'], equals: spec.environment } },
+        { executionSpec: { path: ['environment'], equals: Prisma.AnyNull } },
+      ] } : { executionSpec: { path: ['environment'], equals: spec.environment } }],
+  } satisfies Prisma.AuditWhereInput
   const admitted = (flag: Flag) => categoryAdmitsFlag(spec, flag)
   const history = await prisma.improvement.findMany({
     where: { projectId: input.child.projectId, outcomeId: null },
     select: { id: true, occurrences: {
-      where: { audit: { projectId: input.child.projectId, id: { not: input.auditId }, status: 'COMPLETED',
-        createdAt: { lt: input.child.createdAt }, AND: [historyScope,
-          { executionSpec: { path: ['environment'], equals: spec.environment } }] } },
+      where: { audit: historyAudit },
       orderBy: [{ audit: { createdAt: 'desc' } }, { id: 'desc' }], take: 1,
       select: { flag: true },
     }, attempts: {
       where: { OR: [{ outcome: null }, { outcome: 'INCONCLUSIVE' }], createdAt: { lt: input.child.createdAt },
-        sourceAudit: { projectId: input.child.projectId, status: 'COMPLETED', AND: [historyScope,
-          { executionSpec: { path: ['environment'], equals: spec.environment } }] } },
+        sourceAudit: historyAudit },
       select: { sourceAudit: { select: { improvementOccurrences: { select: { improvementId: true, flag: true } } } } },
     } },
   })
@@ -229,11 +233,7 @@ async function diagnosticBaseline(input: {
   // newer occurrence cannot stand in for an older page, device or interaction.
   const unresolved = await prisma.flag.findMany({ where: { status: { in: ['OPEN', 'REGRESSED'] },
     improvementOccurrence: { improvement: { projectId: input.child.projectId, outcomeId: null } },
-    audit: { projectId: input.child.projectId, id: { not: input.auditId }, status: 'COMPLETED',
-      createdAt: { lt: input.child.createdAt }, AND: [siteAnalysisAuditWhere, spec.environment === 'production' ? { OR: [
-        { executionSpec: { path: ['environment'], equals: spec.environment } },
-        { executionSpec: { path: ['environment'], equals: Prisma.AnyNull } },
-      ] } : { executionSpec: { path: ['environment'], equals: spec.environment } }] } } })
+    audit: historyAudit } })
   for (const previous of unresolved) {
     if (!admitted(previous) || ids.has(previous.id) || outcomeFlagOwner(previous.fingerprint) ||
       observationMatchKeys(previous).some(key => currentKeys.has(key))) continue

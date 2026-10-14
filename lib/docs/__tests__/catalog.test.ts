@@ -16,6 +16,7 @@ describe('documentation catalog', () => {
       '/docs/fix-with-ai',
       '/docs/mcp',
       '/docs/integrations',
+      '/docs/integrations/github',
       '/docs/integrations/shopify',
       '/docs/integrations/google-analytics',
       '/docs/integrations/google-search-console',

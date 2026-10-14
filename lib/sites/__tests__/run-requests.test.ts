@@ -60,8 +60,9 @@ vi.mock('@/lib/sites/application/outcome-incidents', () => ({ persistOutcomeAsse
 import { buildExecutionSpec, executionIntentHash } from '@/lib/sites/application/execution-spec'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
 import { consoleContext } from '@/lib/audit/console-evidence'
+import { admittedResponsibilityHash, retryAdmittedRun } from '@/lib/sites/application/run-retry'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
-import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun, retryFailedExecution } from '@/lib/sites/application/run-requests'
+import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 
@@ -109,6 +110,26 @@ describe('RunRequest tenant boundary and idempotency', () => {
     const changed = { ...spec, targetUrl: 'https://shop.example/new', category: { ...spec.category!, sourceAuditId: 'new-full', pages: ['https://shop.example/new'] } }
     expect(executionIntentHash(spec)).toBe(executionIntentHash(changed))
     expect(executionIntentHash(spec)).not.toBe(executionIntentHash({ ...changed, category: { ...changed.category, area: 'security' } }))
+  })
+  it('freezes owned broad monitoring pages while leaving retry intent stable across discovery changes', async () => {
+    mocks.auditFindFirst.mockResolvedValue({ pages: [{ url: 'https://shop.example/old-pricing' }, { url: 'https://foreign.example/' }] })
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: 'https://shop.example/', environment: 'production', scope: 'SITE', outcomes: [] })
+    expect(spec.monitoringPages).toEqual(['https://shop.example/', 'https://shop.example/old-pricing'])
+    expect(mocks.auditFindFirst.mock.calls[0][0].where).toMatchObject({ projectId: 'project-1', url: 'https://shop.example/', status: 'COMPLETED' })
+    expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, monitoringPages: ['https://shop.example/', 'https://shop.example/new'] }))
+    expect(admittedResponsibilityHash(spec)).toBe(admittedResponsibilityHash({ ...spec, monitoringPages: ['https://shop.example/', 'https://shop.example/new'] }))
+    expect(executionIntentHash(spec)).not.toBe(executionIntentHash({ ...spec, targetUrl: 'https://shop.example/new' }))
+    mocks.auditFindFirst.mockResolvedValue({ pages: [{ url: 'https://shop.example/' }], executionSpec: spec })
+    const afterGap = await buildExecutionSpec({ projectId: 'project-1', targetUrl: 'https://shop.example/', environment: 'production', scope: 'SITE', outcomes: [] })
+    expect(afterGap.monitoringPages).toEqual(spec.monitoringPages)
+  })
+  it('keeps responsibility identity stable when admission seals current website access', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: 'https://shop.example/', environment: 'production', scope: 'SITE', outcomes: [] })
+    const sealed = { ...spec, scanAccess: { kind: 'project' as const, origin: 'https://shop.example', projectId: 'project-1', reference: 'grant-1' } }
+    expect(executionIntentHash(sealed)).toBe(executionIntentHash(spec))
+    expect(admittedResponsibilityHash(sealed)).toBe(admittedResponsibilityHash(spec))
+    expect(admittedResponsibilityHash({ ...sealed, targetUrl: 'https://shop.example/other' })).not.toBe(admittedResponsibilityHash(spec))
   })
   it('cannot reuse an unscoped legacy request as a modern category check', async () => {
     mocks.outcomeFindMany.mockResolvedValue([])
@@ -640,22 +661,22 @@ describe('RunRequest tenant boundary and idempotency', () => {
     }))
   })
 
-  it('retries failed broad Site care through a fresh shared run', async () => {
+  it('retries a failed historical Site analysis through shared owner admission', async () => {
     mocks.auditFindUnique.mockResolvedValue({
       id: 'audit-care', url: 'https://shop.example/', userId: 'user-1',
-      projectId: 'project-1', status: 'FAILED',
+      projectId: 'project-1', status: 'FAILED', executionSpec: null,
     })
     mocks.runFindFirst
-      .mockResolvedValueOnce({ id: 'run-care', selections: [], verificationTarget: null })
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
     mocks.outcomeFindMany.mockResolvedValue([])
     mocks.createAudit.mockResolvedValue({ auditId: 'audit-care-retry', reused: false })
 
-    const result = await retryFailedExecution('audit-care')
+    const result = await retryAdmittedRun('audit-care', { kind: 'owner', userId: 'user-1' })
 
-    expect(result).toEqual({ ok: true, auditId: 'audit-care-retry', runId: 'run-1' })
+    expect(result).toMatchObject({ auditId: 'audit-care-retry', runId: 'run-1' })
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
-      runRequestAdmission: expect.objectContaining({ projectId: 'project-1', source: 'INTERNAL', selections: undefined }),
+      runRequestAdmission: expect.objectContaining({ projectId: 'project-1', source: 'WEB', selections: undefined }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
       url: 'https://shop.example/', runRequestId: 'run-1',
@@ -883,6 +904,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
       expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
         where: {
           id: 'run-stale',
+          auditId: null,
           status: { in: ['QUEUED', 'RUNNING'] },
           OR: [{ leaseUntil: null }, { leaseUntil: { lte: expect.any(Date) } }],
         },

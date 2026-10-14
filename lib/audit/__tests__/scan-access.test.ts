@@ -30,11 +30,12 @@ describe('scan-access', () => {
       headers: { 'X-Preview': '1' },
     })
     assert.ok(config)
-    const headers = scanAccessToFetchHeaders(config)
+    const headers = scanAccessToFetchHeaders(config, 'https://example.com')
     assert.ok(headers.Authorization?.startsWith('Basic '))
     assert.equal(headers['X-Preview'], '1')
-    const pw = scanAccessToPlaywrightContext(config)
+    const pw = scanAccessToPlaywrightContext(config, 'https://example.com/preview')
     assert.equal(pw.httpCredentials?.username, 'u')
+    assert.equal(pw.httpCredentials?.origin, 'https://example.com')
   })
 
   it('detects known preview tunnel hosts', () => {

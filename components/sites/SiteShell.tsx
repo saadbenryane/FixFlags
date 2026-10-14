@@ -22,6 +22,8 @@ import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { LazySiteChat } from './LazySiteChat'
 import { SiteMonitoringMenu } from './SiteMonitoringMenu'
 import { nextCheckLabel } from '@/lib/sites/monitoring-schedule'
+import { siteContinuationHref, type SiteViewerActions } from '@/lib/sites/viewer-actions'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
 
@@ -37,7 +39,7 @@ export function SiteShell(props: Parameters<typeof SiteShellContent>[0]) {
 
 function SiteShellContent({
   siteId,
-  ownerId,
+  actions,
   activeRoute,
   title,
   description,
@@ -52,6 +54,7 @@ function SiteShellContent({
 }: {
   siteId: string
   ownerId?: string | null
+  actions: SiteViewerActions
   activeRoute: SiteRoute
   title: string
   description: string
@@ -67,10 +70,10 @@ function SiteShellContent({
 }) {
   const { user } = useMe()
   const signedIn = Boolean(user)
-  const ownsSite = Boolean(user && ownerId && user.id === ownerId)
-  const showSettings = ownsSite || !signedIn
-  const navigationHref = (route: SiteRoute) => route === 'settings' && !signedIn
-    ? `/sign-in?next=${encodeURIComponent(`/sites/${siteId}/settings`)}` as Route
+  const ownsSite = actions.ownership === 'owner'
+  const showSettings = true
+  const navigationHref = (route: SiteRoute) => route === 'settings' && !ownsSite
+    ? siteContinuationHref(actions.monitoring as 'sign_in' | 'claim', `/sites/${siteId}/settings`) as Route
     : routeHref(siteId, route)
   const [navigationOpen, setNavigationOpen] = useState(false)
   const identity = presentation?.identity
@@ -109,7 +112,9 @@ function SiteShellContent({
           {title !== host && description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div>
           <div className={styles.actions}><SiteMonitoringMenu label={watch.label}
             state={watch.state === 'watching' ? 'healthy' : watch.state === 'delayed' || watch.state === 'quota' ? 'attention' : 'unknown'}
-            nextCheck={() => nextCheckLabel(watch.nextRunAt, Date.now())} manageHref={ownsSite ? `/sites/${siteId}/settings#watch` as Route : undefined} />{headerAction}</div>
+            nextCheck={() => nextCheckLabel(watch.nextRunAt, Date.now())}
+            manageLabel={ownsSite ? undefined : SITE_ACTION_COPY.access.monitoring}
+            manageHref={ownsSite ? `/sites/${siteId}/settings#watch` as Route : siteContinuationHref(actions.monitoring as 'sign_in' | 'claim', `/sites/${siteId}/settings#watch`) as Route} />{headerAction}</div>
         </header>
         {statusMessage ? <p role="status" className="text-sm">{statusMessage}</p> : null}
         {children}

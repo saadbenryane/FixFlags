@@ -1,3 +1,4 @@
+import { type RenderedSearchSnapshot } from './rendered-snapshot'
 import * as cheerio from 'cheerio'
 import { XMLParser, XMLValidator } from 'fast-xml-parser'
 import { safeFetchDocument } from '../url'
@@ -82,7 +83,7 @@ export async function collectSiteResources(origin: string, deadline: number, col
 
 export async function collectSearchEvidence(input: {
   auditId: string; pageUrl: string; original?: PublicDocument;
-  renderedHtml: string | null; renderedComplete?: boolean; renderedCollectedAt?: string;
+  collectorVersion?: 1 | 2; renderedHtml: string | null; renderedSearchSnapshot?: RenderedSearchSnapshot; renderedComplete?: boolean; renderedCollectedAt?: string;
   headers?: Record<string, string> | null; finalUrl?: string; status?: number | null;
   deadline: number; cache: SearchResourceCache; privateCapture?: boolean; collectCanonicalTargets?: boolean;
 }): Promise<SearchPageEvidence> {
@@ -93,6 +94,7 @@ export async function collectSearchEvidence(input: {
   const rendered: PublicDocument = input.privateCapture ? empty : {
     url: input.pageUrl, finalUrl: input.finalUrl ?? input.pageUrl, status: input.status ?? null,
     headers: input.headers ?? {}, body: input.renderedHtml,
+    searchSnapshot: input.renderedSearchSnapshot,
     complete: Boolean(input.renderedHtml) && input.renderedComplete !== false && Buffer.byteLength(input.renderedHtml ?? '') <= SEARCH_DOCUMENT_LIMIT,
     reason: input.renderedHtml ? input.renderedComplete === false || Buffer.byteLength(input.renderedHtml) > SEARCH_DOCUMENT_LIMIT ? 'document_truncated' : null : 'capture_unavailable',
     collectedAt: input.renderedCollectedAt ?? collectedAt, redirects: original.redirects,
@@ -103,8 +105,10 @@ export async function collectSearchEvidence(input: {
   const site = await input.cache.get(origin)!
   const canonicalUrls = new Set<string>()
   for (const document of input.collectCanonicalTargets === false ? [] : [original, rendered]) {
-    if (!document.complete || !document.body) continue
-    const $ = cheerio.load(document.body)
+    const section = document.searchSnapshot?.sections.canonical
+    const body = section ? section.complete ? section.html : null : document.complete ? document.body : null
+    if (body == null) continue
+    const $ = cheerio.load(body)
     $('link[rel]').each((_, node) => {
       if (!($(node).attr('rel') ?? '').toLowerCase().split(/\s+/).includes('canonical')) return
       try { canonicalUrls.add(new URL($(node).attr('href') ?? '', document.finalUrl).toString()) } catch { /* Evaluator records invalid declarations. */ }
@@ -119,7 +123,7 @@ export async function collectSearchEvidence(input: {
     else if (url === original.finalUrl && original.complete) canonicalTargets.push(original)
     else canonicalTargets.push(await collectDocument(url, input.deadline))
   }
-  return { auditId: input.auditId, pageUrl: input.pageUrl, collectedAt, public: !input.privateCapture,
+  return { auditId: input.auditId, pageUrl: input.pageUrl, collectedAt, public: !input.privateCapture, collectorVersion: input.collectorVersion ?? (input.renderedSearchSnapshot ? 2 : 1),
     original, rendered, robots: site.robots, sitemaps: site.sitemaps, sitemapUrls: site.sitemapUrls,
     sitemapsComplete: site.complete, declaredSitemaps: site.declaredSitemaps, canonicalTargets }
 }

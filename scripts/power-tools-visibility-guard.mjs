@@ -5,12 +5,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const PARKED_PUBLIC_PREFIXES = [
-  '/api/integrations/github',
+  '/api/integrations/github/repos',
+  '/api/integrations/github/select',
   '/api/repo-scans',
   '/dashboard/mcp-analytics',
   '/help/mcp-and-editors',
   '/report/repo',
-  '/settings/integrations',
 ]
 
 /**
@@ -68,7 +68,7 @@ function discoveryFiles(root) {
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false
     // A parked page is not expected to avoid linking to itself. Everything else is.
-    if (/(?:dashboard[\\/]mcp-|settings[\\/]integrations|docs[\\/](?:cli|mcp)|help[\\/]mcp)/.test(file)) return false
+    if (/(?:dashboard[\\/]mcp-|docs[\\/](?:cli|mcp)|help[\\/]mcp)/.test(file)) return false
     if (file === path.join(root, 'content/docs/mcp.md')) return false
     if (/(?:lib[\\/]help[\\/]catalog)\.tsx?$/.test(file)) return false
     return !/(?:copy[\\/]auth|copy[\\/]brand|copy[\\/]tools)\.ts$/.test(file)

@@ -3,6 +3,7 @@ import { describe, it, vi, expect, beforeEach, type Mock } from 'vitest'
 const { prismaMock, captureMock, slowReplayMock } = vi.hoisted(() => ({
   prismaMock: {
     audit: { findUnique: vi.fn(), update: vi.fn() },
+    auditVerifierExecution: { upsert: vi.fn() },
     auditPage: {
       create: vi.fn(),
       update: vi.fn(),
@@ -109,6 +110,7 @@ vi.mock('@/lib/audit/metadata', () => ({
 }))
 
 import { runPage } from '@/lib/audit/pipeline/run-page'
+import { runAllChecks } from '@/lib/audit/checks'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { recordTargetedPageVerifierExecutions } from '@/lib/improvements/verifier-provenance'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
@@ -174,12 +176,24 @@ describe('runPage production capture path', () => {
       primary: true,
     })
 
-    expect(slowReplayMock).toHaveBeenCalledWith(expect.anything(), 'audit-1', 'https://example.com/')
+    expect(slowReplayMock).toHaveBeenCalledWith(expect.anything(), 'audit-1', 'https://example.com/',
+      { deadline: ctx.deadline, scanAccess: ctx.scanAccess, pageKey: 'p0' })
     expect(runSlowReplayChecks).toHaveBeenCalled()
     expect(result.flags.some((flag) => flag.checkId === 'slow-3g-blank-screen')).toBe(true)
     expect((ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'slow_replay_completed')).toBe(
       true
     )
+  })
+
+  it('retains incomplete module coverage in the page summary without labelling it a crashed verifier', async () => {
+    vi.mocked(runAllChecks).mockResolvedValueOnce({ flags: [], failedModules: [], executions: [{ module: 'performance',
+      passed: false, applicable: true, complete: false, assertions: [{ key: 'cls', name: 'Layout shift',
+        expected: 'A measured CLS is available', observed: 'No CLS measurement was returned', passed: false, complete: false }] }] })
+    const result = await runPage(pipelineContext(), { url: 'https://example.com/', position: 0, role: 'primary', primary: true })
+    expect(result.failedModules).toEqual(['performance'])
+    expect(prismaMock.auditPage.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'COMPLETED', completeness: 'PARTIAL' } }))
+    expect(recordTargetedPageVerifierExecutions).toHaveBeenCalledWith(expect.objectContaining({ failedModules: [] }))
+    expect(result.flags.some(flag => flag.checkId === 'slow-3g-blank-screen')).toBe(true)
   })
 
   it('defers the flow walk: capture runs without flow, flow runs after checks when budget allows', async () => {

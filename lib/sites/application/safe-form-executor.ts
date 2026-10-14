@@ -174,6 +174,13 @@ export async function executeSafeFormFixture(input: {
   if (!mapping.success || !success.success || !Object.keys(mapping.data.fields).length || Object.keys(mapping.data.fields).some((key) => values[key] == null)) {
     return { disposition: 'BLOCKED', reason: 'fixture_configuration_invalid', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
+  const fixturePermission = async (tx: Prisma.TransactionClient) => {
+    const current = await tx.outcomeFixture.findFirst({ where: {
+      id: fixture.id, projectId: input.projectId, version: fixture.version, enabled: true,
+      ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: fixture.version }),
+    }, select: { authorizedAt: true, lastDryRunVersion: true } })
+    return current && (input.requireAuthorization !== false || await setupConsent(input.projectId, fixture.id, fixture.version, tx)) ? current : null
+  }
   const owner = currentExecutionOwnership()
   if (owner) {
     const current = await executionWrite(tx => tx.outcomeFixture.findFirst({ where: {
@@ -184,13 +191,7 @@ export async function executeSafeFormFixture(input: {
       return { disposition: 'BLOCKED', reason: 'protected_effect_unresolved', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
   if (!await callHook(resetUrl, hookSecret, fixture.id, { beforeRequest: async () => {
-    return executionTransaction(async tx => {
-      const current = await tx.outcomeFixture.findFirst({ where: {
-        id: fixture.id, projectId: input.projectId, version: fixture.version, enabled: true,
-        ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: fixture.version }),
-      } })
-      return Boolean(current) && (input.requireAuthorization !== false || await setupConsent(input.projectId, fixture.id, fixture.version, tx))
-    })
+    return Boolean(await executionTransaction(fixturePermission))
   } })) {
     return { disposition: 'BLOCKED', reason: 'fixture_reset_unproven', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
@@ -203,20 +204,22 @@ export async function executeSafeFormFixture(input: {
   const deadline = Math.min(input.deadline ?? Infinity, Date.now() + 45_000)
   let requestRefused = false
   let submissionAdmitted = false
+  let submissionEnabled = false
   let successObservation: SafeFormExecutionResult['detail']['successObservation']
   try {
     const browser = await getBrowser()
     session = await createAuditPage(browser, target.url, {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: input.allowLocalhost,
       deadline,
-      configurePage: async page => {
-        await page.route('**', async route => {
-          const request = route.request()
-          if (!safeFormRequestAllowed({ url: request.url(), method: request.method(), navigation: request.isNavigationRequest(), origin, values: Object.values(values) })) {
-            requestRefused = true
-            await route.abort('blockedbyclient')
-          } else await route.fallback() // Retain the existing SSRF/public-target guard.
-        })
+      requestPolicy: async request => {
+        if (!safeFormRequestAllowed({ ...request, origin, values: Object.values(values) })) {
+          requestRefused = true; return false
+        }
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+          (!submissionEnabled || !await executionTransaction(fixturePermission))) {
+          requestRefused = true; return false
+        }
+        return true
       },
     })
     for (const [key, target] of Object.entries(mapping.data.fields)) {
@@ -233,11 +236,7 @@ export async function executeSafeFormFixture(input: {
       reason = 'success_criterion_preexisting'
     } else {
       const current = await executionTransaction(async tx => {
-        const authorized = await tx.outcomeFixture.findFirst({
-          where: { id: fixture.id, projectId: input.projectId, enabled: true, version: fixture.version },
-          select: { authorizedAt: true, lastDryRunVersion: true },
-        })
-        if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version, tx)) return null
+        const authorized = await fixturePermission(tx)
         if (authorized && (input.requireAuthorization === false || authorized.authorizedAt && authorized.lastDryRunVersion === fixture.version) && owner && operationId) {
           await tx.auditPipelineEvent.create({ data: { auditId: owner.auditId, executionId: operationId, traceId: owner.auditId,
             attempt: owner.generation, stage: 'checking', event: 'protected_submission_admitted', status: 'started',
@@ -250,6 +249,7 @@ export async function executeSafeFormFixture(input: {
         reason = 'fixture_not_authorized'
       } else {
         if (Date.now() >= deadline) throw new Error('Fixture execution deadline exhausted')
+        submissionEnabled = true
         await targetLocator(session.page, mapping.data.submit).first().click({ timeout: Math.max(1, Math.min(8000, deadline - Date.now())) })
         const observedOrigin = new URL(session.page.url()).origin
         if (observedOrigin !== origin) {

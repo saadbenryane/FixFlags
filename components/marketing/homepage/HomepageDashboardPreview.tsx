@@ -36,7 +36,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [schedule, setSchedule] = useState<MonitoringSchedule>({ every: 1, unit: 'days' })
   const [paused, setPaused] = useState(false)
-  const [shop, setShop] = useState<string>(P.shop)
+  const shop = P.shop
   const [shopConnected, setShopConnected] = useState(true)
   const [connections, setConnections] = useState(SAMPLE_GOOGLE_CONNECTIONS)
   const [accountChecks, setAccountChecks] = useState<AccountChecksView>(SAMPLE_ACCOUNT_CHECKS)
@@ -65,6 +65,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
   }
 
   return <div className={s.board} role="region" aria-label={C.boardAria}>
+    <p className={s.sampleLabel}>{S.sampleLabel}</p>
     <div className={s.browserBar} aria-hidden><span /><span /><span /></div>
     <aside className={s.boardSidebar}>
       <div className={s.boardBrand}><span className={s.boardBrandLockup}><Logo size="sm" /></span><span className={s.boardBrandMark}><Logo variant="mark" size="sm" /></span></div>
@@ -92,14 +93,14 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
       </> : null}
       {view === 'timeline' ? <section className={s.boardPane} aria-label={S.navigation.timeline}><p className={s.paneDescription}>{M.historyBody}</p><SiteMonitoringHistory points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} /></section> : null}
       {view === 'integrations' ? <section className={s.boardPane} aria-label={S.navigation.integrations}><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>
-        <SiteIntegrationsPanel shopify={{ configured: true, state: shopConnected ? 'connected' : 'not_connected', domain: shopConnected ? shop : null }} shop={shop} searchConsole={connections.SEARCH_CONSOLE} analytics={connections.ANALYTICS}
-          onShopChange={setShop} onConnectShopify={() => { setShopConnected(true); setIntegrationMessage(P.connected('Shopify')) }} onDisconnectShopify={() => { setShopConnected(false); setIntegrationMessage(P.disconnected('Shopify')) }}
-          onConnectGoogle={provider => updateConnection(provider, true)} onDisconnectGoogle={provider => updateConnection(provider, false)} onRefreshGoogle={() => setIntegrationMessage(P.refreshed)}
+        <SiteIntegrationsPanel shopify={{ configured: true, state: shopConnected ? 'connected' : 'not_connected', domain: shopConnected ? shop : null }} searchConsole={connections.SEARCH_CONSOLE} analytics={connections.ANALYTICS}
+          onDisconnectShopify={() => { setShopConnected(false); setIntegrationMessage(P.disconnected('Shopify')) }}
+          onDisconnectGoogle={provider => updateConnection(provider, false)}
           feedback={integrationMessage ? <p role="status" className={s.sampleNotice}>{integrationMessage}</p> : null} />
       </section> : null}
       {view === 'settings' ? <section className={s.boardPane} aria-label={S.navigation.settings}><p className={s.paneDescription}>{Settings.description}</p><p className={s.sampleNotice}>{P.sample}</p>
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          <SiteMonitoringSettingsPanel label={scheduleLabel(schedule)} paused={paused} scheduled={Boolean(schedule)} nextCheck={nextCheckLabel(nextRunAt, 0)} lastCheck={formatEvidenceTimestamp(P.checkedAt)} onEdit={() => setScheduleOpen(true)} onPause={setPaused} />
+          <SiteMonitoringSettingsPanel target={`https://${C.boardLabel}/`} label={scheduleLabel(schedule)} paused={paused} scheduled={Boolean(schedule)} nextCheck={nextCheckLabel(nextRunAt, 0)} lastCheck={formatEvidenceTimestamp(P.checkedAt)} onEdit={() => setScheduleOpen(true)} onPause={setPaused} />
           <SiteNotificationSettingsPanel level={notifications} recovery={recovery} onChange={(level, nextRecovery) => { setNotifications(level); setRecovery(nextRecovery) }} />
           <SiteAccountChecksPanel initial={accountChecks} enabled={accountChecks.enabled} onToggle={enabled => setAccountChecks(current => ({ ...current, enabled }))} onRequest={requestAccountCheck} feedback={accountMessage ? <p role="status" className={s.sampleNotice}>{accountMessage}</p> : null} />
           <SiteRemovalSettingsPanel />

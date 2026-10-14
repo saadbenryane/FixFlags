@@ -40,6 +40,13 @@ describe('attention judgment', () => {
 })
 
 describe('customer Flag projector', () => {
+  it.each(['h1-generic', 'no-cta-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
+    expect(isCustomerFlag({ checkId, severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
+  })
+  it('retains historical missing-attribute findings as Recommendations without certifying behavioral failure', () => {
+    expect(isCustomerFlag({ checkId: 'form-missing-validation', severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
+  })
+
   it('treats journey-critical findings as Flags even when severity is POLISH', () => {
     expect(
       isCustomerFlag({

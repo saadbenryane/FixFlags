@@ -5,17 +5,17 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 /** Called under the owning Project lock. Completed facts remain immutable;
  * unfinished admissions settle with uncertainty and lose their write leases. */
-export async function cancelSiteExecutions(tx: Prisma.TransactionClient, projectId: string, now: Date, interruption?: { code: string; message: string }) {
+export async function cancelSiteExecutions(tx: Prisma.TransactionClient, projectId: string, now: Date, interruption?: { code: string; message: string }, scope?: { auditIds: readonly string[]; stage?: string }) {
   const errorCode = interruption?.code ?? 'SITE_REMOVED', errorMessage = interruption?.message ?? SITE_ACTION_COPY.removedDuringCheck
-  const runs = await tx.runRequest.findMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] } },
+  const runs = await tx.runRequest.findMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] }, ...(scope ? { auditId: { in: [...scope.auditIds] } } : {}) },
     select: { id: true, auditId: true, environment: true, executionSpec: true, selections: { select: { outcomeId: true } } } })
-  const audits = await tx.audit.findMany({ where: { projectId, status: { notIn: ['COMPLETED', 'FAILED'] } }, select: { id: true } })
+  const audits = await tx.audit.findMany({ where: { projectId, status: { notIn: ['COMPLETED', 'FAILED'] }, ...(scope ? { id: { in: [...scope.auditIds] } } : {}) }, select: { id: true } })
   const auditIds = [...new Set([...audits.map(audit => audit.id), ...runs.flatMap(run => run.auditId ?? [])])]
   if (auditIds.length) {
     await tx.audit.updateMany({ where: { id: { in: auditIds }, projectId },
       data: { executionToken: null, executionLeaseUntil: null, executionGeneration: { increment: 1 } } })
     await tx.audit.updateMany({ where: { id: { in: auditIds }, projectId, status: { notIn: ['COMPLETED', 'FAILED'] } },
-      data: { status: 'FAILED', completedAt: now, failureCode: errorCode, failureStage: 'site-removal', errorMsg: errorMessage } })
+      data: { status: 'FAILED', completedAt: now, failureCode: errorCode, failureStage: scope?.stage ?? 'site-removal', errorMsg: errorMessage } })
     await tx.auditVerifierExecution.updateMany({ where: { auditId: { in: auditIds }, workState: { in: ['WAITING', 'READY', 'RUNNING', 'RETRY_WAIT'] } },
       data: { workState: 'BLOCKED', status: 'FAILED', workToken: null, workLeaseUntil: null, workGeneration: { increment: 1 },
         workDispatchLeaseUntil: null, workRetryAt: null, workErrorCode: errorCode } })
@@ -36,6 +36,6 @@ export async function cancelSiteExecutions(tx: Prisma.TransactionClient, project
           requiredBindings: spec?.outcomes.find(outcome => outcome.id === selection.outcomeId)?.bindings.filter(binding => binding.required).map(binding => binding.key) ?? [], observedBindings: [] } },
     })
   }
-  await tx.runRequest.updateMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] } },
+  await tx.runRequest.updateMany({ where: { projectId, status: { in: [...ACTIVE_RUN_STATUSES] }, ...(scope ? { id: { in: runs.map(run => run.id) } } : {}) },
     data: { status: 'FAILED', errorCode, errorMessage, completedAt: now, leaseUntil: null } })
 }

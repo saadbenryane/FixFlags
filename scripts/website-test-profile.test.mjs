@@ -9,7 +9,8 @@ it('website test discovery retains all website suites and parks only machine and
     encoding: 'utf8', env: { ...process.env, FIXFLAGS_TEST_PROFILE: profile },
   })).map(entry => path.relative(root, entry.file).replaceAll(path.sep, '/')).sort()
   const parked = file => ['lib/mcp/', 'lib/repo-scan/', 'app/api/mcp/', 'app/api/api-keys/',
-    'app/api/integrations/github/', 'app/api/repo-scans/', 'app/api/webhooks/railway/'].some(prefix => file.startsWith(prefix))
+    'app/api/integrations/github/repos/', 'app/api/integrations/github/select/',
+    'app/api/repo-scans/', 'app/api/webhooks/railway/'].some(prefix => file.startsWith(prefix))
   const complete = files('all'), website = files('website')
   assert.ok(complete.some(parked), 'the preserved power-tool suites remain discoverable')
   assert.deepEqual(website, complete.filter(file => !parked(file)))

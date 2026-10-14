@@ -25,7 +25,7 @@ function boundaryFor(file) {
     file === 'app/api/mcp/route.ts' ||
     file.startsWith('app/api/api-keys/') ||
     file.startsWith('app/api/cli/') ||
-    file.startsWith('app/api/integrations/github/') ||
+    (file.startsWith('app/api/integrations/github/') && !/\/(connect|callback|disconnect)\/route\.ts$/.test(file)) ||
     file.startsWith('app/api/integrations/gsc/') ||
     file.startsWith('app/api/repo-scans/') ||
     file === 'app/api/stripe/credit-pack/route.ts' ||

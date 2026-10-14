@@ -25,6 +25,7 @@ import { loadUptimeEvents,loadUptimeSummary } from '@/lib/uptime/queries'
 import { loadAccountChecksView } from '../accounts/store'
 import { projectHomePresentation } from '../home-presentation'
 import type { SiteHomeView } from '../site-home'
+import { loadPerformanceEvidence } from './performance-evidence'
 import { loadSiteCaptures, loadSiteCheckedPages } from './captures'
 import { applyCardEvidence } from './card-evidence'
 import { applicableCategoryEvidence,loadCategoryEvidence,overlayCategoryCoverage } from './category-evidence'
@@ -32,6 +33,8 @@ import { loadExecutionProgress } from './execution-progress'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import { loadMonitoringHistory } from './monitoring-history'
 import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
+import { siteScopeCounts } from '../scope-counts'
+import { siteViewerActions } from '../viewer-actions'
 
 export type { BoardCardView }
 
@@ -85,7 +88,7 @@ async function countSitePages(site: SiteRecord): Promise<number> {
   return 0
 }
 
-export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean } = {}): Promise<SiteHomeView | null> {
+export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean; viewerAuthenticated?: boolean } = {}): Promise<SiteHomeView | null> {
   const site = await loadSiteRecord(siteId)
   if (!site) return null
   const now = new Date()
@@ -188,11 +191,9 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     siteId, site, cards, flags, health, coverage, checkedPages, capture, audit, prior, finished, now,
   })
 
-  // Delivery is read from the most recent Watch alert rather than from the
-  // Project, because delivery is a property of one alert and not of the
-  // schedule. An older undelivered alert stays visible until a later alert is
-  // actually delivered, so a customer is never told they were warned about a
-  // change nobody reached them about.
+  // Delivery belongs to the most recent Watch alert, independently of the
+  // monitoring schedule. Retrying an older receipt cannot make its incident
+  // newest or hide a later delivery failure.
   //
   // Guarded on a resolved projectId, like every other tenant-scoped read here. A
   // provisional Site has none, and querying with projectId: null would match
@@ -200,7 +201,8 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const latestAlert = site.projectId
     ? await prisma.audit.findFirst({
       where: { projectId: site.projectId, recheckTrigger: 'WATCH', watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
-      orderBy: { updatedAt: 'desc' },
+      // Delivery retries change updatedAt, not the incident's chronology.
+      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'desc' }],
       select: {
         watchNotificationStatus: true,
         watchNotificationAttempts: true,
@@ -217,14 +219,24 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     leaseUntil: latestAlert?.watchNotificationLeaseUntil ?? null,
   })
 
+  const executionProgress = await loadExecutionProgress(site, audit?.id ?? null)
+  // A completed partial report starts a new check through the existing retry
+  // action. Task-level configuration limits describe the saved run, not a live
+  // execution that still owns its recovery. Keep this aligned with Site summaries.
+  if (audit?.status !== 'COMPLETED' && presentation.run.recoveryAction === 'retry' &&
+      executionProgress?.recovery && executionProgress.recovery.action !== 'retry')
+    presentation.run.recoveryAction = 'view_details'
+
   return {
     schemaVersion: 2,
+    actions: siteViewerActions(Boolean(options.ownerEvidence && site.projectId), options.viewerAuthenticated),
+    counts: siteScopeCounts(flags, checkedPages, pageCount),
     captures, uptime,
     uptimeEvents: uptimeEvents?.map(event => ({ ...event, startedAt: event.startedAt.toISOString(), confirmedAt: event.confirmedAt.toISOString(), recoveredAt: event.recoveredAt?.toISOString() ?? null, supersededAt: event.supersededAt?.toISOString() ?? null })),
     inventoryPageCount: pageCount,
     activeRuns,
     site,
-    executionProgress: await loadExecutionProgress(site, audit?.id ?? null),
+    executionProgress,
     activity: projectSiteActivity({ status: audit?.status ?? null, startedAt: audit?.startedAt ?? null, failureCode: audit?.failureCode ?? null,
       pages: checkedPages, events: [...(audit?.pipelineEvents ?? [])].reverse() }),
     checkedPages: checkedPages.map((page) => ({ ...page, checkedAt: page.updatedAt.toISOString() })),
@@ -304,6 +316,8 @@ export async function loadSiteBoardFlag(siteId: string, flagId: string) {
   if (!site) return null
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) return null
+  if (flag.area === 'performance' && flag.evidenceContext?.source === 'DETERMINISTIC' && flag.pageUrl)
+    flag.performanceEvidence = await loadPerformanceEvidence(site, flag.sourceAuditId, flag.pageUrl)
   const finding = await prisma.journeyFinding.findFirst({
     where: {
       flagId: flag.sourceFlagId ?? flag.id,

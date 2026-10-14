@@ -6,8 +6,10 @@ import { verifyShopifyOAuthHmac } from '@/lib/shopify/hmac'
 import { persistInstalledShop } from '@/lib/shopify/install-shop'
 import { exchangeShopifyCode, readShopifyInstallState } from '@/lib/shopify/oauth'
 import { consumeShopifyAccountLink } from '@/lib/shopify/account-link'
+import { integrationRelease } from '@/lib/integrations/release-policy'
 
 export async function GET(request: NextRequest) {
+  if (integrationRelease('shopify') !== 'available') return NextResponse.redirect(new URL('/integrations/connect/shopify', getAppUrl()))
   if (!isShopifyConfigured()) {
     return NextResponse.redirect(new URL('/docs/integrations/shopify?error=not_configured', getAppUrl()))
   }

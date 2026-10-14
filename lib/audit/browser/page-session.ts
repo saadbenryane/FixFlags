@@ -4,7 +4,8 @@ import { SEARCH_DOCUMENT_LIMIT, missingDocument } from '../search/collect'
 import { assertPublicAuditUrl } from '../url'
 import { browserCapacity } from '../progressive/capacity'
 import type { ScanAccessConfig } from '../scan-access'
-import { applyScanAccessCookies, scanAccessToPlaywrightContext } from '../scan-access'
+import { applyScanAccessCookies, scanAccessToFetchHeaders, scanAccessToPlaywrightContext } from '../scan-access'
+import { installRequestBoundary, type BrowserRequestPolicy } from './request-boundary'
 import type { CaptureProfile } from './capture-profile'
 import {
   applyJourneyRouteGuards,
@@ -23,6 +24,7 @@ import { actionableConsoleErrors } from '../console-evidence'
 import type { ConsoleMessage as RecordedConsoleMessage } from '../console-evidence'
 import { createHmac, randomUUID } from 'node:crypto'
 import { classifyTrackingEndpoint } from '../tracking/endpoints'
+import { bindAuditPageObservation } from './observation-scope'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -69,6 +71,8 @@ export interface CreateAuditPageOptions {
   allowLocalhost?: boolean
   /** Set false when the caller needs the first post-DOMContentLoaded paint. */
   settle?: boolean
+  /** Account inspection needs the rendered error response to assess an already known identity. */
+  retainErrorDocument?: boolean
   /** Extra journey guards: block payments, downloads, and unauthorized mutations. */
   journeySafe?: boolean
   /** Local UI activation may not bypass routing through workers or sockets. */
@@ -92,6 +96,10 @@ export interface CreateAuditPageOptions {
   deadline?: number
   collectSearchEvidence?: boolean
   configurePage?: (page: Page) => Promise<void>
+  /** Privileged caller authority is checked once per physical request, including redirects. */
+  requestPolicy?: BrowserRequestPolicy
+  /** Start bounded visitor observations on the same clock as navigation. */
+  onNavigationStart?: (page: Page, startedAt: number) => void
 }
 
 async function originalNavigationDocument(response: Response | null, targetUrl: string, deadline?: number): Promise<PublicDocument> {
@@ -129,7 +137,7 @@ export async function createAuditPage(
   options: CreateAuditPageOptions
 ): Promise<AuditPageSession> {
   const consoleErrors = options.consoleErrors ?? []
-  const playwrightAccess = scanAccessToPlaywrightContext(options.scanAccess)
+  const playwrightAccess = scanAccessToPlaywrightContext(options.scanAccess, targetUrl)
 
   const release = await browserCapacity.acquire(options.deadline ? AbortSignal.timeout(Math.max(1, options.deadline - Date.now())) : undefined,
     options.resourcePriority === 'availability' ? 1 : 0)
@@ -139,6 +147,7 @@ export async function createAuditPage(
     userAgent: options.profile.userAgent,
     deviceScaleFactor: options.profile.deviceScaleFactor ?? 1,
     isMobile: options.profile.isMobile ?? false,
+    hasTouch: options.profile.hasTouch ?? false,
     locale: 'en-US',
     bypassCSP: false,
     serviceWorkers: 'block',
@@ -228,6 +237,7 @@ export async function createAuditPage(
 
   const guardRequest = async (route: import('playwright').Route) => {
     const requestUrl = route.request().url()
+    const fallback = () => route.fallback()
     // Observe the browser's own attempts without replaying or manufacturing
     // events. These refusals do not make an unrelated customer action fail.
     if (classifyTrackingEndpoint(requestUrl, route.request().resourceType(), targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(route.request().method())) {
@@ -248,19 +258,19 @@ export async function createAuditPage(
     }
     if (options.allowLocalhost && isLocalhostAuditUrl(requestUrl)) {
       if (journeyGuards) {
-        await applyJourneyRouteGuards(route, () => route.fallback(), routeGuards)
+        await applyJourneyRouteGuards(route, fallback, routeGuards)
         return
       }
-      await route.fallback()
+      await fallback()
       return
     }
     try {
       await assertPublicAuditUrl(requestUrl)
       if (journeyGuards) {
-        await applyJourneyRouteGuards(route, () => route.fallback(), routeGuards)
+        await applyJourneyRouteGuards(route, fallback, routeGuards)
         return
       }
-      await route.fallback()
+      await fallback()
     } catch {
       await route.abort('blockedbyclient')
     }
@@ -272,6 +282,17 @@ export async function createAuditPage(
     await guardRequest(route)
   })
   await page.route('**', guardRequest)
+  const credentialOrigin = options.scanAccess?.origin ?? targetUrl
+  const configuredHeaders = scanAccessToFetchHeaders(options.scanAccess ? { headers: options.scanAccess.headers, origin: options.scanAccess.origin } : null, credentialOrigin)
+  await installRequestBoundary(page, credentialOrigin, configuredHeaders, guardRequest, options.requestPolicy
+    ? async request => {
+      // The shared guard suppresses recognized telemetry before it is sent.
+      // It cannot consume a caller's one mutation or invalidate read-only inspection.
+      if (classifyTrackingEndpoint(request.url, request.resourceType, targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(request.method)) return true
+      const admitted = await options.requestPolicy!(request)
+      if (!admitted) refusedUrls.add(request.url)
+      return admitted
+    } : undefined)
 
   let consoleTruncated = false
   let consoleLoadedAt: number | null = null, lastConsoleErrorAt: number | null = null
@@ -301,6 +322,8 @@ export async function createAuditPage(
     ? Math.max(1, Math.min(PAGE_TIMEOUT_MS, options.deadline - Date.now()))
     : PAGE_TIMEOUT_MS
   const navigationStartedAt = Date.now()
+  bindAuditPageObservation(page, targetUrl, options.profile, options.scanAccess, safetyRestrictions, options.storageState)
+  options.onNavigationStart?.(page, navigationStartedAt)
   const response = await page.goto(targetUrl, {
     waitUntil: 'domcontentloaded',
     timeout: navigationTimeout,
@@ -327,7 +350,7 @@ export async function createAuditPage(
     const contentTypeOk =
       contentType.includes('text/html') || contentType.includes('application/xhtml+xml')
 
-    if (!statusOk || (!contentTypeOk && !hasHtmlDocument)) {
+    if ((!statusOk && !(options.retainErrorDocument && httpStatus >= 400 && (contentTypeOk || hasHtmlDocument))) || (!contentTypeOk && !hasHtmlDocument)) {
       network.dispose()
       throw new PageCaptureError('Destination did not return a successful HTML document', {
         code:

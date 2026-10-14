@@ -96,11 +96,11 @@ describe('regression: broken-page.html', () => {
       { checkId: 'og-description-missing', severity: 'POLISH' },
       { checkId: 'lang-missing', severity: 'POLISH' },
       { checkId: 'favicon-missing', severity: 'POLISH' },
-      { checkId: 'h1-generic', severity: 'IMPORTANT' },
-      { checkId: 'no-cta-detected', severity: 'IMPORTANT' },
+      { checkId: 'h1-generic', severity: 'POLISH' },
+      { checkId: 'no-cta-detected', severity: 'POLISH' },
       // heading-hierarchy-missing is intentionally suppressed on sparse DOM samples
       // (this fixture is a short shell) to avoid false "no H2" claims.
-      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
+      { checkId: 'form-missing-validation', severity: 'POLISH' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'no-contact-info', severity: 'POLISH' },
       { checkId: 'images-missing-alt', severity: 'IMPORTANT' },
@@ -138,7 +138,7 @@ describe('regression: html5up-paradigm-shift.html', () => {
       { checkId: 'description-missing', severity: 'IMPORTANT' },
       { checkId: 'lang-missing', severity: 'POLISH' },
       { checkId: 'canonical-missing', severity: 'POLISH' },
-      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
+      { checkId: 'form-missing-validation', severity: 'POLISH' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
       { checkId: 'form-inputs-no-label', severity: 'POLISH' },
@@ -221,7 +221,7 @@ describe('regression: blog-samaltman-com.html', () => {
     [
       { checkId: 'canonical-missing', severity: 'POLISH' },
       { checkId: 'description-too-short', severity: 'POLISH' },
-      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
+      { checkId: 'form-missing-validation', severity: 'POLISH' },
       { checkId: 'form-inputs-no-label', severity: 'POLISH' },
       { checkId: 'images-missing-alt', severity: 'IMPORTANT' },
       { checkId: 'lang-missing', severity: 'POLISH' },

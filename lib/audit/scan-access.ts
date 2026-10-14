@@ -22,7 +22,7 @@ export const scanAccessInputSchema = z.object({
   label: z.string().max(200).optional(),
 })
 
-export type ScanAccessConfig = z.infer<typeof scanAccessInputSchema>
+export type ScanAccessConfig = z.infer<typeof scanAccessInputSchema> & { /** Server-bound credential origin, never accepted from client input. */ origin?: string }
 
 const PREVIEW_TUNNEL_SUFFIXES = [
   '.ngrok.io',
@@ -59,6 +59,9 @@ export function decryptScanAccess(payload: string | null | undefined): ScanAcces
   if (!payload) return null
   try {
     const raw = JSON.parse(decryptSecret(payload)) as unknown
+    if (raw && typeof raw === 'object' && 'version' in raw && raw.version === 2) {
+      return 'kind' in raw && raw.kind === 'scan-access-grant' && 'config' in raw ? parseScanAccessInput(raw.config) : null
+    }
     return parseScanAccessInput(raw)
   } catch {
     return null
@@ -66,9 +69,10 @@ export function decryptScanAccess(payload: string | null | undefined): ScanAcces
 }
 
 export function scanAccessToFetchHeaders(
-  config: ScanAccessConfig | null | undefined
+  config: ScanAccessConfig | null | undefined,
+  targetUrl: string,
 ): Record<string, string> {
-  if (!config) return {}
+  if (!config || config.origin && new URL(config.origin).origin !== new URL(targetUrl).origin) return {}
   const headers: Record<string, string> = { ...(config.headers ?? {}) }
   if (config.httpBasic) {
     const token = Buffer.from(
@@ -81,14 +85,14 @@ export function scanAccessToFetchHeaders(
 }
 
 export function scanAccessToPlaywrightContext(
-  config: ScanAccessConfig | null | undefined
-): Pick<BrowserContextOptions, 'httpCredentials' | 'extraHTTPHeaders'> {
+  config: ScanAccessConfig | null | undefined,
+  targetUrl: string,
+): Pick<BrowserContextOptions, 'httpCredentials'> {
   if (!config) return {}
-  const extraHTTPHeaders = config.headers ? { ...config.headers } : undefined
   const httpCredentials = config.httpBasic
-    ? { username: config.httpBasic.username, password: config.httpBasic.password }
+    ? { username: config.httpBasic.username, password: config.httpBasic.password, origin: new URL(config.origin ?? targetUrl).origin }
     : undefined
-  return { httpCredentials, extraHTTPHeaders }
+  return { httpCredentials }
 }
 
 export async function applyScanAccessCookies(
@@ -103,13 +107,12 @@ export async function applyScanAccessCookies(
   config: ScanAccessConfig | null | undefined
 ): Promise<void> {
   if (!config?.cookies?.length) return
-  const origin = new URL(targetUrl)
+  const origin = new URL(config.origin ?? targetUrl)
   const cookies = config.cookies.map((cookie) => ({
     name: cookie.name,
     value: cookie.value,
     domain: cookie.domain ?? origin.hostname,
     path: cookie.path ?? '/',
-    url: cookie.domain ? undefined : targetUrl,
   }))
   await context.addCookies(cookies)
 }

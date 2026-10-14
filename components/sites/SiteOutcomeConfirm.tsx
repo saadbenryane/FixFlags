@@ -66,7 +66,7 @@ function ConfirmKind({
   }
 
   return (
-    <div className="mt-3 border-t border-border/40 pt-3">
+    <div className="mt-3 pt-3">
       <fieldset disabled={busy}>
         <legend className="text-sm font-medium">{OUTCOME_CONFIRMATION.proposeHeading}</legend>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">{OUTCOME_CONFIRMATION.proposeBody}</p>
@@ -214,7 +214,7 @@ export function SiteOutcomeRow({ siteId, outcome, fixtures = [] }: { siteId: str
       ) : choices.length > 0 ? (
         <ConfirmKind siteId={siteId} outcome={outcome} choices={choices} fixtures={fixtures} />
       ) : (
-        <p className="mt-3 border-t border-border/40 pt-3 text-sm text-muted-foreground">
+        <p className="mt-3 pt-3 text-sm text-muted-foreground">
           {OUTCOME_CONFIRMATION.unsupportedNote}
         </p>
       )}

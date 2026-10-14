@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { Callout } from '@/components/ui/callout'
 import { Button } from '@/components/ui/button'
-import { REPORT_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY, SITE_ACTION_COPY } from '@/lib/marketing/copy'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { createSiteActionController, executeSiteAction } from '@/lib/sites/client-actions'
 import { toast } from 'sonner'
 
 interface Props {
@@ -28,24 +28,22 @@ export function TriageUnavailableCallout({
 }: Props) {
   const router = useRouter()
   const [retryLoading, setRetryLoading] = useState(false)
+  const retryAction = useRef(createSiteActionController()).current
   const body = triageUnavailableBody(failureCode, isLoggedIn)
   const showSignup = !isLoggedIn
   const showRetry = canRetry && isLoggedIn
 
   async function handleRetry() {
+    if (retryAction.pending) return
     setRetryLoading(true)
-    try {
-      const res = await fetch(`/api/reports/${auditId}/retry`, { method: 'POST' })
-      if (!res.ok) {
-        toast.error((await parseApiErrorResponse(res)).message)
-        return
-      }
-      router.refresh()
-    } catch {
-      toast.error(SYSTEM_COPY.errors.genericRetry)
-    } finally {
-      setRetryLoading(false)
-    }
+    const completed = await retryAction.submit(
+      () => executeSiteAction(`/api/reports/${auditId}/retry`, { method: 'POST' }, 'retry'),
+      undefined,
+      result => router.push(`/report/${encodeURIComponent(result.auditId)}` as Route),
+    )
+    if (completed.kind === 'refused') toast.error(completed.error.message)
+    else if (completed.kind === 'saved_refresh_pending') toast.error(SITE_ACTION_COPY.refreshPending)
+    setRetryLoading(false)
   }
 
   return (

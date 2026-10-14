@@ -3,16 +3,20 @@ import type { Prisma } from '@prisma/client'
 import { evaluatorHandlers } from '../evaluators'
 import { readArtifact, serializeArtifact } from '../contracts'
 import { checkArtifactSchema } from '../results'
-import { assertionForTarget } from '../../checks/verification'
+import { assertionForTarget, scopedAssertionForTarget } from '../../checks/verification'
 import { publishUnfinishedCoverage } from '../incomplete'
 import type { TaskContext } from '../registry'
 import type { PageSpeedResult } from '../../pagespeed'
-import { readResourceAudits } from '../../pagespeed-opportunities'
+import { readResourceAudits, projectResourceOpportunities } from '../../pagespeed-opportunities'
+import { hasRecordedRecoveryEvidence } from '../../recovery-evidence'
+import { CHECK_REGISTRY } from '../../check-registry'
+import { readTapTargetAudits } from '../../pagespeed-tap-targets'
 
 const pageUrl = 'https://example.com/pricing'
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 function measurement(overrides: Partial<PageSpeedResult> = {}): PageSpeedResult {
   return { strategy: 'mobile', score: 95, lcp: 1000, cls: 0, fcp: 500, tbt: 0, inp: null,
+    tapTargetAudits: readTapTargetAudits({ 'target-size': { score: 1 } }),
     opportunities: [], resourceAudits: readResourceAudits({
       'render-blocking-insight': { score: 1, metricSavings: { FCP: 0 } },
       'unused-javascript': { score: 1, details: { overallSavingsBytes: 0 } },
@@ -24,16 +28,75 @@ function context(data: PageSpeedResult, module = 'performance', device?: 'mobile
   const input = { pageUrl, position: 0, primary: true, role: 'primary', module, ...(device ? { device } : {}) }
   return {
     audit: { id: 'audit', executionSpec: { version: 1, targetUrl: pageUrl, environment: 'production',
-      scope: 'SITE', checks: { 'inp-critical': 1, 'inp-poor': 1, 'lcp-poor': 1, 'mobile-lcp-critical': 1 },
-      outcomes: [], verificationTarget: null } } as TaskContext['audit'],
+      scope: 'SITE', checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).map(([id, check]) => [id, check.version])),
+      outcomes: [], verificationTarget: null } } as unknown as TaskContext['audit'],
     task: { id: 'check-task' } as TaskContext['task'], input, deadline: Date.now() + 10_000,
     dependencies: new Map([['speed', { workKind: 'pagespeed', workState: 'COMPLETED',
       workResult: serializeArtifact('pagespeed', { desktop: data.strategy === 'desktop' ? data : null,
-        mobile: data.strategy === 'mobile' ? data : null }) } as TaskContext['task']]]),
+        mobile: data.strategy === 'mobile' ? data : null }) } as unknown as TaskContext['task']]]),
   }
 }
 
 describe('progressive Performance evidence', () => {
+  it('verifies tap-target repairs only from the original mobile provider criteria', async () => {
+    async function artifact(audits: Record<string, Record<string, unknown>>) {
+      return checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ tapTargetAudits: readTapTargetAudits(audits) }), 'mobile')), 'check').data)
+    }
+    const failed = await artifact({ 'target-size': { score: 0, details: { items: [{}] } } })
+    expect(failed.flags.map(flag => flag.checkId)).toEqual(['tap-targets-small'])
+    const flag = { ...failed.flags[0], pageUrl }
+    const sameFailure = scopedAssertionForTarget({ receipt: failed.receipt, checkId: flag.checkId, flag })
+    expect(sameFailure?.assertion).toMatchObject({ passed: false, complete: true })
+    const repaired = await artifact({ 'target-size': { score: 1 } })
+    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: true, complete: true })
+    const unavailable: Array<Record<string, Record<string, unknown>>> = [
+      {}, { 'tap-targets': { score: 1 } }, { 'target-size': { score: 1, scoreDisplayMode: 'error' } },
+    ]
+    for (const audits of unavailable) {
+      const missing = await artifact(audits)
+      expect(scopedAssertionForTarget({ receipt: missing.receipt, checkId: flag.checkId, flag })).toBeUndefined()
+      expect(hasRecordedRecoveryEvidence({ auditId: 'audit', executionSpec: context(measurement()).audit.executionSpec, flag,
+        executions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: missing.receipt }] })).toBe(false)
+    }
+    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: flag.checkId, flag: { verificationRule: 'Historical unscoped audit' } })).toBeUndefined()
+    expect(hasRecordedRecoveryEvidence({ auditId: 'audit', executionSpec: context(measurement()).audit.executionSpec, flag,
+      executions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: repaired.receipt }] })).toBe(true)
+    const both = await artifact({ 'target-size': { score: 0 }, 'tap-targets': { score: 0.5 } })
+    const partialRepair = await artifact({ 'target-size': { score: 1 } })
+    expect(scopedAssertionForTarget({ receipt: partialRepair.receipt, checkId: flag.checkId, flag: both.flags[0] })).toBeUndefined()
+    const fullRepair = await artifact({ 'target-size': { score: 1 }, 'tap-targets': { score: 1 } })
+    expect(scopedAssertionForTarget({ receipt: fullRepair.receipt, checkId: flag.checkId, flag: both.flags[0] })?.assertion).toMatchObject({ passed: true, complete: true })
+  })
+  it('evaluates mobile resource failures independently of a healthy desktop and binds repair to mobile measurements', async () => {
+    const resources = readResourceAudits({
+      'render-blocking-insight': { score: 0, metricSavings: { FCP: 900 } },
+      'unused-javascript': { score: 0, details: { overallSavingsBytes: 200_000 } },
+      'unused-css-rules': { score: 0, details: { overallSavingsBytes: 80_000 } },
+      'image-delivery-insight': { score: 0, details: { debugData: { wastedBytes: 150_000 } } },
+    })
+    const data = measurement({ resourceAudits: resources, opportunities: projectResourceOpportunities(resources) })
+    const failed = checkArtifactSchema.parse(readArtifact(await evaluate(context(data, 'mobile')), 'check').data)
+    const ids = ['mobile-render-blocking', 'mobile-unused-js-large', 'mobile-unused-css-large', 'mobile-unoptimized-images']
+    expect(failed.flags.map(flag => flag.checkId)).toEqual(ids)
+    expect(failed.receipt.execution?.source).toBe('pagespeed-mobile')
+    const desktop = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop' }))), 'check').data)
+    const repaired = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement(), 'mobile')), 'check').data)
+    const missing = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ resourceAudits: [] }), 'mobile')), 'check').data)
+    for (const checkId of ids) {
+      expect(CHECK_REGISTRY[checkId]).toMatchObject({ module: 'mobile', area: 'performance' })
+      expect(assertionForTarget(failed.receipt, checkId)).toMatchObject({ passed: false, complete: true })
+      expect(assertionForTarget(desktop.receipt, checkId)).toBeUndefined()
+      expect(assertionForTarget(repaired.receipt, checkId)).toMatchObject({ passed: true, complete: true })
+      expect(assertionForTarget(missing.receipt, checkId)).toBeUndefined()
+      const target = { auditId: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+        environment: 'production', scope: 'SITE', checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null },
+        flag: { checkId, pageUrl, verificationRule: 'Fresh mobile resource measurement' } }
+      expect(hasRecordedRecoveryEvidence({ ...target, executions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: desktop.receipt }] })).toBe(false)
+      expect(hasRecordedRecoveryEvidence({ ...target, executions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: repaired.receipt }] })).toBe(true)
+    }
+    expect(missing.receipt).toMatchObject({ complete: false, passed: false })
+  })
+
   it('evaluates mobile INP independently and emits only the field responsibility', async () => {
     const data = measurement({ lcp: 6000, inp: 650, crux: { lcp: null, cls: null, fcp: null, ttfb: null,
       inp: 650, formFactor: null, effectiveConnectionType: null, source: 'pagespeed-loading-experience',
@@ -88,7 +151,7 @@ describe('progressive Performance evidence', () => {
     const result = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'desktop', cls: null }))), 'check').data)
     expect(result.receipt).toMatchObject({ complete: false, passed: false })
     expect(result.receipt.assertions.some(assertion => assertion.key === 'lcp')).toBe(true)
-    expect(result.receipt.assertions.some(assertion => assertion.key === 'cls')).toBe(false)
+    expect(result.receipt.assertions.find(assertion => assertion.key === 'cls')).toMatchObject({ passed: false, complete: false })
   })
 
   it('requires every legacy image responsibility for recovery and accepts the consolidated current insight', async () => {

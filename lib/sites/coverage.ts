@@ -3,9 +3,10 @@ import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
-import { CHECK_MODULES } from '@/lib/audit/check-registry'
+import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/check-registry'
 import { searchEvidence } from './search-evidence'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
+import { isResolvedFlagStatus } from '@/lib/audit/attention'
 
 export type CoverageFact = {
   area: SiteCardArea
@@ -110,12 +111,13 @@ export const AREA_EVIDENCE_MODULE_KEYS = [
   'module:measurement',
 ] as const
 
-function passedAssertion(executions: Array<{ targetKey: string; status: string; detail?: unknown }>, module: string, assertion: string): boolean {
+function passedAssertion(executions: Array<{ targetKey: string; status: string; detail?: unknown }>, module: string, assertion: string, historicalAssertion?: string): boolean {
   return executions.some(execution => {
     if (execution.targetKey !== 'module:' + module || execution.status !== 'COMPLETED') return false
     const receipt = readCheckReceipt(execution.detail)
-    return !receipt.legacy && 'applicable' in receipt && receipt.applicable &&
-      receipt.assertions.some(item => item.key === assertion && item.passed)
+    if (receipt.legacy || !('applicable' in receipt) || !receipt.applicable || receipt.failed || receipt.module !== module) return false
+    const observed = receipt.assertions.find(item => item.key === assertion) ?? receipt.assertions.find(item => item.key === historicalAssertion)
+    return observed?.passed === true && observed.complete !== false && observed.disposition !== 'observed'
   })
 }
 
@@ -128,14 +130,20 @@ function failedModuleArea(module: string): SiteCardArea | undefined {
   return CHECK_MODULES[module]?.area
 }
 
+function moduleAreas(module: string): SiteCardArea[] {
+  const areas = Object.values(CHECK_ASSERTIONS[module] ?? {}).map(assertion => assertion.area)
+  const fallback = failedModuleArea(module)
+  return [...new Set(areas.length ? areas : fallback ? [fallback] : [])]
+}
+
 /** Completed runs can retain useful observations without establishing health. */
 function incompleteAreaReason(input: {
   area: SiteCardArea; openFlagCount: number; evidenced: boolean;
-  auditStatus: string | null; failureCode?: string | null; failedModules?: unknown;
+  auditStatus: string | null; failureCode?: string | null; incomplete: boolean;
   triageCompleted?: boolean; extraReviewCompleted?: boolean;
 }): string | null {
   if (input.auditStatus !== 'COMPLETED') return null
-  if (Array.isArray(input.failedModules) && input.failedModules.some(module => typeof module === 'string' && failedModuleArea(module) === input.area)) {
+  if (input.incomplete) {
     return SITE_BOARD_COPY.cardCheckIncomplete
   }
   // Prescription enriches findings without invalidating an observed check.
@@ -172,7 +180,7 @@ export function evidencedAreasFromCoverage(
   if (passedAssertion(verifierExecutions, 'accessibility', 'automated-accessibility') && keyboardScopeComplete(verifierExecutions)) evidenced.add('accessibility')
   if (
     passedAssertion(verifierExecutions, 'security', 'https') &&
-    passedAssertion(verifierExecutions, 'security', 'image-transport')
+    passedAssertion(verifierExecutions, 'security', 'resource-transport', 'image-transport')
   ) {
     evidenced.add('security')
   }
@@ -221,19 +229,19 @@ export function buildCoverageFacts(input: {
   const inFlight = isAuditInFlight(input.auditStatus)
   const checkedAt = input.completedAt?.toISOString() ?? null
   const openByArea = new Map<SiteCardArea, number>()
+  const openFlags = input.flags.filter(flag => !isResolvedFlagStatus(flag.status?.toUpperCase()))
   const lastKnownByArea = new Map(
     (input.lastKnown ?? []).map((fact) => [fact.area, fact] as const)
   )
 
-  for (const flag of input.flags) {
-    if (flag.status && flag.status !== 'OPEN' && flag.status !== 'open') continue
+  for (const flag of openFlags) {
     const area = cardAreaForCheck(flag)
     openByArea.set(area, (openByArea.get(area) ?? 0) + 1)
   }
 
   const evidenced = evidencedAreasFromCoverage(
     input.evidenceCoverage,
-    input.flags,
+    openFlags,
     input.verifierExecutions
   )
   const evidence = parseEvidence(input.evidenceCoverage)
@@ -242,6 +250,7 @@ export function buildCoverageFacts(input: {
   const executions = input.verifierExecutions ?? []
   const search = searchEvidence(executions)
   const incompleteAreas = new Set<SiteCardArea>()
+  const gapsByModule = new Map<string, Set<SiteCardArea>>()
   const runtimeTracking = executions.some(execution => {
     if (execution.targetKey !== 'module:measurement' || execution.status !== 'COMPLETED') return false
     const receipt = readCheckReceipt(execution.detail)
@@ -251,10 +260,24 @@ export function buildCoverageFacts(input: {
     if (!execution.targetKey.startsWith('module:')) continue
     const moduleKey = execution.targetKey.slice('module:'.length)
     const receipt = readCheckReceipt(execution.detail)
-    if (execution.status === 'FAILED' || (!receipt.legacy && (('complete' in receipt && receipt.complete === false) || receipt.assertions.some(assertion => assertion.complete === false)))) {
-      const area = failedModuleArea(moduleKey)
-      if (area) incompleteAreas.add(area)
-    }
+    const missing = receipt.assertions.filter(assertion => assertion.complete === false)
+    const failed = execution.status === 'FAILED' || !receipt.legacy && 'failed' in receipt && receipt.failed === true
+    const incomplete = !receipt.legacy && 'complete' in receipt && receipt.complete === false
+    if (!failed && !incomplete && !missing.length) continue
+    // A shared module can inspect several customer areas. Attribute explicit
+    // gaps to their assertions; an unavailable collector leaves all of its
+    // registered responsibilities unknown.
+    const areas = failed || !missing.length ? moduleAreas(moduleKey) : missing.flatMap(assertion => {
+      const area = CHECK_ASSERTIONS[moduleKey]?.[assertion.key]?.area
+      return area ? [area] : moduleAreas(moduleKey)
+    })
+    const gaps = gapsByModule.get(moduleKey) ?? new Set<SiteCardArea>()
+    for (const area of areas) { gaps.add(area); incompleteAreas.add(area) }
+    gapsByModule.set(moduleKey, gaps)
+  }
+  for (const moduleKey of Array.isArray(input.failedModules) ? input.failedModules : []) {
+    if (typeof moduleKey !== 'string') continue
+    for (const area of gapsByModule.get(moduleKey) ?? moduleAreas(moduleKey)) incompleteAreas.add(area)
   }
 
   const areas: SiteCardArea[] = [
@@ -273,14 +296,14 @@ export function buildCoverageFacts(input: {
     const incompleteReason = (area === 'search' && search && !search.complete && !inFlight
       ? search.unfinished.length ? SEARCH_COPY.unfinished(search.unfinished) : SEARCH_COPY.partial : null)
       ?? incompleteAreaReason({ area, openFlagCount, evidenced: evidenced.has(area), auditStatus: input.auditStatus,
-        failureCode: input.failureCode, failedModules: input.failedModules,
+        failureCode: input.failureCode, incomplete: incompleteAreas.has(area),
         triageCompleted: input.triageCompleted, extraReviewCompleted: input.extraReviewCompleted })
       ?? (!inFlight && incompleteAreas.has(area) ? SITE_BOARD_COPY.cardCheckIncomplete : null)
 
     // A committed failure is immediately useful even while unrelated work is
     // still running. A previous healthy card cannot conceal this execution's Flag.
     if (openFlagCount > 0) {
-      const important = input.flags.some(flag => cardAreaForCheck(flag) === area && ['CRITICAL', 'IMPORTANT'].includes(flag.severity))
+      const important = openFlags.some(flag => cardAreaForCheck(flag) === area && ['CRITICAL', 'IMPORTANT'].includes(flag.severity))
       return { area, state: (important ? 'problem' : 'attention') as CardHealthState,
         label: openFlagCount === 1 ? '1 thing needs attention' : `${openFlagCount} things need attention`,
         detail: null, checkedAt, openFlagCount, evidenced: true, incompleteReason }

@@ -163,90 +163,19 @@ export async function safeFetchHtml(
   statusCode: number
   headers: Record<string, string>
 }> {
-  const timeoutMs = options.timeoutMs ?? 10_000
-  const maxBytes = options.maxBytes ?? 5_000_000
-  const maxRedirects = options.maxRedirects ?? 5
-  const release = await publicHttpCapacity.acquire(AbortSignal.timeout(timeoutMs))
-  try {
-  let current = (await assertPublicAuditUrl(rawUrl)).toString()
-
-  for (let redirect = 0; redirect <= maxRedirects; redirect++) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      const response = await fetch(current, {
-        signal: controller.signal,
-        redirect: 'manual',
-        headers: {
-          'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)',
-          Accept: 'text/html,application/xhtml+xml',
-          ...(options.headers ?? {}),
-        },
-      })
-
-      if (response.status >= 300 && response.status < 400) {
-        const location = response.headers.get('location')
-        if (!location) throw new Error('Redirect response is missing a location')
-        current = (await assertPublicAuditUrl(new URL(location, current).toString())).toString()
-        continue
-      }
-      if (!response.ok) {
-        throw new Error(`Destination returned HTTP ${response.status}`)
-      }
-      const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
-      if (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
-        throw new Error('Destination did not return an HTML document')
-      }
-
-      if (!response.body) throw new Error('Destination returned an empty response')
-
-      const responseHeaders: Record<string, string> = {}
-      response.headers.forEach((value, key) => {
-        responseHeaders[key] = value
-      })
-
-      // Read up to maxBytes, then stop and scan what we have. A large page (heavy
-      // inlined markup, big Next.js flight payloads) must not fail the whole audit
-      // - the <head> and the top of the body carry almost all of what the checks
-      // need, so a truncated document still yields an accurate scan.
-      const reader = response.body.getReader()
-      const chunks: Uint8Array[] = []
-      let total = 0
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        if (total + value.byteLength > maxBytes) {
-          chunks.push(value.subarray(0, maxBytes - total))
-          await reader.cancel()
-          break
-        }
-        total += value.byteLength
-        chunks.push(value)
-      }
-
-      return {
-        html: new TextDecoder().decode(
-          Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))
-        ),
-        finalUrl: current,
-        statusCode: response.status,
-        headers: responseHeaders,
-      }
-    } finally {
-      clearTimeout(timeout)
-    }
-  }
-
-  throw new Error(`Destination exceeded ${maxRedirects} redirects`)
-  } finally { release() }
+  const document = await fetchPublicDocument(rawUrl, {
+    ...options, timeoutMs: options.timeoutMs ?? 10_000, maxBytes: options.maxBytes ?? 5_000_000,
+    accept: 'text/html,application/xhtml+xml',
+  }, true)
+  return { html: document.body, finalUrl: document.finalUrl, statusCode: document.statusCode, headers: document.headers }
 }
 
-/** Public non-HTML evidence uses the same DNS and redirect boundary as HTML capture. */
-export async function safeFetchDocument(rawUrl: string, options: {
+/** One bounded transport owns HTTP admission, redirects and response reads. */
+async function fetchPublicDocument(rawUrl: string, options: {
   timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
   accept?: string;
-  publicOnly?: boolean;
-} = {}): Promise<{
+  publicOnly?: boolean; headers?: Record<string, string>;
+} = {}, requireHtml = false): Promise<{
   body: string; finalUrl: string; statusCode: number; headers: Record<string, string>;
   complete: boolean; redirects: string[];
 }> {
@@ -259,11 +188,13 @@ export async function safeFetchDocument(rawUrl: string, options: {
   let requestInFlight = false
   try {
     let current = (await assertPublicAuditUrl(rawUrl, controller.signal, options.publicOnly)).toString()
+    const credentialOrigin = new URL(current).origin
     for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
       requestInFlight = true
       const response = await fetch(current, { redirect: 'manual', signal: controller.signal,
-        headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml' } })
+        headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml',
+          ...(new URL(current).origin === credentialOrigin ? options.headers ?? {} : {}) } })
       requestInFlight = false
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location')
@@ -274,6 +205,11 @@ export async function safeFetchDocument(rawUrl: string, options: {
         current = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal, options.publicOnly)).toString()
         continue
       }
+      if (requireHtml && (!response.ok || !/text\/html|application\/xhtml\+xml/.test(response.headers.get('content-type')?.toLowerCase() ?? ''))) {
+        await response.body?.cancel()
+        throw new Error(!response.ok ? `Destination returned HTTP ${response.status}` : 'Destination did not return an HTML document')
+      }
+      if (requireHtml && !response.body) throw new Error('Destination returned an empty response')
       const headers = Object.fromEntries(response.headers.entries())
       if (!response.body) return { body: '', finalUrl: current, statusCode: response.status, headers, complete: true, redirects }
       const reader = response.body.getReader()
@@ -296,9 +232,17 @@ export async function safeFetchDocument(rawUrl: string, options: {
       return { body: new TextDecoder().decode(Buffer.concat(chunks)), finalUrl: current,
         statusCode: response.status, headers, complete, redirects }
     }
-    throw new Error('Public evidence redirect limit exceeded')
+    throw new Error(requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : 'Public evidence redirect limit exceeded')
   } catch (error) {
     if (controller.signal.aborted && requestInFlight) throw new PublicRequestError('Public response timed out')
     throw error
   } finally { clearTimeout(timer); release() }
+}
+
+/** Raw HTTP evidence shares the bounded transport and origin-scoped headers. */
+export function safeFetchDocument(rawUrl: string, options: {
+  timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
+  accept?: string; publicOnly?: boolean; headers?: Record<string, string>;
+} = {}) {
+  return fetchPublicDocument(rawUrl, options)
 }

@@ -1,6 +1,7 @@
 import { accountAssertion, accountCheckId } from '@/lib/sites/accounts/check-definitions'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { AXE_POLICY_CHECK_IDS, ACCESSIBILITY_DOM_CHECK_IDS } from './accessibility-rules'
+import { JOURNEY_ASSERTIONS } from './journey-definitions'
 
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
@@ -98,9 +99,14 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     inp: assertion('performance'),
   }),
   mobile: define('mobile', 'performance', 'Mobile page speed', 'mobile', {
+    'tap-targets': assertion('conversion', ['tap-targets-small']),
     score: assertion('performance', ['mobile-perf-critical', 'mobile-perf-poor']),
     lcp: assertion('performance', ['mobile-lcp-critical', 'mobile-lcp-poor']),
     cls: assertion('performance', ['mobile-cls-critical', 'mobile-cls-poor']),
+    'render-blocking': assertion('performance', ['mobile-render-blocking']),
+    'unused-javascript': assertion('performance', ['mobile-unused-js-large']),
+    'unused-css': assertion('performance', ['mobile-unused-css-large']),
+    'image-optimization': assertion('performance', ['mobile-unoptimized-images']),
   }),
   'mobile-ux-quality': define('mobile-ux-quality', 'performance', 'Mobile layout', 'browser', {
     'mobile-input-fonts': assertion('accessibility', ['mobile-input-zoom']),
@@ -177,6 +183,24 @@ export const PRIMARY_ACTION_ASSERTIONS = {
   'primary-action-response': ['flow-cta-404'],
 } as const
 export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
+  corridor: { ...define('corridor', 'conversion', 'Cross-page previews', 'browser', {
+    'preview-titles': assertion('conversion', ['corridor-og-title-drift']),
+    'preview-descriptions': assertion('conversion', ['corridor-og-description-drift']),
+  }), requiredEvidence: ['compared-rendered-pages'] },
+  'mobile-navigation': { ...define('mobile-navigation', 'conversion', 'Mobile navigation', 'browser', {
+    'mobile-navigation': assertion('conversion', ['flow-mobile-menu-broken']),
+  }), requiredEvidence: ['native-mobile-navigation'], timeoutMs: 15_000 },
+  journeys: { ...define('journeys', 'conversion', 'Public journey pages', 'browser',
+    Object.fromEntries(Object.entries(JOURNEY_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)]))),
+    requiredEvidence: ['recorded-public-journey-page'], timeoutMs: 60_000 },
+  overlays: { ...define('overlays', 'conversion', 'Covered controls', 'browser', {
+    'overlay-nav': assertion('conversion', ['overlay-blocks-nav']), 'overlay-cta': assertion('conversion', ['overlay-blocks-cta']),
+    'overlay-form': assertion('conversion', ['overlay-blocks-form']), 'overlay-scope': assertion('conversion'),
+  }), requiredEvidence: ['initial-control-hit-tests'], timeoutMs: 30_000 },
+  'slow-replay': { ...define('slow-replay', 'performance', 'Slow connection visibility', 'browser', {
+    'meaningful-text': assertion('performance', ['slow-3g-blank-screen']),
+    'primary-action-visibility': assertion('performance', ['slow-3g-cta-delayed']),
+  }), requiredEvidence: ['mobile-slow-3g-observation'], timeoutMs: 45_000 },
   'automatic-accounts': { ...define('automatic-accounts', 'conversion', 'Automatic account checks', 'browser',
     Object.fromEntries(Object.entries(accountAssertion).map(([kind, key]) => [key, assertion('conversion', [accountCheckId[kind as keyof typeof accountCheckId]])]))),
     replaySafety: 'protected', timeoutMs: 180_000, requiredEvidence: ['credential-bound-account-observation'] },

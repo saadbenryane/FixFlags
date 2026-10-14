@@ -1,25 +1,35 @@
 import { z } from 'zod'
+import { renderedSearchSnapshotSchema } from './rendered-snapshot'
 
 export const searchSourceSchema = z.enum(['http', 'original-html', 'rendered-dom', 'robots-txt', 'sitemap', 'google-index', 'google-analytics'])
 export const searchResponsibilitySchema = z.enum(['crawl', 'indexing', 'canonical', 'presentation', 'structured-data', 'discovery', 'google'])
 export const googleEvidenceSchema = z.object({ property: z.string().min(1), verdict: z.string().optional(),
-  lastCrawlAt: z.string().datetime({ offset: true }).optional(), dateRange: z.string().optional() }).strict()
+  lastCrawlAt: z.string().datetime({ offset: true }).optional(), dateRange: z.string().optional(),
+  pageFetchState: z.string().optional(), robotsTxtState: z.string().optional(), indexingState: z.string().optional(),
+  googleCanonical: z.string().url().optional(), userCanonical: z.string().url().optional() }).strict()
 export const markupTargetSchema = z.object({
   entityId: z.string().min(1), entityType: z.string().min(1), source: searchSourceSchema,
   properties: z.array(z.string().min(1)).min(1).max(30),
 }).strict()
+export const searchPageScopeSchema = z.object({
+  pageUrl: z.string().url(), reason: z.string().min(1), version: z.union([z.literal(1), z.literal(2)]).optional(),
+  sources: z.array(searchSourceSchema).min(1).max(7).optional(),
+  entityTypes: z.array(z.string()).max(200).optional(), google: googleEvidenceSchema.optional(),
+  markupTargets: z.array(markupTargetSchema).max(200).optional(),
+}).strict()
 export const searchAttentionSchema = z.object({
-  policy: z.literal('search'), version: z.literal(1),
+  policy: z.literal('search'), version: z.union([z.literal(1), z.literal(2)]),
   kind: z.enum(['flag', 'recommendation', 'observation']), reason: z.string().min(1),
   sources: z.array(searchSourceSchema).min(1).max(7).optional(),
   entityTypes: z.array(z.string()).max(200).optional(),
   google: googleEvidenceSchema.optional(),
   markupTargets: z.array(markupTargetSchema).max(200).optional(),
+  pageScopes: z.array(searchPageScopeSchema).min(1).max(500).optional(),
 }).strict()
 export type SearchAttention = z.infer<typeof searchAttentionSchema>
 
 export const searchObservationSchema = z.object({
-  id: z.string().min(1), checkId: z.string().min(1), checkVersion: z.literal(1),
+  id: z.string().min(1), checkId: z.string().min(1), checkVersion: z.union([z.literal(1), z.literal(2)]),
   responsibility: searchResponsibilitySchema, name: z.string().min(1),
   disposition: z.enum(['passed', 'failed', 'observed', 'unknown', 'not_applicable']),
   reason: z.string().min(1), expected: z.string(), observed: z.string(),
@@ -54,14 +64,20 @@ export const searchVerifierSchema = z.object({
   observationIds: z.array(z.string()).min(1).max(500), reason: z.string(),
 }).strict()
 
-export type PublicDocument = {
-  url: string; finalUrl: string; status: number | null; headers: Record<string, string>;
-  body: string | null; complete: boolean; reason: string | null; collectedAt: string; redirects: string[];
-}
-export type SearchPageEvidence = {
-  auditId: string; pageUrl: string; collectedAt: string; public: boolean;
-  original: PublicDocument; rendered: PublicDocument;
-  robots: PublicDocument; sitemaps: PublicDocument[];
-  sitemapUrls: string[]; sitemapsComplete: boolean; declaredSitemaps: string[];
-  canonicalTargets: PublicDocument[];
-}
+/** The collector, persisted documents and isolated parser share this boundary. */
+export const publicDocumentSchema = z.object({
+  url: z.string().url(), finalUrl: z.string().url(), status: z.number().int().nullable(),
+  headers: z.record(z.string(), z.string().max(32_000)), body: z.string().max(1_000_000).nullable(), complete: z.boolean(),
+  reason: z.string().nullable(), collectedAt: z.string().datetime(), redirects: z.array(z.string().url()).max(5),
+  searchSnapshot: renderedSearchSnapshotSchema.optional(),
+}).strict()
+export const searchPageEvidenceSchema = z.object({
+  auditId: z.string(), pageUrl: z.string().url(), collectedAt: z.string().datetime(), public: z.boolean(),
+  collectorVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+  original: publicDocumentSchema, rendered: publicDocumentSchema, robots: publicDocumentSchema,
+  sitemaps: z.array(publicDocumentSchema).max(5), sitemapUrls: z.array(z.string().url()).max(10_000),
+  sitemapsComplete: z.boolean(), declaredSitemaps: z.array(z.string()).max(10_000),
+  canonicalTargets: z.array(publicDocumentSchema).max(3),
+}).strict()
+export type PublicDocument = z.infer<typeof publicDocumentSchema>
+export type SearchPageEvidence = z.infer<typeof searchPageEvidenceSchema>

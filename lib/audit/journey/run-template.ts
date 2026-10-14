@@ -11,7 +11,8 @@ import {
   detectOverlayAtPoint,
   dismissConsentChrome,
 } from '@/lib/audit/browser/overlay-probe'
-import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
+import { scopedOverlayResult, type OverlayTarget } from '@/lib/audit/checks/overlay-evidence'
+import { createOverlayInteractionRecorder } from '@/lib/audit/browser/overlay-interaction'
 import { createActionTimeline } from '@/lib/audit/action-timeline'
 import { logger } from '@/lib/logger'
 import {
@@ -36,6 +37,8 @@ import {
   JOURNEY_LOOP_THRESHOLD,
 } from './types'
 import type { JourneyPlan } from './planner-schema'
+import { observeJourneyPage } from './page-observation'
+import { scopedJourneyFinding, type JourneyObservation } from '../checks/journey-evidence'
 
 async function shot(page: Page, auditId: string, key: string): Promise<string | null> {
   try {
@@ -120,6 +123,9 @@ export async function runJourneyTemplate(
     plan?: JourneyPlan | null
     /** Token usage from the planner when an AI plan was used. */
     plannerUsage?: JourneyRunResult['plannerUsage']
+    overlayExpectedTargets?: OverlayTarget[]
+    expectedJourneyRoute?: JourneyObservation['route']
+    journeyPageOnly?: boolean
   }
 ): Promise<JourneyRunResult> {
   const started = Date.now()
@@ -127,6 +133,7 @@ export async function runJourneyTemplate(
   const deadline = options.deadlineMs ?? started + JOURNEY_TIMEOUT_MS
   const steps: JourneyStepDraft[] = []
   const findings: JourneyFindingDraft[] = []
+  const pageObservations: JourneyObservation[] = [], route: JourneyObservation['route'] = []
   let goalAchieved = false
   let abandonedReason: string | null = null
   const timeline = createActionTimeline(started)
@@ -143,6 +150,15 @@ export async function runJourneyTemplate(
     },
   })
   const page = session.page
+  let documentResponse = { status: session.httpStatus, cfMitigated: session.responseHeaders['cf-mitigated'] }
+  page.on('response', response => {
+    if (response.request().isNavigationRequest() && response.frame() === page.mainFrame()) {
+      documentResponse = { status: response.status(), cfMitigated: response.headers()['cf-mitigated'] }
+    }
+  })
+  const overlayRecorder = createOverlayInteractionRecorder(page, { deadline, expectedTargets: options.overlayExpectedTargets,
+    restricted: () => refusedFromStep !== null })
+  const journeyPhase = 'journey_' + options.journeyType.replaceAll('-', '_')
   const origin = new URL(options.startUrl).origin
   timeline.push('journey', `Start ${options.journeyType}`, { url: options.startUrl })
 
@@ -205,6 +221,9 @@ export async function runJourneyTemplate(
 
     const links = await discoverJourneyLinks(page, origin)
     const target = pickTargetForJourney(options.journeyType, links)
+    const landing = await observeJourneyPage(page, options.journeyType, 'landing', route,
+      { headline: hasHeadline, primaryAction: cta.found, nextPath: Boolean(target), fieldCount: 0 }, refusedFromStep !== null, documentResponse)
+    if (landing) pageObservations.push(landing)
     if (!target) {
       abandonedReason = 'No suitable same-origin navigation target'
       // A missing action already says there is no next step. Do not add a second Flag.
@@ -227,6 +246,7 @@ export async function runJourneyTemplate(
       }
       return await finalize('ABANDONED')
     }
+    if (options.journeyPageOnly && !options.expectedJourneyRoute?.length) return await finalize('ABANDONED')
 
     if (Date.now() > deadline || steps.length >= maxSteps) {
       return await finalize('ABANDONED')
@@ -234,7 +254,7 @@ export async function runJourneyTemplate(
 
     const beforeClick = await shot(page, options.auditId, `journey-${options.journeyType}-02-before`)
     let navigated = false
-    const clickSelector = await page.evaluate((href) => {
+    const clickSelector = options.expectedJourneyRoute?.[0]?.selector ?? await page.evaluate((href) => {
       const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[]
       for (let i = 0; i < anchors.length; i++) {
         const a = anchors[i]
@@ -251,8 +271,21 @@ export async function runJourneyTemplate(
     }, target.href)
 
     if (clickSelector) {
+      const phase = journeyPhase + '_nav'
+      let inspected = await overlayRecorder.inspect(clickSelector, 'nav', phase)
+      const control = inspected.observation?.controls[0]
+      if (options.expectedJourneyRoute?.length && (!control || control.selector !== options.expectedJourneyRoute[0].selector || control.label !== options.expectedJourneyRoute[0].label)) return await finalize('ABANDONED')
+      if (control) route.push({ selector: control.selector, label: control.label })
+      if (!inspected.matchesExpected) return await finalize('ABANDONED')
+      if (options.overlayExpectedTargets?.length && !overlayRecorder.activationRequired(phase) &&
+        inspected.observation?.controls.every(control => control.disposition === 'passed') &&
+        !options.overlayExpectedTargets.some(target => ![phase, phase + '_after'].includes(target.context.split(':')[3]))) return await finalize('ABANDONED')
+      let attempted = false
       try {
+        if (inspected.observation?.controls.some(control => control.disposition === 'failed')) throw new Error('Persistent cover on the selected journey control')
+        attempted = true
         await page.click(clickSelector, { timeout: 5_000 })
+        overlayRecorder.activated(inspected)
         await settleAuditPage(page)
         navigated = true
         timeline.push('click', `Click toward ${target.category}`, {
@@ -261,11 +294,12 @@ export async function runJourneyTemplate(
         })
       } catch {
         await dismissConsentChrome(page)
-        const overlay = await detectOverlayAtPoint(page, clickSelector)
-        const overlayFlags = runOverlayBlockerChecks(
+        if (attempted) inspected = await overlayRecorder.inspect(clickSelector, 'nav', phase + '_after')
+        const overlay = inspected.blocker ?? await detectOverlayAtPoint(page, clickSelector)
+        const overlayFlags = scopedOverlayResult(
           'nav',
           overlay,
-          `target "${target.text || target.href}"`
+          `target "${target.text || target.href}"`, inspected.observation
         )
         if (overlayFlags.length > 0) {
           const flag = overlayFlags[0]!
@@ -282,6 +316,7 @@ export async function runJourneyTemplate(
               evidence: `Reproduced at step 2. ${flag.evidence}`,
               whyItMatters: 'Visitors cannot continue the funnel when nav is covered.',
               fix: flag.fix,
+              verificationRule: flag.verificationRule, evidenceTargets: flag.evidenceTargets, affectedPaths: [options.startUrl],
               screenshotUrl: beforeClick,
             })
           )
@@ -329,12 +364,17 @@ export async function runJourneyTemplate(
       networkErrors: session.networkFailures
         .filter((f) => f.sameOrigin)
         .map((f) => `${f.method} ${f.status} ${f.url}`),
-      elementRef: clickSelector,
+      elementRef: route[0]?.selector ?? clickSelector,
       elementDescription: `click ${target.text || target.href}`,
       outcomeMatch: true,
       outcomeDetail: 'Navigated successfully',
       reasoning: `Navigate to ${target.category} target for ${options.journeyType}`,
     })
+
+    const destination = await observeJourneyPage(page, options.journeyType, 'destination', route,
+      { headline: await pageHasClearHeadline(page), primaryAction: (await pageHasPrimaryCta(page)).found,
+        nextPath: Boolean(pickTargetForJourney(options.journeyType, await discoverJourneyLinks(page, origin))), fieldCount: await countVisibleFormFields(page) }, refusedFromStep !== null, documentResponse)
+    if (destination) pageObservations.push(destination)
 
     if (options.journeyType === 'pricing-evaluation' || options.journeyType === 'first-visit') {
       const destHeadline = await pageHasClearHeadline(page)
@@ -374,6 +414,7 @@ export async function runJourneyTemplate(
         )
       } else {
         goalAchieved = true
+        if (options.journeyPageOnly) return await finalize('ABANDONED')
       }
     }
 
@@ -413,6 +454,7 @@ export async function runJourneyTemplate(
         )
       } else {
         goalAchieved = true
+        if (options.journeyPageOnly) return await finalize('ABANDONED')
         try {
           const email = page.locator('input[type="email"], input[name*="email" i]').first()
           if (await email.count()) {
@@ -429,11 +471,12 @@ export async function runJourneyTemplate(
                 el.setAttribute('data-fixflags-journey-submit', '1')
               }, submitHandle)
               await dismissConsentChrome(page)
-              const overlay = await detectOverlayAtPoint(
+              const inspected = await overlayRecorder.inspect('[data-fixflags-journey-submit="1"]', 'form', journeyPhase + '_form')
+              const overlay = inspected.blocker ?? await detectOverlayAtPoint(
                 page,
                 '[data-fixflags-journey-submit="1"]'
               )
-              const overlayFlags = runOverlayBlockerChecks('form', overlay)
+              const overlayFlags = scopedOverlayResult('form', overlay, undefined, inspected.observation)
               for (const flag of overlayFlags) {
                 timeline.push('overlay', 'Overlay blocked form submit', { url: page.url() })
                 findings.push(
@@ -449,6 +492,7 @@ export async function runJourneyTemplate(
                     whyItMatters:
                       'Users cannot submit when sticky ads or modals cover the form.',
                     fix: flag.fix,
+                    verificationRule: flag.verificationRule, evidenceTargets: flag.evidenceTargets, affectedPaths: [options.startUrl],
                     screenshotUrl: afterClick,
                   })
                 )
@@ -664,8 +708,15 @@ export async function runJourneyTemplate(
       }, target.href)
 
       if (clickSelector) {
+        const phase = journeyPhase + '_nav_' + (currentStep + 1)
+        let inspected = await overlayRecorder.inspect(clickSelector, 'nav', phase)
+        if (!inspected.matchesExpected) return await finalize('ABANDONED')
+        let attempted = false
         try {
+          if (inspected.observation?.controls.some(control => control.disposition === 'failed')) throw new Error('Persistent cover on the selected funnel control')
+          attempted = true
           await page.click(clickSelector, { timeout: 5_000 })
+          overlayRecorder.activated(inspected)
           await settleAuditPage(page)
           navigated = true
           timeline.push('click', `Funnel step ${currentStep + 1}: click ${target.text || target.href}`, {
@@ -674,11 +725,12 @@ export async function runJourneyTemplate(
           })
         } catch {
           await dismissConsentChrome(page)
-          const overlay = await detectOverlayAtPoint(page, clickSelector)
-          const overlayFlags = runOverlayBlockerChecks(
+          if (attempted) inspected = await overlayRecorder.inspect(clickSelector, 'nav', phase + '_after')
+          const overlay = inspected.blocker ?? await detectOverlayAtPoint(page, clickSelector)
+          const overlayFlags = scopedOverlayResult(
             'nav',
             overlay,
-            `target "${target.text || target.href}"`
+            `target "${target.text || target.href}"`, inspected.observation
           )
           if (overlayFlags.length > 0) {
             const flag = overlayFlags[0]!
@@ -696,6 +748,7 @@ export async function runJourneyTemplate(
                 whyItMatters:
                   'Visitors cannot continue the funnel when navigation is covered.',
                 fix: flag.fix,
+                verificationRule: flag.verificationRule, evidenceTargets: flag.evidenceTargets, affectedPaths: [options.startUrl],
                 screenshotUrl: beforeShot,
               })
             )
@@ -994,10 +1047,15 @@ export async function runJourneyTemplate(
       ...(refusedFromStep === null ? {} : { blockedReason: 'protected_action_requires_fixture' }),
       abandonedReason,
       steps,
-      findings: refusedFromStep === null ? findings : findings.filter(item => item.stepNumber < refusedFromStep!),
+      findings: (refusedFromStep === null ? findings : findings.filter(item => item.stepNumber < refusedFromStep!)).flatMap(item => {
+        const scoped = scopedJourneyFinding(item, pageObservations)
+        return scoped ? [scoped] : []
+      }),
+      pageObservations,
       durationMs: Date.now() - started,
       formProbe: session.formProbe,
       actionTimeline: timeline.snapshot(),
+      overlayObservations: overlayRecorder.observations(),
     }
   }
 }

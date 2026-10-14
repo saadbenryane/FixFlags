@@ -50,8 +50,8 @@ describe('integration guides', () => {
     const overview = render(await IntegrationsDocsPage())
     expect(screen.getByRole('heading', { level: 1, name: 'Integration guides' })).toBeInTheDocument()
     overview.unmount()
-    expect(generateStaticParams()).toHaveLength(3)
-    for (const integration of ['shopify', 'google-analytics', 'google-search-console']) {
+    expect(generateStaticParams()).toHaveLength(4)
+    for (const integration of ['github', 'shopify', 'google-analytics', 'google-search-console']) {
       const props = { params: Promise.resolve({ integration }), searchParams: Promise.resolve({}) }
       const guide = render(await IntegrationGuide(props))
       expect(screen.getByRole('link', { name: 'Integration guides' })).toHaveAttribute('href', '/docs/integrations')
@@ -76,7 +76,7 @@ describe('integration guides', () => {
   it.each(['not_configured', 'missing', 'hmac', 'state', 'token', 'fixture_shop'])('renders bounded recovery for %s', (error) => {
     render(<ShopifyConnectionRecovery error={error} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Shopify connection did not finish')
-    expect(screen.getByRole('alert')).toHaveTextContent('Settings → Connections')
+    expect(screen.getByRole('alert')).toHaveTextContent('Other connections become available after testing and validation.')
   })
 
   it('links Shopify Help to the dedicated guide', () => {

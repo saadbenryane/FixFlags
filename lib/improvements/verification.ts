@@ -1,5 +1,4 @@
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { checkVerifierSchema } from '@/lib/audit/checks/verification'
 import {
 mutateProjectIntelligence
 } from '@/lib/audit/ensure-product-project'
@@ -9,12 +8,12 @@ import {
 appendVerifiedLearning,
 productIntelligenceFromContract
 } from '@/lib/audit/product-intelligence'
-import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { prisma } from '@/lib/db'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 import { assessTargetedOutcomeCoverage,assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
 import { readVerificationTarget } from '@/lib/sites/domain/execution-spec'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
+import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
 import { systemClock } from '@/lib/time/clock'
 import type {
 ImprovementStatus,
@@ -144,7 +143,7 @@ export async function reconcileImprovementVerification(input: {
       fingerprint: occurrence.flag.fingerprint,
       pageUrl: occurrence.flag.pageUrl,
       executionSpec: verificationAudit.executionSpec,
-      ...(!current ? { originalFlag: occurrence.flag } : {}),
+      originalFlag: occurrence.flag,
       verifierExecutions: verificationAudit.verifierExecutions,
     })
     const outcomeRun = target?.kind === 'OUTCOME' ? targetedRun : !target && occurrence.improvement.outcomeId
@@ -170,26 +169,21 @@ export async function reconcileImprovementVerification(input: {
       ? 'The original AI observation has no stable evidence fingerprint for comparison.'
       : coverageDecision.reason
     const targetedState = outcomeRun?.assessments.find(item => item.outcomeId === occurrence.improvement.outcomeId)?.state ?? null
-    const searchExecution = verificationAudit.verifierExecutions.find(execution =>
-      execution.targetKey === coverageDecision.coverage.targetKey && execution.scopeKey === coverageDecision.coverage.scopeKey)
-    const search = searchVerifierSchema.safeParse(searchExecution?.detail)
-    const exactCheck = checkVerifierSchema.safeParse(searchExecution?.detail)
-    const searchVerdict = search.success && search.data.auditId === input.verificationAuditId ? search.data.verdict
-      : exactCheck.success && exactCheck.data.auditId === input.verificationAuditId ? exactCheck.data.verdict : null
+    const verificationVerdict = coverageDecision.verdict
     const outcome: VerificationOutcome = !comparable
       ? 'INCONCLUSIVE'
       : targetedState === 'FLAG'
         ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
-      : searchVerdict === 'passed'
+      : verificationVerdict === 'passed'
         ? 'IMPROVED'
-      : searchVerdict === 'failed'
+      : verificationVerdict === 'failed'
         ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
       : !current
         ? 'IMPROVED'
         : current.status === 'REGRESSED'
           ? 'REGRESSED'
           : 'UNCHANGED'
-    const status: ImprovementStatus = outcome === 'IMPROVED' ? 'VERIFIED' : 'UNVERIFIED'
+    let status: ImprovementStatus = outcome === 'IMPROVED' ? 'VERIFIED' : 'UNVERIFIED'
     const evidenceReference = {
       beforeAuditId: sourceAuditId,
       beforeFlagId: occurrence.flagId,
@@ -219,10 +213,6 @@ export async function reconcileImprovementVerification(input: {
                 : 'The independent Review still observed the targeted condition.',
         },
       })
-      if (!latestAttempt || latestAttempt.id === attempt.id) await tx.improvement.update({
-        where: { id: occurrence.improvementId },
-        data: { status },
-      })
       if (target && outcome === 'IMPROVED') {
         // Targeted runs skip the broad report diff. Their exact repair proof
         // must still resolve the source Flag alongside the verified attempt.
@@ -231,6 +221,20 @@ export async function reconcileImprovementVerification(input: {
             audit: { projectId: verificationAudit.projectId }, status: { in: ['OPEN', 'REGRESSED'] } },
           data: { status: 'FIXED', resolvedInId: input.verificationAuditId },
         })
+        if (target.kind === 'DIAGNOSTIC' && verificationAudit.startedAt) {
+          const unresolved = await tx.flag.findMany({ where: {
+            improvementOccurrence: { improvementId: occurrence.improvementId }, audit: { projectId: verificationAudit.projectId },
+            source: 'DETERMINISTIC', status: { in: ['OPEN', 'REGRESSED'] }, createdAt: { lte: verificationAudit.startedAt },
+          }, take: 100, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: {
+            id: true, checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, evidenceTargets: true, verificationRule: true,
+          } })
+          const recovered = unresolved.filter(flag => hasRecordedRecoveryEvidence({ auditId: verificationAudit.id,
+            executionSpec: verificationAudit.executionSpec, flag, executions: verificationAudit.verifierExecutions }))
+          if (recovered.length) await tx.flag.updateMany({ where: {
+            id: { in: recovered.map(flag => flag.id) }, audit: { projectId: verificationAudit.projectId },
+            source: 'DETERMINISTIC', status: { in: ['OPEN', 'REGRESSED'] }, createdAt: { lte: verificationAudit.startedAt },
+          }, data: { status: 'FIXED', resolvedInId: input.verificationAuditId } })
+        }
       }
       if (current) {
         await tx.improvementOccurrence.upsert({
@@ -243,6 +247,15 @@ export async function reconcileImprovementVerification(input: {
           },
           update: { kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED' },
         })
+      }
+      if (!latestAttempt || latestAttempt.id === attempt.id) {
+        // An exact repair can succeed while another occurrence remains open.
+        // Keep that incident visible without changing the successful attempt.
+        if (outcome === 'IMPROVED' && await tx.flag.findFirst({ where: {
+          improvementOccurrence: { improvementId: occurrence.improvementId },
+          audit: { projectId: verificationAudit.projectId }, status: { in: ['OPEN', 'REGRESSED'] },
+        }, select: { id: true } })) status = 'PROPOSED'
+        await tx.improvement.update({ where: { id: occurrence.improvementId }, data: { status } })
       }
       await appendImprovementCycleEvent({
         projectId: verificationAudit.projectId!,

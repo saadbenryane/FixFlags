@@ -1,23 +1,27 @@
 ## Available integrations
 
-FixFlags checks your live website independently. Integrations add store, traffic, or search context to the same Site.
+[GitHub account authorization](/docs/integrations/github) is available. Connecting saves encrypted authorization; it does not inspect code or open pull requests.
 
-- [Shopify](/docs/integrations/shopify) adds product information and checks selected purchase paths through checkout entry.
-- [Google Analytics](/docs/integrations/google-analytics) adds session counts for matching pages.
-- [Google Search Console](/docs/integrations/google-search-console) adds queries, impressions, and clicks for matching pages.
+## Planned integrations
 
-The [integrations overview](/integrations) also lists sources we are exploring. Those planned sources do not have a connection flow yet.
+All other connections are coming soon until testing and validation. Independent website analysis, Flags, fix prompts, verification, and monitoring work without these connections.
+
+| Connection | Availability and intended value |
+| --- | --- |
+| [Shopify](/docs/integrations/shopify) | Store and selected product-path context. |
+| [Google Analytics](/docs/integrations/google-analytics) | Traffic context beside checked pages. |
+| [Google Search Console](/docs/integrations/google-search-console) | Search demand and recorded indexing context. |
+
+See the [integrations overview](/integrations) for the lineup. Coming soon capabilities are planned.
 
 ## Connect to a Site
 
-1. [Analyze your website](/docs/getting-started), then sign in and save the Site to your account.
-2. [Open your Sites](/dashboard) and select the website you want to connect.
-3. Open **Integrations** and follow the guide for your provider.
+Open your Site’s **Integrations** to manage GitHub authorization. Google and Shopify setup and refresh are unavailable while they are coming soon. You can [analyze your website](/docs/getting-started), save the Site, and use its independent checks now.
 
-Connections belong to an owned Site. If a provider's controls are missing, that connection may be unavailable on the current FixFlags server. Contact support instead of entering credentials into another form.
+If you previously saved a connection, its dated records remain available. Open the Site’s **Integrations** to disconnect it. Uninstall any existing Shopify app separately in Shopify admin to revoke its external access.
 
 ## Context and proof
 
-Traffic and search numbers help explain a page's importance. They do not prove that a customer action works, resolve a Flag, or replace fresh verification. Each connection displays its own status; an authorized connection with no matching data is different from a healthy website.
+Planned traffic and search context will remain separate from independently verified recovery. Provider reports cannot establish that signup, checkout, or a fix works.
 
-Use [Flags and proof](/docs/site-care) to understand coverage and verification. For connection recovery, follow the troubleshooting section in your provider's guide or visit the [Help Center](/help).
+After a website fix, [check the Flag again](/docs/site-care#verify) for independent evidence.

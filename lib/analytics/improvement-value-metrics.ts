@@ -5,6 +5,8 @@ import type {
 } from '@prisma/client'
 
 type CostValue = number | string | { toNumber(): number } | null | undefined
+type ReviewCost = { estimatedCostUsd: CostValue; createdAt?: Date } | null
+type VerificationReview = { id: string; completedAt: Date | null; runCost: ReviewCost }
 
 export type ImprovementValueCycleRow = {
   id: string
@@ -15,10 +17,11 @@ export type ImprovementValueCycleRow = {
   sourceAudit: {
     id: string
     createdAt: Date
-    runCost: { estimatedCostUsd: CostValue } | null
+    runCost: ReviewCost
     monitoringAudits?: Array<{
       id: string
-      runCost: { estimatedCostUsd: CostValue } | null
+      createdAt?: Date
+      runCost: ReviewCost
     }>
   }
   events: Array<{
@@ -26,13 +29,10 @@ export type ImprovementValueCycleRow = {
     occurredAt: Date
     outcome: VerificationOutcome | null
     rejectionReason: ImprovementRejectionReason | null
-    attempt: {
-      verificationAudit: {
-        id: string
-        completedAt: Date | null
-        runCost: { estimatedCostUsd: CostValue } | null
-      } | null
-    } | null
+    verificationAuditId?: string | null
+    verificationAudit?: VerificationReview | null
+    // Legacy projections may carry the attempt's current run. It is not history.
+    attempt?: { verificationAudit: VerificationReview | null } | null
   }>
 }
 
@@ -54,6 +54,7 @@ export type ImprovementValueMetrics = {
   acceptedInferred: number
   attempted: number
   outcomeIssued: number
+  unclassifiedOutcomeCount: number
   improved: number
   outcomes: Record<VerificationOutcome, number>
   rejections: Record<ImprovementRejectionReason, number>
@@ -64,9 +65,19 @@ export type ImprovementValueMetrics = {
   productToImproved: DurationDistribution
   fullyLoadedReviewCostPerImprovedUsd: number | null
   outcomeReviewCostPerOutcomeUsd: number | null
+  reviewCostCoverage: ReviewCostCoverage
+  outcomeCostCoverage: ReviewCostCoverage
   verifiedWorthwhileImprovementsPerActiveProduct: number
   activeProductCount: number
   productsWithSecondCycle: number
+}
+
+export type ReviewCostCoverage = {
+  runCount: number
+  measuredRunCount: number
+  missingRunCount: number
+  unknownVerificationReferenceCount: number
+  knownEstimatedCostUsd: number
 }
 
 function percentile(sorted: number[], ratio: number): number {
@@ -86,11 +97,38 @@ function durationDistribution(values: number[]): DurationDistribution {
   }
 }
 
-function costNumber(value: CostValue): number {
-  if (value == null) return 0
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') return Number(value) || 0
-  return value.toNumber()
+function costNumber(record: ReviewCost, now: Date): number | null {
+  if (!record || record.estimatedCostUsd == null || (record.createdAt &&
+    (!Number.isFinite(record.createdAt.getTime()) || record.createdAt > now))) return null
+  const value = record.estimatedCostUsd
+  let cost: number
+  try {
+    cost = typeof value === 'number' ? value : typeof value === 'string'
+      ? value.trim() ? Number(value) : NaN : value.toNumber()
+  } catch { return null }
+  return Number.isFinite(cost) && cost >= 0 ? cost : null
+}
+
+function costCoverage(costs: Map<string, number | null>, unknownReferences: number): ReviewCostCoverage {
+  const known = [...costs.values()].filter((cost): cost is number => cost !== null)
+  return { runCount: costs.size, measuredRunCount: known.length,
+    missingRunCount: costs.size - known.length, unknownVerificationReferenceCount: unknownReferences,
+    knownEstimatedCostUsd: known.reduce((sum, cost) => sum + cost, 0) }
+}
+
+function recordCost(costs: Map<string, number | null>, id: string, cost: number | null) {
+  // Conflicting or missing representations cannot prove a complete cost.
+  costs.set(id, costs.has(id) && costs.get(id) !== cost ? null : cost)
+}
+
+function costPerResult(coverage: ReviewCostCoverage, results: number): number | null {
+  return results > 0 && coverage.runCount > 0 && coverage.missingRunCount === 0 &&
+    coverage.unknownVerificationReferenceCount === 0 ? coverage.knownEstimatedCostUsd / results : null
+}
+
+function addDuration(values: number[], start: Date, end: Date, now: Date) {
+  const duration = end.getTime() - start.getTime()
+  if (Number.isFinite(duration) && duration >= 0 && start <= now && end <= now) values.push(duration)
 }
 
 function firstEvent(
@@ -107,6 +145,10 @@ export function calculateImprovementValueMetrics(
   options: { activeProductCount: number; now?: Date; maturityDays?: number },
 ): ImprovementValueMetrics {
   const now = options.now ?? new Date()
+  if (!Number.isFinite(now.getTime())) throw new Error('A valid observation cutoff is required')
+  rows = [...new Map(rows.filter((row) => Number.isFinite(row.createdAt.getTime()) && row.createdAt <= now)
+    .map((row) => [row.id, { ...row, events: row.events.filter((event) =>
+      Number.isFinite(event.occurredAt.getTime()) && event.occurredAt <= now) }])).values()]
   const maturityMs = (options.maturityDays ?? 7) * 24 * 3_600_000
   const outcomes: Record<VerificationOutcome, number> = {
     IMPROVED: 0,
@@ -128,8 +170,9 @@ export function calculateImprovementValueMetrics(
   const acceptanceToAttempt: number[] = []
   const attemptToOutcome: number[] = []
   const productToImproved: number[] = []
-  const allReviewCosts = new Map<string, number>()
-  const outcomeReviewCosts = new Map<string, number>()
+  const allReviewCosts = new Map<string, number | null>()
+  const outcomeReviewCosts = new Map<string, number | null>()
+  let unknownVerificationReferences = 0
   const projectCycles = new Map<string, ImprovementValueCycleRow[]>()
   let generated = 0
   let recommended = 0
@@ -138,6 +181,7 @@ export function calculateImprovementValueMetrics(
   let acceptedInferred = 0
   let attempted = 0
   let outcomeIssued = 0
+  let unclassifiedOutcomeCount = 0
   let improved = 0
   let worthwhileImproved = 0
 
@@ -145,12 +189,13 @@ export function calculateImprovementValueMetrics(
     const cycles = projectCycles.get(row.projectId) ?? []
     cycles.push(row)
     projectCycles.set(row.projectId, cycles)
-    allReviewCosts.set(
+    recordCost(allReviewCosts,
       row.sourceAudit.id,
-      costNumber(row.sourceAudit.runCost?.estimatedCostUsd),
+      Number.isFinite(row.sourceAudit.createdAt.getTime()) && row.sourceAudit.createdAt <= now
+        ? costNumber(row.sourceAudit.runCost, now) : null,
     )
     for (const child of row.sourceAudit.monitoringAudits ?? []) {
-      allReviewCosts.set(child.id, costNumber(child.runCost?.estimatedCostUsd))
+      if (!child.createdAt || child.createdAt <= now) recordCost(allReviewCosts, child.id, costNumber(child.runCost, now))
     }
 
     const generatedEvent = firstEvent(row, ['GENERATED'])
@@ -162,6 +207,8 @@ export function calculateImprovementValueMetrics(
       .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime())[0]
     const attemptedEvent = firstEvent(row, ['ATTEMPTED'])
     const outcomeEvent = firstEvent(row, ['OUTCOME_ISSUED'])
+    const latestOutcome = row.events.filter((event) => event.type === 'OUTCOME_ISSUED')
+      .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime()).at(-1)
     const improvedEvent = firstEvent(row, ['IMPROVED'])
 
     if (generatedEvent) generated += 1
@@ -172,46 +219,39 @@ export function calculateImprovementValueMetrics(
     if (attemptedEvent) attempted += 1
     if (outcomeEvent) {
       outcomeIssued += 1
-      if (outcomeEvent.outcome) outcomes[outcomeEvent.outcome] += 1
+      if (latestOutcome?.outcome) outcomes[latestOutcome.outcome] += 1
+      else unclassifiedOutcomeCount += 1
     }
     if (improvedEvent) {
       improved += 1
       if (recommendedEvent && explicitEvent) worthwhileImproved += 1
-      productToImproved.push(
-        improvedEvent.occurredAt.getTime() - row.project.createdAt.getTime(),
-      )
+      addDuration(productToImproved, row.project.createdAt, improvedEvent.occurredAt, now)
     }
 
     for (const event of row.events) {
       if (event.type === 'REJECTED' && event.rejectionReason) {
         rejections[event.rejectionReason] += 1
       }
-      const verificationAudit = event.attempt?.verificationAudit
-      if (!verificationAudit) continue
-      const cost = costNumber(verificationAudit.runCost?.estimatedCostUsd)
-      allReviewCosts.set(verificationAudit.id, cost)
-      if (event.type === 'OUTCOME_ISSUED') outcomeReviewCosts.set(verificationAudit.id, cost)
+      if (event.type !== 'OUTCOME_ISSUED') continue
+      if (!event.verificationAuditId) { unknownVerificationReferences++; continue }
+      const verificationAudit = event.verificationAudit ?? event.attempt?.verificationAudit
+      const cost = verificationAudit?.id === event.verificationAuditId
+        ? costNumber(verificationAudit.runCost, now) : null
+      recordCost(allReviewCosts, event.verificationAuditId, cost)
+      recordCost(outcomeReviewCosts, event.verificationAuditId, cost)
     }
 
     if (row.occurrence) {
-      firstEvidenceDurations.push(
-        row.occurrence.flag.createdAt.getTime() - row.sourceAudit.createdAt.getTime(),
-      )
+      addDuration(firstEvidenceDurations, row.sourceAudit.createdAt, row.occurrence.flag.createdAt, now)
     }
     if (recommendedEvent && acceptedEvent) {
-      recommendationToAcceptance.push(
-        acceptedEvent.occurredAt.getTime() - recommendedEvent.occurredAt.getTime(),
-      )
+      addDuration(recommendationToAcceptance, recommendedEvent.occurredAt, acceptedEvent.occurredAt, now)
     }
     if (acceptedEvent && attemptedEvent) {
-      acceptanceToAttempt.push(
-        attemptedEvent.occurredAt.getTime() - acceptedEvent.occurredAt.getTime(),
-      )
+      addDuration(acceptanceToAttempt, acceptedEvent.occurredAt, attemptedEvent.occurredAt, now)
     }
     if (attemptedEvent && outcomeEvent) {
-      attemptToOutcome.push(
-        outcomeEvent.occurredAt.getTime() - attemptedEvent.occurredAt.getTime(),
-      )
+      addDuration(attemptToOutcome, attemptedEvent.occurredAt, outcomeEvent.occurredAt, now)
     }
   }
 
@@ -228,6 +268,8 @@ export function calculateImprovementValueMetrics(
   const oldest = rows.length > 0
     ? Math.min(...rows.map((row) => row.createdAt.getTime()))
     : null
+  const reviewCostCoverage = costCoverage(allReviewCosts, unknownVerificationReferences)
+  const outcomeCostCoverage = costCoverage(outcomeReviewCosts, unknownVerificationReferences)
 
   return {
     cohortSize: rows.length,
@@ -240,6 +282,7 @@ export function calculateImprovementValueMetrics(
     acceptedInferred,
     attempted,
     outcomeIssued,
+    unclassifiedOutcomeCount,
     improved,
     outcomes,
     rejections,
@@ -248,12 +291,10 @@ export function calculateImprovementValueMetrics(
     acceptanceToAttempt: durationDistribution(acceptanceToAttempt),
     attemptToOutcome: durationDistribution(attemptToOutcome),
     productToImproved: durationDistribution(productToImproved),
-    fullyLoadedReviewCostPerImprovedUsd: improved > 0
-      ? [...allReviewCosts.values()].reduce((sum, cost) => sum + cost, 0) / improved
-      : null,
-    outcomeReviewCostPerOutcomeUsd: outcomeIssued > 0
-      ? [...outcomeReviewCosts.values()].reduce((sum, cost) => sum + cost, 0) / outcomeIssued
-      : null,
+    fullyLoadedReviewCostPerImprovedUsd: costPerResult(reviewCostCoverage, improved),
+    outcomeReviewCostPerOutcomeUsd: costPerResult(outcomeCostCoverage, outcomeIssued),
+    reviewCostCoverage,
+    outcomeCostCoverage,
     verifiedWorthwhileImprovementsPerActiveProduct:
       options.activeProductCount > 0 ? worthwhileImproved / options.activeProductCount : 0,
     activeProductCount: options.activeProductCount,

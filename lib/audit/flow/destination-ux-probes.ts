@@ -1,3 +1,4 @@
+import { scanAccessToFetchHeaders, type ScanAccessConfig } from '../scan-access'
 import type { Page } from 'playwright'
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
 
@@ -89,7 +90,7 @@ export async function runDestinationUXProbes(
   page: Page,
   originCtaText: string | null,
   originCtaHref: string | null,
-  fetchHeaders?: Record<string, string>
+  scanAccess?: ScanAccessConfig | null
 ): Promise<DestinationUXQuality> {
   const url = page.url()
 
@@ -164,7 +165,7 @@ export async function runDestinationUXProbes(
     }
   })
 
-  const metadata = await fetchAndParseMetadata(url, { headers: fetchHeaders }).catch(() => null)
+  const metadata = await fetchAndParseMetadata(url, { headers: scanAccessToFetchHeaders(scanAccess, url) }).catch(() => null)
 
   const ctaPromisesMatch = (() => {
     if (!originCtaText || !pageData.headline) return true

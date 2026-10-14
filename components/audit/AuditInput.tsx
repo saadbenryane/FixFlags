@@ -21,6 +21,7 @@ import {
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
 import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { readPublicEntrySurface } from '@/lib/analytics/entry-surface'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -79,7 +80,6 @@ export function AuditInput({
   const autoStartedRef = useRef(false)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
   const isLanding = variant === 'landing'
-  const auditSource = source ?? (isLanding ? 'homepage' : 'dashboard')
 
   useEffect(() => {
     setHydrated(true)
@@ -138,6 +138,7 @@ export function AuditInput({
     setUrl(normalized)
     setLoading(true)
     const params = new URLSearchParams(window.location.search)
+    const auditSource = source ?? (isLanding ? readPublicEntrySurface(params) ?? 'homepage' : 'dashboard')
     const journeyId = isLanding ? readOrCreateAnalyticsJourneyId() : null
     const result = await startScanWithHandoff({
       url: normalized,
@@ -274,7 +275,7 @@ export function AuditInput({
                 disabled={!hydrated || busy}
                 aria-invalid={Boolean(urlError)}
                 aria-describedby={describedBy}
-                className="h-12 min-h-12 flex-1 pl-2.5 pr-2 text-[0.9375rem] placeholder:text-muted-foreground/70 sm:h-[3.25rem] sm:min-h-[3.25rem] sm:pl-2.5 sm:text-base"
+                className="h-12 min-h-12 flex-1 pl-2.5 pr-2 text-base placeholder:text-muted-foreground/70 sm:h-[3.25rem] sm:min-h-[3.25rem] sm:pl-2.5 sm:text-base"
               />
             </div>
             <Button

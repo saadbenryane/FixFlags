@@ -5,10 +5,15 @@ import {
   WATCH_NOTIFICATION_ATTEMPT_LIMIT,
   watchAlertDelivery,
 } from '@/lib/audit/watch-notification'
-import { siteWatchAlertNotice, watchAlertSummary } from '@/lib/sites/watch-alert-notice'
+import { siteWatchAlertNotice as projectedWatchAlertNotice, watchAlertSummary } from '@/lib/sites/watch-alert-notice'
 import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 
 const root = resolve(__dirname, '../../..')
+
+// Exercise policy and notice together for the recorded raw delivery fixtures.
+function siteWatchAlertNotice(input: Parameters<typeof watchAlertDelivery>[0] & { at: Date | string | null }) {
+  return projectedWatchAlertNotice({ state: watchAlertDelivery(input), at: input.at })
+}
 
 /**
  * A Site can be checked on schedule and still never tell the customer anything.
@@ -46,6 +51,12 @@ describe('Watch alert delivery', () => {
       leaseUntil: '2026-09-30T12:01:00.000Z',
       now,
     })).toBe('delivering')
+  })
+
+  it('reports a missing final lease as undelivered while retaining bounded retries', () => {
+    expect(watchAlertDelivery({ status: 'SENDING', attempts: 1, leaseUntil: null })).toBe('delivering')
+    expect(watchAlertDelivery({ status: 'SENDING', attempts: WATCH_NOTIFICATION_ATTEMPT_LIMIT, leaseUntil: null })).toBe('undelivered')
+    expect(siteWatchAlertNotice({ status: 'SENDING', attempts: WATCH_NOTIFICATION_ATTEMPT_LIMIT, leaseUntil: null, at: null })?.title).toBe(WATCH_ALERT_DELIVERY.undeliveredTitle)
   })
 
   it('keeps a failure that is still being retried out of the terminal state', () => {

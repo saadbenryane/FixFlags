@@ -1,0 +1,23 @@
+export const GITHUB_CONNECTION_COPY = {
+  title: 'GitHub connection', description: 'Manage the GitHub account authorized for your code workflow.',
+  back: 'Back to Site integrations', connect: 'Connect GitHub', reconnect: 'Reconnect GitHub', disconnect: 'Disconnect GitHub',
+  confirm: 'Confirm disconnect', cancel: 'Keep connection', saving: 'Disconnecting…',
+  permissions: 'GitHub requests the repo permission, which grants access to public and private repositories. Review this permission on GitHub before authorizing.',
+  behavior: 'Connecting saves your encrypted authorization. FixFlags does not scan repositories or open pull requests in the website beta. Copy a Flag’s fix prompt into your code workflow, then verify the deployed change on your Site.',
+  signingIn: 'GitHub sign-in is managed separately in account settings.', account: 'Account settings',
+  connected: (login: string) => `Connected as ${login}.`, disconnected: 'No GitHub account connected.',
+  revoked: 'This authorization was revoked. Reconnect to replace it.',
+  connectedReceipt: 'GitHub authorization saved. This does not verify a website fix.',
+  removal: 'Disconnecting removes the saved authorization and any existing code checks and fixes in its history. FixFlags also requests revocation from GitHub.',
+  removed: 'GitHub disconnected. Provider revocation confirmed.', locallyRemoved: 'GitHub disconnected from FixFlags. Revocation could not be confirmed. Remove the FixFlags authorization in GitHub settings.',
+  noConnection: 'No saved GitHub authorization remains.', revokeLink: 'Review GitHub authorizations',
+  disconnectFailed: 'Could not disconnect GitHub. Try again.',
+  disconnectUnknown: 'The disconnect result could not be confirmed. Reload to review your connection.',
+  errors: {
+    not_configured: 'GitHub authorization is unavailable because the connection is not configured. Try again after setup is complete.',
+    connect_failed: 'GitHub could not be connected. Your existing connection is preserved. Try again.',
+    access_unavailable: 'GitHub connection access is unavailable for this account.',
+    denied: 'GitHub authorization was canceled. You can connect again when ready.',
+    invalid_state: 'This GitHub authorization expired or could not be verified. Start a new connection.',
+  },
+} as const

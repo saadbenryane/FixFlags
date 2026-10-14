@@ -3,8 +3,9 @@ import type { Prisma, ReportCompleteness } from '@prisma/client'
 import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
-import { hasRecordedRecoveryEvidence, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
+import { recordedVerificationVerdict, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
 import { baseCheckId } from '@/lib/audit/flag-identity'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 
 type EvidenceCoverage = {
   desktopScreenshot?: boolean
@@ -30,6 +31,7 @@ export type VerificationCoverage = {
 
 export type VerificationCoverageDecision = {
   comparable: boolean
+  verdict?: 'passed' | 'failed' | null
   reason: string
   coverage: VerificationCoverage
 }
@@ -91,11 +93,13 @@ export function assessVerificationCoverage(input: {
     : undefined
   const completeReview =
     input.status === 'COMPLETED' && input.reportCompleteness === 'FULL'
-  const recordedRecovery = Boolean(input.auditId && input.originalFlag && input.checkId &&
+  const requiresOriginalScope = Boolean(input.originalFlag && input.checkId && readExecutionSpec(input.executionSpec)?.engine === 'progressive-v1')
+  const recordedVerdict = input.auditId && input.originalFlag && input.checkId &&
     baseCheckId(input.originalFlag.checkId) === baseCheckId(input.checkId) &&
     normalizeUrl(input.originalFlag.pageUrl ?? '') === normalizeUrl(input.pageUrl ?? '') && input.status === 'COMPLETED' &&
-    hasRecordedRecoveryEvidence({ auditId: input.auditId, executionSpec: input.executionSpec,
-      flag: input.originalFlag, executions: input.verifierExecutions.map(row => ({ ...row, detail: row.detail })) }))
+    recordedVerificationVerdict({ auditId: input.auditId, executionSpec: input.executionSpec,
+      flag: input.originalFlag, executions: input.verifierExecutions.map(row => ({ ...row, detail: row.detail })) }) || null
+  const recordedCondition = recordedVerdict !== null
   const search = searchVerifierSchema.safeParse(targetExecution?.detail)
   const isSearch = search.success && search.data.auditId === input.auditId && search.data.pageUrl === input.pageUrl &&
     search.data.checkId === input.checkId?.split('::page:')[0]
@@ -104,21 +108,21 @@ export function assessVerificationCoverage(input: {
     exactCheck.data.checkId === input.checkId?.split('::page:')[0] &&
     (!input.pageUrl || normalizeUrl(exactCheck.data.pageUrl) === normalizeUrl(input.pageUrl))
   const evidenceComparable = Boolean(
-    recordedRecovery || (isExactCheck ? exactCheck.data.comparable : isSearch ? search.data.comparable : evidence.desktopScreenshot && evidence.metadata && (!isAi || evidence.aiAssessment))
+    recordedCondition || !requiresOriginalScope && (isExactCheck ? exactCheck.data.comparable : isSearch ? search.data.comparable : evidence.desktopScreenshot && evidence.metadata && (!isAi || evidence.aiAssessment))
   )
-  const relevantPageCovered = recordedRecovery || isExactCheck || (input.pageUrl
+  const relevantPageCovered = recordedCondition || !requiresOriginalScope && (isExactCheck || (input.pageUrl
     ? input.pages.some(
         (page) =>
           page.status === 'COMPLETED' && normalizeUrl(page.url) === normalizeUrl(input.pageUrl!)
       )
-    : input.pages.some((page) => page.status === 'COMPLETED'))
+    : input.pages.some((page) => page.status === 'COMPLETED')))
   const supportingVerifierCompleted = isJourney
     ? input.journeyReviewIncluded && Boolean(input.journeyReviewAt)
     : isAi
       ? Boolean(evidence.aiAssessment)
       : true
   const verifierExecuted = Boolean(
-    recordedRecovery || targetExecution?.status === 'COMPLETED' &&
+    recordedCondition || !requiresOriginalScope && targetExecution?.status === 'COMPLETED' &&
     targetExecution.evidenceReference &&
     supportingVerifierCompleted,
   )
@@ -128,11 +132,11 @@ export function assessVerificationCoverage(input: {
     evidenceComparable,
     relevantPageCovered,
     verifierExecuted,
-    verifierStatus: recordedRecovery ? 'COMPLETED' : targetExecution?.status === 'COMPLETED' || targetExecution?.status === 'FAILED' ||
+    verifierStatus: recordedCondition ? 'COMPLETED' : targetExecution?.status === 'COMPLETED' || targetExecution?.status === 'FAILED' ||
       targetExecution?.status === 'NOT_APPLICABLE' ? targetExecution.status : 'MISSING',
     targetKey,
     scopeKey,
-    executionEvidenceReference: recordedRecovery ? { kind: 'recorded-recovery', auditId: input.auditId!,
+    executionEvidenceReference: recordedCondition ? { kind: recordedVerdict === 'passed' ? 'recorded-recovery' : 'recorded-condition', auditId: input.auditId!,
       checkId: input.originalFlag!.checkId ?? null, pageUrl: input.originalFlag!.pageUrl ?? null,
       affectedPaths: Array.isArray(input.originalFlag!.affectedPaths) ? input.originalFlag!.affectedPaths.filter((value): value is string => typeof value === 'string') : [],
     } : targetExecution?.evidenceReference ?? null,
@@ -141,7 +145,10 @@ export function assessVerificationCoverage(input: {
     pageUrl: input.pageUrl,
   }
 
-  if (!completeReview && !recordedRecovery && !((isSearch || isExactCheck) && input.status === 'COMPLETED')) {
+  if (requiresOriginalScope && !recordedCondition) {
+    return { comparable: false, reason: 'The update Review did not establish the original finding’s verification scope.', coverage }
+  }
+  if (!completeReview && !recordedCondition && !((isSearch || isExactCheck) && input.status === 'COMPLETED')) {
     return { comparable: false, reason: 'The update Review was partial or incomplete.', coverage }
   }
   if (!evidenceComparable) {
@@ -150,7 +157,7 @@ export function assessVerificationCoverage(input: {
   if (!relevantPageCovered) {
     return { comparable: false, reason: 'The update Review did not complete the affected page.', coverage }
   }
-  if (failedModules.length > 0 && !recordedRecovery && !isSearch && !isExactCheck) {
+  if (failedModules.length > 0 && !recordedCondition && !isSearch && !isExactCheck) {
     return {
       comparable: false,
       reason: `The update Review was degraded because these modules failed: ${failedModules.join(', ')}.`,
@@ -178,6 +185,7 @@ export function assessVerificationCoverage(input: {
   }
   return {
     comparable: true,
+    verdict: recordedVerdict ?? (isExactCheck ? exactCheck.data.verdict : isSearch && search.data.verdict !== 'unknown' ? search.data.verdict : null),
     reason: 'The fresh update Review completed comparable verification coverage.',
     coverage,
   }

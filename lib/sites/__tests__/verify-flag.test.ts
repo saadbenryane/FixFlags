@@ -43,6 +43,7 @@ vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn(
 
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { attemptIntentHash } from '@/lib/improvements/attempt-intent'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 describe('VERIFY_FLAG', () => {
   beforeEach(() => {
@@ -64,11 +65,12 @@ describe('VERIFY_FLAG', () => {
     })
     mocks.executeProductCommand.mockResolvedValue({ attemptId: 'att_1' })
     mocks.recordSiteFlagFix.mockResolvedValue({ attemptId: 'att_1' })
-    mocks.requireSiteFlagAttempt.mockImplementation(async () => ({
-      site: await mocks.loadSiteRecord(),
-      flag: await mocks.loadSiteFlagDetail(),
-      attemptId: 'att_1',
-    }))
+    mocks.requireSiteFlagAttempt.mockImplementation(async () => {
+      const attempt = await mocks.attemptFindFirst()
+      if (!attempt) throw new SiteRunRefusal('Fix attempt not found', 409)
+      return { site: await mocks.loadSiteRecord(), flag: await mocks.loadSiteFlagDetail(), attemptId: 'att_1',
+        attempt: { sourceAuditId: 'parent_1', handoffReference: 'flag:flag_1', ...attempt } }
+    })
     mocks.outcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
     mocks.requestSiteRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: ['outcome-1'], reused: false })
     mocks.findReusableRun.mockResolvedValue(null)
@@ -113,6 +115,13 @@ describe('VERIFY_FLAG', () => {
     expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
   })
 
+  it('returns the addressed physical Flag identity after it has a durable incident identity', async () => {
+    mocks.loadSiteFlagDetail.mockResolvedValue({ id: 'improvement-1', sourceFlagId: 'flag_1', improvementId: 'improvement-1',
+      sourceAuditId: 'parent_1', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', expectedBehavior: 'Contact confirmation appears' })
+    expect(await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1' }))
+      .toMatchObject({ flagId: 'flag_1', parentAuditId: 'parent_1', verificationAuditId: 'child_1' })
+  })
+
   /**
    * The attempt is the record FixFlags did not author the change, so it may only carry
    * what someone actually said. Falling back to the Flag's expected behaviour wrote
@@ -139,6 +148,32 @@ describe('VERIFY_FLAG', () => {
     expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
   })
+
+  it('replays a durable issue against its frozen original scope after later observations', async () => {
+    mocks.loadSiteFlagDetail.mockResolvedValue({ id: 'improvement-1', improvementId: 'improvement-1', sourceFlagId: 'later',
+      sourceAuditId: 'later-review', checkId: 'form-feedback', pageUrl: 'https://example.com/new', expectedBehavior: 'Current condition' })
+    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [], verificationTarget: {
+      kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1',
+    } })
+    mocks.requireSiteFlagAttempt.mockResolvedValue({ attemptId: 'att_1', attempt: { sourceAuditId: 'parent_1' },
+      flag: { checkId: 'form-feedback', pageUrl: 'https://example.com/contact', expectedBehavior: 'Original condition' } })
+    expect(await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'improvement-1', attemptId: 'att_1' }))
+      .toMatchObject({ runId: 'run_1', expectedBehavior: 'Original condition', parentAuditId: 'parent_1' })
+    expect(mocks.findReusableRun).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'flag-verify:att_1',
+      verificationIdentity: { attemptId: 'att_1' } }))
+    expect(mocks.requireSiteFlagAttempt).toHaveBeenCalledWith(expect.objectContaining({ attemptId: 'att_1' }), { allowSettled: true })
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+  })
+
+  it.each([{ parentAuditId: 'another' }, { checkId: 'another' }, { pageUrl: 'https://example.com/another' }])(
+    'refuses a run receipt that does not match its recorded repair scope: %j', async patch => {
+      mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [], verificationTarget: {
+        kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1', ...patch,
+      } })
+      await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'wrong-scope' }))
+        .rejects.toMatchObject({ status: 409 })
+      expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+    })
 
   it.each([false, true])('checks the recorded implicit fix payload before reusing its run, changed: %s', async changed => {
     mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],

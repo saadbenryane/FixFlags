@@ -1,3 +1,4 @@
+import { RENDERED_HTML_LIMIT } from '../browser/rendered-html'
 import { Prisma } from '@prisma/client'
 import { executionTransaction } from '../execution-ownership'
 import { captureScreenshots } from '../screenshot'
@@ -12,11 +13,27 @@ import type { TaskHandler } from './registry'
 import { parseMetadataIsolated } from './cpu'
 import { getAuditBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
-import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
+import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { collectKeyboardEvidence, keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { motionObservationSchema, motionRequested } from '../checks/motion-evidence'
+import { collectReducedMotionWindow } from '../browser/motion-observation'
+import { captureAccessKey, captureProfileKey } from '../browser/observation-scope'
 
 export const collectionHandlers: TaskHandler[] = [
+  { kind: 'motion', replay: 'read_only', timeoutMs: 45_000,
+    validateResult: artifact => { motionObservationSchema.parse(artifact.data) },
+    async evaluate(context) {
+      const browser = [...context.dependencies.values()].find(task => task.workKind === 'browser' && task.workState === 'COMPLETED')
+      const captured = browser?.workResult ? browserArtifactSchema.parse(readArtifact(browser.workResult, 'browser').data) : null
+      const before = captured?.snapshot.motionWindow
+      if (!before) throw new TaskFailure('INITIAL_MOTION_EVIDENCE_UNAVAILABLE', false)
+      const access = await resolveAuditScanAccess(context.audit.id)
+      const after = await collectReducedMotionWindow(await getAuditBrowser(), context.input.pageUrl, { deadline: context.deadline, scanAccess: access })
+      return serializeArtifact('motion', motionObservationSchema.parse({ version: 1,
+        scope: { pageUrl: context.input.pageUrl, finalUrl: before.pageUrl, profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(access, context.input.pageUrl) }, before, after }))
+    },
+  },
   { kind: 'keyboard', replay: 'read_only', timeoutMs: 30_000,
     validateResult: artifact => { keyboardEvidenceSchema.parse(artifact.data) },
     async evaluate(context) {
@@ -73,8 +90,8 @@ export const collectionHandlers: TaskHandler[] = [
       // checkpoint and recovery window, so an upload outage cannot erase this input.
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `p${context.input.position}-g${context.task.workGeneration}`, { runFlow: false, scanAccess: access, deadline: context.deadline,
-          collectOriginalDocument: false, captureMedia: false, consoleObservationMs })
-      const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= 1_000_000
+          collectOriginalDocument: false, captureMedia: false, consoleObservationMs, captureMotion: motionRequested(spec), deferMotionComparison: true })
+      const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= RENDERED_HTML_LIMIT
       const metadata = htmlWithinBudget ? mergeRuntimeHeadMetadata(await parseMetadataIsolated(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline), captured.runtimeHeadMetadata) : null
       if (!metadata && !captured.desktopHtml && !captured.desktopHtmlTruncated && !captured.captureFailures?.some(failure => ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))
         throw new TaskFailure('BROWSER_COLLECTION_INTERRUPTED', true, undefined, true)

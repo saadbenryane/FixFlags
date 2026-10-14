@@ -3,40 +3,36 @@ import { startUptimeWorker } from './queue'
 import { executeUptimeProbe, retainUptimeHistory, scheduleUptimeProbes } from './service'
 import { deliverUptimeNotifications } from './alerts'
 import { logger } from '@/lib/logger'
+import { createTimerScheduler } from '@/lib/queue/timer-scheduler'
 
 /** Independent HTTP work does not depend on browser availability. */
 export function startUptimeRuntime() {
   const worker = startUptimeWorker(job => executeUptimeProbe(job))
-  let sweeping = false, closed = false, lastRetention = 0
-  let pendingSweep: Promise<void> | null = null
-  const sweep = async () => {
-    if (sweeping || closed) return
-    sweeping = true
+  const scheduler = createTimerScheduler(error => logger.error('Uptime maintenance failed', error))
+  let lastRetention = 0
+  async function scheduling() {
     try {
       await scheduleUptimeProbes()
-      await deliverUptimeNotifications()
-      if (Date.now() - lastRetention >= 86400_000) {
-        await retainUptimeHistory()
-        lastRetention = Date.now()
-      }
       await touchWorkerHeartbeat({ uptimeReady: true, lastUptimeSweepAt: new Date().toISOString() })
     } catch (error) {
-      logger.error('Uptime maintenance failed', error)
+      logger.error('Uptime scheduling maintenance failed', error)
       await touchWorkerHeartbeat({ uptimeReady: false }).catch(heartbeatError => logger.error('Uptime heartbeat failed', heartbeatError))
     }
-    finally { sweeping = false }
   }
-  const tick = () => { if (!sweeping && !closed) pendingSweep = sweep() }
-  const initial = setTimeout(tick, 1000)
-  const timer = setInterval(tick, 30_000)
-  initial.unref(); timer.unref()
+  const notifications = () => deliverUptimeNotifications()
+  async function retention() {
+    if (Date.now() - lastRetention < 86400_000) return
+    await retainUptimeHistory()
+    lastRetention = Date.now()
+  }
+  for (const task of [scheduling, notifications, retention]) {
+    scheduler.schedule(task, 1000)
+    scheduler.schedule(task, 30_000, true)
+  }
   return {
     close: async () => {
-      closed = true
-      clearTimeout(initial)
-      clearInterval(timer)
-      const workerClosed = worker.close()
-      await Promise.all([pendingSweep, workerClosed])
+      const pendingMaintenance = scheduler.stop()
+      await Promise.all([pendingMaintenance, worker.close(pendingMaintenance)])
       await touchWorkerHeartbeat({ uptimeReady: false }).catch(error => logger.error('Uptime shutdown heartbeat failed', error))
     },
   }

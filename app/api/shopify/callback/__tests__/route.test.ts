@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const integrationRelease = vi.hoisted(() => vi.fn(() => 'available'))
+vi.mock('@/lib/integrations/release-policy', () => ({ integrationRelease }))
 
 const isShopifyConfigured = vi.hoisted(() => vi.fn())
 const normalizeShopDomain = vi.hoisted(() => vi.fn())
@@ -27,6 +29,7 @@ import { GET } from '../route'
 describe('GET /api/shopify/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    integrationRelease.mockReturnValue('available')
     isShopifyConfigured.mockReturnValue(true)
     normalizeShopDomain.mockReturnValue('demo.myshopify.com')
     verifyShopifyOAuthHmac.mockReturnValue(true)

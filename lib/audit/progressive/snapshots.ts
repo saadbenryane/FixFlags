@@ -1,10 +1,15 @@
 import { z } from 'zod'
+import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
+import { publicDocumentSchema } from '../search/contracts'
+export { publicDocumentSchema } from '../search/contracts'
 import { trackingEvidenceSchema } from '../tracking/contracts'
 import { resourceTransportSchema } from '../resource-transport'
 import { resourceAuditsSchema } from '../pagespeed-opportunities'
+import { tapTargetAuditsSchema } from '../pagespeed-tap-targets'
 import { consoleCoverageSchema } from '../console-evidence'
 import { accessibilityEvidenceSchema } from '../browser/accessibility-evidence'
 import { captureObservationScopeSchema } from '../browser/observation-scope'
+import { motionWindowSchema } from '../checks/motion-evidence'
 import { jsonValueSchema } from './contracts'
 import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
@@ -13,11 +18,6 @@ import type { ScreenshotResult } from '../screenshot'
 
 const text = z.string().max(1_000_000), strings = z.array(text).max(10_000)
 const count = z.number().finite().nonnegative()
-export const publicDocumentSchema = z.object({
-  url: z.string().url(), finalUrl: z.string().url(), status: z.number().int().nullable(),
-  headers: z.record(z.string(), z.string().max(32_000)), body: text.nullable(), complete: z.boolean(),
-  reason: z.string().nullable(), collectedAt: z.string().datetime(), redirects: z.array(z.string().url()).max(5),
-}).strict()
 export const pageMetadataSchema = z.object({
   linkBaseUrl: z.string().url().optional(),
   title: text.nullable(), description: text.nullable(), ogTitle: text.nullable(), ogDescription: text.nullable(),
@@ -38,6 +38,7 @@ export const pageSpeedSchema = z.object({
   cls: z.number().finite().nullable(), fcp: z.number().finite().nullable(), tbt: z.number().finite().nullable(), inp: z.number().finite().nullable(),
   opportunities: z.array(z.object({ id: text, title: text, savings: z.number().finite(), itemsCount: count.optional() }).strict()).max(100),
   resourceAudits: resourceAuditsSchema.optional(),
+  tapTargetAudits: tapTargetAuditsSchema.optional(),
   failedAccessibilityAudits: z.array(z.object({ id: text, title: text, score: z.number().finite().nullable() }).strict()).max(500),
   diagnostics: z.record(z.string(), jsonValueSchema), raw: z.record(z.string(), jsonValueSchema),
   crux: z.object({ lcp: z.number().finite().nullable(), cls: z.number().finite().nullable(), fcp: z.number().finite().nullable(),
@@ -48,7 +49,7 @@ export const pageSpeedSchema = z.object({
 const object = z.record(z.string(), jsonValueSchema)
 export const screenshotSnapshotSchema = z.object({
   desktopUrl: text.nullable(), mobileUrl: text.nullable(), desktopHtml: text.nullable(),
-  desktopHtmlTruncated: z.boolean().optional(),
+  desktopHtmlTruncated: z.boolean().optional(), desktopHtmlCompacted: z.boolean().optional(), renderedSearchSnapshot: renderedSearchSnapshotSchema.optional(),
   desktopBase64: z.string().max(8_000_000).nullable(), mobileBase64: z.string().max(8_000_000).nullable(),
   desktopFinalUrl: z.string().url().optional(), desktopHttpStatus: z.number().int().nullable().optional(),
   originalDocument: publicDocumentSchema.optional(),
@@ -57,6 +58,7 @@ export const screenshotSnapshotSchema = z.object({
   accessibilityEvidence: accessibilityEvidenceSchema.optional(), renderedScope: captureObservationScopeSchema.optional(),
   captureStatus: z.object({ desktop: z.enum(['ok', 'failed', 'pending']), mobile: z.enum(['ok', 'failed', 'pending']) }).strict(),
   captureFailures: z.array(object).max(10), captureMetrics: object.nullable().optional(), loadExperience: object.nullable().optional(),
+  motionWindow: motionWindowSchema.optional(),
   runtimeHeadMetadata: object.nullable().optional(), responseHeaders: z.record(z.string(), text).nullable().optional(),
   tracking: trackingEvidenceSchema.optional(),
   networkFailures: z.array(object).max(500).optional(), technologyResources: z.array(object).max(500).optional(),

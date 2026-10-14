@@ -39,9 +39,14 @@ export async function dispatchAudit(auditId: string): Promise<boolean> {
 }
 
 export async function dispatchPendingAudits(limit = 25): Promise<number> {
-  const audits = await prisma.audit.findMany({ where: { status: 'QUEUED', dispatchState: 'PENDING', dispatchNextAt: { lte: new Date() } },
+  const now = new Date()
+  const audits = await prisma.audit.findMany({ where: { status: 'QUEUED', dispatchState: 'PENDING', dispatchNextAt: { lte: now },
+    OR: [{ dispatchLeaseUntil: null }, { dispatchLeaseUntil: { lte: now } }] },
     orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.max(1, Math.min(limit, 100)), select: { id: true } })
   let sent = 0
-  for (const audit of audits) if (await dispatchAudit(audit.id)) sent++
+  for (const audit of audits) {
+    try { if (await dispatchAudit(audit.id)) sent++ }
+    catch (error) { logger.error('Audit dispatch interrupted; retained intent will be retried', error, { auditId: audit.id }) }
+  }
   return sent
 }

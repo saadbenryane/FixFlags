@@ -11,7 +11,6 @@ import { parseActionTimeline, type ActionTimelineEvent } from '@/lib/audit/actio
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { filterToolingPathFlags } from '@/lib/audit/tooling-path-filter'
 import { captureAccessibilityTree } from '@/lib/audit/browser/journey-safety'
-import { recordTargetedJourneyVerifierExecutions } from '@/lib/improvements/verifier-provenance'
 import type { PageMetadata } from '@/lib/audit/metadata'
 import { detectPagePurpose, isProductPage, type PagePurpose } from '@/lib/audit/page-purpose'
 import { discoverJourneyLinks } from './discover'
@@ -22,6 +21,9 @@ import { accessibilityBarrierFix, frictionFix } from './evaluation-fix'
 import { createJourneyAIGuard } from './ai-guard'
 import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft, JourneyStepDraft, JourneyType } from './types'
+import { scopedOverlayRule, OVERLAY_VERIFICATION_RULE, type OverlayObservation, type OverlayTarget } from '../checks/overlay-evidence'
+import { baseCheckId, durableCheckId } from '../flag-identity'
+import { JOURNEY_VERIFICATION_RULE, projectedJourneyFinding, readJourneyContext, type JourneyObservation } from '../checks/journey-evidence'
 
 const SAAS_JOURNEY_TYPES: JourneyType[] = [
   'first-visit',
@@ -222,16 +224,35 @@ export async function persistJourneyResult(
   auditId: string,
   result: Awaited<ReturnType<typeof runJourneyTemplate>>,
   boundOutcome?: { outcomeId: string; bindingKey: string },
+  allowedCheckIds?: readonly string[],
+  deferProjectedFlags = false,
 ): Promise<JourneyFindingDraft[]> {
-  const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence))
+  const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence)).filter(finding => !allowedCheckIds || allowedCheckIds.includes(baseCheckId(finding.checkId)!) || projectedJourneyFinding(finding) && allowedCheckIds.includes(durableCheckId(finding.checkId)!))
   const alreadyRecorded = await prisma.flag.findMany({
     where: { auditId, ...(boundOutcome ? { fingerprint: outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) } : {}) },
     select: { problem: true, pageUrl: true },
   })
+  for (const finding of filteredFindings) if (!deferProjectedFlags && scopedOverlayRule(finding.verificationRule) && finding.evidenceTargets?.length) {
+    await executionWrite(async tx => {
+      const existing = await tx.flag.findFirst({ where: { auditId, checkId: finding.checkId,
+        OR: [{ pageUrl: finding.url }, { pageUrl: result.startUrl }] }, orderBy: { createdAt: 'asc' },
+        select: { id: true, verificationRule: true, evidenceTargets: true, affectedPaths: true } })
+      if (!existing) return
+      const previous = Array.isArray(existing.evidenceTargets) ? existing.evidenceTargets : []
+      const targets = [...new Map([...previous, ...finding.evidenceTargets ?? []].map(target => [JSON.stringify(target), target])).values()]
+      if (!scopedOverlayRule(existing.verificationRule)) targets.push({ kind: 'page', source: 'measured', device: 'desktop',
+        label: 'Walkthrough cover with unavailable original control scope', context: 'overlay:unscoped:walkthrough' })
+      await tx.flag.update({ where: { id: existing.id }, data: { evidenceTargets: targets as Prisma.InputJsonValue,
+        verificationRule: scopedOverlayRule(existing.verificationRule) ? OVERLAY_VERIFICATION_RULE : existing.verificationRule,
+        affectedPaths: [...new Set([...(Array.isArray(existing.affectedPaths) ? existing.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
+          ...finding.affectedPaths ?? [], finding.url])] } })
+    })
+  }
   const findingsToPersist = omitRepeatedCustomerFindings(alreadyRecorded, [...filteredFindings])
 
   const networkFlags = runNetworkEngagementChecks([], result.formProbe)
   for (const nf of networkFlags) {
+    if (allowedCheckIds && !allowedCheckIds.includes(nf.checkId)) continue
     if (findingsToPersist.some((f) => f.checkId === nf.checkId)) continue
     findingsToPersist.push(
       withStepEvidence({
@@ -249,6 +270,12 @@ export async function persistJourneyResult(
       })
     )
   }
+
+  // Customer deduplication must not erase native evidence owned by this review.
+  // The common projection links these observations to the single customer Flag.
+  const findingsToRecord = deferProjectedFlags
+    ? [...findingsToPersist, ...filteredFindings.filter(finding => (scopedOverlayRule(finding.verificationRule) || projectedJourneyFinding(finding)) && !findingsToPersist.includes(finding))]
+    : findingsToPersist
 
   const review = await executionWrite(tx => tx.journeyReview.create({
     data: {
@@ -289,7 +316,7 @@ export async function persistJourneyResult(
         })),
       },
       findings: {
-        create: findingsToPersist.map((f) => ({
+        create: findingsToRecord.map((f) => ({
           stepNumber: f.stepNumber,
           url: f.url,
           rubric: f.rubric as RubricName,
@@ -310,6 +337,7 @@ export async function persistJourneyResult(
   }))
 
   for (const f of findingsToPersist) {
+    if (deferProjectedFlags && (scopedOverlayRule(f.verificationRule) || projectedJourneyFinding(f))) continue
     const created = await executionWrite(tx => tx.flag.create({
       data: {
         auditId,
@@ -323,7 +351,9 @@ export async function persistJourneyResult(
         fix: f.fix,
         confidence: f.confidence ?? 0.85,
         source: 'JOURNEY',
-        pageUrl: f.url,
+        verificationRule: f.verificationRule, evidenceTargets: f.evidenceTargets as Prisma.InputJsonValue | undefined,
+        affectedPaths: f.affectedPaths,
+        pageUrl: f.verificationRule === JOURNEY_VERIFICATION_RULE ? f.affectedPaths?.[0] ?? f.url : f.url,
         fingerprint: boundOutcome && f.checkId.startsWith('journey-checkout-failed-')
           ? outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) : `journey:${f.checkId}:${f.url}`,
         position: f.stepNumber,
@@ -343,7 +373,13 @@ export async function persistJourneyResult(
 export async function runJourneyReviewsForAudit(
   auditId: string,
   startUrl: string,
-  options: { included: boolean; deadline: number; scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null }
+  options: { included: boolean; deadline: number; scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null;
+    overlayExpectedTargets?: OverlayTarget[]; overlayPhases?: string[]; allowedCheckIds?: readonly string[];
+    expectedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
+    recordedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
+    onPageObservations?: (observations: JourneyObservation[]) => void;
+    onJourneyFindings?: (findings: JourneyFindingDraft[]) => void;
+    onOverlayObservations?: (observations: OverlayObservation[]) => void }
 ): Promise<number> {
   if (!options.included) return 0
 
@@ -361,19 +397,32 @@ export async function runJourneyReviewsForAudit(
     select: { productContract: true, userId: true, htmlMetadata: true },
   })
   const contract = parseProductContract(auditRow?.productContract)
-      const metadata =
+  const metadata =
     auditRow?.htmlMetadata && typeof auditRow.htmlMetadata === 'object'
       ? (auditRow.htmlMetadata as unknown as PageMetadata)
       : null
   const purpose = metadata ? detectPagePurpose(metadata, startUrl).purpose : null
-  const journeyTypes = orderJourneysFromContract(contract, purpose)
+  const journeyTypes = options.expectedJourneyConditions
+    ? [...new Set(options.expectedJourneyConditions.map(condition => condition.journeyType))]
+    : options.overlayPhases
+    ? (['first-visit', 'pricing-evaluation', 'checkout', 'signup', 'contact-support', 'multi-step-funnel'] as JourneyType[])
+      .filter(type => options.overlayPhases!.some(phase => phase.startsWith('journey_' + type.replaceAll('-', '_') + '_')))
+    : orderJourneysFromContract(contract, purpose)
+  for (const condition of options.recordedJourneyConditions ?? []) if (!journeyTypes.includes(condition.journeyType)) journeyTypes.unshift(condition.journeyType)
+  const recorded = options.expectedJourneyConditions ?? options.recordedJourneyConditions ?? []
+  const routes = [...new Map(recorded.filter(condition => condition.phase === 'destination' ||
+    !recorded.some(other => other.journeyType === condition.journeyType && other.phase === 'destination'))
+    .map(condition => [JSON.stringify([condition.journeyType, condition.route]), { journeyType: condition.journeyType as JourneyType, route: condition.route }])).values()]
+  const journeyRuns = [...routes, ...journeyTypes.filter(type => !routes.some(item => item.journeyType === type))
+    .map(journeyType => ({ journeyType, route: options.expectedJourneyConditions ? [] : undefined }))]
 
   const browser = await getAuditBrowser()
   let findingCount = 0
   const remaining = () => Math.max(5_000, options.deadline - Date.now())
   const aiGuard = createJourneyAIGuard()
 
-  for (const journeyType of journeyTypes) {
+  for (const journeyRun of journeyRuns) {
+    const journeyType = journeyRun.journeyType
     if (Date.now() >= options.deadline - 8_000) break
     try {
       let plan = null as Awaited<ReturnType<typeof planJourney>>['plan'] | null
@@ -452,19 +501,18 @@ export async function runJourneyReviewsForAudit(
         scanAccess: options.scanAccess,
         plan,
         plannerUsage: plannerUsage ?? undefined,
+        overlayExpectedTargets: options.overlayExpectedTargets?.filter(target => target.context.split(':')[3].startsWith('journey_' + journeyType.replaceAll('-', '_') + '_')),
+        expectedJourneyRoute: journeyRun.route,
+        journeyPageOnly: Boolean(options.expectedJourneyConditions),
       })
       if (plan) {
         result.planJson = JSON.stringify(plan)
       }
-      const findings = await persistJourneyResult(auditId, result)
+      options.onOverlayObservations?.(result.overlayObservations ?? [])
+      options.onPageObservations?.(result.pageObservations ?? [])
+      options.onJourneyFindings?.(result.findings.filter(projectedJourneyFinding).map(finding => ({ ...finding, affectedPaths: finding.affectedPaths ?? [result.startUrl] })))
+      const findings = await persistJourneyResult(auditId, result, undefined, options.allowedCheckIds, Boolean(options.onOverlayObservations || options.onPageObservations))
       findingCount += findings.length
-      if (result.status === 'COMPLETED') {
-        await recordTargetedJourneyVerifierExecutions({
-          auditId,
-          journeyType,
-          visitedUrls: result.steps.map((step) => step.url),
-        })
-      }
 
       if (journeyType === 'multi-step-funnel' && result.steps.length >= 3 && !result.blockedReason) {
         const evalGuard = aiGuard.canCall(4_000)

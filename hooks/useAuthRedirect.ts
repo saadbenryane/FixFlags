@@ -10,7 +10,11 @@ const FUNNEL_SOURCES = ['pricing', 'report', 'hero', 'final'] as const
 
 export function sanitizeNextPath(next: string | null): Route | null {
   if (!next) return null
-  if (!next.startsWith('/') || next.startsWith('//')) return null
+  if (!next.startsWith('/') || next.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(next)) return null
+  try {
+    const path = decodeURIComponent(next.split(/[?#]/, 1)[0])
+    if (path.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(path)) return null
+  } catch { return null }
   return next as Route
 }
 

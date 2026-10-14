@@ -1,5 +1,5 @@
 import type { Browser, Page } from 'playwright'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
@@ -36,7 +36,10 @@ runBrowser('shared Tracking collector in Chromium', () => {
   it('allows the library transfer and observes a beacon attempt while suppressing actual collection', async () => {
     const session = await fixture('<script src="https://www.googletagmanager.com/gtag/js?id=G-PRIVATE"></script>')
     await page.waitForFunction(() => (window as unknown as { libraryLoaded?: boolean }).libraryLoaded)
-    await page.waitForTimeout(50)
+    await vi.waitFor(() => expect(session.tracking().requests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'library', state: 'completed', status: 200 }),
+      expect.objectContaining({ role: 'event', state: 'suppressed' }),
+    ])))
     const evidence = session.tracking('page_load')
     expect(evidence.requests).toMatchObject([{ role: 'library', state: 'completed', status: 200 }, { role: 'event', state: 'suppressed', status: null }])
     expect(JSON.stringify(evidence)).not.toContain('PRIVATE')
@@ -46,7 +49,9 @@ runBrowser('shared Tracking collector in Chromium', () => {
   })
   it('reports an actual HTTP library failure and leaves consent-delayed silence unknown without clicking', async () => {
     let session = await fixture('<script src="https://www.googletagmanager.com/gtag/js?id=G-PRIVATE"></script>', 404)
-    await page.waitForTimeout(50)
+    await vi.waitFor(() => expect(session.tracking().requests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'library', status: 404 }),
+    ])))
     const metadata = parseMetadataFromHtml(await page.content(), page.url())
     expect(runTrackingChecks(metadata, session.tracking(), page.url()).flags[0].checkId).toBe('tracking-library-http-error')
     session.disposeNetwork(); await page.context().close()
@@ -59,7 +64,10 @@ runBrowser('shared Tracking collector in Chromium', () => {
   it('reuses the same monitor for a public interaction and keeps it separate from page loading', async () => {
     const session = await fixture('<button id="action" onclick="navigator.sendBeacon(\'https://www.google-analytics.com/g/collect?cid=PRIVATE\',\'PRIVATE_PAYLOAD\')">Show details</button>')
     session.setTrackingPhase('public_action')
-    await page.locator('#action').click(); await page.waitForTimeout(50)
+    await page.locator('#action').click()
+    await vi.waitFor(() => expect(session.tracking('public_action').requests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'event', state: 'suppressed' }),
+    ])))
     expect(session.tracking('page_load').requests).toEqual([])
     expect(session.tracking('public_action').requests).toMatchObject([{ phase: 'public_action', role: 'event', state: 'suppressed' }])
     expect(session.safetyRestrictions).toEqual([])
@@ -78,7 +86,12 @@ runBrowser('shared Tracking collector in Chromium', () => {
     const monitor = attachNetworkMonitor(page, 'https://example.com/')
     await page.route('**', route => route.fulfill({ status: route.request().resourceType() === 'document' ? 200 : 204,
       contentType: 'text/html', body: route.request().resourceType() === 'document' ? '<script>fetch("/_vercel/insights/view?cid=PRIVATE",{method:"POST",body:"PRIVATE_PAYLOAD"})</script>' : '' }))
-    await page.goto('https://example.com/'); await page.waitForTimeout(50)
+    await page.goto('https://example.com/')
+    // Chromium can report a bodyless 204 transfer as aborted after fetch has
+    // resolved. This contract records the HTTP response, not event ingestion.
+    await vi.waitFor(() => expect(monitor.tracking().requests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'event', status: 204 }),
+    ])))
     const result = runTrackingChecks(parseMetadataFromHtml('', page.url()), monitor.tracking(), page.url())
     expect(result.assertions.find(item => item.key === 'tracking-http-response')).toMatchObject({ passed: true, complete: true })
     expect(result.assertions.find(item => item.key === 'tracking-provider-recording')).toMatchObject({ complete: false })

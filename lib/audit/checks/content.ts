@@ -33,9 +33,9 @@ export function runContentChecks(
         checkId: 'h1-generic',
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
-        severity: 'IMPORTANT',
-        problem: 'Hero headline is generic and does not lead with a visitor outcome',
-        evidence: `H1: "${h1}"`,
+        severity: 'POLISH',
+        problem: 'Headline contains a generic phrase',
+        evidence: `H1: "${h1}". A phrase match does not establish visitor comprehension or a conversion failure.`,
         fix: '1. Replace the generic H1 with a benefit-driven headline\n2. Name the audience and the outcome ("Build X for Y teams")\n3. Test that the headline communicates value within 3 seconds',
         confidence: 0.9,
         source: 'DETERMINISTIC',
@@ -60,10 +60,10 @@ export function runContentChecks(
       checkId: 'no-cta-detected',
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
-      severity: 'IMPORTANT',
-      problem: 'No call-to-action buttons or links found',
-      evidence: `No links or buttons matched CTA keywords (get started, sign up, try, etc.). Found: ${sampleLinks || 'no links'}`,
-      fix: '1. Add a primary CTA button above the fold\n2. Use an outcome-led label: "Get started free", "Start your trial"\n3. Make it visually distinct (high contrast, larger touch target)',
+      severity: 'POLISH',
+      problem: 'No captured action label matched the recognized phrases',
+      evidence: `No links or buttons matched CTA keywords (get started, sign up, try, etc.). Found: ${sampleLinks || 'no links'}. Unrecognized labels and runtime actions were not established as missing or broken.`,
+      fix: 'Review the page’s intended visitor action and its visible label. Confirm the existing controls before adding another call to action. Use a descriptive label when it helps visitors understand what happens next.',
       confidence: 0.8,
       source: 'DETERMINISTIC',
     })
@@ -96,17 +96,14 @@ export function runContentChecks(
   }
 
   if (meta.forms > 0 && meta.formInputsMissingValidation > 0) {
-    const missingRatio = meta.totalFormInputs > 0
-      ? meta.formInputsMissingValidation / meta.totalFormInputs
-      : 1
     findings.push({
       checkId: 'form-missing-validation',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
-      severity: missingRatio >= 0.5 ? 'IMPORTANT' : 'POLISH',
+      severity: 'POLISH',
       problem: `${meta.formInputsMissingValidation} of ${meta.totalFormInputs} form field${meta.totalFormInputs > 1 ? 's' : ''} lack${meta.formInputsMissingValidation === 1 ? 's' : ''} HTML validation attributes`,
-      evidence: `${meta.forms} form with ${meta.totalFormInputs} input${meta.totalFormInputs > 1 ? 's' : ''}; ${meta.formInputsMissingValidation} missing required, aria-required, or pattern`,
-      fix: 'Add required or aria-required to mandatory fields. Use pattern for format validation. If validation is handled client-side (e.g. React Hook Form), ensure error messages are announced with aria-invalid and role="alert".',
+      evidence: `${meta.forms} form${meta.forms === 1 ? '' : 's'} with ${meta.totalFormInputs} input${meta.totalFormInputs === 1 ? '' : 's'}; ${meta.formInputsMissingValidation} lack native validation declarations. Required-field semantics and runtime validation were not established.`,
+      fix: 'Review which fields are mandatory and how the application validates them. Use native validation where appropriate, and make application errors accessible. Missing attributes alone do not establish broken submissions; aria-required does not enforce validation.',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })

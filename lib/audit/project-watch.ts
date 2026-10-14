@@ -7,6 +7,8 @@ import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy'
 import { siteNotificationEmail } from '@/lib/email/site-notification'
 import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
+import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '@/lib/email/watch-delivery'
+import { sendNotificationEmail } from '@/lib/email/notification-delivery'
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
@@ -40,7 +42,6 @@ const LEASE_MS = 10 * 60 * 1000
  * re-attempted within a Watch interval rather than being lost.
  */
 const NOTIFICATION_LEASE_MS = 10 * 60 * 1000
-const NOTIFICATION_PROVIDER_TIMEOUT_MS = 20_000
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 export function productWatchReadiness(): { available: boolean; error: string | null } {
@@ -183,46 +184,45 @@ export async function processDueProjectWatches(
   for (const project of due) {
     const interval = fromStoredWatchInterval(project.watchInterval)
     if (!interval) continue
-    const unchangedSchedule = { id: project.id, watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null, watchNextRunAt: project.watchNextRunAt }
-    const effective = await loadEffectiveEntitlements(project.userId)
-    if (!effective?.available) continue
-    if (!effective.watchIntervals.length) {
-      await prisma.project.update({
-        where: { id: project.id },
+    const unchangedSchedule = { id: project.id, userId: project.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' as const },
+      watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null, watchNextRunAt: project.watchNextRunAt }
+    const availableLease = { OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }] }
+    let mutationScope: Prisma.ProjectWhereInput = { ...unchangedSchedule, ...availableLease }
+    try {
+      const effective = await loadEffectiveEntitlements(project.userId)
+      if (!effective?.available) continue
+      if (!effective.watchIntervals.length) {
+        await prisma.project.updateMany({
+          where: mutationScope,
+          data: {
+            watchInterval: null,
+            watchEveryMinutes: null,
+            watchNextRunAt: null,
+            watchLeaseUntil: null,
+            watchLastError: 'Watching is not available on this account.',
+          },
+        })
+        continue
+      }
+      if (!effective.watchIntervals.includes(interval)) {
+        await prisma.project.updateMany({
+          where: mutationScope,
+          data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'This schedule is not available on your plan. Choose an available monitoring schedule.' },
+        })
+        continue
+      }
+      const leaseUntil = new Date(now.getTime() + LEASE_MS)
+      const claimed = await prisma.project.updateMany({
+        where: mutationScope,
         data: {
-          watchInterval: null,
-          watchEveryMinutes: null,
-          watchNextRunAt: null,
-          watchLeaseUntil: null,
-          watchLastError: 'Watching is not available on this account.',
+          watchLeaseUntil: leaseUntil,
+          watchLastAttemptAt: now,
         },
       })
-      continue
-    }
-    if (!effective.watchIntervals.includes(interval)) {
-      await prisma.project.updateMany({
-        where: { id: project.id, watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null },
-        data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'This schedule is not available on your plan. Choose an available monitoring schedule.' },
-      })
-      continue
-    }
-    const claimed = await prisma.project.updateMany({
-      where: {
-        id: project.id,
-        watchInterval: project.watchInterval,
-        watchEveryMinutes: project.watchEveryMinutes ?? null,
-        watchNextRunAt: project.watchNextRunAt,
-        OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }],
-      },
-      data: {
-        watchLeaseUntil: new Date(now.getTime() + LEASE_MS),
-        watchLastAttemptAt: now,
-      },
-    })
-    if (claimed.count !== 1) continue
-    processed += 1
+      if (claimed.count !== 1) continue
+      mutationScope = { ...unchangedSchedule, watchLeaseUntil: leaseUntil }
+      processed += 1
 
-    try {
       await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, now))
       const active = await prisma.audit.findFirst({
         where: {
@@ -234,7 +234,7 @@ export async function processDueProjectWatches(
       })
       if (active) {
         await prisma.project.updateMany({
-          where: unchangedSchedule,
+          where: mutationScope,
           data: { watchLeaseUntil: null, watchNextRunAt: retryAt(1, now) },
         })
         continue
@@ -248,7 +248,7 @@ export async function processDueProjectWatches(
       // A saved schedule can change while a check is being queued. Advance
       // only the schedule this worker claimed, preserving the owner's edit.
       await prisma.project.updateMany({
-        where: unchangedSchedule,
+        where: mutationScope,
         data: {
           watchLeaseUntil: null,
           watchNextRunAt: calcWatchNextRun(interval, now, project.watchEveryMinutes),
@@ -257,36 +257,43 @@ export async function processDueProjectWatches(
         },
       })
     } catch (error) {
-      const usageLimit = error as {
-        code?: string
-        renewalAt?: Date
-      }
-      if (usageLimit.code === 'UPGRADE_REQUIRED' || usageLimit.code === 'TOKEN_LIMIT') {
-        await prisma.project.updateMany({
-          where: unchangedSchedule,
-          data: {
-            watchLeaseUntil: null,
-            watchNextRunAt:
-              usageLimit.renewalAt && usageLimit.renewalAt > now
-                ? usageLimit.renewalAt
-                : calcWatchNextRun(interval, now, project.watchEveryMinutes),
-            watchLastError:
-              'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
-          },
-        })
-        continue
-      }
       errors += 1
-      const message = error instanceof Error ? error.message : String(error)
-      logger.error('Project watch tick failed', error instanceof Error ? error : new Error(message), {
-        projectId: project.id,
-      })
-      await recordWatchFailure(
-        unchangedSchedule,
-        project.watchConsecutiveFailures + 1,
-        message,
-        now
-      )
+      try {
+        const usageLimit = (error && typeof error === 'object' ? error : {}) as {
+          code?: string
+          renewalAt?: Date
+        }
+        if (usageLimit.code === 'UPGRADE_REQUIRED' || usageLimit.code === 'TOKEN_LIMIT') {
+          await prisma.project.updateMany({
+            where: mutationScope,
+            data: {
+              watchLeaseUntil: null,
+              watchNextRunAt:
+                usageLimit.renewalAt && usageLimit.renewalAt > now
+                  ? usageLimit.renewalAt
+                  : calcWatchNextRun(interval, now, project.watchEveryMinutes),
+              watchLastError:
+                'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
+            },
+          })
+          errors -= 1
+          continue
+        }
+        const message = error instanceof Error ? error.message : String(error)
+        logger.error('Project watch tick failed', error instanceof Error ? error : new Error(message), {
+          projectId: project.id,
+        })
+        await recordWatchFailure(
+          mutationScope,
+          project.watchConsecutiveFailures + 1,
+          message,
+          now
+        )
+      } catch (persistenceError) {
+        logger.error('Project watch retry could not be saved', persistenceError instanceof Error ? persistenceError : new Error(String(persistenceError)), {
+          projectId: project.id,
+        })
+      }
     }
   }
 
@@ -309,6 +316,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       id: true,
       url: true,
       projectId: true,
+      userId: true,
       recheckTrigger: true,
       completedAt: true,
       watchRegressionCount: true,
@@ -319,11 +327,12 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       watchNotificationLeaseUntil: true,
       watchNotificationPayload: true,
       user: { select: { email: true, name: true, lifecycleStatus: true } },
-      project: { select: { watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
+      project: { select: { userId: true, deletedAt: true, watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
     },
   })
   if (child?.user && child.user.lifecycleStatus !== 'ACTIVE') return
-  if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId) return
+  if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId || !child.project ||
+    child.project.deletedAt != null || child.project.userId !== child.userId) return
   await markWatchCompleted(child.projectId, child.completedAt ?? new Date())
   // Provider acceptance is already confirmed. Historical rows may not have the newer
   // recovery classification, but rewriting SENT to PENDING while backfilling
@@ -361,7 +370,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
     await prisma.audit.updateMany({
       where: { id: childAuditId, OR: [
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
-        { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lte: new Date() } },
+        { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: new Date() } }] },
       ] },
       data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null },
     })
@@ -397,15 +406,15 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   if (
     child.watchNotificationStatus === 'SENDING'
     && child.watchNotificationAttempts >= child.watchNotificationAttemptCeiling
-    && child.watchNotificationLeaseUntil != null
-    && child.watchNotificationLeaseUntil <= deliveryNow
+    && (child.watchNotificationLeaseUntil == null || child.watchNotificationLeaseUntil <= deliveryNow)
   ) {
     await prisma.audit.updateMany({
       where: {
         id: childAuditId,
         watchNotificationStatus: 'SENDING',
+        watchNotificationAttemptCeiling: child.watchNotificationAttemptCeiling,
         watchNotificationAttempts: { gte: child.watchNotificationAttemptCeiling },
-        watchNotificationLeaseUntil: { lte: deliveryNow },
+        OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: deliveryNow } }],
       },
       data: {
         watchNotificationStatus: 'FAILED',
@@ -425,12 +434,21 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   const claimed = await prisma.audit.updateMany({
     where: {
       id: childAuditId,
+      // Eligibility can change after classification. The claim is the last
+      // admission boundary before the external provider operation.
+      userId: child.userId,
+      projectId: child.projectId,
+      watchNotificationAttemptCeiling: child.watchNotificationAttemptCeiling,
+      user: { lifecycleStatus: 'ACTIVE', email: child.user?.email },
+      project: { deletedAt: null, userId: child.userId ?? undefined,
+        user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: child.project?.notificationLevel,
+        notifyOnRecovery: child.project?.notifyOnRecovery },
       watchNotificationAttempts: { equals: child.watchNotificationAttempts, lt: child.watchNotificationAttemptCeiling },
       OR: [
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
         {
           watchNotificationStatus: 'SENDING',
-          watchNotificationLeaseUntil: { lte: claimNow },
+          OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: claimNow } }],
         },
       ],
     },
@@ -447,39 +465,27 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
 
   try {
     if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
-    const payload = child.watchNotificationPayload == null
-      ? watchEmailPayloadSchema.parse({ version: 1, from: FROM_EMAIL, to: child.user.email,
+    const payload = selectWatchEmailDelivery({ auditId: child.id, recorded: child.watchNotificationPayload,
+      broadLegacyPermission: child.project?.notificationLevel !== 'CRITICAL_ONLY' && child.project?.notifyOnRecovery !== false,
+      fresh: watchEmailPayloadSchema.parse({ version: 1, from: FROM_EMAIL, to: child.user.email,
         ...siteNotificationEmail({ projectId, url: child.url, name: child.user.name,
           checkedAt: child.completedAt, regressions: alertRegressions, recoveries: alertRecoveries }),
-        tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }] })
-      : watchEmailPayloadSchema.parse(child.watchNotificationPayload)
-    if (payload.to !== child.user.email || !payload.tags.some(tag => tag.name === 'audit_id' && tag.value === child.id))
-      throw new Error('Recorded notification no longer matches its recipient or Audit')
-    if (child.watchNotificationPayload == null) {
+        tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }],
+        selection: watchEmailSelection(projectId, alertRegressions, alertRecoveries) }) })
+    if (JSON.stringify(payload) !== JSON.stringify(child.watchNotificationPayload)) {
       const saved = await prisma.audit.updateMany({
-        where: { ...ownedClaim, watchNotificationPayload: { equals: Prisma.DbNull } },
+        where: { ...ownedClaim, watchNotificationPayload: { equals: child.watchNotificationPayload == null ? Prisma.DbNull : child.watchNotificationPayload } },
         data: { watchNotificationPayload: payload },
       })
       if (saved.count !== 1) return
     }
-    const { version, ...message } = payload
-    void version
-    // The installed SDK forwards request options to fetch. Abort the actual
-    // request, rather than leaving it running after a Promise timeout.
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(new Error('Watch notification provider deadline')), NOTIFICATION_PROVIDER_TIMEOUT_MS)
-    const deliveryOptions = { idempotencyKey: `fixflags-watch-${child.id}-v1`, signal: controller.signal }
-    const { data, error } = await resend.emails.send({
-      ...message,
-    }, deliveryOptions).finally(() => clearTimeout(timer))
-    // The provider SDK resolves rejected requests with an error, rather than throwing.
-    if (error) throw new Error(error.message)
-    if (!data?.id) throw new Error('Email provider did not confirm acceptance')
+    const message = watchEmailProviderBody(payload)
+    const providerId = await sendNotificationEmail(resend, message, payload.deliveryKey!)
     const recorded = await prisma.audit.updateMany({
       where: ownedClaim,
       data: {
         watchNotificationStatus: 'SENT',
-        watchNotificationProviderId: data.id,
+        watchNotificationProviderId: providerId,
         watchNotifiedAt: new Date(),
         watchNotificationLastError: null,
         watchNotificationLeaseUntil: null,
@@ -523,17 +529,19 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
       status: 'COMPLETED',
       recheckTrigger: 'WATCH',
       improvementProjectedAt: { not: null },
-      // SENDING is included only when its lease has expired. Claims below the
+      user: { lifecycleStatus: 'ACTIVE' },
+      project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
+      // SENDING without a lease has no active owner. Claims below the
       // ceiling can be retried; an exhausted final claim is terminalized.
       OR: [
         {
           watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
           watchNotificationAttempts: { lt: prisma.audit.fields.watchNotificationAttemptCeiling },
         },
-        { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lt: now } },
+        { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: now } }] },
       ],
     },
-    select: { id: true, parentId: true },
+    select: { id: true, parentId: true, watchNotificationAttempts: true },
     take: limit,
     orderBy: { updatedAt: 'asc' },
   })
@@ -546,6 +554,18 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
         childAuditId: audit.id,
         error: error instanceof Error ? error.message : String(error),
       })
+      // Move unreadable classification behind other due rows without consuming
+      // a provider attempt or changing another sender's delivery state.
+      try {
+        await prisma.audit.updateMany({ where: { id: audit.id,
+          watchNotificationAttempts: audit.watchNotificationAttempts,
+          OR: [{ watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+            { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: now } }] }] },
+          data: { updatedAt: new Date(), watchNotificationLastError: 'Notification classification could not complete' } })
+      } catch (updateError) {
+        logger.warn('Watch notification retry could not be deferred', { childAuditId: audit.id,
+          error: updateError instanceof Error ? updateError.message : String(updateError) })
+      }
     }
   }
   return audits.length

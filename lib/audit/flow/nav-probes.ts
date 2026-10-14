@@ -5,15 +5,22 @@ import { detectOverlayAtPoint, type OverlayBlockerInfo } from '@/lib/audit/brows
 import { probeFormValidation, type FormProbeResult } from './form-probes'
 import type { FormEvidence } from './form-evidence'
 import { probeGhostSections } from './scroll-probes'
+import type { OverlayInteractionRecorder } from '../browser/overlay-interaction'
+import type { OverlayObservation } from '../checks/overlay-evidence'
+import { collectMobileNavigation } from './mobile-navigation'
+import type { MobileNavigationObservation } from './mobile-navigation-evidence'
 
 export type ProbeOutcome = 'ok' | 'broken' | 'skipped'
 
 export interface MultiStepProbeResult {
+  pricingNavOverlayObservation?: OverlayObservation
+  formOverlayObservation?: OverlayObservation
   pricingNav: ProbeOutcome
   pricingNavLabel?: string
   pricingNavHref?: string
   pricingNavOverlay?: OverlayBlockerInfo | null
   mobileMenu: ProbeOutcome
+  mobileNavigationObservations?: MobileNavigationObservation[]
   formValidation: ProbeOutcome
   formLabel?: string
   formFeedbackMs?: number | null
@@ -45,6 +52,7 @@ export async function restoreDesktopCaptureViewport(page: Page): Promise<void> {
 }
 
 interface PricingProbeResult {
+  pricingNavOverlayObservation?: OverlayObservation
   pricingNav: ProbeOutcome
   pricingNavLabel?: string
   pricingNavHref?: string
@@ -52,12 +60,17 @@ interface PricingProbeResult {
 }
 
 /** Click the header Pricing/Plans nav link and verify it reaches a real section or page. */
-export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
-  const link = await page.evaluate(() => {
+export async function probePricingNav(page: Page, overlayRecorder?: OverlayInteractionRecorder): Promise<PricingProbeResult> {
+  const originalSelector = overlayRecorder?.expectedSelector('nav', 'pricing_navigation')
+  const link = await page.evaluate(originalSelector => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const anchors = Array.from(
       document.querySelectorAll('header nav a[href], nav[aria-label] a[href], header a[href]')
     )
+    if (originalSelector) {
+      const element = document.querySelector(originalSelector)
+      return element instanceof HTMLAnchorElement ? { index: -1, text: element.textContent?.trim() ?? '', href: element.getAttribute('href') ?? '' } : null
+    }
     for (let i = 0; i < anchors.length; i++) {
       const el = anchors[i] as HTMLAnchorElement
       const text = (el.textContent ?? '').trim()
@@ -67,13 +80,18 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
       return { index: i, text, href }
     }
     return null
-  })
+  }, originalSelector)
 
   if (!link) {
     return { pricingNav: 'skipped' as const }
   }
 
-  const selector = `[data-fixflags-pricing-nav="${link.index}"]`
+  const selector = originalSelector ?? `[data-fixflags-pricing-nav="${link.index}"]`
+  const inspected = await overlayRecorder?.inspect(selector, 'nav', 'pricing_navigation')
+  if (inspected && !inspected.matchesExpected) return { pricingNav: 'skipped', pricingNavLabel: link.text, pricingNavHref: link.href }
+  if (inspected?.observation?.controls.some(control => control.disposition === 'failed'))
+    return { pricingNav: 'broken', pricingNavLabel: link.text, pricingNavHref: link.href, pricingNavOverlay: inspected.blocker, pricingNavOverlayObservation: inspected.observation }
+  if (overlayRecorder && !overlayRecorder.activationRequired('pricing_navigation')) return { pricingNav: 'skipped', pricingNavLabel: link.text, pricingNavHref: link.href }
 
   if (link.href.startsWith('#')) {
     const targetExists = await page.evaluate(
@@ -93,6 +111,7 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
 
     try {
       await page.click(selector)
+      overlayRecorder?.activated(inspected)
       await sleep(400)
       const inView = await page.evaluate((hash) => {
         ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
@@ -107,12 +126,14 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
         pricingNavHref: link.href,
       }
     } catch {
+      const inspected = await overlayRecorder?.inspect(selector, 'nav', 'pricing_navigation_after')
       const overlay = await detectOverlayAtPoint(page, selector)
       return {
         pricingNav: 'broken' as const,
         pricingNavLabel: link.text,
         pricingNavHref: link.href,
         pricingNavOverlay: overlay,
+        pricingNavOverlayObservation: inspected?.observation,
       }
     }
   }
@@ -122,6 +143,7 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
       .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 8_000 })
       .catch(() => null)
     await page.click(selector)
+    overlayRecorder?.activated(inspected)
     const response = await navPromise
     const status = response?.status()
     const finalUrl = page.url()
@@ -133,124 +155,40 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
       pricingNavHref: link.href,
     }
   } catch {
+    const inspected = await overlayRecorder?.inspect(selector, 'nav', 'pricing_navigation_after')
     const overlay = await detectOverlayAtPoint(page, selector)
     return {
       pricingNav: 'broken' as const,
       pricingNavLabel: link.text,
       pricingNavHref: link.href,
       pricingNavOverlay: overlay,
+      pricingNavOverlayObservation: inspected?.observation,
     }
   }
 }
 
-function countVisibleNavLinks(): { visible: number; total: number } {
-  const navLinks = Array.from(
-    document.querySelectorAll('header nav a[href], nav[aria-label] a[href]')
-  )
-  let visible = 0
-  for (const el of navLinks) {
-    const rect = el.getBoundingClientRect()
-    const style = window.getComputedStyle(el)
-    if (
-      rect.width > 0 &&
-      rect.height > 0 &&
-      style.visibility !== 'hidden' &&
-      style.display !== 'none' &&
-      style.opacity !== '0'
-    ) {
-      visible++
-    }
-  }
-  return { visible, total: navLinks.length }
-}
-
-interface MobileMenuProbeResult {
-  mobileMenu: ProbeOutcome
-}
-
-/** On mobile viewport, nav links hidden behind a menu toggle must become reachable after open. */
-export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult> {
+/** Compatibility adapter for the stage pipeline. Progressive runs use an independent mobile task. */
+export async function probeMobileMenu(page: Page) {
   if (page.isClosed()) return { mobileMenu: 'skipped' as const }
-  await page.setViewportSize({
-    width: MOBILE_VIEWPORT.width,
-    height: MOBILE_VIEWPORT.height,
-  })
-  await page.evaluate(() => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    window.scrollTo(0, 0)
-  })
-  await sleep(200)
-
-  const before = await page.evaluate(countVisibleNavLinks)
-  if (before.total === 0) {
-    await restoreDesktopCaptureViewport(page)
-    return { mobileMenu: 'skipped' as const }
-  }
-
-  const visibleFullNavNeedsMenu = before.visible >= 5
-
-  const toggle = await page.evaluate(() => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    const candidates = Array.from(
-      document.querySelectorAll('button, [role="button"], summary')
-    )
-    for (let i = 0; i < candidates.length; i++) {
-      const el = candidates[i]
-      const label = (
-        el.getAttribute('aria-label') ??
-        el.getAttribute('title') ??
-        el.textContent ??
-        ''
-      ).toLowerCase()
-      const hasMenuCue =
-        /menu|navigation|nav|hamburger|toggle/i.test(label) ||
-        el.getAttribute('aria-expanded') !== null ||
-        el.getAttribute('aria-controls') !== null
-      if (!hasMenuCue) continue
-      el.setAttribute('data-fixflags-menu-toggle', String(i))
-      return { index: i, label: label.slice(0, 40) }
-    }
-    return null
-  })
-
-  if (!toggle) {
-    await restoreDesktopCaptureViewport(page)
-    return visibleFullNavNeedsMenu || before.visible === 0
-      ? { mobileMenu: 'broken' as const }
-      : { mobileMenu: 'skipped' as const }
-  }
-
-  if (before.visible > 0 && !visibleFullNavNeedsMenu) {
-    await restoreDesktopCaptureViewport(page)
-    return { mobileMenu: 'skipped' as const }
-  }
-
   try {
-    await page.click(`[data-fixflags-menu-toggle="${toggle.index}"]`)
-    await sleep(600)
-    const after = await page.evaluate(countVisibleNavLinks)
-    // A working menu toggle exists. If links appear, it works. If our counter
-    // sees none, that is more likely a measurement gap (menu rendered in a
-    // portal/overlay outside the nav we count) than a genuinely broken menu, so
-    // do not emit a false "mobile nav is broken" - only the no-toggle path below
-    // reports broken, where we are confident there is no mobile menu at all.
-    const outcome: ProbeOutcome = after.visible > 0 ? 'ok' : 'skipped'
-    await restoreDesktopCaptureViewport(page)
-    return { mobileMenu: outcome }
-  } catch {
-    await restoreDesktopCaptureViewport(page)
-    return { mobileMenu: 'skipped' as const }
-  }
+    await page.setViewportSize({ width: MOBILE_VIEWPORT.width, height: MOBILE_VIEWPORT.height })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    const observed = await collectMobileNavigation(page, Date.now() + 8000)
+    return { mobileMenu: observed.observations.some(item => item.complete && (!item.opened || !item.links.length || item.links.some(link => !link.reachable)))
+      ? 'broken' as const : observed.complete && observed.applicable ? 'ok' as const : 'skipped' as const,
+      mobileNavigationObservations: observed.observations }
+  } finally { await restoreDesktopCaptureViewport(page) }
 }
 
-export async function runMultiStepProbes(page: Page, landingUrl: string, options: { includeFormValidation?: boolean } = {}): Promise<MultiStepProbeResult> {
-  const pricing = await probePricingNav(page)
+export async function runMultiStepProbes(page: Page, landingUrl: string, options: { includeFormValidation?: boolean; includeMobileNavigation?: boolean; overlayRecorder?: OverlayInteractionRecorder; overlayOnly?: boolean } = {}): Promise<MultiStepProbeResult> {
+  const pricing = await probePricingNav(page, options.overlayRecorder)
   if (pricing.pricingNav !== 'skipped' && page.url() !== landingUrl) {
     await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
     await sleep(300)
   }
 
-  const form: FormProbeResult = options.includeFormValidation === false ? { formValidation: 'skipped' } : await probeFormValidation(page)
+  const formOptions = { overlayRecorder: options.overlayRecorder, overlayOnly: options.overlayOnly, overlayPhase: 'flow_form_validation' }
+  const form: FormProbeResult = options.includeFormValidation === false ? { formValidation: 'skipped' } : await probeFormValidation(page, formOptions)
   let formResult = form
   if (options.includeFormValidation !== false && form.formValidation === 'skipped') {
     const signupPath = await page.evaluate(() => {
@@ -263,7 +201,7 @@ export async function runMultiStepProbes(page: Page, landingUrl: string, options
       const signupUrl = new URL(signupPath, landingUrl).href
       await page.goto(signupUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
       await sleep(300)
-      formResult = await probeFormValidation(page)
+      formResult = await probeFormValidation(page, formOptions)
       await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
       await sleep(300)
     }
@@ -280,7 +218,7 @@ export async function runMultiStepProbes(page: Page, landingUrl: string, options
     await sleep(300)
   }
 
-  const mobile = await probeMobileMenu(page)
+  const mobile = options.includeMobileNavigation === false ? { mobileMenu: 'skipped' as const, mobileNavigationObservations: undefined } : await probeMobileMenu(page)
   await restoreDesktopCaptureViewport(page)
   return {
     pricingNav: pricing.pricingNav,
@@ -288,10 +226,13 @@ export async function runMultiStepProbes(page: Page, landingUrl: string, options
     pricingNavHref: pricing.pricingNavHref,
     pricingNavOverlay: pricing.pricingNavOverlay,
     mobileMenu: mobile.mobileMenu,
+    mobileNavigationObservations: mobile.mobileNavigationObservations,
     formValidation: formResult.formValidation,
     formLabel: formResult.formLabel,
     formFeedbackMs: formResult.feedbackMs,
     formOverlay: formResult.formOverlay,
+    pricingNavOverlayObservation: pricing.pricingNavOverlayObservation,
+    formOverlayObservation: formResult.formOverlayObservation,
     formEvidence: formResult.evidence,
     ghostSections: ghost.ghostCount,
     ghostSampleSelector: ghost.sampleSelector ?? undefined,

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import OutcomeDetailPage from '../page'
 
 const OBSERVED = '2026-09-23T22:57:11.000Z'
@@ -127,5 +128,14 @@ describe('Outcome proof card', () => {
     expect(screen.queryByText('Browser journey')).not.toBeInTheDocument()
     expect(screen.queryByText('Safe form')).not.toBeInTheDocument()
     expect(screen.queryByText('Custom signal')).not.toBeInTheDocument()
+  })
+
+  it('asks for a fresh check when the current method has only historical evidence', async () => {
+    const outcome = await mocks.loadSiteOutcomeDetail()
+    mocks.loadSiteOutcomeDetail.mockResolvedValue({ ...outcome, bindings: [{ ...outcome.bindings[0], latestEvidence: null,
+      customerSentence: OUTCOME_DETAIL_COPY.currentEvidenceMissing }] })
+    render(await OutcomeDetailPage({ params: Promise.resolve({ siteId: 'site-1', outcomeId: 'outcome-1' }) }))
+    expect(screen.getAllByText(OUTCOME_DETAIL_COPY.currentEvidenceMissing)).toHaveLength(2)
+    expect(screen.queryByText(OUTCOME_DETAIL_COPY.noEvidence)).not.toBeInTheDocument()
   })
 })

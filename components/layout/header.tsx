@@ -90,7 +90,7 @@ export function Header({
       )}
     >
       <Container
-        variant={isMarketing ? 'marketing' : 'default'}
+        variant={isMarketing ? 'marketing' : variant === 'admin' ? 'wide' : 'default'}
         className={isMarketing ? 'px-4 sm:px-6 lg:px-12' : undefined}
       >
         <div
@@ -140,7 +140,7 @@ export function Header({
             <nav
               className={cn(
                 'items-center',
-                isMarketing ? 'hidden justify-center gap-2 xl:gap-4 lg:flex' : 'hidden gap-0.5 md:flex'
+                isMarketing ? 'hidden justify-center gap-2 xl:gap-4 lg:flex' : variant === 'admin' ? 'hidden gap-0.5 xl:flex' : 'hidden gap-0.5 md:flex'
               )}
             >
               {navLinks.map((link) => (
@@ -175,7 +175,7 @@ export function Header({
                   ? 'flex'
                   : isMarketing
                     ? 'hidden lg:flex'
-                    : 'hidden md:flex'
+                    : variant === 'admin' ? 'hidden xl:flex' : 'hidden md:flex'
               )}
             >
               {resolvedRight}
@@ -185,7 +185,7 @@ export function Header({
               <div
                 className={cn(
                   'flex items-center gap-1',
-                  isMarketing ? 'lg:hidden' : 'md:hidden'
+                  isMarketing ? 'lg:hidden' : variant === 'admin' ? 'xl:hidden' : 'md:hidden'
                 )}
               >
                 {isMarketing && <MarketingHeaderAuth mode="mobileTop" />}

@@ -1,3 +1,4 @@
+import { searchSectionBody, type SearchSection } from './rendered-snapshot'
 import * as cheerio from 'cheerio'
 import robotsParser from 'robots-parser'
 import type { DeterministicFlag } from '../flag-types'
@@ -6,12 +7,13 @@ import { parseSitemap } from './collect'
 import { SEARCH_DEFINITIONS, SEARCH_CHECK_REGISTRY } from './definitions'
 import { inspectStructuredData, inspectFeature, entityValues } from './structured-data'
 import { searchObservationSchema, type PublicDocument, type SearchPageEvidence, type SearchObservation, type SearchReceipt } from './contracts'
+import { pageScopedSearchAttention } from './attention-scope'
 
 type Rule = keyof typeof C.rules
 type EvaluatorInput = { evidence: SearchPageEvidence; previous?: SearchReceipt | null }
 type Definition = {
-  id: string; version: 1; responsibility: SearchObservation['responsibility'];
-  checkIds: readonly string[]; resultSchema: 'search-observation-v1'; guidance: Rule;
+  id: string; version: 2; responsibility: SearchObservation['responsibility'];
+  checkIds: readonly string[]; resultSchema: 'search-observation-v2'; guidance: Rule;
   requiredEvidence: readonly string[]; assertions: readonly string[];
   evaluate: (input: EvaluatorInput) => SearchObservation[] | Promise<SearchObservation[]>;
 }
@@ -24,11 +26,11 @@ type ObservationInput = Omit<Partial<SearchObservation>, 'attention'> & {
 function observation(evidence: SearchPageEvidence, input: ObservationInput): SearchObservation {
   const definition = C.rules[input.rule], document = input.document
   return searchObservationSchema.parse({
-    id: input.id ?? `${input.checkId}:${input.source}`, checkId: input.checkId, checkVersion: 1,
+    id: input.id ?? `${input.checkId}:${input.source}`, checkId: input.checkId, checkVersion: evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1),
     responsibility: input.responsibility ?? 'presentation', name: input.name ?? definition.name,
     disposition: input.disposition, reason: input.reason, expected: input.expected ?? definition.expected,
     observed: input.observed, source: input.source, collectedAt: document?.collectedAt ?? evidence.collectedAt,
-    pageUrl: evidence.pageUrl, attention: { policy: 'search', version: 1, kind: input.attention ?? 'observation', reason: input.reason },
+    pageUrl: evidence.pageUrl, attention: { policy: 'search', version: evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1), kind: input.attention ?? 'observation', reason: input.reason },
     evidence: input.evidence ?? [{ source: input.source, url: document?.finalUrl ?? evidence.pageUrl,
       locator: input.locator ?? input.checkId, excerpt: (input.excerpt ?? input.observed).slice(0, 2000),
       collectedAt: document?.collectedAt ?? evidence.collectedAt }],
@@ -38,12 +40,12 @@ function observation(evidence: SearchPageEvidence, input: ObservationInput): Sea
   })
 }
 
-function html(document: PublicDocument) {
-  return document.complete && document.status !== null && document.status >= 200 && document.status < 300 && document.body != null
-    ? cheerio.load(document.body) : null
+function html(document: PublicDocument, section: SearchSection = 'metadata') {
+  const body = searchSectionBody(document, section)
+  return body == null ? null : cheerio.load(body)
 }
-function primary(evidence: SearchPageEvidence): [PublicDocument, 'original-html' | 'rendered-dom'] {
-  return evidence.rendered.complete ? [evidence.rendered, 'rendered-dom'] : [evidence.original, 'original-html']
+function primary(evidence: SearchPageEvidence, section: SearchSection = 'metadata'): [PublicDocument, 'original-html' | 'rendered-dom'] {
+  return html(evidence.rendered, section) ? [evidence.rendered, 'rendered-dom'] : [evidence.original, 'original-html']
 }
 function urlIdentity(value: string): string { try { const url = new URL(value); url.hash = ''; return url.toString() } catch { return value } }
 function unknown(evidence: SearchPageEvidence, checkId: string, responsibility: SearchObservation['responsibility'], rule: Rule, source: SearchObservation['source']) {
@@ -70,11 +72,12 @@ function presentation({ evidence }: EvaluatorInput): SearchObservation[] {
   observations.push(observation(evidence, { checkId: 'search-page-language', rule: 'language', source, document,
     disposition: 'observed', reason: language ? 'page_language_recorded' : 'page_language_absent',
     observed: language ?? 'No page language was declared in this source. Accessibility is reviewed separately.', locator: 'html[lang]' }))
-  const headings = [...new Set($('h1').map((_, node) => $(node).text().trim()).get().filter(Boolean))]
+  const textHtml = html(document, 'text')
+  const headings = [...new Set((textHtml ?? $)('h1').map((_, node) => $(node).text().trim()).get().filter(Boolean))]
   observations.push(observation(evidence, { checkId: headings.length > 1 ? 'h1-multiple' : 'h1-missing', rule: 'headings', source, document,
-    disposition: headings.length === 1 ? 'passed' : 'observed', reason: headings.length ? 'headings_recorded' : 'main_heading_absent',
+    disposition: !textHtml ? 'unknown' : headings.length === 1 ? 'passed' : 'observed', reason: !textHtml ? 'text_section_incomplete' : headings.length ? 'headings_recorded' : 'main_heading_absent',
     observed: headings.length ? headings.slice(0, 4).join(' | ') : 'No non-empty H1 was recorded.',
-    attention: headings.length === 1 ? 'observation' : 'recommendation', locator: 'h1' }))
+    attention: !textHtml || headings.length === 1 ? 'observation' : 'recommendation', locator: 'h1' }))
   for (const [other, otherSource] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     if (otherSource === source) continue
     const otherHtml = html(other)
@@ -84,6 +87,7 @@ function presentation({ evidence }: EvaluatorInput): SearchObservation[] {
         disposition: otherTitle ? 'passed' : 'failed', reason: otherTitle ? 'title_present' : 'title_empty',
         observed: otherTitle || 'No non-empty title was recorded in this source.', attention: 'observation', locator: 'head title' }))
     }
+    if ((evidence.collectorVersion ?? 1) >= 2 && otherHtml) continue
     observations.push(otherHtml ? observation(evidence, { checkId: 'search-original-title', rule: 'title', source: otherSource, document: other,
       disposition: 'observed', reason: 'separate_source_title', observed: otherHtml('head title').first().text().trim() || 'No title in this source.', locator: 'head title' })
       : unknown(evidence, 'search-original-title', 'presentation', 'title', otherSource))
@@ -95,7 +99,7 @@ function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
   const observations: SearchObservation[] = [], tokens: string[] = []
   let complete = true
   for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
-    const $ = html(document)
+    const $ = html(document, 'indexing')
     if (!$) { complete = false; observations.push(unknown(evidence, 'search-indexing-source', 'indexing', 'indexing', source)); continue }
     const directives: string[] = []
     $('meta[name]').each((_, node) => {
@@ -173,7 +177,7 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
   const observations: SearchObservation[] = []
   let complete = true
   for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
-    const $ = html(document)
+    const $ = html(document, 'canonical')
     if (!$) { complete = false; continue }
     const values: string[] = []
     $('link[rel]').each((_, node) => { if (($(node).attr('rel') ?? '').toLowerCase().split(/\s+/).includes('canonical')) values.push($(node).attr('href') ?? '') })
@@ -243,7 +247,7 @@ function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
 }
 
 function discoveryWithLinks(input: EvaluatorInput): SearchObservation[] {
-  const { evidence } = input, [document, source] = primary(evidence), $ = html(document)
+  const { evidence } = input, [document, source] = primary(evidence, 'links'), $ = html(document, 'links')
   if (!$) return [...discovery(input), unknown(evidence, 'search-discovery-links', 'discovery', 'sitemap', source)]
   const links: string[] = []
   $('a[href]').each((_, node) => {
@@ -263,11 +267,14 @@ function discoveryWithLinks(input: EvaluatorInput): SearchObservation[] {
 
 async function structured({ evidence }: EvaluatorInput): Promise<SearchObservation[]> {
   const observations: SearchObservation[] = []
-  const [document, source] = primary(evidence)
-  const $ = html(document)
+  const [document, source] = primary(evidence, 'structured')
+  const $ = html(document, 'structured')
+  const contextBody = document.searchSnapshot && ['metadata', 'text', 'links'].every(key => document.searchSnapshot!.sections[key as SearchSection].complete)
+    ? `<html><head>${document.searchSnapshot.sections.metadata.html}</head><body>${document.searchSnapshot.sections.text.html}${document.searchSnapshot.sections.links.html}</body></html>` : null
+  const context = contextBody ? cheerio.load(contextBody) : document.searchSnapshot ? null : $
   if (!$) return [unknown(evidence, 'no-structured-data', 'structured-data', 'markup', source)]
   for (const [snapshot, snapshotSource] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
-    if (!html(snapshot)) { observations.push(unknown(evidence, 'search-structured-invalid', 'structured-data', 'markup', snapshotSource)); continue }
+    if (!html(snapshot, 'structured')) { observations.push(unknown(evidence, 'search-structured-invalid', 'structured-data', 'markup', snapshotSource)); continue }
     const inspection = await inspectStructuredData(snapshot)
     const syntaxFailed = inspection.issues.some(issue => ['invalid_json', 'invalid_jsonld'].includes(issue.reason))
     observations.push(observation(evidence, { checkId: 'search-structured-source', rule: 'markup', responsibility: 'structured-data',
@@ -303,9 +310,9 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
           invalidProperties: feature?.invalid ?? [], limitation: C.structuredLimit,
           guidance: feature ? `${C.rules.feature.guidance} Reference: ${feature.source}` : C.rules.feature.guidance }))
         const name = entityValues(entity, profile === 'Article' ? 'headline' : 'name', inspection.entities)[0]
-        const visible = $.root().clone()
+        const visible = context!.root().clone()
         visible.find('script, style, template, noscript, [hidden], [aria-hidden="true"]').remove()
-        if (snapshotSource === source && typeof name === 'string' && name.length > 3 && !visible.text().includes(name)) {
+        if (context && snapshotSource === source && typeof name === 'string' && name.length > 3 && !visible.text().includes(name)) {
           observations.push(observation(evidence, { id: `content:${entity.id}:${type}`, checkId: 'search-structured-content', rule: 'feature', responsibility: 'structured-data',
             source, document, disposition: 'observed', reason: 'content_correspondence_unconfirmed',
             observed: `The declared name was not located in the extracted page text: ${name.slice(0, 200)}`, attention: 'recommendation',
@@ -313,17 +320,17 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
         }
       }
     }
-    if (inspection.complete && snapshotSource === source) {
+    if (context && inspection.complete && snapshotSource === source) {
       const suggested: string[] = []
-      const visible = $.root().clone()
+      const visible = context!.root().clone()
       visible.find('script, style, template, noscript, [hidden], [aria-hidden="true"]').remove()
-      if (new URL(evidence.pageUrl).pathname === '/' && $('title').text().trim()) suggested.push('WebSite')
-      if ($('article').length && $('article h1, article h2').text().trim()) suggested.push('Article')
-      if ($('[aria-label*="breadcrumb" i]').find('a').length >= 2) suggested.push('BreadcrumbList')
-      if ($('meta[property="og:type"][content="product"]').length && /add to cart|buy now/i.test($('button').text())) suggested.push('Product')
-      const brand = $('meta[property="og:site_name"]').attr('content')?.trim()
+      if (new URL(evidence.pageUrl).pathname === '/' && context('title').text().trim()) suggested.push('WebSite')
+      if (context('article').length && context('article h1, article h2').text().trim()) suggested.push('Article')
+      if (context('[aria-label*="breadcrumb" i]').find('a').length >= 2) suggested.push('BreadcrumbList')
+      if (context('meta[property="og:type"][content="product"]').length && /add to cart|buy now/i.test(context('button').text())) suggested.push('Product')
+      const brand = context('meta[property="og:site_name"]').attr('content')?.trim()
       if (new URL(evidence.pageUrl).pathname === '/' && brand && visible.find('footer').text().includes(brand)) suggested.push('Organization')
-      if ($('meta[name="apple-itunes-app"]').length || $('a[href*="apps.apple.com/"], a[href*="play.google.com/store/apps/"]').length) suggested.push('SoftwareApplication')
+      if (context('meta[name="apple-itunes-app"]').length || context('a[href*="apps.apple.com/"], a[href*="play.google.com/store/apps/"]').length) suggested.push('SoftwareApplication')
       const types = new Set(inspection.entities.flatMap(entity => entity.types.map(type => ['BlogPosting', 'NewsArticle', 'TechArticle'].includes(type) ? 'Article' : type)))
       const missing = suggested.filter(type => !types.has(type))
       if (missing.length) observations.push(observation(evidence, { checkId: 'no-structured-data', rule: 'opportunity', responsibility: 'structured-data', source, document,
@@ -339,7 +346,7 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
 
 export const SEARCH_CHECK_DEFINITIONS: readonly Definition[] = [
   ...SEARCH_DEFINITIONS.filter(definition => !['google', 'cross-page'].includes(definition.evaluator)).map(definition => ({
-    ...definition, id: `search.${definition.evaluator}`, version: 1 as const, resultSchema: 'search-observation-v1' as const,
+    ...definition, id: `search.${definition.evaluator}`, version: 2 as const, resultSchema: 'search-observation-v2' as const,
     evaluate: ({ presentation, indexing, crawl: crawlWithResponse, canonical, discovery: discoveryWithLinks, 'structured-data': structured } as Record<string, Definition['evaluate']>)[definition.evaluator],
   })),
 ]
@@ -347,8 +354,8 @@ export const SEARCH_CHECK_DEFINITIONS: readonly Definition[] = [
 export function validateSearchRegistration(definitions: readonly Definition[]) {
   const ids = new Set<string>()
   for (const definition of definitions) {
-    if (ids.has(definition.id) || typeof definition.evaluate !== 'function' || definition.version !== 1 || !definition.assertions.length ||
-      definition.resultSchema !== 'search-observation-v1' || !definition.checkIds.length)
+    if (ids.has(definition.id) || typeof definition.evaluate !== 'function' || definition.version !== 2 || !definition.assertions.length ||
+      definition.resultSchema !== 'search-observation-v2' || !definition.checkIds.length)
       throw new Error(`Invalid Search registration: ${definition.id}`)
     ids.add(definition.id)
     for (const id of definition.checkIds) {
@@ -394,7 +401,7 @@ export function evaluateCheckedPageTitles(receipts: SearchReceipt[]): Map<string
       observed: titles.length < 2 ? 'Only one checked public page supplied a non-empty title.'
         : duplicates ? `${peers.length} checked pages use this title: ${title.observed}`
         : `This title differs from the other ${titles.length - 1} checked page titles.`,
-      attention: { policy: 'search', version: 1, kind: duplicates ? 'recommendation' : 'observation',
+      attention: { policy: 'search', version: title.checkVersion, kind: duplicates ? 'recommendation' : 'observation',
         reason: duplicates ? 'duplicate_checked_page_titles' : 'checked_page_title_comparison' },
       evidence: peers.slice(0, 20).flatMap(other => other.title.evidence),
       limitation: 'Comparison is limited to non-empty titles recorded on these checked pages. It does not establish site-wide uniqueness.',
@@ -426,5 +433,5 @@ export function searchFindings(observations: SearchObservation[]): Deterministic
         entityTypes: [...new Set(observations.filter(other =>
         other.checkId === item.checkId && other.attention.kind === 'flag').flatMap(other => other.entityTypes ?? []))] } })
   }
-  return [...findings.values()]
+  return [...findings.values()].map(flag => ({ ...flag, attentionPolicy: pageScopedSearchAttention(flag.attentionPolicy!, flag.pageUrl!) }))
 }

@@ -84,4 +84,4 @@ If readiness, the worker, a critical journey, or billing fails:
 
 ## Current evidence
 
-The active evidence record is [.agents/sessions/2026-09-10-coherent-site-product.md](../.agents/sessions/2026-09-10-coherent-site-product.md). Generated receipts under `test-results/release/` are intentionally gitignored and revision-bound.
+Current evidence must follow [the release evidence runbook](release-evidence-runbook.md). The September 10 session remains in Git history and does not establish current readiness. Generated receipts under `test-results/release/` are intentionally gitignored and revision-bound.

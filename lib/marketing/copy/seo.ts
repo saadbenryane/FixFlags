@@ -21,7 +21,7 @@ export const SEO = {
   integrations: {
     title: 'FixFlags Integrations',
     description:
-      'Connect Shopify, Google Analytics, or Search Console for more context beside a Flag. See available integrations and connections coming soon.',
+      'Connect GitHub to FixFlags. Explore other integrations coming soon after testing and validation.',
   },
   pricing: {
     title: 'FixFlags Pricing',
@@ -49,7 +49,7 @@ export const SEO = {
   faq: {
     title: 'FAQ',
     description:
-      'Answers about FixFlags website analysis, Flags, evidence, verification, Site monitoring, and Shopify connections.',
+      'Answers about FixFlags website analysis, Flags, evidence, verification, Site monitoring, GitHub authorization, and planned integrations.',
   },
   help: {
     title: 'Help Center',

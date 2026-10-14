@@ -45,9 +45,8 @@ export function watchAlertDelivery(input: {
   if (status === 'SENT') return 'accepted'
   if (status === 'SENDING') {
     const leaseUntil = input.leaseUntil ? new Date(input.leaseUntil) : null
-    const leaseExpired = leaseUntil != null
-      && !Number.isNaN(leaseUntil.getTime())
-      && leaseUntil <= (input.now ?? new Date())
+    const leaseExpired = leaseUntil == null || (!Number.isNaN(leaseUntil.getTime())
+      && leaseUntil <= (input.now ?? new Date()))
     if (input.attempts >= (input.attemptCeiling ?? WATCH_NOTIFICATION_ATTEMPT_LIMIT) && leaseExpired) {
       return 'undelivered'
     }

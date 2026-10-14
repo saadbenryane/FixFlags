@@ -270,6 +270,25 @@ describe('Safe Form executor', () => {
     expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'form_execution_failed', detail: { cleanupStatus: 'succeeded' } })
   })
 
+  it('refuses mutations before submission and rechecks the exact fixture permission while the browser submits', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })))
+    const session = await mocks.createAuditPage()
+    mocks.createAuditPage.mockClear()
+    const request = { url: 'https://example.com/api/signup', method: 'POST', navigation: false, postData: 'email=synthetic%40example.test', resourceType: 'fetch' }
+    mocks.createAuditPage.mockImplementation(async (_browser, _url, options) => {
+      expect(await options.requestPolicy(request)).toBe(false)
+      return session
+    })
+    mocks.click.mockImplementation(async () => {
+      const options = mocks.createAuditPage.mock.calls[0][2]
+      expect(await options.requestPolicy(request)).toBe(true)
+      mocks.fixtureFindFirst.mockResolvedValueOnce(null)
+      expect(await options.requestPolicy(request)).toBe(false)
+    })
+    const result = await executeSafeFormFixture({ projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_boundary_refused', detail: { cleanupStatus: 'succeeded' } })
+  })
+
   it('does not report a result when cleanup cannot be proven', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))

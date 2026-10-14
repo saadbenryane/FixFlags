@@ -6,61 +6,93 @@ import { searchReceiptSchema, searchVerifierSchema } from './search/contracts'
 import { assessSearchRecovery } from './search/recovery'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
+import { RENDERED_PAGE_VERIFICATION_RULE } from './checks/rendered-page-evidence'
 
 export type RecoveryExecution = { targetKey: string; status: string; detail: unknown }
 export type RecoveryFlag = { checkId?: string | null; pageUrl?: string | null; affectedPaths?: unknown; attentionPolicy?: unknown;
   evidenceTargets?: unknown; verificationRule?: string | null }
 const recoveryUrl = normalizeVerifierUrl
+type Verdict = 'passed' | 'failed' | null
+function combinedVerdict(verdicts: Verdict[]): Verdict {
+  if (verdicts.includes('failed')) return 'failed'
+  return verdicts.length && verdicts.every(verdict => verdict === 'passed') ? 'passed' : null
+}
 
-/** A completed page is not proof that a finding's evaluator completed. */
-export function hasRecordedRecoveryEvidence(input: {
+/** One comparable failure disproves repair; passing requires every original scope. */
+export function recordedVerificationVerdict(input: {
   auditId: string; executionSpec: unknown; flag: RecoveryFlag; executions: RecoveryExecution[];
-}): boolean {
+}): Verdict {
   const spec = readExecutionSpec(input.executionSpec), checkId = baseCheckId(input.flag.checkId)
-  if (!spec || !checkId || !CHECK_REGISTRY[checkId] || spec.checks[checkId] !== CHECK_REGISTRY[checkId].version) return false
+  if (!spec || !checkId || !CHECK_REGISTRY[checkId] || spec.checks[checkId] !== CHECK_REGISTRY[checkId].version) return null
   // Field responsiveness describes a trailing window. A fresh lab run cannot prove its repair.
-  if (checkId === 'inp-critical' || checkId === 'inp-poor') return false
+  if (checkId === 'inp-critical' || checkId === 'inp-poor') return null
   const urls = [...new Set([...parseAffectedPaths(input.flag.affectedPaths), ...(input.flag.pageUrl ? [input.flag.pageUrl] : [])].map(recoveryUrl))]
   if (!urls.length) urls.push(recoveryUrl(spec.targetUrl))
   const completed = input.executions.filter(row => row.status === 'COMPLETED')
-  return urls.every(url => {
+  if (['overlays', 'keyboard', 'journeys', 'mobile-navigation', 'corridor'].includes(CHECK_REGISTRY[checkId].module ?? '')) {
+    const checkModule = CHECK_REGISTRY[checkId].module
+    const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
+      const parsed = checkReceiptSchema.safeParse(row.detail)
+      return parsed.success && parsed.data.applicable && !parsed.data.failed && parsed.data.execution?.auditId === input.auditId && parsed.data.execution.checkVersion === spec.checks[checkId] &&
+        parsed.data.execution.source === (checkModule === 'keyboard' ? 'keyboard' : 'rendered-dom') ? [parsed.data] : []
+    })
+    return combinedVerdict(receipts.map(receipt => {
+      if (!receipt.applicable || receipt.failed) return null
+      const assertion = scopedAssertionForTarget({ receipt, receipts, checkId, flag: input.flag })?.assertion
+      return assertion ? assertion.passed ? 'passed' : 'failed' : null
+    }).filter(verdict => verdict !== null))
+  }
+  return combinedVerdict(urls.map(url => {
     const exact = completed.filter(row => row.targetKey === 'check:' + checkId).flatMap(row => {
       const check = checkVerifierSchema.safeParse(row.detail), search = searchVerifierSchema.safeParse(row.detail)
       return [...(check.success ? [check.data] : []), ...(search.success ? [search.data] : [])]
     }).filter(proof => proof.auditId === input.auditId && proof.checkId === checkId && recoveryUrl(proof.pageUrl) === url &&
       (!('checkVersion' in proof) || proof.checkVersion === spec.checks[checkId]))
-    if (exact.length) return exact.every(proof => proof.comparable && proof.verdict === 'passed')
     const searches = completed.filter(row => row.targetKey.startsWith('module:search')).flatMap(row => {
       const result = searchReceiptSchema.safeParse(row.detail)
       return result.success && result.data.auditId === input.auditId && recoveryUrl(result.data.pageUrl) === url &&
         result.data.observations.some(item => item.checkId === checkId) ? [result.data] : []
     })
-    if (searches.length) return searches.every(receipt => assessSearchRecovery(receipt, checkId, input.flag.attentionPolicy).verdict === 'passed')
+    if (searches.length) return combinedVerdict(searches.map(receipt => {
+      const result = assessSearchRecovery(receipt, checkId, input.flag.attentionPolicy, input.flag.pageUrl, urls)
+      return result.comparable && (result.verdict === 'passed' || result.verdict === 'failed') ? result.verdict : null
+    }))
     const checkModule = CHECK_REGISTRY[checkId]?.module
     const source = checkModule === 'performance' ? 'pagespeed-desktop' : checkModule === 'mobile' ? 'pagespeed-mobile'
       : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network'
-        : checkModule === 'security' ? 'original-html' : checkId === 'broken-internal-links' || ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
+        : checkId === 'broken-internal-links' || ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
           : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom'
     const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
       const result = checkReceiptSchema.safeParse(row.detail)
       return result.success && result.data.module === checkModule && result.data.execution?.auditId === input.auditId &&
         result.data.execution.checkVersion === spec.checks[checkId] && recoveryUrl(result.data.pageUrl) === url &&
-        result.data.execution.source === source ? [result.data] : []
+        (result.data.execution.source === source || checkModule === 'security' && result.data.execution.source === 'original-html') ? [result.data] : []
     })
-    if (['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['flow', 'accessibility', 'console', 'keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
+    // Derived summaries cannot replace the original condition's source observations.
+    if (!receipts.length && !input.flag.verificationRule && !Array.isArray(input.flag.evidenceTargets) && exact.length)
+      return combinedVerdict(exact.map(proof => proof.comparable ? proof.verdict === 'unknown' ? null : proof.verdict : null))
+    if (input.flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || ['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['overlays', 'flow', 'accessibility', 'console', 'keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
       const sources = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
         const result = checkReceiptSchema.safeParse(row.detail)
-        return result.success ? [result.data] : []
+        return result.success && !result.data.failed ? [result.data] : []
       })
-      return receipts.some(receipt => receipt.applicable && !receipt.failed &&
-        scopedAssertionForTarget({ receipt, checkId, flag: input.flag, receipts: sources })?.assertion.passed === true)
+      return combinedVerdict(receipts.map(receipt => {
+        if (!receipt.applicable || receipt.failed) return null
+        const assertion = scopedAssertionForTarget({ receipt, checkId, flag: input.flag, receipts: sources })?.assertion
+        return assertion ? assertion.passed ? 'passed' : 'failed' : null
+      }).filter(verdict => verdict !== null))
     }
-    return receipts.length > 0 && receipts.every(receipt => {
-      if (!receipt.applicable || receipt.failed) return false
+    return combinedVerdict(receipts.map(receipt => {
+      if (!receipt.applicable || receipt.failed) return null
       const assertion = scopedAssertionForTarget({ receipt, checkId, flag: input.flag })?.assertion
       // A module can omit a responsibility or succeed on a different assertion.
       // Only a recorded assertion for this exact finding establishes recovery.
-      return assertion?.passed === true
-    })
-  })
+      return assertion ? assertion.passed ? 'passed' : 'failed' : null
+    }))
+  }))
+}
+
+/** A completed page is not proof that a finding's evaluator completed. */
+export function hasRecordedRecoveryEvidence(input: Parameters<typeof recordedVerificationVerdict>[0]): boolean {
+  return recordedVerificationVerdict(input) === 'passed'
 }

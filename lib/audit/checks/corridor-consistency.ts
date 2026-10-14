@@ -1,5 +1,11 @@
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
+import { createHash } from 'node:crypto'
+import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
+import type { CheckAssertion } from './assertion'
+
+export const CORRIDOR_VERIFICATION_RULE = 'Cross-page preview comparison: repeat every original page pair under the same browser and access conditions.'
+export const CORRIDOR_CONTEXT = /^corridor:[a-f0-9]{64}$/
 
 const DESCRIPTORS = [
   {
@@ -33,6 +39,7 @@ export interface CorridorPageMeta {
   ogTitle: string | null
   ogDescription: string | null
   title: string | null
+  scope?: CaptureObservationScope
 }
 
 function normalizeText(value: string | null | undefined): string {
@@ -44,16 +51,46 @@ function normalizeText(value: string | null | undefined): string {
  * Compares secondary pages against the pasted page share preview.
  */
 export function runCorridorConsistencyChecks(pages: CorridorPageMeta[]): DeterministicFlag[] {
-  if (pages.length < 2) return []
-  const primary = pages.find((p) => p.role === 'primary') ?? pages[0]
-  const primaryTitle = normalizeText(primary.ogTitle || primary.title)
-  const primaryDesc = normalizeText(primary.ogDescription)
+  return evaluateCorridorConsistency(pages).flags
+}
+
+/** Comparisons retain both source pages, even when their findings are collapsed. */
+export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
+  const assertions = new Map<string, CheckAssertion[]>()
+  if (pages.length < 2) return { flags: [] as DeterministicFlag[], assertions }
+  const anchor = pages.find((p) => p.role === 'primary') ?? pages[0]
+  const ordered = [anchor, ...pages.filter(page => page.url !== anchor.url)]
   const flags: DeterministicFlag[] = []
 
-  for (const page of pages) {
+  // Record every pair so a diagnostic run can start at an affected page without
+  // losing its original comparison against the Site entry page.
+  for (const [primary, page] of ordered.flatMap((first, index) => ordered.slice(index + 1).map(other => [first, other] as const))) {
     if (page.url === primary.url) continue
+    const primaryTitle = normalizeText(primary.ogTitle || primary.title)
+    const primaryDesc = normalizeText(primary.ogDescription)
     const pageTitle = normalizeText(page.ogTitle || page.title)
     const pageDesc = normalizeText(page.ogDescription)
+    const pair = [primary, page].map(item => ({ url: item.url, key: item.scope ? captureObservationKey(item.scope) : 'unknown' }))
+      .sort((left, right) => left.url.localeCompare(right.url))
+    const scoped = pair.every(item => item.key !== 'unknown')
+    const hasTitles = Boolean(primaryTitle && pageTitle), hasDescriptions = Boolean(primaryDesc && pageDesc)
+    const absence = scoped ? 'not declared' : 'unavailable'
+    const context = 'corridor:' + (scoped ? createHash('sha256').update(JSON.stringify(pair)).digest('hex') : 'unknown')
+    const recorded: CheckAssertion[] = [
+      { key: 'preview-titles', name: 'Distinct page preview titles', expected: 'The compared pages have distinct non-empty preview titles',
+        observed: `${primary.url}: ${primary.ogTitle || primary.title || absence}; ${page.url}: ${page.ogTitle || page.title || absence}`.slice(0, 2000),
+        passed: hasTitles && primaryTitle !== pageTitle, complete: scoped, context,
+        ...(scoped && !hasTitles ? { disposition: 'observed' as const } : {}) },
+      { key: 'preview-descriptions', name: 'Page-specific preview descriptions', expected: 'The compared pages do not reuse the same long preview description',
+        observed: `${primary.url}: ${primary.ogDescription || absence}; ${page.url}: ${page.ogDescription || absence}`.slice(0, 2000),
+        passed: hasDescriptions && (primaryDesc !== pageDesc || primaryDesc.length <= 20),
+        complete: scoped, context, ...(scoped && !hasDescriptions ? { disposition: 'observed' as const } : {}) },
+    ]
+    assertions.set(page.url, [...assertions.get(page.url) ?? [], ...recorded])
+    if (primary !== anchor) continue
+    const evidence = { verificationRule: CORRIDOR_VERIFICATION_RULE, affectedPaths: [page.url, primary.url],
+      evidenceTargets: [{ kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const,
+        label: 'Compared page previews', context }] }
 
     if (primaryTitle && pageTitle && primaryTitle === pageTitle) {
       flags.push({
@@ -67,8 +104,8 @@ export function runCorridorConsistencyChecks(pages: CorridorPageMeta[]): Determi
         confidence: 0.9,
         source: 'DETERMINISTIC',
         pageUrl: page.url,
+        ...evidence,
       })
-      break
     }
 
     if (primaryDesc && pageDesc && primaryDesc === pageDesc && primaryDesc.length > 20) {
@@ -83,10 +120,10 @@ export function runCorridorConsistencyChecks(pages: CorridorPageMeta[]): Determi
         confidence: 0.85,
         source: 'DETERMINISTIC',
         pageUrl: page.url,
+        ...evidence,
       })
-      break
     }
   }
 
-  return flags
+  return { flags, assertions }
 }

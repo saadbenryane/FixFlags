@@ -15,6 +15,10 @@ export const SITE_CARD_AREAS = [
 
 export type SiteCardArea = (typeof SITE_CARD_AREAS)[number]
 
+export function siteCardArea(value: unknown): SiteCardArea | null {
+  return typeof value === 'string' && SITE_CARD_AREAS.includes(value as SiteCardArea) ? value as SiteCardArea : null
+}
+
 export const STARTER_BOARD_CARDS: SiteCardArea[] = [
   'site',
   'conversion',

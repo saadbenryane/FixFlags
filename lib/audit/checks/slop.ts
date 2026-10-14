@@ -181,9 +181,9 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'CRITICAL',
-      problem: 'Primary CTA link points to a dead or empty destination',
-      evidence: `Link "${sample.text || '(no text)'}" uses href="${sample.href}"`,
-      fix: '1. Point the CTA to a real route (signup, pricing, or contact)\n2. Replace href="#" with the actual destination URL\n3. Test the CTA link after the change',
+      problem: 'An action link has a placeholder destination',
+      evidence: `Link "${sample.text || '(no text)'}" uses href="${sample.href}". This check inspected the link value and did not establish whether clicking works.`,
+      fix: '1. For navigation, use the actual destination URL\n2. For an action that opens a dialog or changes the page, use a button\n3. Test the action with a mouse and keyboard after the change',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })

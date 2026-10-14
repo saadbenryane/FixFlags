@@ -34,8 +34,52 @@ Controlled automatic-account proof may run on an explicitly configured HTTPS ori
 2. **Client ↔ Server:** All API routes validate authentication server-side. Cookie-based session. CSRF protection via same-site cookies.
 3. **Worker ↔ Queue:** BullMQ uses Redis. No additional auth on local Redis. Production Redis should require `AUTH`.
 4. **External ↔ Application:** Stripe webhooks via signature verification. Cron endpoints via `CRON_SECRET` bearer token. MCP via API key (hashed, prefixed `ff_live_`).
-5. **GitHub API:** Tokens encrypted at rest. Only used for owner-authorized repo scanning. Open beta grants this capability to every resolved account.
+5. **GitHub API:** Tokens are encrypted at rest. Website beta supports owner-authorized GitHub connection and revocation. Repository execution remains parked.
 6. **Public URL fetches:** Audit capture, meta preview, placeholder detection, fixture capture, and graph backfills use `safeFetchHtml()`. It validates DNS and each redirect target, rejects private/reserved networks, requires HTML, and bounds response size.
+
+Browser preview access binds HTTP Basic authentication and custom preview headers
+to the configured target's exact origin. Native request interception scopes headers
+per HTTP hop and applies the existing public-target and action policy to redirects,
+including separate embedded renderers. Worker networking remains with its owning
+renderer. Cookies retain their declared domain and path, with target-host and
+root-path defaults. The request-policy version is part of capture profile identity;
+historical observations with different executable conditions cannot certify repair.
+Native local fixtures verify authenticated redirects, credential isolation,
+private-target rejection, worker rendering and denied mutation replay. They are not
+proof of real-provider or production acceptance.
+
+New checks seal an access decision at admission: current saved Site access,
+explicit one-off credentials, or public access. They never inherit credentials
+from a parent report or acquire saved credentials later. Saved access has an
+origin and grant reference. Replacing or removing executable credentials rotates
+that reference, cancels unfinished dependent checks and fences their writers.
+Restoring the same credentials cannot revive an old grant. A note-only change
+retains the reference. Completed evidence remains immutable; one-off and public
+admissions remain independent. Legacy credential snapshots require a matching,
+currently authorized legacy Site grant before execution.
+
+Basic authentication and custom headers use the admitted grant's origin,
+including separately fetched flow destinations. Default cookies use its hostname
+without rebasing onto a foreign destination; explicit cookie domains and paths
+retain browser semantics. Native primary-action and form evidence include the
+capture's access and profile identity in their comparison scope. Disposable local
+database, queue and browser checks provide local evidence, not production proof.
+
+Browser credential eligibility follows the approved grant origin even when the
+initial page uses another origin. Basic authentication and custom headers remain
+scoped during the initial request and can become usable after an approved-origin
+redirect. Cookies retain their declared domains and paths. Foreign authentication
+challenges receive no Basic credentials. Basic or header captures that start
+outside the grant origin record the updated
+replay policy in their access identity, so earlier observations cannot borrow
+newly authenticated evidence as recovery proof. Same-origin and public capture
+identities, and captures using only cookies, retain their existing contract.
+
+HTML compatibility fetching and raw HTTP documents share one bounded transport.
+Configured request headers stay on the original origin through redirect handling.
+The transport cancels redirect bodies and validates each destination. A response
+body deadline after headers arrive remains incomplete evidence, rather than proof
+that the server never returned an HTTP response.
 
 ## Authentication invariants
 
@@ -52,7 +96,7 @@ Controlled automatic-account proof may run on an explicitly configured HTTPS ori
 
 ## Report access invariants
 
-- Anonymous report claims use an HttpOnly, SameSite=Lax HMAC proof scoped to one audit ID and a bounded expiry. A raw or tampered audit ID cannot transfer ownership.
+- Anonymous report claims use an HttpOnly, SameSite=Lax HMAC proof scoped to one audit ID and a bounded expiry. A raw or tampered audit ID cannot transfer ownership. A linked Site must still belong to the claiming account in the serializable claim transaction. Report possession does not authorize restoring or changing another account's Site after an ownership change.
 - `/post-login` awaits the anonymous claim before passkey enrollment or onward navigation. A failed claim leaves the user on the recovery screen.
 - Anonymous report responses may include confirmed Flags, public screenshots, textual evidence, rubric results, and deterministic scan messages.
 - Anonymous live-report responses omit fix prompts, Timeline events and playback metadata, pipeline logs, owner and plan state, Product Memory, private history, Canvas data, and watch configuration.
@@ -81,6 +125,10 @@ Controlled automatic-account proof may run on an explicitly configured HTTPS ori
 - All secrets are environment variables
 - `.env.local` is gitignored
 - No hardcoded secrets, tokens, or passwords in source
+- Site Google credentials are read and refreshed only against the current non-revoked credential snapshot on a non-deleted Site. Refresh writes and context commits compare the admitted encrypted credentials, so a delayed operation cannot restore a disconnected grant or replace a newer connection's facts. Permission failures compare the original grant rather than a newly rotated access token. New authorization replaces the prior refresh credential, including clearing it when Google supplies none. Disconnect clears local credentials before requesting provider revocation.
+- Analytics reads filter the matched property to the owning Site's exact bare and www hostname aliases. Each stored observation records that property and hostname scope. Readers require it to match the current Site and connection; older unscoped observations remain stored but cannot supply Site traffic context. Page counts and Site audience aggregates stay separate, and missing provider metrics cannot become zero or clear a Flag.
+- Explicit Analytics watched-page queries derive bounded paths from the owned Site entry and saved pages, preserving the hostname filter. Foreign URLs, embedded credentials and malformed values are excluded; query strings and fragments are never sent as page-path filters. Page views remain a distinct provider metric, never relabeled sessions.
+- Connected Search Console context uses the same Site hostname boundary before the provider selects its top rows. Returned rows must also have a public HTTP(S) source URL inside the matched property and exact Site aliases. The full source URL stays in the fact's scope when the display path is normalized. Readers withhold unscoped or mismatched facts. Unavailable aggregate context does not prevent independent URL inspection with current valid credentials; revoked grants, mismatched properties and reauthentication requirements remain enforced.
 - GitHub tokens encrypted with AES-256-GCM via `TOKEN_ENCRYPTION_KEY`
 - API keys are SHA-256 hashed, stored with an `ff_live_` prefix hint and last four characters only, shown once at creation, permission-scoped, expiring, and revocable. Listing keys never returns the hash or secret.
 - Stripe webhook signature verified on every event
@@ -170,3 +218,5 @@ Product Signal ingestion is the explicit exception.
 - Signed-in inspection blocks unrelated mutations, external navigation, payment/download paths, sockets and workers. Deletion is limited to the disposable identity unless the owner explicitly requests test-account cleanup.
 - Resend receiving verifies raw-body Svix signatures with bounded timestamps, deduplicates provider email IDs, matches one exact active recipient, and retrieves content only from the fixed Resend API. Extracted same-origin verification data is encrypted with a 15-minute expiry.
 - Preference changes increment a revision. Account tasks check that revision, entitlement and execution ownership before privileged requests. Existing Safe Form fixture authorization and cleanup invariants remain independent.
+- Account and configured Signup request policies execute in the shared native boundary once per physical request hop, including HTTP redirects. Browser events retain the admitted execution's async context so permission transactions keep lease fences. Signup mutations require submission admission and a current exact-version fixture grant. External redirects cannot bypass the origin boundary, and suppressed telemetry cannot consume an account mutation or invalidate read-only inspection.
+- Rendered error documents may be retained only when inspecting an existing active or deleting account. Normal discovery and signup keep strict response capture, and challenge detection remains enforced. The disposable HTTPS lifecycle fixture uses an exact validation origin, temporary credentials and simulated receiving content; it neither sends email nor enables production lifecycle gates.

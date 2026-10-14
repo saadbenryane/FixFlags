@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readShopifyIdToken, requireShopDomain, shopifyUnauthorized } from '@/lib/shopify/session'
 import { exchangeIdToken, persistTokenSet, ShopifyIdTokenError } from '@/lib/shopify/tokens'
 import { isShopifyFixtureMode } from '@/lib/shopify/fixture-session'
+import { integrationRelease } from '@/lib/integrations/release-policy'
 
 export async function POST(request: NextRequest) {
+  if (integrationRelease('shopify') !== 'available') return NextResponse.json({ error: 'Shopify is coming soon.', code: 'INTEGRATION_COMING_SOON' }, { status: 409 })
   const auth = requireShopDomain(request)
   if ('error' in auth) return auth.error
   if (isShopifyFixtureMode()) return NextResponse.json({ ok: true, fixture: true })

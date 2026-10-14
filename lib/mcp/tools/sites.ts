@@ -208,6 +208,10 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           siteId: site.siteId,
           flag: {
             flagId: flag.id,
+            sourceFlagId: flag.sourceFlagId,
+            checkId: flag.checkId,
+            status: flag.status,
+            verificationState: flag.verificationState,
             outcomeId: flag.outcomeId,
             problem: flag.problem,
             evidence: flag.evidence,
@@ -216,6 +220,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
             expectedBehavior: flag.expectedBehavior,
             sourceAuditId: flag.sourceAuditId,
             pageUrl: flag.pageUrl,
+            affectedPaths: flag.affectedPaths,
+            verificationRule: flag.verificationRule,
             attempts: flag.attempts,
             verifying: flag.verifying,
           },
@@ -262,7 +268,7 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           next: admitted ? { tool: MCP_TOOLS.getRun.name, arguments: { siteId: site.siteId, runId: admitted.id } }
             : attempt.outcome ? { tool: MCP_TOOLS.getFlag.name, arguments: { siteId: site.siteId, flagId } } : {
             tool: MCP_TOOLS.verifyFlag.name,
-            arguments: { siteId: site.siteId, flagId, attemptId: attempt.attemptId },
+            arguments: { siteId: site.siteId, flagId, attemptId: attempt.attemptId, idempotencyKey: `flag-verify:${attempt.attemptId}` },
           },
         })
       } catch (error) {

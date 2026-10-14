@@ -38,7 +38,7 @@ export async function GET(
       readAnonAuditIdsFromStore(store)
     )
     if (access === 'denied') {
-      return apiError('You do not have access to this report', 403)
+      return apiError('Audit not found', 404)
     }
 
     const pageKey = req.nextUrl.searchParams.get('page')

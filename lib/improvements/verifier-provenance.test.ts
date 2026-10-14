@@ -2,12 +2,22 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   recordVerifierExecution,
   recordTargetedPageVerifierExecutions,
-  recordTargetedJourneyVerifierExecutions,
   verifierScopeKey,
   verifierTargetKey,
 } from './verifier-provenance'
 
 describe('verifier execution provenance', () => {
+  it('does not use ordinary page capture as slow connection proof', async () => {
+    const upsert = vi.fn()
+    const db = { audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'before' }) }, improvementAttempt: {
+      findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: ['slow-3g-blank-screen', 'slow-3g-cta-delayed'].map(checkId => ({
+        flag: { source: 'DETERMINISTIC', checkId, pageUrl: 'https://example.com/', fingerprint: null },
+      })) } }]),
+    }, auditVerifierExecution: { upsert } }
+    expect(await recordTargetedPageVerifierExecutions({ auditId: 'after', pageUrl: 'https://example.com/', primary: true,
+      failedModules: [], flowCompleted: true, availableTools: ['html-parse', 'browser-capture', 'flow-navigation'] }, db as never)).toBe(0)
+    expect(upsert).not.toHaveBeenCalled()
+  })
   it('persists the exact check and normalized page scope idempotently', async () => {
     const upsert = vi.fn().mockResolvedValue({ id: 'execution-1' })
     await recordVerifierExecution({
@@ -154,35 +164,4 @@ describe('verifier execution provenance', () => {
     }))
   })
 
-  it('records a journey verifier only when the exact journey revisited the source scope', async () => {
-    const upsert = vi.fn().mockResolvedValue({ id: 'execution-1' })
-    const db = {
-      audit: { findUnique: vi.fn().mockResolvedValue({ parentId: 'review-1' }) },
-      improvementAttempt: { findMany: vi.fn().mockResolvedValue([{
-        improvement: { occurrences: [{ flag: {
-          source: 'JOURNEY', checkId: 'journey-signup-no-form', fingerprint: 'journey-1',
-          pageUrl: 'https://example.com/signup',
-        } }] },
-      }]) },
-      auditVerifierExecution: { upsert },
-    }
-
-    await expect(recordTargetedJourneyVerifierExecutions({
-      auditId: 'review-2', journeyType: 'signup',
-      visitedUrls: ['https://example.com', 'https://example.com/signup'],
-    }, db as never)).resolves.toBe(1)
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
-        targetKey: 'check:journey-signup-no-form',
-        status: 'COMPLETED',
-        evidenceReference: expect.objectContaining({ journeyType: 'signup' }),
-      }),
-    }))
-
-    upsert.mockClear()
-    await expect(recordTargetedJourneyVerifierExecutions({
-      auditId: 'review-2', journeyType: 'signup', visitedUrls: ['https://example.com'],
-    }, db as never)).resolves.toBe(0)
-    expect(upsert).not.toHaveBeenCalled()
-  })
 })

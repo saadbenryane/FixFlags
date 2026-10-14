@@ -1,5 +1,6 @@
 import type { OutcomeAssessmentState } from '@prisma/client'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
+import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 
 export type CustomerOutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
@@ -227,10 +228,7 @@ export function customerBindingResult(input: {
     const copy = checkoutResultCopy(input.disposition === 'SUCCEEDED' ? 'checkout_reached' : input.reason)
     return { headline: copy.summary, detail: copy.evidence || null }
   }
-  const state = input.disposition === 'SUCCEEDED'
-    ? 'CLEAR'
-    : input.disposition === 'FAILED'
-      ? 'FLAG'
-      : 'COULD_NOT_VERIFY'
+  if (input.disposition === 'SUCCEEDED') return { headline: OUTCOME_DETAIL_COPY.methodPassed, detail: null }
+  const state = input.disposition === 'FAILED' ? 'FLAG' : 'COULD_NOT_VERIFY'
   return { headline: summaryFor(input.reason, state), detail: null }
 }

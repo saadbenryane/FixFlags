@@ -303,7 +303,7 @@ const WHY_IT_MATTERS: Record<string, string> = {
   'unreplaced-template-token':
     'Visible {{tokens}} break trust instantly - they look like a deploy mistake.',
   'cta-dead-link':
-    'A dead CTA trains visitors that clicking leads nowhere - they stop trying.',
+    'A placeholder link has no usable destination without its click handler. Use a real URL for navigation or a button for an action.',
   'social-proof-unverifiable':
     'Fake stats and placeholder testimonials erode trust faster than having no proof at all.',
   'flow-no-cta-found':

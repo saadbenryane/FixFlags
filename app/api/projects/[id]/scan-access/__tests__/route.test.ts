@@ -93,4 +93,17 @@ describe('/api/projects/[id]/scan-access', () => {
       expect.objectContaining({ label: 'Preview' })
     )
   })
+  it('rejects omitted access instead of silently removing the saved grant', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(makeUser('FREE'))
+    const res = await PUT({ json: async () => ({}) } as unknown as NextRequest, { params })
+    expect(res.status).toBe(400)
+    expect(persistProjectScanAccess).not.toHaveBeenCalled()
+  })
+  it('does not disclose another tenant’s configured access', async () => {
+    prismaMock.project.findFirst.mockResolvedValue(null)
+    const res = await GET({} as NextRequest, { params })
+    expect(res.status).toBe(404)
+    expect(decryptScanAccess).not.toHaveBeenCalled()
+  })
+
 })

@@ -1,6 +1,7 @@
 'use client'
 import { Component, useState, useEffect, useRef, useMemo, type ErrorInfo, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { useAuditPolling, type AuditStatusPayload } from '@/hooks/useAuditPolling'
 import { useWorkerIdleDetection } from '@/hooks/useWorkerIdleDetection'
 import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
@@ -13,10 +14,10 @@ import {
   ReportPollErrorStatus,
 } from '@/components/ui/status-page'
 import { toast } from 'sonner'
-import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SITE_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { createSiteActionController, executeSiteAction } from '@/lib/sites/client-actions'
 import {
   setActiveAudit,
   clearActiveAudit,
@@ -108,10 +109,10 @@ export function AuditPageClient({
     progress,
     url,
     statusPayload,
-    resumePolling,
   } = useAuditPolling(id, { initialAudit, pollStatus })
   const workerIdle = useWorkerIdleDetection(status)
   const [retryLoading, setRetryLoading] = useState(false)
+  const retryAction = useRef(createSiteActionController()).current
   const refreshedRef = useRef(false)
   const retainedFlagsRef = useRef<PartialFlag[]>([])
 
@@ -248,22 +249,17 @@ export function AuditPageClient({
       statusPayload?.failureCode,
       initialAudit, workerIdle, id, accessContext, isTeaser, session?.user])
 
-  async function handleRetrySameAudit() {
+  async function handleRetry() {
+    if (retryAction.pending) return
     setRetryLoading(true)
-    try {
-      const res = await fetch(`/api/reports/${id}/retry`, { method: 'POST' })
-      if (!res.ok) {
-        const parsed = await parseApiErrorResponse(res)
-        toast.error(parsed.message)
-        return
-      }
-      resumePolling()
-      router.refresh()
-    } catch {
-      toast.error(SYSTEM_COPY.errors.genericRetry)
-    } finally {
-      setRetryLoading(false)
-    }
+    const completed = await retryAction.submit(
+      () => executeSiteAction(`/api/reports/${id}/retry`, { method: 'POST' }, 'retry'),
+      undefined,
+      result => router.push(`/report/${encodeURIComponent(result.auditId)}` as Route),
+    )
+    if (completed.kind === 'refused') toast.error(completed.error.message)
+    else if (completed.kind === 'saved_refresh_pending') toast.error(SITE_ACTION_COPY.refreshPending)
+    setRetryLoading(false)
   }
 
   if (isNotFound) {
@@ -292,8 +288,8 @@ export function AuditPageClient({
     )
   }
 
-  // Failed stays in the same living-review shell. Retry resumes polling
-  // without a marketing-width error page.
+  // Preserve failure evidence in the report shell. A retry opens the new
+  // execution returned by admission rather than polling this terminal report.
   return (
     <AuditShell session={session} immersive claimReason={isTeaser ? 'save-report' : 'create-account'}>
       {!isNotFound && !isForbidden ? (
@@ -314,7 +310,7 @@ export function AuditPageClient({
           <AuditReportProgressive
             {...progressiveProps}
             initialProjection={initialProjection}
-            onRetry={handleRetrySameAudit}
+            onRetry={handleRetry}
             retryLoading={retryLoading}
           />
         </ProgressiveErrorBoundary>

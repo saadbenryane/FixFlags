@@ -2,6 +2,7 @@ import type { SiteConnectionProvider, SiteConnectionStatus } from '@prisma/clien
 import { prisma } from '@/lib/db'
 import { googleConnectionConfigured } from '@/lib/sites/connections/google'
 import { cardContext, contextLinesForPage, type ConnectionFact, type PublicConnection } from '@/lib/sites/connections/match'
+import { readAnalyticsReportScope, readSearchFactScope } from './report-scope'
 
 export type { PublicConnection }
 
@@ -20,7 +21,7 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
 }> {
   const rows = await prisma.siteConnection.findMany({
     where: { projectId },
-    include: { facts: true },
+    include: { facts: true, project: { select: { canonicalHost: true } } },
   })
   const configured = googleConnectionConfigured()
   const byProvider = new Map(rows.map((row) => [row.provider, row]))
@@ -49,21 +50,31 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
     searchConsole: view('SEARCH_CONSOLE'),
     analytics: view('ANALYTICS'),
     facts: rows.flatMap((row) => ['CONNECTED', 'UNAVAILABLE', 'NEEDS_REAUTH', 'REVOKED'].includes(row.status)
-      ? row.facts.map((fact) => ({
-          kind: fact.kind === 'analytics_page' ? 'analytics_page' as const : 'search_query' as const,
+      ? row.facts.flatMap((fact) => {
+        const reportScope = row.provider === 'ANALYTICS' && ['analytics_page', 'analytics_site'].includes(fact.kind)
+          ? readAnalyticsReportScope(fact.reportScope, row.propertyId, row.project.canonicalHost)
+          : row.provider === 'SEARCH_CONSOLE' && fact.kind === 'search_query'
+            ? readSearchFactScope(fact.reportScope, row.propertyId, row.project.canonicalHost) : null
+        if (!reportScope) return []
+        return [{
+          kind: fact.kind === 'analytics_page' ? 'analytics_page' as const : fact.kind === 'analytics_site' ? 'analytics_site' as const : 'search_query' as const,
           pagePath: fact.pagePath,
           subject: fact.subject,
           clicks: fact.clicks,
           impressions: fact.impressions,
           sessions: fact.sessions,
+          activeUsers: fact.activeUsers,
+          pageViews: fact.pageViews,
           position: fact.position,
+          reportScope,
           observedAt: fact.observedAt.toISOString(),
           lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
           periodStart: fact.periodStart?.toISOString() ?? null,
           periodEnd: fact.periodEnd?.toISOString() ?? null,
           contextState: row.status !== 'CONNECTED' || !configured ? 'unavailable' as const
             : Date.now() - fact.observedAt.getTime() >= 24 * 60 * 60 * 1000 ? 'stale' as const : 'current' as const,
-        }))
+        }]
+      })
       : []),
   }
 }

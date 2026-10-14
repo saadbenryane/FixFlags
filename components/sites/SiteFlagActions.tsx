@@ -64,7 +64,7 @@ export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAu
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.fixStepBody}</p>
       </div>
 
-      <div className="border-t border-border/80 pt-5">
+      <div className="pt-5">
         <h3 className="mb-3 text-sm font-semibold">{SITE_BOARD_COPY.verifyStep}</h3>
         <p className="text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.verifyStepBody}</p>
         <Button className="mt-3 w-full" variant="default" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}>

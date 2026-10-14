@@ -5,7 +5,7 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 type Task = ExecutionProgress['tasks'][number]
 
-function taskArea(task: Task): SiteCardArea | null {
+export function taskArea(task: Pick<Task, 'kind' | 'module'>): SiteCardArea | null {
   if (task.kind === 'search' || task.kind === 'search-resources' || task.kind === 'google') return 'search'
   if (task.kind === 'pagespeed' || task.kind === 'slow-replay') return 'performance'
   if (task.kind === 'keyboard') return 'accessibility'

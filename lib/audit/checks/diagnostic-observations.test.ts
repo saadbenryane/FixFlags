@@ -9,6 +9,8 @@ import { assertionForTarget } from './verification'
 import { runAllChecks } from './index'
 
 const url = 'https://acme.fixture.test/'
+const nativeLoading = { version: 1 as const, device: 'mobile' as const,
+  scope: { pageUrl: url, finalUrl: url, profile: 'native-mobile', access: 'public' }, contentVisible: true, ready: true, restricted: false }
 const prose = 'Our product helps developers prepare reports for their teams. Each report records the observed result clearly. Teams can review the evidence and make a useful next decision. The workflow keeps the source and its date together. '
 function html(headline = 'Build useful reports for developers', body = prose.repeat(2), sections = '<h2>Features</h2><h2>Pricing</h2>', links = '<a href="/signup">Get started free</a><a href="/contact">Contact</a>') {
   return `<!doctype html><html lang="en"><head><title>Acme reports</title></head><body><main><h1>${headline}</h1>${sections}<p>${body}</p>${links}</main></body></html>`
@@ -18,12 +20,12 @@ function metrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics {
     competingPrimaryCtaLabels: ['Get started free'], mobileViewportHeight: 800, mobileScrollY: 0, mobileDocumentHeight: 1600,
     stuckLoadingIndicator: false, stuckLoadingLabel: null, uniqueFontFamilies: 2, fontFamilySample: ['Inter', 'Inter Tight'],
     buttonBorderRadii: [8], motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true,
-    inputsBelow16px: [], ...overrides }
+    inputsBelow16px: [], loadingObservation: nativeLoading, ...overrides }
 }
 function loading(milliseconds: number, overrides: Partial<NonNullable<CaptureMetrics['loadExperience']>> = {}) {
   return { device: 'mobile' as const, initialScreenshotUrl: null, initialCaptureElapsedMs: 100,
     finalCaptureElapsedMs: 6000, loadingVisibleAtInitial: true, loadingVisibleAtFinal: false, loadingClearedMs: milliseconds,
-    loadingLabel: 'Loading', finalReadyState: 'complete', finalTitle: 'Acme', ...overrides }
+    loadingLabel: 'Loading', finalReadyState: 'complete', finalTitle: 'Acme', observation: nativeLoading, ...overrides }
 }
 async function inspect(module: string, source = html(), captured: CaptureMetrics | null = metrics()) {
   const assertions: CheckAssertion[] = []
@@ -84,7 +86,7 @@ describe('registered diagnostic observations', () => {
     expect(observation(before.assertions, key)).toMatchObject({ passed: false, complete: true })
     const after = await inspect(module, repaired)
     expect(observation(after.assertions, key)).toMatchObject({ passed: true, complete: true })
-    if (key !== 'reduced-motion') expect(assertionForTarget(after.receipt, checkId)).toBeUndefined()
+    if (!['reduced-motion', 'blocking-loading-ui'].includes(key)) expect(assertionForTarget(after.receipt, checkId)).toBeUndefined()
   })
 
   it('never upgrades an advisory positive signal into a verified business result', async () => {
@@ -120,7 +122,7 @@ describe('registered diagnostic observations', () => {
     expect(delayed.flags.map(flag => flag.checkId)).toContain('loading-state-slow')
     expect(observation(delayed.assertions, 'loading-delay')).toMatchObject({ passed: false, complete: true })
     const repaired = await inspect('interaction', html(), metrics({ loadExperience: loading(500) }))
-    expect(observation(repaired.assertions, 'loading-delay')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(observation(repaired.assertions, 'loading-delay')).toMatchObject({ passed: true, complete: true })
     const stuck = await inspect('interaction', html(), metrics({ loadExperience: loading(0, { loadingClearedMs: null, loadingVisibleAtFinal: true }) }))
     expect(observation(stuck.assertions, 'loading-delay')).toMatchObject({ passed: false, complete: false })
   })

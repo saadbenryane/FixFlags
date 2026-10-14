@@ -2,6 +2,9 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import RootLayout from '@/app/layout'
 
+// Next's compiler supplies font classes. Real loading is checked by font:verify.
+vi.mock('next/font/local', () => ({ default: ({ variable }: { variable: string }) => ({ variable }) }))
+
 vi.mock('@/components/providers', () => ({
   Providers: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))

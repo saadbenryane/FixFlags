@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   screenshotFindMany: vi.fn(),
   flagFindMany: vi.fn(),
   outcomeFindMany: vi.fn(),
+  fixtureFindMany: vi.fn(),
   categoryIds: vi.fn(),
 }))
 
@@ -23,6 +24,7 @@ vi.mock('@/lib/db', () => ({
     screenshot: { findMany: mocks.screenshotFindMany },
     flag: { findMany: mocks.flagFindMany },
     siteOutcome: { findMany: mocks.outcomeFindMany },
+    outcomeFixture: { findMany: mocks.fixtureFindMany },
   },
 }))
 
@@ -64,6 +66,7 @@ describe('loadSiteSummaries', () => {
     mocks.screenshotFindMany.mockResolvedValue([])
     mocks.flagFindMany.mockResolvedValue([])
     mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.fixtureFindMany.mockResolvedValue([])
   })
 
   it('uses a constant batch of summary reads and never turns missing evidence green', async () => {
@@ -110,16 +113,24 @@ describe('loadSiteSummaries', () => {
     mocks.auditFindMany.mockReset().mockResolvedValue([audit])
     mocks.auditPageFindMany.mockResolvedValue([{ auditId: audit.id, status: 'FAILED' }])
     expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state).toBe('could_not_verify')
-    mocks.flagFindMany.mockResolvedValue([{ auditId: audit.id, fingerprint: 'broken-link', severity: 'IMPORTANT', confidence: 1,
+    mocks.flagFindMany.mockResolvedValue([{ id: 'unbound', status: 'OPEN', audit: { projectId: 'site-1' }, auditId: audit.id, fingerprint: 'broken-link', severity: 'IMPORTANT', confidence: 1,
       pageUrl: 'https://one.example/', checkId: 'broken-internal-links', rubric: 'REACH', impactTag: 'SEO' }])
     expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state).toBe('flags')
   })
   it('batches recovery proof and keeps the two owned Sites independent', async () => {
     const audit = completedAudit()
     mocks.auditFindMany.mockReset().mockResolvedValueOnce([audit]).mockResolvedValueOnce([audit])
-      .mockResolvedValueOnce([{ id: 'recovery', projectId: 'site-1', completedAt: new Date() }])
-    const flag = { status: 'FIXED', resolvedInId: 'recovery', severity: 'IMPORTANT', confidence: 1,
-      pageUrl: 'https://one.example/', checkId: 'title-missing', rubric: 'REACH', impactTag: 'SEO' }
+      .mockResolvedValueOnce([{ id: 'recovery', projectId: 'site-1', completedAt: new Date(),
+        executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: 'https://one.example/', environment: 'production', scope: 'SITE',
+          checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
+        verifierExecutions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: {
+          kind: 'site-module-check', version: 1, module: 'performance', pageUrl: 'https://one.example/', applicable: true, passed: true,
+          assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true }],
+          execution: { auditId: 'recovery', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: new Date().toISOString() },
+        } }],
+      }])
+    const flag = { id: 'source-flag', auditId: 'source-audit', status: 'FIXED', resolvedInId: 'recovery', severity: 'IMPORTANT', confidence: 1,
+      pageUrl: 'https://one.example/', checkId: 'lcp-poor', rubric: 'PERFORMANCE', impactTag: 'PERFORMANCE' }
     mocks.improvementFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, fingerprint: 'title', outcomeId: null,
       occurrences: [{ flag }] })))
     const sites = await loadSiteSummaries('user-1')
@@ -127,15 +138,62 @@ describe('loadSiteSummaries', () => {
     expect(sites.find(site => site.id === 'site-2')?.presentation.flags.count).toBe(1)
     expect(mocks.auditFindMany).toHaveBeenCalledTimes(3)
   })
+  it('counts an unresolved newer occurrence even when the repair workflow is Verified', async () => {
+    const audit = completedAudit()
+    mocks.auditFindMany.mockReset().mockResolvedValue([audit])
+    const flag = { id: 'later-flag', auditId: 'later-source', status: 'OPEN', resolvedInId: null, severity: 'IMPORTANT', confidence: 1,
+      pageUrl: 'https://one.example/', checkId: 'broken-internal-links', rubric: 'REACH', impactTag: 'SEO' }
+    mocks.improvementFindMany.mockResolvedValue([{ projectId: 'site-1', status: 'VERIFIED', fingerprint: 'broken-link', outcomeId: null,
+      occurrences: [{ flag }], attempts: [{ outcome: 'IMPROVED', comparable: true, sourceAuditId: 'older-source', verificationAuditId: 'repair',
+        verificationAudit: { id: 'repair', projectId: 'site-1', parentId: 'older-source', status: 'COMPLETED' } }] }])
+    const site = (await loadSiteSummaries('user-1')).find(value => value.id === 'site-1')!
+    expect(site.presentation.flags.count).toBe(1)
+    expect(site.presentation.result.state).toBe('flags')
+  })
   it('does not turn a current broad check Clear when an enabled watched result is unavailable', async () => {
     const audit = completedAudit()
     mocks.auditFindMany.mockReset().mockResolvedValue([audit])
-    mocks.outcomeFindMany.mockResolvedValue([{ projectId: 'site-1', enabled: true, assessments: [
+    mocks.outcomeFindMany.mockResolvedValue([{ projectId: 'site-1', enabled: true, environment: 'production', bindings: [], assessments: [
       { state: 'COULD_NOT_VERIFY', validUntil: new Date(Date.now() + 60_000) },
     ] }])
     const site = (await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')!
     expect(site.presentation.result.state).toBe('could_not_verify')
     expect(mocks.outcomeFindMany).toHaveBeenCalledTimes(1)
     expect(mocks.outcomeFindMany.mock.calls[0][0].where).toMatchObject({ projectId: { in: ['site-2', 'site-1'].sort() }, enabled: true })
+  })
+
+  it('uses current binding revisions before presenting a fresh watched result as Clear', async () => {
+    const audit = completedAudit()
+    mocks.auditFindMany.mockReset().mockResolvedValue([audit])
+    const binding = { key: 'http', required: true, mechanism: 'HTTP_AVAILABILITY', version: 2, config: {} }
+    const coverage = { environment: 'production', requiredBindings: ['http'], bindings: [binding] }
+    const outcome = { projectId: 'site-1', enabled: true, environment: 'production', bindings: [binding], assessments: [
+      { state: 'CLEAR', validUntil: new Date(Date.now() + 60_000), coverage },
+    ] }
+    for (const changed of [outcome, { ...outcome, environment: 'staging' }, { ...outcome, bindings: [{ ...binding, version: 3 }] },
+      { ...outcome, bindings: [] }, { ...outcome, assessments: [{ ...outcome.assessments[0], coverage: {} }] }]) {
+      mocks.outcomeFindMany.mockResolvedValue([changed])
+      expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state)
+        .toBe(changed === outcome ? 'clear' : 'could_not_verify')
+    }
+    expect(mocks.fixtureFindMany).not.toHaveBeenCalled()
+  })
+
+  it('requires current Site-owned fixture authority while retaining one batch for every Site', async () => {
+    const audit = completedAudit()
+    mocks.auditFindMany.mockReset().mockResolvedValue([audit])
+    const binding = { key: 'signup', required: true, mechanism: 'SAFE_FORM', version: 1, config: { fixtureId: 'fixture' } }
+    const coverage = { environment: 'production', requiredBindings: ['signup'], bindings: [{ ...binding, fixture: { id: 'fixture', version: 4 } }] }
+    mocks.outcomeFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, enabled: true, environment: 'production',
+      bindings: [binding], assessments: [{ state: 'CLEAR', validUntil: new Date(Date.now() + 60_000), coverage }] })))
+    const fixture = { id: 'fixture', projectId: 'site-1', version: 4, enabled: true, authorizedAt: new Date(), lastDryRunVersion: 4 }
+    for (const changed of [fixture, { ...fixture, version: 5 }, { ...fixture, enabled: false }, { ...fixture, authorizedAt: null },
+      { ...fixture, projectId: 'site-2' }]) {
+      mocks.fixtureFindMany.mockClear().mockResolvedValue([changed])
+      expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state)
+        .toBe(changed === fixture ? 'clear' : 'could_not_verify')
+      expect(mocks.fixtureFindMany).toHaveBeenCalledTimes(1)
+      expect(mocks.fixtureFindMany.mock.calls[0][0].where).toEqual({ OR: [{ projectId: 'site-1', id: 'fixture' }, { projectId: 'site-2', id: 'fixture' }] })
+    }
   })
 })

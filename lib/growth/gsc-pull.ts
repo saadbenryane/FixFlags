@@ -54,14 +54,22 @@ interface GscRow {
 }
 
 export interface GscSummary {
-  totalClicks: number
-  totalImpressions: number
-  avgCtr: number
-  avgPosition: number
+  totalClicks: number | null
+  totalImpressions: number | null
+  avgCtr: number | null
+  avgPosition: number | null
   brandedClicks: number
-  brandedShare: number
-  indexedPages: number
+  /** Share of property clicks visible in returned branded query rows, not full attribution. */
+  brandedShare: number | null
+  returnedQueryClicks: number
+  returnedQueryImpressions: number
+  queryClickCoverage: number | null
+  pagesWithSearchImpressions: number
+  /** Search performance cannot establish how many URLs are indexed. */
+  indexedPages: null
   fetchedAt: string
+  startDate: string
+  endDate: string
 }
 
 export interface GscPageQueryExport {
@@ -94,6 +102,9 @@ async function queryGsc(
       startDate,
       endDate,
       dimensions: [...dimensions],
+      aggregationType: dimensions.includes('page') ? 'byPage' : 'byProperty',
+      dataState: 'final',
+      type: 'web',
       rowLimit,
       startRow,
     }
@@ -104,7 +115,7 @@ async function queryGsc(
     })
     const rows = (response.data.rows ?? []) as GscRow[]
     allRows.push(...rows)
-    if (rows.length < rowLimit) return allRows
+    if (dimensions.length === 0 || rows.length < rowLimit) return allRows
     startRow += rows.length
   }
 }
@@ -117,13 +128,16 @@ export async function runGscPull(options: GrowthPullOptions = {}): Promise<GscPu
   const now = new Date()
   const fetchedAt = now.toISOString()
   const endDate = fetchedAt.slice(0, 10)
-  const startDate = new Date(now.getTime() - resolveGrowthPullDays(options) * 24 * 60 * 60 * 1000)
+  const startDate = new Date(now.getTime() - (resolveGrowthPullDays(options) - 1) * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10)
 
-  const queryRows = await queryGsc(searchconsole, startDate, endDate, ['query'], options)
-  const pageRows = await queryGsc(searchconsole, startDate, endDate, ['page'], options)
-  const pageQueryRows = await queryGsc(searchconsole, startDate, endDate, ['page', 'query'], options)
+  const [totalRows, queryRows, pageRows, pageQueryRows] = await Promise.all([
+    queryGsc(searchconsole, startDate, endDate, [], options, 1),
+    queryGsc(searchconsole, startDate, endDate, ['query'], options),
+    queryGsc(searchconsole, startDate, endDate, ['page'], options),
+    queryGsc(searchconsole, startDate, endDate, ['page', 'query'], options),
+  ])
   const queries = queryRows.slice(0, 50).map((row) => ({
     query: row.keys[0], clicks: row.clicks, impressions: row.impressions, ctr: row.ctr, position: row.position,
   }))
@@ -137,23 +151,29 @@ export async function runGscPull(options: GrowthPullOptions = {}): Promise<GscPu
     rows: pageQueryRecords,
     focusRows: focusPageQueryRows(pageQueryRecords),
   }
-  const totalClicks = queryRows.reduce((sum, row) => sum + row.clicks, 0)
-  const totalImpressions = queryRows.reduce((sum, row) => sum + row.impressions, 0)
+  const total = totalRows[0]
+  const totalClicks = total?.clicks ?? null
+  const totalImpressions = total?.impressions ?? null
+  const returnedQueryClicks = queryRows.reduce((sum, row) => sum + row.clicks, 0)
+  const returnedQueryImpressions = queryRows.reduce((sum, row) => sum + row.impressions, 0)
   const brandedClicks = queryRows
     .filter((row) => row.keys[0]?.toLowerCase().includes('fixflags'))
     .reduce((sum, row) => sum + row.clicks, 0)
   const summary: GscSummary = {
     totalClicks,
     totalImpressions,
-    avgCtr: totalImpressions > 0 ? Math.round((totalClicks / totalImpressions) * 10_000) / 10_000 : 0,
-    avgPosition: Math.round(
-      (queryRows.reduce((sum, row) => sum + row.position * row.impressions, 0) /
-        (totalImpressions || 1)) * 100,
-    ) / 100,
+    avgCtr: total?.ctr ?? null,
+    avgPosition: total?.position ?? null,
     brandedClicks,
-    brandedShare: totalClicks > 0 ? Math.round((brandedClicks / totalClicks) * 10_000) / 10_000 : 0,
-    indexedPages: new Set(pages.map((page) => page.page)).size,
+    brandedShare: totalClicks !== null && totalClicks > 0 ? Math.round((brandedClicks / totalClicks) * 10_000) / 10_000 : null,
+    returnedQueryClicks,
+    returnedQueryImpressions,
+    queryClickCoverage: totalClicks !== null && totalClicks > 0 ? returnedQueryClicks / totalClicks : null,
+    pagesWithSearchImpressions: new Set(pageRows.filter((row) => row.impressions > 0).map((row) => row.keys[0])).size,
+    indexedPages: null,
     fetchedAt,
+    startDate,
+    endDate,
   }
   const result: GscPullResult = {
     queries: { fetchedAt, queries },

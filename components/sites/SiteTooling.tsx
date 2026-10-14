@@ -38,18 +38,8 @@ import {
 } from 'simple-icons'
 import styles from './SiteTooling.module.css'
 
-export type ToolState = 'healthy' | 'attention'
-
-export type ToolItem = {
-  name: string
-  detail?: string
-  state: ToolState
-  status: string
-  suggested?: boolean
-  actionLabel?: string
-  actionHref?: string
-  actionDisabled?: boolean
-}
+export type { ToolItem, ToolState } from '@/lib/sites/board-types'
+import type { ToolItem } from '@/lib/sites/board-types'
 
 const ICONS: Record<string, SimpleIcon> = {
   Angular: siAngular,

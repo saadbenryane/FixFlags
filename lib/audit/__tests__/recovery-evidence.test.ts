@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasRecordedRecoveryEvidence, type RecoveryExecution } from '../recovery-evidence'
+import { hasRecordedRecoveryEvidence, recordedVerificationVerdict, type RecoveryExecution } from '../recovery-evidence'
 import { isPageComparableAbsence } from '../diff-flags'
 import { checkReceiptSchema } from '../checks/receipt'
 import { evaluateSearch, searchFindings } from '../search/registry'
@@ -26,6 +26,20 @@ function recovered(checkId: string, executions: RecoveryExecution[], extraFlag =
 }
 
 describe('automatic recovery uses recorded responsibility evidence', () => {
+  it('requires every original page to pass, while an original failure disproves repair across a gap', () => {
+    const peer = 'https://example.com/other'
+    const assess = (executions: RecoveryExecution[]) => recordedVerificationVerdict({ auditId: 'after', executionSpec: spec('lcp-poor'),
+      flag: { checkId: 'lcp-poor', pageUrl: url, affectedPaths: [url, peer], verificationRule: 'Comparable desktop LCP' }, executions })
+    const failed = row({ pageUrl: peer, passed: false, assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast', observed: '6000ms',
+      passed: false, complete: true }] })
+    expect(assess([row()])).toBeNull()
+    expect(assess([row(), row({ pageUrl: peer })])).toBe('passed')
+    expect(assess([row(), failed])).toBe('failed')
+    expect(assess([failed])).toBe('failed')
+    expect(assess([row(), { ...failed, status: 'FAILED' }])).toBeNull()
+    expect(assess([row(), row({ pageUrl: peer, failed: true })])).toBeNull()
+  })
+
   it('keeps a disappearing finding open when its evaluator did not complete, even on a completed page', () => {
     expect(isPageComparableAbsence({ auditStatus: 'COMPLETED', reportCompleteness: 'FULL',
       childPages: [{ url, status: 'COMPLETED', completeness: 'FULL' }], auditId: 'after',
@@ -71,7 +85,7 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
 
   it('requires conclusive matching controls instead of a healthy subset of keyboard navigation', () => {
     const assertion = { key: 'focus-styles', name: 'Focus', expected: 'Visible focus', observed: 'Style observed',
-      passed: true, complete: true, targets: [{ selector: '#action', label: 'Action', context: 'dialog:#open=>#dialog' }] }
+      passed: true, complete: true, targets: [{ selector: '#action', label: 'Action', context: `keyboard:${'a'.repeat(64)}:${'b'.repeat(64)}:dialog:#open=>#dialog` }] }
     const keyboard = { ...row(), targetKey: 'module:keyboard', detail: checkReceiptSchema.parse({
       ...(row().detail as object), module: 'keyboard', complete: false, passed: false,
       assertions: [assertion], execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: new Date().toISOString() },
@@ -80,6 +94,13 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
     expect(recovered('focus-visible-missing', [keyboard], flag)).toBe(true)
     expect(recovered('focus-visible-missing', [keyboard], { ...flag, evidenceTargets: [{ selector: '#unvisited', label: 'Other' }] })).toBe(false)
     expect(recovered('focus-visible-missing', [keyboard], { ...flag, evidenceTargets: [{ ...assertion.targets[0], context: 'page' }] })).toBe(false)
+    const exact = { targetKey: 'check:focus-visible-missing', status: 'COMPLETED', detail: {
+      kind: 'check-verifier', version: 1, auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard',
+      checkId: 'focus-visible-missing', pageUrl: url, collectedAt: new Date().toISOString(), comparable: true, verdict: 'passed', assertion,
+    } }
+    expect(recovered('focus-visible-missing', [keyboard, exact], flag)).toBe(true)
+    expect(recovered('focus-visible-missing', [keyboard, exact], { ...flag, evidenceTargets: [{ selector: '#unvisited', label: 'Other' }] })).toBe(false)
+    expect(recovered('focus-visible-missing', [exact], flag)).toBe(false)
   })
 
   it('shares Search source comparability with explicit fix verification', async () => {

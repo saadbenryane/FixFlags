@@ -14,6 +14,18 @@ vi.mock('@/lib/db', () => ({ prisma: { flag: prisma.flag, improvement: { findMan
 const site = { kind: 'provisional', primaryAuditId: 'audit-1' } as SiteRecord
 
 describe('customer Flag projector on Site load', () => {
+  it('retains an unresolved claimed finding after a later partial check and scopes the query to its Site', async () => {
+    prisma.flag.findMany.mockResolvedValue([{ id: 'claimed-contact', fingerprint: 'contact-failure', auditId: 'claimed-analysis',
+      checkId: 'form-contact-submit-failed', rubric: 'EXPERIENCE', severity: 'IMPORTANT', impactTag: 'CONVERSION',
+      problem: 'Contact form does not send', evidence: 'Submit returned 500', whyItMatters: 'Visitors cannot reach you',
+      fix: 'Fix the form endpoint', pageUrl: 'https://example.com/contact', status: 'OPEN' }])
+    const owned = { kind: 'project', projectId: 'owned-site', primaryAuditId: 'later-partial-check' } as SiteRecord
+    expect((await loadSiteFlags(owned)).map(flag => flag.id)).toEqual(['claimed-contact'])
+    expect(prisma.flag.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      audit: expect.objectContaining({ projectId: 'owned-site' }), improvementOccurrence: null,
+    }) }))
+  })
+
   it('keeps broken contact as a Flag and optional SEO meta as a Recommendation', async () => {
     prisma.flag.findMany.mockResolvedValue([
       {

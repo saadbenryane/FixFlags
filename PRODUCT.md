@@ -61,7 +61,7 @@ Implemented and locally verified in the Outcome slice: additive Checkout, availa
 
 Launch gaps: deploy the candidate exact SHA; prove the complete Checkout and Safe Signup recovery loops with credentialed web, Watch, and external Codex, Claude Code, and Cursor clients; complete live sandbox journeys for advertised connections; finish the 14-day and 100-scheduled-execution reliability and COGS window now computed from durable production records by `npm run watch:launch-readiness`; register the GA4 dimension and capture a fresh attribution baseline; and finish production observability and public coherence. The Watch readout distinguishes passed, failed, collecting, and unavailable evidence and does not open access by itself. MCP discovery, public setup claims, paid activation, Login, and Password reset stay closed until their named evidence gates pass. Extra connections and generalized agent-task evaluation remain post-launch.
 
-Do not advertise Meta, repository scanning, or hourly Watch as shipped. Analytics and Search Console connect in Site settings and add context only. Public GitHub copy is sign-in and Flag handoff, not a repository scan.
+Do not advertise Meta, repository scanning, or hourly Watch as shipped. GitHub account authorization is available by owner direction. All other customer integrations are coming soon until testing and validation. Retained Shopify and Google implementations and cleanup remain internal compatibility capabilities. Public GitHub copy describes account authorization and Flag handoff. Repository scanning and automatic pull requests remain parked.
 
 ## Proof and operating status
 

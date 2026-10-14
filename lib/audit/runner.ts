@@ -163,6 +163,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
 
       const hop1Plan = planReviewTargets({
         pastedUrl: audit.url,
+        retainedUrls: readExecutionSpec(audit.executionSpec)?.monitoringPages,
         depth: reviewDepth,
         pastedLinks: resolvedPageLinks(primary.url, primary.metadata),
       })
@@ -233,6 +234,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
       if (reviewDepth >= 3) {
         const hop2Plan = planReviewTargets({
           pastedUrl: audit.url,
+          retainedUrls: readExecutionSpec(audit.executionSpec)?.monitoringPages,
           depth: 3,
           pastedLinks: resolvedPageLinks(primary.url, primary.metadata),
           linkedPageLinks: pageRuns.slice(1).map((page) => ({
@@ -316,6 +318,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
             ogTitle: page.metadata.ogTitle ?? null,
             ogDescription: page.metadata.ogDescription ?? null,
             title: page.metadata.title ?? null,
+            scope: page.renderedScope,
           }))
         )
         if (corridorFlags.length > 0) {

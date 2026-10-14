@@ -77,14 +77,8 @@ function CardMedia({
   )
 }
 
-export type BoardSummaryItem = {
-  id?: string
-  label: string
-  value: number | string
-  detail?: string
-  accessibleDetail?: string
-  state: 'attention' | 'healthy' | 'unknown'
-}
+export type { BoardSummaryItem } from '@/lib/sites/board-types'
+import type { BoardSummaryItem } from '@/lib/sites/board-types'
 
 export function BoardSummaryStrip({ items, label = 'Website status summary', onSelect }: { items: readonly BoardSummaryItem[]; label?: string; onSelect?: (item: BoardSummaryItem) => void }) {
   return <div role="group" aria-label={label} className={styles.summaryGroup}>

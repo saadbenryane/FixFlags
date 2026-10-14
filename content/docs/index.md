@@ -1,34 +1,27 @@
 ## Quick start
 
-Enter a public website URL. FixFlags opens a Site board for that website: what is known, what needs attention, and what to do next.
+Check your live website, see what needs attention, and get help fixing it.
 
-1. Enter a URL on the homepage or [/new](/new).
-2. Stay on the Site board while cards fill in.
-3. Open a Flag, copy the fix, then select Check now after publishing to check the same page and action.
-4. Keep watching after you claim the Site. Open beta includes any supported schedule on one website. Read the temporary offer on [Pricing](/pricing).
+1. [Enter your website address](/new) and select **Analyze**. You can try this before creating an account.
+2. Wait for the results. FixFlags groups them by area, such as Pages, Search, and Performance.
+3. Open a **Flag**, a problem FixFlags found. Read what happened and copy the suggested fix to your AI tool or developer.
+4. Publish the change, then return to the Flag and select **Check now** to see whether it worked.
 
-Shopify is a [connection](/docs/integrations/shopify) for store and purchase-path evidence. [Analytics and Search Console](/docs/integrations) add traffic and search context to the same Site.
-
-[Getting started](/docs/getting-started) or [how Site care works](/docs/site-care).
+Start with [Getting started](/docs/getting-started) for a walkthrough.
 
 ## The product loop
 
-FixFlags follows one loop: **Monitor. Flag. Fix.**, then return to Monitor. Monitoring includes fresh verification after a fix and configured scheduled checks.
+FixFlags checks your live website, shows problems that need attention, and checks again after you fix them.
 
-- **Monitor** the live website, starting with an analysis. Turn on scheduled checks when you save your Site, and select Check now after a fix for fresh verification.
-- **Flag** what is important enough to act on.
-- **Fix** in the tools you already use, or send the Flag to your AI.
+Save your website to your account to return to its results. In FixFlags, this saved website is called a **Site**. Newly saved websites receive a default monitoring schedule. Open Settings to see the next check or change the interval.
 
 ## Choose your path
 
-[What FixFlags checks](/coverage) explains setup and limits. [Privacy and security](/security) explains evidence access and data handling.
-
-
-- [Getting started](/docs/getting-started) for a URL check and the first Site board.
-- [Site care](/docs/site-care) for Cards, Flags, evidence, Verify, and Watch.
-- [Fix with your AI](/docs/fix-with-ai) for using a fix prompt and understanding MCP.
-- [Integration guides](/docs/integrations) for Shopify, Google Analytics, and Google Search Console setup and recovery.
+- [Getting started](/docs/getting-started): run your first check and save your website.
+- [Understand your results](/docs/site-care): read Flags, see what was checked, and follow changes over time.
+- [Fix with your AI](/docs/fix-with-ai): copy a suggested fix into the tool you already use.
+- [Integration guides](/docs/integrations): connect Shopify, Google Analytics, or Google Search Console.
 <!-- generated:mcp-guide-link -->
-- [Troubleshooting](/docs/troubleshooting) for blocked pages and incomplete coverage.
+- [Troubleshooting](/docs/troubleshooting): get help when a check or connection does not finish.
 
-For billing, privacy, or human support, use the [Help Center](/help).
+For account, billing, and privacy questions, visit the [Help Center](/help).

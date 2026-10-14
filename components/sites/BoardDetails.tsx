@@ -9,7 +9,7 @@ import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 
 export type CheckedPage = { url: string; title: string | null; status: string; checkedAt?: string; capture?: { url: string; viewport: string; recordedAt: string | null } | null }
 
-export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, sources, coverage, facts = [], pages, children }: {
+export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, sources, coverage, facts = [], pages, pageFlagCounts, children }: {
   image?: { src: string; alt: string } | null
   checkedAt?: string | null
   checkedLabel?: string
@@ -17,6 +17,7 @@ export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, s
   coverage?: string | null
   facts?: readonly string[]
   pages?: CheckedPage[]
+  pageFlagCounts?: Record<string, number>
   children?: React.ReactNode
 }) {
   const [failedImage, setFailedImage] = useState<string | null>(null)
@@ -34,6 +35,7 @@ export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, s
         <PageCapturePreview page={page.title || page.url} capture={page.capture ? { src: page.capture.url, alt: B.capturedPage(page.title || page.url) } : null} />
         <a href={page.url} target="_blank" rel="noopener noreferrer">{page.title || page.url}<small>{page.title ? page.url : null}</small></a>
         <span>{page.status === 'COMPLETED' ? 'Checked' : page.status === 'PARTIAL' ? 'Partial' : page.status === 'FAILED' ? 'Could not check' : 'In progress'}{page.checkedAt ? <small>{formatEvidenceTimestamp(page.checkedAt)}</small> : null}</span>
+        {pageFlagCounts?.[page.url] !== undefined ? <p className="text-xs">{B.pageFlags(pageFlagCounts[page.url])}</p> : null}
       </li>)}</ul> : <p>{C.noPages}</p> : null}
     </section> : null}
     <dl className={styles.provenance}>

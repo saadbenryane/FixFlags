@@ -2,26 +2,34 @@ import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { inspectAccessibilityViolations } from './approved-contrast'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
+import { HOMEPAGE_SAMPLE } from '@/lib/marketing/copy/care-homepage'
 import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 
-// The shared browser-process memory cache can serve a previously-loaded
-// screenshot (200) without hitting a route stub, making failure-injection
-// tests flaky. Disable the HTTP cache for this spec so every fetch reaches
-// the network layer (and any registered route).
-test.use({ launchOptions: { args: ['--disable-http-cache'] } })
+// Context routing disables HTTP cache in every supported engine. Page routes
+// retain precedence so failure injection observes the actual network request.
+test.beforeEach(async ({ context }) => {
+  await context.route('**/*', route => route.continue())
+})
 
 const widths = [320, 375, 768, 1280]
 
 for (const height of [900, 225]) {
-  test(`consent and copy feedback leave focused controls reachable at 375x${height}`, async ({ page }) => {
+  test(`consent and copy feedback leave focused controls reachable at 375x${height}`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: 375, height })
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    if (browserName === 'chromium') await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto('/')
     const consent = page.getByRole('dialog', { name: 'Choose your analytics settings' })
     await expect(consent).toBeVisible()
     const copy = page.getByRole('button', { name: /Copy fix prompt for/ }).first()
     await copy.click()
+    const manual = page.getByRole('textbox', { name: HOMEPAGE_SAMPLE.guidanceLabel, exact: true })
+    if (await manual.isVisible()) {
+      await manual.focus()
+      await expect.poll(() => manual.evaluate(element => element instanceof HTMLTextAreaElement &&
+        element.selectionStart === 0 && element.selectionEnd === element.value.length)).toBe(true)
+      await page.getByRole('dialog').filter({ has: manual }).getByRole('button', { name: 'Close', exact: true }).click()
+    }
     const choice = consent.getByRole('button', { name: 'Only necessary', exact: true })
     await choice.focus()
     await expect.poll(() => choice.evaluate(element => {
@@ -31,7 +39,7 @@ for (const height of [900, 225]) {
     })).toBe(true)
     await choice.click()
     await expect(consent).toHaveCount(0)
-    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: 'Cookie settings', exact: true }).click()
     await expect.poll(() => page.evaluate(() => {
       const focused = document.activeElement
       if (!(focused instanceof HTMLElement)) return false

@@ -121,10 +121,11 @@ describe('GET /api/reports/[id]/status', () => {
     expect(res.status).toBe(404)
   })
 
-  it('returns 403 when the viewer cannot access the report', async () => {
+  it('conceals a private report when the viewer cannot access it', async () => {
     resolveAuditAccess.mockResolvedValue('denied')
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(404)
+    expect(await res.json()).toMatchObject({ code: 'HTTP_404', message: 'Report not found' })
   })
 
   it('streams report content without the parked Timeline payload while checking', async () => {

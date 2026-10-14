@@ -1,7 +1,9 @@
 import { auditCache } from './cache'
 import { readBoundedJson } from '@/lib/http/read-json'
 import { z } from 'zod'
+import { performanceMeasurement } from './performance-measurement'
 import { readResourceAudits, projectResourceOpportunities, type ResourceAudit } from './pagespeed-opportunities'
+import { readTapTargetAudits, type TapTargetAudit } from './pagespeed-tap-targets'
 
 export const pageSpeedFailureSchema = z.object({
   code: z.enum(['PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE', 'PROVIDER_REFUSED', 'PROVIDER_RESPONSE_INVALID', 'MEASUREMENT_INCOMPLETE']),
@@ -52,10 +54,19 @@ export interface PageSpeedResult {
   // Savings use milliseconds for render blocking and bytes for resource opportunities.
   opportunities: Array<{ id: string; title: string; savings: number; itemsCount?: number }>
   resourceAudits?: ResourceAudit[]
+  tapTargetAudits?: TapTargetAudit[]
   failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
   raw: Record<string, unknown>
   crux: CruxMetrics | null
+}
+
+/** An audit can retain a number while explicitly reporting failed measurement. */
+function labMetric(audit: Record<string, unknown> | undefined): number | null {
+  if (!audit || audit.errorMessage || audit.notApplicable ||
+    ['error', 'notApplicable', 'manual', 'informative'].includes(String(audit.scoreDisplayMode))) return null
+  const value = audit.numericValue
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
 function extractCruxMetrics(data: Record<string, unknown>): CruxMetrics | null {
@@ -176,10 +187,10 @@ async function runPageSpeed(
     const categoryScores = (categories?.categories || {}) as Record<string, Record<string, unknown>>
 
     const perfScore = categoryScores.performance?.score as number | null | undefined ?? null
-    const lcp = audits['largest-contentful-paint']?.numericValue as number | undefined ?? null
-    const cls = audits['cumulative-layout-shift']?.numericValue as number | undefined ?? null
-    const fcp = audits['first-contentful-paint']?.numericValue as number | undefined ?? null
-    const tbt = audits['total-blocking-time']?.numericValue as number | undefined ?? null
+    const lcp = labMetric(audits['largest-contentful-paint'])
+    const cls = labMetric(audits['cumulative-layout-shift'])
+    const fcp = labMetric(audits['first-contentful-paint'])
+    const tbt = labMetric(audits['total-blocking-time'])
 
     const failedAccessibilityAudits: LighthouseAuditSummary[] = []
     for (const id of ACCESSIBILITY_AUDIT_IDS) {
@@ -196,23 +207,9 @@ async function runPageSpeed(
     const resourceAudits = readResourceAudits(audits)
     const opportunities: PageSpeedResult['opportunities'] = projectResourceOpportunities(resourceAudits)
 
-    if (strategy === 'mobile') {
-      const tapTargetIds = ['target-size', 'tap-targets', 'tap-targets-too-small']
-      for (const id of tapTargetIds) {
-        const audit = audits[id]
-        if (audit && audit.score !== null && (audit.score as number) < 1) {
-          if (!opportunities.some((o) => o.id === id)) {
-            const tapItems = ((audit.details as Record<string, unknown>)?.items as unknown[]) ?? []
-            opportunities.push({
-              id,
-              title: (audit.title as string) ?? 'Tap targets are too small',
-              savings: 0,
-              itemsCount: tapItems.length > 0 ? tapItems.length : undefined,
-            })
-          }
-        }
-      }
-    }
+    const tapTargetAudits = strategy === 'mobile' ? readTapTargetAudits(audits) : []
+    opportunities.push(...tapTargetAudits.flatMap(audit => audit.score !== null && audit.score < 1
+      ? [{ id: audit.id, title: audit.title, savings: 0, ...(audit.itemsCount ? { itemsCount: audit.itemsCount } : {}) }] : []))
 
     const crux = extractCruxMetrics(data)
 
@@ -226,8 +223,9 @@ async function runPageSpeed(
       inp: crux?.inp ?? null,
       opportunities,
       resourceAudits,
+      tapTargetAudits,
       failedAccessibilityAudits,
-      diagnostics: {},
+      diagnostics: { measurement: performanceMeasurement(categories, strategy) },
       raw: data,
       crux,
     }

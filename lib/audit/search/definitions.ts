@@ -19,7 +19,7 @@ export const SEARCH_DEFINITIONS = [
     checkIds: ['search-structured-invalid', 'search-structured-source', 'search-structured-feature', 'search-structured-content', 'search-structured-coverage', 'no-structured-data', 'search-observation-coverage'],
     assertions: ['syntax', 'vocabulary', 'feature-requirements', 'content-correspondence'], guidance: 'markup' },
   { evaluator: 'google', responsibility: 'google', requiredEvidence: ['google-index', 'google-analytics'],
-    checkIds: ['search-google-index', 'search-google-rich-results', 'search-google-performance', 'indexing-failure', 'low-ctr'],
+    checkIds: ['search-google-index', 'search-google-fetch', 'search-google-directives', 'search-google-canonical', 'search-google-rich-results', 'search-google-performance', 'indexing-failure', 'low-ctr'],
     assertions: ['indexed-version', 'rich-results', 'performance-window'], guidance: 'google' },
   { evaluator: 'cross-page', responsibility: 'presentation', requiredEvidence: ['checked-page-titles'],
     checkIds: ['search-duplicate-title'], assertions: ['checked-page-comparison'], guidance: 'duplicates' },
@@ -29,10 +29,10 @@ export const SEARCH_DEFINITIONS = [
 }>
 export type SearchCheckIdentity = typeof SEARCH_DEFINITIONS[number]['checkIds'][number]
 export const SEARCH_CHECK_REGISTRY = Object.fromEntries(SEARCH_DEFINITIONS.flatMap(definition =>
-  definition.checkIds.map(id => [id, { ...definition, id, version: 1, resultSchema: 'search-observation-v1',
+  definition.checkIds.map(id => [id, { ...definition, id, version: 2, resultSchema: 'search-observation-v2',
     applicability: 'public-source-or-authorized-provider' } as const]),
 )) as unknown as Record<SearchCheckIdentity, {
-  id: SearchCheckIdentity; version: 1; resultSchema: 'search-observation-v1'; applicability: string;
+  id: SearchCheckIdentity; version: 2; resultSchema: 'search-observation-v2'; applicability: string;
   evaluator: string; responsibility: SearchObservation['responsibility']; requiredEvidence: readonly string[];
   assertions: readonly string[]; guidance: string;
 }>

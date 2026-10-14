@@ -1,87 +1,74 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('@/lib/growth/research-permissions', () => ({ hasCurrentResearchPermissions: vi.fn().mockResolvedValue(true) }))
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { researchFixture } from './fixtures/public-research'
 
-const { prismaMock } = vi.hoisted(() => ({
-  prismaMock: {
-    issue: {
-      findFirst: vi.fn(),
-      updateMany: vi.fn(),
-      groupBy: vi.fn(),
-    },
-    $queryRaw: vi.fn(),
-  },
-}))
-
+const { prismaMock } = vi.hoisted(() => ({ prismaMock: {
+  growthArtifact: { findUnique: vi.fn() },
+  issue: { findFirst: vi.fn(), findMany: vi.fn() },
+  benchmarkSnapshot: { findFirst: vi.fn() },
+  $queryRaw: vi.fn(),
+} }))
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+import { getIssuePage, getPublicIssueLibrary, getBenchmark, getTopIssuesForChecks } from '../queries'
+import { PUBLIC_RESEARCH_KIND, PUBLIC_RESEARCH_PATH } from '../public-research'
+import { hasCurrentResearchPermissions } from '@/lib/growth/research-permissions'
 
-import { getIssuePage, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
-
-describe('getIssuePage', () => {
+describe('public issue research boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-13T00:00:00Z'))
+    vi.mocked(hasCurrentResearchPermissions).mockResolvedValue(true)
+    prismaMock.growthArtifact.findUnique.mockResolvedValue({ kind: PUBLIC_RESEARCH_KIND, payload: researchFixture() })
   })
+  afterEach(() => vi.useRealTimers())
 
-  it('returns null when checkId is not found', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue(null)
-
-    const result = await getIssuePage('missing-check')
-
-    expect(result).toBeNull()
-    expect(prismaMock.issue.findFirst).toHaveBeenCalledWith({
-      where: { checkId: 'missing-check' },
-      orderBy: [{ siteCount: 'desc' }, { lastSeenAt: 'desc' }],
-    })
-    expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
-  })
-
-  it('returns null when sample size is below MIN_SAMPLE_SIZE', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      checkId: 'slow-lcp-critical',
-      rubric: 'EXPERIENCE',
-      problemTemplate: 'Slow LCP',
-      fixTemplate: 'Optimize assets',
-      siteCount: MIN_SAMPLE_SIZE - 1,
-      occurrenceCount: 1,
-    })
-
-    const result = await getIssuePage('slow-lcp-critical')
-
-    expect(result).toBeNull()
-    expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
-  })
-
-  it('returns issue data with transformed examples and frameworks when threshold is met', async () => {
-    prismaMock.issue.findFirst.mockResolvedValue({
-      checkId: 'security-headers-missing',
-      rubric: 'REACH',
-      problemTemplate: 'Security headers are missing',
-      fixTemplate: 'Add CSP and X-Content-Type-Options',
-      siteCount: MIN_SAMPLE_SIZE,
-      occurrenceCount: 42,
-    })
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce([
-        { name: 'Next.js', site_count: BigInt(12) },
-        { name: 'React', site_count: BigInt(6) },
-      ])
-      .mockResolvedValueOnce([
-        { hostname: 'www.example.com', pageRole: 'homepage', severity: 'high' },
-        { hostname: 'docs.example.com', pageRole: 'article', severity: 'low' },
-      ])
-
+  it('projects reviewed aggregates without identifiers, approval references, or raw graph reads', async () => {
     const result = await getIssuePage('security-headers-missing')
+    expect(result).toMatchObject({ siteCount: 25, occurrenceCount: 42, examples: [], topFrameworks: [{ name: 'Next.js', siteCount: 20 }] })
+    expect(result?.research.methodology).toContain('not population prevalence')
+    expect(JSON.stringify(result)).not.toContain('synthetic-test-permission')
+    expect(JSON.stringify(result)).not.toContain('copyReviewRef')
+    expect(prismaMock.growthArtifact.findUnique).toHaveBeenCalledWith({ where: { path: PUBLIC_RESEARCH_PATH }, select: { kind: true, payload: true } })
+    expect(prismaMock.issue.findFirst).not.toHaveBeenCalled()
+    expect(prismaMock.issue.findMany).not.toHaveBeenCalled()
+    expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
+  })
 
-    expect(result).not.toBeNull()
-    expect(result?.rubric).toBe('REACH')
-    expect(result?.topFrameworks).toEqual([
-      { name: 'Next.js', siteCount: 12 },
-      { name: 'React', siteCount: 6 },
+  it('returns no detail for unknown or page-scoped checks', async () => {
+    expect(await getIssuePage('missing-check')).toBeNull()
+    expect(await getIssuePage('security-headers-missing::page:1')).toBeNull()
+  })
+
+  it('withholds previously approved data when its current permission check fails', async () => {
+    vi.mocked(hasCurrentResearchPermissions).mockResolvedValue(false)
+    expect(await getPublicIssueLibrary()).toEqual([])
+    expect(await getIssuePage('security-headers-missing')).toBeNull()
+    expect(await getTopIssuesForChecks(['security-headers-missing'])).toEqual([])
+  })
+
+  it.each([
+    ['missing', null],
+    ['wrong kind', { kind: 'legacy-graph', payload: researchFixture() }],
+    ['unapproved', { kind: PUBLIC_RESEARCH_KIND, payload: { ...researchFixture(), status: 'draft' } }],
+    ['expired', { kind: PUBLIC_RESEARCH_KIND, payload: { ...researchFixture(), expiresAt: '2026-10-12T00:00:00Z' } }],
+    ['unknown identifiers', { kind: PUBLIC_RESEARCH_KIND, payload: { ...researchFixture(), hostname: 'private.example.com' } }],
+  ])('fails closed for a %s release', async (_name, row) => {
+    prismaMock.growthArtifact.findUnique.mockResolvedValue(row)
+    expect(await getPublicIssueLibrary()).toEqual([])
+    expect(await getIssuePage('security-headers-missing')).toBeNull()
+  })
+
+  it('does not expose legacy benchmarks without a permitted-use contract', async () => {
+    expect(await getBenchmark('framework:nextjs')).toBeNull()
+    expect(prismaMock.benchmarkSnapshot.findFirst).not.toHaveBeenCalled()
+  })
+
+  it('limits top-issue previews to the same approved dataset', async () => {
+    expect(await getTopIssuesForChecks(['security-headers-missing'])).toEqual([
+      { checkId: 'security-headers-missing', rubric: 'REACH', problemTemplate: 'Security headers are missing', siteCount: 25 },
     ])
-    expect(result?.examples).toEqual([
-      { hostname: 'example.com', pageRole: 'homepage', severity: 'high' },
-      { hostname: 'docs.example.com', pageRole: 'article', severity: 'low' },
-    ])
-    expect(result?.siteCount).toBe(MIN_SAMPLE_SIZE)
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2)
+    expect(await getTopIssuesForChecks(['security-headers-missing'], 26)).toEqual([])
+    expect(await getTopIssuesForChecks(['private-check'])).toEqual([])
   })
 })

@@ -6,12 +6,13 @@ export async function runPostLoginClaimFlow(input: {
   showEnrollment: () => void
   beforeNavigate: () => void
   navigate: () => Promise<void>
+  skipEnrollment?: boolean
 }): Promise<boolean> {
   const claimed = await input.claim()
   // null/undefined = HTTP or client failure. claimedCount 0 is success with
   // nothing to attach (plain login, no anon cookie).
   if (!claimed) return false
-  if (await input.shouldEnroll()) {
+  if (!input.skipEnrollment && await input.shouldEnroll()) {
     input.showEnrollment()
     return true
   }

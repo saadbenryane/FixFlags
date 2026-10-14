@@ -6,11 +6,13 @@ import { prisma } from '@/lib/db'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { consoleObservationMinimum } from '@/lib/audit/console-evidence'
+import { capturePageKey } from '@/lib/audit/browser/observation-scope'
 import { validateBindingForOutcome } from './binding-config'
-import { canonicalIntent, executionSpecSchema, type ExecutionSpec } from '../domain/execution-spec'
+import { canonicalIntent, executionSpecSchema, readExecutionSpec, type ExecutionSpec } from '../domain/execution-spec'
 import type { CategoryArea } from '../domain/execution-spec'
 import { siteWideAnalysisAuditWhere } from './analysis-scope'
 import { SiteRunRefusal } from './run-refusal'
+import { monitoringReviewUrls } from '@/lib/audit/review-depth'
 
 type SpecOutcome = { id: string; kind: string; expectation?: string | null; bindingPolicy?: string;
   bindings: Array<{ key: string; version: number; mechanism: string; required: boolean; config: Prisma.JsonValue; scope?: Prisma.JsonValue | null }> }
@@ -18,7 +20,20 @@ type SpecOutcome = { id: string; kind: string; expectation?: string | null; bind
 export async function buildExecutionSpec(input: { projectId: string; targetUrl: string; environment: string;
   scope: ExecutionSpec['scope']; categoryArea?: CategoryArea; accountMode?: AccountIntent['mode']; outcomes: SpecOutcome[]; verificationTarget?: ExecutionSpec['verificationTarget'] }): Promise<ExecutionSpec> {
   let category: ExecutionSpec['category']
+  let monitoringPages: ExecutionSpec['monitoringPages']
   let targetUrl = input.targetUrl
+  if (input.scope === 'SITE' && input.projectId) {
+    const source = await prisma.audit.findFirst({ where: { projectId: input.projectId, url: targetUrl, status: 'COMPLETED', ...siteWideAnalysisAuditWhere,
+      AND: [input.environment === 'production' ? { OR: [
+        { executionSpec: { path: ['environment'], equals: input.environment } },
+        { executionSpec: { path: ['environment'], equals: Prisma.AnyNull } },
+      ] } : { executionSpec: { path: ['environment'], equals: input.environment } }] },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { executionSpec: true, pages: {
+        orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 24, select: { url: true } } } })
+    const prior = readExecutionSpec(source?.executionSpec)
+    const retained = prior?.scope === 'SITE' && prior.targetUrl === targetUrl && prior.environment === input.environment ? prior.monitoringPages ?? [] : []
+    if (retained.length || source?.pages?.length) monitoringPages = monitoringReviewUrls(targetUrl, [...retained, ...source?.pages?.map(page => page.url) ?? []])
+  }
   if (input.scope === 'CATEGORY') {
     if (!input.categoryArea) throw new SiteRunRefusal('Select a category to check.', 400)
     const source = await prisma.audit.findFirst({ where: { projectId: input.projectId, status: 'COMPLETED', ...siteWideAnalysisAuditWhere,
@@ -65,6 +80,14 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     const pages = [...new Map([input.verificationTarget.pageUrl, ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])].map(page => [trackingPageKey(page), page])).values()]
     verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
       contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
+    if (diagnosticModule === 'overlays') {
+      const contexts = flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
+        const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
+        return typeof context === 'string' && /^overlay:[a-f0-9]{64}:[a-f0-9]{64}:(page_load|primary_action(?:_after)?|pricing_navigation(?:_after)?|(?:flow_)?form_validation(?:_after)?|journey_[a-z0-9_-]+):(nav|cta|form):[a-f0-9]{64}$/.test(context) ? [context] : []
+      }) : [])
+      verificationScopes = verificationScopes.map(scope => ({ ...scope, overlayPhases: [...new Set(contexts.filter(context =>
+        context.startsWith('overlay:' + capturePageKey(scope.pageUrl) + ':')).map(context => context.split(':')[3]))] }))
+    }
 
   }
   if (input.scope === 'SITE' || category?.area === 'conversion') {
@@ -91,6 +114,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       .filter(([id, definition]) => !category || definition.area === category.area || category.area === 'search' && id.startsWith('corridor-og-'))
       .map(([id, definition]) => [id, definition.version])),
     ...(accountChecks ? { accountChecks } : {}), outcomes, verificationTarget: input.verificationTarget ?? null, ...(verificationScopes ? { verificationScopes } : {}),
+    ...(monitoringPages ? { monitoringPages } : {}),
     ...(consoleObservationMs !== undefined ? { consoleObservationMs } : {}), ...(consoleObservationScopes ? { consoleObservationScopes } : {}) })
 }
 
@@ -110,5 +134,5 @@ export function executionIntentHash(spec: ExecutionSpec) {
   return createHash('sha256').update(canonicalIntent({ ...spec, outcomes: spec.scope === 'SITE' || spec.scope === 'CATEGORY' ? [] : canonicalExecutionOutcomes(spec.outcomes),
     targetUrl: spec.category ? undefined : spec.targetUrl,
     category: spec.category ? { area: spec.category.area } : undefined,
-    reviewDepth: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
+    scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
 }

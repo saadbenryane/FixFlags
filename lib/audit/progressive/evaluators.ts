@@ -16,9 +16,8 @@ import { runGoogleSearchForAudit } from '../search/google'
 import { searchReceiptSchema } from '../search/contracts'
 import { searchFindings } from '../search/registry'
 import { collectSearchEvidence, missingDocument } from '../search/collect'
-import { checkReceiptSchema } from '../checks/receipt'
 import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import { CHECK_MODULES, CHECK_REGISTRY, CHECK_ASSERTIONS } from '../check-registry'
 import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { runKeyboardChecks } from '../checks/keyboard'
 import { runTrackingChecks } from '../checks/tracking'
@@ -28,6 +27,11 @@ import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
 import { checkPublicLinks } from '../checks/public-links'
+import { runInteractionChecks } from '../checks/interaction'
+import { loadingDelayObservation, mobileLoadingDelayFlag } from '../checks/loading-evidence'
+import { applyMotionObservation, motionObservationSchema } from '../checks/motion-evidence'
+import { scopeRenderedPageEvidence } from '../checks/rendered-page-evidence'
+import { runSecurityBasicsChecks, securityObservations } from '../checks/security'
 
 function dependency(context: TaskContext, kind: string) {
   return [...context.dependencies.values()].find(item => item.workKind === kind && item.workState === 'COMPLETED')
@@ -56,7 +60,12 @@ const googleArtifactSchema = z.object({ receipts: z.array(searchReceiptSchema).m
 
 export const evaluatorHandlers: TaskHandler[] = [
   { kind: 'check', replay: 'read_only', timeoutMs: 12_000,
-    validateResult: artifact => { checkArtifactSchema.parse(artifact.data) }, commit: commitFindings,
+    validateResult: artifact => { checkArtifactSchema.parse(artifact.data) },
+    async commit(context, artifact, tx) {
+      const result = checkArtifactSchema.parse(artifact.data)
+      await commitCheckReceipt(context, result.receipt, tx, context.input.device ? ':device:' + context.input.device : '')
+      await commitFindings(context, artifact, tx)
+    },
     async evaluate(context) {
       const checkModule = context.input.module, definition = checkModule ? CHECK_MODULES[checkModule] : null
       if (!checkModule || !definition || checkModule === 'search') throw new TaskFailure('CHECK_NOT_REGISTERED', false)
@@ -79,6 +88,12 @@ export const evaluatorHandlers: TaskHandler[] = [
         const checked = await checkPublicLinks(pageUrl, metadata, context.deadline)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
         collectedAt = new Date().toISOString()
+      } else if (checkModule === 'security') {
+        if (!response || response.document.status === null) throw new TaskFailure('HTTP_COLLECTION_UNAVAILABLE', false)
+        flags = runSecurityBasicsChecks(response.document.finalUrl, response.metadata)
+        assertions = securityObservations(response.document.finalUrl, response.metadata)
+        complete = assertions.every(assertion => assertion.complete === true)
+        if (!complete) limitation = 'The connection protocol was observed. Declared resources require an inspectable HTML document.'
       } else if (checkModule === 'console') {
         if (!snapshot) throw new TaskFailure('CONSOLE_EVIDENCE_UNAVAILABLE', false)
         flags = runConsoleChecks(snapshot.consoleErrors, snapshot.consoleCoverage)
@@ -91,12 +106,32 @@ export const evaluatorHandlers: TaskHandler[] = [
         const evidence = keyboardEvidenceSchema.parse(readArtifact(task.workResult, 'keyboard').data)
         const checked = runKeyboardChecks(evidence)
         flags = checked.flags; assertions = checked.assertions
-        applicable = evidence.candidateCount > 0 || (evidence.interactionCount ?? 0) > 0; complete = evidence.complete; pageUrl = evidence.pageUrl
+        applicable = evidence.candidateCount > 0 || (evidence.interactionCount ?? 0) > 0; complete = evidence.complete; pageUrl = evidence.scope?.pageUrl ?? evidence.pageUrl
         const copy = SITE_ACTION_COPY.execution.keyboard
         const opened = evidence.interactions?.filter(item => item.openedBy !== 'none').length ?? 0
         limitation = [`${evidence.steps.length} page controls exercised.`,
           ...(evidence.interactionCount ? [`${opened} of ${evidence.interactionCount} declared popup states opened for inspection.`] : []), copy.reasons[evidence.reason as keyof typeof copy.reasons] ?? copy.incomplete,
           ...evidence.limitations.map(key => copy.limitations[key as keyof typeof copy.limitations]).filter(Boolean), copy.scope].join(' ')
+      } else if (checkModule === 'interaction') {
+        if (!snapshot?.captureMetrics) throw new TaskFailure('RENDERED_METRICS_UNAVAILABLE', false)
+        const motion = dependency(context, 'motion')
+        if (motion?.workResult) snapshot.captureMetrics = applyMotionObservation(snapshot.captureMetrics, motionObservationSchema.parse(readArtifact(motion.workResult, 'motion').data))
+        flags = runInteractionChecks(snapshot.captureMetrics, assertion => assertions.push(assertion))
+        if (spec?.category) {
+          flags = flags.filter(flag => Object.hasOwn(spec.checks, flag.checkId.split('::page:')[0]))
+          assertions = assertions.filter(assertion => CHECK_ASSERTIONS[checkModule]?.[assertion.key]?.area === spec.category!.area ||
+            CHECK_ASSERTIONS[checkModule]?.[assertion.key]?.verifies.some(id => Object.hasOwn(spec.checks, id)))
+        }
+        complete = assertions.filter(assertion => assertion.disposition !== 'observed').every(assertion => assertion.complete === true)
+        limitation = 'Recorded mobile loading and reduced-motion observations, plus available desktop loading windows. Unavailable or unmatched source conditions cannot certify recovery.'
+      } else if (checkModule === 'mobile-ux-quality' && spec?.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.split('::page:')[0] === 'mobile-load-delay-content') {
+        const window = snapshot?.captureMetrics?.loadExperience
+        if (!window || window.device !== 'mobile') throw new TaskFailure('MOBILE_LOADING_EVIDENCE_UNAVAILABLE', false)
+        const flag = mobileLoadingDelayFlag(window)
+        flags = flag ? [flag] : []
+        assertions = [loadingDelayObservation(window, 4000, 'mobile-loading-delay')]
+        complete = assertions[0].complete === true
+        limitation = 'This targeted execution evaluates the recorded mobile loading window. Other mobile layout responsibilities remain separate.'
       } else if (checkModule === 'measurement') {
         if (!metadata) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
         pageUrl = snapshot?.desktopFinalUrl ?? context.input.pageUrl
@@ -111,8 +146,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         // Each receipt describes only its own device and responsibility.
         assertions = inpOnly ? [recordInpObservation(measurement!)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
           metadata: parseMetadataFromHtml('', context.input.pageUrl), desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
-        complete = inpOnly ? assertions[0].complete === true : measurement!.score !== null && measurement!.lcp !== null && measurement!.cls !== null &&
-          assertions.every(assertion => assertion.complete !== false)
+        complete = assertions.every(assertion => assertion.complete === true)
         if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
       } else if (checkModule === 'security-headers') {
         if (response?.document.reason === 'public_access_challenge') throw new TaskFailure('PUBLIC_ACCESS_CHALLENGE', false)
@@ -139,6 +173,12 @@ export const evaluatorHandlers: TaskHandler[] = [
         limitation = checked.executions[0]?.limitation
         collectedAt = checked.executions[0]?.collectedAt
       }
+      // Other rendered modules already use the shared page evaluator adapter.
+      if (checkModule === 'measurement') {
+        const scoped = scopeRenderedPageEvidence({ module: checkModule, flags, assertions, desktop: snapshot?.renderedScope })
+        flags = scoped.flags; assertions = scoped.assertions
+      }
+      if (assertions.some(assertion => assertion.complete === false && assertion.disposition !== 'observed')) complete = false
       flags = suppressFlagsForPageRole(flags, context.input.role)
         .map(flag => ({ ...flag, pageUrl }))
       const sourceKind = checkModule === 'keyboard' ? 'keyboard' : checkModule === 'security' || checkModule === 'security-headers' ? 'http'
@@ -151,7 +191,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         kind: 'site-module-check', version: 1, module: checkModule, passed: flags.length === 0 && complete !== false, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
         execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version,
-          source: publicLinks ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : checkModule === 'security' ? 'original-html' : ['security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+          source: publicLinks ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom',
           collectedAt: collectedAt ?? source.collectedAt },
       } }))
@@ -191,8 +231,9 @@ export const evaluatorHandlers: TaskHandler[] = [
         robots: missingDocument(new URL('/robots.txt', context.input.pageUrl).toString(), 'resource_collection_incomplete'),
         sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [],
       }))
-      const input = { auditId: context.audit.id, pageUrl: context.input.pageUrl,
+      const input = { collectorVersion: 2 as const, auditId: context.audit.id, pageUrl: context.input.pageUrl,
         original: response?.document, renderedHtml: snapshot?.desktopHtml ?? null,
+        renderedSearchSnapshot: snapshot?.collectionRestrictions?.length ? undefined : snapshot?.renderedSearchSnapshot,
         renderedCollectedAt: dependency(context, 'browser')?.workResult ? readArtifact(dependency(context, 'browser')!.workResult, 'browser').collectedAt : undefined,
         renderedComplete: Boolean(snapshot?.desktopHtml) && !snapshot?.collectionRestrictions?.length, headers: snapshot?.responseHeaders ?? undefined,
         finalUrl: snapshot?.desktopFinalUrl, status: snapshot?.desktopHttpStatus, deadline: context.deadline, cache,
@@ -240,11 +281,3 @@ export const evaluatorHandlers: TaskHandler[] = [
     },
   },
 ]
-
-/** Compatibility receipts are published in the same commit as progressive results. */
-const commitChecks = evaluatorHandlers.find(handler => handler.kind === 'check')!
-commitChecks.commit = async (context, artifact, tx: Prisma.TransactionClient) => {
-  const result = checkArtifactSchema.parse(artifact.data), receipt = checkReceiptSchema.parse(result.receipt)
-  await commitCheckReceipt(context, receipt, tx, context.input.device ? ':device:' + context.input.device : '')
-  await commitFindings(context, artifact, tx)
-}

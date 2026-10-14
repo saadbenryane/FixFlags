@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ find: vi.fn(), update: vi.fn(), admit: vi.fn() }))
+const mocks = vi.hoisted(() => ({ find: vi.fn(), update: vi.fn(), admit: vi.fn(), retryOwned: vi.fn() }))
+vi.mock('@/lib/sites/application/run-retry', () => ({ retryAdmittedRun: mocks.retryOwned }))
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findUnique: mocks.find, update: mocks.update } } }))
 vi.mock('@/lib/audit/create-audit', () => ({
   createAndEnqueueAudit: mocks.admit,
@@ -10,6 +11,13 @@ const owner = { userId: 'owner', visitorKey: 'visitor', anonymousAuditIds: [] }
 const prior = { id: 'before', status: 'FAILED', url: 'https://example.com/', userId: 'owner', isPublic: false, auditMode: 'CRITICAL_PATH' }
 beforeEach(() => { vi.clearAllMocks(); mocks.find.mockResolvedValue(prior); mocks.admit.mockResolvedValue({ auditId: 'after', status: 'QUEUED', siteId: 'site', reused: false }) })
 describe('new linked retry admission', () => {
+  it('routes owned Site retries through admitted-scope reproduction and returns the persisted state', async () => {
+    mocks.find.mockResolvedValueOnce({ ...prior, projectId: 'site' }).mockResolvedValueOnce({ status: 'CHECKING' })
+    mocks.retryOwned.mockResolvedValue({ auditId: 'after', runId: 'retry-run', reused: true })
+    expect(await retryAudit('before', owner)).toEqual({ auditId: 'after', siteId: 'site', runId: 'retry-run', status: 'CHECKING', reused: true })
+    expect(mocks.retryOwned).toHaveBeenCalledWith('before', { kind: 'owner', userId: 'owner' })
+    expect(mocks.admit).not.toHaveBeenCalled()
+  })
   it('admits fresh work and leaves the terminal execution and all its evidence untouched', async () => {
     expect(await retryAudit('before', owner)).toEqual({ auditId: 'after', status: 'QUEUED', siteId: 'site', reused: false })
     expect(mocks.admit).toHaveBeenCalledWith(expect.objectContaining({ parentId: 'before', retryParent: true,

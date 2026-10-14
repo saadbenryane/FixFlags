@@ -1,3 +1,4 @@
+import { integrationRelease } from '@/lib/integrations/release-policy'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -13,6 +14,8 @@ export async function GET(request: NextRequest) {
   if (!session?.user?.id || !code || !state) {
     return NextResponse.redirect(`${base}/sign-in?next=/dashboard`)
   }
+  if (integrationRelease('search-console') !== 'available' && integrationRelease('analytics') !== 'available')
+    return NextResponse.redirect(`${base}/integrations`)
   try {
     const result = await completeGoogleConnection({
       state,

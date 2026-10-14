@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { checkoutResultCopy, currentOutcomeState, customerMechanismLabel, flagMatchesOutcome, outcomeCoverageLabel, outcomeFreshnessDisclosure, outcomeStatusLabel } from '@/lib/sites/outcome-state'
+import { checkoutResultCopy, currentOutcomeState, customerBindingResult, customerMechanismLabel, flagMatchesOutcome, outcomeCoverageLabel, outcomeFreshnessDisclosure, outcomeStatusLabel } from '@/lib/sites/outcome-state'
 
 describe('Outcome state', () => {
+  it('does not turn a successful individual method into a claim that every required check passed', () => {
+    for (const key of ['page-availability-v1', 'signup-safe-form-v1', 'supporting-observation-v1']) {
+      const result = customerBindingResult({ key, disposition: 'SUCCEEDED', reason: 'available' })
+      expect(result.headline).toBe('FixFlags completed this check.')
+      expect(result.headline).not.toContain('every required check')
+    }
+  })
   it('keeps a fresh completed conclusion and derives stale from its validity window', () => {
     const now = new Date('2026-09-21T12:00:00.000Z')
     expect(

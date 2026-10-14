@@ -48,8 +48,8 @@ const checks = {
   bodyClassHasFontVariables: /font-variables/.test(pageHtml),
   hasRootFontVar: stylesheetHasSelector(stylesheetText, ':root'),
   hasFontVariablesRule: stylesheetHasSelector(stylesheetText, '.font-variables'),
-  hasFontSansVar: /--font-sans:\s*\"Inter Variable\"/.test(stylesheetText),
-  hasFontDisplayVar: /--font-display:\s*\"Inter Tight Variable\"/.test(stylesheetText),
+  hasFontSansVar: /--font-sans:\s*(?:\"Inter Variable\"|var\(--font-inter[,)])/.test(stylesheetText),
+  hasFontDisplayVar: /--font-display:\s*(?:\"Inter Tight Variable\"|var\(--font-inter-tight[,)])/.test(stylesheetText),
   hasFontMonoVar: /--font-mono:\s*\"JetBrains Mono Variable\"/.test(stylesheetText),
 }
 
@@ -77,6 +77,7 @@ runtime = await page.evaluate(() => {
     rootDisplayFont: getComputedStyle(document.documentElement).getPropertyValue('--font-display').trim(),
     rootMonoFont: getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim(),
     h1Font: getComputedStyle(document.querySelector('h1')).fontFamily,
+    loadedFamilies: [...document.fonts].filter(face => face.status === 'loaded').map(face => face.family.replaceAll('"', '').replaceAll("'", '')),
   }
 })
 } finally { await browser.close() }
@@ -85,6 +86,8 @@ const runtimeChecks = {
   bodyFontInter: runtime.bodyFont.includes('Inter Variable'),
   headingFontInterTight: runtime.h1Font.includes('Inter Tight Variable'),
   rootFontVarExact: runtime.rootFont.includes('Inter Variable'),
+  primaryBodyFaceLoaded: runtime.loadedFamilies.includes(runtime.bodyFont.split(',')[0].trim().replaceAll('"', '').replaceAll("'", '')),
+  primaryHeadingFaceLoaded: runtime.loadedFamilies.includes(runtime.h1Font.split(',')[0].trim().replaceAll('"', '').replaceAll("'", '')),
 }
 
 const failures = [

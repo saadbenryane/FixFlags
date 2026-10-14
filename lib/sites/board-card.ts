@@ -27,6 +27,7 @@ export type BoardCardProblem = {
 
 export type BoardCardFlagChip = {
   id: string
+  sourceFlagId?: string | null
   title: string
   href: string
 }
@@ -179,18 +180,22 @@ export function boardFlagPrompt(input: {
   evidence?: string | null
   fix: string
   pageUrl?: string | null
+  affectedPaths?: string[]
   journeyName?: string | null
   expectedBehavior?: string | null
 }): string {
+  const paths = [...new Set(input.affectedPaths ?? [])]
   return [
     `FixFlags Flag: ${input.problem}`,
     input.pageUrl ? `URL: ${input.pageUrl}` : null,
+    paths.length > 1 ? `Affected pages:\n${paths.map(path => '- ' + path).join('\n')}` : null,
     input.journeyName ? `Outcome: ${input.journeyName}` : null,
     `Why it matters: ${input.whyItMatters}`,
     input.evidence?.trim() ? `Evidence: ${input.evidence.trim()}` : null,
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,
     `Fix: ${input.fix}`,
-    'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same page and action.',
+    paths.length > 1 ? 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same affected pages and action.'
+      : 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same page and action.',
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n')
@@ -201,6 +206,7 @@ export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string
   const prompts = flags.map((flag, index) => boardFlagPrompt({
     problem: flag.problem,
     pageUrl: flag.pageUrl,
+    affectedPaths: flag.affectedPaths,
     whyItMatters: flag.whyItMatters,
     evidence: flag.evidence,
     fix: flag.fix,
@@ -214,6 +220,7 @@ export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string
 function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip[] {
   return flags.map((flag) => ({
     id: flag.id,
+    sourceFlagId: flag.sourceFlagId,
     title: flag.problem,
     href: `/sites/${siteId}/flags/${flag.id}`,
   }))
@@ -234,7 +241,7 @@ export function buildBoardCards(input: {
   detected?: { analytics?: string[] }
 }): BoardCardView[] {
   const activity: 'checking' | null = input.inFlight ? 'checking' : null
-  const areas = input.areas ?? [...STARTER_BOARD_CARDS, ...ADDABLE_BOARD_CARDS]
+  const areas = input.areas ?? [...STARTER_BOARD_CARDS, ...ADDABLE_BOARD_CARDS, 'uptime'] as SiteCardArea[]
 
   return areas.map((area) => {
     if (area === 'site') {

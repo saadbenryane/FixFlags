@@ -1,3 +1,5 @@
+import { collectRenderedHtml } from './browser/rendered-html'
+import { collectRenderedSearchSnapshot, type RenderedSearchSnapshot } from './search/rendered-snapshot'
 import { chromium, type Browser, type Page } from 'playwright'
 import { AxeBuilder } from '@axe-core/playwright'
 import fs from 'fs'
@@ -9,6 +11,10 @@ import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 import { createAuditPage, settleAuditPage } from './browser/page-session'
+import { readLoadingUi, loadingUiInDocument, type LoadingUiSnapshot } from './browser/loading-ui'
+import { observeViewport } from './browser/viewport-observation'
+import { observeMotionWindow, collectReducedMotionWindow, type MotionWindow } from './browser/motion-observation'
+import { applyMotionObservation } from './checks/motion-evidence'
 import { sharedBrowser } from './browser/shared-browser'
 import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
@@ -17,7 +23,6 @@ import { ACCESSIBILITY_TAGS } from './checks/accessibility-rules'
 import type { ConsoleMessage } from './console-evidence'
 import { randomUUID } from 'node:crypto'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
-import { scanAccessToFetchHeaders } from './scan-access'
 import type { ScanAccessConfig } from './scan-access'
 import {
   measureMobileLayout,
@@ -122,6 +127,7 @@ export function dedupeConsoleErrors(
 }
 
 export interface ScreenshotResult {
+  renderedSearchSnapshot?: RenderedSearchSnapshot
   originalDocument?: import('./search/contracts').PublicDocument
   desktopFinalUrl?: string
   desktopHttpStatus?: number | null
@@ -131,12 +137,14 @@ export interface ScreenshotResult {
   mobileBase64: string | null
   desktopHtml: string | null
   desktopHtmlTruncated?: boolean
+  desktopHtmlCompacted?: boolean
   consoleErrors: Array<{ type: string; text: string }>
   consoleCoverage?: ConsoleCoverage
   captureStatus: ScreenshotCaptureStatus
   captureFailures: PageCaptureFailure[]
   flowResult?: FlowScanResult | null
   captureMetrics?: CaptureMetrics | null
+  motionWindow?: MotionWindow
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
@@ -155,6 +163,8 @@ export interface ScreenshotResult {
 }
 
 interface ViewportCapture {
+  renderedSearchSnapshot?: RenderedSearchSnapshot
+  motionWindow?: MotionWindow
   consoleComplete?: boolean
   consoleObservedMs?: number
   consoleMinimumMs?: number
@@ -168,6 +178,7 @@ interface ViewportCapture {
   initialUrl: string | null
   html: string | null
   htmlTruncated?: boolean
+  htmlCompacted?: boolean
   captureMetrics?: CaptureMetrics | null
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
@@ -197,58 +208,6 @@ async function readTechnologyRuntimeMarkers(page: Page): Promise<string[]> {
   return page.evaluate((markers) =>
     markers.filter((marker) => Object.prototype.hasOwnProperty.call(window, marker))
   , TECHNOLOGY_RUNTIME_MARKERS)
-}
-
-interface PageLoadSnapshot {
-  readyState: string
-  title: string | null
-  loadingVisible: boolean
-  loadingLabel: string | null
-}
-
-const LOADING_UI_SELECTOR =
-  '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
-
-async function readLoadSnapshot(page: Page): Promise<PageLoadSnapshot> {
-  return page.evaluate((loadingSelector) => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-
-    function isBlockingLoadingEl(el: Element): boolean {
-      const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) return false
-      const style = window.getComputedStyle(el)
-      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0')
-        return false
-
-      const inMain = Boolean(el.closest('main, [role="main"], [class*="hero" i]'))
-      const viewportArea = window.innerWidth * window.innerHeight
-      const elArea = rect.width * rect.height
-      const coversViewport = elArea >= viewportArea * 0.12
-      const isLargeOverlay = elArea >= viewportArea * 0.35
-      if (!inMain && !coversViewport && !isLargeOverlay) return false
-      return true
-    }
-
-    let loadingVisible = false
-    let loadingLabel: string | null = null
-
-    for (const el of document.querySelectorAll(loadingSelector)) {
-      if (!isBlockingLoadingEl(el)) continue
-      loadingVisible = true
-      loadingLabel =
-        el.getAttribute('aria-label') ||
-        el.className.toString().split(/\s+/).find((c) => /skeleton|spinner|loading/i.test(c)) ||
-        el.tagName.toLowerCase()
-      break
-    }
-
-    return {
-      readyState: document.readyState,
-      title: document.title.trim() || null,
-      loadingVisible,
-      loadingLabel,
-    }
-  }, LOADING_UI_SELECTOR)
 }
 
 async function readRuntimeHeadMetadata(page: Page): Promise<RuntimeHeadMetadata> {
@@ -282,49 +241,33 @@ async function waitForFinishedLoadState(
   page: Page,
   device: 'desktop' | 'mobile',
   startedAt: number,
-  initialScreenshotUrl: string | null,
-  initialCaptureElapsedMs: number,
-  initial: PageLoadSnapshot
+  initial: LoadingUiSnapshot,
+  scope: CaptureObservationScope,
+  restrictions: string[] = [],
+  deadline?: number,
 ): Promise<PageLoadExperience> {
-  await page
-    .waitForFunction(() => document.readyState === 'complete', undefined, { timeout: 8_000 })
-    .catch(() => {})
-  await page
-    .waitForFunction(() => document.title.trim().length > 0, undefined, { timeout: 3_000 })
-    .catch(() => {})
-
-  // Without observed loading UI there is no loading-clearance measurement.
-  let loadingClearedMs: number | null = null
-  if (initial.loadingVisible) {
-    await page
-      .waitForFunction(
-        (loadingSelector) => {
-          for (const el of document.querySelectorAll(loadingSelector)) {
-            const rect = el.getBoundingClientRect()
-            if (rect.width <= 0 || rect.height <= 0) continue
-            const style = window.getComputedStyle(el)
-            if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
-              continue
-            }
-            return false
-          }
-          return true
-        },
-        LOADING_UI_SELECTOR,
-        { timeout: 10_000 }
-      )
-      .then(() => {
-        loadingClearedMs = Date.now() - startedAt
-      })
-      .catch(() => {})
-  }
+  const initialCaptureElapsedMs = Date.now() - startedAt
+  const timeout = (maximum: number) => Math.max(1, Math.min(maximum, (deadline ?? Infinity) - Date.now()))
+  // Start observing before media, document readiness or metadata can delay us.
+  // Without observed loading UI there is no clearance measurement.
+  const clearance = initial.loadingVisible ? page.waitForFunction(loadingUiInDocument, true, { timeout: timeout(10_000) })
+    .then(async observation => {
+      const clearedAt = await observation.jsonValue()
+      return typeof clearedAt === 'number' && Number.isFinite(clearedAt) && clearedAt >= startedAt ? clearedAt - startedAt : null
+    }).catch(() => null) : Promise.resolve(null)
+  const [, , loadingClearedMs] = await Promise.all([
+    page.waitForFunction(() => document.readyState === 'complete', undefined, { timeout: timeout(8_000) }).catch(() => {}),
+    page.waitForFunction(() => document.title.trim().length > 0, undefined, { timeout: timeout(3_000) }).catch(() => {}),
+    clearance,
+  ])
 
   await settleAuditPage(page)
 
-  const final = await readLoadSnapshot(page)
+  const final = await readLoadingUi(page)
+  const content = await observeViewport(page, { profile: scope.profile, includeActions: false, excludeLoading: true })
   return {
     device,
-    initialScreenshotUrl,
+    initialScreenshotUrl: null,
     initialCaptureElapsedMs,
     finalCaptureElapsedMs: Date.now() - startedAt,
     loadingVisibleAtInitial: initial.loadingVisible,
@@ -333,6 +276,8 @@ async function waitForFinishedLoadState(
     loadingLabel: initial.loadingLabel ?? final.loadingLabel,
     finalReadyState: final.readyState,
     finalTitle: final.title,
+    observation: { version: 1, device, scope: { ...scope, finalUrl: content.pageUrl }, contentVisible: content.content === true,
+      ready: final.readyState === 'complete', restricted: restrictions.length > 0 },
   }
 }
 
@@ -412,6 +357,7 @@ async function captureDesktopWithFlow(
   let disposeNetwork: (() => void) | null = null
   let consoleTruncated: (() => boolean) | undefined
   let consoleTiming: (() => { loaded: boolean; observedMs: number; minimumMs: number }) | undefined
+  let finishedLoad: Promise<PageLoadExperience> | undefined
   try {
     timeline.push('navigate', `Open ${targetUrl}`, { url: targetUrl })
     const session = await createAuditPage(b, targetUrl, {
@@ -440,21 +386,20 @@ async function captureDesktopWithFlow(
     result.collectionRestrictions = session.safetyRestrictions
     timeline.push('capture', 'Page loaded', { url: page.url() })
 
-    const initial = await readLoadSnapshot(page)
+    const initial = await readLoadingUi(page)
+    finishedLoad = waitForFinishedLoadState(page, 'desktop', captureStartedAt, initial, {
+      pageUrl: targetUrl, finalUrl: page.url(), profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl),
+    }, session.safetyRestrictions, deadline)
+    void finishedLoad.catch(() => undefined)
+    let initialCaptureElapsedMs = Date.now() - captureStartedAt
     if (captureMedia) {
       const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+      initialCaptureElapsedMs = Date.now() - captureStartedAt
       result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
       onInitialScreenshot?.(result.initialUrl)
     }
 
-    result.loadExperience = await waitForFinishedLoadState(
-      page,
-      'desktop',
-      captureStartedAt,
-      result.initialUrl,
-      Date.now() - captureStartedAt,
-      initial
-    )
+    result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
     result.tracking = session.tracking('page_load')
     // Snapshot after the initial page has settled and before the CTA flow so
     // destination resources cannot contaminate the landing-page stack.
@@ -463,16 +408,15 @@ async function captureDesktopWithFlow(
     if (!mediaOnly) {
       result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
       result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
-      const rendered = await page.evaluate(() => {
-      const html = document.documentElement.outerHTML
-      return html.length > 1_000_000 || new TextEncoder().encode(html).byteLength > 1_000_000
-        ? { html: null, truncated: true, finalUrl: location.href } : { html, truncated: false, finalUrl: location.href }
-    })
+      try { result.renderedSearchSnapshot = await collectRenderedSearchSnapshot(page) }
+      catch (error) { logger.warn('Rendered Search sections could not be collected', error) }
+      const rendered = await collectRenderedHtml(page)
       result.html = rendered.html
       result.htmlTruncated = rendered.truncated
+      result.htmlCompacted = rendered.compacted
       result.finalUrl = rendered.finalUrl ?? page.url()
       if (!rendered.truncated) result.renderedScope = { pageUrl: targetUrl, finalUrl: result.finalUrl,
-        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess) }
+        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
 
     // Run axe-core on the top document + same-origin frames only.
     // Legacy mode disables cross-origin frame injection (YouTube/Calendly/etc.),
@@ -484,7 +428,7 @@ async function captureDesktopWithFlow(
         .analyze()
       result.axeViolations = recordedAxeViolations(axeResults)
       result.accessibilityEvidence = summarizeAccessibility(axeResults, { pageUrl: targetUrl, finalUrl: axeResults.url,
-        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess) })
+        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) })
     } catch (err) {
       logger.warn('axe-core scan failed; accessibility evidence is unavailable', err)
       // Undefined means collection failed. An empty array means axe actually ran.
@@ -523,7 +467,7 @@ async function captureDesktopWithFlow(
         timeline.push('flow', 'Starting CTA flow scan')
         result.flowResult = await runFlowScan(page, auditId, targetUrl, {
           landingStep,
-          fetchHeaders: scanAccessToFetchHeaders(scanAccess),
+          scanAccess,
           deadlineMs: flowDeadlineMs,
         })
         result.networkFailures = [...session.networkFailures]
@@ -556,6 +500,7 @@ async function captureDesktopWithFlow(
     result.consoleFinalUrl = page?.url()
     disposeNetwork?.()
     await closeSessionPage(page)
+    await finishedLoad?.catch(() => undefined)
     result.consoleMinimumMs = consoleTiming?.().minimumMs ?? 0
     result.consoleMessagesTruncated = consoleTruncated?.() ?? false
     result.consoleComplete = result.consoleComplete && !result.consoleMessagesTruncated
@@ -578,12 +523,16 @@ async function captureMobileViewport(
   mediaOnly = false,
   consoleIdentityKey?: string,
   consoleObservationMs = 0,
+  captureMotion = true,
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
   let disposeNetwork: (() => void) | null = null
   let consoleTruncated: (() => boolean) | undefined
   let consoleTiming: (() => { loaded: boolean; observedMs: number; minimumMs: number }) | undefined
+  let finishedLoad: Promise<PageLoadExperience> | undefined
+  let initialMotion: Promise<MotionWindow> | undefined
+  let restrictions: string[] = []
 
   try {
     const session = await createAuditPage(b, targetUrl, {
@@ -594,30 +543,36 @@ async function captureMobileViewport(
       scanAccess,
       deadline,
       journeySafe: true,
+      ...(captureMotion && !mediaOnly ? {
+        configurePage: (current: Page) => current.emulateMedia({ reducedMotion: 'no-preference' }),
+        onNavigationStart: (current: Page, started: number) => {
+          initialMotion = observeMotionWindow(current, started, deadline)
+          void initialMotion.catch(() => undefined)
+        },
+      } : {}),
     })
     page = session.page
     consoleTruncated = session.consoleTruncated
     consoleTiming = session.consoleTiming
     const captureStartedAt = session.navigationStartedAt
     disposeNetwork = session.disposeNetwork
+    restrictions = session.safetyRestrictions
     result.networkFailures = [...session.networkFailures]
     result.finalUrl = page.url()
     result.httpStatus = session.httpStatus
 
-    const initial = await readLoadSnapshot(page)
+    const initial = await readLoadingUi(page)
+    const loadingScope = { pageUrl: targetUrl, finalUrl: page.url(), profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
+    finishedLoad = waitForFinishedLoadState(page, 'mobile', captureStartedAt, initial, loadingScope, session.safetyRestrictions, deadline)
+    void finishedLoad.catch(() => undefined)
+    let initialCaptureElapsedMs = Date.now() - captureStartedAt
     if (captureMedia) {
       const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+      initialCaptureElapsedMs = Date.now() - captureStartedAt
       result.initialUrl = await uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey))
     }
 
-    result.loadExperience = await waitForFinishedLoadState(
-      page,
-      'mobile',
-      captureStartedAt,
-      result.initialUrl,
-      Date.now() - captureStartedAt,
-      initial
-    )
+    result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
 
     if (captureMedia) {
       const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
@@ -632,17 +587,23 @@ async function captureMobileViewport(
     }
 
     if (!mediaOnly) try {
-      result.captureMetrics = await measureMobileLayout(page)
+      result.captureMetrics = await measureMobileLayout(page, loadingScope, session.safetyRestrictions)
       result.captureMetrics.loadExperience = result.loadExperience ?? null
     } catch (err) {
       logger.error('mobile layout metrics failed', err)
     }
   } finally {
+    if (initialMotion) {
+      const observed = await initialMotion.catch(() => undefined)
+      if (observed?.pageUrl) result.motionWindow = { ...observed, restricted: (restrictions?.length ?? 0) > 0,
+        contentVisible: result.captureMetrics?.loadingObservation?.scope.finalUrl === observed.pageUrl && result.captureMetrics.loadingObservation.contentVisible === true }
+    }
     result.consoleComplete = !mediaOnly && await consoleWindowComplete(page, consoleTruncated, consoleTiming, consoleErrors, consoleObservationMs, deadline)
     result.consoleObservedMs = consoleTiming?.().observedMs ?? 0
     result.consoleFinalUrl = page?.url()
     disposeNetwork?.()
     await closeSessionPage(page)
+    await finishedLoad?.catch(() => undefined)
     result.consoleMinimumMs = consoleTiming?.().minimumMs ?? 0
     result.consoleMessagesTruncated = consoleTruncated?.() ?? false
     result.consoleComplete = result.consoleComplete && !result.consoleMessagesTruncated
@@ -666,6 +627,9 @@ export async function captureScreenshots(
     /** Progressive DOM collection must not depend on private media storage. */
     captureMedia?: boolean
     mediaOnly?: boolean
+    captureMotion?: boolean
+    /** Progressive motion has its own checkpoint, so other page checks publish first. */
+    deferMotionComparison?: boolean
   }
 ): Promise<ScreenshotResult> {
   const generation = currentExecutionOwnership()?.generation
@@ -709,6 +673,7 @@ export async function captureScreenshots(
       options?.mediaOnly ?? false,
       consoleIdentityKey,
       options?.consoleObservationMs ?? 0,
+      options?.captureMotion ?? true,
     ),
   ])
 
@@ -742,6 +707,16 @@ export async function captureScreenshots(
       }
     : null
 
+  let observedMetrics: CaptureMetrics | null = captureMetrics
+  if (observedMetrics && mobile.motionWindow && !options?.deferMotionComparison) {
+    try {
+      const after = await collectReducedMotionWindow(b, url, { deadline: options?.deadline ?? Date.now() + 30_000, scanAccess })
+      observedMetrics = applyMotionObservation(observedMetrics, { version: 1,
+        scope: { pageUrl: url, finalUrl: mobile.motionWindow.pageUrl, profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, url) },
+        before: mobile.motionWindow, after })
+    } catch (error) { logger.warn('Initial reduced-motion comparison unavailable', { error }) }
+  }
+
   const mergedNetworkFailures = [
     ...(desktop.networkFailures ?? []),
     ...(mobile.networkFailures ?? []),
@@ -753,8 +728,10 @@ export async function captureScreenshots(
     mobileUrl: mobile.url,
     desktopBase64: desktop.base64,
     mobileBase64: mobile.base64,
+    renderedSearchSnapshot: desktop.renderedSearchSnapshot,
     desktopHtml: desktop.html,
     desktopHtmlTruncated: desktop.htmlTruncated,
+    desktopHtmlCompacted: desktop.htmlCompacted,
     originalDocument: desktop.originalDocument,
     desktopFinalUrl: desktop.finalUrl,
     desktopHttpStatus: desktop.httpStatus,
@@ -762,7 +739,7 @@ export async function captureScreenshots(
     consoleCoverage: {
       phase: runFlow ? 'page_load_and_public_action' : 'page_load',
       pageUrl: url,
-      access: captureAccessKey(scanAccess),
+      access: captureAccessKey(scanAccess, url),
       messagesTruncated: consoleErrors.length > 500 || desktop.consoleMessagesTruncated === true || mobile.consoleMessagesTruncated === true,
       desktop: { complete: desktopSettled.status === 'fulfilled' && desktop.consoleComplete === true && Boolean(desktop.consoleFinalUrl),
         profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE),
@@ -781,7 +758,8 @@ export async function captureScreenshots(
     },
     captureFailures,
     flowResult: desktop.flowResult,
-    captureMetrics,
+    captureMetrics: observedMetrics,
+    ...(mobile.motionWindow ? { motionWindow: mobile.motionWindow } : {}),
     loadExperience,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     responseHeaders: desktop.responseHeaders ?? null,

@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import type { User } from '@prisma/client'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
+import type { z } from 'zod'
 
 const mocks = vi.hoisted(() => ({ site: vi.fn(), record: vi.fn(), run: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { runRequest: { findFirst: mocks.run } } }))
@@ -14,14 +15,26 @@ type Result = { structuredContent: Record<string, unknown>; isError?: boolean }
 type Handler = (input: Record<string, unknown>) => Promise<Result>
 describe('MCP record_fix receipts', () => {
   let handler: Handler
+  let verifySchema: z.ZodType
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.site.mockResolvedValue({ siteId: 'site', projectId: 'site', userId: 'owner' })
     mocks.run.mockResolvedValue({ id: 'run' })
-    const server = { registerTool(name: string, _definition: unknown, registered: Handler) {
+    const server = { registerTool(name: string, definition: { inputSchema: z.ZodType }, registered: Handler) {
       if (name === MCP_TOOLS.recordFix.name) handler = registered
+      if (name === MCP_TOOLS.verifyFlag.name) verifySchema = definition.inputSchema
     } } as unknown as McpServer
     registerSiteOutcomeTools(server, { id: 'owner' } as User)
+  })
+  it('returns an executable verification handoff with a stable key on every retry', async () => {
+    mocks.record.mockResolvedValue({ siteId: 'site', flagId: 'flag', attemptId: 'attempt', outcome: null, verificationAuditId: null })
+    const input = { siteId: 'site', flagId: 'flag', idempotencyKey: 'repair-key', changeSummary: 'Recorded repair' }
+    const first = await handler(input), replay = await handler(input)
+    const next = first.structuredContent.next as { tool: string; arguments: Record<string, unknown> }
+    expect(next.tool).toBe(MCP_TOOLS.verifyFlag.name)
+    expect(verifySchema.safeParse(next.arguments).success).toBe(true)
+    expect(next.arguments.idempotencyKey).toBe('flag-verify:attempt')
+    expect(replay.structuredContent.next).toEqual(next)
   })
   it.each(['recorded', 'admitted', 'completed'] as const)('returns stored provenance and the applicable next step: %s', async stage => {
     const receipt = { siteId: 'site', flagId: 'flag', attemptId: 'attempt', idempotencyKey: 'repair-key',

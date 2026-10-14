@@ -422,6 +422,19 @@ describe('persistTriageResults', () => {
 // ── mergePrescriptionResults ────────────────────────────────────
 
 describe('mergePrescriptionResults', () => {
+  it('keeps measured source evidence and its verification protocol while adding repair guidance', async () => {
+    mockTx.flag.findMany.mockResolvedValue([{ id: 'native-flag', checkId: 'overlay-blocks-cta', source: 'DETERMINISTIC',
+      evidence: 'The original measured control remains covered after hover.', verificationRule: 'Control overlay observation v2',
+      evidenceTargets: [{ kind: 'element', source: 'measured', device: 'desktop', label: 'Get started', selector: '#original', context: 'recorded-native-context' }] }])
+    await mergePrescriptionResults('audit-1', { flagPrescriptions: [{ flagKey: 'overlay-blocks-cta', evidence: 'A broader interpretation of the page',
+      whyItMatters: 'Visitors need the original action.', fix: 'Remove the covering advertisement.', agentPrompt: null,
+      cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null,
+      verificationRule: 'Look at a fresh screenshot.' }], rubricPrescriptions: [] })
+    expect(mockTx.flag.update).toHaveBeenCalledWith({ where: { id: 'native-flag' }, data: expect.objectContaining({
+      evidence: 'The original measured control remains covered after hover.', verificationRule: 'Control overlay observation v2',
+      fix: 'Remove the covering advertisement.',
+    }) })
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     mockTx.flag.findMany.mockResolvedValue([

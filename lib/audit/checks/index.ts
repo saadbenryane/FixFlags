@@ -12,6 +12,7 @@ import { suppressOverlappingFlags } from '../suppression'
 import { recordCheckObservations } from './observations'
 import { SEARCH_HANDLED_CHECK_IDS } from '../search/inventory'
 import { SECURITY_HEADER_LIMITATION } from './security-headers'
+import { scopeRenderedPageEvidence } from './rendered-page-evidence'
 
 export type { DeterministicFlag } from '../flag-types'
 export type { AxeViolation } from './accessibility'
@@ -45,7 +46,7 @@ export async function runAllChecks(
       } }
     try {
       const evaluated = await check.evaluate(input)
-      const flags = runtimeEvidence?.allowedCheckIds ? evaluated.filter(flag => runtimeEvidence.allowedCheckIds!.includes(flag.checkId.split('::page:')[0])) : evaluated
+      let flags = runtimeEvidence?.allowedCheckIds ? evaluated.filter(flag => runtimeEvidence.allowedCheckIds!.includes(flag.checkId.split('::page:')[0])) : evaluated
       if (check.id !== 'metadata' && check.id !== 'measurement' && check.id !== 'accessibility') assertions.push(...recordCheckObservations(check.id, {
         url, metadata, desktop, mobile, headers: responseHeaders, consoleCoverage: runtimeEvidence?.consoleCoverage,
       }))
@@ -60,6 +61,10 @@ export async function runAllChecks(
         input.scope.complete = assertions.every(assertion => assertion.complete !== false)
         if (!input.scope.complete) input.scope.limitation = SECURITY_HEADER_LIMITATION
       }
+      const scoped = scopeRenderedPageEvidence({ module: check.id, flags, assertions,
+        desktop: runtimeEvidence?.renderedScope, mobile: captureMetrics?.loadingObservation?.scope })
+      flags = scoped.flags
+      assertions.splice(0, assertions.length, ...scoped.assertions)
       if (assertions.some(assertion => assertion.complete === false && assertion.disposition !== 'observed')) {
         input.scope.complete = false
         input.scope.limitation ??= 'A required observation could not be completed. Missing evidence does not establish a passing result.'

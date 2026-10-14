@@ -21,7 +21,10 @@ describe('auth redirect helpers', () => {
   it('rejects open redirects in next', () => {
     assert.equal(sanitizeNextPath('https://evil.example'), null)
     assert.equal(sanitizeNextPath('//evil.example'), null)
+    for (const path of ['/\\evil.example', '/%5cevil.example', '/%2f%2fevil.example', '/\nevil.example'])
+      assert.equal(sanitizeNextPath(path), null)
     assert.equal(sanitizeNextPath('/report/abc'), '/report/abc')
+    assert.equal(sanitizeNextPath('/sites/owned/flags/captured?category=search#evidence'), '/sites/owned/flags/captured?category=search#evidence')
   })
 
   it('returns to the claimed report or the URL-first dashboard', () => {

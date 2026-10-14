@@ -531,10 +531,13 @@ model SiteConnectionFact {
   clicks       Int?
   impressions  Int?
   sessions     Int?
+  activeUsers  Int?
+  pageViews    Int?
   position     Float?
   observedAt   DateTime       @default(now())
   periodStart  DateTime?
   periodEnd    DateTime?
+  reportScope  Json?
   connection   SiteConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@index([projectId, kind])
@@ -2868,6 +2871,7 @@ model UptimeNotification {
   leaseUntil    DateTime?
   sentAt        DateTime?
   providerId    String?
+  deliveryPayload Json?
   lastError     String?
   createdAt     DateTime       @default(now())
   incident      UptimeIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)

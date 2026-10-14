@@ -8,7 +8,7 @@ export async function GET(_request: Request, context: { params: Promise<{ siteId
     const { siteId } = await context.params
     const access = await requireSiteAccess(siteId)
     if (!access.ok) return apiError(access.message, access.status)
-    const home = await loadSiteHome(access.decision.site.siteId)
+    const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
     if (!home) return apiError('Site not found', 404)
     return NextResponse.json({ flags: home.flags, recommendations: home.recommendations })
   } catch (error) {

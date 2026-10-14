@@ -23,13 +23,14 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
       data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(), authorizedAt: null,
         lastDryRunResult: { disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'unknown' } } } })
   }
-  if ((task.workKind === 'check' || task.workKind === 'flow' && input.module === 'form-validation') && input.module) {
+  const executionModule = task.workKind === 'slow-replay' ? 'slow-replay' : task.workKind === 'overlays' ? 'overlays' : input.module
+  if ((task.workKind === 'check' || task.workKind === 'slow-replay' || task.workKind === 'overlays' || task.workKind === 'flow' && ['form-validation', 'mobile-navigation'].includes(executionModule ?? '')) && executionModule) {
     const scopeKey = 'page:' + input.pageUrl + (input.device ? ':device:' + input.device : '')
-    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: input.module,
+    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: executionModule,
       pageUrl: input.pageUrl, passed: false, applicable: true, failed: true, assertions: [] })
     await tx.auditVerifierExecution.upsert({ where: { auditId_targetKey_scopeKey: {
-      auditId: task.auditId, targetKey: 'module:' + input.module, scopeKey } },
-      create: { auditId: task.auditId, targetKey: 'module:' + input.module, scopeKey,
+      auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey } },
+      create: { auditId: task.auditId, targetKey: 'module:' + executionModule, scopeKey,
         pageUrl: input.pageUrl, source: 'DETERMINISTIC', status: 'FAILED', checkVersion: 1, detail: receipt,
         evidenceReference: { auditId: task.auditId, taskId: task.id, reason } }, update: {} })
   }

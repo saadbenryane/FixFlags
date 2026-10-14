@@ -2,10 +2,16 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { taskInputSchema } from '@/lib/audit/progressive/contracts'
+import { categoryExecutionRecovery, executionRecovery, type ExecutionRecovery } from '../execution-recovery'
+import type { SiteCardArea } from '../card-areas'
+import { summarizeExecutionTasks, type ExecutionTaskSummary } from '../execution-summary'
 
 export const projectionNoticeSchema = z.object({ version: z.literal(1), kind: z.string(), state: z.string(),
   taskId: z.string().nullable(), observationReference: z.string().nullable() }).strict()
 export type ExecutionProgress = {
+  summary?: ExecutionTaskSummary
+  recovery?: ExecutionRecovery | null
+  categoryRecovery?: Partial<Record<SiteCardArea, ExecutionRecovery>>
   total: number; completed: number; running: number; pending: number; recovering: number; unknown: number; inapplicable: number;
   recoveryUntil: string | null; eventCursor: string | null;
   tasks: Array<{ id: string; kind: string; module?: string | null; device?: 'desktop' | 'mobile' | null; pageUrl: string; state: string; attempts: number; reason: string | null; retryAt: string | null }>;
@@ -40,20 +46,24 @@ export async function loadExecutionProgress(site: SiteRecord, auditId: string | 
       select: { id: true, status: true, workState: true, workKind: true, workInput: true, workAttempts: true, workErrorCode: true, workRetryAt: true } } } })
   if (!audit?.verifierExecutions.length) return null
   const rows = audit.verifierExecutions
+  const counts = await prisma.auditVerifierExecution.groupBy({
+    by: ['status', 'workState', 'workErrorCode'], where: { auditId, targetKey: { startsWith: 'task:' } }, _count: { _all: true },
+  })
+  const summary = summarizeExecutionTasks(counts.map(row => ({ ...row, count: row._count._all })))
+  const countState = (states: string[]) => counts.reduce((sum, row) => sum + (row.status !== 'NOT_APPLICABLE' && states.includes(row.workState ?? '') ? row._count._all : 0), 0)
   const events = await prisma.auditPipelineEvent.findFirst({ where: { event: 'projection_changed', audit: siteAuditScope(site) },
     orderBy: { sequence: 'desc' }, select: { sequence: true } })
-  return { total: rows.length, completed: rows.filter(row => row.workState === 'COMPLETED').length,
-    running: rows.filter(row => row.workState === 'RUNNING').length,
-    pending: rows.filter(row => ['WAITING', 'READY'].includes(row.workState ?? '')).length,
-    recovering: rows.filter(row => row.workState === 'RETRY_WAIT').length,
-    unknown: rows.filter(row => row.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(row.workState ?? '')).length,
-    inapplicable: rows.filter(row => row.status === 'NOT_APPLICABLE').length,
+  const tasks = rows.map(row => {
+    const input = taskInputSchema.parse(row.workInput)
+    return { id: row.id, kind: row.workKind!, module: input.module ?? null, device: input.device ?? null, pageUrl: input.pageUrl,
+      state: row.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : row.workState!, attempts: row.workAttempts,
+      reason: row.workErrorCode, retryAt: row.workRetryAt?.toISOString() ?? null }
+  })
+  return { summary, recovery: executionRecovery(tasks), categoryRecovery: categoryExecutionRecovery(tasks), total: summary.total, completed: summary.recorded,
+    running: countState(['RUNNING']), pending: countState(['WAITING', 'READY']),
+    recovering: summary.recovering, unknown: summary.limited + summary.failed,
+    inapplicable: summary.notApplicable,
     recoveryUntil: audit.recoveryUntil?.toISOString() ?? null,
     eventCursor: events ? encodeEventCursor(site.siteId, events.sequence) : null,
-    tasks: rows.slice(0, 100).map(row => {
-      const input = taskInputSchema.parse(row.workInput)
-      return { id: row.id, kind: row.workKind!, module: input.module ?? null, device: input.device ?? null, pageUrl: input.pageUrl,
-        state: row.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : row.workState!, attempts: row.workAttempts,
-        reason: row.workErrorCode, retryAt: row.workRetryAt?.toISOString() ?? null }
-    }) }
+    tasks: tasks.slice(0, 100) }
 }

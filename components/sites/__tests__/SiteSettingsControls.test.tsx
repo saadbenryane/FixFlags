@@ -69,8 +69,8 @@ describe('SiteSettingsControls Watch', () => {
   it('links each configured provider to its integration guide', () => {
     renderControls(true, true)
     expect(screen.getByRole('link', { name: 'Read Shopify integration guide' })).toHaveAttribute('href', '/docs/integrations/shopify')
-    expect(screen.getByRole('link', { name: 'Read Analytics integration guide' })).toHaveAttribute('href', '/docs/integrations/google-analytics')
-    expect(screen.getByRole('link', { name: 'Read Search Console integration guide' })).toHaveAttribute('href', '/docs/integrations/google-search-console')
+    expect(screen.getByRole('link', { name: 'Read Google Analytics integration guide' })).toHaveAttribute('href', '/docs/integrations/google-analytics')
+    expect(screen.getByRole('link', { name: 'Read Google Search Console integration guide' })).toHaveAttribute('href', '/docs/integrations/google-search-console')
   })
 
   it('persists notification preferences through the signed-in settings API', async () => {

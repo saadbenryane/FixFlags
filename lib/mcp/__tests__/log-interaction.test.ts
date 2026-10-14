@@ -49,6 +49,28 @@ describe('parseJsonRpcResponseOutcome', () => {
     })
     assert.equal(outcome.success, true)
   })
+  it('records a structured tool failure despite successful JSON-RPC transport', () => {
+    assert.deepEqual(parseJsonRpcResponseOutcome({ jsonrpc: '2.0', id: 1, result: {
+      isError: true, structuredContent: { status: 'ERROR', error: { code: 'NOT_FOUND', message: 'Private evidence is unavailable.' } },
+      content: [{ type: 'text', text: 'Error details' }],
+    } }), { success: false, errorCode: 'NOT_FOUND' })
+  })
+  it('reads legacy structured text errors and bounds unstructured failures', () => {
+    assert.deepEqual(parseJsonRpcResponseOutcome({ result: { isError: true, content: [{ type: 'text',
+      text: JSON.stringify({ status: 'ERROR', error: { code: 'FIX_INTENT_MISMATCH' } }) }] } }),
+      { success: false, errorCode: 'FIX_INTENT_MISMATCH' })
+    for (const text of ['Non-JSON text', '{']) assert.deepEqual(parseJsonRpcResponseOutcome({ result: {
+      isError: true, content: [{ type: 'text', text }],
+    } }), { success: false, errorCode: 'mcp_tool_error' })
+    assert.deepEqual(parseJsonRpcResponseOutcome({ result: { isError: true, structuredContent: {
+      error: { code: 'x'.repeat(300) },
+    } } }), { success: false, errorCode: 'x'.repeat(100) })
+  })
+  it('keeps a successful inconclusive observation distinct from a failed tool call', () => {
+    assert.deepEqual(parseJsonRpcResponseOutcome({ result: { isError: false,
+      structuredContent: { result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' }, content: [],
+    } }), { success: true })
+  })
 })
 
 describe('extractAuditIdFromToolResult', () => {

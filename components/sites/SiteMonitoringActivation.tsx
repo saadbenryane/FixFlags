@@ -96,7 +96,7 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
         </div>
         <Button ref={trigger} variant={needsSetup ? 'brand' : 'outline'} disabled={checking && !scheduled} onClick={() => { setOpen(true); setResult(null) }}>{needsSetup ? scheduled ? page ? C.checkPage : C.addPage : C.turnOn : C.review}</Button>
       </div>
-      {compact ? <p className="mt-2 text-xs text-muted-foreground">{C.next}: {formatEvidenceTimestamp(view.watch.nextRunAt!)}</p> : scheduled ? <dl className="mt-4 grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-2">
+      {compact ? <p className="mt-2 text-xs text-muted-foreground">{C.next}: {formatEvidenceTimestamp(view.watch.nextRunAt!)}</p> : scheduled ? <dl className="mt-4 grid gap-3 pt-4 text-sm sm:grid-cols-2">
         <div><dt className="text-xs text-muted-foreground">{C.last}</dt><dd className="mt-1">{page?.lastVerifiedAt ? formatEvidenceTimestamp(page.lastVerifiedAt) : C.notRun}</dd></div>
         <div><dt className="text-xs text-muted-foreground">{C.next}</dt><dd className="mt-1">{formatEvidenceTimestamp(view.watch.nextRunAt!)}</dd></div>
       </dl> : null}
@@ -106,7 +106,7 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
     <ResponsiveDepth className="content-start motion-reduce:!animate-none" open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); if (!exploring.current) trigger.current?.focus(); exploring.current = false }}>
       <DialogTitle>{scheduled && page ? C.reviewTitle : C.setupTitle}</DialogTitle><DialogDescription>{scheduled && page ? C.reviewBody : C.setupBody}</DialogDescription>
       {!owner || authRequired ? <div className="space-y-4"><h3 className="font-semibold">{authRequired ? C.signInAgain : C.claimTitle}</h3><p className="text-sm text-muted-foreground">{C.claimBody}</p><div className="flex flex-wrap gap-2"><Button asChild variant="brand"><Link href={signUpHref}>{C.signUp}</Link></Button><Button asChild variant="outline"><Link href={signedInHref}>{C.signIn}</Link></Button></div></div> : <>
-        <div className="border-y border-border py-4"><h3 className="text-sm font-semibold">{C.page}</h3><p className="mt-1 break-all text-sm">{view.site.url}</p><p className="mt-2 text-sm text-muted-foreground">{C.expectation}</p>
+        <div className="py-4"><h3 className="text-sm font-semibold">{C.page}</h3><p className="mt-1 break-all text-sm">{view.site.url}</p><p className="mt-2 text-sm text-muted-foreground">{C.expectation}</p>
           {ready.filter(item => item.id !== page?.id).length ? <div className="mt-4"><h3 className="text-sm font-semibold">{C.existing}</h3><ul className="mt-2 space-y-1 text-sm">{ready.filter(item => item.id !== page?.id).map(item => <li key={item.id}>{item.name}</li>)}</ul></div> : null}
         </div>
         {scheduled && page ? <div className="space-y-3 text-sm"><p>{pageAnswer}</p><dl className="grid gap-3 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">{C.last}</dt><dd>{page.lastVerifiedAt ? formatEvidenceTimestamp(page.lastVerifiedAt) : C.notRun}</dd></div><div><dt className="text-xs text-muted-foreground">{C.next}</dt><dd>{formatEvidenceTimestamp(view.watch.nextRunAt!)}</dd></div></dl></div> : null}
@@ -117,7 +117,7 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
           {result?.ok && result.interval ? <p className="text-sm">{C.scheduled(result.interval, result.everyMinutes)}</p> : null}
           {(!scheduled || needsSetup || result?.ok === false) && !(result?.ok && result.firstCheck === 'requested') ? <Button variant="brand" disabled={busy} onClick={() => void activate()}>{busy ? C.activating : result ? C.retry : scheduled ? C.checkPage : C.turnOn}</Button> : <Button variant="outline" onClick={() => setOpen(false)}>{C.return}</Button>}
         </>}
-        <div className="border-t border-border pt-4">{scheduled ? <Link className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4" href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link> : null}<p className="text-xs leading-relaxed text-muted-foreground">{C.scope}</p><Button variant="link" className="mt-3 px-0 text-foreground" onClick={() => { exploring.current = true; setOpen(false); requestAnimationFrame(() => onExploreCoverage()) }}>{C.expand}</Button><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{C.protected}</p></div>
+        <div className="pt-4">{scheduled ? <Link className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4" href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link> : null}<p className="text-xs leading-relaxed text-muted-foreground">{C.scope}</p><Button variant="link" className="mt-3 px-0 text-foreground" onClick={() => { exploring.current = true; setOpen(false); requestAnimationFrame(() => onExploreCoverage()) }}>{C.expand}</Button><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{C.protected}</p></div>
       </>}
     </ResponsiveDepth>
   </>

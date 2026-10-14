@@ -1,9 +1,12 @@
+import { siteScopeCounts } from '@/lib/sites/scope-counts'
+import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SiteFlagsView, siteFlagTab } from '../SiteFlagsView'
 import { SiteBoard } from '../SiteBoard'
+import { SiteResolvedFlagRow } from '../SiteResolvedFlagRow'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -48,6 +51,7 @@ function flag(overrides: Partial<SiteFlagSeed> & Pick<SiteFlagSeed, 'id' | 'prob
     fix: 'Add a meta description.',
     pageUrl: 'https://example.com/',
     status: 'OPEN',
+    resolvedInId: null,
     area: 'search',
     affectedPaths: ['https://example.com/'],
     affectedPageCount: 1,
@@ -62,7 +66,7 @@ function flag(overrides: Partial<SiteFlagSeed> & Pick<SiteFlagSeed, 'id' | 'prob
 
 function flagsView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
   const base: SiteHomeView = {
-    schemaVersion: 2, inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
+    schemaVersion: 2, counts: siteScopeCounts([], [], 0), actions: siteViewerActions(true), inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
     site: {
       siteId: 'p_example',
       kind: 'provisional',
@@ -149,7 +153,7 @@ describe('the tab is read on the server', () => {
   it('keeps old callers on Overview without a duplicate tab list', () => {
     renderFlags('open')
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Overview', exact: true }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'Overview' }).length).toBeGreaterThan(0)
   })
 })
 
@@ -168,6 +172,12 @@ describe('legacy list renderers use canonical workspace views', () => {
 })
 
 describe('resolved proof stays tenant-scoped and evidence-bound', () => {
+  it('opens the recovered occurrence when the grouped incident can contain a newer problem', () => {
+    render(<SiteResolvedFlagRow siteId="p_example" flag={flag({ id: 'grouped-incident', sourceFlagId: 'recovered-occurrence',
+      problem: 'The destination was unavailable', status: 'VERIFIED' })} />)
+    expect(screen.getByRole('link', { name: 'View proof' })).toHaveAttribute('href', '/sites/p_example/flags/recovered-occurrence')
+  })
+
   it('only accepts a completed proof audit from the same Site', () => {
     const page = code('app/sites/[siteId]/flags/[flagId]/page.tsx')
     expect(page).toMatch(/projectId:\s*site\.projectId/)
@@ -196,7 +206,7 @@ describe('the Flags tab is reachable from the Site chrome', () => {
         <SiteBoard siteId="p_example" initial={flagsView()} />
       </MeProvider>
     )
-    expect(screen.queryByRole('link', { name: 'Flags', exact: true })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Timeline', exact: true }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: 'Flags' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Timeline' }).length).toBeGreaterThan(0)
   })
 })

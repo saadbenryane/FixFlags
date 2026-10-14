@@ -19,27 +19,53 @@ it('preserves the captured Flag identity while projecting its durable Improvemen
   const detail = await loadSiteFlagDetail(site, 'improvement-1')
   expect(detail).toMatchObject({ id: 'improvement-1', sourceFlagId: 'captured-flag', sourceAuditId: 'audit-1', confidence: 0.95 })
 })
+it.each(['same-source', 'other-source', 'other-flag', 'other-project', 'wrong-parent', 'unfinished'] as const)
+('requires completed proof of this captured occurrence before inheriting Verified workflow: %s', async condition => {
+  const captured = await mocks.flag()
+  mocks.flag.mockResolvedValue({ ...captured, improvementOccurrence: { improvement: {
+    ...captured.improvementOccurrence.improvement, status: 'VERIFIED',
+  } } })
+  mocks.attempts.mockResolvedValue([{ id: 'repair', createdAt: new Date(), builder: 'mcp', outcome: 'IMPROVED', comparable: true,
+    sourceAuditId: condition === 'other-source' ? 'older-source' : captured.auditId,
+    handoffReference: 'flag:' + (condition === 'other-flag' ? 'peer-flag' : captured.id), verificationAuditId: 'repair-proof',
+    verificationAudit: { id: 'repair-proof', projectId: condition === 'other-project' ? 'other-project' : 'project-1',
+      parentId: condition === 'wrong-parent' ? 'older-source' : captured.auditId,
+      status: condition === 'unfinished' ? 'FINALIZING' : 'COMPLETED' } }])
+  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({
+    status: condition === 'same-source' ? 'VERIFIED' : 'OPEN',
+    verificationState: condition === 'same-source' ? 'verified' : 'still_open', sourceAuditId: captured.auditId,
+  })
+})
 it('shows only the recorded expectation from the same owned Site', async () => {
   const detail = await loadSiteFlagDetail(site, 'improvement-1')
   expect(mocks.outcome).toHaveBeenCalledWith({ where: { id: 'outcome-1', projectId: 'project-1' }, select: { id: true, name: true, expectation: true } })
   expect(detail?.expectedBehavior).toBe('A customer can reach checkout from the product page.')
   expect(detail?.relatedOutcome).toEqual({ id: 'outcome-1', name: 'Checkout' })
 })
-it('keeps workflow separate from proven recovery and refuses a missing recovery audit', async () => {
+it('keeps unsupported historical journey recovery unverified even when an Audit completed', async () => {
   const captured = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...captured, status: 'FIXED', resolvedInId: 'recovery' })
   expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ status: 'UNVERIFIED', verificationState: 'could_not_verify' })
   mocks.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'project-1', completedAt: new Date('2026-10-12T12:00:00Z') }])
-  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ status: 'FIXED', verificationState: 'verified', sourceFlagId: 'captured-flag' })
+  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ status: 'UNVERIFIED', verificationState: 'could_not_verify', sourceFlagId: 'captured-flag' })
 })
 it('opens the unresolved original capture for an incident link while keeping exact capture links historical', async () => {
-  const captured = await mocks.flag()
+  const captured = { ...await mocks.flag(), checkId: 'lcp-poor', rubric: 'PERFORMANCE', impactTag: null,
+    problem: 'Checkout content loads too slowly', evidence: 'Measured LCP of 4000ms', whyItMatters: 'Visitors wait for checkout content', fix: 'Improve checkout loading' }
   const latest = { ...captured, status: 'FIXED', resolvedInId: 'recovery' }
   const original = { ...captured, id: 'older-flag', auditId: 'older-audit', pageUrl: 'https://shop.test/original', status: 'OPEN', resolvedInId: null }
   mocks.flag.mockImplementation(async args => args?.where?.id === original.id ? original : latest)
   mocks.occurrences.mockResolvedValue([{ createdAt: new Date('2026-10-12T12:00:00Z'), flag: latest },
     { createdAt: new Date('2026-10-01T12:00:00Z'), flag: original }])
-  mocks.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'project-1', completedAt: new Date('2026-10-12T12:00:00Z') }])
+  mocks.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'project-1', completedAt: new Date('2026-10-12T12:00:00Z'),
+    executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: captured.pageUrl, environment: 'production', scope: 'SITE',
+      checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
+    verifierExecutions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: {
+      kind: 'site-module-check', version: 1, module: 'performance', pageUrl: captured.pageUrl, passed: true, applicable: true,
+      assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true }],
+      execution: { auditId: 'recovery', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: '2026-10-12T12:00:00Z' },
+    } }],
+  }])
   expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ sourceFlagId: 'older-flag', sourceAuditId: 'older-audit',
     affectedPaths: [original.pageUrl], verificationState: 'still_open' })
   expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ sourceFlagId: 'captured-flag', status: 'FIXED',

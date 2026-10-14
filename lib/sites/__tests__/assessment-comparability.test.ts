@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assessmentIsComparable } from '../domain/assessment-comparability'
+import { assessmentIsComparable, bindingEvidenceIsComparable } from '../domain/assessment-comparability'
 const binding = { key: 'http', required: true, version: 2, mechanism: 'HTTP_AVAILABILITY' }
 const coverage = { environment: 'production', requiredBindings: ['http'], bindings: [{ key: 'http', version: 2, mechanism: 'HTTP_AVAILABILITY' }] }
 describe('current assessment comparability', () => {
@@ -19,5 +19,14 @@ describe('current assessment comparability', () => {
     expect(assessmentIsComparable(receipt, [current], 'production')).toBe(true)
     expect(assessmentIsComparable(receipt, [{ ...current, fixture: { id: 'fixture', version: 5, authorized: true } }], 'production')).toBe(false)
     expect(assessmentIsComparable(receipt, [{ ...current, fixture: { ...current.fixture, authorized: false } }], 'production')).toBe(false)
+  })
+  it('preserves one observed method without claiming the entire required Outcome passed', () => {
+    const current = [binding, { ...binding, key: 'other' }]
+    expect(bindingEvidenceIsComparable(coverage, binding, 'production')).toBe(true)
+    expect(assessmentIsComparable(coverage, current, 'production')).toBe(false)
+    expect(bindingEvidenceIsComparable(coverage, { ...binding, required: false }, 'production')).toBe(true)
+    const ambiguous = { ...coverage, bindings: [...coverage.bindings, coverage.bindings[0]] }
+    expect(bindingEvidenceIsComparable(ambiguous, binding, 'production')).toBe(false)
+    expect(assessmentIsComparable(ambiguous, [binding], 'production')).toBe(false)
   })
 })

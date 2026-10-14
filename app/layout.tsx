@@ -10,6 +10,7 @@ import { Providers } from '@/components/providers'
 import { BRAND, SITE_URL, SEO } from '@/lib/marketing/copy'
 import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
+import { bodyFont, displayFont } from './fonts'
 
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
 
@@ -61,11 +62,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`} suppressHydrationWarning>
       <head>
         <link rel="describedby" href="/llms.txt" type="text/plain" />
       </head>
-      {/* Fontsource assets are bundled into the build; no font network request is required. */}
+      {/* Fonts are served by this deployment. Next preloads the primary text faces. */}
       <body className={`${fontVariables} font-sans antialiased`}>
         <Providers>
           <a

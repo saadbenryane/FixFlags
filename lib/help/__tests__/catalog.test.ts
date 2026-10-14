@@ -34,8 +34,8 @@ describe('help catalog', () => {
 
   it('explains the Google connections without claiming event or indexing checks', () => {
     const article = getHelpArticle('connect-google-data')
-    expect(article?.title).toBe('Connect Analytics or Search Console')
-    expect(JSON.stringify(article?.body)).toContain('does not yet check Analytics event configuration or Search Console indexing')
+    expect(article?.title).toBe('Google integrations, coming soon')
+    expect(JSON.stringify(article?.body)).toContain('New setup and refresh remain unavailable until tested and validated')
   })
 
   it('maps failure and limit surfaces to help hrefs', () => {

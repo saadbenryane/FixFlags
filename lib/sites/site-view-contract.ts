@@ -22,6 +22,8 @@ const flag = z.object({
   verificationState: z.enum(['unverified', 'verifying', 'verified', 'still_open', 'could_not_verify', 'regressed']), latestOccurrenceAt: nullableTime,
 })
 
+const recovery = z.object({ action: z.enum(['retry', 'access', 'connections', 'inspect', 'support']), reasons: z.array(text).max(1200) })
+
 const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableTime, completionState: z.enum(['COMPLETED', 'PARTIAL', 'FAILED']), flagCount: count,
     status: z.enum(['COMPLETED', 'FAILED']), flags: z.array(z.object({ id: text, title: text })),
 
@@ -33,6 +35,15 @@ const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableT
 /** Full client projection contract. A malformed refresh cannot replace recorded evidence. */
 export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   schemaVersion: z.literal(2),
+  actions: z.object({ ownership: z.enum(['owner', 'provisional']),
+    check: z.enum(['available', 'sign_in', 'claim']), copy: z.enum(['available', 'sign_in', 'claim']),
+    monitoring: z.enum(['available', 'sign_in', 'claim']), integrations: z.enum(['available', 'sign_in', 'claim']),
+    history: z.enum(['available', 'sign_in', 'claim']) }).superRefine((actions, context) => {
+      const values = [actions.check, actions.copy, actions.monitoring, actions.integrations, actions.history]
+      if (actions.ownership === 'owner' ? values.some(value => value !== 'available') : values.some(value => value === 'available') || new Set(values).size !== 1)
+        context.addIssue({ code: 'custom', message: 'Inconsistent Site action authority' })
+    }),
+  counts: z.object({ flags: count, checkedPages: count, recordedPages: count, savedPages: count, categories: z.record(area, count), pages: z.record(text, count) }),
   captures: z.array(z.object({ auditId: text, device: z.enum(['desktop', 'mobile']), previous: z.boolean(),
     url: text, pageUrl: text, viewport: text, recordedAt: nullableTime })).max(2).optional(),
   uptime: uptimeSummarySchema.nullable().optional(),
@@ -64,13 +75,16 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   recoveryUnavailable: z.boolean().optional(),
   executionProgress: z.object({ total: count, completed: count, running: count, pending: count, recovering: count,
     unknown: count, inapplicable: count, recoveryUntil: nullableTime, eventCursor: nullableText,
+    recovery: recovery.nullable().optional(), categoryRecovery: z.record(area, recovery).optional(),
+    summary: z.object({ total: count, recorded: count, limited: count, failed: count, notApplicable: count,
+      pending: count, recovering: count, state: z.enum(['active', 'finished', 'limited', 'failed']), reasons: z.array(text).max(1200) }).optional(),
     tasks: z.array(z.object({ id: text, kind: text, module: nullableText.optional(), device: z.enum(['desktop', 'mobile']).nullable().optional(),
       pageUrl: text, state: text, attempts: count, reason: nullableText, retryAt: nullableTime })).max(100),
   }).nullable().optional(),
   audit: z.object({ id: nullableText, status: nullableText, progress: z.number().min(0).max(100), walkFinished: z.boolean(), failureCode: nullableText }),
   cards: z.array(z.object({ id: area, name: text, question: text, state: health, status: text, answer: text, detail: nullableText,
     facts: z.array(text), coverage: nullableText, evidenced: z.boolean(), openFlagCount: count, checkedAt: nullableTime,
-    flagIds: z.array(text), flagChips: z.array(z.object({ id: text, title: text, href: text })), sources: z.array(text),
+    flagIds: z.array(text), flagChips: z.array(z.object({ id: text, sourceFlagId: nullableText.optional(), title: text, href: text })), sources: z.array(text),
     activity: z.literal('checking').nullable(), wide: z.boolean(), captureUrl: nullableText, captureAlt: nullableText,
     cropUrl: nullableText, cropAlt: nullableText, problem: z.object({ title: text, body: nullableText, outcomeName: nullableText, href: text, actionLabel: text }).nullable(),
     incompleteReason: nullableText.optional(),

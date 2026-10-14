@@ -56,12 +56,11 @@ Document status and metadata rules are defined in [docs/document-status-policy.m
 
 These files can explain previous work but cannot override current direction:
 
-- [NOW.md](NOW.md) and [GOAL_BRIEF.md](GOAL_BRIEF.md): retained snapshots and migration pointers.
+- Retired goal files, status snapshots, agent records and screenshots were removed from the checkout. Tracked historical evidence remains available in Git history.
 - [INVESTIGATION_REPORT.md](INVESTIGATION_REPORT.md) and [test-strategy.md](test-strategy.md): dated investigation and hardening evidence, not current release instructions.
-- `.agents/sessions/*`, `.agents/handoffs/*`, `.agents/learnings/*`: evidence with local scope, never default instructions.
-- [docs/experience-review.md](docs/experience-review.md) and [.agents/handoffs/homepage-experience.md](.agents/handoffs/homepage-experience.md): dated product-experience evidence, not active implementation instructions.
+- [docs/experience-review.md](docs/experience-review.md): dated product-experience evidence, not active implementation instructions.
 - [docs/messaging-migration.md](docs/messaging-migration.md), [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md), and [docs/launch-kit.md](docs/launch-kit.md): pointers or retired plans.
-- [.agents/history/design/launch-visual-qa.md](.agents/history/design/launch-visual-qa.md) and [docs/design-rams-review.md](docs/design-rams-review.md): historical visual evidence, not current design rules.
+- [docs/design-rams-review.md](docs/design-rams-review.md): historical visual evidence, not current design rules.
 - [knowledge/site-intelligence.md](knowledge/site-intelligence.md), [docs/live-review-and-product-intelligence-prd.md](docs/live-review-and-product-intelligence-prd.md), and [docs/offering.md](docs/offering.md): superseded drafts or stubs.
 - [docs/unified-audit-tool-architecture.md](docs/unified-audit-tool-architecture.md), [docs/scan-roadmap.md](docs/scan-roadmap.md), and [docs/journey-review-architecture.md](docs/journey-review-architecture.md): historical research.
 - [docs/year-1-operating-plan.md](docs/year-1-operating-plan.md) and [knowledge/finish-plan.md](knowledge/finish-plan.md): retired operating assumptions and legacy compatibility.

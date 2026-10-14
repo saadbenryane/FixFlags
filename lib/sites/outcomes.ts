@@ -8,7 +8,9 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { observedPurchaseStart } from '@/lib/sites/checkout-inference'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, currentOutcomeState, customerBindingResult, outcomeStatusLabel, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
-import { assessmentIsComparable } from '@/lib/sites/domain/assessment-comparability'
+import { assessmentIsComparable, bindingEvidenceIsComparable, type CurrentBindingRevision } from '@/lib/sites/domain/assessment-comparability'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { loadOutcomeBindingRevisions } from '@/lib/sites/application/outcome-binding-revisions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import type { BrowserJourneyConfig } from '@/lib/sites/application/binding-config'
@@ -144,18 +146,10 @@ async function toOutcomeView(row: {
     coverage: Prisma.JsonValue | null
   }>
   runSelections: Array<{ runRequest: { id: string; status: string } }>
-}): Promise<SiteOutcomeView> {
+}, bindingRevisions?: CurrentBindingRevision[]): Promise<SiteOutcomeView> {
   const pageIds = row.pages.map((p) => p.pageId)
   const latest = row.assessments[0] ?? null
-  const revisions = await Promise.all(row.bindings.map(async binding => {
-    if (binding.mechanism !== 'SAFE_FORM' || !row.projectId) return binding
-    const config = binding.config as { fixtureId?: unknown } | null
-    if (typeof config?.fixtureId !== 'string') return binding
-    const fixture = await prisma.outcomeFixture.findFirst({ where: { id: config.fixtureId, projectId: row.projectId },
-      select: { id: true, version: true, enabled: true, authorizedAt: true, lastDryRunVersion: true } })
-    return { ...binding, ...(fixture ? { fixture: { id: fixture.id, version: fixture.version,
-      authorized: fixture.enabled && Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version } } : {}) }
-  }))
+  const revisions = bindingRevisions ?? (latest ? (await loadOutcomeBindingRevisions([row]))[0] : [])
   const comparable = latest && assessmentIsComparable(latest.coverage, revisions, row.environment)
   return {
     id: row.id,
@@ -675,7 +669,8 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
     orderBy: { createdAt: 'asc' },
   })
 
-  return Promise.all(rows.map((row) => toOutcomeView(row)))
+  const revisions = await loadOutcomeBindingRevisions(rows)
+  return Promise.all(rows.map((row, index) => toOutcomeView(row, revisions[index])))
 }
 
 export type SiteOutcomeDetailView = Omit<SiteOutcomeView, 'bindings'> & {
@@ -715,18 +710,20 @@ export async function loadSiteOutcomeDetail(
     include: {
       pages: true,
       bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
-      assessments: { orderBy: { assessedAt: 'desc' }, take: 20 },
+      assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 20 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 20 },
       bindingAttempts: { orderBy: { createdAt: 'desc' }, take: 20 },
     },
   })
   if (!row) return null
-  const view = await toOutcomeView(row)
+  const [revisions] = await loadOutcomeBindingRevisions([row])
+  const view = await toOutcomeView(row, revisions)
   const [executions, lastSuccessful, improvements] = await Promise.all([
     prisma.outcomeBindingExecution.findMany({
       where: { outcomeId: row.id },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      include: { audit: { select: { executionSpec: true } } },
     }),
     prisma.outcomeAssessment.findFirst({
       where: { outcomeId: row.id, state: 'CLEAR' },
@@ -759,10 +756,21 @@ export async function loadSiteOutcomeDetail(
       },
     }) : Promise.resolve([]),
   ])
-  // The query is newest first. Keep the first row per key. A later write would keep an older attempt.
+  // A method needs its own recorded revision and environment. A newer execution
+  // of an obsolete configuration cannot replace comparable current evidence.
   const latestByKey = new Map<string, (typeof executions)[number]>()
   for (const execution of executions) {
-    if (!latestByKey.has(execution.bindingKey)) latestByKey.set(execution.bindingKey, execution)
+    const current = revisions.find(binding => binding.key === execution.bindingKey)
+    if (!current || execution.bindingVersion != null && execution.bindingVersion !== current.version ||
+      execution.mechanism && execution.mechanism !== current.mechanism) continue
+    if (current.required && row.assessments[0] && execution.auditId !== row.assessments[0].auditId) continue
+    const spec = readExecutionSpec(execution.audit?.executionSpec)
+    if (spec && spec.environment !== row.environment) continue
+    const bindings = spec?.outcomes.find(outcome => outcome.id === row.id)?.bindings
+    const coverage = bindings?.some(binding => binding.key === current.key) ? { environment: spec!.environment, requiredBindings: [], bindings }
+      : row.assessments.find(assessment => assessment.auditId === execution.auditId)?.coverage
+    if (bindingEvidenceIsComparable(coverage, current, row.environment) && !latestByKey.has(execution.bindingKey))
+      latestByKey.set(execution.bindingKey, execution)
   }
   const timeline = [
     ...row.runSelections.map(({ runRequest }) => ({
@@ -795,6 +803,12 @@ export async function loadSiteOutcomeDetail(
         detail: sentence.detail ?? '',
         auditId: attempt.auditId,
       }
+    }),
+    ...executions.filter(execution => !row.bindingAttempts.some(attempt =>
+      attempt.auditId === execution.auditId && attempt.bindingKey === execution.bindingKey)).map(execution => {
+      const sentence = customerBindingResult({ key: execution.bindingKey, disposition: execution.disposition, reason: execution.reason })
+      return { id: `execution:${execution.id}`, type: 'attempt' as const, at: execution.createdAt.toISOString(),
+        title: sentence.headline, detail: sentence.detail ?? '', auditId: execution.auditId }
     }),
     ...improvements.flatMap((improvement) => improvement.occurrences.map((occurrence) => ({
       id: `flag:${occurrence.id}`,
@@ -864,7 +878,8 @@ export async function loadSiteOutcomeDetail(
           createdAt: evidence.createdAt.toISOString(),
           auditId: evidence.auditId,
         } : null,
-        customerSentence: sentence?.headline ?? OUTCOME_DETAIL_COPY.noEvidence,
+        customerSentence: sentence?.headline ?? (executions.some(execution => execution.bindingKey === binding.key)
+          ? OUTCOME_DETAIL_COPY.currentEvidenceMissing : OUTCOME_DETAIL_COPY.noEvidence),
       }
     }),
     limitation,

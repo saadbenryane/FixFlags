@@ -1,27 +1,46 @@
 ## Before you start
 
-You need a public website URL. Password gates, bot walls, and localhost are out of scope for the first check.
+Have your live website address ready, for example `https://yourwebsite.com`. You can run the first check before creating an account.
+
+Use a page visitors can open without signing in. If your website is still only on your computer, publish it first. For pages that ask for a password or a “prove you're human” check, see [Troubleshooting](/docs/troubleshooting).
 
 ## Analyze a website
 
-Open the homepage or [/new](/new), enter the URL, Analyze, and wait on the Site board. Cards stay unknown until that area has evidence. Zero Flags is not healthy if required areas were not checked.
+1. Open [Add website](/new), or use the address field on the homepage.
+2. Paste your website address and select **Analyze**.
+3. Stay on the results page while FixFlags checks your website.
 
-## Shopify connection
+The results are grouped into areas such as Pages, Search, and Performance. A **Flag** is a problem that needs attention. Open one to see what happened and how to fix it.
 
-If you sell on Shopify, follow the [Shopify integration guide](/docs/integrations/shopify). Connect from the owned Site's settings to add purchase-path evidence to Conversion and Flags. [Analytics and Search Console](/docs/integrations) can add traffic and search context.
+**Not checked yet** means results are not available for that area. No Flags means no problems were found in the checks that finished, so read any limits shown beside the results.
+
+To keep your results, sign in or create an account from this page. This saves the website as a **Site** in your account. [Help with saving your website](/help/getting-started/save-your-site).
 
 ## Verify a Flag
 
-Open the Flag, copy the fix into your editor, then Verify. Copying never closes the Flag. Verify checks the same page and action again and stays inconclusive when the page is blocked or incomparable.
+1. Open a Flag and read the problem.
+2. Copy the suggested fix into your AI tool, or send it to your developer.
+3. Review and publish the change to your live website.
+4. Return to the same Flag and select **Check now**.
+
+FixFlags checks the affected page or action again. Copying a fix does not mark the problem as solved. If the check cannot finish, the Flag stays unverified.
+
+[More about fixing with AI](/docs/fix-with-ai).
 
 ## Keep watching
 
-Claim the Site, then choose Keep watching. <!-- generated:public-offer --> Watch becomes active when the schedule is saved; confirm the next check in Site settings. Use the schedule control to change or stop monitoring. Choose any supported interval for your one Site during beta. New Pro and Studio access remains on the [waitlist](/pricing).
+FixFlags sets a default monitoring schedule when you save a new website. Open **Settings** to see the schedule and next check time. You can change the interval or pause monitoring there.
+
+A **Check again** action starts a new check now. It does not turn on scheduled monitoring or change your schedule.
+
+<!-- generated:public-offer -->
+
+## Shopify connection
+
+Connections are optional. You can start with your website address alone.
+
+[Integrations](/integrations) are coming soon, with GitHub first. Public website analysis and monitoring do not require a connected tool.
 
 ## Get help
 
-For step-by-step guides, visit the [Help Center](/help).
-
-- [Analyze a website](/help/getting-started/analyze-a-website)
-- [Save this Site to your account](/help/getting-started/save-your-site)
-- [Coverage limitations](/help/sites-and-coverage/coverage-limitations)
+Visit the [Help Center](/help) or email [hello@fixflags.com](mailto:hello@fixflags.com). Include your website address and the step you need help with.

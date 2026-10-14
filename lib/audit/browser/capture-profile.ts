@@ -6,6 +6,7 @@ export interface CaptureProfile {
   height: number
   deviceScaleFactor?: number
   isMobile?: boolean
+  hasTouch?: boolean
   userAgent: string
 }
 
@@ -30,6 +31,7 @@ export const MOBILE_CAPTURE_PROFILE: CaptureProfile = {
   height: MOBILE_VIEWPORT.height,
   deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
   isMobile: true,
+  hasTouch: true,
   userAgent: MOBILE_USER_AGENT,
 }
 

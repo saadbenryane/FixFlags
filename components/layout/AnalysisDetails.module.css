@@ -2,13 +2,13 @@
 .status { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.4; }
 .currentActivity { margin-top: 8px; padding: 16px; border-radius: var(--radius-board-panel); background: hsl(var(--muted) / .45); font-size: 14px; font-weight: 550; line-height: 1.5; }
 .categories { display: grid; gap: 0; padding: 0; margin: 8px 0; list-style: none; }
-.categories li { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 10px 0; border-bottom: 1px solid hsl(var(--border) / .55); font-size: 13px; }
+.categories li { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 10px 0; font-size: 13px; }
 .categoryState { display: inline-flex; align-items: center; gap: 7px; max-width: 60%; color: hsl(var(--muted-foreground)); text-align: right; }
 .technical { min-width: 0; margin-top: 8px; font-size: 12px; color: hsl(var(--muted-foreground)); }
 .technical summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-weight: 550; }
 .technical summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .technical > p { margin: 8px 0; line-height: 1.5; }
 .technical :is(ul, ol) { padding: 0; margin: 0; list-style: none; }
-.technical li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid hsl(var(--border) / .5); }
+.technical li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 12px 0; }
 .technical strong { font-weight: 500; }
 .technical li p { width: 100%; overflow-wrap: anywhere; }

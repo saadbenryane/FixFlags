@@ -26,7 +26,7 @@ export function apiError(
   const requestId = extras?.requestId ?? randomUUID()
   return NextResponse.json(
     {
-      code: extras?.code ?? `HTTP_${status}`,
+      code: extras?.code ?? (status === 403 && message === 'Claim this Site first.' ? 'SITE_CLAIM_REQUIRED' : `HTTP_${status}`),
       message,
       action: extras?.action,
       requestId,

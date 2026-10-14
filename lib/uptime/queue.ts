@@ -41,8 +41,9 @@ export function startUptimeWorker(processProbe: (job: UptimeJob) => Promise<void
   worker.on('error', error => logger.error('Uptime worker unavailable', error))
   worker.on('failed', (job, error) => logger.error('Uptime probe job failed', { jobId: job?.id, error: error.message }))
   return {
-    close: async () => {
-      await worker.close()
+    close: async (pendingMaintenance: Promise<unknown> = Promise.resolve()) => {
+      // Stop intake now, but keep the producer usable until admitted dispatches finish.
+      await Promise.all([worker.close(), pendingMaintenance])
       await connection.quit()
       await queue?.close()
       await producerRedis?.quit()

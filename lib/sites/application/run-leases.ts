@@ -18,10 +18,10 @@ export const OUTCOME_RUN_LEASE_MS = RUN_LEASE_MS
  *
  * QUEUED and RUNNING are both written before a worker has confirmed the run
  * finished, so a worker death strands the row. Reusing a stranded run would hand
- * the caller a stale audit and silently stop Watch from verifying. So only a live
- * lease counts as in flight: a NULL or expired lease means no worker still owns
- * the run. NULL is treated as expired deliberately, because historical rows
- * predate the column and must never block a Site.
+ * the caller a stale audit and silently stop Watch from verifying. A live lease,
+ * an admitted progressive recovery window, or a completed Audit awaiting result
+ * reconciliation owns the run. Historical requests without any such evidence
+ * can be reclaimed even when their lease is NULL.
  *
  * The lease is a filter, not a lock. Overlapping requests are still serialised by
  * the unique (projectId, source, idempotencyKey) constraint and the single
@@ -31,10 +31,10 @@ export function activeRunWhere(projectId: string, now: Date): Prisma.RunRequestW
   return {
     projectId,
     status: { in: [...ACTIVE_RUN_STATUSES] },
-    // Only a live lease counts as in flight. A NULL or expired lease is a run no
-    // worker still owns, so it must not block the Site.
+    // Completed observations retain ownership until their run result commits.
     OR: [{ leaseUntil: { gt: now } }, { audit: { status: { notIn: ['COMPLETED', 'FAILED'] },
-      recoveryUntil: { gt: now }, executionSpec: { path: ['engine'], equals: 'progressive-v1' } } }],
+      recoveryUntil: { gt: now }, executionSpec: { path: ['engine'], equals: 'progressive-v1' } } },
+      { audit: { status: 'COMPLETED' } }],
   }
 }
 
@@ -86,9 +86,10 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
         }
         auditStatus = audit?.status ?? null
       } catch (error) {
-        // Falling through to failing the run is safe: it unblocks the Site, and
-        // the audit itself is still recovered by the stuck-audit sweep.
-        logger.warn('Could not read the audit of an abandoned Outcome run', { runId: run.id, error })
+        // A failed read cannot establish abandonment. Physical execution or a
+        // completed observation may still own this request's result.
+        logger.warn('Run recovery deferred because its Audit could not be read', { runId: run.id, error })
+        continue
       }
       if (auditStatus === 'COMPLETED') {
         try {
@@ -97,9 +98,8 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
           reclaimed += 1
           continue
         } catch (error) {
-          // A failed reconciliation must not leave the Site blocked. The run still
-          // has to become terminal so the partial unique index stops rejecting.
-          logger.error('Could not reconcile an abandoned Outcome run', { runId: run.id, error })
+          logger.error('Run result reconciliation deferred; completed Audit retained', { runId: run.id, error })
+          continue
         }
       }
     }
@@ -109,8 +109,13 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
       // live run can be clobbered as abandoned.
       where: {
         id: run.id,
+        auditId: run.auditId,
         status: { in: [...ACTIVE_RUN_STATUSES] },
         OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
+        ...(run.auditId ? { audit: { status: { not: 'COMPLETED' }, OR: [
+          { status: 'FAILED' }, { executionSpec: { equals: Prisma.DbNull } },
+          { NOT: { executionSpec: { path: ['engine'], equals: 'progressive-v1' } } },
+        ] } } : {}),
       },
       data: {
         status: 'FAILED',
@@ -137,7 +142,8 @@ export async function recoverExpiredSiteRuns(reconcileAudit: (auditId: string) =
   })
   let recovered = 0
   for (const projectId of new Set(sites.map(run => run.projectId))) {
-    recovered += await reclaimExpiredRuns(projectId, reconcileAudit)
+    try { recovered += await reclaimExpiredRuns(projectId, reconcileAudit) }
+    catch (error) { logger.error('Site run recovery interrupted; remaining Sites will continue', { projectId, error }) }
   }
   return recovered
 }

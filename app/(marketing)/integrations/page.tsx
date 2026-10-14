@@ -14,7 +14,7 @@ import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 
 export const metadata = buildPageMetadata('integrations', '/integrations')
 
-type Integration = typeof C.items[number]
+type Integration = { id: string; status: 'available' | 'planned'; title: string; logo: string; purpose: string; summary: string; checks: readonly string[]; action?: string; href?: string }
 
 function IntegrationCard({ item }: { item: Integration }) {
   return <article id={item.id} className={s.card} data-status={item.status}>
@@ -29,8 +29,8 @@ function IntegrationCard({ item }: { item: Integration }) {
       <h3>{item.status === 'available' ? C.currentListTitle : C.futureListTitle}</h3>
       <ul>{item.checks.map(check => <li key={check}>{item.status === 'available' ? <Check size={15} aria-hidden="true" /> : <span className={s.proposedBullet} aria-hidden="true" />}<span>{check}</span></li>)}</ul>
     </div>
-    {item.status === 'available' ? <>
-      <p className={s.requirements}>{PUBLIC_SITE_COPY.integrations.requirements[item.id]}</p>
+    {item.status === 'available' && item.action && item.href ? <>
+      <p className={s.requirements}>{PUBLIC_SITE_COPY.integrations.requirements[item.id as keyof typeof PUBLIC_SITE_COPY.integrations.requirements]}</p>
       <Link href={item.href as Route} className={s.cardAction}>{item.action}<span className={s.linkArrow}><ArrowRight size={16} aria-hidden="true" /></span></Link>
     </> : null}
   </article>

@@ -36,4 +36,4 @@ Live ownership is stored in the Git common directory. Archived task records are 
 
 Create a session or handoff only for a consequential decision, meaningful failure, cross-chat continuation, or evidence another person must use. Do not record routine completed work, raw transcripts, full logs, secrets, customer data, or source copies.
 
-Historical files under `.agents/sessions/`, `.agents/handoffs/`, `.agents/history/`, and `.agents/learnings/` are never default instructions. Prefer prevention in code, tests, types, or canonical documentation over adding agent prose.
+Retired goal files, status boards, sessions, handoffs, learnings and generated artifacts have been removed from the checkout. Tracked historical evidence remains available in Git history. Future scoped records are local and ignored by Git. They are never default instructions. Prefer prevention in code, tests, types, or canonical documentation over adding agent prose.

@@ -25,6 +25,7 @@ export const REVIEW_ENTRY = {
 } as const
 
 export const SITE_BOARD_COPY = {
+  openFlagCount: (count: number) => `${count} open ${count === 1 ? 'Flag' : 'Flags'}`,
   cardsHeading: 'Website overview',
   visitorActions: 'Visitor actions',
   cardGuidance: 'Choose what should keep working, such as opening a page, signing up, or reaching checkout.',

@@ -1,4 +1,4 @@
-import { google } from 'googleapis'
+import { google, type analyticsdata_v1beta } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 import {
@@ -33,6 +33,8 @@ export interface GaLandingJourneyArtifact {
   fetchedAt: string
   startDate: string
   endDate: string
+  reportingTimeZone: string | null
+  providerLimited: boolean
   status: 'available' | 'partial' | 'unavailable'
   journeys: Array<{ journeyId: string; eventCount: number }>
   unattributedEventCount: number
@@ -41,7 +43,7 @@ export interface GaLandingJourneyArtifact {
 
 export function buildGaLandingJourneyArtifact(
   rows: Array<Record<string, string | number>>,
-  metadata: Pick<GaLandingJourneyArtifact, 'fetchedAt' | 'startDate' | 'endDate'>,
+  metadata: Pick<GaLandingJourneyArtifact, 'fetchedAt' | 'startDate' | 'endDate'> & { reportingTimeZone?: string | null; providerLimited?: boolean },
   rowLimit = GA_LANDING_JOURNEY_ROW_LIMIT,
 ): GaLandingJourneyArtifact {
   const journeys: GaLandingJourneyArtifact['journeys'] = []
@@ -57,8 +59,10 @@ export function buildGaLandingJourneyArtifact(
   }
   return {
     ...metadata,
+    reportingTimeZone: metadata.reportingTimeZone ?? null,
+    providerLimited: metadata.providerLimited ?? false,
     status:
-      unattributedEventCount > 0 || rows.length >= rowLimit
+      unattributedEventCount > 0 || rows.length >= rowLimit || metadata.providerLimited
         ? 'partial'
         : 'available',
     journeys,
@@ -71,7 +75,7 @@ function dateRange(days: number): { startDate: string; endDate: string } {
   const now = new Date()
   return {
     endDate: now.toISOString().slice(0, 10),
-    startDate: new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    startDate: new Date(now.getTime() - (days - 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   }
 }
 
@@ -109,6 +113,7 @@ async function runReport(
   limit = 10_000,
   orderBy?: { metric: string; desc: boolean },
   additionalDimensionFilter?: Record<string, unknown>,
+  onMetadata?: (metadata: analyticsdata_v1beta.Schema$ResponseMetaData | null) => void,
 ): Promise<Array<Record<string, string | number>>> {
   const excludeCountries = options.excludeCountries ?? []
   const dimensionFilter = combineDimensionFilters([
@@ -128,6 +133,7 @@ async function runReport(
     property: getGa4Property(),
     requestBody: body,
   })
+  onMetadata?.(response.data.metadata ?? null)
   return (response.data.rows ?? []).map((row) => {
     const entry: Record<string, string | number> = {}
     row.dimensionValues?.forEach((value, index) => {
@@ -158,6 +164,8 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
   const first = summaryRows[0] ?? {}
   let landingJourneys: GaLandingJourneyArtifact
   try {
+    let reportingTimeZone: string | null = null
+    let providerLimited = false
     const rows = await runReport(
       analyticsdata,
       [`customEvent:${ANALYTICS_JOURNEY_PARAM}`],
@@ -172,15 +180,23 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
           stringFilter: { matchType: 'EXACT', value: 'landing_view' },
         },
       },
+      (metadata) => {
+        reportingTimeZone = metadata?.timeZone ?? null
+        providerLimited = Boolean(metadata?.subjectToThresholding || metadata?.dataLossFromOtherRow || metadata?.samplingMetadatas?.length)
+      },
     )
     landingJourneys = buildGaLandingJourneyArtifact(rows, {
       fetchedAt,
       ...requestedDateRange,
+      reportingTimeZone,
+      providerLimited,
     })
   } catch {
     landingJourneys = {
       fetchedAt,
       ...requestedDateRange,
+      reportingTimeZone: null,
+      providerLimited: false,
       status: 'unavailable',
       journeys: [],
       unattributedEventCount: 0,
@@ -194,6 +210,7 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
       screenPageViews: Number(first.screenPageViews ?? 0),
       engagementRate: Number(first.engagementRate ?? 0),
       fetchedAt,
+      ...requestedDateRange,
     },
     sources: {
       fetchedAt,

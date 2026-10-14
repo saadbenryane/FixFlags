@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Body, Heading, Muted } from '@/components/ui/typography'
+import { Body, Heading } from '@/components/ui/typography'
 import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { useMe } from '@/hooks/useMe'
@@ -210,9 +211,7 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
                 {submitLabel}
               </Button>
             </div>
-            <Muted className="text-center text-xs leading-snug">
-              {WAITLIST_PAGE.signUpRequired}
-            </Muted>
+            {!user ? <div className="text-center text-xs leading-snug"><Link className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`/sign-up?next=${encodeURIComponent(waitlistPathForPlan(plan))}&from=waitlist` as Route}>{WAITLIST_PAGE.signUpRequired}</Link></div> : null}
           </form>
         )}
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
+import type { OutcomeAssessmentState, SiteOutcomeKind } from '@prisma/client'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, checkoutResultCopy, customerBindingResult, outcomeStatusLabel } from '@/lib/sites/outcome-state'
@@ -23,6 +24,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
+import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
 
 const OLDER = new Date('2026-10-01T12:00:00.000Z')
 const AVAILABILITY_OLDER = new Date('2026-10-02T12:00:00.000Z')
@@ -57,7 +59,7 @@ function outcomeRow() {
     inferenceSource: 'browser',
     confirmedAt: null,
     pages: [{ pageId: 'page-1' }],
-    kind: 'CHECKOUT' as const,
+    kind: 'CHECKOUT' as SiteOutcomeKind,
     criticality: 'CRITICAL' as const,
     environment: 'production',
     enabled: true,
@@ -70,7 +72,7 @@ function outcomeRow() {
     ],
     assessments: [{
       id: 'assessment-new',
-      state: 'CLEAR' as const,
+      state: 'CLEAR' as OutcomeAssessmentState,
       summary: checkoutResultCopy('checkout_reached').summary,
       assessedAt: NEWER,
       validUntil: new Date(Date.now() + 60 * 60 * 1000),
@@ -130,6 +132,12 @@ function executionsNewestFirst() {
       detail: null,
       createdAt: AVAILABILITY_NEWER,
       auditId: 'audit-page-new',
+      bindingVersion: 1,
+      mechanism: 'HTTP_AVAILABILITY',
+      audit: { executionSpec: { version: 1, scope: 'OUTCOMES', targetUrl: 'https://shop.example/', environment: 'production', checks: {},
+        outcomes: [{ id: 'outcome-1', kind: 'CHECKOUT', expectation: null, bindingPolicy: 'ALL_REQUIRED', bindings: [
+          { key: 'page-availability-v1', mechanism: 'HTTP_AVAILABILITY', version: 1, required: false, config: {} },
+        ] }], verificationTarget: null } },
     },
     {
       id: 'exec-page-old',
@@ -172,6 +180,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
       where: { outcomeId: 'outcome-1' },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      include: { audit: { select: { executionSpec: true } } },
     })
     expect(detail).not.toBeNull()
     expect(detail?.state).toBe('CLEAR')
@@ -220,10 +229,48 @@ describe('loadSiteOutcomeDetail newest execution', () => {
     expect(untouched?.latestEvidence).toBeNull()
     expect(detail?.timeline.filter((event) => event.type === 'attempt').map((event) => event.id)).toEqual([
       'attempt:attempt-new',
+      'execution:exec-page-new',
+      'execution:exec-page-old',
       'attempt:attempt-old',
     ])
     expect(detail?.limitation).toBeNull()
     expect(detail?.recoveryAction).toBeNull()
+  })
+
+  it('keeps obsolete method evidence in history while excluding it from current UI and MCP proof', async () => {
+    const row = outcomeRow()
+    row.bindings[0].version = 2
+    mocks.outcomeFindFirst.mockResolvedValue(row)
+    const detail = await loadSiteOutcomeDetail(projectSite(), row.id)
+    expect(detail?.state).toBe('COULD_NOT_VERIFY')
+    expect(detail?.bindings[0]).toMatchObject({ latestEvidence: null, customerSentence: OUTCOME_DETAIL_COPY.currentEvidenceMissing })
+    expect(detail?.timeline).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'attempt:attempt-new', auditId: 'audit-new' })]))
+    expect(mcpOutcomePayload(detail!).methods.find(method => method.key === row.bindings[0].key)?.evidence).toBeNull()
+  })
+
+  it('retains the requested assessment and its failed method when an older request completes later', async () => {
+    const row = outcomeRow(), current = { ...row.assessments[0], state: 'FLAG' as const, summary: 'The current purchase attempt failed.' }
+    const old = { ...row.assessments[0], id: 'older-assessment', auditId: 'older-request', assessedAt: new Date(NEWER.getTime() + 1000) }
+    mocks.outcomeFindFirst.mockResolvedValue({ ...row, assessments: [current, old] })
+    mocks.executionFindMany.mockResolvedValue([
+      { ...executionsNewestFirst()[0], id: 'late-old', auditId: old.auditId, createdAt: old.assessedAt },
+      { ...executionsNewestFirst()[0], disposition: 'FAILED', reason: 'checkout_error' },
+    ])
+    const detail = await loadSiteOutcomeDetail(projectSite(), row.id)
+    expect(mocks.outcomeFindFirst.mock.calls[0][0].include.assessments.orderBy)
+      .toEqual([{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }])
+    expect(detail).toMatchObject({ state: 'FLAG', summary: current.summary })
+    expect(detail?.bindings[0].latestEvidence).toMatchObject({ auditId: 'audit-new', disposition: 'FAILED', reason: 'checkout_error' })
+    expect(detail?.timeline).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'execution:late-old', auditId: old.auditId })]))
+  })
+
+  it.each([
+    { bindingVersion: 2 }, { mechanism: 'SAFE_FORM' },
+    { audit: { executionSpec: { version: 1, scope: 'OUTCOMES', targetUrl: 'https://shop.example/', environment: 'staging',
+      checks: {}, outcomes: [], verificationTarget: null } } },
+  ])('refuses a current method whose recorded execution conditions changed: %j', async changed => {
+    mocks.executionFindMany.mockResolvedValue([{ ...executionsNewestFirst()[0], ...changed }])
+    expect((await loadSiteOutcomeDetail(projectSite(), 'outcome-1'))?.bindings[0].latestEvidence).toBeNull()
   })
 
   it('tells a blocked Checkout how to try the purchase again', async () => {
@@ -562,7 +609,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
       reason: 'protected_or_irreversible',
     })
 
-    expect(attempts.map((event) => ({ id: event.id, title: event.title, detail: event.detail }))).toEqual([
+    expect(attempts.filter(event => event.id.startsWith('attempt:')).map((event) => ({ id: event.id, title: event.title, detail: event.detail }))).toEqual([
       { id: 'attempt:attempt-checkout-new', title: checkoutReached.headline, detail: checkoutReached.detail ?? '' },
       { id: 'attempt:attempt-page', title: pageBlocked.headline, detail: pageBlocked.detail ?? '' },
       { id: 'attempt:attempt-signup', title: signupBlocked.headline, detail: signupBlocked.detail ?? '' },

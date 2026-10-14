@@ -1,6 +1,7 @@
 import type { Page } from 'playwright'
 import { z } from 'zod'
-import { classifyTrackingEndpoint } from '../tracking/endpoints'
+import { readOnlyInteraction } from './read-only-interaction'
+import { auditPageObservation, captureObservationScopeSchema } from './observation-scope'
 
 export const KEYBOARD_STEP_LIMIT = 40
 export const KEYBOARD_INTERACTION_LIMIT = 4
@@ -25,6 +26,7 @@ export const keyboardInteractionSchema = z.object({
 export type KeyboardInteraction = z.infer<typeof keyboardInteractionSchema>
 export const keyboardEvidenceSchema = z.object({
   version: z.literal(1), pageUrl: z.string().url(), collectedAt: z.string().datetime(),
+  scope: captureObservationScopeSchema.optional(),
   complete: z.boolean(), reason: z.string().min(1).max(160), candidateCount: z.number().int().nonnegative(),
   steps: z.array(targetSchema).max(KEYBOARD_STEP_LIMIT),
   trap: z.enum(['not_observed', 'blocked', 'escaped', 'unknown']),
@@ -39,26 +41,12 @@ export type KeyboardEvidence = z.infer<typeof keyboardEvidenceSchema>
 export async function collectKeyboardEvidence(page: Page, deadline: number,
   options: { refusalCount?: () => number } = {}): Promise<KeyboardEvidence> {
   const pageUrl = page.url(), collectedAt = new Date().toISOString()
-  let refused = 0
   const priorRefusals = options.refusalCount?.() ?? 0
-  const refusalCount = () => refused + Math.max(0, (options.refusalCount?.() ?? 0) - priorRefusals)
-  const boundary: Parameters<Page['route']>[1] = async route => {
-    const request = route.request()
-    let ownPage = false
-    try { ownPage = request.frame().page() === page } catch { /* Requests without an owning frame are outside this probe. */ }
-    if (ownPage && classifyTrackingEndpoint(request.url(), request.resourceType(), pageUrl)?.role === 'event') {
-      await route.fallback(); return
-    }
-    if (!ownPage || request.isNavigationRequest() || !['GET', 'HEAD', 'OPTIONS'].includes(request.method().toUpperCase())) {
-      refused++; await route.abort('blockedbyclient')
-    } else await route.fallback()
-  }
-  const closePopup = (popup: Page) => { if (popup !== page) { refused++; void popup.close().catch(() => undefined) } }
+  let boundary: Awaited<ReturnType<typeof readOnlyInteraction>> | undefined
+  const refusalCount = () => (boundary?.refusals() ?? 0) + Math.max(0, (options.refusalCount?.() ?? 0) - priorRefusals)
   let disposeState: (() => Promise<void>) | undefined
   try {
-    await page.context().route('**', boundary)
-    await page.route('**', boundary)
-    page.context().on('page', closePopup)
+    boundary = await readOnlyInteraction(page, pageUrl)
     const state = await page.evaluateHandle(() => {
       ;(globalThis as unknown as { __name?: (fn: unknown) => unknown }).__name ??= fn => fn
       const focusableSelector = 'a[href],button,input,select,textarea,summary,[tabindex],[contenteditable="true"],iframe'
@@ -75,11 +63,97 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       const inspected = candidates.slice(0, 200)
       const properties = ['outlineStyle', 'outlineWidth', 'outlineColor', 'outlineOffset', 'boxShadow', 'borderColor', 'borderWidth',
         'backgroundColor', 'color', 'textDecoration', 'opacity', 'transform'] as const
+      const colorCanvas = document.createElement('canvas')
+      colorCanvas.width = colorCanvas.height = 1
+      const colorContext = colorCanvas.getContext('2d', { willReadFrequently: true })
+      const colorSamples = new Map<string, number[] | null>()
+      function sampleColor(color: string): number[] | null {
+        if (colorSamples.has(color)) return colorSamples.get(color)!
+        let sampled: number[] | null = null
+        if (colorContext && CSS.supports('color', color)) {
+          colorContext.clearRect(0, 0, 1, 1)
+          colorContext.fillStyle = color
+          colorContext.fillRect(0, 0, 1, 1)
+          sampled = [...colorContext.getImageData(0, 0, 1, 1).data]
+        }
+        colorSamples.set(color, sampled)
+        return sampled
+      }
+      function paintedColor(color: string): boolean | null {
+        const sampled = sampleColor(color)
+        return sampled ? sampled[3] > 0 : null
+      }
+      function paintedInDocument(el: Element) {
+        if (!el.isConnected || !el.getClientRects().length || getComputedStyle(el).visibility !== 'visible') return false
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          const style = getComputedStyle(node)
+          if (style.display === 'none' || parseFloat(style.opacity) === 0 || style.contentVisibility === 'hidden') return false
+        }
+        return true
+      }
+      function paintedOutline(style: CSSStyleDeclaration, node: Element): boolean | null {
+        if (['none', 'hidden'].includes(style.outlineStyle) || !(parseFloat(style.outlineWidth) > 0)) return false
+        const color = sampleColor(style.outlineColor)
+        if (!color) return null
+        if (color[3] === 0) return false
+        if (color[3] !== 255 || parseFloat(style.outlineOffset) < 0 || parseFloat(style.opacity) !== 1 ||
+          style.filter !== 'none' || style.mixBlendMode !== 'normal') return null
+        const rect = node.getBoundingClientRect(), outset = parseFloat(style.outlineWidth) + Math.max(0, parseFloat(style.outlineOffset))
+        let backdrop: number[] | null = null
+        for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+          const surrounding = getComputedStyle(ancestor)
+          if (parseFloat(surrounding.opacity) !== 1 || surrounding.filter !== 'none' || surrounding.backdropFilter !== 'none' ||
+            surrounding.mixBlendMode !== 'normal') return null
+          const bounds = ancestor.getBoundingClientRect()
+          if (surrounding.overflowX !== 'visible' && (bounds.left > rect.left - outset || bounds.right < rect.right + outset) ||
+            surrounding.overflowY !== 'visible' && (bounds.top > rect.top - outset || bounds.bottom < rect.bottom + outset)) return null
+          if (backdrop) continue
+          if (surrounding.backgroundImage !== 'none' || surrounding.boxShadow !== 'none') return null
+          const background = sampleColor(surrounding.backgroundColor)
+          if (!background || background[3] !== 0 && background[3] !== 255) return null
+          if (background[3] === 255) {
+            if (bounds.left > rect.left - outset || bounds.top > rect.top - outset ||
+              bounds.right < rect.right + outset || bounds.bottom < rect.bottom + outset) return null
+            backdrop = background
+          }
+        }
+        if (!backdrop && (matchMedia('(prefers-color-scheme: dark)').matches ||
+          getComputedStyle(document.documentElement).colorScheme.includes('dark') || getComputedStyle(document.body).colorScheme.includes('dark'))) return null
+        // The default light browser canvas is white when ancestors are transparent.
+        backdrop ??= [255, 255, 255, 255]
+        if (color.slice(0, 3).every((channel, index) => channel === backdrop![index]))
+          return style.boxShadow === 'none' ? false : null
+        return true
+      }
       function profile(el: Element) {
-        const nodes = [el, ...[...el.querySelectorAll('*')].slice(0, 12)]
-        const styles = nodes.flatMap(node => [getComputedStyle(node), getComputedStyle(node, '::before'), getComputedStyle(node, '::after')])
-        return { signature: styles.map(style => properties.map(key => style[key]).join('|')).join(';'),
-          unstable: styles.some(style => style.animationName !== 'none' || style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)),
+        const nodes = [el, ...[...el.querySelectorAll('*')].slice(0, 12)].filter(paintedInDocument)
+        const styles = nodes.flatMap(node => [getComputedStyle(node), ...['::before', '::after'].map(pseudo => getComputedStyle(node, pseudo))
+          .filter(style => !['none', 'normal'].includes(style.content) && style.display !== 'none' && style.visibility === 'visible' && parseFloat(style.opacity) !== 0)]
+          .map(style => ({ style, node })))
+        let uncertainPaint = false
+        function signature({ style, node }: { style: CSSStyleDeclaration; node: Element }) {
+          const outline = paintedOutline(style, node)
+          if (outline === null) uncertainPaint = true
+          return properties.map(key => {
+            if (key.startsWith('outline')) {
+              return outline ? style[key] : 'none'
+            }
+            if (key === 'boxShadow' && style.boxShadow !== 'none') {
+              const colors = style.boxShadow.match(/(?:rgba?|hsla?|color|lab|lch|oklab|oklch)\([^)]*\)/g)
+              if (!colors || colors.some(color => paintedColor(color) === null)) uncertainPaint = true
+              else if (colors.every(color => paintedColor(color) === false)) return 'none'
+            }
+            if (key === 'backgroundColor' || key === 'color') {
+              const painted = paintedColor(style[key])
+              if (painted === null) uncertainPaint = true
+              if (painted === false) return 'transparent'
+            }
+            return style[key]
+          }).join('|')
+        }
+        const recorded = styles.map(signature).join(';')
+        return { signature: recorded, uncertainPaint,
+          unstable: styles.some(({ style }) => style.animationName !== 'none' || style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)),
           truncated: el.querySelectorAll('*').length > 12 }
       }
       function selector(el: Element) {
@@ -122,14 +196,14 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         if (identity.length > 2000) return { unknown: true as const }
         const after = profile(active), style = getComputedStyle(active), rect = active.getBoundingClientRect()
         const inViewport = rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth
-        const outlined = !['none', 'hidden'].includes(style.outlineStyle) && parseFloat(style.outlineWidth) > 0 &&
-          !/^(transparent|rgba\([^)]*,\s*0\))$/.test(style.outlineColor)
-        const uncertain = before.unstable || after.unstable || before.truncated || after.truncated || !inViewport ||
+        const changed = before.signature !== after.signature
+        const uncertain = before.unstable || after.unstable || before.truncated || after.truncated ||
+          before.uncertainPaint || after.uncertainPaint || !paintedInDocument(active) || !inViewport ||
           active.tagName === 'IFRAME' || Boolean(active.shadowRoot) || !active.matches(':focus-visible') || parseFloat(style.opacity) === 0 ||
-          (!outlined && before.focusedAtRegistration) ||
-          (!outlined && before.signature === after.signature && active.matches('textarea,[contenteditable="true"],input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])'))
+          before.focusedAtRegistration ||
+          (!changed && active.matches('textarea,[contenteditable="true"],input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])'))
         return { id: before.id, ...describe(active), domOrder: before.domOrder, tabIndex: active.tabIndex,
-          indicator: uncertain ? 'unknown' as const : outlined || before.signature !== after.signature ? 'styled' as const : 'missing' as const,
+          indicator: uncertain ? 'unknown' as const : changed ? 'styled' as const : 'missing' as const,
         }
       }
       const describe = identity
@@ -409,13 +483,13 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       complete = false
       if (reason === 'document_boundary_observed') reason = 'focus_indicator_unresolved'
     }
+    const capture = auditPageObservation(page)
     return keyboardEvidenceSchema.parse({ version: 1, pageUrl, collectedAt, complete, reason, navigationComplete,
+      ...(capture && !capture.restricted && capture.scope.finalUrl === pageUrl ? { scope: capture.scope } : {}),
       candidateCount: initial.count, steps, trap, limitations: initial.limitations,
       interactionCount: openerCount, interactions })
   } finally {
     await disposeState?.().catch(() => undefined)
-    await page.unroute('**', boundary).catch(() => undefined)
-    await page.context().unroute('**', boundary).catch(() => undefined)
-    page.context().off('page', closePopup)
+    await boundary?.dispose()
   }
 }

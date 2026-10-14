@@ -2,6 +2,8 @@
 
 import { SITE_SETTINGS_COPY as S } from '@/lib/marketing/copy/site-settings'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
+import { SiteScanAccessSettings } from './SiteScanAccessSettings'
+import { SiteResearchConsentSettings } from '@/components/sites/SiteResearchConsentSettings'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { useSiteResource } from '@/hooks/useSiteResource'
 import { SiteShell } from '@/components/sites/SiteShell'
@@ -11,6 +13,7 @@ export function SiteSettingsView({ siteId, view: initial }: { siteId: string; vi
   const { view, disconnected } = useSiteResource(siteId, initial)
   return (
     <SiteShell
+      actions={view.actions}
       siteId={siteId}
       ownerId={view.site.userId}
       activeRoute="settings"
@@ -21,7 +24,9 @@ export function SiteSettingsView({ siteId, view: initial }: { siteId: string; vi
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <SiteSettingsControls siteId={siteId} initial={view.settings} watch={view.watch} />
+      <SiteSettingsControls target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} />
+      {view.site.projectId ? <SiteScanAccessSettings key={view.site.projectId} siteId={siteId} /> : null}
+      <SiteResearchConsentSettings key={siteId} siteId={siteId} />
       </div>
     </SiteShell>
   )

@@ -4,13 +4,14 @@ import { runPostClickFlowChecks } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
 import { runFlowUXChecks } from './flow-ux'
 import { formatOverlayEvidence } from '../browser/overlay-probe'
-import { runOverlayBlockerChecks } from './overlay'
+import { scopedOverlayResult, runObservedOverlayChecks } from './overlay-evidence'
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { checkFormValidation } from './form-validation'
 import { scopePrimaryActionFlags } from '../flow/primary-action-evidence'
 import { displayDestination } from './destination-evidence'
+import { mobileNavigationFlags } from '../flow/mobile-navigation-evidence'
 
 const FLOW_CHECK_DESCRIPTORS = [
   { id: 'flow-no-cta-found', severity: 'IMPORTANT', tags: ['requiresBrowser', 'cta-flow'] },
@@ -110,10 +111,10 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   if (probes.pricingNav === 'broken') {
     const label = probes.pricingNavLabel ? `"${probes.pricingNavLabel}"` : 'Pricing'
     const href = probes.pricingNavHref ? ` (href="${probes.pricingNavHref}")` : ''
-    const overlayFlags = runOverlayBlockerChecks(
+    const overlayFlags = scopedOverlayResult(
       'nav',
       probes.pricingNavOverlay,
-      `Pricing nav ${label}${href}`
+      `Pricing nav ${label}${href}`, probes.pricingNavOverlayObservation
     )
     if (overlayFlags.length > 0) {
       findings.push(...overlayFlags)
@@ -132,7 +133,9 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
     }
   }
 
-  if (probes.mobileMenu === 'broken') {
+  if (probes.mobileNavigationObservations) {
+    findings.push(...mobileNavigationFlags(probes.mobileNavigationObservations, result.steps[0]?.url ?? result.finalUrl))
+  } else if (probes.mobileMenu === 'broken') {
     findings.push({
       checkId: 'flow-mobile-menu-broken',
       rubric: 'EXPERIENCE',
@@ -149,12 +152,12 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
 
   if (probes.formEvidence) {
     findings.push(...checkFormValidation(probes.formEvidence).flags)
-    findings.push(...runOverlayBlockerChecks('form', probes.formOverlay, probes.formLabel))
+    findings.push(...scopedOverlayResult('form', probes.formOverlay, probes.formLabel, probes.formOverlayObservation))
   }
 
   if (!probes.formEvidence && probes.formValidation === 'broken') {
     const label = probes.formLabel ? `"${probes.formLabel}"` : 'conversion form'
-    const overlayFlags = runOverlayBlockerChecks('form', probes.formOverlay, label)
+    const overlayFlags = scopedOverlayResult('form', probes.formOverlay, label, probes.formOverlayObservation)
     if (overlayFlags.length > 0) {
       findings.push(...overlayFlags)
     } else {
@@ -235,10 +238,10 @@ export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'ma
       })
       break
     case 'unclickable': {
-      const overlayFlags = runOverlayBlockerChecks(
+      const overlayFlags = scopedOverlayResult(
         'cta',
         result.overlayBlocker,
-        formatCtaEvidence(result)
+        formatCtaEvidence(result), result.primaryOverlayObservation
       )
       if (overlayFlags.length > 0) {
         findings.push(...overlayFlags)
@@ -343,6 +346,9 @@ export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'ma
   // the same stuck destination. Keep the post-click one (carries the loading
   // element label). This lives here (not in the barrel's suppressOverlappingFlags)
   // because flow flags are concatenated after runAllChecks returns.
+  for (const observation of result.overlayObservations ?? []) for (const flag of runObservedOverlayChecks(observation))
+    if (!findings.some(existing => existing.checkId === flag.checkId && flag.evidenceTargets.every(target =>
+      existing.evidenceTargets?.some(member => member.context === target.context)))) findings.push(flag)
   const scoped = needsFirstStep(purpose) ? findings : findings.filter(flag => !['flow-no-cta-found', 'flow-cta-external-leave'].includes(flag.checkId))
   const ids = new Set(scoped.map((f) => f.checkId))
   if (ids.has('flow-cta-stuck-loading') && ids.has('flow-destination-stuck-loading')) {

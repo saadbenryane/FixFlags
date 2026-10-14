@@ -3,6 +3,7 @@ import { createServer } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { requestSiteRun } from '@/lib/sites/application/run-requests'
+import { retryAudit } from '@/lib/audit/retry-audit'
 import { getOwnedRun } from '@/lib/sites/application/run-queries'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
@@ -10,8 +11,8 @@ import { SECTION_LINK_VERIFICATION_RULE } from '@/lib/audit/checks/section-links
 import { authorizeOutcomeFixture, listOutcomeFixtures } from '@/lib/sites/application/outcome-fixtures'
 import { startWorker } from '@/lib/queue/worker'
 import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
-import { clearWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
-import { getAuditBrowser, closeBrowser, captureScreenshots } from '@/lib/audit/screenshot'
+import { clearWorkerHeartbeat, readWorkerHeartbeat, touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
+import { getAuditBrowser, getBrowserDiagnostics, closeBrowser, captureScreenshots } from '@/lib/audit/screenshot'
 import { encryptSecret } from '@/lib/security/crypto'
 import { reconcileTasks, dispatchReadyTasks } from '../engine'
 import { searchArtifactSchema } from '../evaluators'
@@ -28,9 +29,10 @@ import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitor
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
-import { notifyWatchRegression } from '@/lib/audit/project-watch'
+import { notifyWatchRegression, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
 import { fetchPageSpeedData } from '@/lib/audit/pagespeed'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { persistDeterministicFlags } from '@/lib/audit/persist'
 import { materializeAttentionForAudit } from '@/lib/improvements/service'
 import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
@@ -44,7 +46,6 @@ import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { FLAG_COMPARISON_TARGET, type FlagDiffSummary } from '@/lib/audit/flag-comparison'
 import { parseMetadataFromHtml } from '@/lib/audit/metadata'
-import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { loadSiteFlags, loadSiteRecommendations } from '@/lib/sites/flags'
 import { runConsoleChecks } from '@/lib/audit/checks/console'
 import { runAllChecks } from '@/lib/audit/checks'
@@ -52,10 +53,35 @@ import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { PRIMARY_ACTION_VERIFICATION_RULE, PRIMARY_ACTION_CHECKS } from '@/lib/audit/flow/primary-action-evidence'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
+import { runJourneyTemplate } from '@/lib/audit/journey/run-template'
+import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
+import { createOverlayInteractionRecorder } from '@/lib/audit/browser/overlay-interaction'
 import { runFlowScan } from '@/lib/audit/flow/run-flow-scan'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { Resend } from 'resend'
 import { watchAlertDelivery } from '@/lib/audit/watch-notification'
+import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
+import { watchEmailProviderBody } from '@/lib/email/watch-delivery'
+import { NextRequest } from 'next/server'
+import { POST as handleMcpPost } from '@/app/api/mcp/route'
+import { generateApiKey } from '@/lib/security/api-keys'
+import { getAppUrl } from '@/lib/get-app-url'
+import { MCP_PROTOCOL_VERSION, MCP_TOOLS } from '@/lib/mcp/tool-manifest'
+import { runSlowReplay } from '@/lib/audit/flow/slow-replay-probe'
+import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
+import { runInteractionChecks } from '@/lib/audit/checks/interaction'
+import { runMobileUXQualityChecks } from '@/lib/audit/checks/mobile-ux-quality'
+import { slowReplayResultSchema } from '@/lib/audit/flow/slow-replay-contract'
+import { MOTION_VERIFICATION_RULE, motionAssertions } from '@/lib/audit/checks/motion-evidence'
+import { collectOverlayObservation } from '@/lib/audit/browser/overlay-observation'
+import { runObservedOverlayChecks, overlayAssertions, OVERLAY_VERIFICATION_RULE, scopedOverlayResult } from '@/lib/audit/checks/overlay-evidence'
+import { JOURNEY_VERIFICATION_RULE, nativeJourneyFlags } from '@/lib/audit/checks/journey-evidence'
+import { collectMobileNavigation } from '@/lib/audit/flow/mobile-navigation'
+import { mobileNavigationFlags, MOBILE_NAVIGATION_RULE } from '@/lib/audit/flow/mobile-navigation-evidence'
+import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import { auditPageObservation } from '@/lib/audit/browser/observation-scope'
+import { persistProjectScanAccess } from '@/lib/audit/scan-access-store'
+import { buildCoverageFacts } from '@/lib/sites/coverage'
 
 const notificationBoundary = vi.hoisted(() => ({ provider: null as Resend | null }))
 vi.mock('@/lib/email/client', () => ({ get resend() { return notificationBoundary.provider } }))
@@ -79,6 +105,7 @@ run('migrated progressive execution', () => {
   let sectionLinksMode: 'failed' | 'partial' | 'challenge' | 'changed' | 'removed' | 'healthy' = 'failed'
   let primaryActionMode: 'failed' | 'blocked' | 'challenge' | 'competing' | 'changed' | 'removed' | 'healthy' = 'failed'
   let primaryControlMode: 'missing' | 'disabled' | 'deadend' | 'healthy' = 'missing'
+  let primaryControlDeclared = true
   let primaryControlKind: 'button' | 'link' | 'role' = 'button'
   let availabilityChallenged = false
   let availabilityStatus = 200
@@ -86,14 +113,28 @@ run('migrated progressive execution', () => {
   let signupMode: 'success' | 'missing' | 'preexisting' = 'success'
   let signupCleanupOk = true
   let signupSubmissions = 0
-  let pageSpeedMode: 'failed' | 'missing' | 'healthy' | null = null
+  let pageSpeedMode: 'failed' | 'missing' | 'healthy' | 'refused' | 'failed-vitals' | 'missing-vitals' | null = null
+  let mobileResourceMode: 'failed' | 'missing' | 'healthy' | null = null
+  let mobileTapMode: 'failed' | 'missing' | 'different' | 'healthy' | null = null
   let publicFormMode: 'broken' | 'blocked' | 'socket' | 'peer' | 'popup' | 'hidden' | 'unrelated' | 'outside' | 'slow' | 'healthy' | 'native' | 'prefilled' = 'broken'
   let publicFormSubmissions = 0
   let headerMode: 'failed' | 'partial' | 'challenge' | 'redirected' | 'healthy' = 'failed'
+  let transportMode: 'http' | 'https' | 'unavailable' = 'http'
   let headerTitleMissing = false
+  let slowReplayMode: 'delayed' | 'healthy' | 'challenge' | 'competing' = 'delayed'
+  let loadingUiClearMs: number | null = 1000
+  let loadingUiDesktopMs: number | null | undefined
+  let loadingUiMode: 'page' | 'blank' | 'challenge' | 'desktop-challenge' = 'page'
+  let motionMode: 'ignored' | 'honored' | 'mixed' | 'paused' | 'hidden' | 'intro' | 'script-ignored' | 'script-honored' | 'transition-ignored' | 'transition-honored' | 'padding' | 'blank' | 'challenge' = 'ignored'
+  let overlayMode: 'covered' | 'healthy' | 'desktop-healthy' | 'transient' | 'consent' | 'hidden' | 'blank' | 'challenge' | 'hover-primary' | 'hover-navigation' | 'hover-form' = 'covered'
+  let journeyMode: 'missing' | 'hidden' | 'reranked' | 'changed' | 'blank' | 'challenge' | 'healthy' = 'missing'
+  let journeySubmissions = 0
+  let journeyCtaMode: 'missing' | 'hidden' | 'visible' = 'visible'
+  let mobileNavigationMode: 'missing' | 'noop' | 'removed' | 'changed' | 'blank' | 'challenge' | 'healthy' = 'missing'
   let monitoredTitleMissing = true
   let monitoredUnavailable = false
   let monitoredChallenge: 'header' | 'title' | null = null
+  let trustHydration: 'none' | 'data' | 'dom' = 'none'
   let trustPrivacy = false, trustContact = false, trustConsent = false, trustUnavailable = false, trustConsoleErrors = false, trustAnalytics = true
   let consoleRootErrors = 3, consoleLinkedErrors = 3, consoleDelayMs = 3500
   let consoleDesktopUnavailable = false, consoleMobileUnavailable = false, consoleRedirected = false, consoleFlood = false
@@ -113,13 +154,48 @@ run('migrated progressive execution', () => {
     requests.push(req.url!)
     if (req.url === '/sitemap.xml' || req.url === '/canonical') await resources
     if (res.destroyed) return
-    if (req.url === '/primary-control') {
+    if (req.url === '/mobile-navigation') {
       res.setHeader('content-type', 'text/html')
-      const control = primaryControlKind === 'button' ? '<button id="primary-action" aria-controls="completion"' + (primaryControlMode === 'disabled' ? ' disabled' : '') + '>Get started</button>'
-        : primaryControlKind === 'role' ? '<div id="primary-action" role="button" aria-controls="completion"' + (primaryControlMode === 'disabled' ? ' aria-disabled="true"' : '') + '>Get started</div>'
-          : '<a id="primary-action" aria-controls="completion" href="/primary-control-target">Get started</a>'
+      if (mobileNavigationMode === 'challenge') { res.setHeader('cf-mitigated', 'challenge'); res.end('<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>'); return }
+      if (mobileNavigationMode === 'blank') { res.end('<html><head><title>Website</title></head><body></body></html>'); return }
+      const links = Array.from({ length: mobileNavigationMode === 'removed' ? 5 : 6 }, (_, index) => '<a href="/mobile-feature-' +
+        (mobileNavigationMode === 'changed' && index === 0 ? 'different' : index) + '">Feature ' + index + '</a>').join('')
+      res.end('<html><head><title>Useful website service</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><header>' +
+        (mobileNavigationMode === 'missing' ? '' : '<button type="button" id="mobile-opener" aria-controls="mobile-panel" aria-expanded="false">Menu</button>') +
+        '<nav id="mobile-panel" aria-label="Main" hidden>' + links + '</nav></header><main><h1>Useful service for teams</h1><p>Choose the feature you need to keep your website working.</p></main>' +
+        '<script>document.getElementById("mobile-opener")?.addEventListener("click",()=>{' +
+        (mobileNavigationMode === 'noop' ? '' : 'const panel=document.getElementById("mobile-panel");panel.hidden=!panel.hidden;document.getElementById("mobile-opener").setAttribute("aria-expanded",String(!panel.hidden));') +
+        '})</script></body></html>')
+    } else if (req.url === '/journey-entry') {
+      res.setHeader('content-type', 'text/html')
+      res.end('<!doctype html><html><head><title>Useful service for teams</title></head><body><main><h1>Useful service for teams</h1><p>Choose a public signup path to get started.</p>' +
+        (journeyMode === 'reranked' ? '<a id="other-signup" href="/journey-other-signup">Get started free</a>' : '') +
+        (journeyCtaMode === 'missing' ? '' : '<a id="signup-entry"' + (journeyCtaMode === 'hidden' ? ' hidden' : '') + ' href="' + (journeyMode === 'changed' ? '/journey-other-signup' : '/journey-signup') + '">Get started</a>') + '</main></body></html>')
+    } else if (req.url === '/journey-signup' || req.url === '/journey-other-signup') {
+      res.setHeader('content-type', 'text/html')
+      if (journeyMode === 'challenge') res.setHeader('cf-mitigated', 'challenge')
+      const form = journeyMode === 'healthy' || journeyMode === 'hidden' || req.url === '/journey-other-signup'
+        ? '<div' + (journeyMode === 'hidden' ? ' hidden' : '') + '><form action="/journey-submit" method="post"><label>Email <input type="email" name="email"></label><button type="submit">Create account</button></form></div>' : ''
+      res.end('<!doctype html><html><head><title>Signup for our service</title></head><body><main>' +
+        (journeyMode === 'blank' ? '' : '<h1>Start using our useful service</h1><p>Review the information you need to create your account.</p>' + form) + '</main></body></html>')
+    } else if (req.url === '/journey-submit') {
+      journeySubmissions++; res.end('Account created')
+    } else if (req.url === '/performance-fixture') {
+      res.setHeader('content-type', 'text/html')
+      res.end('<!doctype html><html lang="en"><head><title>Useful information about our service</title>' +
+        '<meta name="description" content="Read clear information about our service and the next steps available to you.">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="canonical" href="' + origin + '/performance-fixture"></head>' +
+        '<body><main><h1>Useful information about our service</h1><p>Read how our service helps you manage your work and decide what to do next.</p>' +
+        '<a href="#details">Learn more</a><section id="details"><h2>How the service works</h2><p>Review clear information about the service before choosing your next step.</p></section></main></body></html>')
+    } else if (req.url === '/primary-control') {
+      res.setHeader('content-type', 'text/html')
+      const declared = primaryControlDeclared ? ' aria-controls="completion"' : ''
+      const control = primaryControlKind === 'button' ? '<button id="primary-action"' + declared + (primaryControlMode === 'disabled' ? ' disabled' : '') + '>Get started</button>'
+        : primaryControlKind === 'role' ? '<div id="primary-action" role="button"' + declared + (primaryControlMode === 'disabled' ? ' aria-disabled="true"' : '') + '>Get started</div>'
+          : '<a id="primary-action"' + declared + ' href="/primary-control-target">Get started</a>'
       res.end('<!doctype html><html lang="en"><head><title>Useful service for teams</title></head><body><main><h1>Useful service for teams</h1><p>Choose your next step.</p>' +
-        (primaryControlMode === 'missing' ? '' : control) + '<div id="completion" hidden role="dialog" aria-label="Next step"><h2>Choose your next step</h2></div>' +
+        (primaryControlMode === 'missing' ? '' : control) + '<div id="completion" hidden role="dialog" aria-label="Next step"><h2>Choose your next step</h2>' +
+        '<form><label>Email<input type="email" required></label><button>Continue</button></form></div>' +
         '<script>document.getElementById("primary-action")?.addEventListener("click",event=>{event.preventDefault();' +
         (primaryControlMode === 'healthy' ? 'document.getElementById("completion").hidden=false;' : '') + '});</script></main></body></html>')
     } else if (req.url === '/primary-action') {
@@ -194,9 +270,79 @@ run('migrated progressive execution', () => {
         '<meta name="viewport" content="width=device-width,initial-scale=1"><script>' +
         (trustAnalytics ? 'window.gtag=function(){};gtag("config","G-LOCAL123");' : '') +
         (trustConsoleErrors ? 'console.error("Unrelated first error");console.error("Unrelated second error");console.error("Unrelated third error");' : '') +
-        '</script></head><body><main><h1>Useful website information</h1><p>Read useful information about our services.</p>' +
+        '</script>' + (trustHydration === 'data' ? '<script type="application/json" id="__NEXT_DATA__">' + JSON.stringify({ content: 'x'.repeat(1_100_000), analytics: 'googletagmanager', consent: 'cookie' }) + '</script>' : '') + '</head><body><main><h1>Useful website information</h1><p>Read useful information about our services.</p>' +
+        (trustHydration === 'dom' ? '<p>' + 'x'.repeat(1_100_000) + '</p>' : '') +
         (trustPrivacy ? '<a href="/privacy">Privacy policy</a>' : '') + (trustContact ? '<a href="mailto:help@example.com">Email support</a>' : '') +
         (trustConsent ? '<aside id="cookie-settings">Cookie settings</aside>' : '') + '</main></body></html>')
+    } else if (req.url === '/overlay-observation') {
+      res.setHeader('content-type', 'text/html')
+      if (overlayMode === 'challenge') {
+        res.setHeader('cf-mitigated', 'challenge'); res.end('<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>'); return
+      }
+      if (overlayMode === 'blank') { res.end('<html><head><title>Overlay fixture</title></head><body><main></main></body></html>'); return }
+      res.end('<!doctype html><html lang="en"><head><title>Overlay fixture</title><style>' +
+        'body{margin:16px}nav{height:40px}a{display:inline-block;padding:10px}form{margin-top:24px}input{display:block;margin:10px 0}button{padding:10px}' +
+        '.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000}</style></head><body>' +
+        '<header><nav><a id="navigation" href="#details">Pricing</a></nav></header><main><h1>Useful website information</h1><p>Read about our services.</p>' +
+        '<a id="original-action" href="/signup"' + (overlayMode === 'hidden' ? ' style="visibility:hidden"' : '') + '>Get started free</a>' +
+        '<form><label for="email">Email address</label><input id="email" name="email" type="email" required><button id="submit" type="submit">Send request</button></form><section id="details">Pricing details</section>' +
+        (['covered', 'transient', 'consent'].includes(overlayMode) || overlayMode === 'desktop-healthy' && /Mobile|Android|iPhone/i.test(String(req.headers['user-agent'])) ? '<aside id="cover" class="overlay" role="dialog">' +
+          (overlayMode === 'consent' ? 'Cookie preferences<button>Accept</button><button>Reject</button>' : 'Advertisement without a dismiss control') + '</aside>' : '') +
+        (overlayMode === 'transient' ? '<script>setTimeout(()=>document.getElementById("cover").remove(),950)</script>' : '') +
+        (overlayMode.startsWith('hover-') ? '<script>document.getElementById(' + JSON.stringify(overlayMode === 'hover-primary' ? 'original-action' : overlayMode === 'hover-navigation' ? 'navigation' : 'submit') +
+          ').addEventListener("pointerover",()=>{if(document.getElementById("cover"))return;const cover=document.createElement("aside");cover.id="cover";cover.className="overlay";cover.setAttribute("role","dialog");cover.textContent="Persistent advertisement after hover";document.body.append(cover)});</script>' : '') +
+        '</main></body></html>')
+    } else if (req.url === '/motion-observation') {
+      res.setHeader('content-type', 'text/html')
+      if (motionMode === 'challenge') {
+        res.setHeader('cf-mitigated', 'challenge'); res.end('<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>'); return
+      }
+      if (motionMode === 'blank') { res.end('<html><head><title>Motion fixture</title></head><body><main></main></body></html>'); return }
+      const scriptMotion = motionMode.startsWith('script-')
+      const transitionMotion = motionMode.startsWith('transition-')
+      res.end('<!doctype html><html lang="en"><head><title>Motion fixture</title><style>' +
+        '@keyframes moving{from{transform:translateX(0)}to{transform:translateX(20px)}}' +
+        '.moving{width:60px;height:60px;background:#000;animation:moving ' + (motionMode === 'intro' ? '1s 1' : '1s infinite') + ';}' +
+        '.box{width:60px;height:60px;background:#000;transition:transform 1s}' +
+        (motionMode === 'transition-honored' ? '@media(prefers-reduced-motion:reduce){.box{transition:none}}' : '') +
+        (motionMode === 'honored' ? '@media(prefers-reduced-motion:reduce){.moving{animation:none}}' : '') +
+        (motionMode === 'mixed' || motionMode === 'padding' ? '@media(prefers-reduced-motion:reduce){.honors{animation:none}}' : '') +
+        (motionMode === 'paused' ? '.moving{animation-play-state:paused}' : '') +
+        '</style></head><body><main><h1>Useful product information</h1><p>Read about our product and services.</p>' +
+        (motionMode === 'mixed' ? '<section class="hero"><div id="honoring" class="moving honors"></div></section>' : '') +
+        '<section style="' + (motionMode === 'hidden' ? 'opacity:0' : '') + '"><div id="original" class="' + (scriptMotion || transitionMotion ? 'box' : 'moving') + '"></div></section>' +
+        (motionMode === 'mixed' ? '<div id="other" class="moving"></div>' : '') +
+        (motionMode === 'padding' ? '<div id="new-one" class="moving honors"></div><div id="new-two" class="moving honors"></div><div id="new-three" class="moving honors"></div>' : '') +
+        (scriptMotion ? '<script>' + (motionMode === 'script-honored' ? 'if(!matchMedia("(prefers-reduced-motion:reduce)").matches)' : '') +
+          'document.getElementById("original").animate([{transform:"translateX(0)"},{transform:"translateX(20px)"}],{duration:1000,iterations:Infinity});</script>' : '') +
+        (transitionMotion ? '<script>setTimeout(()=>document.getElementById("original").style.transform="translateX(20px)",100);</script>' : '') +
+        '</main></body></html>')
+    } else if (req.url === '/loading-observation') {
+      res.setHeader('content-type', 'text/html')
+      if (loadingUiMode === 'challenge' || loadingUiMode === 'desktop-challenge' && !/Mobile|Android|iPhone/i.test(String(req.headers['user-agent']))) {
+        res.setHeader('cf-mitigated', 'challenge'); res.end('<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>'); return
+      }
+      if (loadingUiMode === 'blank') { res.end('<html><head><title>Loading observation fixture</title></head><body><main></main></body></html>'); return }
+      const clearMs = loadingUiDesktopMs !== undefined && !/Mobile|Android|iPhone/i.test(String(req.headers['user-agent'])) ? loadingUiDesktopMs : loadingUiClearMs
+      res.end('<!doctype html><html lang="en"><head><title></title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' +
+        '<main><h1>Useful website information</h1><div id="blocking" class="hero-skeleton" style="width:100%;height:180px">Loading content</div>' +
+        '<div class="skeleton" style="position:absolute;top:1800px;width:200px;height:100px"></div>' +
+        '<div style="opacity:0"><div class="spinner" style="width:200px;height:100px"></div></div></main>' +
+        '<footer><div class="spinner" style="width:12px;height:12px"></div></footer><script>' +
+        'setTimeout(()=>document.title="Loading observation fixture",6000);' +
+        (clearMs === null ? '' : 'setTimeout(()=>document.getElementById("blocking").remove(),' + clearMs + ');') +
+        '</script></body></html>')
+    } else if (req.url === '/slow-visibility') {
+      res.setHeader('content-type', 'text/html')
+      if (slowReplayMode === 'challenge') {
+        res.setHeader('cf-mitigated', 'challenge'); res.end('<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>'); return
+      }
+      const delayed = slowReplayMode === 'delayed' || slowReplayMode === 'competing'
+      res.end('<!doctype html><html lang="en"><head><title>Slow visibility fixture</title></head><body><main>' +
+        '<p id="message" style="display:' + (slowReplayMode === 'delayed' ? 'none' : 'block') + '">Useful information that explains the product to a visitor.</p>' +
+        '<a id="' + (delayed ? 'action' : 'renamed') + '" href="/start" style="display:' + (delayed ? 'none' : 'block') + '">Get started</a></main>' +
+        (slowReplayMode === 'competing' ? '<a id="competing" href="/contact">Contact</a>' : '') +
+        (delayed ? '<script>setTimeout(()=>document.getElementById("message").style.display="block",6000);setTimeout(()=>document.getElementById("action").style.display="block",8500)</script>' : '') + '</body></html>')
     } else if (req.url === '/monitored') {
       if (monitoredUnavailable) res.statusCode = 503
       if (monitoredChallenge === 'header') res.setHeader('cf-mitigated', 'challenge')
@@ -207,6 +353,20 @@ run('migrated progressive execution', () => {
         '<link rel="canonical" href="' + origin + '/monitored"></head><body><main><h1>Useful public information</h1>' +
         '<p>Read the information you need about this website and its services.</p><a href="#details">Learn more</a>' +
         '<section id="details"><h2>Helpful details</h2><p>Clear information for everyone using this website.</p></section></main></body></html>')
+    } else if (req.url === '/transport') {
+      if (transportMode === 'https' && req.headers['x-fixture-protocol'] === 'http:') {
+        res.writeHead(301, { location: origin + '/transport' }); res.end(); return
+      }
+      res.setHeader('content-type', 'text/html')
+      if (transportMode === 'unavailable') res.statusCode = 503
+      res.end('<!doctype html><html lang="en"><head><title>Useful transport observation fixture</title></head><body><main>' +
+        '<h1>Useful service for teams</h1><p>Contact support@example.com.</p><a href="/privacy">Privacy policy</a></main></body></html>')
+    } else if (req.url === '/security-coverage') {
+      res.setHeader('content-type', 'text/html')
+      for (const [key, value] of Object.entries(healthyHeaders)) res.setHeader(key, value)
+      res.end('<!doctype html><html lang="en"><head><title>Useful security observation fixture</title></head><body><main>' +
+        '<h1>Useful service for teams</h1><p>Contact our team at support@example.com.</p>' +
+        '<a href="/privacy">Privacy policy</a><img src="/hero.png" alt="Service illustration"></main></body></html>')
     } else if (req.url === '/headers' || req.url === '/headers-other') {
       if (headerMode === 'redirected' && req.url === '/headers') {
         res.writeHead(302, { location: origin + '/headers-other' }); res.end(); return
@@ -236,16 +396,31 @@ run('migrated progressive execution', () => {
         'if(mode==="slow"||mode==="healthy")setTimeout(()=>{const p=document.getElementById("error");p.hidden=false;p.textContent="Email is required"},mode==="slow"?1400:100)};</script>' +
         '</main></body></html>')
     } else if (req.url?.startsWith('/pagespeed-fixture')) {
+      if (pageSpeedMode === 'refused') { res.statusCode = 403; res.end(JSON.stringify({ error: 'Fixture provider unavailable' })); return }
       const failed = pageSpeedMode === 'failed'
+      const mobile = new URL(req.url!, 'http://fixture.test').searchParams.get('strategy') === 'mobile'
+      const failedResources = failed || mobile && mobileResourceMode === 'failed'
+      const missingResources = pageSpeedMode === 'missing' || mobile && mobileResourceMode === 'missing'
       res.setHeader('content-type', 'application/json')
       res.end(JSON.stringify({ lighthouseResult: { categories: { performance: { score: failed ? 0.35 : 0.95 } }, audits: {
-        'largest-contentful-paint': { numericValue: 1000 }, 'cumulative-layout-shift': { numericValue: 0 },
+        ...(pageSpeedMode === 'missing-vitals' ? {
+          'cumulative-layout-shift': { numericValue: 0, errorMessage: 'Controlled layout measurement failure' },
+        } : {
+          'largest-contentful-paint': { numericValue: pageSpeedMode === 'failed-vitals' ? 5000 : 1000 },
+          'cumulative-layout-shift': { numericValue: pageSpeedMode === 'failed-vitals' ? 0.3 : 0 },
+        }),
         'first-contentful-paint': { numericValue: 500 }, 'total-blocking-time': { numericValue: 0 },
-        ...(pageSpeedMode === 'missing' ? {} : {
-          'render-blocking-insight': { score: failed ? 0 : 1, metricSavings: { FCP: failed ? 900 : 0 } },
-          'unused-javascript': { score: failed ? 0 : 1, details: { overallSavingsBytes: failed ? 200_000 : 0 } },
-          'unused-css-rules': { score: failed ? 0 : 1, details: { overallSavingsBytes: failed ? 80_000 : 0 } },
-          'image-delivery-insight': { score: failed ? 0 : 1, details: { debugData: { wastedBytes: failed ? 150_000 : 0 } } },
+        ...(mobile && mobileTapMode !== 'missing' ? {
+          [mobileTapMode === 'different' ? 'tap-targets' : 'target-size']: {
+            score: mobileTapMode === 'failed' ? 0 : 1, title: 'Touch target size and spacing',
+            details: { items: mobileTapMode === 'failed' ? [{}] : [] },
+          },
+        } : {}),
+        ...(missingResources ? {} : {
+          'render-blocking-insight': { score: failedResources ? 0 : 1, metricSavings: { FCP: failedResources ? 900 : 0 } },
+          'unused-javascript': { score: failedResources ? 0 : 1, details: { overallSavingsBytes: failedResources ? 200_000 : 0 } },
+          'unused-css-rules': { score: failedResources ? 0 : 1, details: { overallSavingsBytes: failedResources ? 80_000 : 0 } },
+          'image-delivery-insight': { score: failedResources ? 0 : 1, details: { debugData: { wastedBytes: failedResources ? 150_000 : 0 } } },
         }),
       } } }))
     } else if (req.url === '/robots.txt') {
@@ -300,11 +475,14 @@ run('migrated progressive execution', () => {
       res.setHeader('content-type', 'text/html')
       res.end('<!doctype html><html lang="en"><head><title>Tracking fixture</title><script src="/_vercel/insights/script.js"></script></head>' +
         '<body><main><h1>Tracking fixture</h1><a href="#details" onclick="const s=document.createElement(\'script\');s.src=\'/_vercel/insights/script.js?phase=action\';document.head.append(s)">Get started</a><section id="details">Useful details</section></main></body></html>')
+    } else if (req.url === '/keyboard-entry') {
+      res.setHeader('content-type', 'text/html')
+      res.end('<!doctype html><html><head><title>Keyboard entry</title></head><body><script>location.replace("/keyboard")</script></body></html>')
     } else if (req.url === '/keyboard') {
       res.setHeader('content-type', 'text/html')
       res.end('<!doctype html><html lang="en"><head><title>Keyboard fixture</title><style>#first:focus-visible,#second:focus-visible {' +
-        (focusRepaired ? 'outline:3px solid blue;outline-offset:2px' : 'outline:none;box-shadow:none') +
-        '}</style></head><body><main><h1>Keyboard fixture</h1><button id="first">First</button><button id="second">Second</button>' +
+        (focusRepaired ? 'outline:3px solid blue;outline-offset:2px' : 'outline:3px solid white;outline-offset:2px;box-shadow:none') +
+        '}#second:focus-visible span{color:blue}#second:focus-visible::after{background:blue}</style></head><body><main><h1>Keyboard fixture</h1><button id="first">First</button><button id="second" aria-label="Second">Second<span hidden>Hidden detail</span></button>' +
         '<button id="options" aria-haspopup="menu" aria-controls="menu">Options</button><div role="menu" id="menu" hidden>' +
         '<button role="menuitem" tabindex="-1" id="item-one">One</button><button role="menuitem" tabindex="-1" id="item-two">Two</button></div>' +
         '<script>const t=document.getElementById("options"),m=document.getElementById("menu"),items=[...m.querySelectorAll("button")];' +
@@ -327,7 +505,7 @@ run('migrated progressive execution', () => {
       ...options, configurePage: async page => {
         // Serve controlled HTML through real Chromium. Retain the production
         // mutation guard rather than granting the fixture implicit submission consent.
-        await page.route(origin + '/**', async route => {
+        await page.route(/^https?:\/\/example\.com\//, async route => {
           if (classifyTrackingEndpoint(route.request().url(), route.request().resourceType(), origin)?.role === 'event') return route.fallback()
           const fulfill = async () => {
             const request = route.request()
@@ -358,8 +536,10 @@ run('migrated progressive execution', () => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
       if (url.hostname === 'www.googleapis.com' && url.pathname === '/pagespeedonline/v5/runPagespeed' && pageSpeedMode)
         return nativeFetch(`http://127.0.0.1:${address.port}/pagespeed-fixture?strategy=${url.searchParams.get('strategy')}`, init)
-      if (![origin, destinationOrigin].includes(url.origin)) throw new Error('External service unavailable in this fixture')
-      return nativeFetch(`http://127.0.0.1:${address.port}${url.pathname}${url.search}`, init)
+      if (![origin, destinationOrigin, 'http://example.com'].includes(url.origin)) throw new Error('External service unavailable in this fixture')
+      const headers = new Headers(init?.headers)
+      headers.set('x-fixture-protocol', url.protocol)
+      return nativeFetch(`http://127.0.0.1:${address.port}${url.pathname}${url.search}`, { ...init, headers })
     })
     await prisma.user.create({ data: { id: userId, email: userId + '@example.test', auditsLimit: 100 } })
     await prisma.project.create({ data: { id: projectId, userId, name: 'Execution fixture', url: origin + '/', canonicalHost: 'example.com' } })
@@ -368,6 +548,8 @@ run('migrated progressive execution', () => {
     await getAuditBrowser()
     worker = startWorker()
     await worker.waitUntilReady()
+    const diagnostics = getBrowserDiagnostics()
+    await touchWorkerHeartbeat({ browserOk: diagnostics.connected, activeBrowserContexts: diagnostics.activeContexts, queueState: 'idle' })
   })
 
   afterAll(async () => {
@@ -451,6 +633,106 @@ run('migrated progressive execution', () => {
     expect(summaryView.presentation.run).toEqual(home!.presentation.run)
     expect(home!.monitoringTrend.find(entry => entry.id === auditId)?.completionState).toBe('PARTIAL')
   })
+
+  it('publishes independent category evidence during a real browser outage and retains honest incomplete coverage', async () => {
+    releaseResources()
+    headerMode = 'partial'
+    const transport = fixtureTransport()
+    let restoreBrowser = () => {}
+    try {
+      await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume()
+      const source = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE',
+        url: origin + '/headers', idempotencyKey: 'browser-outage-inventory' })
+      await vi.waitFor(async () => {
+        await prisma.auditVerifierExecution.updateMany({ where: { auditId: source.auditId!,
+          workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google', 'flow', 'slow-replay', 'journeys'] },
+          workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
+        await dispatchReadyTasks(await reconcileTasks(source.auditId!))
+        expect(await prisma.audit.findUnique({ where: { id: source.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 30_000, interval: 250 })
+      await closeBrowser()
+      const rendering = await import('@/lib/audit/screenshot')
+      const unavailable = vi.spyOn(rendering, 'getAuditBrowser').mockRejectedValue(new Error('Controlled browser startup failure'))
+      restoreBrowser = () => { unavailable.mockRestore() }
+      expect(getBrowserDiagnostics().connected).toBe(false)
+      await touchWorkerHeartbeat({ browserOk: false, activeBrowserContexts: 0, queueState: 'idle' })
+      expect(await readWorkerHeartbeat()).toMatchObject({ alive: true, browserOk: false })
+      const category = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'CATEGORY',
+        categoryArea: 'security', idempotencyKey: 'independent-security-outage' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: category.auditId!, targetKey: 'module:security-headers' } }))
+          .toMatchObject({ status: 'COMPLETED' })
+        expect(await prisma.flag.findFirst({ where: { auditId: category.auditId!, checkId: 'security-hsts-too-short' } })).toMatchObject({ severity: 'IMPORTANT' })
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: category.auditId!, workKind: 'browser' } }))
+          .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'BROWSER_UNHEALTHY' })
+      }, { timeout: 15_000, interval: 100 })
+      expect(getBrowserDiagnostics().connected).toBe(false)
+      // Bound the controlled outage rather than waiting out production recovery.
+      // Browser observations remain unavailable, with no positive stand-in data.
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: category.auditId!, workKind: 'browser' },
+        data: { workRecoveryUntil: new Date(0) } })
+      await vi.waitFor(async () => {
+        await dispatchReadyTasks(await reconcileTasks(category.auditId!))
+        expect(await prisma.audit.findUnique({ where: { id: category.auditId! } })).toMatchObject({
+          improvementProjectedAt: expect.any(Date), reportCompleteness: 'PARTIAL' })
+      }, { timeout: 20_000, interval: 250 })
+      expect(await getOwnedRun(userId, category.runId)).toMatchObject({ scope: 'CATEGORY', result: 'FLAG', completionState: 'PARTIAL' })
+      expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: category.auditId!, workKind: 'browser' } }))
+        .toMatchObject({ workState: 'EXHAUSTED' })
+    } finally {
+      headerMode = 'failed'
+      restoreBrowser(); await getAuditBrowser()
+      await touchWorkerHeartbeat({ browserOk: getBrowserDiagnostics().connected, queueState: 'idle' })
+      transport.mockRestore()
+    }
+  }, 90_000)
+
+  it('retries an interrupted category through shared owner admission and workers without broadening its scope', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), evaluateQueue = getAuditTaskQueue('evaluate')
+    try {
+      await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume()
+      const source = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE',
+        url: origin + '/headers', idempotencyKey: 'retry-inventory' })
+      expect(await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE',
+        url: origin + '/headers', idempotencyKey: 'retry-inventory' })).toMatchObject({ auditId: source.auditId, runId: source.runId, reused: true })
+      await vi.waitFor(async () => {
+        await prisma.auditVerifierExecution.updateMany({ where: { auditId: source.auditId!,
+          workKind: { in: ['keyboard', 'captures', 'pagespeed', 'google', 'flow', 'slow-replay', 'journeys'] },
+          workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
+        await dispatchReadyTasks(await reconcileTasks(source.auditId!))
+        expect(await prisma.audit.findUnique({ where: { id: source.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 30_000, interval: 250 })
+      await evaluateQueue.pause()
+      const interrupted = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'CATEGORY',
+        categoryArea: 'security', idempotencyKey: 'interrupted-category' })
+      const original = await prisma.audit.findUniqueOrThrow({ where: { id: interrupted.auditId! } })
+      // Inject termination before evaluation can finish. Existing observations
+      // remain real; no passing website or repair evidence is manufactured.
+      await prisma.$transaction([
+        prisma.audit.update({ where: { id: original.id }, data: { status: 'FAILED', completedAt: new Date(), errorMsg: 'Controlled worker interruption' } }),
+        prisma.runRequest.update({ where: { id: interrupted.runId }, data: { status: 'FAILED', leaseUntil: null } }),
+      ])
+      await evaluateQueue.resume()
+      const retry = await retryAudit(original.id, { userId, visitorKey: '', anonymousAuditIds: [] })
+      if (!('runId' in retry)) throw new Error('Owned retry lost its Site run identity')
+      expect(retry.auditId).not.toBe(original.id)
+      await vi.waitFor(async () => {
+        await dispatchReadyTasks(await reconcileTasks(retry.auditId!))
+        expect(await prisma.audit.findUnique({ where: { id: retry.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 25_000, interval: 250 })
+      const after = await prisma.audit.findUniqueOrThrow({ where: { id: retry.auditId! } })
+      const beforeSpec = readExecutionSpec(original.executionSpec)!, afterSpec = readExecutionSpec(after.executionSpec)!
+      expect(afterSpec).toMatchObject({ scope: 'CATEGORY', category: beforeSpec.category, checks: beforeSpec.checks, targetUrl: beforeSpec.targetUrl })
+      expect(await prisma.runRequest.findUniqueOrThrow({ where: { id: retry.runId! } })).toMatchObject({
+        context: { previousAuditId: original.id, previousRunId: interrupted.runId }, status: 'COMPLETED' })
+      const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: after.id, workKind: { not: null } } })
+      expect(tasks.some(task => ['captures', 'judge', 'discovery', 'pagespeed', 'slow-replay', 'journeys'].includes(task.workKind!))).toBe(false)
+      expect(await retryAudit(original.id, { userId, visitorKey: '', anonymousAuditIds: [] })).toMatchObject({
+        auditId: after.id, status: 'COMPLETED', reused: true })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ status: 'FAILED', errorMsg: 'Controlled worker interruption' })
+    } finally { await evaluateQueue.resume(); transport.mockRestore() }
+  }, 100_000)
 
   it('rechecks categories on the real ledger without replacing full-site analysis or resolving unrelated Flags', async () => {
     releaseResources()
@@ -603,7 +885,7 @@ run('migrated progressive execution', () => {
       await getAuditTaskQueue('browser').pause()
       await getAuditTaskQueue('provider').pause()
       const admitted = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE',
-        url: origin + '/keyboard', idempotencyKey: 'keyboard-source' })
+        url: origin + '/keyboard-entry', idempotencyKey: 'keyboard-source' })
       const beforeId = admitted.auditId!
       await vi.waitFor(async () => {
         expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'keyboard' } })).not.toBeNull()
@@ -617,7 +899,7 @@ run('migrated progressive execution', () => {
         expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'finalize' } })).toMatchObject({ workState: 'COMPLETED' })
       }, { timeout: 15_000, interval: 100 })
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: beforeId, checkId: 'focus-visible-missing' } })
-      expect(flag).toMatchObject({ source: 'DETERMINISTIC', pageUrl: origin + '/keyboard',
+      expect(flag).toMatchObject({ source: 'DETERMINISTIC', pageUrl: origin + '/keyboard-entry',
         evidenceTargets: [{ selector: '#first', source: 'measured' }, { selector: '#second', source: 'measured' }] })
       expect(flag.fix).toContain(':focus-visible')
       const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'keyboard-fix',
@@ -644,7 +926,7 @@ run('migrated progressive execution', () => {
       expect(observed.find(result => result.kind === 'execution')?.status).toBe('unknown')
 
       const popupFlag = await prisma.flag.findFirstOrThrow({ where: { auditId: beforeId, checkId: 'keyboard-focus-restoration' } })
-      expect(popupFlag.evidenceTargets).toMatchObject([{ selector: '#options', context: 'menu:#options=>#menu' }])
+      expect(popupFlag.evidenceTargets).toMatchObject([{ selector: '#options', context: expect.stringContaining(':menu:#options=>#menu') }])
       const popupFix = await recordSiteFlagFix({ siteId: projectId, flagId: popupFlag.id, userId,
         idempotencyKey: 'popup-fix', changeSummary: 'Restore focus to Options after dismissing the menu' })
       restorationRepaired = true
@@ -657,7 +939,7 @@ run('migrated progressive execution', () => {
       expect(popupTasks.map(task => task.workKind).sort()).toEqual(['check', 'finalize', 'keyboard'])
       const popupProof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: popupVerified.auditId!, targetKey: 'check:keyboard-focus-restoration' } })
       expect(checkVerifierSchema.parse(popupProof.detail)).toMatchObject({ verdict: 'passed', source: 'keyboard',
-        assertion: { targets: [{ selector: '#options', label: 'Options', context: 'menu:#options=>#menu' }] } })
+        assertion: { targets: [{ selector: '#options', label: 'Options', context: expect.stringContaining(':menu:#options=>#menu') }] } })
       expect(await prisma.improvementAttempt.findUnique({ where: { id: popupFix.attemptId } })).toMatchObject({ outcome: 'IMPROVED', comparable: true })
     } finally { transport.mockRestore() }
   })
@@ -953,6 +1235,8 @@ run('migrated progressive execution', () => {
   it('collects missing, disabled and dead-end primary controls and independently verifies their actual repairs', async () => {
     releaseResources()
     const transport = fixtureTransport(), pageUrl = origin + '/primary-control'
+    const providerWasPaused = await getAuditTaskQueue('provider').isPaused()
+    const previousPageSpeedMode = pageSpeedMode
     const owner = userId + '-controls', site = projectId + '-controls'
     try {
       await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
@@ -960,14 +1244,16 @@ run('migrated progressive execution', () => {
       await getAuditTaskQueue('browser').resume()
       for (const [mode, checkId, kind] of [
         ['missing', 'flow-no-cta-found', 'button'], ['disabled', 'flow-cta-unclickable', 'button'], ['disabled', 'flow-cta-unclickable', 'role'], ['deadend', 'flow-cta-dead-end', 'link'],
+        ['deadend', 'flow-cta-dead-end', 'undeclared-link'],
       ] as const) {
-        primaryControlMode = mode; primaryControlKind = kind
+        primaryControlMode = mode; primaryControlKind = kind === 'undeclared-link' ? 'link' : kind
+        primaryControlDeclared = kind !== 'undeclared-link'
         const session = await createAuditPage(await getAuditBrowser(), pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true, deadline: Date.now() + 20_000 })
         let flags
         try {
           const observed = await runFlowScan(session.page, 'primary-control-source', pageUrl, { primaryOnly: true, captureSteps: false, deadlineMs: 12_000 })
           flags = runFlowChecks(observed).map(flag => ({ ...flag, pageUrl }))
-          expect(flags.map(flag => flag.checkId)).toContain(checkId)
+          expect(flags.map(flag => flag.checkId), JSON.stringify({ mode, kind, observed })).toContain(checkId)
           expect(observed.actionEvidence).toBeDefined()
         } finally { session.disposeNetwork(); await session.page.context().close() }
         const source = await prisma.audit.create({ data: { projectId: site, userId: owner, url: pageUrl, status: 'COMPLETED', isPublic: false,
@@ -987,9 +1273,26 @@ run('migrated progressive execution', () => {
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: verified.verificationAuditId })
         expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: {
           auditId: verified.verificationAuditId!, targetKey: 'check:' + checkId } })).detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom' })
+        if (kind === 'undeclared-link') {
+          primaryControlMode = 'deadend'
+          await getAuditTaskQueue('provider').resume(); pageSpeedMode = 'refused'
+          const tick = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)
+          const recurring = await requestScheduledSiteRun({ projectId: site, userId: owner, interval: 'weekly', scheduledAt: tick, now: tick })
+          await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: recurring.auditId! } }))
+            .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 90_000, interval: 100 })
+          const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId } })
+          expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
+          const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+          expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } }))
+            .toMatchObject({ improvementId: original.improvementId })
+        }
       }
-    } finally { primaryControlMode = 'missing'; primaryControlKind = 'button'; transport.mockRestore() }
-  }, 90_000)
+    } finally {
+      primaryControlMode = 'missing'; primaryControlKind = 'button'; primaryControlDeclared = true; pageSpeedMode = previousPageSpeedMode
+      if (providerWasPaused) await getAuditTaskQueue('provider').pause()
+      transport.mockRestore()
+    }
+  }, 180_000)
 
   it('observes delayed signup completion and preserves actionable failure, uncertainty, repair and recurrence', async () => {
     const transport = fixtureTransport()
@@ -1060,6 +1363,8 @@ run('migrated progressive execution', () => {
   }, 60_000)
 
   it('preserves the latest Watch delivery across stale readers and expired senders using the real notification ledger', async () => {
+    const originalName = (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).name
+    const originalRecoveryPreference = (await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).notifyOnRecovery
     function deferred<T>() {
       let resolve!: (value: T) => void
       const promise = new Promise<T>(complete => { resolve = complete })
@@ -1077,6 +1382,17 @@ run('migrated progressive execution', () => {
     const heldResponses: Array<ReturnType<typeof deferred<Response>>> = []
     const deliveries: Array<Promise<void>> = []
     try {
+      notificationBoundary.provider = new Resend('re_fixture_not_a_real_key')
+      providerTransport = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
+        const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+        if (url.origin !== 'https://api.resend.com') return forwardedFetch(input, options)
+        if (url.pathname !== '/emails') throw new Error('Unexpected fixture provider operation')
+        providerRequests.push({ key: new Headers(options?.headers).get('Idempotency-Key'), body: JSON.parse(String(options?.body)) })
+        return await (providerResponses.shift() ?? accepted())
+      })
+      const firstAcceptance = deferred<Response>()
+      heldResponses.push(firstAcceptance)
+      providerResponses.push(firstAcceptance.promise)
       await productTransaction(tx => ensureDefaultMonitoring(tx, projectId, userId))
       const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId, slug: 'page-loads' } })
       availabilityStatus = 503
@@ -1087,14 +1403,20 @@ run('migrated progressive execution', () => {
       const auditId = source.auditId!
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId, checkId: 'outcome-availability-failed' } })
       expect((await getFlagDiffSummary(null, auditId)).newIssues.map(item => item.id)).toContain(flag.id)
-      notificationBoundary.provider = new Resend('re_fixture_not_a_real_key')
-      providerTransport = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
-        const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
-        if (url.origin !== 'https://api.resend.com') return forwardedFetch(input, options)
-        if (url.pathname !== '/emails') throw new Error('Unexpected fixture provider operation')
-        providerRequests.push({ key: new Headers(options?.headers).get('Idempotency-Key'), body: JSON.parse(String(options?.body)) })
-        return await (providerResponses.shift() ?? accepted())
+      // The worker must commit useful results without waiting for email acceptance.
+      const completed = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      expect(completed).toMatchObject({ watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0 })
+      expect(providerRequests).toHaveLength(0)
+      const backgroundDelivery = notifyWatchRegression(null, auditId)
+      deliveries.push(backgroundDelivery)
+      await vi.waitFor(() => expect(providerRequests).toHaveLength(1), { timeout: 3000, interval: 20 })
+      expect(await prisma.audit.findUnique({ where: { id: auditId } })).toMatchObject({
+        improvementProjectedAt: completed.improvementProjectedAt, watchNotificationStatus: 'SENDING',
       })
+      firstAcceptance.resolve(accepted())
+      await backgroundDelivery
+      expect(await prisma.audit.findUnique({ where: { id: auditId } })).toMatchObject({ watchNotificationStatus: 'SENT' })
+      providerRequests.length = 0
       async function resetDelivery() {
         // Reset only this fixture's operational delivery state. Website evidence,
         // incident identity and the committed comparison remain unchanged.
@@ -1104,7 +1426,7 @@ run('migrated progressive execution', () => {
       }
       await resetDelivery()
       const originalReader = prisma.audit.findUnique.bind(prisma.audit)
-      const readHeld = deferred<void>()
+      let readHeld = deferred<void>()
       releaseRead = deferred<void>()
       let holdNextRead = true
       reader = vi.spyOn(prisma.audit, 'findUnique').mockImplementation(async args => {
@@ -1116,6 +1438,7 @@ run('migrated progressive execution', () => {
         }
         return snapshot
       })
+      const heldReader = reader.getMockImplementation()!
       const pendingRead = notifyWatchRegression(null, auditId)
       deliveries.push(pendingRead)
       await readHeld.promise
@@ -1190,12 +1513,131 @@ run('migrated progressive execution', () => {
         expect(request.body).toMatchObject({ to: userId + '@example.test', subject: 'Needs attention on example.com: 1 Flag',
           html: expect.stringContaining(`/sites/${projectId}/flags/${flag.id}?source=watch-email`) })
       }
+
+      const alternateOwner = userId + '-notification-owner'
+      await prisma.user.create({ data: { id: alternateOwner, email: alternateOwner + '@example.test' } })
+      for (const change of ['preferences', 'account', 'site', 'recipient', 'owner', 'ceiling'] as const) {
+        await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS' } })
+        await resetDelivery()
+        readHeld = deferred<void>()
+        releaseRead = deferred<void>()
+        holdNextRead = true
+        reader = vi.spyOn(prisma.audit, 'findUnique').mockImplementation(heldReader)
+        const sending = notifyWatchRegression(null, auditId)
+        deliveries.push(sending)
+        await readHeld.promise
+        if (change === 'preferences') await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'OFF' } })
+        if (change === 'account') await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'SUSPENDED' } })
+        if (change === 'site') await prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } })
+        if (change === 'recipient') await prisma.user.update({ where: { id: userId }, data: { email: 'changed-' + userId + '@example.test' } })
+        if (change === 'owner') await prisma.project.update({ where: { id: projectId }, data: { userId: alternateOwner } })
+        if (change === 'ceiling') await prisma.audit.update({ where: { id: auditId }, data: { watchNotificationAttemptCeiling: 0 } })
+        releaseRead.resolve(); await sending
+        reader.mockRestore(); reader = undefined
+        expect(providerRequests).toHaveLength(5)
+        expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } }))
+          .toMatchObject({ watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0, watchNotificationLeaseUntil: null })
+        await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS', deletedAt: null, userId } })
+        await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'ACTIVE', email: userId + '@example.test' } })
+        await prisma.audit.update({ where: { id: auditId }, data: { watchNotificationAttemptCeiling: 5 } })
+      }
+
+      // Older ineligible rows cannot consume the bounded retry batch. These
+      // fixture records supply no passing website or comparison evidence.
+      const inactiveOwner = userId + '-inactive'
+      await prisma.user.create({ data: { id: inactiveOwner, email: inactiveOwner + '@example.test', lifecycleStatus: 'SUSPENDED' } })
+      const unavailableProjects = [projectId + '-inactive', projectId + '-removed']
+      for (const [index, id] of unavailableProjects.entries()) {
+        const ownerId = index ? alternateOwner : inactiveOwner
+        await prisma.project.create({ data: { id, userId: ownerId, name: 'Ineligible notification fixture', canonicalHost: 'example.com', url: origin,
+          ...(index ? { deletedAt: new Date() } : {}) } })
+        const old = new Date('2026-01-01T00:00:00Z')
+        await prisma.audit.createMany({ data: Array.from({ length: 20 }, () => ({ url: origin, userId: ownerId, projectId: id,
+          status: 'COMPLETED' as const, recheckTrigger: 'WATCH' as const, completedAt: old, improvementProjectedAt: old,
+          createdAt: old, updatedAt: old, watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING' as const })) })
+      }
+      await resetDelivery()
+      const corrupt = await prisma.audit.create({ data: { url: origin, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH',
+        completedAt: new Date('2026-01-01T00:00:00Z'), improvementProjectedAt: new Date('2026-01-01T00:00:00Z'),
+        createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-01T00:00:00Z'),
+        watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: null,
+        verifierExecutions: { create: { targetKey: FLAG_COMPARISON_TARGET, scopeKey: 'product', source: 'DETERMINISTIC',
+          status: 'COMPLETED', detail: { kind: 'malformed-fixture-comparison' } } } } })
+      expect(await retryPendingWatchNotifications(1)).toBe(1)
+      expect(providerRequests).toHaveLength(5)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: corrupt.id } })).toMatchObject({
+        watchNotificationStatus: 'SENDING', watchNotificationAttempts: 0, watchNotificationLastError: 'Notification classification could not complete' })
+      expect(await retryPendingWatchNotifications(1)).toBe(1)
+      expect(providerRequests).toHaveLength(6)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 })
+
+      // A historical body has no selected finding identities. Restrictive
+      // preferences admit a fresh scoped intent while retaining that body.
+      // The existing genuine availability Flag and comparison stay unchanged.
+      const stored = watchEmailPayloadSchema.parse((await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).watchNotificationPayload)
+      const legacy = { version: 1 as const, ...watchEmailProviderBody(stored) }
+      await resetDelivery()
+      await prisma.audit.update({ where: { id: auditId }, data: { watchNotificationPayload: legacy } })
+      await prisma.project.update({ where: { id: projectId }, data: { notifyOnRecovery: false } })
+      await prisma.user.update({ where: { id: userId }, data: { name: 'Current notification owner' } })
+      providerResponses.push(rejected())
+      await notifyWatchRegression(null, auditId)
+      expect(providerRequests).toHaveLength(7)
+      const revised = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      expect(revised).toMatchObject({ watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1 })
+      const revisedPayload = watchEmailPayloadSchema.parse(revised.watchNotificationPayload)
+      expect(revisedPayload.selection).toEqual({ projectId, regressions: ['id:' + flag.id], recoveries: [] })
+      expect(revisedPayload.previous).toEqual([legacy])
+      expect(providerRequests[6].key).toBe(revisedPayload.deliveryKey)
+      expect(providerRequests[6].key).not.toBe(`fixflags-watch-${auditId}-v1`)
+      expect(providerRequests[6].body.html).toContain(`/sites/${projectId}/flags/${flag.id}?source=watch-email`)
+      await prisma.user.update({ where: { id: userId }, data: { name: 'Later notification owner' } })
+      await notifyWatchRegression(null, auditId)
+      expect(providerRequests).toHaveLength(8)
+      expect(providerRequests[7]).toEqual(providerRequests[6])
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({
+        watchNotificationStatus: 'SENT', watchNotificationAttempts: 2, watchNotificationPayload: revisedPayload })
+
+      // Missing historical leases have no active owner. Reclaim the same frozen
+      // intent through the actual bounded sweep and installed provider SDK.
+      await prisma.audit.update({ where: { id: auditId }, data: {
+        watchNotificationStatus: 'SENDING', watchNotificationAttempts: 1,
+        watchNotificationLeaseUntil: null, watchNotifiedAt: null,
+        updatedAt: new Date('2025-01-01T00:00:00Z'),
+      } })
+      expect(await retryPendingWatchNotifications(1)).toBe(1)
+      expect(providerRequests).toHaveLength(9)
+      expect(providerRequests[8]).toEqual(providerRequests[7])
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({
+        watchNotificationStatus: 'SENT', watchNotificationAttempts: 2, watchNotificationPayload: revisedPayload })
+
+      await prisma.audit.update({ where: { id: auditId }, data: {
+        watchNotificationStatus: 'SENDING', watchNotificationAttempts: 5,
+        watchNotificationAttemptCeiling: 5, watchNotificationLeaseUntil: null,
+        updatedAt: new Date('2025-01-01T00:00:00Z'),
+      } })
+      expect(await retryPendingWatchNotifications(1)).toBe(1)
+      const exhausted = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
+      expect(exhausted).toMatchObject({ watchNotificationStatus: 'FAILED', watchNotificationAttempts: 5 })
+      expect(watchAlertDelivery({ status: exhausted.watchNotificationStatus, attempts: exhausted.watchNotificationAttempts,
+        attemptCeiling: exhausted.watchNotificationAttemptCeiling, leaseUntil: exhausted.watchNotificationLeaseUntil })).toBe('undelivered')
+      expect(providerRequests).toHaveLength(9)
+
+      await prisma.audit.update({ where: { id: auditId }, data: {
+        watchNotificationStatus: 'SENDING', watchNotificationAttempts: 1, watchNotificationLeaseUntil: null,
+      } })
+      await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'OFF' } })
+      await notifyWatchRegression(null, auditId)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ watchNotificationStatus: 'NOT_APPLICABLE' })
+      expect(providerRequests).toHaveLength(9)
     } finally {
       releaseRead?.resolve()
       heldResponses.forEach(response => response.resolve(rejected()))
       await Promise.allSettled(deliveries)
       reader?.mockRestore(); providerTransport?.mockRestore(); notificationBoundary.provider = null
-      await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS' } })
+      await prisma.project.update({ where: { id: projectId }, data: { notificationLevel: 'FLAGS', deletedAt: null, userId,
+        notifyOnRecovery: originalRecoveryPreference } })
+      await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus: 'ACTIVE', email: userId + '@example.test', name: originalName } })
       availabilityStatus = 200
     }
   }, 60_000)
@@ -1232,6 +1674,81 @@ run('migrated progressive execution', () => {
       })).rejects.toMatchObject({ code: 'HTTP_FORBIDDEN', httpStatus: 200, contentType: 'text/html', finalUrl: origin + '/monitored' })
     } finally { monitoredChallenge = null; transport.mockRestore() }
   })
+
+  it('verifies an original HTTP page through failed page responses, HTTPS redirection and monitoring recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = 'http://example.com/transport'
+    try {
+      const document = await collectDocument(pageUrl, Date.now() + 8000)
+      const metadata = parseMetadataFromHtml(document.body!, document.finalUrl)
+      const checked = await runAllChecks(document.finalUrl, metadata, null, null, [], undefined, undefined, undefined, undefined, true, ['security'])
+      const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, isPublic: false, status: 'COMPLETED', startedAt: new Date(), completedAt: new Date(),
+        executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null } } })
+      await persistDeterministicFlags(source.id, checked.flags.map(flag => ({ ...flag, pageUrl })), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'no-https' } })
+      for (const mode of ['http', 'unavailable', 'https'] as const) {
+        transportMode = mode
+        const fixed = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'transport-fix:' + mode,
+          changeSummary: 'Enable HTTPS and redirect the original page' })
+        const admitted = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: projectId, flagId: flag.id, userId, attemptId: fixed.attemptId,
+          source: 'MCP', idempotencyKey: 'transport-verify:' + mode })
+        if (!admitted.ok || !('verificationAuditId' in admitted)) throw new Error('Transport verification was not admitted')
+        await vi.waitFor(async () => { expect(await prisma.audit.findUnique({ where: { id: admitted.verificationAuditId } }))
+          .toMatchObject({ improvementProjectedAt: expect.any(Date) }) }, { timeout: 15_000, interval: 100 })
+        const expected = mode === 'https' ? 'IMPROVED' : 'UNCHANGED'
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fixed.attemptId } })).toMatchObject({ outcome: expected, comparable: true })
+        const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: admitted.verificationAuditId, workKind: { not: null } } })
+        expect(tasks.map(task => task.workKind).sort()).toEqual(['check', 'finalize', 'http'])
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: mode === 'https' ? 'FIXED' : 'OPEN' })
+      }
+      const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      transportMode = 'http'
+      const again = await requestSiteRun({ projectId, userId, scope: 'SITE', url: pageUrl, source: 'WATCH', outcomeIds: [], idempotencyKey: 'transport-recurrence' })
+      // Browser and provider queues remain paused. Their missing observations
+      // expire honestly without preventing independent transport recurrence.
+      await vi.waitFor(async () => {
+        await prisma.auditVerifierExecution.updateMany({ where: { auditId: again.auditId!, workKind: { notIn: ['http', 'check', 'finalize', 'discovery'] },
+          workState: { not: 'COMPLETED' } }, data: { workRecoveryUntil: new Date(0) } })
+        await dispatchReadyTasks(await reconcileTasks(again.auditId!))
+        expect(await prisma.audit.findUnique({ where: { id: again.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 20_000, interval: 100 })
+      expect(await prisma.flag.findFirstOrThrow({ where: { auditId: again.auditId!, checkId: 'no-https' }, include: { improvementOccurrence: true } }))
+        .toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: occurrence.improvementId } })
+      expect((await loadSiteHome(projectId))!.cards.find(card => card.id === 'security')).toMatchObject({ state: 'problem', openFlagCount: 1 })
+    } finally { transportMode = 'http'; transport.mockRestore() }
+  }, 60_000)
+
+  it('projects current public transport evidence into Site Security health through the real worker', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/security-coverage'
+    const owner = userId + '-security-coverage', site = projectId + '-security-coverage'
+    try {
+      await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+      await prisma.project.create({ data: { id: site, userId: owner, url: pageUrl, canonicalHost: 'example.com', name: 'Security coverage fixture' } })
+      await getAuditTaskQueue('browser').resume()
+      // The prior Site identity supplies category admission, not passing evidence.
+      const baseline = await prisma.audit.create({ data: { projectId: site, userId: owner, url: pageUrl, isPublic: false, status: 'COMPLETED',
+        startedAt: new Date(), completedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+          environment: 'production', scope: 'SITE', checks: { 'no-https': 1, 'security-mixed-content': 1 }, outcomes: [], verificationTarget: null } } })
+      const admitted = await requestSiteRun({ projectId: site, userId: owner, scope: 'CATEGORY', categoryArea: 'security', outcomeIds: [], source: 'WEB',
+        idempotencyKey: 'security-coverage-native' })
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: admitted.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 25_000, interval: 100 })
+      const audit = await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId! }, include: { flags: true, verifierExecutions: true } })
+      expect(readExecutionSpec(audit.executionSpec)?.category?.sourceAuditId).toBe(baseline.id)
+      const receipt = audit.verifierExecutions.find(row => row.targetKey === 'module:security')!
+      expect(receipt.detail).toMatchObject({ complete: true, assertions: expect.arrayContaining([
+        expect.objectContaining({ key: 'resource-transport', passed: true, complete: true }),
+      ]) })
+      const facts = buildCoverageFacts({ auditStatus: audit.status, completedAt: audit.completedAt, now: new Date(),
+        evidenceCoverage: audit.evidenceCoverage, flags: audit.flags, verifierExecutions: audit.verifierExecutions })
+      expect(facts.find(fact => fact.area === 'security')).toMatchObject({ state: 'healthy', evidenced: true })
+      expect((await loadSiteHome(site))!.cards.find(card => card.id === 'security')).toMatchObject({ state: 'healthy', openFlagCount: 0 })
+    } finally { transport.mockRestore() }
+  }, 35_000)
 
   it('independently verifies every originally failed response header through HTTP, the task ledger and fix projection', async () => {
     const transport = fixtureTransport()
@@ -1435,6 +1952,887 @@ run('migrated progressive execution', () => {
     } finally { publicFormMode = 'broken'; transport.mockRestore() }
   }, 45_000)
 
+  it('records browser loading clearance independently of delayed metadata and nonblocking loading UI', async () => {
+    const transport = fixtureTransport(), pageUrl = origin + '/loading-observation'
+    try {
+      for (const clearMs of [1000, 5200, null]) {
+        loadingUiClearMs = clearMs
+        const measured = await captureScreenshots(pageUrl, 'loading-observation-' + suffix, undefined,
+          { runFlow: false, captureMedia: false, deadline: Date.now() + 20_000 })
+        expect(measured.captureFailures).toEqual([])
+        expect(measured.captureMetrics).not.toBeNull()
+        const windows = [measured.loadExperience!, measured.captureMetrics!.desktopLoadExperience!]
+        for (const window of windows) {
+          expect(window.loadingVisibleAtInitial).toBe(true)
+          expect(window.loadingVisibleAtFinal).toBe(clearMs === null)
+          if (clearMs === null) expect(window.loadingClearedMs).toBeNull()
+          else {
+            expect(window.loadingClearedMs).toBeGreaterThanOrEqual(clearMs)
+            expect(window.loadingClearedMs!).toBeLessThan(clearMs + 1200)
+          }
+        }
+        const interaction = runInteractionChecks(measured.captureMetrics)
+        const mobile = runMobileUXQualityChecks(parseMetadataFromHtml(measured.desktopHtml!, pageUrl), measured.captureMetrics)
+        expect(interaction.map(flag => flag.checkId)).toEqual(clearMs === null ? ['loading-indicator-stuck'] : clearMs > 3000 ? ['loading-state-slow'] : [])
+        expect(mobile.filter(flag => flag.checkId === 'mobile-load-delay-content')).toHaveLength(clearMs !== null && clearMs > 4000 ? 1 : 0)
+      }
+    } finally { loadingUiClearMs = 1000; transport.mockRestore() }
+  }, 45_000)
+
+  it('requires completed activation to verify an overlay observed after a failed click', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/overlay-observation'
+    const owner = 'after-overlay-owner-' + suffix, siteId = 'after-overlay-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'After-action overlay fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      overlayMode = 'covered'
+      const blocked = await createAuditPage(await getAuditBrowser(), pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true })
+      let original
+      try {
+        await expect(blocked.page.locator('#original-action').click({ timeout: 500 })).rejects.toThrow()
+        const recorded = createOverlayInteractionRecorder(blocked.page)
+        original = await recorded.inspect('#original-action', 'cta', 'primary_action_after')
+        expect(original.observation?.controls[0].disposition).toBe('failed')
+      } finally { blocked.disposeNetwork(); await blocked.page.context().close() }
+      overlayMode = 'healthy'
+      const current = await createAuditPage(await getAuditBrowser(), pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true })
+      try {
+        const target = original!.observation!.controls[0]
+        const recorder = createOverlayInteractionRecorder(current.page, { expectedTargets: [{ kind: target.kind, selector: target.selector, label: target.label, context: target.context }] })
+        const clear = await recorder.inspect('#original-action', 'cta', 'primary_action_after')
+        expect(clear.observation?.controls[0].disposition).toBe('unknown')
+        const before = await recorder.inspect('#original-action', 'cta', 'primary_action')
+        await current.page.locator('#original-action').click({ timeout: 3000 })
+        recorder.activated(before)
+        expect(recorder.observations().find(observation => observation.phase === 'primary_action_after')?.controls[0].disposition).toBe('passed')
+      } finally { current.disposeNetwork(); await current.page.context().close() }
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'COMPLETED', isPublic: false,
+        startedAt: new Date(), completedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+          environment: 'production', scope: 'SITE', checks: { 'overlay-blocks-cta': 1 }, outcomes: [], verificationTarget: null } } })
+      await persistDeterministicFlags(source.id, runObservedOverlayChecks(original!.observation!), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'overlay-blocks-cta' } })
+      for (const mode of ['blank', 'healthy'] as const) {
+        overlayMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'after-overlay-fix:' + mode,
+          changeSummary: 'Restore activation of the originally covered control' })
+        const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'after-overlay-check:' + mode, source: 'MCP' })
+        if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('After-action overlay verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 25_000, interval: 100 })
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode).toMatchObject({
+          outcome: mode === 'healthy' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: mode === 'healthy' })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: mode === 'healthy' ? 'FIXED' : 'OPEN' })
+      }
+    } finally { overlayMode = 'covered'; await prisma.user.delete({ where: { id: owner } }); transport.mockRestore() }
+  }, 90_000)
+
+  it('independently verifies the original mobile navigation links through the worker and recognizes recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/mobile-navigation'
+    const owner = 'mobile-nav-owner-' + suffix, siteId = 'mobile-nav-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Mobile navigation fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume(); mobileNavigationMode = 'missing'
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+        startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'flow-mobile-menu-broken': 1 }, outcomes: [], verificationTarget: null } } })
+      const session = await createAuditPage(await getAuditBrowser(), pageUrl, { profile: MOBILE_CAPTURE_PROFILE, journeySafe: true })
+      let flags
+      try {
+        const observed = await collectMobileNavigation(session.page, Date.now() + 8000)
+        flags = mobileNavigationFlags(observed.observations, pageUrl)
+      } finally { session.disposeNetwork(); await session.page.context().close() }
+      expect(flags).toHaveLength(1)
+      await persistDeterministicFlags(source.id, flags!, {})
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'flow-mobile-menu-broken' } })
+      expect(flag.verificationRule).toBe(MOBILE_NAVIGATION_RULE)
+      for (const mode of ['missing', 'noop', 'removed', 'changed', 'blank', 'challenge', 'healthy'] as const) {
+        mobileNavigationMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'mobile-navigation-fix:' + mode,
+          changeSummary: 'Restore the original mobile navigation' })
+        const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'mobile-navigation-check:' + mode, source: 'MCP' })
+        if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Mobile navigation verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 25_000, interval: 100 })
+        const comparable = ['missing', 'noop', 'healthy'].includes(mode)
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode).toMatchObject({
+          outcome: mode === 'healthy' ? 'IMPROVED' : comparable ? 'UNCHANGED' : 'INCONCLUSIVE', comparable })
+        expect(await prisma.auditVerifierExecution.findMany({ where: { auditId: verified.verificationAuditId!, targetKey: { startsWith: 'task:' } }, select: { workKind: true, workInput: true } }), mode)
+          .toEqual(expect.arrayContaining([expect.objectContaining({ workKind: 'flow', workInput: expect.objectContaining({ module: 'mobile-navigation' }) })]))
+        expect(await prisma.auditVerifierExecution.count({ where: { auditId: verified.verificationAuditId!, workKind: { in: ['browser', 'pagespeed', 'google', 'journeys'] } } }), mode).toBe(0)
+        if (mode === 'healthy') expect(await getOwnedRun(owner, verified.runId)).toMatchObject({ result: 'CLEAR' })
+        else expect((await getOwnedRun(owner, verified.runId))?.result, mode).not.toBe('CLEAR')
+        if (mode === 'challenge') expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: verified.verificationAuditId!, targetKey: 'module:mobile-navigation' } })).toMatchObject({ status: 'FAILED' })
+      }
+      mobileNavigationMode = 'missing'; await getAuditTaskQueue('provider').pause()
+      const recurrence = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'mobile-navigation-recurrence' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 25_000, interval: 100 })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 55_000, interval: 100 })
+      const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: flag.checkId }, include: { improvementOccurrence: true } })
+      const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      expect(repeated).toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: original.improvementId, kind: 'REGRESSED' } })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+    } finally { mobileNavigationMode = 'missing'; await prisma.user.delete({ where: { id: owner } }); await getAuditTaskQueue('provider').resume(); transport.mockRestore() }
+  }, 180_000)
+
+  it('verifies the collapsed missing-action Flag across its original journey types through the worker', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/journey-entry'
+    const owner = 'journey-action-owner-' + suffix, siteId = 'journey-action-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Shared journey action fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume(); journeyMode = 'missing'; journeyCtaMode = 'missing'
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+        startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'journey-hidden-cta': 1 }, outcomes: [], verificationTarget: null } } })
+      const findings = []
+      for (const journeyType of ['first-visit', 'pricing-evaluation', 'signup'] as const) {
+        const observed = await runJourneyTemplate(await getAuditBrowser(), { auditId: source.id, startUrl: pageUrl, journeyType,
+          journeyPageOnly: true, expectedJourneyRoute: [], deadlineMs: Date.now() + 15_000 })
+        findings.push(...observed.findings)
+      }
+      await persistDeterministicFlags(source.id, nativeJourneyFlags(findings), {})
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'journey-hidden-cta' } })
+      expect(flag.evidenceTargets).toHaveLength(3)
+      for (const mode of ['hidden', 'visible'] as const) {
+        journeyCtaMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'journey-action-fix:' + mode, changeSummary: 'Show the primary action' })
+        const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'journey-action-check:' + mode, source: 'MCP' })
+        if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Shared journey Flag verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 35_000, interval: 100 })
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode).toMatchObject({ outcome: mode === 'visible' ? 'IMPROVED' : 'UNCHANGED', comparable: true })
+        expect(await getOwnedRun(owner, verified.runId)).toMatchObject({ result: mode === 'visible' ? 'CLEAR' : 'FLAG' })
+      }
+    } finally { journeyCtaMode = 'visible'; await prisma.user.delete({ where: { id: owner } }); transport.mockRestore() }
+  }, 100_000)
+
+  it('verifies signup page conditions on the original journey through the worker and preserves recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/journey-entry'
+    const owner = 'journey-condition-owner-' + suffix, siteId = 'journey-condition-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Public signup page fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      journeyMode = 'missing'; journeySubmissions = 0
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+        startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'journey-signup-no-form': 1 }, outcomes: [], verificationTarget: null } } })
+      const observed = await runJourneyTemplate(await getAuditBrowser(), { auditId: source.id, startUrl: pageUrl, journeyType: 'signup', deadlineMs: Date.now() + 20_000 })
+      expect(observed.findings.find(finding => finding.checkId === 'journey-signup-no-form')).toMatchObject({ verificationRule: JOURNEY_VERIFICATION_RULE, affectedPaths: [pageUrl] })
+      await persistJourneyResult(source.id, observed, undefined, ['journey-signup-no-form'])
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'journey-signup-no-form' } })
+      expect(flag).toMatchObject({ source: 'JOURNEY', pageUrl })
+      for (const mode of ['missing', 'hidden', 'reranked', 'changed', 'blank', 'challenge', 'healthy'] as const) {
+        journeyMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'journey-condition-fix:' + mode,
+          changeSummary: 'Restore visible fields on the original signup route' })
+        const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'journey-condition-check:' + mode, source: 'MCP' })
+        if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Journey condition verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 35_000, interval: 100 })
+        const comparable = ['missing', 'hidden', 'reranked', 'healthy'].includes(mode)
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode).toMatchObject({
+          outcome: mode === 'healthy' ? 'IMPROVED' : comparable ? 'UNCHANGED' : 'INCONCLUSIVE', comparable })
+        expect(await prisma.auditVerifierExecution.count({ where: { auditId: verified.verificationAuditId!, workKind: 'journeys', workState: 'COMPLETED' } })).toBe(1)
+        if (mode === 'healthy') expect(await getOwnedRun(owner, verified.runId)).toMatchObject({ result: 'CLEAR' })
+        else expect((await getOwnedRun(owner, verified.runId))?.result, mode).not.toBe('CLEAR')
+        if (mode === 'blank' || mode === 'challenge') expect(await prisma.flag.count({ where: { auditId: verified.verificationAuditId!, checkId: 'journey-signup-no-form' } }), mode).toBe(0)
+        expect(journeySubmissions, mode).toBe(0)
+      }
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+      journeyMode = 'missing'
+      await getAuditTaskQueue('provider').pause()
+      const recurrence = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'journey-condition-recurrence' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 25_000, interval: 100 })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 55_000, interval: 100 })
+      const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: flag.checkId }, include: { improvementOccurrence: true } })
+      const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      expect(repeated).toMatchObject({ status: 'REGRESSED', pageUrl, improvementOccurrence: { improvementId: original.improvementId, kind: 'REGRESSED' } })
+      expect(await prisma.journeyFinding.count({ where: { journeyReview: { auditId: recurrence.auditId! }, checkId: flag.checkId, flagId: repeated.id } })).toBeGreaterThan(0)
+    } finally { journeyMode = 'missing'; await prisma.user.delete({ where: { id: owner } }); await getAuditTaskQueue('provider').resume(); transport.mockRestore() }
+  }, 300_000)
+
+  it('independently replays a recorded journey overlay even when current page classification changes', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/overlay-observation'
+    const owner = 'journey-overlay-owner-' + suffix, siteId = 'journey-overlay-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Journey overlay fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      await getAuditTaskQueue('browser').resume()
+      overlayMode = 'hover-primary'
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+        startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'overlay-blocks-nav': 1 }, outcomes: [], verificationTarget: null } } })
+      const observed = await runJourneyTemplate(await getAuditBrowser(), { auditId: source.id, startUrl: pageUrl, journeyType: 'signup', deadlineMs: Date.now() + 20_000 })
+      expect(observed.findings.some(finding => finding.checkId === 'overlay-blocks-nav' && finding.verificationRule === OVERLAY_VERIFICATION_RULE)).toBe(true)
+      await persistJourneyResult(source.id, observed, undefined, ['overlay-blocks-nav'])
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'overlay-blocks-nav' } })
+      expect(flag.source).toBe('JOURNEY')
+      for (const mode of ['hover-primary', 'blank', 'healthy'] as const) {
+        overlayMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'journey-overlay-fix:' + mode,
+          changeSummary: 'Restore the originally blocked signup entry' })
+        const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'journey-overlay-check:' + mode, source: 'MCP' })
+        if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Journey overlay verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 30_000, interval: 100 })
+        const expected = mode === 'healthy' ? 'IMPROVED' : mode === 'blank' ? 'INCONCLUSIVE' : 'UNCHANGED'
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode).toMatchObject({ outcome: expected, comparable: mode !== 'blank' })
+        const audit = await prisma.audit.findUniqueOrThrow({ where: { id: verified.verificationAuditId! } })
+        expect(readExecutionSpec(audit.executionSpec)?.verificationScopes?.some(scope => scope.overlayPhases?.includes('journey_signup_nav'))).toBe(true)
+        expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: 'journeys', workState: 'COMPLETED' } })).toBe(1)
+        if (mode === 'healthy') expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: verified.verificationAuditId })
+      }
+    } finally { overlayMode = 'covered'; await prisma.user.delete({ where: { id: owner } }); transport.mockRestore() }
+  }, 120_000)
+
+  it('verifies original interaction overlay flags through the worker and preserves monitoring recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/overlay-observation'
+    const owner = 'interaction-overlay-owner-' + suffix, siteId = 'interaction-overlay-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Interaction overlay fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    const originals: Array<Awaited<ReturnType<typeof prisma.flag.findFirstOrThrow>>> = []
+    try {
+      await getAuditTaskQueue('browser').resume()
+      for (const mode of ['hover-primary', 'hover-navigation', 'hover-form'] as const) {
+        overlayMode = mode
+        const checkId = mode === 'hover-primary' ? 'overlay-blocks-cta' : mode === 'hover-navigation' ? 'overlay-blocks-nav' : 'overlay-blocks-form'
+        const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+          startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+            checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null } } })
+        const session = await createAuditPage(await getAuditBrowser(), pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true })
+        let observed
+        try {
+          if (mode === 'hover-form') {
+            const result = await probeFormValidation(session.page)
+            observed = scopedOverlayResult('form', result.formOverlay, result.formLabel, result.formOverlayObservation)
+          } else observed = runFlowChecks(await runFlowScan(session.page, source.id, pageUrl,
+            { captureSteps: false, primaryOnly: mode === 'hover-primary', includeFormValidation: false }))
+        } finally { session.disposeNetwork(); await session.page.context().close() }
+        await persistDeterministicFlags(source.id, observed!.filter(flag => flag.checkId === checkId), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+        await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+        await materializeAttentionForAudit(source.id)
+        const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId } })
+        originals.push(flag)
+        for (const phase of ['unchanged', 'blank', 'healthy'] as const) {
+          overlayMode = phase === 'unchanged' ? mode : phase
+          const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'interaction-overlay-fix:' + checkId + ':' + phase,
+            changeSummary: 'Remove the cover that appears during the originally recorded interaction' })
+          const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+            idempotencyKey: 'interaction-overlay-check:' + checkId + ':' + phase, source: 'MCP' })
+          if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Interaction overlay verification was not admitted')
+          await vi.waitFor(async () => {
+            expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+          }, { timeout: 25_000, interval: 100 })
+          const audit = await prisma.audit.findUniqueOrThrow({ where: { id: verified.verificationAuditId! } })
+          const spec = readExecutionSpec(audit.executionSpec)!
+          expect(spec.verificationScopes?.some(scope => scope.overlayPhases?.length), mode + ':' + phase).toBe(true)
+          expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: { in: ['google', 'pagespeed', 'overlays'] } } })).toBe(0)
+          expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode + ':' + phase).toMatchObject({
+            outcome: phase === 'healthy' ? 'IMPROVED' : phase === 'blank' ? 'INCONCLUSIVE' : 'UNCHANGED', comparable: phase !== 'blank' })
+          expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'healthy' ? 'FIXED' : 'OPEN' })
+          if (phase === 'healthy') expect(await getOwnedRun(owner, verified.runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+        }
+      }
+      overlayMode = 'covered'
+      await getAuditTaskQueue('provider').pause()
+      const recurrence = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'interaction-overlay-recurrence' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 25_000, interval: 100 })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 45_000, interval: 100 })
+      for (const original of originals) {
+        const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: original.checkId }, include: { improvementOccurrence: true } })
+        const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: original.id } })
+        expect(repeated).toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: occurrence.improvementId, kind: 'REGRESSED' } })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+        if (original.checkId === 'overlay-blocks-nav') {
+          const contexts = Array.isArray(repeated.evidenceTargets) ? repeated.evidenceTargets.map(value => value && typeof value === 'object' && !Array.isArray(value) ? value.context : null) : []
+          expect(contexts.some(context => typeof context === 'string' && context.includes(':page_load:nav:'))).toBe(true)
+          expect(contexts.some(context => typeof context === 'string' && context.includes(':pricing_navigation:nav:'))).toBe(true)
+          expect(contexts.some(context => typeof context === 'string' && context.includes(':journey_'))).toBe(true)
+          expect(await prisma.journeyFinding.count({ where: { journeyReview: { auditId: recurrence.auditId! }, checkId: original.checkId, flagId: repeated.id } })).toBeGreaterThan(0)
+        }
+      }
+    } finally { overlayMode = 'covered'; await prisma.user.delete({ where: { id: owner } }); await getAuditTaskQueue('provider').resume(); transport.mockRestore() }
+  }, 180_000)
+
+  it('records covers that appear during original hover and form phases and independently rechecks the same condition', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/overlay-observation'
+    try {
+      const browser = await getAuditBrowser()
+      for (const mode of ['hover-primary', 'hover-navigation', 'hover-form'] as const) {
+        overlayMode = mode
+        expect(runObservedOverlayChecks(await collectOverlayObservation(browser, pageUrl, { device: 'desktop', deadline: Date.now() + 15_000 }))).toEqual([])
+        const session = await createAuditPage(browser, pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true })
+        let flags
+        const started = Date.now()
+        try {
+          if (mode === 'hover-form') {
+            const result = await probeFormValidation(session.page)
+            flags = scopedOverlayResult('form', result.formOverlay, result.formLabel, result.formOverlayObservation)
+          } else flags = runFlowChecks(await runFlowScan(session.page, 'overlay-phase-' + suffix, pageUrl,
+            { captureSteps: false, primaryOnly: mode === 'hover-primary', includeFormValidation: false }))
+        } finally { session.disposeNetwork(); await session.page.context().close() }
+        const checkId = mode === 'hover-primary' ? 'overlay-blocks-cta' : mode === 'hover-navigation' ? 'overlay-blocks-nav' : 'overlay-blocks-form'
+        const flag = flags!.find(flag => flag.checkId === checkId)!
+        expect(flag, mode).toMatchObject({ verificationRule: OVERLAY_VERIFICATION_RULE })
+        const phase = mode === 'hover-primary' ? 'primary_action' : mode === 'hover-navigation' ? 'pricing_navigation' : 'form_validation'
+        expect(flag.evidenceTargets?.some(target => target.context?.includes(':' + phase + ':')), mode).toBe(true)
+        expect(Date.now() - started, mode).toBeLessThan(7000)
+        overlayMode = 'healthy'
+        const current = await createAuditPage(browser, pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, journeySafe: true })
+        try {
+          const expectedTargets = flag.evidenceTargets!.map(target => ({ kind: target.context!.split(':')[4] as 'nav' | 'cta' | 'form',
+            selector: target.selector!, label: target.label, context: target.context! }))
+          if (mode === 'hover-form') {
+            const recorder = (await import('@/lib/audit/browser/overlay-interaction')).createOverlayInteractionRecorder(current.page, { expectedTargets })
+            await probeFormValidation(current.page, { overlayRecorder: recorder, overlayOnly: true })
+            expect(recorder.observations().filter(observation => observation.phase === phase).flatMap(overlayAssertions).every(assertion => assertion.passed && assertion.complete)).toBe(true)
+          } else {
+            const result = await runFlowScan(current.page, 'overlay-repair-' + suffix, pageUrl, { captureSteps: false,
+              overlayOnly: true, expectedOverlayTargets: expectedTargets, primaryOnly: mode === 'hover-primary', includeFormValidation: false })
+            expect(result.overlayObservations!.filter(observation => observation.phase === phase).flatMap(overlayAssertions).every(assertion => assertion.passed && assertion.complete)).toBe(true)
+          }
+        } finally { current.disposeNetwork(); await current.page.context().close() }
+      }
+    } finally { overlayMode = 'covered'; transport.mockRestore() }
+  }, 90_000)
+
+  it('observes persistent covers and original-control scope without clicking or submitting', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/overlay-observation'
+    try {
+      const browser = await getAuditBrowser()
+      for (const device of ['desktop', 'mobile'] as const) {
+        overlayMode = 'covered'
+        const source = await collectOverlayObservation(browser, pageUrl, { device, deadline: Date.now() + 15_000 })
+        expect(source.complete, device).toBe(true)
+        const flags = runObservedOverlayChecks(source)
+        expect(flags.map(flag => flag.checkId).sort(), device).toEqual(['overlay-blocks-cta', 'overlay-blocks-form', 'overlay-blocks-nav'])
+        expect(flags.every(flag => flag.verificationRule === OVERLAY_VERIFICATION_RULE)).toBe(true)
+        const expectedTargets = source.controls.map(({ kind, selector, label, context }) => ({ kind, selector, label, context }))
+        for (const mode of ['healthy', 'transient', 'consent', 'hidden', 'blank', 'challenge'] as const) {
+          overlayMode = mode
+          const current = await collectOverlayObservation(browser, pageUrl, { device, expectedTargets, deadline: Date.now() + 15_000 })
+          expect(runObservedOverlayChecks(current), mode + ':' + device).toEqual([])
+          const assertions = overlayAssertions(current)
+          if (['healthy', 'transient', 'consent'].includes(mode)) expect(assertions.every(assertion => assertion.passed && assertion.complete), mode + ':' + device).toBe(true)
+          else expect(assertions.some(assertion => !assertion.passed && assertion.complete === false), mode + ':' + device).toBe(true)
+        }
+      }
+      expect(requests.filter(request => request === 'POST /overlay-observation')).toEqual([])
+    } finally { overlayMode = 'covered'; transport.mockRestore() }
+  }, 90_000)
+
+  it('independently verifies the original initial overlay cohort through missing evidence, device repair and recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/overlay-observation'
+    const owner = 'overlay-owner-' + suffix, siteId = 'overlay-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Overlay repair fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      overlayMode = 'covered'
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+        startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'overlay-blocks-cta': 1 }, outcomes: [], verificationTarget: null } } })
+      const observed = []
+      for (const device of ['desktop', 'mobile'] as const) observed.push(...runObservedOverlayChecks(await collectOverlayObservation(await getAuditBrowser(), pageUrl,
+        { device, deadline: Date.now() + 15_000 })).filter(flag => flag.checkId === 'overlay-blocks-cta'))
+      await persistDeterministicFlags(source.id, observed, { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'overlay-blocks-cta' } })
+      let resolution: string | null = null
+      for (const mode of ['blank', 'hidden', 'challenge', 'desktop-healthy', 'healthy'] as const) {
+        overlayMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'overlay-fix:' + mode,
+          changeSummary: 'Remove the persistent cover from the originally observed controls on both devices' })
+        const verified = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'overlay-check:' + mode, source: 'MCP' })
+        if (!verified.ok || !('verificationAuditId' in verified)) throw new Error('Overlay repair verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verified.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 20_000, interval: 100 })
+        const expected = mode === 'desktop-healthy' ? 'UNCHANGED' : mode === 'healthy' ? 'IMPROVED' : 'INCONCLUSIVE'
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode).toMatchObject({ outcome: expected,
+          comparable: mode === 'desktop-healthy' || mode === 'healthy' })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }), mode).toMatchObject({ status: mode === 'healthy' ? 'FIXED' : 'OPEN' })
+        if (mode === 'healthy') {
+          resolution = verified.verificationAuditId!
+          expect(await getOwnedRun(owner, verified.runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+          expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: resolution,
+            targetKey: 'check:overlay-blocks-cta' } })).detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom' })
+        }
+      }
+      overlayMode = 'covered'
+      await getAuditTaskQueue('provider').pause()
+      const recurrence = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'overlay-recurrence' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 20_000, interval: 100 })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 40_000, interval: 100 })
+      const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: 'overlay-blocks-cta' }, include: { improvementOccurrence: true } })
+      const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      expect(repeated).toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: occurrence.improvementId, kind: 'REGRESSED' } })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: resolution })
+      expect(await prisma.auditVerifierExecution.count({ where: { auditId: recurrence.auditId!, workKind: 'overlays', workState: 'COMPLETED' } })).toBeGreaterThanOrEqual(2)
+    } finally { overlayMode = 'covered'; await prisma.user.delete({ where: { id: owner } }); await getAuditTaskQueue('provider').resume(); transport.mockRestore() }
+  }, 120_000)
+
+  it('observes native initial motion without duplicate, hidden or paused effects and honors startup-only preferences', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/motion-observation'
+    try {
+      for (const mode of ['mixed', 'paused', 'hidden', 'intro', 'script-ignored', 'script-honored', 'transition-ignored', 'transition-honored'] as const) {
+        motionMode = mode
+        const measured = await captureScreenshots(pageUrl, 'motion-' + mode + '-' + suffix, undefined,
+          { captureMedia: false, runFlow: false, deadline: Date.now() + 20_000 })
+        const data = measured.captureMetrics!
+        expect(data.motionComplete, mode).toBe(true)
+        const failed = ['mixed', 'intro', 'script-ignored', 'transition-ignored'].includes(mode)
+        expect(data.motionIgnoresReducedPreference, mode).toBe(failed)
+        const flags = runInteractionChecks(data).filter(flag => flag.checkId === 'motion-ignores-reduced-preference')
+        expect(flags.length, mode).toBe(failed ? 1 : 0)
+        if (failed) expect(flags[0]).toMatchObject({ verificationRule: MOTION_VERIFICATION_RULE,
+          evidenceTargets: expect.arrayContaining([expect.objectContaining({ selector: '#original', source: 'measured', device: 'mobile' })]) })
+        if (mode === 'mixed') expect(motionAssertions(data.motionObservation)[0].observed).toContain('3 moving elements under normal preference, 2 under reduced preference')
+        if (mode === 'intro') expect(data.motionObservation!.after.targets.map(target => target.selector)).toContain('#original')
+        if (mode === 'script-honored') {
+          expect(data.motionObservation!.before.targets).toEqual([expect.objectContaining({ family: 'script', selector: '#original' })])
+          expect(data.motionObservation!.after.targets).toEqual([])
+        }
+      }
+    } finally { motionMode = 'ignored'; transport.mockRestore() }
+  }, 90_000)
+
+  it('verifies the original reduced-motion cohort through padding, unavailable evidence, repair and monitoring recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/motion-observation'
+    const owner = 'motion-owner-' + suffix, siteId = 'motion-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Motion repair fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      motionMode = 'ignored'
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+        startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'motion-ignores-reduced-preference': 1 }, outcomes: [], verificationTarget: null } } })
+      const measured = await captureScreenshots(pageUrl, source.id, undefined, { captureMedia: false, runFlow: false, deadline: Date.now() + 20_000 })
+      const flags = runInteractionChecks(measured.captureMetrics).filter(flag => flag.checkId === 'motion-ignores-reduced-preference')
+      expect(flags).toHaveLength(1)
+      await persistDeterministicFlags(source.id, flags.map(flag => ({ ...flag, pageUrl })), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'motion-ignores-reduced-preference' } })
+      let resolution: string | null = null
+      for (const mode of ['padding', 'blank', 'challenge', 'honored'] as const) {
+        motionMode = mode
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'motion-fix:' + mode,
+          changeSummary: 'Honor reduced motion on the originally observed animation' })
+        const verification = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'motion-check:' + mode, source: 'MCP' })
+        if (!verification.ok || !('verificationAuditId' in verification)) throw new Error('Motion verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: verification.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 25_000, interval: 100 })
+        const expected = mode === 'padding' ? 'UNCHANGED' : mode === 'honored' ? 'IMPROVED' : 'INCONCLUSIVE'
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }), mode)
+          .toMatchObject({ outcome: expected, comparable: mode === 'padding' || mode === 'honored' })
+        if (mode === 'padding') {
+          const motion = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: verification.verificationAuditId!, workKind: 'motion' } })
+          expect(motion.workState).toBe('COMPLETED')
+          expect(motionAssertions(readArtifact(motion.workResult, 'motion').data)[0].passed).toBe(true)
+        }
+        if (mode === 'honored') {
+          resolution = verification.verificationAuditId!
+          expect(await getOwnedRun(owner, verification.runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+          expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: resolution,
+            targetKey: 'check:' + flag.checkId } })).detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom' })
+        }
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }), mode).toMatchObject({ status: mode === 'honored' ? 'FIXED' : 'OPEN' })
+      }
+      motionMode = 'ignored'
+      await getAuditTaskQueue('provider').pause()
+      const recurrence = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'motion-recurrence' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 20_000, interval: 100 })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 35_000, interval: 100 })
+      const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: flag.checkId }, include: { improvementOccurrence: true } })
+      const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      expect(repeated).toMatchObject({ status: 'REGRESSED', improvementOccurrence: { improvementId: original.improvementId, kind: 'REGRESSED' } })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: resolution })
+    } finally { motionMode = 'ignored'; await prisma.user.delete({ where: { id: owner } }); await getAuditTaskQueue('provider').resume(); transport.mockRestore() }
+  }, 120_000)
+
+  it('verifies original loading windows through blank evidence, partial repair, full repair and monitoring recurrence', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/loading-observation'
+    const owner = 'loading-owner-' + suffix, siteId = 'loading-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Loading repair fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      const sources: Array<Awaited<ReturnType<typeof prisma.flag.findFirstOrThrow>>> = []
+      for (const clearMs of [5200, null]) {
+        loadingUiClearMs = clearMs
+        const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING', isPublic: false,
+          startedAt: new Date(), executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+            checks: { 'loading-state-slow': 1, 'loading-indicator-stuck': 1, 'mobile-load-delay-content': 1 }, outcomes: [], verificationTarget: null } } })
+        const measured = await captureScreenshots(pageUrl, source.id, undefined, { captureMedia: false, runFlow: false, deadline: Date.now() + 20_000 })
+        const flags = [...runInteractionChecks(measured.captureMetrics), ...runMobileUXQualityChecks(parseMetadataFromHtml(measured.desktopHtml!, pageUrl), measured.captureMetrics)]
+          .filter(flag => ['loading-state-slow', 'loading-indicator-stuck', 'mobile-load-delay-content'].includes(flag.checkId))
+        expect(flags.map(flag => flag.checkId).sort()).toEqual(clearMs === null ? ['loading-indicator-stuck'] : ['loading-state-slow', 'mobile-load-delay-content'])
+        await persistDeterministicFlags(source.id, flags.map(flag => ({ ...flag, pageUrl })), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+        await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+        await materializeAttentionForAudit(source.id)
+        sources.push(...await prisma.flag.findMany({ where: { auditId: source.id } }))
+      }
+      const delay = sources.find(flag => flag.checkId === 'loading-state-slow')!
+      async function verify(flag: typeof delay, phase: string) {
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner, idempotencyKey: 'loading-fix:' + flag.checkId + ':' + phase,
+          changeSummary: 'Restore promptly visible page content under the recorded loading conditions' })
+        const run = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner, attemptId: fix.attemptId,
+          idempotencyKey: 'loading-check:' + flag.checkId + ':' + phase, source: 'MCP' })
+        if (!run.ok || !('verificationAuditId' in run)) throw new Error('Loading repair verification was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: run.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 20_000, interval: 100 })
+        return { run, attempt: await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }) }
+      }
+      loadingUiMode = 'blank'
+      expect((await verify(delay, 'blank')).attempt).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: delay.id } })).toMatchObject({ status: 'OPEN' })
+      loadingUiMode = 'page'; loadingUiClearMs = 5200; loadingUiDesktopMs = 1000
+      expect((await verify(delay, 'partial')).attempt).toMatchObject({ outcome: 'UNCHANGED', comparable: true })
+      loadingUiMode = 'challenge'
+      expect((await verify(delay, 'challenge')).attempt).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
+      loadingUiMode = 'page'; loadingUiClearMs = 1000; loadingUiDesktopMs = undefined
+      for (const flag of sources) {
+        loadingUiMode = flag.checkId === 'loading-state-slow' ? 'page' : 'desktop-challenge'
+        const verified = await verify(flag, 'healthy')
+        expect(verified.attempt).toMatchObject({ outcome: 'IMPROVED', comparable: true })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: verified.run.verificationAuditId })
+        expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: verified.run.verificationAuditId!,
+          targetKey: 'check:' + flag.checkId } })).detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom' })
+        expect(await getOwnedRun(owner, verified.run.runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+      }
+      for (const clearMs of [5200, null]) {
+        loadingUiMode = 'page'
+        loadingUiClearMs = clearMs
+        await getAuditTaskQueue('provider').pause()
+        const run = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'loading-recurrence:' + clearMs })
+        await vi.waitFor(async () => {
+          expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: run.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+        }, { timeout: clearMs === null ? 25_000 : 15_000, interval: 100 }).catch(async error => {
+          const pending = await prisma.auditVerifierExecution.findMany({ where: { auditId: run.auditId!, workKind: { not: null }, workState: { not: 'COMPLETED' } },
+            select: { targetKey: true, workKind: true, workState: true, workErrorCode: true, workAttempts: true } })
+          throw new Error('Loading recurrence discovery unfinished: ' + JSON.stringify(pending), { cause: error })
+        })
+        await prisma.auditVerifierExecution.updateMany({ where: { auditId: run.auditId!, workKind: { in: ['google', 'pagespeed'] } }, data: { workRecoveryUntil: new Date(0) } })
+        await dispatchReadyTasks(await reconcileTasks(run.auditId!)); await getAuditTaskQueue('provider').resume()
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: run.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 35_000, interval: 100 })
+        const repeated = await prisma.flag.findMany({ where: { auditId: run.auditId!, checkId: { in: sources.map(flag => flag.checkId!) } }, include: { improvementOccurrence: true } })
+        expect(repeated.map(flag => flag.checkId).sort()).toEqual(clearMs === null ? ['loading-indicator-stuck'] : ['loading-state-slow', 'mobile-load-delay-content'])
+        for (const flag of repeated) {
+          const original = sources.find(source => source.checkId === flag.checkId)!
+          const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: original.id } })
+          expect(flag.status).toBe('REGRESSED')
+          expect(flag.improvementOccurrence).toMatchObject({ improvementId: occurrence.improvementId, kind: 'REGRESSED' })
+          expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+        }
+      }
+    } finally {
+      loadingUiMode = 'page'; loadingUiClearMs = 1000; loadingUiDesktopMs = undefined
+      await prisma.user.delete({ where: { id: owner } }); await getAuditTaskQueue('provider').resume(); transport.mockRestore()
+    }
+  }, 150_000)
+
+  it('collects faithful slow connection timing and independently verifies text and action repairs through the worker', async () => {
+    releaseResources()
+    const transport = fixtureTransport(), pageUrl = origin + '/slow-visibility'
+    const owner = 'slow-replay-owner-' + suffix, siteId = 'slow-replay-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Slow connection fixture', url: pageUrl, canonicalHost: 'example.com' } })
+    try {
+      await getAuditTaskQueue('browser').resume()
+      slowReplayMode = 'delayed'
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'CAPTURING',
+        isPublic: false, startedAt: new Date(), reportCompleteness: 'PARTIAL', executionSpec: {
+          version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+          checks: { 'slow-3g-blank-screen': 1, 'slow-3g-cta-delayed': 1 }, outcomes: [], verificationTarget: null,
+        } } })
+      const observation = await runSlowReplay(await getAuditBrowser(), source.id, pageUrl, { deadline: Date.now() + 20_000, pageKey: 'source' })
+      await prisma.audit.update({ where: { id: source.id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+      expect(observation).toMatchObject({ navigationComplete: true, complete: true })
+      expect(observation.captures?.map(capture => capture.targetMs)).toEqual([2000, 5000, 8000])
+      expect(observation.captures?.every(capture => capture.startedAtMs >= capture.targetMs && capture.startedAtMs < capture.targetMs + 2000)).toBe(true)
+      const findings = runSlowReplayChecks(observation)
+      expect(findings.map(flag => flag.checkId).sort()).toEqual(['slow-3g-blank-screen', 'slow-3g-cta-delayed'])
+      await persistDeterministicFlags(source.id, findings.map(flag => ({ ...flag, pageUrl })), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const flags = await prisma.flag.findMany({ where: { auditId: source.id }, include: { improvementOccurrence: true } })
+      slowReplayMode = 'challenge'
+      const attempted = await recordSiteFlagFix({ siteId, flagId: flags[0].id, userId: owner,
+        idempotencyKey: 'slow-replay-gap-fix', changeSummary: 'Restore timely mobile content' })
+      const gap = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flags[0].id, userId: owner,
+        attemptId: attempted.attemptId, idempotencyKey: 'slow-replay-gap-check', source: 'MCP' })
+      if (!gap.ok || !('verificationAuditId' in gap)) throw new Error('Slow visibility gap check was not admitted')
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: gap.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 15_000, interval: 100 })
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempted.attemptId } })).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flags[0].id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+      expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: gap.verificationAuditId!, targetKey: 'module:slow-replay' } }))
+        .toMatchObject({ status: 'FAILED', detail: expect.objectContaining({ module: 'slow-replay', failed: true, passed: false }) })
+      slowReplayMode = 'competing'
+      const action = flags.find(flag => flag.checkId === 'slow-3g-cta-delayed')!
+      const competingFix = await recordSiteFlagFix({ siteId, flagId: action.id, userId: owner,
+        idempotencyKey: 'slow-replay-competing-fix', changeSummary: 'Check the original delayed action' })
+      const competing = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: action.id, userId: owner,
+        attemptId: competingFix.attemptId, idempotencyKey: 'slow-replay-competing-check', source: 'MCP' })
+      if (!competing.ok || !('verificationAuditId' in competing)) throw new Error('Original action comparison was not admitted')
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: competing.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 15_000, interval: 100 })
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: competingFix.attemptId } })).toMatchObject({ outcome: 'UNCHANGED', comparable: true })
+      const competingFlag = await prisma.flag.findFirstOrThrow({ where: { auditId: competing.verificationAuditId!, checkId: action.checkId } })
+      slowReplayMode = 'healthy'
+      for (const flag of flags) {
+        const fix = await recordSiteFlagFix({ siteId, flagId: flag.id, userId: owner,
+          idempotencyKey: 'slow-replay-fix:' + flag.checkId, changeSummary: 'Render the original mobile content and action promptly' })
+        const run = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, flagId: flag.id, userId: owner,
+          attemptId: fix.attemptId, idempotencyKey: 'slow-replay-check:' + flag.checkId, source: 'MCP' })
+        if (!run.ok || !('verificationAuditId' in run)) throw new Error('Slow visibility repair was not admitted')
+        await vi.waitFor(async () => {
+          expect(await prisma.audit.findUnique({ where: { id: run.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+        }, { timeout: 15_000, interval: 100 })
+        const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: run.verificationAuditId!, workKind: 'slow-replay' } })
+        expect((await prisma.auditVerifierExecution.findMany({ where: { auditId: run.verificationAuditId!, workKind: { not: null } },
+          select: { workKind: true } })).map(row => row.workKind).sort()).toEqual(['finalize', 'slow-replay'])
+        const repairedObservation = slowReplayResultSchema.parse(readArtifact(task.workResult, 'slow-replay').data.result)
+        expect(repairedObservation).toMatchObject({ navigationComplete: true, complete: true })
+        if (flag.checkId === 'slow-3g-cta-delayed') expect(repairedObservation.actions).toEqual(expect.arrayContaining([
+          expect.objectContaining({ selector: '#renamed', label: 'Get started', timeToVisibleMs: expect.any(Number) }),
+        ]))
+        expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: {
+          auditId: run.verificationAuditId!, targetKey: 'check:' + flag.checkId,
+        } })).detail)).toMatchObject({ comparable: true, verdict: 'passed', source: 'rendered-dom' })
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome: 'IMPROVED', comparable: true })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: run.verificationAuditId })
+        expect(await getOwnedRun(owner, run.runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+      }
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: competingFlag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+      expect(await loadSiteFlags((await loadSiteRecord(siteId))!)).toEqual([])
+      slowReplayMode = 'delayed'
+      await getAuditTaskQueue('provider').pause()
+      const recurrence = await requestSiteRun({ projectId: siteId, userId: owner, outcomeIds: [], scope: 'SITE', source: 'WATCH', idempotencyKey: 'slow-replay-recurrence' })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: recurrence.auditId!, targetKey: 'task:discovery' } })).toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 10_000, interval: 100 }).catch(async error => {
+        const pending = await prisma.auditVerifierExecution.findMany({ where: { auditId: recurrence.auditId!, workState: { not: 'COMPLETED' }, workKind: { not: null } },
+          select: { targetKey: true, workKind: true, workState: true, workErrorCode: true, workAttempts: true } })
+        throw new Error('Slow connection discovery unfinished: ' + JSON.stringify(pending), { cause: error })
+      })
+      await prisma.auditVerifierExecution.updateMany({ where: { auditId: recurrence.auditId!, workKind: { in: ['pagespeed', 'google'] } }, data: { workRecoveryUntil: new Date(0) } })
+      await dispatchReadyTasks(await reconcileTasks(recurrence.auditId!)); await getAuditTaskQueue('provider').resume()
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: recurrence.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 30_000, interval: 100 }).catch(async error => {
+        const pending = await prisma.auditVerifierExecution.findMany({ where: { auditId: recurrence.auditId!, workState: { not: 'COMPLETED' }, workKind: { not: null } },
+          select: { targetKey: true, workKind: true, workState: true, workErrorCode: true, workAttempts: true } })
+        throw new Error('Slow connection recurrence unfinished: ' + JSON.stringify(pending), { cause: error })
+      })
+      for (const original of flags) {
+        const repeated = await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: original.checkId }, include: { improvementOccurrence: true } })
+        expect(repeated.status).toBe('REGRESSED')
+        expect(repeated.improvementOccurrence).toMatchObject({ improvementId: original.improvementOccurrence!.improvementId, kind: 'REGRESSED' })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+      }
+    } finally {
+      slowReplayMode = 'delayed'
+      await prisma.user.delete({ where: { id: owner } })
+      await getAuditTaskQueue('provider').resume()
+      transport.mockRestore()
+    }
+  }, 90_000)
+
+  it('verifies mobile tap-target repair under the original provider criteria and preserves scheduled recurrence', async () => {
+    await getAuditTaskQueue('provider').resume()
+    const transport = fixtureTransport(), pageUrl = origin + '/performance-fixture'
+    const tapUserId = userId + '-tap-targets', tapSiteId = projectId + '-tap-targets'
+    await prisma.user.create({ data: { id: tapUserId, email: tapUserId + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: tapSiteId, userId: tapUserId, name: 'Tap-target fixture', canonicalHost: 'example.com', url: pageUrl } })
+    try {
+      pageSpeedMode = 'healthy'; mobileTapMode = 'failed'
+      const measured = await fetchPageSpeedData(pageUrl, undefined, { fresh: true, singleAttempt: true, strategies: ['mobile'] })
+      expect(measured.mobile?.tapTargetAudits).toMatchObject([{ id: 'target-size', score: 0, itemsCount: 1 }])
+      const flags = runMobileChecks(measured.mobile).map(flag => ({ ...flag, pageUrl }))
+      expect(flags.map(flag => flag.checkId)).toEqual(['tap-targets-small'])
+      const source = await prisma.audit.create({ data: { projectId: tapSiteId, userId: tapUserId, url: pageUrl, status: 'COMPLETED',
+        startedAt: new Date(), completedAt: new Date(), performanceData: { mobile: measured.mobile! } } })
+      await persistDeterministicFlags(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'tap-targets-small' } })
+      let repairedAuditId: string | undefined
+      for (const mode of ['missing', 'different', 'failed', 'healthy'] as const) {
+        mobileTapMode = mode
+        const fix = await recordSiteFlagFix({ siteId: tapSiteId, userId: tapUserId, flagId: flag.id,
+          idempotencyKey: 'tap-target-fix:' + mode, changeSummary: 'Increase target size and spacing' })
+        const run = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: tapSiteId, userId: tapUserId,
+          flagId: flag.id, attemptId: fix.attemptId, idempotencyKey: 'tap-target-verify:' + mode })
+        if (!run.ok || !('verificationAuditId' in run)) throw new Error('Tap-target verification was not admitted')
+        await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: run.verificationAuditId! } }))
+          .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 20_000, interval: 100 })
+        const expected = mode === 'healthy' ? 'IMPROVED' : mode === 'failed' ? 'UNCHANGED' : 'INCONCLUSIVE'
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({
+          outcome: expected, comparable: expected !== 'INCONCLUSIVE', verificationAuditId: run.verificationAuditId })
+        const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: run.verificationAuditId!, targetKey: { startsWith: 'task:' } },
+          select: { workKind: true, workInput: true } })
+        expect(tasks.map(task => task.workKind).sort()).toEqual(['check', 'finalize', 'pagespeed'])
+        expect(tasks.find(task => task.workKind === 'pagespeed')!.workInput).toMatchObject({ device: 'mobile' })
+        if (mode === 'missing') {
+          const unknown = await prisma.audit.findUniqueOrThrow({ where: { id: run.verificationAuditId! } })
+          const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: unknown.id, targetKey: { startsWith: 'module:' } },
+            select: { targetKey: true, status: true, detail: true } })
+          const coverage = buildCoverageFacts({ auditStatus: unknown.status, completedAt: unknown.completedAt, now: new Date(),
+            evidenceCoverage: unknown.evidenceCoverage, failedModules: unknown.failedModules, flags: [], verifierExecutions: receipts })
+          expect(coverage.find(fact => fact.area === 'conversion')?.incompleteReason).toBeTruthy()
+          expect(coverage.find(fact => fact.area === 'performance')?.incompleteReason).toBeFalsy()
+        }
+        if (mode === 'healthy') repairedAuditId = run.verificationAuditId!
+        else expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
+      }
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: repairedAuditId })
+      releaseResources(); await getAuditTaskQueue('browser').resume(); mobileTapMode = 'failed'
+      const tick = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)
+      const recurring = await requestScheduledSiteRun({ projectId: tapSiteId, userId: tapUserId, interval: 'weekly', scheduledAt: tick, now: tick })
+      await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: recurring.auditId! } }))
+        .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 90_000, interval: 100 })
+      const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: flag.checkId } })
+      expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
+      const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: repairedAuditId })
+    } finally { pageSpeedMode = null; mobileTapMode = null; transport.mockRestore() }
+  }, 120_000)
+
+  it('detects mobile resource failures alongside healthy desktop data and independently verifies mobile repairs through the worker', async () => {
+    await getAuditTaskQueue('provider').resume()
+    const transport = fixtureTransport()
+    const pageUrl = origin + '/performance-fixture'
+    const mobileUserId = userId + '-mobile-resources', mobileSiteId = projectId + '-mobile-resources'
+    await prisma.user.create({ data: { id: mobileUserId, email: mobileUserId + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: mobileSiteId, userId: mobileUserId, name: 'Mobile resource fixture', canonicalHost: 'example.com', url: pageUrl } })
+    try {
+      pageSpeedMode = 'healthy'; mobileResourceMode = 'failed'
+      const measured = await fetchPageSpeedData(pageUrl, undefined, { fresh: true, singleAttempt: true })
+      expect(measured.desktop).not.toBeNull(); expect(measured.mobile).not.toBeNull()
+      expect(runPerformanceChecks(measured.desktop, null)).toEqual([])
+      const flags = runMobileChecks(measured.mobile).map(flag => ({ ...flag, pageUrl }))
+      expect(flags.map(flag => flag.checkId)).toEqual(['mobile-render-blocking', 'mobile-unused-js-large', 'mobile-unused-css-large', 'mobile-unoptimized-images'])
+      const source = await prisma.audit.create({ data: { projectId: mobileSiteId, userId: mobileUserId, url: pageUrl, status: 'COMPLETED',
+        startedAt: new Date(), completedAt: new Date(), performanceData: { desktop: measured.desktop!, mobile: measured.mobile! } } })
+      await persistDeterministicFlags(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const findings = await prisma.flag.findMany({ where: { auditId: source.id } })
+      async function verify(flag: typeof findings[number], phase: string) {
+        const fix = await recordSiteFlagFix({ siteId: mobileSiteId, userId: mobileUserId, flagId: flag.id,
+          idempotencyKey: 'mobile-resource-fix:' + flag.id + ':' + phase, changeSummary: 'Improve resources in the mobile page' })
+        const run = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: mobileSiteId, userId: mobileUserId, flagId: flag.id,
+          attemptId: fix.attemptId, idempotencyKey: 'mobile-resource-verify:' + flag.id + ':' + phase })
+        if (!run.ok || !('verificationAuditId' in run)) throw new Error('Mobile resource verification was not admitted')
+        await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: run.verificationAuditId! } }))
+          .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 20_000, interval: 100 })
+        const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: run.verificationAuditId!, targetKey: { startsWith: 'task:' } },
+          select: { workKind: true, workInput: true } })
+        expect(tasks.map(task => task.workKind).sort()).toEqual(['check', 'finalize', 'pagespeed'])
+        expect(tasks.find(task => task.workKind === 'pagespeed')!.workInput).toMatchObject({ device: 'mobile' })
+        return { auditId: run.verificationAuditId!, attempt: await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }) }
+      }
+      const javascript = findings.find(flag => flag.checkId === 'mobile-unused-js-large')!
+      mobileResourceMode = 'missing'
+      const unknown = await verify(javascript, 'missing')
+      expect(unknown.attempt).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: javascript.id } })).toMatchObject({ status: 'OPEN' })
+      expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: unknown.auditId, targetKey: 'check:mobile-unused-js-large' } })).toBeNull()
+      mobileResourceMode = 'healthy'
+      for (const flag of findings) {
+        const repaired = await verify(flag, 'healthy')
+        expect(repaired.attempt).toMatchObject({ outcome: 'IMPROVED', comparable: true })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: repaired.auditId })
+        const proof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: repaired.auditId, targetKey: 'check:' + flag.checkId } })
+        expect(checkVerifierSchema.parse(proof.detail)).toMatchObject({ source: 'pagespeed-mobile', verdict: 'passed' })
+      }
+      releaseResources(); await getAuditTaskQueue('browser').resume(); mobileResourceMode = 'failed'
+      const tick = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)
+      const recurring = await requestScheduledSiteRun({ projectId: mobileSiteId, userId: mobileUserId, interval: 'weekly', scheduledAt: tick, now: tick })
+      await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: recurring.auditId! } }))
+        .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 90_000, interval: 100 })
+      const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: javascript.checkId } })
+      expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: javascript.fingerprint })
+      const original = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: javascript.id } })
+      expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: original.improvementId })
+    } finally { pageSpeedMode = null; mobileResourceMode = null; transport.mockRestore() }
+  }, 120_000)
+
   it('verifies Performance score and resource repairs from fresh provider observations through the worker', async () => {
     await getAuditTaskQueue('provider').resume()
     try {
@@ -1495,9 +2893,47 @@ run('migrated progressive execution', () => {
     } finally { pageSpeedMode = null }
   }, 45_000)
 
+  it('retains missing desktop and mobile lab vitals as explicit unknown observations before genuine repair', async () => {
+    await getAuditTaskQueue('provider').resume()
+    const transport = fixtureTransport()
+    try {
+      const pageUrl = origin + '/performance-fixture'
+      pageSpeedMode = 'failed-vitals'
+      const measured = await fetchPageSpeedData(pageUrl, undefined, { fresh: true, singleAttempt: true })
+      const flags = [...runPerformanceChecks(measured.desktop, null), ...runMobileChecks(measured.mobile)].map(flag => ({ ...flag, pageUrl }))
+      expect(flags.map(flag => flag.checkId).sort()).toEqual(['cls-critical', 'lcp-critical', 'mobile-cls-critical', 'mobile-lcp-critical'])
+      const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', completedAt: new Date(),
+        performanceData: { desktop: measured.desktop!, mobile: measured.mobile! } } })
+      await persistDeterministicFlags(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const findings = await prisma.flag.findMany({ where: { auditId: source.id } })
+      for (const phase of ['missing-vitals', 'healthy'] as const) {
+        pageSpeedMode = phase
+        for (const flag of findings) {
+          const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId,
+            idempotencyKey: 'vitals-fix:' + flag.id + ':' + phase, changeSummary: 'Restore comparable lab loading and layout measurements' })
+          const admitted = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'DIAGNOSTIC',
+            idempotencyKey: 'vitals-check:' + flag.id + ':' + phase,
+            verificationTarget: { kind: 'DIAGNOSTIC', pageUrl, checkId: flag.checkId!, parentAuditId: source.id, attemptId: fix.attemptId } })
+          await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: admitted.auditId! } }))
+            .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 15_000, interval: 50 })
+          const mobile = flag.checkId!.startsWith('mobile-')
+          const receipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: admitted.auditId!, targetKey: 'module:' + (mobile ? 'mobile' : 'performance') } })
+          const detail = receipt.detail as { complete: boolean; assertions: Array<{ key: string; passed: boolean; complete: boolean }> }
+          for (const key of ['lcp', 'cls']) expect(detail.assertions.find(assertion => assertion.key === key))
+            .toMatchObject({ complete: phase === 'healthy', passed: phase === 'healthy' })
+          expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }))
+            .toMatchObject({ outcome: phase === 'healthy' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: phase === 'healthy' })
+          expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'healthy' ? 'FIXED' : 'OPEN' })
+        }
+      }
+    } finally { pageSpeedMode = null; transport.mockRestore() }
+  }, 60_000)
+
   it('keeps two availability responsibilities independent even when their binding keys match', async () => {
     const transport = fixtureTransport()
     try {
+      await productTransaction(tx => ensureDefaultMonitoring(tx, projectId, userId))
       const original = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId, slug: 'page-loads' } })
       const other = await prisma.siteOutcome.create({ data: { projectId, slug: 'other-page', name: 'Another public page', kind: 'AVAILABILITY',
         confirmedAt: new Date(), bindings: { create: { key: 'page-availability-v1', mechanism: 'HTTP_AVAILABILITY', required: true,
@@ -1522,6 +2958,156 @@ run('migrated progressive execution', () => {
         { outcomeId: original.id, state: 'CLEAR' }, { outcomeId: other.id, state: 'FLAG' },
       ]))
     } finally { availabilityStatus = 200; otherAvailabilityStatus = 200; transport.mockRestore() }
+  }, 30_000)
+
+  it.skipIf(process.env.FIX_INTENTS_DB_REQUIRED !== 'true')('follows authenticated MCP repair handoffs through independent worker proof and consistent Flag state', async () => {
+    const transport = fixtureTransport(), pageUrl = origin + '/headers'
+    const owner = 'mcp-repair-owner-' + suffix, siteId = 'mcp-repair-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'MCP repair fixture', url: origin, canonicalHost: 'example.com' } })
+    async function credential(accountId: string, scopes: string[]) {
+      const generated = generateApiKey()
+      const stored = await prisma.apiKey.create({ data: { userId: accountId, name: 'Disposable MCP proof', scopes,
+        keyHash: generated.keyHash, prefix: generated.prefix, lastFour: generated.lastFour, expiresAt: new Date(Date.now() + 60_000) } })
+      return { id: stored.id, raw: generated.rawKey }
+    }
+    const writer = await credential(owner, ['sites:read', 'flags:write', 'runs:read'])
+    const reader = await credential(owner, ['sites:read', 'flags:read', 'runs:read'])
+    const stranger = await credential(userId, ['flags:read'])
+    let sequence = 0
+    async function call(key: string, tool: string, args: Record<string, unknown>) {
+      const endpoint = getAppUrl() + '/api/mcp'
+      const response = await handleMcpPost(new NextRequest(endpoint, { method: 'POST', headers: {
+        authorization: 'Bearer ' + key, host: new URL(endpoint).host, 'content-type': 'application/json', accept: 'application/json',
+        'MCP-Protocol-Version': MCP_PROTOCOL_VERSION, 'Mcp-Method': 'tools/call', 'Mcp-Name': tool,
+      }, body: JSON.stringify({ jsonrpc: '2.0', id: ++sequence, method: 'tools/call', params: { name: tool, arguments: args, _meta: {
+        'io.modelcontextprotocol/protocolVersion': MCP_PROTOCOL_VERSION,
+        'io.modelcontextprotocol/clientInfo': { name: 'local-worker-proof', version: '1.0.0' },
+        'io.modelcontextprotocol/clientCapabilities': {},
+      } } }) }))
+      const body = await response.json() as { result?: { isError?: boolean; structuredContent?: Record<string, unknown> }; error?: unknown }
+      return { response, body }
+    }
+    async function invoke(tool: string, args: Record<string, unknown>, key = writer.raw) {
+      const { response, body } = await call(key, tool, args)
+      expect(response.status, JSON.stringify(body)).toBe(200)
+      expect(body.result?.isError, JSON.stringify(body)).not.toBe(true)
+      expect(body.result?.structuredContent).toBeDefined()
+      return body.result!.structuredContent!
+    }
+    try {
+      headerMode = 'partial'
+      const document = await collectDocument(pageUrl, Date.now() + 8000)
+      const finding = runSecurityHeaderChecks(pageUrl, document.headers).find(flag => flag.checkId === 'security-hsts-too-short')!
+      const source = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url: pageUrl, status: 'COMPLETED',
+        isPublic: false, startedAt: new Date(), completedAt: new Date(), reportCompleteness: 'PARTIAL' } })
+      await persistDeterministicFlags(source.id, [{ ...finding, pageUrl }], { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: finding.checkId }, include: { improvementOccurrence: true } })
+      const flagId = flag.improvementOccurrence!.improvementId
+      expect((await invoke(MCP_TOOLS.getFlag.name, { siteId, flagId }, reader.raw)).flag).toMatchObject({
+        sourceFlagId: flag.id, status: 'PROPOSED', verificationState: 'still_open', sourceAuditId: source.id, affectedPaths: [pageUrl],
+      })
+      const change = { siteId, flagId, idempotencyKey: 'mcp-repair-intent', changeSummary: 'Restore the recorded response header' }
+      const denied = await call(reader.raw, MCP_TOOLS.recordFix.name, change)
+      expect(denied.response.status).toBe(403)
+      expect(denied.body.error).toMatchObject({ data: { code: 'INSUFFICIENT_SCOPE' } })
+      expect(await prisma.improvementAttempt.count({ where: { improvementId: flagId } })).toBe(0)
+      const recorded = await invoke(MCP_TOOLS.recordFix.name, change)
+      const next = recorded.next as { tool: string; arguments: Record<string, unknown> }
+      expect(next.arguments.idempotencyKey).toBe('flag-verify:' + recorded.attemptId)
+      expect((await invoke(MCP_TOOLS.recordFix.name, change)).next).toEqual(next)
+      headerMode = 'healthy'
+      const accepted = await invoke(next.tool, next.arguments)
+      const pending = accepted.next as { tool: string; arguments: Record<string, unknown> }
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: accepted.auditId as string } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 15_000, interval: 100 })
+      expect(await invoke(pending.tool, pending.arguments, reader.raw)).toMatchObject({ result: 'CLEAR', scope: 'DIAGNOSTIC', completionState: 'FULL' })
+      expect((await invoke(MCP_TOOLS.getFlag.name, { siteId, flagId: flag.id }, reader.raw)).flag).toMatchObject({
+        sourceFlagId: flag.id, status: 'FIXED', verificationState: 'verified', sourceAuditId: source.id,
+        attempts: expect.arrayContaining([expect.objectContaining({ id: recorded.attemptId, outcome: 'IMPROVED', comparable: true })]),
+      })
+      expect(await invoke(next.tool, next.arguments)).toMatchObject({ runId: accepted.runId, auditId: accepted.auditId })
+      expect(await prisma.improvementAttempt.count({ where: { improvementId: flagId } })).toBe(1)
+      expect(await prisma.runRequest.count({ where: { projectId: siteId } })).toBe(1)
+      const privateRead = await call(stranger.raw, MCP_TOOLS.getFlag.name, { siteId, flagId })
+      expect(privateRead.body.result).toMatchObject({ isError: true, structuredContent: { status: 'ERROR', error: { code: 'NOT_FOUND' } } })
+      expect(await prisma.mcpInteraction.findFirst({ where: { apiKeyId: stranger.id, tool: MCP_TOOLS.getFlag.name },
+        orderBy: { createdAt: 'desc' }, select: { success: true, errorCode: true } })).toEqual({ success: false, errorCode: 'NOT_FOUND' })
+      await prisma.apiKey.update({ where: { id: reader.id }, data: { revokedAt: new Date() } })
+      expect((await call(reader.raw, MCP_TOOLS.getFlag.name, { siteId, flagId })).response.status).toBe(401)
+    } finally {
+      headerMode = 'failed'
+      await prisma.apiKey.delete({ where: { id: stranger.id } })
+      await prisma.user.delete({ where: { id: owner } })
+      transport.mockRestore()
+    }
+  }, 30_000)
+
+  it.skipIf(process.env.FIX_INTENTS_DB_REQUIRED !== 'true').each(['incident', 'capture'] as const)
+    ('verifies the frozen repair scope after monitoring advances a durable issue to another page: %s', async address => {
+    const transport = fixtureTransport(), originalUrl = origin + '/headers', laterUrl = origin + '/headers-other'
+    const owner = 'frozen-source-owner-' + suffix, siteId = 'frozen-source-site-' + suffix
+    await prisma.user.create({ data: { id: owner, email: owner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: siteId, userId: owner, name: 'Frozen repair scope', url: origin, canonicalHost: 'example.com' } })
+    try {
+      headerMode = 'partial'
+      async function observe(url: string) {
+        const document = await collectDocument(url, Date.now() + 8000)
+        const finding = runSecurityHeaderChecks(url, document.headers).find(flag => flag.checkId === 'security-hsts-too-short')!
+        const audit = await prisma.audit.create({ data: { projectId: siteId, userId: owner, url, status: 'COMPLETED',
+          isPublic: false, startedAt: new Date(), completedAt: new Date(), reportCompleteness: 'PARTIAL' } })
+        await persistDeterministicFlags(audit.id, [{ ...finding, pageUrl: url }], { MESSAGE: null, EXPERIENCE: null, REACH: null })
+        await materializeAttentionForAudit(audit.id)
+        return prisma.flag.findFirstOrThrow({ where: { auditId: audit.id, checkId: finding.checkId }, include: { improvementOccurrence: true } })
+      }
+      const original = await observe(originalUrl), incidentId = original.improvementOccurrence!.improvementId
+      const before = address === 'incident' ? await recordSiteFlagFix({ siteId, userId: owner, flagId: incidentId,
+        idempotencyKey: 'frozen-source-fix', changeSummary: 'Repair the recorded original response' }) : null
+      const later = await observe(laterUrl)
+      const fix = before ?? await recordSiteFlagFix({ siteId, userId: owner, flagId: original.id,
+        idempotencyKey: 'frozen-source-fix', changeSummary: 'Repair the displayed original response' })
+      expect(later.improvementOccurrence!.improvementId).toBe(incidentId)
+      expect(await loadSiteFlagDetail((await loadSiteRecord(siteId))!, incidentId)).toMatchObject({ sourceAuditId: later.auditId, pageUrl: laterUrl })
+      await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId, userId: owner, flagId: later.id, attemptId: fix.attemptId,
+        source: 'MCP', idempotencyKey: 'wrong-raw-source' })).rejects.toMatchObject({ status: 409 })
+      headerMode = 'healthy'
+      const run = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, userId: owner, flagId: address === 'capture' ? original.id : incidentId,
+        attemptId: fix.attemptId, source: address === 'capture' ? 'WEB' : 'MCP' })
+      if (!run.ok || !('verificationAuditId' in run)) throw new Error('Frozen source verification was not admitted')
+      expect(run.parentAuditId).toBe(original.auditId)
+      expect(run.flagId).toBe(address === 'capture' ? original.id : incidentId)
+      await vi.waitFor(async () => {
+        expect(await prisma.audit.findUnique({ where: { id: run.verificationAuditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
+      }, { timeout: 15_000, interval: 100 })
+      expect(readExecutionSpec((await prisma.audit.findUniqueOrThrow({ where: { id: run.verificationAuditId! } })).executionSpec))
+        .toMatchObject({ scope: 'DIAGNOSTIC', targetUrl: originalUrl, verificationTarget: { parentAuditId: original.auditId, attemptId: fix.attemptId } })
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({
+        sourceAuditId: original.auditId, outcome: 'IMPROVED', comparable: true, verificationAuditId: run.verificationAuditId,
+      })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ status: 'FIXED', resolvedInId: run.verificationAuditId })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: later.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+      const currentSite = (await loadSiteRecord(siteId))!
+      expect(await loadSiteFlagDetail(currentSite, incidentId)).toMatchObject({ sourceAuditId: later.auditId,
+        status: 'PROPOSED', verificationState: 'still_open' })
+      expect(await loadSiteFlags(currentSite)).toEqual(expect.arrayContaining([expect.objectContaining({
+        id: incidentId, sourceFlagId: later.id, status: 'PROPOSED',
+      })]))
+      expect(await executeSiteCommand({ type: 'VERIFY_FLAG', siteId, userId: owner, flagId: address === 'capture' ? original.id : incidentId,
+        attemptId: fix.attemptId, source: address === 'capture' ? 'WEB' : 'MCP' }))
+        .toMatchObject({ runId: run.runId, verificationAuditId: run.verificationAuditId, attemptId: fix.attemptId,
+          flagId: address === 'capture' ? original.id : incidentId })
+      await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId, userId: owner, flagId: later.id, attemptId: fix.attemptId,
+        source: 'MCP' })).rejects.toMatchObject({ status: 409 })
+      expect(await prisma.runRequest.count({ where: { projectId: siteId } })).toBe(1)
+      expect(await getOwnedRun(owner, run.runId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
+      expect(await getOwnedRun('other-owner', run.runId)).toBeNull()
+    } finally {
+      headerMode = 'failed'
+      await prisma.user.delete({ where: { id: owner } })
+      transport.mockRestore()
+    }
   }, 30_000)
 
   it.skipIf(process.env.FIX_INTENTS_DB_REQUIRED !== 'true')('preserves immutable fix intents under concurrent retries, later repairs and exact worker reconciliation', async () => {
@@ -1826,6 +3412,55 @@ run('migrated progressive execution', () => {
     } finally { consoleRedirected = false; consoleRedirectDelayMs = 0; consoleRootErrors = 3; transport.mockRestore() }
   }, 15_000)
 
+  it('retains metadata checks through inert hydration data while refusing oversized DOM evidence', async () => {
+    releaseResources()
+    await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume()
+    const transport = fixtureTransport(), pageUrl = origin + '/trust'
+    trustHydration = 'data'; trustPrivacy = true; trustContact = true; trustConsent = false; trustAnalytics = true
+    async function complete(auditId: string) {
+      await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: auditId } }))
+        .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 30_000, interval: 100 }).catch(async error => {
+        const pending = await prisma.auditVerifierExecution.findMany({ where: { auditId, workKind: { not: null }, workState: { not: 'COMPLETED' } },
+          select: { targetKey: true, workState: true, workErrorCode: true, workAttempts: true } })
+        console.error('Hydration fixture pending task evidence:', pending)
+        throw error
+      })
+    }
+    try {
+      const captured = await captureScreenshots(pageUrl, 'hydration-source', undefined,
+        { runFlow: false, captureMedia: false, deadline: Date.now() + 20_000 })
+      expect(captured).toMatchObject({ desktopHtmlCompacted: true, desktopHtmlTruncated: false })
+      const metadata = parseMetadataFromHtml(captured.desktopHtml!, pageUrl)
+      expect(metadata).toMatchObject({
+        lang: 'en', hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false, hasPrivacyPolicy: true, hasContactInfo: true })
+      const flags = (await runAllChecks(pageUrl, metadata, null, null, [], undefined, undefined, undefined, undefined, true,
+        ['trust'], { renderedScope: captured.renderedScope })).flags.map(flag => ({ ...flag, pageUrl }))
+      const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', startedAt: new Date(), completedAt: new Date(),
+        reportCompleteness: 'PARTIAL', htmlMetadata: metadata as never, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+          environment: 'production', scope: 'SITE', checks: { 'cookie-consent-absent': 1 }, outcomes: [], verificationTarget: null } } })
+      await persistDeterministicFlags(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null })
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'cookie-consent-absent' } })
+      trustConsent = true
+      for (const phase of ['dom', 'data'] as const) {
+        trustHydration = phase
+        const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'hydration-fix-' + phase,
+          changeSummary: 'Restore cookie settings on this page' })
+        const repaired = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', idempotencyKey: 'hydration-verify-' + phase,
+          verificationTarget: { kind: 'DIAGNOSTIC', pageUrl, checkId: flag.checkId!, parentAuditId: source.id, attemptId: fix.attemptId } })
+        await complete(repaired.auditId!)
+        const browser = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: repaired.auditId!, workKind: 'browser' } })
+        expect(readArtifact(browser.workResult, 'browser').data.snapshot).toMatchObject({
+          desktopHtmlCompacted: phase === 'data', desktopHtmlTruncated: phase === 'dom' })
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({
+          outcome: phase === 'data' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: phase === 'data' })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'data' ? 'FIXED' : 'OPEN' })
+      }
+    } finally {
+      trustHydration = 'none'; trustPrivacy = false; trustContact = false; trustConsent = false; trustAnalytics = true
+      transport.mockRestore()
+    }
+  }, 90_000)
+
   it.skipIf(process.env.PUBLIC_TRUST_DB_REQUIRED !== 'true')('proves public trust failures, independent fixes, unavailable evidence and recommendation recurrence through Chromium and the worker', async () => {
     releaseResources()
     const transport = fixtureTransport(), pageUrl = origin + '/trust'
@@ -1833,12 +3468,15 @@ run('migrated progressive execution', () => {
     try {
       await getAuditTaskQueue('browser').resume()
       const session = await pageSessions.createAuditPage(await getAuditBrowser(), pageUrl, { profile: DESKTOP_CAPTURE_PROFILE, deadline: Date.now() + 8000 })
-      let metadata
-      try { metadata = parseMetadataFromHtml(await session.page.content(), pageUrl) }
+      let metadata, flags
+      try {
+        metadata = parseMetadataFromHtml(await session.page.content(), pageUrl)
+        flags = (await runAllChecks(pageUrl, metadata, null, null, [], undefined, undefined, undefined, undefined, true,
+          ['trust'], { renderedScope: auditPageObservation(session.page)?.scope })).flags.map(flag => ({ ...flag, pageUrl }))
+      }
       finally { session.disposeNetwork(); await session.page.context().close() }
-      const flags = runTrustChecks(pageUrl, metadata).map(flag => ({ ...flag, pageUrl }))
       expect(flags.map(flag => flag.checkId)).toEqual(['no-privacy-policy', 'no-contact-info', 'cookie-consent-absent'])
-      // Historical source observations come from Chromium and the real parser
+      // Source observations come from Chromium and the real parser
       // and detector. Every subsequent fix uses application admission and workers.
       const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', startedAt: new Date(), completedAt: new Date(),
         reportCompleteness: 'PARTIAL', htmlMetadata: metadata as never, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
@@ -1869,12 +3507,23 @@ run('migrated progressive execution', () => {
       const stillMissing = await verify('no-privacy-policy', 'unrepaired')
       expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: stillMissing.auditId!, targetKey: 'check:no-privacy-policy' } })).detail)).toMatchObject({ verdict: 'failed' })
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempts.get('no-privacy-policy')! } })).toMatchObject({ outcome: 'UNCHANGED', comparable: true })
+      await persistProjectScanAccess(projectId, userId, { headers: { 'X-Preview': 'DIFFERENT_LOCAL_ACCESS' } })
+      trustPrivacy = true
+      await fix('no-privacy-policy', 'different-access')
+      const differentAccess = await verify('no-privacy-policy', 'different-access')
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempts.get('no-privacy-policy')! } })).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: privacy.id } })).toMatchObject({ status: 'OPEN' })
+      expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: differentAccess.auditId!, targetKey: 'check:no-privacy-policy' } })).toBeNull()
+      await persistProjectScanAccess(projectId, userId, null)
+      trustPrivacy = false
+      await fix('no-privacy-policy', 'restore-public-comparison')
       trustUnavailable = true
       const unavailable = await verify('cookie-consent-absent', 'unavailable')
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempts.get('cookie-consent-absent')! } })).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: consent.id } })).toMatchObject({ status: 'OPEN' })
       expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: unavailable.auditId!, targetKey: 'check:cookie-consent-absent' } })).toBeNull()
       trustUnavailable = false; trustAnalytics = false
+      await fix('cookie-consent-absent', 'analytics-unobserved')
       await fix('cookie-consent-absent', 'analytics-unobserved')
       const unobservedAnalytics = await verify('cookie-consent-absent', 'analytics-unobserved')
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempts.get('cookie-consent-absent')! } })).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
@@ -1963,7 +3612,12 @@ run('migrated progressive execution', () => {
         await getAuditTaskQueue('browser').resume(); await getAuditTaskQueue('provider').resume()
         await vi.waitFor(async () => {
           expect(await prisma.audit.findUnique({ where: { id: run.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
-        }, { timeout: 30_000, interval: 100 })
+        }, { timeout: 30_000, interval: 100 }).catch(async error => {
+          const pending = await prisma.auditVerifierExecution.findMany({ where: { auditId: run.auditId!, workState: { not: 'COMPLETED' }, workKind: { not: null } },
+            select: { targetKey: true, workKind: true, workState: true, workErrorCode: true, workAttempts: true, workRetryAt: true } })
+          console.error('Scheduled care did not finalize; remaining task states:', pending)
+          throw error
+        })
         const audit = await prisma.audit.findUniqueOrThrow({ where: { id: run.auditId! } })
         expect(readExecutionSpec(audit.executionSpec)).toMatchObject({ scope: 'SITE', outcomes: expect.arrayContaining([expect.objectContaining({ id: availability.id })]) })
         expect(audit.reportCompleteness).toBe('PARTIAL')

@@ -23,6 +23,10 @@ agent) picks it back up.
 4. **`growth-memory.md`** — the running log. Read the last 3 entries before
    starting new work; they tell you what was tried and what happened.
 
+Public issue research also requires the reviewed aggregate release described in
+[research-governance.md](research-governance.md). Raw graph records cannot authorize
+publication.
+
 ## The four-layer architecture
 
 ```
@@ -74,7 +78,11 @@ a second runtime or require a paid SERP provider.
 - **Minimum sample size gate.** No programmatic page ships below
   `MIN_SAMPLE_SIZE` (currently 20 distinct sites) for its scope. See
   `lib/graph/queries.ts`.
-- **Attribution is mandatory.** Every public surface link to the audit
-  flow must include UTM parameters. See `growth-architecture.md` § Layer 4.
+- **Permission and review gate.** Public issue reads require the approved,
+  unexpired release in `GrowthArtifact`. Sufficient graph volume alone does not
+  publish a page. See `research-governance.md`.
+- **Keep entry surfaces separate from acquisition channels.** Internal research
+  links use a finite `ff_entry` marker. Carry existing external campaign tags
+  without inventing organic UTMs. See `growth-architecture.md` § Layer 4.
 - **This is a repo-tracked workspace, not a wiki.** Preserve evidence and use
   the repository's current coordination rules when concurrent work overlaps.

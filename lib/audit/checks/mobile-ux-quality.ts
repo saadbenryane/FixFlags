@@ -3,6 +3,7 @@ import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { loadingDelayObservation, mobileLoadingDelayFlag } from './loading-evidence'
 
 export function runMobileUXQualityChecks(
   meta: PageMetadata,
@@ -48,11 +49,9 @@ export function runMobileUXQualityChecks(
     measuredPosition ? `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.` : 'No usable primary action position was measured.',
     measuredPosition ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight >= 0.2 : undefined, true)
   const mobileLoad = captureMetrics.loadExperience
-  recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
-    mobileLoad ? `Initial loading ${mobileLoad.loadingVisibleAtInitial}, final loading ${mobileLoad.loadingVisibleAtFinal}, cleared at ${mobileLoad.loadingClearedMs ?? 'unknown'}ms.`
-      : 'No mobile loading window was recorded.',
-    mobileLoad?.device === 'mobile' && !mobileLoad.loadingVisibleAtFinal && (!mobileLoad.loadingVisibleAtInitial || mobileLoad.loadingClearedMs !== null)
-      ? !mobileLoad.loadingVisibleAtInitial || mobileLoad.loadingClearedMs! <= 4000 : undefined, true)
+  if (mobileLoad?.device === 'mobile') record?.(loadingDelayObservation(mobileLoad, 4000, 'mobile-loading-delay'))
+  else recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
+    'No mobile loading window was recorded.', undefined, true)
 
   if (needsFirstStep(purpose) && primaryCtaTop !== null && measuredPosition) {
     // The metric is an absolute document position; the thumb-zone ratio is
@@ -116,21 +115,8 @@ export function runMobileUXQualityChecks(
     recordObservation(record, 'mobile-cta-label', 'Mobile action label', 'A measured primary action has a label that can be inspected',
       'A usable primary action label and position were not recorded.', undefined, true)
 
-  if (captureMetrics.loadExperience?.device === 'mobile' && captureMetrics.loadExperience.loadingVisibleAtInitial &&
-    captureMetrics.loadExperience.loadingClearedMs != null && captureMetrics.loadExperience.loadingClearedMs > 4000) {
-    const seconds = (captureMetrics.loadExperience.loadingClearedMs / 1000).toFixed(1)
-    findings.push({
-      checkId: 'mobile-load-delay-content',
-      rubric: 'EXPERIENCE',
-      impactTag: 'CONVERSION',
-      severity: 'IMPORTANT',
-      problem: `Content is blocked by loading UI for ${seconds}s on mobile`,
-      evidence: `Loading UI cleared after ${seconds}s on mobile. On cellular connections, users may leave before content becomes usable.`,
-      fix: '1. Server-render hero content so it is available immediately without JS\n2. Inline critical CSS and defer non-critical styles\n3. Use streaming HTML to show content progressively\n4. Target under 2s to first meaningful paint on mobile 3G\n5. Avoid full-page loading states - only show skeletons for slow-loading sections',
-      confidence: 0.85,
-      source: 'DETERMINISTIC',
-    })
-  }
+  const loadingFlag = mobileLoadingDelayFlag(captureMetrics.loadExperience)
+  if (loadingFlag) findings.push(loadingFlag)
 
   return findings
 }

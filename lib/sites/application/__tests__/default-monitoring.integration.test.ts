@@ -67,4 +67,37 @@ run('automatic monitoring with migrated PostgreSQL', () => {
     expect(await prisma.siteOutcome.count({ where: { projectId: legacy.id, slug: 'page-loads', bindings: { some: { mechanism: 'HTTP_AVAILABILITY' } } } })).toBe(1)
     expect(await prisma.project.findUniqueOrThrow({ where: { id: existing.id } })).toMatchObject({ watchInterval: null, watchNextRunAt: null, watchLastError: 'Paused.' })
   })
+  it('honors active, expired and revoked plan grants while preserving the account subscription', async () => {
+    const policyNow = new Date()
+    const grant = await prisma.entitlementGrant.create({ data: { userId, operationId: 'local-monitoring-grant-' + randomUUID(),
+      grantedBy: 'local-fixture-operator', plan: 'TEAM', expiresAt: new Date(policyNow.getTime() + 60 * 60_000) } })
+    try {
+      for (const phase of ['active', 'expired', 'revoked'] as const) {
+        await prisma.entitlementGrant.update({ where: { id: grant.id }, data: {
+          expiresAt: new Date(policyNow.getTime() + (phase === 'expired' ? -1 : 60 * 60_000)), revokedAt: phase === 'revoked' ? policyNow : null,
+        } })
+        const site = await prisma.project.create({ data: { userId, name: 'Grant policy fixture',
+          url: 'https://' + phase + '.example.com/', canonicalHost: phase + '.example.com' } })
+        expect(await productTransaction(tx => ensureDefaultMonitoring(tx, site.id, userId, policyNow))).toBe(true)
+        expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toMatchObject({
+          watchInterval: phase === 'active' ? 'DAILY' : 'WEEKLY', watchNextRunAt: policyNow })
+      }
+      expect(await prisma.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ plan: 'FREE', subscriptionStatus: 'NONE' })
+    } finally { await prisma.entitlementGrant.delete({ where: { id: grant.id } }) }
+  })
+  it('excludes inactive accounts before applying the backfill batch limit', async () => {
+    const inactiveUser = 'inactive-monitoring-' + randomUUID(), policyNow = new Date()
+    await prisma.user.create({ data: { id: inactiveUser, email: inactiveUser + '@example.test', lifecycleStatus: 'SUSPENDED' } })
+    try {
+      const paused = await prisma.project.create({ data: { userId: inactiveUser, name: 'Inactive fixture',
+        url: 'https://inactive.example.com/', canonicalHost: 'inactive.example.com', createdAt: new Date(0) } })
+      const active = await prisma.project.create({ data: { userId, name: 'Eligible fixture',
+        url: 'https://eligible.example.com/', canonicalHost: 'eligible.example.com' } })
+      expect(await productTransaction(tx => ensureDefaultMonitoring(tx, paused.id, inactiveUser, policyNow))).toBe(false)
+      await initializeDefaultMonitoring(1, policyNow)
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: active.id } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: policyNow })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: paused.id } })).toMatchObject({ watchInterval: null, watchNextRunAt: null })
+      expect(await prisma.siteOutcome.count({ where: { projectId: paused.id } })).toBe(0)
+    } finally { await prisma.user.delete({ where: { id: inactiveUser } }) }
+  })
 })
