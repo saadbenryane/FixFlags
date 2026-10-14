@@ -87,8 +87,10 @@ runBrowser('shared Tracking collector in Chromium', () => {
     await page.route('**', route => route.fulfill({ status: route.request().resourceType() === 'document' ? 200 : 204,
       contentType: 'text/html', body: route.request().resourceType() === 'document' ? '<script>fetch("/_vercel/insights/view?cid=PRIVATE",{method:"POST",body:"PRIVATE_PAYLOAD"})</script>' : '' }))
     await page.goto('https://example.com/')
+    // Chromium can report a bodyless 204 transfer as aborted after fetch has
+    // resolved. This contract records the HTTP response, not event ingestion.
     await vi.waitFor(() => expect(monitor.tracking().requests).toEqual(expect.arrayContaining([
-      expect.objectContaining({ state: 'completed', status: 204 }),
+      expect.objectContaining({ role: 'event', status: 204 }),
     ])))
     const result = runTrackingChecks(parseMetadataFromHtml('', page.url()), monitor.tracking(), page.url())
     expect(result.assertions.find(item => item.key === 'tracking-http-response')).toMatchObject({ passed: true, complete: true })

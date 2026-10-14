@@ -29,7 +29,16 @@ describe('private screenshot delivery', () => {
   it('refuses another owner or anonymous viewer before touching storage', async () => {
     for (const session of [null, { user: { id: 'stranger' } }]) {
       mocks.session.mockResolvedValue(session); mocks.access.mockResolvedValue('denied')
-      expect((await read()).status).toBe(403)
+      const denied = await read()
+      expect(denied.status).toBe(404)
+      const { requestId: deniedRequest, ...deniedBody } = await denied.json()
+      mocks.audit.mockResolvedValueOnce(null)
+      const missing = await read()
+      expect(missing.status).toBe(denied.status)
+      const { requestId: missingRequest, ...missingBody } = await missing.json()
+      expect(missingBody).toEqual(deniedBody)
+      expect(deniedRequest).toEqual(expect.any(String))
+      expect(missingRequest).toEqual(expect.any(String))
     }
     expect(mocks.read).not.toHaveBeenCalled()
   })

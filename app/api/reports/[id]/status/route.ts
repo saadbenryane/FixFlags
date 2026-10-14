@@ -60,7 +60,7 @@ export async function GET(
       readAnonAuditIdsFromStore(store)
     )
     if (access === 'denied') {
-      return apiError('You do not have access to this report', 403)
+      return apiError('Report not found', 404)
     }
 
     const refreshed = NON_TERMINAL.has(audit.status)
