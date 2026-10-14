@@ -3,7 +3,7 @@ import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
-import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/check-registry'
+import { checkAssertionsForVersion, CHECK_MODULES } from '@/lib/audit/check-registry'
 import { searchEvidence } from './search-evidence'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { isResolvedFlagStatus } from '@/lib/audit/attention'
@@ -130,8 +130,8 @@ function failedModuleArea(module: string): SiteCardArea | undefined {
   return CHECK_MODULES[module]?.area
 }
 
-function moduleAreas(module: string): SiteCardArea[] {
-  const areas = Object.values(CHECK_ASSERTIONS[module] ?? {}).map(assertion => assertion.area)
+function moduleAreas(module: string, version?: number): SiteCardArea[] {
+  const areas = Object.values(checkAssertionsForVersion(module, version)).map(assertion => assertion.area)
   const fallback = failedModuleArea(module)
   return [...new Set(areas.length ? areas : fallback ? [fallback] : [])]
 }
@@ -267,9 +267,10 @@ export function buildCoverageFacts(input: {
     // A shared module can inspect several customer areas. Attribute explicit
     // gaps to their assertions; an unavailable collector leaves all of its
     // registered responsibilities unknown.
-    const areas = failed || !missing.length ? moduleAreas(moduleKey) : missing.flatMap(assertion => {
-      const area = CHECK_ASSERTIONS[moduleKey]?.[assertion.key]?.area
-      return area ? [area] : moduleAreas(moduleKey)
+    const version = !receipt.legacy && 'execution' in receipt ? receipt.execution?.checkVersion : undefined
+    const areas = failed || !missing.length ? moduleAreas(moduleKey, version) : missing.flatMap(assertion => {
+      const area = checkAssertionsForVersion(moduleKey, version)[assertion.key]?.area
+      return area ? [area] : moduleAreas(moduleKey, version)
     })
     const gaps = gapsByModule.get(moduleKey) ?? new Set<SiteCardArea>()
     for (const area of areas) { gaps.add(area); incompleteAreas.add(area) }

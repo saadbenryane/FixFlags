@@ -248,6 +248,19 @@ export const CHECK_MODULES: Readonly<Record<string, Pick<PageCheckDefinition, 'v
   search: { version: 1, area: 'search' as const, name: 'Public Search evidence', source: 'DETERMINISTIC' as const, input: 'metadata' as const } }
 export const CHECK_ASSERTIONS = Object.fromEntries(Object.entries(MODULE_CHECK_DEFINITIONS).map(([id, definition]) => [id, definition.assertions]))
 
+/** Historical module receipts retain the category responsibilities they recorded. */
+export function checkAssertionsForVersion(module: string, version?: number) {
+  const assertions = CHECK_ASSERTIONS[module] ?? {}
+  if (module !== 'mobile-ux-quality' || version !== 1) return assertions
+  return {
+    ...assertions,
+    'mobile-input-fonts': { ...assertions['mobile-input-fonts'], area: 'accessibility' as const },
+    'mobile-cta-position': { ...assertions['mobile-cta-position'], area: 'conversion' as const },
+    'mobile-cta-label': { ...assertions['mobile-cta-label'], area: 'conversion' as const },
+    'mobile-loading-delay': { ...assertions['mobile-loading-delay'], area: 'conversion' as const },
+  }
+}
+
 export function registeredCheck(id: string | null | undefined) {
   return CHECK_REGISTRY[canonicalHistoricalCheckId(id)]
 }

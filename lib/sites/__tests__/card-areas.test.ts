@@ -51,6 +51,21 @@ describe('site card packaging', () => {
     expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'healthy' })
     expect(facts.find(fact => fact.area === 'performance')?.incompleteReason).toBeFalsy()
   })
+  it('attributes current version input sizing limits to the Performance finding category', () => {
+    const now = new Date('2026-10-14T12:00:00Z')
+    const layout = observedReceipt('mobile-ux-quality', ['mobile-input-fonts'])
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { mobilePageSpeed: true, flowScan: true }, failedModules: ['mobile-ux-quality'], flags: [],
+      verifierExecutions: [
+        { targetKey: 'module:accessibility', status: 'COMPLETED', detail: observedReceipt('accessibility', ['automated-accessibility']) },
+        { targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: { ...layout, complete: false,
+          execution: { ...layout.execution, checkVersion: 2, source: 'rendered-dom' },
+          assertions: layout.assertions.map(assertion => ({ ...assertion, passed: false, complete: false })) } },
+      ] })
+    expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(facts.find(fact => fact.area === 'accessibility')).toMatchObject({ state: 'healthy' })
+    expect(facts.find(fact => fact.area === 'accessibility')?.incompleteReason).toBeFalsy()
+  })
   it.each(['FAILED', 'COMPLETED'])('keeps every area of an unobserved shared mobile module unknown: %s', status => {
     const now = new Date('2026-10-14T12:00:00Z')
     const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
