@@ -46,7 +46,7 @@ function PostLoginRedirect() {
       },
       navigate: navigateAfterAuth,
     })
-  }, [claimAnonymous, from, isNewOauthUser, navigateAfterAuth, plan, user])
+  }, [claimAnonymous, from, isNewOauthUser, navigateAfterAuth, next, plan, user])
 
   if (showPasskeyEnroll) {
     return (
