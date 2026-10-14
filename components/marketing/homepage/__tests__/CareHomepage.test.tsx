@@ -33,10 +33,10 @@ describe('comprehensive homepage experience', () => {
     expect(within(tools).queryByText(/more$/)).not.toBeInTheDocument()
   })
 
-  it('pairs findings with the capture and puts actionable checks before Uptime and healthy checks', () => {
+  it('pairs findings with the capture and puts Uptime before actionable and healthy checks', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Pages', 'Conversion', 'Uptime'])
+    expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Uptime', 'Pages', 'Conversion'])
     const findings = within(board).getByRole('region', { name: 'Findings summary' })
     const capture = within(board).getByRole('region', { name: 'Website preview' })
     expect(capture.compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)

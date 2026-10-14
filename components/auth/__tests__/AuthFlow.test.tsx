@@ -283,6 +283,7 @@ describe('AuthFlow report gate (SSO/passkey default)', () => {
         name: '',
         email: 'builder@example.com',
         password: 'hunter2hunter',
+        callbackURL: '/post-login?next=%2Freport%2Faudit-1&from=report',
       })
     )
     expect(push).toHaveBeenCalledWith('/post-login?next=%2Freport%2Faudit-1&from=report')

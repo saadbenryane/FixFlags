@@ -5,7 +5,7 @@ const EVIDENCE_DATE_TIME = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
   minute: '2-digit',
   timeZone: 'UTC',
-  timeZoneName: 'short',
+  hourCycle: 'h12',
 })
 
 /**
@@ -20,5 +20,9 @@ export function formatEvidenceTimestamp(value: Date | string | null | undefined)
   if (!value) return null
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return EVIDENCE_DATE_TIME.format(date)
+  // ICU punctuation differs between engines, even with an explicit locale.
+  // Safari inserts "at" where Node inserts a comma, which breaks hydration.
+  const parts = EVIDENCE_DATE_TIME.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)!.value
+  return `${part('month')} ${part('day')}, ${part('year')}, ${part('hour')}:${part('minute')} ${part('dayPeriod')} UTC`
 }

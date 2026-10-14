@@ -175,6 +175,7 @@ export function AuthFlow({
           name: '',
           email: email.trim(),
           password,
+          callbackURL: resolvedOauthCallbackURL,
         })
         if (error) {
           setFormError(error.message || AUTH.signUp.error)

@@ -13,8 +13,8 @@ export function SiteCheckSections({ items, uptime }: { items: readonly SiteCheck
   const rows = items.filter(item => !item.healthy).sort((a, b) => Number(b.flagCount > 0) - Number(a.flagCount > 0))
   const healthy = items.filter(item => item.healthy)
   return <div className={styles.checks}>
-    {rows.length ? <BoardGrid layout="rows">{rows.map(item => <Fragment key={item.id}>{item.render('row')}</Fragment>)}</BoardGrid> : null}
     {uptime}
+    {rows.length ? <BoardGrid layout="rows">{rows.map(item => <Fragment key={item.id}>{item.render('row')}</Fragment>)}</BoardGrid> : null}
     {healthy.length ? <BoardGrid className={styles.healthyGrid}>{healthy.map(item => <Fragment key={item.id}>{item.render('card')}</Fragment>)}</BoardGrid> : null}
   </div>
 }

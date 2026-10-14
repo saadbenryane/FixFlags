@@ -274,7 +274,7 @@ describe('SiteBoard chrome', () => {
     expect(within(detail).getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH + '?category=search')}`)
   })
 
-  it('keeps unfinished checks in rows and puts healthy checks after Uptime', () => {
+  it('puts Uptime first, followed by flagged, unfinished, and healthy checks', () => {
     const view = boardView({ cards: [
       card({ id: 'security', name: 'Security', state: 'healthy', evidenced: true, answer: 'Protected' }),
       card({ id: 'search', name: 'Search', state: 'healthy', evidenced: true, answer: 'Crawl access checked', incompleteReason: 'Unfinished checks: Page titles.' }),
@@ -286,7 +286,7 @@ describe('SiteBoard chrome', () => {
     expect(conversion.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(within(search).getByText('Unfinished checks: Page titles.')).toBeVisible()
     const uptime = screen.getByRole('article', { name: 'Uptime' })
-    expect(search.compareDocumentPosition(uptime)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(uptime.compareDocumentPosition(conversion)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(uptime.compareDocumentPosition(screen.getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     const findings = screen.getByRole('region', { name: 'Findings summary' })
     expect(screen.getByRole('region', { name: 'Website preview' }).compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)

@@ -19,6 +19,7 @@
   --border-subtle: 210 14% 96%;
   /* Fixed white plates preserve third-party logo artwork in either theme. */
   --logo-tile-background: 0 0% 100%;
+  --logo-tile-foreground: 240 8% 5%;
 
   /* Bright Flag Orange with white labels. */
   --brand: 21.1765 100% 50%;

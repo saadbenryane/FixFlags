@@ -8,7 +8,7 @@
 .technologyItem:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .toolLogo { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 7px; background: hsl(var(--logo-tile-background)); box-shadow: inset 0 0 0 1px hsl(0 0% 0% / .07); }
 .toolLogo svg, .toolLogo img { width: 15px; height: 15px; object-fit: contain; }
-.toolFallback { font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+.toolFallback { font-size: 11px; font-weight: 700; color: hsl(var(--logo-tile-foreground)); }
 .statusDot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: hsl(var(--success)); }
 .attention { background: hsl(var(--brand)); }
 .integrationList { display: grid; gap: 10px; margin: 16px 0 0; padding: 0; list-style: none; }
