@@ -38,7 +38,7 @@ describe('native page observation comparison', () => {
     expect(scopedAssertionForTarget({ receipt: before.receipt, checkId, flag: {} })).toBeUndefined()
     expect(scopedAssertionForTarget({ receipt: before.receipt, checkId, flag: { verificationRule: 'Confirm the privacy link on this page' } })).toBeUndefined()
   })
-  it('retains detection with missing native conditions and requires both captures for mobile layout comparisons', () => {
+  it('retains detection with missing native conditions and requires the original mobile window', () => {
     const flag = { checkId: 'mobile-input-zoom', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Small input font', evidence: '12px font', fix: 'Use 16px', confidence: 1, source: 'DETERMINISTIC' }
     const assertion = { key: 'mobile-input-fonts', name: 'Input fonts', expected: '16px or more', observed: '12px', passed: false, complete: true }
     const before = scopeRenderedPageEvidence({ module: 'mobile-ux-quality', flags: [flag], assertions: [assertion], desktop: scope,
@@ -51,6 +51,36 @@ describe('native page observation comparison', () => {
     const unavailable = scopeRenderedPageEvidence({ module: 'trust', flags: [flag], assertions: [assertion] })
     expect(unavailable.flags[0].evidenceTargets?.[0].context).toBe('rendered-page:unknown')
     expect(unavailable.assertions[0].complete).toBe(false)
+  })
+  it('verifies measured input sizing without requiring an unrelated complete desktop document', () => {
+    const mobile = { ...scope, profile: 'native-mobile' }
+    const flag = { checkId: 'mobile-input-zoom', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Small input font', evidence: '14px', fix: 'Use 16px', confidence: 1, source: 'DETERMINISTIC',
+      evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'mobile' as const, selector: '#email', label: 'Email' }] }
+    const assertion = { key: 'mobile-input-fonts', name: 'Input fonts', expected: '16px or more', observed: '14px', passed: false, complete: true,
+      targets: [{ selector: '#email', label: 'Email' }] }
+    const before = scopeRenderedPageEvidence({ module: 'mobile-ux-quality', flags: [flag], assertions: [assertion], mobile })
+    const make = (passed: boolean, captured = mobile) => {
+      const result = scopeRenderedPageEvidence({ module: 'mobile-ux-quality', flags: [], assertions: [{ ...assertion, passed }], mobile: captured })
+      return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'mobile-ux-quality', applicable: true, passed,
+        pageUrl: url, assertions: result.assertions, execution: { auditId: 'after', taskId: 'mobile', checkVersion: 2,
+          source: 'rendered-dom', collectedAt: '2026-10-14T02:00:00.000Z' } })
+    }
+    for (const passed of [false, true]) {
+      const receipt = make(passed)
+      expect(scopedAssertionForTarget({ receipt, checkId: flag.checkId, flag: before.flags[0] })?.assertion.passed).toBe(passed)
+      const executionSpec = { version: 1, engine: 'progressive-v1', targetUrl: url, environment: 'production', scope: 'DIAGNOSTIC',
+        checks: { [flag.checkId]: 2 }, outcomes: [], verificationTarget: null }
+      expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec, flag: { ...before.flags[0], pageUrl: url },
+        executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: receipt }] })).toBe(passed)
+      expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: { ...executionSpec, checks: { [flag.checkId]: 1 } },
+        flag: { ...before.flags[0], pageUrl: url }, executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: receipt }] })).toBe(false)
+    }
+    expect(scopedAssertionForTarget({ receipt: make(true, { ...mobile, access: 'credentialed:other' }), checkId: flag.checkId, flag: before.flags[0] })).toBeUndefined()
+    const missing = make(true)
+    missing.assertions[0].targets = []
+    expect(scopedAssertionForTarget({ receipt: missing, checkId: flag.checkId, flag: before.flags[0] })).toBeUndefined()
+    const missingDesktop = scopeRenderedPageEvidence({ module: 'layout', flags: [], assertions: [assertion], mobile })
+    expect(missingDesktop.assertions[0].complete).toBe(false)
   })
   it('requires all original pages from the same execution when a finding has several affected paths', async () => {
     const first = await inspect('<main><h1>Useful service</h1></main>')

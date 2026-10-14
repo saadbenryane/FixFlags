@@ -1,6 +1,17 @@
 import { SITE_BOARD_COPY } from './terminology'
 
 export const SITE_ACTION_COPY = {
+  mobileInputs: {
+    name: 'Mobile input sizing', expected: 'Sampled visible inputs use at least 16px text',
+    reference: 'Mobile text input',
+    limited: 'Input font collection is unavailable, incomplete, or limited to 200 visible fields. This does not establish passing input sizes.',
+    verification: 'Sampled visible mobile inputs use at least 16px text under the recorded page and browser conditions. This check verifies CSS sizing, not iOS focus behavior.',
+    why: 'Small input text can prompt iOS Safari to zoom on focus, making signup and contact forms harder to use.',
+    observed: (count: number) => `${count} sampled input${count === 1 ? '' : 's'} ${count === 1 ? 'has' : 'have'} fonts below 16px. This measures CSS sizing, not iOS focus or form-validation behavior.`,
+    problem: (count: number) => `Small text in ${count} mobile form input${count === 1 ? '' : 's'}`,
+    evidence: (references: string) => `Computed input fonts below 16px: ${references}. Small input text can prompt iOS Safari to zoom on focus.`,
+    fix: (references: string) => `1. Locate the recorded mobile inputs: ${references}.\n2. Set their shared input styles to a minimum font size of 16px.\n3. Recheck computed sizes on the same pages and mobile viewport.\n4. Test iOS focus behavior separately; this check establishes CSS sizing.`,
+  },
   removedDuringCheck: 'This website was removed before the check completed.',
   cancel: 'Cancel',
   scopedRun: { title: 'Checking selected evidence', retained: 'Site-wide evidence keeps its original date. This check updates only the selected scope.',

@@ -30,6 +30,8 @@ export interface CaptureMetrics {
   motionComplete?: boolean
   motionObservation?: MotionObservation
   inputsBelow16px: Array<{ selector: string; fontSize: number }>
+  inputFontSamples?: Array<{ selector: string; fontSize: number }>
+  inputFontsComplete?: boolean
   loadExperience?: PageLoadExperience | null
   desktopLoadExperience?: PageLoadExperience | null
   loadingObservation?: LoadingObservation
@@ -100,18 +102,24 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
     }
 
     const inputsBelow16px: Array<{ selector: string; fontSize: number }> = []
+    const inputFontSamples: Array<{ selector: string; fontSize: number }> = []
+    let inputFontsComplete = true
+    let sampledInputs = 0
     for (const input of document.querySelectorAll(
       'main input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), main textarea, main select'
     )) {
       const el = input as HTMLElement
       if (!visibleInDocument(el)) continue
+      if (sampledInputs++ >= 200) { inputFontsComplete = false; break }
       const style = window.getComputedStyle(el)
       const fontSize = parseFloat(style.fontSize)
-      if (Number.isNaN(fontSize) || fontSize >= 16) continue
+      if (!Number.isFinite(fontSize) || fontSize <= 0) { inputFontsComplete = false; continue }
       const id = el.id
       const name = el.getAttribute('name')
-      const selector = id ? `#${id}` : name ? `[name="${name}"]` : el.tagName.toLowerCase()
-      inputsBelow16px.push({ selector, fontSize: Math.round(fontSize * 10) / 10 })
+      const selector = id ? `#${CSS.escape(id)}` : name ? `[name="${CSS.escape(name)}"]` : el.tagName.toLowerCase()
+      const sample = { selector, fontSize: Math.round(fontSize * 10) / 10 }
+      inputFontSamples.push(sample)
+      if (fontSize < 16) inputsBelow16px.push(sample)
     }
 
     const MOBILE_FOLD_RATIO = 0.85
@@ -350,6 +358,8 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
       fontFamilySample: [...fontSet].slice(0, 6),
       buttonBorderRadii: [...radii].sort((a, b) => a - b),
       inputsBelow16px,
+      inputFontSamples,
+      inputFontsComplete,
     }
   })
 

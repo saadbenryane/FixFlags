@@ -4,6 +4,7 @@ import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { recordObservation, type CheckRecorder } from './assertion'
 import { loadingDelayObservation, mobileLoadingDelayFlag } from './loading-evidence'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 export function runMobileUXQualityChecks(
   meta: PageMetadata,
@@ -22,9 +23,12 @@ export function runMobileUXQualityChecks(
     return findings
   }
 
-  recordObservation(record, 'mobile-input-fonts', 'Mobile input sizing', 'Sampled visible inputs use at least 16px fonts',
-    `${captureMetrics.inputsBelow16px.length} sampled inputs have fonts below 16px. This does not prove runtime validation or keyboard behavior.`,
-    captureMetrics.inputsBelow16px.length === 0, true)
+  const fontSamples = captureMetrics.inputFontSamples
+  const fontsComplete = Array.isArray(fontSamples) && captureMetrics.inputFontsComplete === true
+  record?.({ key: 'mobile-input-fonts', name: SITE_ACTION_COPY.mobileInputs.name, expected: SITE_ACTION_COPY.mobileInputs.expected,
+    observed: fontsComplete ? SITE_ACTION_COPY.mobileInputs.observed(captureMetrics.inputsBelow16px.length) : SITE_ACTION_COPY.mobileInputs.limited,
+    passed: fontsComplete && captureMetrics.inputsBelow16px.length === 0, complete: fontsComplete,
+    targets: fontSamples?.map(input => ({ selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference })) })
 
   if (captureMetrics.inputsBelow16px.length > 0) {
     findings.push({
@@ -32,9 +36,11 @@ export function runMobileUXQualityChecks(
       rubric: 'EXPERIENCE',
       impactTag: 'ACCESSIBILITY',
       severity: 'IMPORTANT',
-      problem: `${captureMetrics.inputsBelow16px.length} form input${captureMetrics.inputsBelow16px.length > 1 ? 's' : ''} will trigger iOS zoom on focus`,
-      evidence: `Inputs below 16px: ${captureMetrics.inputsBelow16px.slice(0, 3).map((i) => `${i.selector} (${i.fontSize}px)`).join(', ')}. iOS Safari zooms into inputs under 16px, disorienting the user.`,
-      fix: '1. Set font-size to 16px minimum on all input, textarea, and select elements\n2. Apply globally: input, textarea, select { font-size: 16px; }\n3. Test on iOS Safari to confirm the viewport no longer zooms on focus\n4. Do not use 15px - only 16px+ prevents the zoom behavior',
+      problem: SITE_ACTION_COPY.mobileInputs.problem(captureMetrics.inputsBelow16px.length),
+      evidence: SITE_ACTION_COPY.mobileInputs.evidence(captureMetrics.inputsBelow16px.slice(0, 3).map(i => `${i.selector} (${i.fontSize}px)`).join(', ')),
+      evidenceTargets: captureMetrics.inputsBelow16px.slice(0, 200).map(input => ({ kind: 'element', source: 'measured', device: 'mobile',
+        selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference })),
+      fix: SITE_ACTION_COPY.mobileInputs.fix(captureMetrics.inputsBelow16px.slice(0, 3).map(i => i.selector).join(', ')),
       confidence: 0.95,
       source: 'DETERMINISTIC',
     })

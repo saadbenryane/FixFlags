@@ -20,7 +20,8 @@ function metrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics {
     competingPrimaryCtaLabels: ['Get started free'], mobileViewportHeight: 800, mobileScrollY: 0, mobileDocumentHeight: 1600,
     stuckLoadingIndicator: false, stuckLoadingLabel: null, uniqueFontFamilies: 2, fontFamilySample: ['Inter', 'Inter Tight'],
     buttonBorderRadii: [8], motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true,
-    inputsBelow16px: [], loadingObservation: nativeLoading, ...overrides }
+    inputsBelow16px: [], inputFontSamples: [{ selector: '#email', fontSize: 16 }], inputFontsComplete: true, loadingObservation: nativeLoading, ...overrides,
+    ...(overrides.inputsBelow16px?.length && !overrides.inputFontSamples ? { inputFontSamples: overrides.inputsBelow16px } : {}) }
 }
 function loading(milliseconds: number, overrides: Partial<NonNullable<CaptureMetrics['loadExperience']>> = {}) {
   return { device: 'mobile' as const, initialScreenshotUrl: null, initialCaptureElapsedMs: 100,
@@ -76,7 +77,6 @@ describe('registered diagnostic observations', () => {
     { module: 'visual-hierarchy', key: 'prominent-action-count', checkId: 'hierarchy-competing-actions', captured: { competingPrimaryCtaCount: 2 } },
     { module: 'visual-hierarchy', key: 'section-headings', checkId: 'hierarchy-no-sections', broken: html(undefined, undefined, '') },
     { module: 'visual-hierarchy', key: 'headline-presence', checkId: 'hierarchy-no-headline', broken: html().replace(/<h1>.*?<\/h1>/, '') },
-    { module: 'mobile-ux-quality', key: 'mobile-input-fonts', checkId: 'mobile-input-zoom', captured: { inputsBelow16px: [{ selector: '#email', fontSize: 12 }] } },
     { module: 'mobile-ux-quality', key: 'mobile-cta-position', checkId: 'mobile-cta-thumb-zone', captured: { mobilePrimaryCtaTopPx: 0 } },
     { module: 'mobile-ux-quality', key: 'mobile-cta-label', checkId: 'mobile-cta-weak-label', captured: { mobilePrimaryCtaText: 'Go' } },
   ]
@@ -94,6 +94,15 @@ describe('registered diagnostic observations', () => {
     expect(observation(checked.assertions, 'authority-signals')).toMatchObject({ passed: true, disposition: 'observed' })
     expect(assertionForTarget(checked.receipt, 'trust-no-authority-signals')).toBeUndefined()
     expect(checked.assertions.some(assertion => assertion.observed.includes('Authenticity was not established'))).toBe(true)
+  })
+  it('records computed input sizing as a bounded CSS assertion rather than an iOS behavior certificate', async () => {
+    const before = await inspect('mobile-ux-quality', html(), metrics({ inputsBelow16px: [{ selector: '#email', fontSize: 14 }] }))
+    const failed = before.assertions.find(assertion => assertion.key === 'mobile-input-fonts')
+    expect(failed).toMatchObject({ passed: false, complete: true })
+    expect(failed?.disposition).toBeUndefined()
+    const after = await inspect('mobile-ux-quality', html())
+    expect(assertionForTarget(after.receipt, 'mobile-input-zoom')).toMatchObject({ passed: true, complete: true })
+    expect(after.assertions.find(assertion => assertion.key === 'mobile-input-fonts')?.observed).toContain('not iOS focus')
   })
   it('keeps empty content and unusable measurements incomplete', async () => {
     for (const checkModule of ['content', 'slop', 'messaging-clarity', 'visual-hierarchy']) {

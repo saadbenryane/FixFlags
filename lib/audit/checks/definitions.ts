@@ -5,7 +5,7 @@ import { JOURNEY_ASSERTIONS } from './journey-definitions'
 
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
-  version: 1; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
+  version: 1 | 2; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
   input: 'metadata' | 'headers' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard' | 'console';
   evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
   assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only' | 'protected';
@@ -108,12 +108,12 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'unused-css': assertion('performance', ['mobile-unused-css-large']),
     'image-optimization': assertion('performance', ['mobile-unoptimized-images']),
   }),
-  'mobile-ux-quality': define('mobile-ux-quality', 'performance', 'Mobile layout', 'browser', {
-    'mobile-input-fonts': assertion('accessibility', ['mobile-input-zoom']),
-    'mobile-cta-position': assertion('conversion', ['mobile-cta-thumb-zone']),
-    'mobile-cta-label': assertion('conversion', ['mobile-cta-weak-label']),
-    'mobile-loading-delay': assertion('conversion', ['mobile-load-delay-content']),
-  }),
+  'mobile-ux-quality': { ...define('mobile-ux-quality', 'performance', 'Mobile layout', 'browser', {
+    'mobile-input-fonts': assertion('performance', ['mobile-input-zoom']),
+    'mobile-cta-position': assertion('performance', ['mobile-cta-thumb-zone']),
+    'mobile-cta-label': assertion('performance', ['mobile-cta-weak-label']),
+    'mobile-loading-delay': assertion('performance', ['mobile-load-delay-content']),
+  }), version: 2 },
   content: define('content', 'conversion', 'Page content', 'metadata', {
     'headline-specificity': assertion('conversion', ['h1-generic']),
     'cta-presence': assertion('conversion', ['no-cta-detected']),

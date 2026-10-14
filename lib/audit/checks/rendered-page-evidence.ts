@@ -15,7 +15,10 @@ export function hasRenderedPageResponsibility(module: string) { return modules.h
 export function scopeRenderedPageEvidence(input: { module: string; flags: DeterministicFlag[]; assertions: CheckAssertion[];
   desktop?: CaptureObservationScope; mobile?: CaptureObservationScope }) {
   if (!modules.has(input.module)) return { flags: input.flags, assertions: input.assertions }
-  const scopes = mobileMetrics.has(input.module) ? [input.desktop, input.mobile] : [input.desktop]
+  // Mobile input, action and loading measurements own their mobile window.
+  // A bounded desktop document is a separate source, not their comparison gate.
+  const scopes = input.module === 'mobile-ux-quality' ? [input.mobile]
+    : mobileMetrics.has(input.module) ? [input.desktop, input.mobile] : [input.desktop]
   const keys = scopes.map(scope => scope ? captureObservationKey(scope) : 'unknown')
   const complete = keys.every(key => key !== 'unknown')
   const context = 'rendered-page:' + (complete ? createHash('sha256').update(JSON.stringify([input.module, keys])).digest('hex') : 'unknown')

@@ -81,6 +81,14 @@ export function scopedAssertionForTarget(input: {
         .find(({ assertion }) => assertion.context === target.context && assertion.complete === true && assertion.disposition !== 'observed' &&
           MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[assertion.key]?.verifies.includes(checkId)))
       if (matched.some(candidate => !candidate)) return undefined
+      if (checkId === 'mobile-input-zoom') {
+        const original = targets.data.filter(target => typeof target.selector === 'string' && target.selector.length > 0)
+        if (!original.length) return undefined
+        const observed = matched.flatMap(candidate => candidate!.assertion.targets ?? [])
+        for (const selector of new Set(original.map(target => target.selector))) {
+          if (observed.filter(target => target.selector === selector).length < original.filter(target => target.selector === selector).length) return undefined
+        }
+      }
       return { assertion: { ...matched[0]!.assertion, passed: matched.every(candidate => candidate!.assertion.passed), complete: true,
         observed: [...new Set(matched.map(candidate => candidate!.assertion.observed))].join(' ').slice(0, 2000) },
         supportingTasks: matched.map(candidate => ({ taskId: candidate!.source.execution!.taskId, pageUrl: candidate!.source.pageUrl,

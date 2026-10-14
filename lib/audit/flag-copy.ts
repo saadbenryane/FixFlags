@@ -5,6 +5,7 @@ import {
 import { verificationRuleForCheckId } from '@/lib/audit/verification-rules'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 /** Checks fixed in source/head/config - not by staring at a screenshot region. */
 const CODE_OR_HEAD_CHECKS = new Set<string>([
@@ -157,7 +158,7 @@ const WHY_IT_MATTERS: Record<string, string> = {
   'hierarchy-information-density':
     'Crowded above-the-fold copy forces users to parse too much before they know what to do next.',
   'mobile-input-zoom':
-    'Inputs below 16px trigger iOS zoom, disorienting users during signup or contact forms.',
+    SITE_ACTION_COPY.mobileInputs.why,
   'mobile-cta-thumb-zone':
     'A CTA near the top edge adds one-handed reach friction on larger phones.',
   'mobile-cta-weak-label':

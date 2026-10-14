@@ -2,6 +2,7 @@ import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 import { AXE_GENERATED_CHECK_IDS } from './check-registry'
 import { ACCESSIBILITY_VERIFICATION_RULE } from './checks/accessibility-rules'
 import { CHECK_REGISTRY } from './check-registry'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 /** Client-safe lookup - no server-only audit imports. */
 export const CHECK_ID_TO_RULE: Record<string, string> = {
@@ -377,7 +378,7 @@ export const VISUAL_HIERARCHY_VERIFICATION_RULES: Record<string, string> = {
 
 export const MOBILE_UX_VERIFICATION_RULES: Record<string, string> = {
   'mobile-input-zoom':
-    'Set font-size to 16px minimum on all input, textarea, and select elements. Test on iOS Safari.',
+    SITE_ACTION_COPY.mobileInputs.verification,
   'mobile-cta-thumb-zone':
     'Keep the CTA out of the top reach zone or add sticky bottom positioning. One-hand test on a 6.7" phone.',
   'mobile-cta-weak-label':
