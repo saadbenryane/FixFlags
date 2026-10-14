@@ -1,5 +1,22 @@
-import { getAuditQueue } from '@/lib/queue/client'
+import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
+import { TASK_QUEUES, type TaskQueue } from '@/lib/audit/progressive/queues'
+
+/** Operational work includes bootstrap and every progressive execution lane. */
+export async function getWorkerExecutionCounts(): Promise<{ activeJobs: number; waitingJobs: number; delayedJobs: number }> {
+  const queues = [getAuditQueue(), ...(Object.keys(TASK_QUEUES) as TaskQueue[]).map(getAuditTaskQueue)]
+  const counts = await Promise.all(queues.map(async queue => {
+    const [activeJobs, waitingJobs, delayedJobs] = await Promise.all([
+      queue.getActiveCount(), queue.getWaitingCount(), queue.getDelayedCount(),
+    ])
+    return { activeJobs, waitingJobs, delayedJobs }
+  }))
+  return counts.reduce((total, count) => ({
+    activeJobs: total.activeJobs + count.activeJobs,
+    waitingJobs: total.waitingJobs + count.waitingJobs,
+    delayedJobs: total.delayedJobs + count.delayedJobs,
+  }), { activeJobs: 0, waitingJobs: 0, delayedJobs: 0 })
+}
 
 function parseWorkerConcurrency(): number {
   const raw = process.env.AUDIT_WORKER_CONCURRENCY

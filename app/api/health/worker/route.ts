@@ -3,7 +3,7 @@ import {
   readStalledJobCount,
   readWorkerHeartbeat,
 } from '@/lib/queue/worker-heartbeat'
-import { getWorkerQueueEstimate } from '@/lib/queue/estimate'
+import { getWorkerExecutionCounts } from '@/lib/queue/estimate'
 import { prisma } from '@/lib/db'
 import { getRateLimitRedisHealth } from '@/lib/security/rate-limit'
 import { auditDeadlineMsForDepth } from '@/lib/audit/review-depth'
@@ -26,7 +26,7 @@ export async function GET() {
   const rateLimit = getRateLimitRedisHealth()
   const [hb, est, oldest, overdue, stalled] = await Promise.allSettled([
     readWorkerHeartbeat(),
-    getWorkerQueueEstimate(),
+    getWorkerExecutionCounts(),
     prisma.audit.findFirst({
       where: { status: { notIn: ['COMPLETED', 'FAILED'] } },
       orderBy: { createdAt: 'asc' },
@@ -68,11 +68,12 @@ export async function GET() {
   const duplicateLocalWorkers =
     process.env.NODE_ENV !== 'production' && worker.workerCount > 1
   const leakedBrowserContexts =
-    (queue?.activeJobs ?? 0) === 0 && worker.activeBrowserContexts > 0
+    queue !== null && queue.activeJobs === 0 && worker.activeBrowserContexts > 0
   const excessiveEventLoopLag = eventLoopLagMs > EVENT_LOOP_LAG_LIMIT_MS
   const overdueAuditCount = overdue.status === 'fulfilled' ? overdue.value : null
   const ok =
     redisReachable &&
+    queue !== null &&
     worker.alive &&
     worker.browserOk &&
     !duplicateLocalWorkers &&
@@ -96,6 +97,8 @@ export async function GET() {
       ? 'redis_unreachable'
       : !worker.alive
         ? 'worker_down'
+        : !queue
+          ? 'queue_unavailable'
         : duplicateLocalWorkers
           ? 'duplicate_workers'
           : leakedBrowserContexts

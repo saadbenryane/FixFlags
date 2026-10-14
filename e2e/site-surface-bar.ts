@@ -103,10 +103,12 @@ export async function assertKeyboardReachesTheSurface(page: Page, url: string): 
   })
 
   const visited: string[] = []
+  // Safari's default keyboard setting uses Option-Tab to include every control.
+  const tab = page.context().browser()?.browserType().name() === 'webkit' ? 'Alt+Tab' : 'Tab'
   for (let step = 0; step < 25; step += 1) {
-    await page.keyboard.press('Tab')
-    const focused = await page.evaluate(() => {
-      const element = document.activeElement as HTMLElement | null
+    await page.keyboard.press(tab)
+    const handle = await page.evaluateHandle(() => document.activeElement as HTMLElement | null)
+    const inspect = () => page.evaluate((element) => {
       if (!element || element === document.body) return null
       const style = window.getComputedStyle(element)
       const rect = element.getBoundingClientRect()
@@ -119,12 +121,16 @@ export async function assertKeyboardReachesTheSurface(page: Page, url: string): 
         label: element.getAttribute('aria-label') ?? element.textContent?.trim().slice(0, 40) ?? '',
         outlined: style.outlineStyle !== 'none' || style.boxShadow !== 'none',
         visible,
+        sameControl: document.activeElement === element,
       }
-    })
-    if (!focused) continue
+    }, handle)
+    const focused = await inspect()
+    if (!focused) { await handle.dispose(); continue }
     visited.push(`${focused.tag}:${focused.label}`)
-    expect(focused.outlined, `focus indicator missing on ${focused.tag} "${focused.label}"`).toBe(true)
-    expect(focused.visible, `focused control obscured on ${focused.tag} "${focused.label}"`).toBe(true)
+    try {
+      await expect.poll(inspect, { message: `focused control must stay visible and outlined on ${focused.tag} "${focused.label}"` })
+        .toMatchObject({ sameControl: true, outlined: true, visible: true })
+    } finally { await handle.dispose() }
   }
 
   expect(visited.length, 'no control is reachable by keyboard').toBeGreaterThan(0)

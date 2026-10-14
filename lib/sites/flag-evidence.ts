@@ -1,4 +1,13 @@
 import { z } from 'zod'
+import { PAGE_CHECK_DEFINITIONS } from '@/lib/audit/checks/definitions'
+
+export function performanceEvidenceSource(checkId: string | null | undefined): 'lab' | 'field' | null {
+  if (!checkId) return null
+  if (['inp-critical', 'inp-poor', 'mobile-inp-critical', 'mobile-inp-poor'].includes(checkId)) return 'field'
+  return Object.values(PAGE_CHECK_DEFINITIONS).some(definition =>
+    (definition.input === 'performance' || definition.input === 'mobile') &&
+    Object.values(definition.assertions).some(assertion => assertion.verifies.includes(checkId))) ? 'lab' : null
+}
 
 const reference = z.object({ selector: z.string().max(2000).optional(), label: z.string().max(300).optional(),
   device: z.enum(['desktop', 'mobile']).optional() })

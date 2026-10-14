@@ -141,6 +141,15 @@ describe('Flag verification attempts', () => {
     ).toHaveAttribute('href', 'https://shop.example/products/tote')
   })
 
+  it('does not give a browser-measured input Flag a PageSpeed provenance or action', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, area: 'performance',
+      checkId: 'mobile-input-zoom', performanceEvidenceSource: null, evidenceContext: { source: 'DETERMINISTIC', references: [] } } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+    expect(screen.queryByText(/Google PageSpeed lab measurement/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Run a new PageSpeed measurement' })).not.toBeInTheDocument()
+  })
+
   it('copies instructions for the displayed capture even when its incident can advance', async () => {
     const detail = await mocks.loadSiteBoardFlag()
     mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,

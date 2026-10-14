@@ -46,6 +46,9 @@ export function PricingCTAButton({
   const resolvedEmail = userEmail ?? user?.email ?? undefined
   const isCurrent = resolvedLoggedIn && resolvedPlan === plan
   const isPaidPlan = plan !== 'FREE'
+  const destination = waitlistGated && isPaidPlan
+    ? waitlistPathForPlan(plan as CheckoutPlan) as Route
+    : !resolvedLoggedIn ? signUpHref : null
 
   async function handleClick() {
     if (waitlistGated && isPaidPlan) {
@@ -97,7 +100,11 @@ export function PricingCTAButton({
 
   return (
     <div className="space-y-2">
-      <Button
+      {destination && !(isCurrent && isPaidPlan) ? <Button asChild className="w-full" variant={variant ?? (highlight ? 'default' : 'outline')}>
+        <Link href={destination} onClick={() => {
+          if (isPaidPlan && !waitlistGated) trackEvent('started_checkout', { plan, is_logged_in: resolvedLoggedIn })
+        }}>{waitlistGated && isPaidPlan ? plan === 'TEAM' ? BILLING_ACTION_COPY.waitlist.submitStudio : BILLING_ACTION_COPY.waitlist.submitPro : cta}</Link>
+      </Button> : <Button
         className="w-full"
         variant={variant ?? (highlight ? 'default' : 'outline')}
         disabled={loading || (isCurrent && isPaidPlan)}
@@ -112,7 +119,7 @@ export function PricingCTAButton({
               ? BILLING_ACTION_COPY.waitlist.submitStudio
               : BILLING_ACTION_COPY.waitlist.submitPro
             : cta}
-      </Button>
+      </Button>}
       {showHint && isPaidPlan && !isCurrent && (
         <p className="text-3xs text-center text-muted-foreground leading-snug">
           {waitlistGated

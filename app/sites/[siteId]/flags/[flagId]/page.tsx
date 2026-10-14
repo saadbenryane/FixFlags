@@ -164,8 +164,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                       {flag.evidenceContext.references.length ? <div><dt>{SITE_ACTION_COPY.flagEvidence.references}</dt><dd><ul className="mt-2 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words">{[reference.label, reference.selector, reference.device].filter(Boolean).join(' · ')}</li>)}</ul></dd></div> : null}
                     </dl>
                   </details> : null}
-                  {flag.area === 'performance' && flag.evidenceContext?.source === 'DETERMINISTIC' ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
-                    <p>{flag.checkId?.startsWith('inp-') ? SITE_ACTION_COPY.flagEvidence.field : SITE_ACTION_COPY.flagEvidence.lab}</p>
+                  {flag.performanceEvidenceSource ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
+                    <p>{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p>
                     {flag.performanceEvidence?.length ? <details>
                       <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.conditions}</summary>
                       <ul className="space-y-3">{flag.performanceEvidence.map((measurement, index) => <li key={index}>

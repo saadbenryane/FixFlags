@@ -1,6 +1,7 @@
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { watchAlertDelivery } from '@/lib/audit/watch-notification'
 import { prisma } from '@/lib/db'
+import { performanceEvidenceSource } from '@/lib/sites/flag-evidence'
 import { isShopifyConfigured } from '@/lib/shopify/config'
 import { projectSiteActivity } from '@/lib/sites/activity'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
@@ -316,7 +317,8 @@ export async function loadSiteBoardFlag(siteId: string, flagId: string) {
   if (!site) return null
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) return null
-  if (flag.area === 'performance' && flag.evidenceContext?.source === 'DETERMINISTIC' && flag.pageUrl)
+  flag.performanceEvidenceSource = flag.evidenceContext?.source === 'DETERMINISTIC' ? performanceEvidenceSource(flag.checkId) : null
+  if (flag.performanceEvidenceSource === 'lab' && flag.pageUrl)
     flag.performanceEvidence = await loadPerformanceEvidence(site, flag.sourceAuditId, flag.pageUrl)
   const finding = await prisma.journeyFinding.findFirst({
     where: {

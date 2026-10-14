@@ -271,7 +271,7 @@ test('auth and pricing entry points render without client errors', async ({ page
   pricingPage.on('pageerror', recordError)
   await pricingPage.goto('/pricing')
   await expect(pricingPage.getByText('$49', { exact: true })).toBeVisible()
-  await pricingPage.getByRole('button', { name: BILLING_ACTION_COPY.waitlist.submitStudio, exact: true }).click()
+  await pricingPage.getByRole('link', { name: BILLING_ACTION_COPY.waitlist.submitStudio, exact: true }).click()
   await expect(pricingPage).toHaveURL(/\/waitlist\/studio$/)
   await expect(pricingPage.getByRole('heading', { level: 1 })).toBeVisible()
   expect(errors).toEqual([])

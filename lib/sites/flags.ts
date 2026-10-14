@@ -340,6 +340,7 @@ export type SiteFlagDetail = SiteFlagSeed & {
   sourceAuditId: string
   evidenceContext?: FlagEvidenceContext
   performanceEvidence?: import('@/lib/audit/performance-measurement').PerformanceMeasurement[]
+  performanceEvidenceSource?: 'lab' | 'field' | null
   verificationRule: string | null
   confidence: number | null
   causeCertainty: string | null

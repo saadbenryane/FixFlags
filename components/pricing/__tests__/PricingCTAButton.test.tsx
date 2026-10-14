@@ -38,15 +38,13 @@ describe('PricingCTAButton', () => {
     push.mockReset()
     const free = PRICING_CARDS[0]
     render(<MeProvider initialUser={null}><PricingCTAButton plan={free.plan} cta={free.cta} signUpHref={free.href} isLoggedIn={false} variant="brand" /></MeProvider>)
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up now' }))
-    expect(push).toHaveBeenCalledWith('/sign-up')
+    expect(screen.getByRole('link', { name: 'Sign up now' })).toHaveAttribute('href', '/sign-up')
   })
 
   it('sends Studio clicks to the Studio waitlist', () => {
     push.mockReset()
     render(<MeProvider initialUser={null}><PricingCTAButton plan="TEAM" cta="Join Studio waitlist" signUpHref="/waitlist/studio" waitlistGated /></MeProvider>)
-    fireEvent.click(screen.getByRole('button', { name: 'Join Studio waitlist' }))
-    expect(push).toHaveBeenCalledWith('/waitlist/studio')
+    expect(screen.getByRole('link', { name: 'Join Studio waitlist' })).toHaveAttribute('href', '/waitlist/studio')
   })
 
   it('sends gated Pro clicks to the waitlist without loading checkout', () => {
@@ -63,7 +61,6 @@ describe('PricingCTAButton', () => {
       </MeProvider>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: BILLING_ACTION_COPY.waitlist.submitPro }))
-    expect(push).toHaveBeenCalledWith('/waitlist/pro')
+    expect(screen.getByRole('link', { name: BILLING_ACTION_COPY.waitlist.submitPro })).toHaveAttribute('href', '/waitlist/pro')
   })
 })
