@@ -18,7 +18,7 @@ const { prismaMock, queueAddMock, gates } = vi.hoisted(() => ({
     audit: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), count: vi.fn(),
       updateMany: vi.fn(async () => ({ count: 1 })), findUniqueOrThrow: vi.fn(async () => ({ dispatchAttempts: 1, createdAt: new Date() })) },
     user: { findUnique: vi.fn() },
-    project: { findUnique: vi.fn() },
+    project: { findUnique: vi.fn(), findFirst: vi.fn() },
     // Anonymous reuse is resolved from the visitor's own board before any scan
     // is considered reusable.
     provisionalSite: { findUnique: vi.fn(async () => null) },
@@ -62,7 +62,8 @@ vi.mock('@/lib/billing/credits', () => ({
 vi.mock('@/lib/audit/url', () => ({
   assertPublicAuditUrl: vi.fn(async (url: string) => new URL(url)),
 }))
-vi.mock('@/lib/audit/scan-access', () => ({
+vi.mock('@/lib/audit/scan-access', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/audit/scan-access')>(),
   encryptScanAccess: vi.fn((value: unknown) => JSON.stringify(value)),
   decryptScanAccess: vi.fn((value: string) => JSON.parse(value)),
 }))
@@ -117,6 +118,7 @@ beforeEach(() => {
     deepReviewsLimit: 1,
   })
   prismaMock.project.findUnique.mockResolvedValue({ scanAccessEncrypted: null })
+  prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', url: 'https://example.com', deletedAt: null, scanAccessEncrypted: null })
 })
 
 describe('isTeaserAuditRow', () => {

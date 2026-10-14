@@ -3,6 +3,7 @@ import { recordFlagImprovementAttempt } from '@/lib/improvements/service'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
+import { SiteRunRefusal } from './run-refusal'
 
 export async function recordSiteFlagFix(input: {
   siteId: string
@@ -62,7 +63,7 @@ export async function requireSiteFlagAttempt(input: {
   flagId: string
   attemptId: string
   userId: string
-}) {
+}, options: { allowSettled?: boolean } = {}) {
   const site = await loadSiteRecord(input.siteId)
   if (!site?.projectId || site.userId !== input.userId) throw new Error('Site not found')
   const flag = await loadSiteFlagDetail(site, input.flagId)
@@ -71,12 +72,27 @@ export async function requireSiteFlagAttempt(input: {
     where: {
       id: input.attemptId,
       improvementId: flag.improvementId,
-      sourceAuditId: flag.sourceAuditId,
-      outcome: null,
+      ...(options.allowSettled ? {} : { outcome: null }),
       improvement: { projectId: site.projectId, project: { userId: input.userId } },
+      sourceAudit: { projectId: site.projectId },
     },
-    select: { id: true },
+    select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true },
   })
-  if (!attempt) throw new Error('Fix attempt not found or already verified')
-  return { site, flag, attemptId: attempt.id }
+  if (!attempt) throw new SiteRunRefusal('Fix attempt not found or already verified', 409)
+  // Monitoring may advance the durable incident while a repair is being made.
+  // Verification belongs to the repair's recorded source, not the current inbox.
+  const recordedFlagId = attempt.handoffReference?.startsWith('flag:') ? attempt.handoffReference.slice(5) : null
+  if (!recordedFlagId) {
+    if (attempt.sourceAuditId !== flag.sourceAuditId) throw new SiteRunRefusal('Fix attempt has no matching source Flag', 409)
+    return { site, flag, attemptId: attempt.id, attempt }
+  }
+  if (input.flagId !== flag.improvementId && recordedFlagId !== (flag.sourceFlagId ?? flag.id)) {
+    throw new SiteRunRefusal('Fix attempt belongs to a different source Flag', 409)
+  }
+  const source = input.flagId === recordedFlagId ? flag : await loadSiteFlagDetail(site, recordedFlagId)
+  if (!source || source.improvementId !== flag.improvementId || source.sourceAuditId !== attempt.sourceAuditId ||
+      (source.sourceFlagId ?? source.id) !== recordedFlagId) {
+    throw new SiteRunRefusal('Fix attempt has no matching source Flag', 409)
+  }
+  return { site, flag: source, attemptId: attempt.id, attempt }
 }

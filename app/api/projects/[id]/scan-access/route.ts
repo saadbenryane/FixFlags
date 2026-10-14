@@ -3,36 +3,15 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
-import { prisma } from '@/lib/db'
-import { canScanRepositories } from '@/lib/auth/entitlements'
 import {
   parseScanAccessInput,
-  redactScanAccessForClient,
   scanAccessInputSchema,
 } from '@/lib/audit/scan-access'
-import { persistProjectScanAccess } from '@/lib/audit/scan-access-store'
-import { decryptScanAccess } from '@/lib/audit/scan-access'
+import { readSavedScanAccess, saveScanAccess } from '@/lib/sites/application/scan-access-commands'
 
 const bodySchema = z.object({
-  scanAccess: scanAccessInputSchema.nullable().optional(),
-})
-
-async function assertStudioProjectOwner(projectId: string, userId: string) {
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, userId },
-    select: { id: true, scanAccessEncrypted: true },
-  })
-  if (!project) return { kind: 'not_found' as const }
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, role: true, plan: true, subscriptionStatus: true },
-  })
-  if (!user) return { kind: 'unauthorized' as const }
-  if (!canScanRepositories(user)) {
-    return { kind: 'upgrade_required' as const }
-  }
-  return { kind: 'ok' as const, project }
-}
+  scanAccess: scanAccessInputSchema.nullable(),
+}).strict()
 
 export async function GET(
   _req: NextRequest,
@@ -43,21 +22,8 @@ export async function GET(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const access = await assertStudioProjectOwner(id, session.user.id)
-    if (access.kind === 'not_found') return apiError('Project not found', 404)
-    if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
-    if (access.kind === 'upgrade_required') {
-      return apiError('Preview scan access requires the Studio plan', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'view_pricing',
-      })
-    }
 
-    const config = decryptScanAccess(access.project.scanAccessEncrypted)
-    return NextResponse.json({
-      configured: Boolean(config),
-      summary: config ? redactScanAccessForClient(config) : null,
-    })
+    return NextResponse.json(await readSavedScanAccess(id, session.user.id))
   } catch (err) {
     return handleRouteError(err)
   }
@@ -72,15 +38,6 @@ export async function PUT(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const access = await assertStudioProjectOwner(id, session.user.id)
-    if (access.kind === 'not_found') return apiError('Project not found', 404)
-    if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
-    if (access.kind === 'upgrade_required') {
-      return apiError('Preview scan access requires the Studio plan', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'view_pricing',
-      })
-    }
 
     const body = await req.json().catch(() => ({}))
     const parsed = bodySchema.safeParse(body)
@@ -96,11 +53,7 @@ export async function PUT(
       return apiError('Scan access must include HTTP basic auth, cookies, or headers', 400)
     }
 
-    await persistProjectScanAccess(id, session.user.id, config)
-    return NextResponse.json({
-      configured: Boolean(config),
-      summary: config ? redactScanAccessForClient(config) : null,
-    })
+    return NextResponse.json(await saveScanAccess(id, session.user.id, config))
   } catch (err) {
     return handleRouteError(err)
   }
@@ -115,18 +68,8 @@ export async function DELETE(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const access = await assertStudioProjectOwner(id, session.user.id)
-    if (access.kind === 'not_found') return apiError('Project not found', 404)
-    if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
-    if (access.kind === 'upgrade_required') {
-      return apiError('Preview scan access requires the Studio plan', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'view_pricing',
-      })
-    }
 
-    await persistProjectScanAccess(id, session.user.id, null)
-    return NextResponse.json({ configured: false, summary: null })
+    return NextResponse.json(await saveScanAccess(id, session.user.id, null))
   } catch (err) {
     return handleRouteError(err)
   }

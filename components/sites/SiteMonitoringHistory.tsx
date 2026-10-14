@@ -61,21 +61,29 @@ export function SiteMonitoringHistory({ points, events, emptyMessage }: {
   const geometry = chartGeometry(points)
   const latest = points.at(-1)
   const hasGaps = points.some(point => point.flagCount === null)
+  const hasCompleteCheck = points.some(point => point.flagCount !== null)
+  const showPlot = points.length > 1 && hasCompleteCheck
   return <section className={styles.panel} aria-label={C.checkHistory}>
     {points.length > 0 ? <div className={styles.chart}>
-      <div className={styles.header}><div><h2>{C.flagTrend}</h2><p>{C.checksCount(points.length)}</p></div><span className={styles.latest} data-attention={latest?.flagCount != null && latest.flagCount > 0}>{latest?.flagCount == null ? C.incomplete : C.flags(latest.flagCount)}</span></div>
-      <div className={styles.chartPlot}><div className={styles.yAxis} aria-hidden="true">{geometry.ticks.map(tick => <span key={tick.value} style={{ top: `${tick.y / geometry.height * 100}%` }}>{tick.value}</span>)}</div>
+      <div className={styles.header}><div><h2>{C.flagTrend}</h2><p>{C.checksCount(points.length)}</p></div></div>
+      <div className={styles.summary}>
+        <strong className={styles.latest} data-attention={latest?.flagCount != null && latest.flagCount > 0}>{latest?.flagCount == null ? C.incomplete : C.flags(latest.flagCount)}</strong>
+        <span>{C.latestCheck} · {latest?.label}</span>
+      </div>
+      <p className={styles.explanation}>{!hasCompleteCheck ? C.awaitingCompleteCheck : points.length === 1 ? C.firstCheck : C.trendHelp}</p>
+      {latest?.flagCount === 0 ? <p className={styles.explanation}>{C.zeroFlagsScope}</p> : null}
+      {showPlot ? <><div className={styles.chartPlot}><div className={styles.yAxis} aria-hidden="true">{geometry.ticks.map(tick => <span key={tick.value} style={{ top: `${tick.y / geometry.height * 100}%` }}>{tick.value}</span>)}</div>
       <svg viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-labelledby={`${chartId}-title`} aria-describedby={`${chartId}-description`}>
         <title id={`${chartId}-title`}>{C.trendDescription(points.length)}</title>
         <desc id={`${chartId}-description`}>{points.map(point => `${point.label}: ${point.flagCount === null ? C.incomplete : C.flags(point.flagCount)}`).join('; ')}</desc>
         {geometry.ticks.map(tick => <line key={tick.value} className={styles.gridLine} x1={geometry.left} x2={geometry.right} y1={tick.y} y2={tick.y} aria-hidden="true" />)}
         {geometry.segments.filter(segment => segment.length > 1).map((segment, index) => <polygon key={index} className={styles.area} points={`${segment[0].x},${geometry.bottom} ${segment.map(point => `${point.x},${point.y}`).join(' ')} ${segment.at(-1)!.x},${geometry.bottom}`} />)}
         {geometry.segments.map((segment, index) => <polyline key={index} className={styles.trend} points={segment.map(point => `${point.x},${point.y}`).join(' ')} />)}
-        {geometry.positions.map((point, index) => point ? <circle key={index} className={styles.point} data-latest={index === points.length - 1} cx={point.x} cy={point.y} r={index === points.length - 1 ? 4.5 : 3}><title>{points[index].label}: {C.flags(points[index].flagCount!)}</title></circle> : <circle key={index} className={styles.gap} cx={geometry.xFor(index)} cy={geometry.bottom} r="3"><title>{points[index].label}: {C.incomplete}</title></circle>)}
+        {geometry.positions.map((point, index) => point ? <g key={index}><circle className={styles.point} data-latest={index === points.length - 1} cx={point.x} cy={point.y} r={index === points.length - 1 ? 6 : 4}><title>{points[index].label}: {C.flags(points[index].flagCount!)}</title></circle>{(points.length <= 8 || index === 0 || index === points.length - 1) ? <text className={styles.pointLabel} x={point.x} y={point.y < 36 ? point.y + 24 : point.y - 12} textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'} aria-hidden="true">{points[index].flagCount}</text> : null}</g> : <circle key={index} className={styles.gap} cx={geometry.xFor(index)} cy={geometry.bottom} r="4"><title>{points[index].label}: {C.incomplete}</title></circle>)}
       </svg></div>
-      <div className={styles.chartLabels}><span>{points[0].label}</span><span>{points.at(-1)?.label}</span></div>
-      {hasGaps ? <p className={styles.gapNote}><i aria-hidden />{C.incompleteTrend}</p> : null}
-    </div> : events.length === 0 ? <p className={styles.empty}>{emptyMessage}</p> : null}
+      <div className={styles.chartLabels}><span>{points[0].label}</span><span>{points.at(-1)?.label}</span></div></> : null}
+      {showPlot && hasGaps ? <p className={styles.gapNote}><i aria-hidden />{C.incompleteTrend}</p> : null}
+    </div> : events.length === 0 ? <p className={styles.empty}>{emptyMessage}</p> : <div className={styles.chart}><div className={styles.header}><h2>{C.flagTrend}</h2></div><p className={styles.explanation}>{C.scopedHistoryTrend}</p></div>}
     {events.length > 0 ? <><h2 className={styles.timelineHeading}>{C.checkHistory}</h2><ol className={styles.timeline} aria-label={C.checkHistory}>
       {events.map(event => <li key={event.id} className={styles.event}><i data-state={event.state} aria-hidden="true" /><div>
         <div className={styles.eventHeader}><strong>{event.title}</strong><time dateTime={event.dateTime}>{event.time}</time></div>

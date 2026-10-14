@@ -77,10 +77,10 @@ function formatTelegramReport(results: Awaited<ReturnType<typeof pullSite>>[], d
     if (r.gsc && "summary" in r.gsc) {
       const s = r.gsc.summary
       lines.push(
-        `  🔍 GSC: ${s.totalClicks?.toLocaleString()} clicks | ${s.totalImpressions?.toLocaleString()} impressions | ${(s.avgCtr * 100).toFixed(2)}% CTR | pos ${s.avgPosition.toFixed(1)}`
+        `  🔍 GSC: ${s.totalClicks?.toLocaleString() ?? 'unavailable'} clicks | ${s.totalImpressions?.toLocaleString() ?? 'unavailable'} impressions | ${s.avgCtr === null ? 'unavailable' : `${(s.avgCtr * 100).toFixed(2)}%`} CTR | pos ${s.avgPosition === null ? 'unavailable' : s.avgPosition.toFixed(1)}`
       )
       if (s.brandedClicks !== undefined) {
-        lines.push(`  🏷️ Branded: ${s.brandedClicks} clicks (${(s.brandedShare * 100).toFixed(1)}%)`)
+        lines.push(`  🏷️ Returned branded queries: ${s.brandedClicks} clicks (${s.brandedShare === null ? 'unavailable' : `${(s.brandedShare * 100).toFixed(1)}%`} of property clicks)`)
       }
       if (r.gsc.queries?.queries?.length) {
         const top = r.gsc.queries.queries[0]

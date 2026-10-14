@@ -78,11 +78,9 @@ in the launch contract.
 
 Requires real interactive sessions in three external tools, with a real API key
 scoped to a real Site. `journey:mcp-full-loop` proves the MCP *protocol* works,
-not that those three agents complete the loop. The latest local host preflight is
-recorded in
-`.agents/sessions/2026-10-06-mcp-client-matrix-preflight.md`: Codex and Claude
-Code are installed but not authenticated/approved for this run, and Cursor is
-absent. Unproven.
+not that those three agents complete the loop. The October 6 local host preflight remains in Git history. It did not
+establish client acceptance. Recheck installation, authentication and
+authorization for each fresh candidate. Unproven.
 
 ### 3. Paid checkout opening
 
@@ -104,7 +102,7 @@ Needs real production runs, not synthetic load.
 
 Release commands default to `RELEASE_PROFILE=free-launch`. This profile requires every stage below except `billing-open`; its credentialed core contains website journeys, including accounts, uptime, category rechecks and removal. The separate `RELEASE_PROFILE=paid-opening` profile retains `billing-open`, including production Watch cost/reliability proof. The `billing-closed` stage still requires its real Stripe test-mode and access-revocation proof but does not require the production Watch cost database. Each receipt records its profile; the final gate rejects missing or mixed-profile evidence. Historical receipts without the profile must be rerun.
 
-MCP protocol and external agent sessions remain parked outside website acceptance. The [credentialed matrix](../.agents/sessions/credentialed-journey-matrix.md) retains their historical evidence separately. Agent task observations identify their observer accurately and cannot establish a human usability study.
+MCP protocol and external agent sessions remain parked outside website acceptance. The historical credentialed matrix remains in Git history. Agent task observations identify their observer accurately and cannot establish a human usability study.
 
 Run from a clean candidate revision, in this order. Do not commit between stages:
 the repo side-effect guard in `scripts/validate.mjs` fails the run if the working

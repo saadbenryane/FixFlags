@@ -104,6 +104,20 @@ describe('fetchPageSpeedData', () => {
     assert.ok(!result.desktop?.opportunities.some((o) => o.id === 'target-size'))
   })
 
+  it.each([{ errorMessage: 'Measurement failed' }, { notApplicable: true }, { scoreDisplayMode: 'error' },
+    { scoreDisplayMode: 'notApplicable' }, { scoreDisplayMode: 'manual' }, { scoreDisplayMode: 'informative' }])
+    ('preserves unavailable lab metrics despite retained numeric values: %j', async unavailable => {
+      fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ lighthouseResult: { categories: { performance: { score: 0.95 } }, audits: {
+        'largest-contentful-paint': { numericValue: 1000, ...unavailable },
+        'cumulative-layout-shift': { numericValue: 0, ...unavailable },
+        'first-contentful-paint': { numericValue: 500, ...unavailable },
+        'total-blocking-time': { numericValue: 0, ...unavailable },
+      } } })))
+      const result = await fetchPageSpeedData('https://unavailable-metrics.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+      expect(result.desktop).toMatchObject({ score: 95, lcp: null, cls: null, fcp: null, tbt: null })
+      expect(result.desktop?.crux).toMatchObject({ lcp: 2400, cls: 0.12 })
+    })
+
   it('normalizes current Lighthouse insights and feeds actual byte savings into findings', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ lighthouseResult: {
       categories: { performance: { score: 0.95 } }, audits: {

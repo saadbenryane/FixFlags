@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const integrationRelease = vi.hoisted(() => vi.fn(() => 'available'))
+vi.mock('@/lib/integrations/release-policy', () => ({ integrationRelease }))
 import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/shopify/session', async () => {
@@ -22,6 +24,7 @@ import { requireShopDomain } from '@/lib/shopify/session'
 describe('POST /api/shopify/session', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    integrationRelease.mockReturnValue('available')
     vi.mocked(requireShopDomain).mockReturnValue({ shop: 'demo.myshopify.com' })
   })
 

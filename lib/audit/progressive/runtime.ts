@@ -16,6 +16,7 @@ import { loadTaskGraph, persistTaskPlan, reconcileTasks, dispatchReadyTasks, exe
 import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
+import { closeParserWorker } from './cpu'
 
 const handlers = registerTaskHandlers([...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers, ...accountHandlers])
 for (const coverage of ADVERTISED_COVERAGE_REGISTRY.values()) for (const evaluator of coverage.evaluators) {
@@ -58,12 +59,25 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
 }
 
 export async function recoverProgressiveAudits(limit = 25) {
+  const now = new Date()
   const pending = await prisma.audit.findMany({ where: {
     status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
     verifierExecutions: { none: { workKind: { not: null } } },
-    dispatchNextAt: { lte: new Date() },
-  }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: Math.min(100, Math.max(1, limit)), select: { id: true } })
-  for (const audit of pending) await coordinateProgressiveAudit(audit.id)
+    dispatchNextAt: { lte: now },
+  }, orderBy: [{ dispatchNextAt: 'asc' }, { id: 'asc' }], take: Math.min(100, Math.max(1, limit)), select: { id: true, dispatchNextAt: true } })
+    .catch(error => { logger.error('Progressive admission sweep failed; existing graphs remain recoverable', error); return [] })
+  for (const audit of pending) {
+    try {
+      // Rotate attempted admissions before reading their graph. Interrupted
+      // reads and capacity waits cannot monopolize the next bounded pass.
+      const admitted = await prisma.audit.updateMany({ where: { id: audit.id, dispatchNextAt: audit.dispatchNextAt,
+        status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
+        verifierExecutions: { none: { workKind: { not: null } } } },
+      data: { dispatchNextAt: new Date(now.getTime() + 10_000) } })
+      if (admitted.count) await coordinateProgressiveAudit(audit.id)
+    }
+    catch (error) { logger.error('Audit coordination interrupted; retained admission will be retried', error, { auditId: audit.id }) }
+  }
   return recoverProgressiveTasks(limit)
 }
 
@@ -77,5 +91,8 @@ export function startProgressiveWorkers() {
       { resource, taskId: job?.data.taskId, message: error.message }))
     return worker
   })
-  return { close: () => Promise.all(workers.map(worker => worker.close())) }
+  return { close: async () => {
+    await Promise.all(workers.map(worker => worker.close()))
+    await closeParserWorker()
+  } }
 }

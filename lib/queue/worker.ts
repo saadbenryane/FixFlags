@@ -115,13 +115,11 @@ export function startWorker() {
   let browserRecoveryRunning = false
   const heartbeatTimer = setInterval(() => {
     const diagnostics = workerBrowserDiagnostics()
-    if (diagnostics.browserOk || browserRecoveryRunning) {
-      void runBestEffort(
-        () => touchWorkerHeartbeat({ ...diagnostics, queueState: 'idle' }),
-        { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
-      )
-      return
-    }
+    void runBestEffort(
+      () => touchWorkerHeartbeat({ ...diagnostics, queueState: 'idle' }),
+      { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
+    )
+    if (diagnostics.browserOk || browserRecoveryRunning) return
     browserRecoveryRunning = true
     // A browser outage must not stop public-response, provider, or availability work.
     void getAuditBrowser()

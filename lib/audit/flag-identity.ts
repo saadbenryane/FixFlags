@@ -1,5 +1,6 @@
 import type { EvidenceTarget } from './evidence-targets'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
+import { mergeSearchAttentionPolicies } from './search/attention-scope'
 
 export function baseCheckId(checkId: string | null | undefined): string | null {
   return checkId?.split('::page:')[0] ?? null
@@ -107,6 +108,7 @@ export function collapseFlagsWithAffectedPaths<
     evidence?: string
     evidenceTargets?: EvidenceTarget[]
     affectedPaths?: string[]
+    attentionPolicy?: unknown
   },
 >(flags: T[]): Array<T & { affectedPaths: string[] }> {
   const groups = new Map<string, T[]>()
@@ -136,11 +138,13 @@ export function collapseFlagsWithAffectedPaths<
       if (flag.pageUrl !== pageUrl) delete measured.rect
       return [JSON.stringify([target.context, target.selector, target.label, target.device]), measured] as const
     }))).values()] : undefined
+    const attentionPolicy = mergeSearchAttentionPolicies(group.map(flag => flag.attentionPolicy), representative.attentionPolicy)
     const evidence =
       group.length === 1
         ? representative.evidence
         : [
-            ...(scoped ? [...new Set(group.map(flag => flag.evidence))] : [representative.evidence]),
+            ...(scoped || attentionPolicy?.pageScopes ? [...new Set(group.map(flag => attentionPolicy?.pageScopes && flag.pageUrl && flag.evidence
+              ? `${flag.pageUrl}: ${flag.evidence}` : flag.evidence))] : [representative.evidence]),
             `Observed on ${affectedPaths.length} pages.`,
           ]
             .filter(Boolean)
@@ -149,6 +153,7 @@ export function collapseFlagsWithAffectedPaths<
       ...representative,
       checkId: durableCheckId(representative.checkId) ?? representative.checkId,
       evidence,
+      ...(attentionPolicy ? { attentionPolicy } : {}),
       ...(scopedTargets ? { evidenceTargets: scopedTargets } : {}),
       affectedPaths,
       pageUrl,

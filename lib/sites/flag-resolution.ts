@@ -1,4 +1,5 @@
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { attemptProvesFlagRecovery } from '@/lib/improvements/attempt-state'
 
 export type FlagProofAudit = {
   id: string
@@ -35,21 +36,63 @@ export type FlagResolution =
 export function siteFlagDetailStatus(
   improvementStatus: string | null | undefined,
   flagStatus: string,
+  verifiedForSource = false,
 ): string {
-  return flagStatus === 'FIXED' || flagStatus === 'REGRESSED' ? flagStatus : improvementStatus ?? flagStatus
+  if (['FIXED', 'REGRESSED', 'IGNORED'].includes(flagStatus)) return flagStatus
+  if (improvementStatus === 'VERIFIED' && !verifiedForSource) return flagStatus
+  return improvementStatus ?? flagStatus
 }
 
 /** Project current incident attention without rewriting repair declarations.
  * A fixed row without its completed, tenant-owned recovery remains unverified. */
+export function currentIncidentFlags<T extends { status: string; resolvedInId?: string | null }>(
+  flags: T[], completedRecoveryIds: IncidentRecoveryProofIndex,
+): Array<Omit<T, 'status'> & { status: string }>
 export function currentIncidentFlags<T extends { status?: string | null; resolvedInId?: string | null }>(
-  flags: T[], completedRecoveryIds: { has(id: string): boolean },
+  flags: T[], completedRecoveryIds: IncidentRecoveryProofIndex,
+): Array<Omit<T, 'status'> & { status?: string | null }>
+export function currentIncidentFlags<T extends { status?: string | null; resolvedInId?: string | null }>(
+  flags: T[], completedRecoveryIds: IncidentRecoveryProofIndex,
 ): Array<Omit<T, 'status'> & { status?: string | null }> {
   return flags.flatMap(flag => {
     if (flag.status === 'IGNORED') return []
     if (flag.status !== 'FIXED') return [flag]
-    if (flag.resolvedInId && completedRecoveryIds.has(flag.resolvedInId)) return []
+    if (hasIncidentRecoveryProof(flag, completedRecoveryIds)) return []
     return [{ ...flag, status: 'UNVERIFIED' }]
   })
+}
+
+export type IncidentRecoveryProofIndex = {
+  has(id: string): boolean
+  hasFlag?: (flag: { id?: string; resolvedInId?: string | null }) => boolean
+}
+
+/** The application index proves each original condition independently. */
+export function hasIncidentRecoveryProof(flag: { id?: string; resolvedInId?: string | null }, proofs: IncidentRecoveryProofIndex): boolean {
+  if (!flag.resolvedInId) return false
+  return proofs.hasFlag ? proofs.hasFlag(flag) : proofs.has(flag.resolvedInId)
+}
+
+export function currentUnboundFindings<T extends { id: string; fingerprint?: string | null; status: string; resolvedInId?: string | null }>(
+  flags: T[], proofs: IncidentRecoveryProofIndex,
+) {
+  const seen = new Set<string>()
+  return currentIncidentFlags(flags, proofs).filter(flag => {
+    const identity = flag.fingerprint ? `fingerprint:${flag.fingerprint}` : `flag:${flag.id}`
+    if (seen.has(identity)) return false
+    seen.add(identity)
+    return true
+  })
+}
+
+/** Legacy successful repairs may precede Flag status projection. Their proof
+ * can close only the same captured occurrence, never later incident peers. */
+export function currentImprovementFlags<T extends { id: string; auditId: string; status?: string | null; resolvedInId?: string | null }>(
+  flags: T[], completedRecoveryIds: { has(id: string): boolean }, improvementStatus: string,
+  attempts: Parameters<typeof attemptProvesFlagRecovery>[0][], projectId: string,
+) {
+  return currentIncidentFlags(flags, completedRecoveryIds).filter(flag => !(improvementStatus === 'VERIFIED' && flag.status === 'OPEN' &&
+    attempts.some(attempt => attemptProvesFlagRecovery(attempt, projectId, flag.auditId, flag.id))))
 }
 
 export function incidentAffectedPaths(flags: Array<{ pageUrl?: string | null; affectedPaths?: unknown }>): string[] {
@@ -67,7 +110,10 @@ const STILL_OPEN = new Set(['OPEN', 'REGRESSED', 'IGNORED'])
 export function flagRecoveryProofId(input: {
   status: string
   resolvedInId: string | null
-  attempts: Array<{ outcome: string | null; comparable: boolean | null; verificationAuditId: string | null }>
+  sourceAuditId?: string | null
+  sourceFlagId?: string | null
+  attempts: Array<{ outcome: string | null; comparable: boolean | null; verificationAuditId: string | null;
+    sourceAuditId?: string; handoffReference?: string | null }>
 }): string | null {
   if (input.resolvedInId) return input.resolvedInId
   if (input.status !== 'VERIFIED') return null
@@ -75,6 +121,8 @@ export function flagRecoveryProofId(input: {
     (attempt) =>
       attempt.outcome === 'IMPROVED' &&
       attempt.comparable === true &&
+      Boolean(input.sourceAuditId && attempt.sourceAuditId === input.sourceAuditId) &&
+      (!attempt.handoffReference?.startsWith('flag:') || attempt.handoffReference === 'flag:' + input.sourceFlagId) &&
       typeof attempt.verificationAuditId === 'string' &&
       attempt.verificationAuditId.length > 0,
   )

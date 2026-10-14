@@ -1,4 +1,10 @@
 import type { Page } from 'playwright'
+import { readLoadingUi, type LoadingObservation } from './browser/loading-ui'
+import { observeViewport } from './browser/viewport-observation'
+import type { CaptureObservationScope } from './browser/observation-scope'
+import { measureCurrentMotion } from './browser/motion-observation'
+import type { MotionObservation } from './checks/motion-evidence'
+export { measureCurrentMotion as measureMotionA11y } from './browser/motion-observation'
 
 export interface CaptureMetrics {
   mobilePrimaryCtaTopPx: number | null
@@ -22,9 +28,11 @@ export interface CaptureMetrics {
   motionSampleLabel: string | null
   /** False when browser emulation or either motion observation failed. */
   motionComplete?: boolean
+  motionObservation?: MotionObservation
   inputsBelow16px: Array<{ selector: string; fontSize: number }>
   loadExperience?: PageLoadExperience | null
   desktopLoadExperience?: PageLoadExperience | null
+  loadingObservation?: LoadingObservation
 }
 
 export interface PageLoadExperience {
@@ -38,49 +46,33 @@ export interface PageLoadExperience {
   loadingLabel: string | null
   finalReadyState: string
   finalTitle: string | null
+  observation?: LoadingObservation
 }
-export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
-  const motion = await measureMotionA11y(page)
+export async function measureMobileLayout(page: Page, scope?: CaptureObservationScope, restrictions: string[] = []): Promise<CaptureMetrics> {
+  const motion = scope ? { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: false } : await measureCurrentMotion(page)
+  const loading = await readLoadingUi(page)
+  const content = scope ? await observeViewport(page, { profile: scope.profile, includeActions: false, excludeLoading: true }) : null
 
   const base = await page.evaluate(() => {
     // tsx/esbuild dev runs (npm run worker, scripts/*) inject `__name(...)` wrapper calls into
     // compiled functions; that reference doesn't exist inside Playwright's isolated browser
     // context. No-op under tsc/webpack builds (prod, `next dev`), which never emit `__name`.
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    let stuckLoadingIndicator = false
-    let stuckLoadingLabel: string | null = null
-    const loadingSelector =
-      '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
-
-    function isBlockingLoadingEl(el: Element): boolean {
-      const rect = el.getBoundingClientRect()
+    function visibleInDocument(element: Element): boolean {
+      const rect = element.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) return false
-      const style = window.getComputedStyle(el)
-      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0')
-        return false
-      const inMain = Boolean(el.closest('main, [role="main"], [class*="hero" i]'))
-      const viewportArea = window.innerWidth * window.innerHeight
-      const elArea = rect.width * rect.height
-      const coversViewport = elArea >= viewportArea * 0.12
-      const isLargeOverlay = elArea >= viewportArea * 0.35
-      if (!inMain && !coversViewport && !isLargeOverlay) return false
+      if (window.getComputedStyle(element).visibility !== 'visible') return false
+      for (let node: Element | null = element; node; node = node.parentElement) {
+        const style = window.getComputedStyle(node)
+        if (style.display === 'none' || style.contentVisibility === 'hidden' || Number(style.opacity) === 0) return false
+      }
       return true
     }
-
-    for (const el of document.querySelectorAll(loadingSelector)) {
-      if (!isBlockingLoadingEl(el)) continue
-      stuckLoadingIndicator = true
-      stuckLoadingLabel =
-        el.getAttribute('aria-label') ||
-        el.className.toString().split(/\s+/).find((c) => /skeleton|spinner|loading/i.test(c)) ||
-        el.tagName.toLowerCase()
-      break
-    }
-
     const fontSet = new Set<string>()
     for (const el of document.querySelectorAll(
       'main h1, main h2, main h3, main p, main a, main button, body'
     )) {
+      if (!visibleInDocument(el)) continue
       const ff = window.getComputedStyle(el).fontFamily
       if (!ff) continue
       fontSet.add(ff.split(',')[0]?.trim().replace(/['"]/g, '') ?? ff)
@@ -88,6 +80,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
 
     const radii = new Set<number>()
     for (const btn of document.querySelectorAll('main a[href], main button, [role="button"]')) {
+      if (!visibleInDocument(btn)) continue
       if (btn.closest('nav, header, [role="navigation"]')) continue
       const text = (btn.textContent ?? '').trim()
       if (!text || text.length > 48) continue
@@ -111,10 +104,8 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       'main input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), main textarea, main select'
     )) {
       const el = input as HTMLElement
-      const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) continue
+      if (!visibleInDocument(el)) continue
       const style = window.getComputedStyle(el)
-      if (style.visibility === 'hidden' || style.display === 'none') continue
       const fontSize = parseFloat(style.fontSize)
       if (Number.isNaN(fontSize) || fontSize >= 16) continue
       const id = el.id
@@ -129,6 +120,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     type CtaCandidate = { score: number; top: number; text: string }
 
     function scoreCtaElement(el: Element): CtaCandidate | null {
+      if (!visibleInDocument(el)) return null
       const tag = el.tagName.toLowerCase()
       const href =
         tag === 'a'
@@ -180,8 +172,6 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       if (score === 0) return null
 
       const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) return null
-
       return { score, top: Math.round(rect.top), text: text.slice(0, 80) || tag }
     }
 
@@ -246,7 +236,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
         continue
 
       const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) continue
+      if (!visibleInDocument(el)) continue
       if (rect.top < 0 || rect.top > foldLine) continue
 
       const form = el.closest('form')
@@ -255,7 +245,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
         const submitBtn = form.querySelector(
           'button[type="submit"], input[type="submit"], button:not([type])'
         )
-        if (submitBtn) {
+        if (submitBtn && visibleInDocument(submitBtn)) {
           submitBtnText =
             (submitBtn.textContent || submitBtn.getAttribute('aria-label') || '').trim()
         }
@@ -311,7 +301,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
           continue
 
         const rect = el.getBoundingClientRect()
-        if (rect.width <= 0 || rect.height <= 0) continue
+        if (!visibleInDocument(el)) continue
         if (rect.top < 0 || rect.top > window.innerHeight * 2) continue
 
         const form = el.closest('form')
@@ -320,7 +310,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
           const submitBtn = form.querySelector(
             'button[type="submit"], input[type="submit"], button:not([type])'
           )
-          if (submitBtn) {
+          if (submitBtn && visibleInDocument(submitBtn)) {
             submitBtnText =
               (submitBtn.textContent || submitBtn.getAttribute('aria-label') || '').trim()
           }
@@ -356,8 +346,6 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       mobileViewportHeight: window.innerHeight,
       mobileScrollY: Math.round(scrollY),
       mobileDocumentHeight: Math.round(documentHeight),
-      stuckLoadingIndicator,
-      stuckLoadingLabel,
       uniqueFontFamilies: fontSet.size,
       fontFamilySample: [...fontSet].slice(0, 6),
       buttonBorderRadii: [...radii].sort((a, b) => a - b),
@@ -367,84 +355,13 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
 
   return {
     ...base,
+    stuckLoadingIndicator: loading.loadingVisible,
+    stuckLoadingLabel: loading.loadingLabel,
+    ...(scope && content ? { loadingObservation: { version: 1 as const, device: 'mobile' as const,
+      scope: { ...scope, finalUrl: content.pageUrl }, contentVisible: content.content === true,
+      ready: loading.readyState === 'complete', restricted: restrictions.length > 0 } } : {}),
     motionIgnoresReducedPreference: motion.motionIgnoresReducedPreference,
     motionSampleLabel: motion.motionSampleLabel,
     motionComplete: motion.motionComplete,
-  }
-}
-
-/** Count long/looping CSS animations visible on page (runs in browser context). */
-async function countSignificantMotionInPage(
-  page: Page
-): Promise<{ count: number; sample: string | null }> {
-  return page.evaluate(() => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    const roots = document.querySelectorAll('main, [class*="hero" i], body')
-    let count = 0
-    let sample: string | null = null
-
-    for (const root of roots) {
-      for (const el of root.querySelectorAll('*')) {
-        const style = window.getComputedStyle(el)
-        const animName = style.animationName
-        if (!animName || animName === 'none') continue
-
-        let durationMs = 0
-        const raw = style.animationDuration
-        if (raw && raw !== '0s') {
-          for (const part of raw.split(',')) {
-            const p = part.trim()
-            const ms = p.match(/^([\d.]+)ms$/)
-            const sec = p.match(/^([\d.]+)s$/)
-            if (ms) durationMs = Math.max(durationMs, parseFloat(ms[1]))
-            else if (sec) durationMs = Math.max(durationMs, parseFloat(sec[1]) * 1000)
-          }
-        }
-
-        const iteration = style.animationIterationCount
-        const isLongOrLooping = durationMs >= 500 || iteration === 'infinite'
-        if (!isLongOrLooping) continue
-
-        const rect = el.getBoundingClientRect()
-        if (rect.width <= 0 || rect.height <= 0) continue
-        if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
-
-        count++
-        if (!sample) {
-          sample =
-            el.getAttribute('aria-label') ||
-            el.className.toString().split(/\s+/).find((c) => /animate|motion|fade|slide/i.test(c)) ||
-            el.tagName.toLowerCase()
-        }
-      }
-    }
-
-    return { count, sample }
-  })
-}
-
-/** Compare motion before/after emulating prefers-reduced-motion: reduce. */
-export async function measureMotionA11y(page: Page): Promise<{
-  motionIgnoresReducedPreference: boolean
-  motionSampleLabel: string | null
-  motionComplete: boolean
-}> {
-  let emulated = false
-  try {
-    const before = await countSignificantMotionInPage(page)
-    if (before.count === 0) return { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true }
-    emulated = true
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const after = await countSignificantMotionInPage(page)
-    const stillAnimating = after.count > 0 && after.count >= Math.ceil(before.count * 0.5)
-    return {
-      motionIgnoresReducedPreference: stillAnimating,
-      motionSampleLabel: stillAnimating ? before.sample : null,
-      motionComplete: true,
-    }
-  } catch {
-    return { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: false }
-  } finally {
-    if (emulated) await page.emulateMedia({ reducedMotion: 'no-preference' })
   }
 }

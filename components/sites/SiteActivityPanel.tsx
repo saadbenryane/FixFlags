@@ -64,7 +64,7 @@ export function SiteActivityPanel({ activity, disconnected, children, onRetry, r
         <DialogTitle>{SITE_BOARD_COPY.activityTitle}</DialogTitle>
         <DialogDescription>{SITE_BOARD_COPY.activityDescription}</DialogDescription>
         {compact ? children : null}
-        <ol className="space-y-4 border-l border-border pl-4">{events.map((event, index) => <li key={`${event.at}:${index}`}><p className="text-sm font-medium">{event.label}</p><p className="mt-1 text-xs text-muted-foreground">{formatEvidenceTimestamp(event.at)}</p></li>)}</ol>
+        <ol className="space-y-4">{events.map((event, index) => <li key={`${event.at}:${index}`}><p className="text-sm font-medium">{event.label}</p><p className="mt-1 text-xs text-muted-foreground">{formatEvidenceTimestamp(event.at)}</p></li>)}</ol>
       </DialogContent>
     </Dialog>
   </section>

@@ -51,3 +51,11 @@ export function useAdminSupportMessages(sessionId: string | null) {
     { refreshInterval: sessionId ? 2000 : 0 }
   )
 }
+
+export function useAdminSupportSession(sessionId: string | null) {
+  return useSWR<{ session: SupportSessionListItem }>(
+    sessionId ? `/api/admin/support/sessions/${sessionId}` : null,
+    jsonFetcher,
+    { refreshInterval: sessionId ? 2000 : 0 }
+  )
+}

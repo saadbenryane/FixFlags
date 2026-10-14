@@ -256,7 +256,7 @@ const searchRowsSchema = z.object({ rows: z.array(z.object({
 
 const indexResultSchema = z.object({
   verdict: z.string().optional(), coverageState: z.string().optional(), robotsTxtState: z.string().optional(),
-  indexingState: z.string().optional(), lastCrawlTime: z.string().datetime({ offset: true }).optional(),
+  indexingState: z.string().optional(), pageFetchState: z.string().optional(), lastCrawlTime: z.string().datetime({ offset: true }).optional(),
   googleCanonical: z.string().url().optional(), userCanonical: z.string().url().optional(),
   crawledAs: z.string().optional(), sitemap: z.array(z.string().url()).optional(),
 })
@@ -290,6 +290,7 @@ export interface GscUrlInspection {
       coverageState?: string
       robotsTxtState?: string
       indexingState?: string
+      pageFetchState?: string
       lastCrawlTime?: string
       googleCanonical?: string
       userCanonical?: string

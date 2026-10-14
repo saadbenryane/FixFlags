@@ -21,6 +21,31 @@ const complete = {
 }
 
 describe('assessVerificationCoverage', () => {
+  it.each(['failed-peer', 'missing-peer', 'repaired'] as const)('requires the original multi-page scope despite a successful representative-page verifier: %s', scenario => {
+    const pageUrl = 'https://example.com/', peer = 'https://example.com/pricing'
+    const receipt = (url: string, passed: boolean) => ({ targetKey: 'module:performance', scopeKey: 'page:' + url,
+      status: 'COMPLETED' as const, evidenceReference: { taskId: url }, detail: {
+        kind: 'site-module-check', version: 1, module: 'performance', pageUrl: url, applicable: true, passed, complete: true,
+        execution: { auditId: 'after', taskId: url, checkVersion: 1, source: 'pagespeed-desktop', collectedAt: '2026-10-12T12:00:00.000Z' },
+        assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast loading', observed: passed ? '1000ms' : '6000ms', passed, complete: true }],
+      } })
+    const main = receipt(pageUrl, true)
+    const exact = { ...main, targetKey: 'check:lcp-poor', scopeKey: 'page:https://example.com', detail: {
+      kind: 'check-verifier', version: 1, ...main.detail.execution, checkId: 'lcp-poor', pageUrl,
+      comparable: true, verdict: 'passed', assertion: main.detail.assertions[0],
+    } }
+    const input = { ...complete, auditId: 'after', checkId: 'lcp-poor', pageUrl, reportCompleteness: 'PARTIAL' as const,
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+        checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
+      originalFlag: { checkId: 'lcp-poor', pageUrl, affectedPaths: [pageUrl, peer], verificationRule: 'Comparable desktop LCP' },
+      verifierExecutions: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
+    }
+    const decision = assessVerificationCoverage(input)
+    expect(decision.comparable).toBe(scenario !== 'missing-peer')
+    if (scenario === 'failed-peer') expect(decision).toMatchObject({ verdict: 'failed' })
+    if (scenario === 'repaired') expect(decision).toMatchObject({ verdict: 'passed' })
+  })
+
   it.each(['proved', 'missing', 'other-page', 'other-responsibility', 'observed-only', 'old-version'] as const)('uses the same scoped module recovery proof as Flag closure: %s', scenario => {
     const pageUrl = 'https://example.com/'
     const input = { ...complete, auditId: 'after', checkId: scenario === 'other-responsibility' ? 'lang-missing' : 'viewport-missing', pageUrl,
@@ -116,6 +141,15 @@ describe('assessVerificationCoverage', () => {
       evidenceCoverage: { desktopScreenshot: true, metadata: true, aiAssessment: false },
       verifierExecutions: [],
     })).toMatchObject({ comparable: false })
+  })
+
+  it('preserves complete stable AI comparisons without borrowing a deterministic module responsibility', () => {
+    expect(assessVerificationCoverage({ ...complete, auditId: 'after', source: 'AI', checkId: null, fingerprint: 'stable-ai',
+      originalFlag: { checkId: null, pageUrl: complete.pageUrl },
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: complete.pageUrl, environment: 'production', scope: 'SITE',
+        checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: null },
+      verifierExecutions: [{ ...complete.verifierExecutions[0], targetKey: 'ai:stable-ai' }],
+    })).toMatchObject({ comparable: true })
   })
 
   it('requires journey evidence for journey observations', () => {

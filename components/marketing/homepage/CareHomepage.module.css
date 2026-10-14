@@ -177,3 +177,5 @@
 @media (prefers-reduced-motion: reduce) {
   .home *, .home *::before, .home *::after, .dialog, .dialog * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.sampleLabel { grid-column: 1 / -1; padding: 12px 20px; font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .3); }

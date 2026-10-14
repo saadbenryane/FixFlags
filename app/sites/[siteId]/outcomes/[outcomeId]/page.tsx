@@ -18,7 +18,7 @@ export default async function OutcomeDetailPage({ params }: {
   const access = await requireSiteAccess(siteId)
   if (!access.ok) notFound()
   const [home, outcome] = await Promise.all([
-    loadSiteHome(access.decision.site.siteId),
+    loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated }),
     loadSiteOutcomeDetail(access.decision.site, outcomeId),
   ])
   if (!home || !outcome) notFound()
@@ -33,6 +33,7 @@ export default async function OutcomeDetailPage({ params }: {
 
   return (
     <SiteShell
+      actions={home.actions}
       siteId={home.site.siteId}
       ownerId={home.site.userId}
       activeRoute="home"
@@ -114,7 +115,7 @@ export default async function OutcomeDetailPage({ params }: {
                       </details>
                     ) : null}
                   </>
-                ) : <p className="mt-3 text-sm text-muted-foreground">{OUTCOME_DETAIL_COPY.noEvidence}</p>}
+                ) : <p className="mt-3 text-sm text-muted-foreground">{binding.customerSentence}</p>}
               </article>
               )
             })}

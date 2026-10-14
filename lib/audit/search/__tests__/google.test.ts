@@ -4,7 +4,7 @@ const stubs = vi.hoisted(() => ({
   audit: vi.fn(), connection: vi.fn(), legacy: vi.fn(), update: vi.fn(), token: vi.fn(),
   inspect: vi.fn(), analytics: vi.fn(), persisted: new Map<string, unknown>(), createRows: vi.fn(),
 }))
-vi.mock('@/lib/sites/connections/google', () => ({ accessTokenForConnection: stubs.token }))
+vi.mock('@/lib/sites/connections/google', async importOriginal => ({ ...await importOriginal<object>(), accessTokenForConnection: stubs.token }))
 vi.mock('@/lib/integrations/google-search-console', async importOriginal => ({
   ...await importOriginal<object>(), inspectSearchUrl: stubs.inspect, querySearchAnalytics: stubs.analytics,
 }))
@@ -21,7 +21,7 @@ vi.mock('@/lib/db', () => {
   const tx = { $executeRaw: vi.fn(), auditVerifierExecution: ledger,
     indexStatus: { upsert: vi.fn() }, searchPerformance: { createMany: stubs.createRows } }
   return { prisma: { ...tx, audit: { findFirst: stubs.audit },
-    siteConnection: { findUnique: stubs.connection, update: stubs.update },
+    siteConnection: { findUnique: stubs.connection, updateMany: stubs.update },
     gscConnection: { findUnique: stubs.legacy }, $transaction: async (callback: (db: unknown) => unknown) => callback(tx) } }
 })
 import { runGoogleSearchForAudit } from '../google'
@@ -29,7 +29,8 @@ import { SearchConsoleError } from '@/lib/integrations/google-search-console'
 beforeEach(() => {
   vi.clearAllMocks(); stubs.persisted.clear()
   stubs.audit.mockResolvedValue({ id: 'audit', projectId: 'site', parentId: null, userId: 'owner', project: { userId: 'owner' } })
-  stubs.connection.mockResolvedValue({ id: 'connection', status: 'CONNECTED', propertyId: 'https://example.com/' })
+  stubs.connection.mockResolvedValue({ id: 'connection', status: 'CONNECTED', propertyId: 'https://example.com/',
+    encryptedAccessToken: 'fixture-encrypted-access', encryptedRefreshToken: 'fixture-encrypted-grant', tokenExpiresAt: null })
   stubs.token.mockResolvedValue('test-access')
   stubs.inspect.mockResolvedValue({ indexStatusResult: { verdict: 'PASS', lastCrawlTime: '2026-10-01T00:00:00Z' },
     richResultsResult: { verdict: 'PASS', detectedItems: [{ richResultType: 'Product' }] } })
@@ -59,11 +60,26 @@ describe('owner-scoped Google evidence', () => {
   it('preserves indexed-version and rich-results sections, exact filtering, and advisory CTR', async () => {
     const result = await run()
     expect(result.receipts[0].observations.map(item => item.checkId)).toEqual([
-      'search-google-index', 'indexing-failure', 'search-google-rich-results', 'search-google-performance', 'low-ctr',
+      'search-google-index', 'indexing-failure', 'search-google-fetch', 'search-google-directives', 'search-google-canonical', 'search-google-rich-results', 'search-google-performance', 'low-ctr',
     ])
     expect(stubs.analytics.mock.calls[0][7]).toBe(PAGE)
     expect(result.findings.find(item => item.checkId === 'low-ctr')?.attentionPolicy?.kind).toBe('recommendation')
     expect(result.receipts[0].observations.find(item => item.checkId === 'indexing-failure')?.google?.lastCrawlAt).toBe('2026-10-01T00:00:00Z')
+  })
+  it('independently inspects Google when aggregate context is unavailable but the current credential is valid', async () => {
+    const connection = await stubs.connection()
+    stubs.connection.mockResolvedValue({ ...connection, status: 'UNAVAILABLE' })
+    const result = await run()
+    expect(stubs.inspect).toHaveBeenCalledOnce()
+    expect(result.receipts[0].observations.find(item => item.checkId === 'indexing-failure')?.disposition).toBe('passed')
+  })
+  it('does not retry inspection with credentials that require reauthentication', async () => {
+    const connection = await stubs.connection()
+    stubs.connection.mockResolvedValue({ ...connection, status: 'NEEDS_REAUTH' })
+    const result = await run()
+    expect(stubs.inspect).not.toHaveBeenCalled()
+    expect(stubs.token).not.toHaveBeenCalled()
+    expect(result.receipts[0].observations[0].reason).toBe('AUTH_EXPIRED')
   })
   it('records quota refusal and stops repeatedly calling the provider', async () => {
     stubs.inspect.mockRejectedValue(new SearchConsoleError('PROVIDER_QUOTA'))
@@ -77,7 +93,10 @@ describe('owner-scoped Google evidence', () => {
     stubs.inspect.mockRejectedValue(new SearchConsoleError('PERMISSION_REFUSED'))
     const result = await run()
     expect(result.receipts[0].observations.some(item => item.reason === 'PERMISSION_REFUSED')).toBe(true)
-    expect(stubs.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'NEEDS_REAUTH' }) }))
+    expect(stubs.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'connection', status: { not: 'REVOKED' }, encryptedRefreshToken: 'fixture-encrypted-grant' }),
+      data: expect.objectContaining({ status: 'NEEDS_REAUTH' }),
+    }))
   })
   it('replays the originating receipt without duplicate provider requests or rows', async () => {
     const first = await run()

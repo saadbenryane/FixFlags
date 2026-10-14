@@ -1,57 +1,43 @@
 ## What it adds
 
-Google Analytics adds page-session counts beside the Site's Tracking context and matching page Flags. These numbers help explain which pages people visit. FixFlags still checks the live website independently.
+**Coming soon.** Google Analytics is a planned integration. GitHub account authorization is available. New connection setup and refresh will become available after testing and validation.
+
+Planned value: Page traffic beside matching pages, with page views and sessions labeled separately.
 
 ## Before you connect
 
-- Sign in and [save the Site](/help/getting-started/save-your-site) to your FixFlags account.
-- Use a Google account that can read the intended Google Analytics property.
-- Ensure the property has a website data stream whose configured website hostname matches the Site. FixFlags matches hostnames and treats `www` and the apex hostname as equivalent.
-
-FixFlags chooses a matching property automatically. The current interface does not offer a manual property picker.
-
-## Permissions and data
-
-FixFlags requests read-only Analytics access (`analytics.readonly`). It reads accessible property and website-stream information, then page paths and aggregate session counts. It does not change your Analytics configuration or install a tracking script.
-
-Access tokens are stored encrypted. The connection belongs to the owned Site. It does not import individual visitor identities or session recordings.
+Connection setup is unavailable in this beta. [Save and check your website](/docs/getting-started) using the independent website product.
 
 ## Connect
 
-1. [Open your Sites](/dashboard) and select the website.
-2. Open **Settings → Connections → Analytics**.
-3. Choose **Connect Analytics**.
-4. Select the Google account with property access and approve read-only access.
-5. Return to Site settings to check the result.
+There is no connection action to complete yet. See [planned integrations](/integrations) for the current lineup.
 
 ## Confirm the connection
 
-A successful connection shows the matched **Property**, connection detail, and **Last read** time in settings. Page-specific session context appears where FixFlags has matching page data.
-
-**No Analytics property matches this Site** means authorization succeeded but the available website streams did not match. It does not mean the Site has no visitors.
+A previously saved connection is historical configuration, not proof of a newly validated integration. Read its last successful read time separately from current website evidence.
 
 ## Coverage and limitations
 
-The current report reads up to 25 page rows for the last 28 days through yesterday. It is a bounded snapshot, not a complete traffic dashboard or a live event feed. Check **Last read** before treating numbers as current. Zero sessions is different from an absent row or failed read.
+Planned reports cover matching website and watched-page scope. Missing provider data will remain unknown. Traffic context will not prove signup, payment, attribution, or revenue.
 
-This integration does not currently validate signup or purchase events, analyze funnels, import revenue, or resolve a Flag from traffic numbers. A connected property can return no rows if it has no data in the requested period. FixFlags does not invent missing counts.
+These are planned integration capabilities. Public website checks operate independently.
+
+## Permissions and data
+
+The retained implementation uses read-only property and reporting access, with encrypted credentials. It does not import individual visitor identities or session recordings.
 
 ## Reconnect or disconnect
 
-Use **Reconnect** when access expires, is revoked, or no property matches. Confirm the Google account has access and the website stream uses the intended hostname, then authorize again.
+Reconnect and refresh are unavailable while this integration is coming soon.
 
-Choose **Disconnect** in Site settings to remove the stored credentials and stop using the connection. Earlier saved numbers remain dated historical data; they are not fresh proof. To change accounts or correct an incorrectly matched property, disconnect and connect again with the intended account.
+Select **Disconnect Google Analytics** in the Site’s Integrations to remove its saved connection. Previously recorded context keeps its original date.
 
 ## Troubleshooting
 
-- **No matching property:** check account access and the website data stream's URL. A related subdomain is not automatically the same Site.
-- **Wrong property matched:** use an account whose accessible matching property is the intended one, then reconnect. Contact support if multiple properties still match.
-- **Connected but no numbers:** check whether the property has page-session data for the last 28 days. An absent row does not prove zero traffic.
-- **Access expired or denied:** reconnect with an account that can read the property and approve the requested permission.
-- **Old Last read time:** disconnect and connect again to read the current snapshot. There is no manual refresh control in the current interface.
-- **Interrupted authorization:** start again from Site settings rather than reusing an old link.
-- **Controls missing:** Google connections may be unavailable on the current FixFlags server. Contact support.
+“Coming soon” describes release availability. Repeated connection attempts cannot enable it. Existing records and cleanup are preserved.
 
 ## Get help
 
-Visit [Google connection help](/help/getting-started/connect-google-data) or email [hello@fixflags.com](mailto:hello@fixflags.com). Include the Site, property name, status, and Last read time. Do not send Google passwords or access tokens.
+Email [hello@fixflags.com](mailto:hello@fixflags.com) with the Site and saved connection details. Do not send passwords, access tokens, or customer data.
+
+[Open your Sites](/dashboard) to use independent website checks.

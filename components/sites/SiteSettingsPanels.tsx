@@ -19,13 +19,14 @@ function PanelHeading({ icon: Icon, title, description }: { icon: LucideIcon; ti
   return <div className={styles.heading}><span className={styles.icon}><Icon size={18} aria-hidden /></span><div><h2>{title}</h2><p>{description}</p></div></div>
 }
 
-export function SiteMonitoringSettingsPanel({ label, paused, scheduled, nextCheck, lastCheck, lastError, busy = false, onEdit, onPause, notice, editor }: {
-  label: string; paused: boolean; scheduled: boolean; nextCheck?: string | null; lastCheck?: string | null;
+export function SiteMonitoringSettingsPanel({ label, target, paused, scheduled, nextCheck, lastCheck, lastError, busy = false, onEdit, onPause, notice, editor }: {
+  label: string; target?: string; paused: boolean; scheduled: boolean; nextCheck?: string | null; lastCheck?: string | null;
   lastError?: string | null; busy?: boolean; onEdit: () => void; onPause: (paused: boolean) => void;
   notice?: ReactNode; editor?: ReactNode;
 }) {
   return <SiteSettingsSection id="watch" tabIndex={-1}>
     <PanelHeading icon={Clock3} title={S.monitoring} description={S.monitoringBody} />
+    {target ? <p className={styles.note}>{S.target}: <span className="break-all">{target}</span></p> : null}
     <div className={styles.schedule}><span className={styles.scheduleLabel}><i data-active={scheduled && !paused} aria-hidden />{paused ? S.paused : label}</span>
       <div className={styles.actions}><Button variant="outline" disabled={busy} onClick={onEdit}>{M.edit}</Button>
         {scheduled ? <Button variant="ghost" disabled={busy} onClick={() => onPause(!paused)}>{paused ? S.resume : S.pause}</Button> : null}</div>

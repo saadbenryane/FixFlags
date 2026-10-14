@@ -10,7 +10,7 @@ import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { ExecutionProgress } from '@/lib/sites/application/execution-progress'
 import type { SiteActivity } from '@/lib/sites/activity'
 import { CARD_CATALOG, type SiteCardArea } from '@/lib/sites/card-areas'
-import { CHECK_MODULES } from '@/lib/audit/check-registry'
+import { taskArea } from '@/lib/sites/card-execution'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
@@ -29,17 +29,6 @@ export function SiteAnalysisDetails({ view, disconnected }: { view: SiteHomeView
   return <AnalysisDetails host={view.presentation.identity.host} statusLabel={label} active={active} disconnected={offline} activity={view.activity} progress={view.executionProgress} />
 }
 
-function areaFor(task: ExecutionProgress['tasks'][number]): SiteCardArea | null {
-  if (task.module && CHECK_MODULES[task.module]) return CHECK_MODULES[task.module].area
-  if (['http', 'browser', 'captures', 'discovery', 'cross-page'].includes(task.kind)) return 'site'
-  if (['flow', 'journeys'].includes(task.kind)) return 'conversion'
-  if (['pagespeed', 'slow-replay'].includes(task.kind)) return 'performance'
-  if (['search', 'search-resources', 'google'].includes(task.kind)) return 'search'
-  if (task.kind === 'keyboard') return 'accessibility'
-  if (task.kind === 'bindings' && task.module === 'HTTP_AVAILABILITY') return 'uptime'
-  return null
-}
-
 export function AnalysisDetails({ host, statusLabel, active, disconnected, activity, progress }: {
   host: string; statusLabel: string; active: boolean; disconnected: boolean;
   activity?: SiteActivity; progress?: ExecutionProgress | null;
@@ -54,7 +43,7 @@ export function AnalysisDetails({ host, statusLabel, active, disconnected, activ
   const task = progress?.tasks.find(item => item.state === 'RUNNING') ?? progress?.tasks.find(item => item.state === 'RETRY_WAIT')
   const groups = new Map<SiteCardArea, ExecutionProgress['tasks']>()
   for (const item of progress?.tasks ?? []) {
-    const area = areaFor(item)
+    const area = taskArea(item)
     if (area) groups.set(area, [...(groups.get(area) ?? []), item])
   }
   return <>
@@ -71,14 +60,23 @@ export function AnalysisDetails({ host, statusLabel, active, disconnected, activ
       <DialogTitle className="break-all pr-8">{host}</DialogTitle>
       <DialogDescription>{statusLabel}</DialogDescription>
       <p className={styles.currentActivity}>{disconnected ? SITE_ACTION_COPY.updatesDisconnected : task ? taskLabel(task) : active ? copy.live ?? SITE_BOARD_COPY.activityDescription : activity?.label ?? SITE_BOARD_COPY.activityDescription}</p>
-      {progress ? <p className="text-sm text-muted-foreground">{copy.completed(progress.completed, progress.total)} · {SITE_WORKSPACE_COPY.remaining(progress.pending + progress.running + progress.recovering)}</p> : null}
+      {progress ? <div className="space-y-2 text-sm text-muted-foreground">
+        <p>{progress.summary ? [copy.recorded(progress.summary.recorded), progress.summary.limited ? copy.limited(progress.summary.limited) : null,
+          progress.summary.failed ? copy.failed(progress.summary.failed) : null,
+          progress.summary.notApplicable ? copy.inapplicable(progress.summary.notApplicable) : null].filter(Boolean).join(' · ') :
+          [copy.recorded(progress.completed), progress.unknown ? copy.unknown(progress.unknown) : null, progress.inapplicable ? copy.inapplicable(progress.inapplicable) : null].filter(Boolean).join(' · ')}</p>
+        {active ? <p>{SITE_WORKSPACE_COPY.remaining(progress.pending + progress.running + progress.recovering)}</p> :
+          progress.unknown > 0 ? <p>{copy.settled}</p> : null}
+      </div> : null}
       {!progress && activity?.milestones.length ? <ul className={styles.categories}>{activity.milestones.map(item => <li key={item.label}><span>{item.label}</span><span className={styles.categoryState}>{SITE_WORKSPACE_COPY.milestones[item.state]}</span></li>)}</ul> : null}
       {groups.size > 0 ? <ul className={styles.categories} aria-label={copy.title}>
         {[...groups].map(([area, tasks]) => {
           const state = tasks.some(item => item.state === 'RUNNING') ? 'RUNNING'
             : tasks.some(item => item.state === 'RETRY_WAIT') ? 'RETRY_WAIT'
-            : tasks.some(item => ['BLOCKED', 'EXHAUSTED'].includes(item.state)) ? 'EXHAUSTED'
-            : tasks.some(item => ['WAITING', 'READY'].includes(item.state)) ? 'WAITING' : 'COMPLETED'
+            : tasks.some(item => ['WAITING', 'READY'].includes(item.state)) ? 'WAITING'
+            : tasks.some(item => item.state === 'EXHAUSTED') ? 'EXHAUSTED'
+            : tasks.some(item => item.state === 'BLOCKED') ? 'BLOCKED'
+            : tasks.every(item => item.state === 'NOT_APPLICABLE') ? 'NOT_APPLICABLE' : 'COMPLETED'
           return <li key={area}><span>{CARD_CATALOG[area].name}</span><span className={styles.categoryState}>{state === 'RUNNING' && !disconnected ? <Loader2 size={13} className="text-brand motion-safe:animate-spin" aria-hidden /> : null}{disconnected && state === 'RUNNING' ? statusLabel : stateLabel(state)}</span></li>
         })}
       </ul> : null}

@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { DOCS_GROUPS, DOCS_PAGES } from '@/lib/docs/catalog'
 import { cn } from '@/lib/utils'
-import { BookOpen, ChartNoAxesCombined, Flag, LifeBuoy, Plug, Search, ShoppingBag, Terminal, WandSparkles, Waypoints } from 'lucide-react'
+import { BookOpen, ChartNoAxesCombined, Flag, Github, LifeBuoy, Plug, Search, ShoppingBag, Terminal, WandSparkles, Waypoints } from 'lucide-react'
 import s from './DocsExperience.module.css'
 
-const PAGE_ICONS = { home: BookOpen, 'getting-started': Waypoints, 'site-care': Flag, 'fix-with-ai': WandSparkles, mcp: Terminal, integrations: Plug, shopify: ShoppingBag, 'google-analytics': ChartNoAxesCombined, 'google-search-console': Search, troubleshooting: LifeBuoy }
+const PAGE_ICONS = { home: BookOpen, 'getting-started': Waypoints, 'site-care': Flag, 'fix-with-ai': WandSparkles, mcp: Terminal, integrations: Plug, github: Github, shopify: ShoppingBag, 'google-analytics': ChartNoAxesCombined, 'google-search-console': Search, troubleshooting: LifeBuoy }
 
 export function DocsNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()

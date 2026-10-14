@@ -63,6 +63,32 @@ run('anonymous claim with migrated PostgreSQL', () => {
     return { owned, source, execution }
   }
 
+  it('refuses a previously claimed report after its linked Site changes owner', async () => {
+    const foreignUserId = 'claim-foreign-' + randomUUID()
+    await prisma.user.create({ data: { id: foreignUserId, email: foreignUserId + '@example.test', preferredTools: [] } })
+    try {
+      await prisma.audit.update({ where: { id: auditId }, data: { userId, projectId } })
+      await prisma.project.update({ where: { id: projectId }, data: { userId: foreignUserId, deletedAt: new Date() } })
+      const before = await prisma.project.findUniqueOrThrow({ where: { id: projectId } })
+      await expect(claimAnonymousAudits(userId)).rejects.toThrow('Site is no longer owned by this account')
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toEqual(before)
+      expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: null })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId, projectId })
+      expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(0)
+      expect(cookies.delete).not.toHaveBeenCalled()
+      // Once legitimate ownership is restored, the same retained proof can
+      // finish the claim and default monitoring without losing identity.
+      await prisma.project.update({ where: { id: projectId }, data: { userId, deletedAt: null } })
+      expect(await claimAnonymousAudits(userId)).toBe(1)
+      expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: projectId })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date) })
+      expect(await prisma.siteOutcome.count({ where: { projectId } })).toBe(1)
+    } finally {
+      await prisma.project.update({ where: { id: projectId }, data: { userId, deletedAt: null } })
+      await prisma.user.delete({ where: { id: foreignUserId } })
+    }
+  })
+
   it('retains the supplied public origin from anonymous admission through claim and automatic uptime setup', async () => {
     const target = 'http://www.example.com:8080/pricing'
     await prisma.project.delete({ where: { id: projectId } })

@@ -62,6 +62,20 @@ export function parseJsonRpcResponseOutcome(body: unknown): JsonRpcOutcome {
       errorCode: message ?? code ?? 'jsonrpc_error',
     }
   }
+  const result = asRecord(record?.result)
+  if (result?.isError === true) {
+    let toolError = asRecord(asRecord(result.structuredContent)?.error)
+    if (!toolError) {
+      const text = extractToolResultText(body)
+      try {
+        toolError = text ? asRecord(asRecord(JSON.parse(text))?.error) : null
+      } catch {
+        // Opaque failure text carries no structured error code.
+      }
+    }
+    return { success: false, errorCode: typeof toolError?.code === 'string'
+      ? toolError.code.slice(0, 100) || 'mcp_tool_error' : 'mcp_tool_error' }
+  }
   return { success: true }
 }
 

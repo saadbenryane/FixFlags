@@ -2,18 +2,18 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { currentUptimeState, uptimeTimeline, type ProbeResult, type UptimeHistory, type UptimeProbeView, type UptimeState, type UptimeSummary } from './domain'
-import { uptimeEligible } from './eligibility'
+import { uptimeEligible, uptimeProjectInclude } from './eligibility'
 import { uptimeHistorySchema, uptimeSummarySchema } from './contracts'
 
 function windowStart(window: UptimeHistory['window'], now: Date) {
   return new Date(now.getTime() - (window === '24h' ? 1 : window === '7d' ? 7 : 30) * 86400_000)
 }
-const projectionInclude = { project: { include: { user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } } } } } as const
+const projectionInclude = { project: { include: uptimeProjectInclude } } as const
 
 async function readUptime(projectId: string, window: UptimeHistory['window'], cursor: string | null, now: Date, includeHistory: boolean): Promise<UptimeHistory | null> {
   const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId }, include: projectionInclude })
   if (!monitor) {
-    const project = await prisma.project.findUnique({ where: { id: projectId }, include: { user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } } } })
+    const project = await prisma.project.findUnique({ where: { id: projectId }, include: uptimeProjectInclude })
     if (!project || project.deletedAt) return null
     if (cursor) throw new Error('Invalid uptime cursor')
     const target = normalizeAuditUrl(project.url)

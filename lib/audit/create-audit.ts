@@ -20,7 +20,6 @@ import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/check-limit'
 import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 import {
   encryptScanAccess,
-  decryptScanAccess,
   type ScanAccessConfig,
 } from '@/lib/audit/scan-access'
 import {
@@ -30,6 +29,7 @@ import {
 } from '@/lib/audit/usage'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 import { ensureSiteForAudit } from '@/lib/sites/ensure-site'
+import { admitScanAccess } from './scan-access-store'
 import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
 import {
   refreshUserUsagePeriod,
@@ -230,38 +230,25 @@ export async function createAndEnqueueAudit(
   })
 
   let projectId: string | null = null
-  let inheritedScanAccessEncrypted: string | null = null
   if (userId) {
     if (options.parentId) {
       const parent = await prisma.audit.findUnique({
         where: { id: options.parentId },
-        select: { projectId: true, scanAccessEncrypted: true },
+        select: { projectId: true },
       })
       projectId = parent?.projectId ?? null
-      inheritedScanAccessEncrypted = parent?.scanAccessEncrypted ?? null
     }
     if (!projectId) {
       const existing = await prisma.project.findUnique({
         where: { userId_canonicalHost: { userId, canonicalHost: new URL(url).hostname } },
-        select: { id: true, scanAccessEncrypted: true },
+        select: { id: true },
       })
       projectId = existing?.id ?? null
-      inheritedScanAccessEncrypted = existing?.scanAccessEncrypted ?? null
-    }
-    if (!inheritedScanAccessEncrypted && projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        select: { scanAccessEncrypted: true },
-      })
-      inheritedScanAccessEncrypted = project?.scanAccessEncrypted ?? null
     }
   }
 
-  const resolvedScanAccess =
-    options.scanAccess ??
-    (options.useProjectScanAccess !== false && inheritedScanAccessEncrypted
-      ? decryptScanAccess(inheritedScanAccessEncrypted)
-      : null)
+  const resolvedScanAccess = options.scanAccess ?? null
+  if (resolvedScanAccess && !userId) throw new ParentAuditError('Sign in to use website access settings.', 401)
 
   const executionSpec = options.executionSpec ?? await buildExecutionSpec({
     projectId: projectId ?? '', targetUrl: url, environment: 'production', scope: 'SITE', outcomes: [],
@@ -291,7 +278,7 @@ export async function createAndEnqueueAudit(
     ...(options.parentId ? { monitoringMode: options.monitoringMode ?? ('FULL' as const) } : {}),
     status: 'QUEUED' as const,
     progress: PIPELINE_PROGRESS.QUEUED,
-    executionSpec: { ...executionSpec, reviewDepth } as Prisma.InputJsonValue,
+    executionSpec: { ...executionSpec, reviewDepth, scanAccess: { kind: resolvedScanAccess ? 'explicit' : 'public', origin: new URL(url).origin } } as Prisma.InputJsonValue,
     recoveryUntil: new Date(Date.now() + 60 * 60_000),
     dispatchState: 'PENDING' as const,
     dispatchNextAt: new Date(Date.now() + Math.max(0, options.delayMs ?? 0)),
@@ -479,6 +466,11 @@ export async function createAndEnqueueAudit(
               }
             }
 
+            const access = await admitScanAccess(tx, { projectId, userId, targetUrl: url,
+              explicit: options.scanAccess, useProject: options.useProjectScanAccess, allowRemovedForCleanup: cleanup })
+            data.scanAccessEncrypted = access.config ? encryptScanAccess(access.config) : null
+            data.executionSpec = { ...executionSpec, reviewDepth, scanAccess: access.intent } as Prisma.InputJsonValue
+            if (access.config) data.isPublic = false
             const created = await tx.audit.create({
               data: { ...data, projectId, planAtAdmission: user.plan, journeyReviewIncluded: true },
               select: { id: true, parentId: true },

@@ -277,7 +277,7 @@ export function runBanner(input: {
     return {
       headline: SITE_PRESENTATION_COPY.run.partial,
       kind: 'incomplete',
-      recovery: 'retry',
+      recovery: input.run.recoveryAction,
     }
   }
   if (input.monitoring.state === 'paused') {

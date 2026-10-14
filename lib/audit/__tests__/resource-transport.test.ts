@@ -113,6 +113,6 @@ describe('shared resource transport evidence', () => {
     const result = checkArtifactSchema.parse(readArtifact(artifact, 'check').data)
     expect(result.flags).toEqual([])
     expect(result.receipt).toMatchObject({ complete: false, passed: false,
-      execution: { source: 'original-html' }, assertions: [{ key: 'https', passed: true }, { key: 'resource-transport', complete: false }] })
+      execution: { source: 'http' }, assertions: [{ key: 'https', passed: true }, { key: 'resource-transport', complete: false }] })
   })
 })

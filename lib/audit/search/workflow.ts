@@ -7,6 +7,8 @@ import { collectSearchEvidence, type SearchResourceCache } from './collect'
 import { evaluateSearch, evaluateCheckedPageTitles, searchFindings } from './registry'
 import { searchReceiptSchema, searchVerifierSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { recordVerifierExecution } from '@/lib/improvements/verifier-provenance'
+import { parseAffectedPaths } from '@/lib/audit/flag-identity'
+import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 
 export const SEARCH_LOCAL_MODULES = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
   .map(item => 'module:search-' + item.evaluator)
@@ -70,15 +72,16 @@ export async function recordSearchVerifiers(receipt: SearchReceipt, db: typeof p
     where: { sourceAuditId: audit.parentId, outcome: null },
     select: { improvement: { select: { occurrences: {
       where: { auditId: audit.parentId },
-      select: { flag: { select: { checkId: true, source: true, pageUrl: true, fingerprint: true, attentionPolicy: true } } },
+      select: { flag: { select: { checkId: true, source: true, pageUrl: true, affectedPaths: true, fingerprint: true, attentionPolicy: true } } },
     } } } },
   })
   const seen = new Set<string>()
   for (const attempt of attempts) for (const occurrence of attempt.improvement.occurrences) {
     const flag = occurrence.flag, checkId = flag.checkId?.split('::page:')[0]
-    if (!checkId || flag.pageUrl !== receipt.pageUrl || seen.has(checkId)) continue
+    const pages = [...parseAffectedPaths(flag.affectedPaths), ...(flag.pageUrl ? [flag.pageUrl] : [])].map(normalizeVerifierUrl)
+    if (!checkId || !pages.includes(normalizeVerifierUrl(receipt.pageUrl)) || seen.has(checkId)) continue
     seen.add(checkId)
-    const decision = assessSearchRecovery(receipt, checkId, flag.attentionPolicy)
+    const decision = assessSearchRecovery(receipt, checkId, flag.attentionPolicy, flag.pageUrl, pages)
     if (!decision.observationIds.length) continue
     const { verdict, comparable: established } = decision
     await recordVerifierExecution({ auditId: receipt.auditId, source: flag.source, checkId: flag.checkId,

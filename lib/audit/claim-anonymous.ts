@@ -65,6 +65,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         },
         select: {
           id: true,
+          userId: true,
           status: true,
           aiReviewAt: true,
           skipUsageCount: true,
@@ -82,12 +83,17 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         let project = audit.projectId
           ? await tx.project.findUnique({
               where: { id: audit.projectId },
-              select: { id: true, productIntelligence: true, deletedAt: true },
+              select: { id: true, userId: true, productIntelligence: true, deletedAt: true },
             })
           : await tx.project.findUnique({
               where: { userId_canonicalHost: { userId, canonicalHost } },
-              select: { id: true, productIntelligence: true, deletedAt: true },
+              select: { id: true, userId: true, productIntelligence: true, deletedAt: true },
             })
+        // A report claim proves possession of this report, not authority over
+        // a linked Site whose ownership may have changed since the first claim.
+        if (audit.projectId && project?.userId !== userId) {
+          throw new Error('Site is no longer owned by this account')
+        }
         if (project?.deletedAt) {
           await assertCanCreateProduct(tx, userId)
           await tx.project.update({ where: { id: project.id }, data: { deletedAt: null } })
@@ -104,7 +110,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
                 isManaged: false,
               },
               update: { deletedAt: null },
-              select: { id: true, productIntelligence: true, deletedAt: true },
+              select: { id: true, userId: true, productIntelligence: true, deletedAt: true },
             })
         }
         if (!project) throw new Error(`Cannot attach Product for audit ${audit.id}`)
@@ -144,7 +150,18 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     }
   )
 
+  const newlyClaimedIds = new Set(audits.filter((audit) => audit.userId === null).map((audit) => audit.id))
   for (const project of claimedProjects) {
+    for (const auditId of project.auditIds) {
+      // A retry of an older claim cannot establish its original transition time.
+      if (!newlyClaimedIds.has(auditId)) continue
+      await recordSiteLifecycleEvent({
+        name: 'analysis_claimed',
+        idempotencyKey: `analysis_claimed:${auditId}`,
+        userId,
+        projectId: project.id,
+      }).catch(() => undefined)
+    }
     await recordSiteLifecycleEvent({
       name: 'site_claimed',
       idempotencyKey: `site_claimed:${userId}:${project.id}`,
@@ -158,6 +175,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     await clearAnonymousAuditCookie()
     return 0
   }
+
 
   // Claimed teasers count once toward the active monthly quota (idempotent via usageCountedAt).
   for (const audit of audits) {

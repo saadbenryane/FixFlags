@@ -1,13 +1,32 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
-import { AUDIT_ERRORS, REPORT_COPY } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, REPORT_COPY, SITE_ACTION_COPY } from '@/lib/marketing/copy'
+
+const mocks = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), toast: vi.fn() }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }))
+vi.mock('sonner', () => ({ toast: { error: mocks.toast } }))
+beforeEach(() => vi.clearAllMocks())
+afterEach(() => vi.unstubAllGlobals())
 
 describe('TriageUnavailableCallout', () => {
+  it('opens a confirmed replacement report after retrying the written summary', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: 'QUEUED', auditId: 'replacement' }) }))
+    render(<TriageUnavailableCallout auditId="a1" isLoggedIn canRetry signUpHref="/sign-up" />)
+    fireEvent.click(screen.getByRole('button', { name: REPORT_COPY.triageUnavailable.retryCta }))
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/report/replacement'))
+    expect(mocks.refresh).not.toHaveBeenCalled()
+  })
+  it('does not navigate when retry admission omits the new report identity', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: 'QUEUED' }) }))
+    render(<TriageUnavailableCallout auditId="a1" isLoggedIn canRetry signUpHref="/sign-up" />)
+    fireEvent.click(screen.getByRole('button', { name: REPORT_COPY.triageUnavailable.retryCta }))
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(SITE_ACTION_COPY.invalidResponse))
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
   it('shows anonymous body and signup CTA, never partialReport', () => {
     render(
       <TriageUnavailableCallout

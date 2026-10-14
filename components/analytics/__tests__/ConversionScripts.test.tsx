@@ -111,6 +111,7 @@ describe('ConversionScripts consent', () => {
 
     act(() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT)))
     expect(await screen.findByRole('dialog', { name: 'Choose your analytics settings' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Allow analytics' })).toHaveFocus()
     fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }))
 
     expect(document.cookie).toContain(`${ANALYTICS_CONSENT_COOKIE}=granted`)

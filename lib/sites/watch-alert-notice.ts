@@ -1,6 +1,5 @@
 import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import {
-  watchAlertDelivery,
   type WatchAlertDeliveryState,
   type WatchNotificationStatusLike,
 } from '@/lib/audit/watch-notification'
@@ -24,12 +23,12 @@ export type SiteWatchAlertNotice = {
 }
 
 export function siteWatchAlertNotice(input: {
-  status: WatchNotificationStatusLike | null | undefined
-  attempts: number
-  leaseUntil?: Date | string | null
+  state: WatchAlertDeliveryState
   at: Date | string | null
 }): SiteWatchAlertNotice | null {
-  if (watchAlertDelivery(input) !== 'undelivered') return null
+  // The server projection has the alert's saved ceiling and lease. Views must
+  // not reinterpret its state using a default attempt limit.
+  if (input.state !== 'undelivered') return null
   return {
     title: WATCH_ALERT_DELIVERY.undeliveredTitle,
     actionLabel: WATCH_ALERT_DELIVERY.undeliveredAction,

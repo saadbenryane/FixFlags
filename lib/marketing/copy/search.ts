@@ -1,6 +1,6 @@
 export const SEARCH_COPY = {
   title: 'Search',
-  introduction: 'Public website checks, Google’s recorded evidence, and opportunities to improve.',
+  introduction: 'Public website checks and opportunities to improve. Previously recorded Google evidence keeps its source and date.',
   groups: { crawl: 'Crawl access', indexing: 'Indexing directives', canonical: 'Canonical identity',
     presentation: 'Search presentation', 'structured-data': 'Structured data', discovery: 'Discovery', google: 'Google evidence' },
   sources: { http: 'Public HTTP response', 'original-html': 'Original HTML', 'rendered-dom': 'Rendered page',
@@ -21,10 +21,10 @@ export const SEARCH_COPY = {
     google: 'This observation describes Google’s recorded version or reporting window. It does not establish the current live website or promise improved rankings.',
   },
   googleFailures: {
-    NOT_CONNECTED: 'Connect Search Console to inspect Google’s recorded version.',
+    NOT_CONNECTED: 'Search Console is coming soon. Public website evidence remains available independently.',
     PROPERTY_MISMATCH: 'The connected Search Console property does not cover this exact URL.',
-    AUTH_EXPIRED: 'Reconnect Search Console to read Google’s recorded evidence.',
-    PERMISSION_REFUSED: 'Google refused access to this property. Review permissions or reconnect.',
+    AUTH_EXPIRED: 'This saved Search Console authorization expired. New setup is coming soon; earlier evidence retains its recorded date.',
+    PERMISSION_REFUSED: 'Google refused access to this saved property. New setup is coming soon; earlier evidence remains historical.',
     PROVIDER_QUOTA: 'Google’s request quota was reached. This evidence was not refreshed.',
     PROVIDER_UNAVAILABLE: 'Google’s evidence could not be read. Local website checks remain separate.',
     MALFORMED_PROVIDER_RESPONSE: 'Google returned an incomplete or unexpected response.',
@@ -73,6 +73,7 @@ export const SEARCH_COPY = {
     crawl_policy_regressed: 'This page’s crawl policy changed',
     query_ctr_opportunity: 'Review this query’s search presentation',
     google_indexing_regression: 'Google reports an indexing regression',
+    google_canonical_mismatch: 'Review Google’s selected canonical URL',
   },
   rules: {
     title: { name: 'Page title', expected: 'The public page has a non-empty title.', guidance: 'Give this page a descriptive title that matches its visible content. Google may choose or shorten its title link.' },
@@ -88,6 +89,9 @@ export const SEARCH_COPY = {
     feature: { name: 'Structured-data feature rules', expected: 'Implemented markup satisfies the supported rules for its stated type.', guidance: 'Supply required properties using real page facts. Never create ratings, reviews, prices, authors, or business details to satisfy a validator.' },
     opportunity: { name: 'Relevant structured-data opportunity', expected: 'Markup describes content that is actually present.', guidance: 'Add only a type supported by this page’s content. Validate the published URL after deployment; no rich-result appearance is guaranteed.' },
     google: { name: 'Google’s recorded indexing evidence', expected: 'Authorized Search Console evidence covers this exact page.', guidance: 'Inspect the reported reason in Search Console. Verify a local repair independently, then wait for Google to recrawl before claiming reindexing.' },
+    googleFetch: { name: 'Google’s recorded page fetch', expected: 'Google’s page-fetch result is identifiable.', guidance: 'Review the response Google recorded, including soft 404s, unavailable pages and blocked requests. Compare it with the current public page and Google’s last crawl time before changing the website.' },
+    googleDirectives: { name: 'Google’s recorded indexing rules', expected: 'Google’s crawl and indexing restrictions are identifiable.', guidance: 'Compare Google’s recorded rules with the current robots.txt, page metadata and response headers. Keep intentional exclusions. Changed declarations need a later Google crawl before their recovery can be established.' },
+    googleCanonical: { name: 'Google’s canonical selection', expected: 'Google’s chosen URL can be compared with the declared canonical when both are supplied.', guidance: 'Review the exact selected and declared URLs in Search Console. Google can legitimately choose a different canonical, including another domain. Compare content and canonical signals before changing the declaration.' },
     performance: { name: 'Search-performance opportunity', expected: 'Authorized Search Console rows describe the checked page and reporting window.', guidance: 'Review the query, impressions, position, and date range together. Low CTR alone does not prove a website failure.' },
   },
 } as const

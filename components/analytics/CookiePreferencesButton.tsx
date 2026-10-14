@@ -7,7 +7,10 @@ export function CookiePreferencesButton({ className }: { className?: string }) {
     <button
       type="button"
       className={className}
-      onClick={() => window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT))}
+      onClick={event => {
+        event.currentTarget.focus({ preventScroll: true })
+        window.dispatchEvent(new Event(ANALYTICS_PREFERENCES_EVENT))
+      }}
     >
       Cookie settings
     </button>

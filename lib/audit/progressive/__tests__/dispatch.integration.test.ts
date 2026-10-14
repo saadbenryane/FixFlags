@@ -1,14 +1,17 @@
 import { randomUUID } from 'node:crypto'
+import type { Audit } from '@prisma/client'
 import { Queue, Worker } from 'bullmq'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { createQueueRedis, createWorkerRedis } from '@/lib/queue/redis'
-import { dispatchReadyTasks, dispatchTask, executeTask, loadTaskGraph, persistTaskPlan, reconcileTasks } from '../engine'
+import { dispatchReadyTasks, dispatchTask, executeTask, loadTaskGraph, persistTaskPlan, reconcileTasks, recoverProgressiveTasks } from '../engine'
+import { dispatchPendingAudits } from '@/lib/audit/dispatch'
 import { serializeArtifact, TaskFailure, type TaskKind } from '../contracts'
 import type { TaskHandler } from '../registry'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
-vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)! }))
+vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
+  getAuditQueue: () => dispatch.queues.get('audit')! }))
 vi.mock('@/lib/audit/screenshot', () => ({ getBrowserDiagnostics: () => ({ connected: true }) }))
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
@@ -27,7 +30,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Dispatch integration requires a disposable local execution database')
     const suffix = randomUUID()
-    for (const resource of ['http', 'browser'] as const) {
+    for (const resource of ['http', 'browser', 'audit'] as const) {
       const connection = createQueueRedis()
       connections.push(connection)
       dispatch.queues.set(resource, new Queue('dispatch-' + resource + '-' + suffix, { connection }))
@@ -128,6 +131,72 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: null } })
     expect((await Promise.all(Array.from({ length: 8 }, () => dispatchTask(tasks[0].id)))).filter(Boolean)).toHaveLength(1)
     expect(await dispatch.queues.get('http')!.getJob(tasks[0].id + '-g1')).not.toBeNull()
+  })
+
+  it('finishes independent task batches after a failed claim and retries the retained task', async () => {
+    const { tasks } = await admission(Array<TaskKind>(8).fill('http'))
+    const update = prisma.auditVerifierExecution.updateMany.bind(prisma.auditVerifierExecution)
+    const claim = vi.spyOn(prisma.auditVerifierExecution, 'updateMany').mockImplementation(args => {
+      if (args.where?.id === tasks[0].id && args.data.workDispatchLeaseUntil)
+        throw new Error('Controlled task claim failure')
+      return update(args)
+    })
+    const worker = await startHttpWorker()
+    try {
+      expect(await dispatchReadyTasks(tasks.map(task => task.id))).toBe(7)
+      for (const task of tasks.slice(1)) await completed(task.id)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject({ workState: 'READY', workAttempts: 0, workDispatchState: 'PENDING' })
+      claim.mockRestore()
+      expect(await dispatchTask(tasks[0].id)).toBe(true)
+      await completed(tasks[0].id)
+    } finally { claim.mockRestore(); await worker.close() }
+  })
+
+  it('recovers another Audit after one graph read fails without losing the failed graph', async () => {
+    const broken = await admission(['http']), healthy = await admission(['http'])
+    for (const audit of [broken.audit, healthy.audit]) await prisma.audit.update({ where: { id: audit.id },
+      data: { executionSpec: { engine: 'progressive-v1' }, dispatchNextAt: new Date(0) } })
+    const read = prisma.audit.findUnique.bind(prisma.audit)
+    const failure = vi.spyOn(prisma.audit, 'findUnique').mockImplementation(args => {
+      if (args.where.id === broken.audit.id) throw new Error('Controlled graph read failure')
+      return read(args)
+    })
+    const worker = await startHttpWorker()
+    try {
+      expect(await recoverProgressiveTasks(2)).toBe(1)
+      await completed(healthy.tasks[0].id)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: broken.tasks[0].id } }))
+        .toMatchObject({ workState: 'READY', workAttempts: 0 })
+      failure.mockRestore()
+      await prisma.audit.update({ where: { id: broken.audit.id }, data: { dispatchNextAt: new Date(0) } })
+      expect(await recoverProgressiveTasks(1)).toBe(1)
+      await completed(broken.tasks[0].id)
+    } finally { failure.mockRestore(); await worker.close() }
+  })
+
+  it('keeps active Audit leases out of the bounded batch and continues after a metadata read fails', async () => {
+    const audits: Audit[] = []
+    for (let index = 0; index < 3; index++) {
+      const audit = await prisma.audit.create({ data: { url: 'https://example.com/', dispatchNextAt: new Date(index),
+        ...(index === 0 ? { dispatchLeaseUntil: new Date(Date.now() + 30_000) } : {}) } })
+      auditIds.push(audit.id); audits.push(audit)
+    }
+    const read = prisma.audit.findUniqueOrThrow.bind(prisma.audit)
+    const failure = vi.spyOn(prisma.audit, 'findUniqueOrThrow').mockImplementation(args => {
+      if (args.where.id === audits[1].id) throw new Error('Controlled Audit metadata read failure')
+      return read(args)
+    })
+    try {
+      expect(await dispatchPendingAudits(2)).toBe(1)
+      expect(await dispatch.queues.get('audit')!.getJob(audits[0].id)).toBeUndefined()
+      expect(await dispatch.queues.get('audit')!.getJob(audits[2].id)).toMatchObject({ data: { auditId: audits[2].id } })
+      expect(await prisma.audit.findUnique({ where: { id: audits[1].id } })).toMatchObject({ status: 'QUEUED', dispatchState: 'PENDING', dispatchAttempts: 1 })
+      failure.mockRestore()
+      await prisma.audit.update({ where: { id: audits[1].id }, data: { dispatchLeaseUntil: new Date(0) } })
+      expect(await dispatchPendingAudits(1)).toBe(1)
+      expect(await dispatch.queues.get('audit')!.getJob(audits[1].id)).toMatchObject({ data: { auditId: audits[1].id } })
+    } finally { failure.mockRestore() }
   })
 
   it.each(['acknowledged', 'uncertain'] as const)('preserves a fast worker retry after an %s producer response', async response => {

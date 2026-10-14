@@ -62,6 +62,7 @@ export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations
     const fromAxe = violations.some(violation => axeRuleToCheckId(violation.id) === flag.checkId)
     const assertion = observations.find(item => item.key === (fromAxe ? 'axe:' : 'dom:') + flag.checkId && item.context)
     return assertion ? { ...flag, verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
-      evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: flag.checkId, context: assertion.context }] } : flag
+      evidenceTargets: fromAxe ? violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId).flatMap(violation => violation.nodes).slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const, selector: node.target.join(' > '), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: assertion.context }))
+        : [{ kind: 'page', source: 'measured', device: 'desktop', label: flag.checkId, context: assertion.context }] } : flag
   })
 }

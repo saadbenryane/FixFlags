@@ -1,8 +1,16 @@
 import { z } from 'zod'
+import { notificationEmailSnapshotSchema } from './notification-delivery'
 
-/** The complete provider body stays stable across retries and deployments. */
-export const watchEmailPayloadSchema = z.object({
-  version: z.literal(1), from: z.string().min(1), to: z.string().email(),
-  subject: z.string().min(1), html: z.string().min(1), text: z.string().min(1),
-  tags: z.array(z.object({ name: z.string(), value: z.string() }).strict()).max(10),
+export const watchEmailSelectionSchema = z.object({
+  projectId: z.string().min(1),
+  regressions: z.array(z.string().min(1).max(250)).max(5000),
+  recoveries: z.array(z.string().min(1).max(250)).max(5000),
+}).strict()
+/** The complete provider body stays stable for one permitted selection. */
+export const watchEmailSnapshotSchema = notificationEmailSnapshotSchema.extend({
+  selection: watchEmailSelectionSchema.optional(),
+  deliveryKey: z.string().min(1).max(250).optional(),
+}).strict()
+export const watchEmailPayloadSchema = watchEmailSnapshotSchema.extend({
+  previous: z.array(watchEmailSnapshotSchema).max(32).optional(),
 }).strict()

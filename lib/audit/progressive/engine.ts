@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
+import { ScanAccessUnavailable } from '../scan-access-grants'
 import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask } from './queues'
@@ -274,6 +276,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
 }
 
 export function classifyTaskFailure(error: unknown): TaskFailure {
+  if (error instanceof ScanAccessUnavailable) return new TaskFailure(error.code, false)
   if (error instanceof TaskFailure) return error
   // A refused navigation is a completed observation of unavailable scope. A
   // fresh scheduled run can observe recovery; repeating secondary browser work
@@ -293,8 +296,14 @@ export function classifyTaskFailure(error: unknown): TaskFailure {
 /** Small fair dispatch batches prevent one Site, or a down queue, from occupying a recovery pass. */
 export async function dispatchReadyTasks(ids: string[]) {
   let sent = 0
-  for (let offset = 0; offset < Math.min(ids.length, 8); offset += 4)
-    for (const result of await Promise.all(ids.slice(offset, offset + 4).map(dispatchTask))) if (result) sent++
+  for (let offset = 0; offset < Math.min(ids.length, 8); offset += 4) {
+    const batch = ids.slice(offset, offset + 4)
+    const results = await Promise.allSettled(batch.map(dispatchTask))
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'fulfilled') { if (result.value) sent++ }
+      else logger.error('Task dispatch interrupted; retained ledger will be retried', result.reason, { taskId: batch[index] })
+    }
+  }
   return sent
 }
 
@@ -314,10 +323,12 @@ export async function recoverProgressiveTasks(limit = 25) {
     if (Date.now() >= deadline) break
     // Round-robin durable dispatch scheduling. Sleeping older analyses cannot
     // monopolize a bounded recovery batch while younger Sites await service.
-    const admitted = await prisma.audit.updateMany({ where: { id: audit.id, dispatchNextAt: { lte: new Date() } },
-      data: { dispatchNextAt: new Date(Date.now() + 10_000) } })
-    if (!admitted.count) continue
-    dispatched += await dispatchReadyTasks(await reconcileTasks(audit.id))
+    try {
+      const admitted = await prisma.audit.updateMany({ where: { id: audit.id, dispatchNextAt: { lte: new Date() } },
+        data: { dispatchNextAt: new Date(Date.now() + 10_000) } })
+      if (!admitted.count) continue
+      dispatched += await dispatchReadyTasks(await reconcileTasks(audit.id))
+    } catch (error) { logger.error('Audit task recovery interrupted; retained graph will be retried', error, { auditId: audit.id }) }
   }
   return dispatched
 }

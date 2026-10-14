@@ -46,17 +46,27 @@ const HARDENING_SUPPRESSED_BY = new Set([
   'security-x-permitted-cross-domain',
 ])
 
-/** Drop broader Flags when a more specific sibling checkId is present. */
+function observationPages(flag: DeterministicFlag): string[] {
+  const pages = [...new Set([...(flag.affectedPaths ?? []), ...(flag.pageUrl ? [flag.pageUrl] : [])])]
+  return pages.length ? pages : ['']
+}
+
+/** Drop broader Flags only when specific evidence covers their affected pages. */
 export function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag[] {
-  const ids = new Set(flags.map((flag) => flag.checkId))
-  const hasConsolidated = ids.has('security-headers-missing')
-  const hasHardening = ids.has('security-headers-hardening')
+  const pagesByCheck = new Map<string, Set<string>>()
+  for (const flag of flags) {
+    const pages = pagesByCheck.get(flag.checkId) ?? new Set<string>()
+    for (const page of observationPages(flag)) pages.add(page)
+    pagesByCheck.set(flag.checkId, pages)
+  }
   return flags.filter((flag) => {
+    const pages = observationPages(flag)
+    const coveredBy = (checkId: string) => pages.every(page => pagesByCheck.get(checkId)?.has(page))
     for (const [broader, specific] of SUPPRESSIONS) {
-      if (flag.checkId === broader && ids.has(specific)) return false
+      if (flag.checkId === broader && coveredBy(specific)) return false
     }
-    if (hasConsolidated && CONSOLIDATED_SUPPRESSED_BY.has(flag.checkId)) return false
-    if (hasHardening && HARDENING_SUPPRESSED_BY.has(flag.checkId)) return false
+    if (CONSOLIDATED_SUPPRESSED_BY.has(flag.checkId) && coveredBy('security-headers-missing')) return false
+    if (HARDENING_SUPPRESSED_BY.has(flag.checkId) && coveredBy('security-headers-hardening')) return false
     return true
   })
 }

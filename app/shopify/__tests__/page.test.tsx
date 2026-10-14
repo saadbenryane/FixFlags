@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const integrationRelease = vi.hoisted(() => vi.fn(() => 'available'))
+vi.mock('@/lib/integrations/release-policy', () => ({ integrationRelease }))
 
 const { normalizeShopDomain, verifyShopifyOAuthHmac, isShopifyFixtureMode, signFixtureSession } = vi.hoisted(() => ({
   normalizeShopDomain: vi.fn(), verifyShopifyOAuthHmac: vi.fn(), isShopifyFixtureMode: vi.fn(), signFixtureSession: vi.fn(),
@@ -13,6 +15,7 @@ import ShopifyAppPage from '../page'
 describe('Shopify embedded entry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    integrationRelease.mockReturnValue('available')
     normalizeShopDomain.mockReturnValue('demo.myshopify.com')
     verifyShopifyOAuthHmac.mockReturnValue(true)
     isShopifyFixtureMode.mockReturnValue(false)

@@ -1,10 +1,12 @@
 import type { CaptureMetrics, PageLoadExperience } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { blockingLoadingObservation, loadingDelayObservation, scopeLoadingFlag } from './loading-evidence'
+import { motionAssertions, scopeMotionFlag } from './motion-evidence'
 
 function slowLoadFlag(load: PageLoadExperience | null | undefined): DeterministicFlag | null {
   if (
-    !load?.loadingVisibleAtInitial ||
+    !load?.loadingVisibleAtInitial || load.observation?.restricted === true ||
     load.loadingVisibleAtFinal ||
     load.loadingClearedMs === null ||
     load.loadingClearedMs <= 3_000
@@ -27,29 +29,24 @@ function slowLoadFlag(load: PageLoadExperience | null | undefined): Deterministi
 }
 
 export function runInteractionChecks(metrics: CaptureMetrics | null, record?: CheckRecorder): DeterministicFlag[] {
-  recordObservation(record, 'reduced-motion', 'Reduced-motion behavior',
-    'Reduced motion lowers the significant visible CSS animation count below half of its original count, or none is initially present',
-    metrics?.motionComplete === true ? metrics.motionIgnoresReducedPreference ? 'At least half of the significant CSS motion remained under reduced motion.' : 'The recorded animation-count comparison met the reduction rule.'
+  if (metrics?.motionObservation) motionAssertions(metrics.motionObservation).forEach(assertion => record?.(assertion))
+  else recordObservation(record, 'reduced-motion', 'Reduced-motion behavior',
+    'Reduced motion lowers each observed type of significant motion below half its normal count, or no motion remains',
+    metrics?.motionComplete === true ? metrics.motionIgnoresReducedPreference ? 'At least half of an observed motion type remained under reduced motion.' : 'The current-state motion comparison met the reduction rule.'
       : 'A complete reduced-motion comparison is unavailable.',
     metrics?.motionComplete === true ? !metrics.motionIgnoresReducedPreference : undefined)
-  recordObservation(record, 'blocking-loading-ui', 'Captured loading UI',
-    'No blocking loading indicator remains at capture time',
-    metrics ? `Blocking loading UI ${metrics.stuckLoadingIndicator ? 'remained' : 'was absent'} at capture time.` : 'Loading UI was not observed.',
-    metrics && typeof metrics.stuckLoadingIndicator === 'boolean' ? !metrics.stuckLoadingIndicator : undefined, true)
+  record?.(blockingLoadingObservation(metrics))
   const windows = [metrics?.loadExperience, metrics?.desktopLoadExperience].filter((window): window is PageLoadExperience => Boolean(window))
-  const loadFailed = windows.some(window => Boolean(slowLoadFlag(window)))
-  const loadComplete = windows.length > 0 && windows.every(window => !window.loadingVisibleAtFinal &&
-    (!window.loadingVisibleAtInitial || window.loadingClearedMs !== null))
-  recordObservation(record, 'loading-delay', 'Recorded loading delay', 'Blocking initial loading UI clears within 3000ms in each recorded window',
-    windows.length ? windows.map(window => `${window.device}: initial loading ${window.loadingVisibleAtInitial}, final loading ${window.loadingVisibleAtFinal}, cleared at ${window.loadingClearedMs ?? 'unknown'}ms.`).join(' ')
-      : 'No initial and final loading window was recorded.', loadFailed ? false : loadComplete ? true : undefined, true)
+  if (windows.length) windows.forEach(window => record?.(loadingDelayObservation(window, 3000)))
+  else recordObservation(record, 'loading-delay', 'Recorded loading delay', 'Blocking initial loading UI clears within 3000ms',
+    'No initial and final loading window was recorded.', undefined, true)
   if (metrics == null) return []
 
   const findings: DeterministicFlag[] = []
 
-  if (metrics.stuckLoadingIndicator) {
+  if (metrics.stuckLoadingIndicator && metrics.loadingObservation?.restricted !== true) {
     const label = metrics.stuckLoadingLabel ? `"${metrics.stuckLoadingLabel}"` : 'loading UI'
-    findings.push({
+    findings.push(scopeLoadingFlag({
       checkId: 'loading-indicator-stuck',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
@@ -59,27 +56,28 @@ export function runInteractionChecks(metrics: CaptureMetrics | null, record?: Ch
       fix: '1. Hide skeletons and spinners once content loads\n2. Use a short loading state, then swap to real hero copy and CTAs\n3. Test by throttling the network to verify the timing',
       confidence: 0.9,
       source: 'DETERMINISTIC',
-    })
+    }, [metrics.loadingObservation]))
   }
 
   const mobileSlow = slowLoadFlag(metrics.loadExperience)
   const desktopSlow = slowLoadFlag(metrics.desktopLoadExperience)
   const slow = mobileSlow ?? desktopSlow
-  if (slow) findings.push(slow)
+  if (slow) findings.push(scopeLoadingFlag(slow, windows.filter(window => slowLoadFlag(window)).map(window => window.observation)))
 
   if (metrics.motionIgnoresReducedPreference) {
     const label = metrics.motionSampleLabel ? `"${metrics.motionSampleLabel}"` : 'animated element'
-    findings.push({
+    findings.push(scopeMotionFlag({
       checkId: 'motion-ignores-reduced-preference',
       rubric: 'EXPERIENCE',
       impactTag: 'ACCESSIBILITY',
       severity: 'IMPORTANT',
-      problem: 'Page animations ignore prefers-reduced-motion',
-      evidence: `CSS animations on ${label} still run when the browser requests reduced motion.`,
-      fix: '1. Wrap CSS animations in @media (prefers-reduced-motion: no-preference)\n2. Or add motion-reduce:animate-none (Tailwind utility)\n3. Apply to infinite loops, hero fades, and any decorative motion',
+      problem: 'Page motion ignores the reduced-motion preference',
+      evidence: metrics.motionObservation ? motionAssertions(metrics.motionObservation).filter(assertion => assertion.complete && !assertion.passed).map(assertion => assertion.observed).join(' ')
+        : `Animations on ${label} still run when the browser requests reduced motion.`,
+      fix: '1. Disable decorative CSS animations and transitions with prefers-reduced-motion\n2. Check matchMedia before starting Animation API effects\n3. Load the page with reduced motion enabled and confirm the original motion stops without hiding useful content',
       confidence: 0.85,
       source: 'DETERMINISTIC',
-    })
+    }, metrics.motionObservation))
   }
 
   return findings

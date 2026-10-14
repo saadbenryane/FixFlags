@@ -37,12 +37,31 @@ export function accountRequestAllowed(input: { url: string; method: string; navi
 }
 
 export async function openAccountBrowser(input: { url: string; origin: string; values: string[]; deadline: number;
-  storageState?: unknown; permission: () => Promise<void> }): Promise<AccountBrowser> {
+  storageState?: unknown; retainErrorDocument?: boolean; permission: () => Promise<void> }): Promise<AccountBrowser> {
   let action: Parameters<typeof accountRequestAllowed>[0]['action'] = null, endpoint: string | undefined, refused = false, mutations = 0
   const refusedRequestUrls = new Set<string>()
   const session = await createAuditPage(await getAuditBrowser(), input.url, { profile: DESKTOP_CAPTURE_PROFILE,
-    deadline: input.deadline, settle: false, readOnlyInteractions: true, refusedRequestUrls,
+    deadline: input.deadline, settle: false, retainErrorDocument: input.retainErrorDocument, readOnlyInteractions: true, refusedRequestUrls,
     ...(input.storageState ? { storageState: scopedSessionState(input.storageState, input.origin) } : {}),
+    requestPolicy: async request => {
+      try { await assertPublicAuditUrl(request.url) } catch { refused = true; return false }
+      const permitted = accountRequestAllowed({ ...request, origin: input.origin, values: input.values, action, endpoint })
+      if (!permitted) {
+        if (request.navigation || !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) refused = true
+        return false
+      }
+      const changing = !['GET', 'HEAD', 'OPTIONS'].includes(request.method)
+      if (changing) {
+        if (mutations > 0 || action === 'signup' && ![input.values[0], encodeURIComponent(input.values[0] ?? '')].some(value => value && (request.postData ?? '').includes(value))) {
+          refused = true; return false
+        }
+        mutations++
+      }
+      if (changing || action && request.navigation) {
+        try { await input.permission() } catch { refused = true; return false }
+      }
+      return true
+    },
     configurePage: async page => {
       await page.context().addInitScript(() => {
         ;(globalThis as unknown as { __name?: (fn: unknown) => unknown }).__name ??= fn => fn
@@ -52,25 +71,6 @@ export async function openAccountBrowser(input: { url: string; origin: string; v
       })
       page.on('dialog', dialog => void dialog.dismiss())
       page.on('popup', popup => void popup.close())
-      await page.context().route('**', async route => {
-        const request = route.request()
-        try { await assertPublicAuditUrl(request.url()) } catch { refusedRequestUrls.add(request.url()); refused = true; await route.abort('blockedbyclient'); return }
-        const permitted = accountRequestAllowed({ url: request.url(), method: request.method(), navigation: request.isNavigationRequest(),
-          origin: input.origin, values: input.values, action, endpoint })
-        if (!permitted) { if (request.isNavigationRequest() || !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) refused = true
-          refusedRequestUrls.add(request.url()); await route.abort('blockedbyclient'); return }
-        const changing = !['GET', 'HEAD', 'OPTIONS'].includes(request.method())
-        if (changing) {
-          if (mutations > 0 || action === 'signup' && ![input.values[0], encodeURIComponent(input.values[0] ?? '')].some(value => value && (request.postData() ?? '').includes(value))) {
-            refused = true; refusedRequestUrls.add(request.url()); await route.abort('blockedbyclient'); return
-          }
-          mutations++
-        }
-        if (changing || action && request.isNavigationRequest()) {
-          try { await input.permission() } catch { refusedRequestUrls.add(request.url()); await route.abort('blockedbyclient'); return }
-        }
-        await route.fallback()
-      })
     } })
   session.page.setDefaultTimeout(5000)
   return { session, mutation: (next, target) => { action = next; endpoint = target; mutations = 0 }, refused: () => refused,

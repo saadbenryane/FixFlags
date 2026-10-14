@@ -5,8 +5,8 @@
 @layer base {
   :root,
   .font-variables {
-    --font-sans: "Inter Variable", "Inter Variable Metrics";
-    --font-display: "Inter Tight Variable", "Inter Tight Variable Metrics";
+    --font-sans: var(--font-inter, "Inter Variable"), "Inter Variable Metrics";
+    --font-display: var(--font-inter-tight, "Inter Tight Variable"), "Inter Tight Variable Metrics";
     --font-mono: "JetBrains Mono Variable";
   }
 

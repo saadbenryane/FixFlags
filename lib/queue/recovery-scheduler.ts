@@ -17,6 +17,7 @@ import { recoverExpiredSiteRuns } from '@/lib/sites/application/run-leases'
 import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
 import { dispatchPendingAudits } from '@/lib/audit/dispatch'
 import { recoverProgressiveAudits } from '@/lib/audit/progressive/runtime'
+import { refreshDueGoogleContexts } from '@/lib/sites/connections/google'
 
 const PROGRESSIVE_RECOVERY_INTERVAL_MS = 10_000
 const RECOVERY_INTERVAL_MS = 120_000
@@ -45,7 +46,8 @@ async function progressiveRecoveryTick(): Promise<void> {
   progressiveRecoveryRunning = true
   try {
     await withSchedulerLease('progressive-recovery', async signal => {
-      await dispatchPendingAudits()
+      try { await dispatchPendingAudits() }
+      catch (error) { logger.error('Pending Audit dispatch sweep failed', error) }
       if (!signal.aborted) await recoverProgressiveAudits()
     })
   } catch (error) { logger.error('Progressive recovery sweep failed', error instanceof Error ? error : new Error(String(error))) }
@@ -80,11 +82,29 @@ async function projectWatchTick(): Promise<void> {
   if (!(await tryAcquireLock('project-watches', WATCH_LOCK_TTL_MS))) return
   try {
     const result = await processDueProjectWatches()
-    const notificationRetries = await retryPendingWatchNotifications()
     if (result.processed > 0) logger.info('Project watch sweep', result)
-    if (notificationRetries > 0) logger.info('Project watch notification retries', { notificationRetries })
   } catch (err) {
     logger.error('Project watch sweep failed', err instanceof Error ? err : new Error(String(err)))
+  }
+}
+
+async function projectWatchNotificationTick(): Promise<void> {
+  if (!(await tryAcquireLock('project-watch-notifications', WATCH_LOCK_TTL_MS))) return
+  try {
+    const retried = await retryPendingWatchNotifications()
+    if (retried > 0) logger.info('Project watch notification retries', { notificationRetries: retried })
+  } catch (error) {
+    logger.error('Project watch notification retries failed', error instanceof Error ? error : new Error(String(error)))
+  }
+}
+
+async function googleContextTick(): Promise<void> {
+  try {
+    await withSchedulerLease('site-google-context', async signal => {
+      await refreshDueGoogleContexts(new Date(), 20, { signal })
+    })
+  } catch (error) {
+    logger.error('Site Google context refresh failed', error instanceof Error ? error : new Error(String(error)))
   }
 }
 
@@ -155,6 +175,8 @@ export function startRecoveryScheduler() {
     [progressiveRecoveryTick, 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
     [recoveryTick, 15_000, RECOVERY_INTERVAL_MS],
     [projectWatchTick, 45_000, WATCH_INTERVAL_MS],
+    [projectWatchNotificationTick, 46_000, WATCH_INTERVAL_MS],
+    [googleContextTick, 47_000, WATCH_INTERVAL_MS],
     [integrityWatchTick, 50_000, WATCH_INTERVAL_MS],
     [nurtureTick, 60_000, NURTURE_INTERVAL_MS],
     [growthRollupTick, 90_000, ROLLUP_INTERVAL_MS],

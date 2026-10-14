@@ -220,6 +220,29 @@ describe('durable diagnostic continuity', () => {
     await diffFlagsAgainstParent('current-audit', 'gap')
     expect(prismaMock.flag.update.mock.calls).toEqual([[{ where: { id: 'current' }, data: { status: 'REGRESSED' } }]])
   })
+  it('reads historical and targeted incident history when the first broad run has no parent', async () => {
+    const child = prismaMock.audit.findUnique.getMockImplementation()!
+    prismaMock.audit.findUnique.mockImplementation(async () => ({ ...await child(), parentId: null }))
+    prismaMock.flag.findMany.mockResolvedValueOnce([previous({ id: 'current' })]).mockResolvedValue([])
+    prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{
+      flag: { ...previous({ status: 'FIXED' }), resolvedInId: 'independent-repair' },
+    }], attempts: [] }])
+    await diffFlagsAgainstParent('current-audit', null)
+    expect(prismaMock.flag.update.mock.calls).toEqual([[{ where: { id: 'current' }, data: { status: 'REGRESSED' } }]])
+    const query = prismaMock.improvement.findMany.mock.calls[0][0]
+    const history = query.select.occurrences.where.audit
+    expect(history).toMatchObject({ projectId: 'project-1', id: { not: 'current-audit' }, status: 'COMPLETED',
+      createdAt: { lt: new Date('2026-10-12T12:00:00Z') } })
+    expect(history.AND[0]).toEqual({ OR: [
+      { executionSpec: { path: ['scope'], equals: expect.anything() } },
+      { NOT: { executionSpec: { path: ['scope'], equals: 'FIXTURE_SETUP' } } },
+    ] })
+    expect(history.AND[1].OR).toEqual([
+      { executionSpec: { path: ['environment'], equals: 'production' } },
+      { executionSpec: { path: ['environment'], equals: expect.anything() } },
+    ])
+    expect(query.select.attempts.where.sourceAudit).toEqual(history)
+  })
   it('does not repeat an old recovery on healthy monitoring runs', async () => {
     prismaMock.flag.findMany.mockResolvedValue([])
     prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: { ...previous({ status: 'FIXED' }), resolvedInId: 'recovery' } }], attempts: [] }])

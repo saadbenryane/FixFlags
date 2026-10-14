@@ -1,57 +1,43 @@
 ## What it adds
 
-Google Search Console adds query, impression, and click context beside the Site's Search context and matching page Flags. These numbers show search demand for pages. FixFlags independently checks the live website.
+**Coming soon.** Google Search Console is a planned integration. GitHub account authorization is available. New connection setup and refresh will become available after testing and validation.
+
+Planned value: Search queries, impressions, clicks, and Google’s dated indexing evidence beside matching pages.
 
 ## Before you connect
 
-- Sign in and [save the Site](/help/getting-started/save-your-site) to your FixFlags account.
-- Use a Google account that can read a Search Console property for the website.
-- Ensure a domain property or URL-prefix property matches the Site's hostname. FixFlags treats `www` and the apex hostname as equivalent; it does not assume that other subdomains belong to the same Site.
-
-FixFlags chooses an accessible matching property automatically. The current interface does not offer a manual property picker.
-
-## Permissions and data
-
-FixFlags requests read-only Search Console access (`webmasters.readonly`). It reads accessible properties and aggregate search rows containing pages, queries, impressions, clicks, and position. It does not modify your property, submit a sitemap, or request indexing.
-
-Access tokens are stored encrypted and attached to the owned Site. Search numbers provide context rather than verification of customer actions.
+Connection setup is unavailable in this beta. [Save and check your website](/docs/getting-started) using the independent website product.
 
 ## Connect
 
-1. [Open your Sites](/dashboard) and select the website.
-2. Open **Settings → Connections → Search Console**.
-3. Choose **Connect Search Console**.
-4. Select the Google account with property access and approve read-only access.
-5. Return to Site settings to check the result.
+There is no connection action to complete yet. See [planned integrations](/integrations) for the current lineup.
 
 ## Confirm the connection
 
-A successful connection shows the matched **Property**, connection detail, and **Last read** time. Query, impression, and click context appears beside matching page evidence where rows exist.
-
-**No Search Console property matches this Site** means the authorized account has no property that matches the hostname. It does not establish that Google has excluded the Site.
+A previously saved connection is historical configuration, not proof of a newly validated integration. Read its last successful read time separately from current website evidence.
 
 ## Coverage and limitations
 
-FixFlags requests a bounded set of up to 25 page-and-query rows over the last 28 days. This is a dated snapshot, not a complete export or a live search feed. Check **Last read** before treating it as current. A connected property can return no rows.
+Planned indexing observations remain separate from today’s public-page inspection. A later comparable Google crawl is required for provider-based recovery. Traffic reports will not establish ranking changes or verify a fix.
 
-The integration does not currently run URL inspection, confirm indexing, diagnose sitemap exclusions, or detect ranking changes automatically. Missing rows do not prove that a page is unindexed, has zero impressions, or has no search demand. Search numbers do not resolve Flags.
+These are planned integration capabilities. Public website checks operate independently.
+
+## Permissions and data
+
+The retained implementation uses read-only property and reporting access, with encrypted credentials. It does not submit sitemaps or request indexing.
 
 ## Reconnect or disconnect
 
-Use **Reconnect** when access expires, is revoked, or the property does not match. Confirm account access and the property hostname, then authorize again.
+Reconnect and refresh are unavailable while this integration is coming soon.
 
-Choose **Disconnect** in Site settings to remove stored credentials and stop using the connection. Earlier saved numbers remain dated historical data, not fresh proof. To change accounts or correct the property, disconnect and connect again with the intended account.
+Select **Disconnect Google Search Console** in the Site’s Integrations to remove its saved connection. Previously recorded context keeps its original date.
 
 ## Troubleshooting
 
-- **No matching property:** check that the authorized account can access a property matching the Site's hostname.
-- **Wrong property matched:** reconnect with an account that has access to the intended property. Contact support if several accessible properties match.
-- **Connected but no numbers:** inspect the property's search data for the requested period. No returned rows is not proof that a page is unindexed.
-- **Access expired or denied:** reconnect and approve read-only access using an account that can read the property.
-- **Old Last read time:** disconnect and connect again to read the current snapshot. The current interface has no manual refresh control.
-- **Interrupted authorization:** start again from Site settings instead of reusing an old link.
-- **Controls missing:** Google connections may be unavailable on the current FixFlags server. Contact support.
+“Coming soon” describes release availability. Repeated connection attempts cannot enable it. Existing records and cleanup are preserved.
 
 ## Get help
 
-Visit [Google connection help](/help/getting-started/connect-google-data) or email [hello@fixflags.com](mailto:hello@fixflags.com). Include the Site, property, status, and Last read time. Do not send Google passwords or access tokens.
+Email [hello@fixflags.com](mailto:hello@fixflags.com) with the Site and saved connection details. Do not send passwords, access tokens, or customer data.
+
+[Open your Sites](/dashboard) to use independent website checks.

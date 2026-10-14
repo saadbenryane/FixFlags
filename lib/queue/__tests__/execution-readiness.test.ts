@@ -20,6 +20,14 @@ describe('execution readiness', () => {
     read.mockRejectedValue(new Error('unreachable'))
     await expect(requireExecutionReady()).rejects.toMatchObject({ status: 503, code: 'EXECUTION_UNAVAILABLE' })
   })
+  it('admits independent public category work while the browser is unavailable', async () => {
+    read.mockResolvedValue({ alive: true, browserOk: false, workers: [{ queueState: 'idle', supportedScopes: ['CATEGORY'] }] })
+    await expect(requireExecutionReady('CATEGORY')).resolves.toBeUndefined()
+  })
+  it.each(['ACCOUNT_CHECKS', 'FIXTURE_SETUP'] as const)('retains browser readiness for %s', async scope => {
+    read.mockResolvedValue({ alive: true, browserOk: false, workers: [{ queueState: 'idle', supportedScopes: [scope] }] })
+    await expect(requireExecutionReady(scope)).rejects.toMatchObject({ status: 503, code: 'EXECUTION_UNAVAILABLE' })
+  })
   it('requires every live worker to support a newly admitted execution scope', async () => {
     const ready = { queueState: 'active', supportedScopes: ['CATEGORY'] }
     read.mockResolvedValue({ alive: true, browserOk: true, workers: [ready] })

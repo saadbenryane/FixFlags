@@ -1,3 +1,4 @@
+import { integrationRelease } from '@/lib/integrations/release-policy'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -10,11 +11,13 @@ import {
   accessTokenForConnection,
   buildGoogleAuthorizeUrl,
   googleConnectionConfigured,
+  googleConnectionCredentialScope,
   liveGoogleClient,
   signConnectionState,
   syncGoogleConnection,
 } from '@/lib/sites/connections/google'
 import { decryptSecret } from '@/lib/security/crypto'
+import { SITE_CONNECTION_COPY as C } from '@/lib/marketing/copy/site-connections'
 
 const bodySchema = z.object({
   provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']),
@@ -47,6 +50,8 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     if ('error' in owned) return owned.error
     const parsed = bodySchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) return apiError('Choose Search Console or Analytics.', 400)
+    if (integrationRelease(parsed.data.provider === 'SEARCH_CONSOLE' ? 'search-console' : 'analytics') !== 'available')
+      return apiError(C.comingSoonBody, 409, { code: 'INTEGRATION_COMING_SOON' })
     if (!googleConnectionConfigured()) {
       return apiError('Google sign-in is not configured on this FixFlags server yet.', 503)
     }
@@ -61,10 +66,11 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     if (!connection || connection.status === 'REVOKED') return apiError('Connect this provider first.', 409)
     const token = await accessTokenForConnection(connection).catch(() => null)
     if (!token) {
-      await prisma.siteConnection.update({
-        where: { id: connection.id },
+      const changed = await prisma.siteConnection.updateMany({
+        where: googleConnectionCredentialScope(connection),
         data: { status: 'NEEDS_REAUTH', statusDetail: 'Reconnect this Google account to keep reading it.' },
       })
+      if (changed.count !== 1) return apiError(C.changed, 409)
       return apiError('Reconnect this Google account.', 401)
     }
     const synced = await syncGoogleConnection({
@@ -92,13 +98,9 @@ export async function DELETE(request: Request, context: { params: Promise<{ site
     const connection = await prisma.siteConnection.findUnique({
       where: { projectId_provider: { projectId: owned.projectId, provider: parsed.data.provider } },
     })
-    if (!connection) return NextResponse.json({ ok: true })
-    if (connection.encryptedRefreshToken || connection.encryptedAccessToken) {
-      const token = connection.encryptedRefreshToken ?? connection.encryptedAccessToken
-      if (token) await liveGoogleClient().revoke(decryptSecret(token)).catch(() => undefined)
-    }
-    await prisma.siteConnection.update({
-      where: { id: connection.id },
+    if (!connection || connection.status === 'REVOKED') return NextResponse.json({ ok: true })
+    const disconnected = await prisma.siteConnection.updateMany({
+      where: googleConnectionCredentialScope(connection),
       data: {
         status: 'REVOKED',
         statusDetail: 'Disconnected. Earlier numbers stay labeled with the date they were read.',
@@ -107,6 +109,9 @@ export async function DELETE(request: Request, context: { params: Promise<{ site
         tokenExpiresAt: null,
       },
     })
+    if (disconnected.count !== 1) return apiError(C.changed, 409)
+    const token = connection.encryptedRefreshToken ?? connection.encryptedAccessToken
+    if (token) await liveGoogleClient().revoke(decryptSecret(token)).catch(() => undefined)
     return NextResponse.json({ ok: true })
   } catch (error) {
     return handleRouteError(error, 'Could not disconnect this provider')

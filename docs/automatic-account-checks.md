@@ -45,6 +45,18 @@ Receiving checks the raw Svix signature and timestamp, deduplicates the provider
 
 ## Local validation
 
-Run the account contract, inbox, reservation, executor, settings-route, account-action-route, receiving-webhook, and progressive-graph tests. Run type checking, focused lint, and UI guards. Apply the additive migration to the local development database, then run `npm run db:check` and `npm run db:drift`. Browser or end-to-end execution requires an explicit request under repository validation rules.
+Run the focused account contract, inbox, reservation, executor, settings-route, account-action-route, receiving-webhook, and progressive-graph checks. Native browser verification requires authorization under repository validation rules.
+
+The authorized disposable lifecycle command is:
+
+```sh
+node scripts/verify-progressive-execution.mjs --only lib/audit/progressive/__tests__/account-lifecycle.integration.test.ts
+```
+
+It applies the complete migration history to a temporary database and uses isolated Redis, the actual worker and a temporary HTTPS website. A fixture-only browser context accepts that website's temporary certificate. The normal execution gates remain in force, with validation admission bound to this exact origin and lifecycle enablement left false. Signed receiving requests use simulated provider content. No email is sent, no production gate is enabled, and the configured application database is unchanged.
+
+The fixture exercises signup, email verification, encrypted sessions, retained-account reuse, disposable deletion, signed-in HTTP failures, independent repair, recurrence, failed deletion without identity replacement, and cleanup after opt-out with receiving disabled. It also checks invalid receiving signatures, duplicate delivery and public-safe artifacts. The full local cycle passed in 79 seconds. These observations do not establish real mailbox delivery or compatibility with an arbitrary customer website.
+
+Existing retained or deleting identities may keep a rendered error response for signed-in inspection, allowing a genuine page failure to become a Flag. Discovery and fresh signup keep strict document capture, and bot challenges remain refused. An error response alone does not prove authenticated access.
 
 References: [Resend receiving](https://resend.com/docs/dashboard/receiving/introduction), [received-email retrieval](https://resend.com/docs/api-reference/emails/retrieve-received-email), and [Svix signature verification](https://docs.svix.com/receiving/verifying-payloads/how-manual).

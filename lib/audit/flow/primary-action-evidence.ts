@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { CheckAssertion } from '../checks/assertion'
 import type { DeterministicFlag } from '../flag-types'
 import { PRIMARY_ACTION_ASSERTIONS } from '../checks/definitions'
+import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
 
 export const PRIMARY_ACTION_VERIFICATION_RULE = 'Public primary action: independently exercise the same observed page and control; missing or changed action scope cannot establish repair.'
 export const PRIMARY_ACTION_CHECKS = Object.values(PRIMARY_ACTION_ASSERTIONS).flat()
@@ -11,14 +12,15 @@ export const primaryActionEvidenceSchema = z.object({
   controlContext: z.string().regex(/^flow:control:[a-f0-9]{64}$/).nullable(),
   candidateCount: z.number().int().min(0).max(10000), clicked: z.boolean(), clickBlocked: z.boolean(),
   navigation: z.enum(['changed', 'same', 'unknown']),
+  samePageProgress: z.enum(['declared-panel', 'semantic-panel']).optional(),
   response: z.enum(['healthy', 'error', 'restricted', 'challenge', 'unknown']),
   responseExpected: z.boolean(),
   httpStatus: z.number().int().min(100).max(599).nullable(),
 }).strict()
 export type PrimaryActionEvidence = z.infer<typeof primaryActionEvidenceSchema>
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
-export function primaryPageContext(requested: string, observed: string, viewport: { width: number; height: number } | null) {
-  return 'flow:page:' + hash([requested, observed, viewport])
+export function primaryPageContext(requested: string, observed: string, viewport: { width: number; height: number } | null, scope?: CaptureObservationScope) {
+  return 'flow:page:' + hash([requested, observed, viewport, ...(scope ? [captureObservationKey(scope)] : [])])
 }
 export function primaryControlContext(input: { pageContext: string; identity: string; label: string; href: string | null; controls: string | null }) {
   return 'flow:control:' + hash([input.pageContext, input.identity, input.label.trim().replace(/\s+/g, ' '), input.href, input.controls])
@@ -38,9 +40,10 @@ export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefi
     passed: evidence.clicked, complete: evidence.clicked || evidence.clickBlocked, context: evidence.controlContext })
   const restricted = evidence.response === 'restricted' || evidence.response === 'challenge'
   assertions.push({ key: 'primary-action-navigation', name: 'Primary action advances',
-    expected: 'The original action advances the browser or opens its declared panel',
+    expected: 'The original action reaches a page or opens an observed next step',
     observed: restricted ? 'The action reached an access restriction; its intended destination remains unknown.' : evidence.navigation === 'changed'
-      ? 'The click changed the browser URL or opened the control’s declared panel.' : evidence.navigation === 'same'
+      ? evidence.samePageProgress === 'semantic-panel' ? 'A visible dialog or form with an available next step appeared after the click.'
+        : evidence.samePageProgress === 'declared-panel' ? 'The click opened the control’s declared panel.' : 'The click changed the browser URL.' : evidence.navigation === 'same'
         ? 'The declared navigation completed its observation window without advancing.' : 'No conclusive action advancement was recorded.',
     passed: !restricted && evidence.navigation === 'changed', complete: !restricted && evidence.navigation !== 'unknown', context: evidence.controlContext })
   assertions.push({ key: 'primary-action-response', name: 'Primary action destination response',

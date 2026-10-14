@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => {
       connected: true,
       activeContexts: 0,
     })),
+    getAuditBrowser: vi.fn(),
     WORKER_CONCURRENCY: 2,
     AUDIT_DEADLINE_MS: 300_000,
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -54,6 +55,7 @@ vi.mock('@/lib/queue/estimate', () => ({
 }))
 vi.mock('@/lib/audit/screenshot', () => ({
   getBrowserDiagnostics: mocks.getBrowserDiagnostics,
+  getAuditBrowser: mocks.getAuditBrowser,
 }))
 
 const prismaMocks = vi.hoisted(() => ({
@@ -223,6 +225,22 @@ describe('wrapAuditJobError', () => {
 })
 
 describe('startWorker', () => {
+  it('keeps publishing truthful idle heartbeats during repeated browser recovery failures', async () => {
+    vi.useFakeTimers()
+    mocks.getBrowserDiagnostics.mockReturnValue({ connected: false, activeContexts: 0 })
+    mocks.getAuditBrowser.mockRejectedValue(new Error('Controlled browser startup failure'))
+    const { startWorker } = await import('@/lib/queue/worker')
+    const worker = startWorker()
+    try {
+      await vi.advanceTimersByTimeAsync(40_000)
+      expect(mocks.touchWorkerHeartbeat.mock.calls.filter(([update]) => update.queueState === 'idle' && update.browserOk === false)).toHaveLength(2)
+      expect(mocks.getAuditBrowser).toHaveBeenCalledTimes(2)
+    } finally {
+      await worker.close()
+      mocks.getBrowserDiagnostics.mockReturnValue({ connected: true, activeContexts: 0 })
+      vi.useRealTimers()
+    }
+  })
   it('creates a BullMQ Worker with correct configuration', async () => {
     const { startWorker } = await import('@/lib/queue/worker')
     startWorker()

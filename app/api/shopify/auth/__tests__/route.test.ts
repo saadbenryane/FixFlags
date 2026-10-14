@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const integrationRelease = vi.hoisted(() => vi.fn(() => 'available'))
+vi.mock('@/lib/integrations/release-policy', () => ({ integrationRelease }))
 
 const isShopifyConfigured = vi.hoisted(() => vi.fn())
 const normalizeShopDomain = vi.hoisted(() => vi.fn())
@@ -17,8 +19,16 @@ import { NextRequest } from 'next/server'
 import { GET } from '../route'
 
 describe('GET /api/shopify/auth', () => {
+  it('does not admit provider authorization while Shopify is coming soon', async () => {
+    integrationRelease.mockReturnValue('planned')
+    const response = await GET(new NextRequest('http://localhost/api/shopify/auth?shop=demo.myshopify.com'))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: 'INTEGRATION_COMING_SOON' })
+    expect(signShopifyInstallState).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
+    integrationRelease.mockReturnValue('available')
     isShopifyConfigured.mockReturnValue(true)
     normalizeShopDomain.mockReturnValue('demo.myshopify.com')
     signShopifyInstallState.mockReturnValue('state')

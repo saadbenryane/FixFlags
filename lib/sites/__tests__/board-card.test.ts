@@ -5,12 +5,23 @@ import {
   boardCardHeaderText,
   boardCardStatusText,
   boardFlagPrompt,
+  boardAreaPrompt,
   buildBoardCards,
   starterBoardNames,
   outcomeNameForFlag,
 } from '@/lib/sites/board-card'
 import { CARE_HOME } from '@/lib/marketing/copy'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+
+it('keeps every affected page in both individual and category repair instructions', () => {
+  const pageUrl = 'https://example.com/original', affectedPaths = [pageUrl, 'https://example.com/other', pageUrl]
+  const input = { problem: 'A control was covered', evidence: 'Controlled cover observations', whyItMatters: 'The control cannot be used',
+    fix: 'Restore access to the controls', pageUrl, affectedPaths }
+  const prompt = boardFlagPrompt(input)
+  expect(prompt).toContain('Affected pages:\n- https://example.com/original\n- https://example.com/other')
+  expect(prompt).toContain('same affected pages and action')
+  expect(boardAreaPrompt('Conversion', [{ ...conversionFlag, ...input }])).toContain('https://example.com/other')
+})
 import type { CoverageFact } from '@/lib/sites/coverage'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 
@@ -40,6 +51,8 @@ const conversionFlag: SiteFlagSeed = {
   pageUrl: 'https://everydaygoods.example/contact',
   status: 'OPEN',
   area: 'conversion',
+  resolvedInId: null, affectedPaths: ['https://everydaygoods.example/contact'], affectedPageCount: 1,
+  priorityBand: 'fix_first', priorityScore: 100, relatedOutcome: null, verificationState: 'unverified', latestOccurrenceAt: null,
 }
 
 describe('board card contract', () => {
@@ -111,6 +124,9 @@ describe('board card contract', () => {
           confirmedAt: null,
           pageIds: [],
           pageUrls: ['https://everydaygoods.example/contact'],
+          kind: 'GENERIC', criticality: 'IMPORTANT', environment: 'production', enabled: true,
+          staleAfterMinutes: 60, expectation: null, bindings: [], coverage: null, state: 'COULD_NOT_VERIFY',
+          summary: 'Not verified', lastVerifiedAt: null, validUntil: null, flagId: null, latestRunId: null, running: false,
         },
       ],
       pageCount: 12,
@@ -143,7 +159,8 @@ describe('board card contract', () => {
       detected: { analytics: ['Google Analytics'] },
     }).find((card) => card.id === 'tracking')
     expect(withAnalytics?.sources).toEqual(['Google Analytics'])
-    expect(cards.some((card) => card.id === 'uptime')).toBe(false)
+    expect(cards.some((card) => card.id === 'uptime')).toBe(true)
+    expect(cards.find(card => card.id === 'uptime')?.state).toBe('unknown')
     expect(cards.some((card) => card.id === 'accessibility')).toBe(true)
     expect(cards.find((card) => card.id === 'security')?.evidenced).toBe(true)
   })

@@ -3,6 +3,7 @@ import { normalizeShopDomain } from '@/lib/shopify/config'
 import { verifyShopifyOAuthHmac } from '@/lib/shopify/hmac'
 import { isShopifyFixtureMode, signFixtureSession } from '@/lib/shopify/fixture-session'
 import { ShopifyAppLoader } from './ShopifyAppLoader'
+import { integrationRelease } from '@/lib/integrations/release-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,7 @@ export default async function ShopifyAppPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  if (integrationRelease('shopify') !== 'available') redirect('/integrations/connect/shopify')
   const params = await searchParams
   const query = Object.fromEntries(
     Object.entries(params).map(([key, value]) => [

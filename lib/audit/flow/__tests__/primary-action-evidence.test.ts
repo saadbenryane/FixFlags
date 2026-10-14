@@ -45,6 +45,13 @@ describe('primary action repair evidence', () => {
     expect(primaryActionAssertions(observation).find(item => item.key === 'primary-action-navigation')).toMatchObject({ passed: false, complete: false })
     expect(primaryActionAssertions(observation).find(item => item.key === 'primary-action-response')).toMatchObject({ disposition: 'observed' })
   })
+  it('records observed same-page progress without manufacturing a successful HTTP response', () => {
+    const observed = evidence({ samePageProgress: 'semantic-panel', response: 'unknown', httpStatus: null })
+    const assertions = primaryActionAssertions(observed)
+    expect(assertions.find(item => item.key === 'primary-action-navigation')).toMatchObject({ passed: true, complete: true,
+      observed: expect.stringContaining('visible dialog or form') })
+    expect(assertions.find(item => item.key === 'primary-action-response')).toMatchObject({ passed: false, complete: false })
+  })
   it('does not diagnose a missing action on a page that has no primary-action responsibility', () => {
     const none = evidence({ candidateCount: 0, controlContext: null, clicked: false })
     expect(primaryActionAssertions(none, false)[0]).toMatchObject({ passed: false, complete: true, disposition: 'observed' })

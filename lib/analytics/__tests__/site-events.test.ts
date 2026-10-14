@@ -17,6 +17,7 @@ describe('Site lifecycle event registry', () => {
       'analyze_started',
       'first_useful_result',
       'site_claimed',
+      'analysis_claimed',
       'flag_opened',
       'fix_handoff',
       'verify_started',

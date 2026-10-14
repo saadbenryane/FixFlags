@@ -1,4 +1,3 @@
-import { prisma } from '@/lib/db'
 import { SiteRunRefusal } from './run-refusal'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { executeProductCommand } from '@/lib/products/application/commands'
@@ -170,24 +169,27 @@ export async function executeSiteCommand(command: SiteCommand) {
       const initialFlag = await loadSiteFlagDetail(initialSite, command.flagId)
       if (!initialFlag) return { ok: false as const, error: 'Flag not found' }
       const source = command.source ?? 'WEB'
-      if (command.idempotencyKey) {
+      const requestedKey = command.idempotencyKey ?? (command.attemptId ? `flag-verify:${command.attemptId}` : undefined)
+      if (requestedKey) {
         const reusable = await findReusableRun({
           projectId: initialSite.projectId,
           source,
-          idempotencyKey: command.idempotencyKey,
+          idempotencyKey: requestedKey,
           outcomeIds: initialFlag.outcomeId ? [initialFlag.outcomeId] : [],
           verificationTargetKind: initialFlag.outcomeId ? 'OUTCOME' : 'DIAGNOSTIC',
-          verificationIdentity: initialFlag.outcomeId
+          verificationIdentity: command.flagId === initialFlag.improvementId ? { attemptId: command.attemptId } : initialFlag.outcomeId
             ? { outcomeId: initialFlag.outcomeId, attemptId: command.attemptId }
             : { pageUrl: initialFlag.pageUrl ?? initialSite.url, checkId: initialFlag.checkId ?? undefined, attemptId: command.attemptId },
         })
         if (reusable?.auditId && reusable.verificationTarget) {
-          const attempt = initialFlag.improvementId ? await prisma.improvementAttempt.findFirst({
-            where: { id: reusable.verificationTarget.attemptId, improvementId: initialFlag.improvementId,
-              sourceAuditId: reusable.verificationTarget.parentAuditId, improvement: { projectId: initialSite.projectId } },
-            select: { id: true, sourceAuditId: true, handoffReference: true, requestHash: true },
-          }) : null
-          if (!attempt) throw new SiteRunRefusal('This request key belongs to another Flag attempt.', 409)
+          const { flag: originalFlag, attempt } = await requireSiteFlagAttempt({ siteId: command.siteId,
+            flagId: command.flagId, userId: command.userId, attemptId: reusable.verificationTarget.attemptId }, { allowSettled: true })
+          const target = reusable.verificationTarget
+          if (attempt.sourceAuditId !== target.parentAuditId || (target.kind === 'OUTCOME'
+            ? originalFlag.outcomeId !== target.outcomeId
+            : originalFlag.checkId !== target.checkId || originalFlag.pageUrl !== target.pageUrl)) {
+            throw new SiteRunRefusal('This request key belongs to another Flag attempt.', 409)
+          }
           if (!command.attemptId) assertAttemptReplay({ userId: command.userId, sourceAuditId: attempt.sourceAuditId,
             handoffReference: attempt.handoffReference, changeSummary: command.changeSummary }, attempt)
           return {
@@ -196,9 +198,9 @@ export async function executeSiteCommand(command: SiteCommand) {
             verificationAuditId: reusable.auditId,
             siteId: initialSite.siteId,
             parentAuditId: reusable.verificationTarget.parentAuditId,
-            flagId: initialFlag.id,
+            flagId: command.flagId,
             attemptId: reusable.verificationTarget.attemptId,
-            expectedBehavior: initialFlag.expectedBehavior,
+            expectedBehavior: originalFlag.expectedBehavior,
           }
         }
       }
@@ -256,7 +258,7 @@ export async function executeSiteCommand(command: SiteCommand) {
           verificationAuditId: started.auditId,
           siteId: site.siteId,
           parentAuditId: flag.sourceAuditId,
-          flagId: flag.id,
+          flagId: command.flagId,
           attemptId,
           expectedBehavior: flag.expectedBehavior,
         }
@@ -294,7 +296,7 @@ export async function executeSiteCommand(command: SiteCommand) {
         verificationAuditId: started.auditId,
         siteId: site.siteId,
         parentAuditId: flag.sourceAuditId,
-        flagId: flag.id,
+        flagId: command.flagId,
         attemptId,
         expectedBehavior: flag.expectedBehavior,
       }

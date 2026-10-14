@@ -141,7 +141,7 @@ export function runAccessibilityChecks(
       const nodeCount = violation.nodes.length
       const evidence = violation.nodes
         .slice(0, 3)
-        .map((n) => n.html.replace(/\s+/g, ' ').slice(0, 200))
+        .map((node) => `${node.target.join(' > ')}\n${node.failureSummary || violation.description}\n${node.html.replace(/\s+/g, ' ').slice(0, 200)}`)
         .join('\n')
 
       findings.push({

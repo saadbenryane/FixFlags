@@ -30,6 +30,7 @@ function attempt(overrides: Partial<{ outcome: string | null; comparable: boolea
     outcome: 'IMPROVED' as string | null,
     comparable: true as boolean | null,
     verificationAuditId: 'audit-attempt' as string | null,
+    sourceAuditId: 'audit-source',
     ...overrides,
   }
 }
@@ -45,8 +46,9 @@ describe('flagRecoveryProofId', () => {
 
   it('cites the newest comparable improved attempt when a verified Flag recorded none', () => {
     expect(flagRecoveryProofId({
-      status: siteFlagDetailStatus('VERIFIED', 'OPEN'),
+      status: siteFlagDetailStatus('VERIFIED', 'OPEN', true),
       resolvedInId: null,
+      sourceAuditId: 'audit-source',
       attempts: [
         attempt({ outcome: 'UNCHANGED', verificationAuditId: 'audit-later' }),
         attempt({ comparable: false, verificationAuditId: 'audit-incomparable' }),
@@ -227,7 +229,7 @@ describe('flagResolutionView', () => {
 
   it('says Recovered when a verified Flag cites its improved attempt and that check completed', () => {
     const view = flagResolutionView(input({
-      status: siteFlagDetailStatus('VERIFIED', 'OPEN'),
+      status: siteFlagDetailStatus('VERIFIED', 'OPEN', true),
       resolvedInId: null,
       attemptProofId: 'audit-proof',
       proof: completedProof(),

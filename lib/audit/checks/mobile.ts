@@ -1,6 +1,7 @@
 import { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
-import { runLabVitalsChecks } from './performance'
+import { runLabVitalsChecks, runResourceChecks } from './performance'
+import { TAP_TARGET_VERIFICATION_RULE } from '../pagespeed-tap-targets'
 
 export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
@@ -31,7 +32,9 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
     })
   }
 
-  const tapTargets = mobile.opportunities.find(
+  const tapTargets = mobile.tapTargetAudits !== undefined
+    ? mobile.tapTargetAudits.find(audit => audit.score !== null && audit.score < 1)
+    : mobile.opportunities.find(
     (o) =>
       o.id === 'tap-targets-too-small' ||
       o.id === 'tap-targets' ||
@@ -43,15 +46,22 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
       checkId: 'tap-targets-small',
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
-      problem: 'Tap targets are too small for mobile users',
-      evidence: `Lighthouse: ${tapTargets.title}${itemCount}. Interactive elements need to be at least 48x48px for comfortable tapping.`,
-      fix: '1. Identify interactive elements smaller than 48x48px\n2. Add padding or increase size to meet the 48x48px minimum\n3. Use min-height and min-width instead of fixed sizes for flexibility',
+      problem: 'Some mobile controls are too small or too close together',
+      evidence: `Lighthouse mobile audit ${tapTargets.id}: ${tapTargets.title}${itemCount}. The measured controls fail this audit's size or spacing criteria.`,
+      fix: '1. Review the controls identified by the mobile audit\n2. Increase their size or spacing to meet its criteria, aiming for 48x48px touch areas where practical\n3. Use min-height, min-width and padding to keep controls easy to tap on small screens',
       confidence: 1.0,
       source: 'DETERMINISTIC',
+      ...(mobile.tapTargetAudits?.some(audit => audit.score !== null && audit.score < 1) ? {
+        verificationRule: TAP_TARGET_VERIFICATION_RULE,
+        evidenceTargets: mobile.tapTargetAudits.filter(audit => audit.score !== null && audit.score < 1).map(audit => ({
+          kind: 'page' as const, source: 'measured' as const, device: 'mobile' as const,
+          label: audit.id, context: 'pagespeed-tap-targets:' + audit.id,
+        })),
+      } : {}),
     })
   }
 
-  findings.push(...runLabVitalsChecks(mobile))
+  findings.push(...runLabVitalsChecks(mobile), ...runResourceChecks(mobile))
 
   return findings
 }

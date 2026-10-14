@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { readSiteHomeView } from '../site-view-contract'
 import { siteViewFixture } from './site-view-fixture'
+import { buildBoardCards } from '../board-card'
 
 describe('authoritative Site refresh contract', () => {
+  it('preserves the physical action identity separately from a grouped incident link', () => {
+    const fixture = siteViewFixture()
+    fixture.cards = buildBoardCards({ siteId: 'fixture-site', inFlight: false, hasLastKnown: false,
+      health: { state: 'unknown', answer: 'Not verified', statusLabel: 'Not verified' }, coverageByArea: new Map(),
+      flags: [], outcomes: [], pageCount: 0, captureUrl: null, checkedAt: null })
+    fixture.cards[0].flagChips = [{ id: 'incident', sourceFlagId: 'captured-flag', title: 'Recorded problem', href: '/sites/fixture-site/flags/incident' }]
+    expect(readSiteHomeView(fixture, 'fixture-site').cards[0].flagChips).toEqual(fixture.cards[0].flagChips)
+  })
   it('reads older delivery labels conservatively as provider acceptance', () => {
     const fixture = siteViewFixture()
     const view = readSiteHomeView({ ...fixture, watch: { ...fixture.watch, alert: {
@@ -42,7 +51,7 @@ describe('authoritative Site refresh contract', () => {
     fixture.captures = [{ auditId: 'prior-audit', device: 'desktop', previous: true, url: '/api/screenshots/prior-audit/desktop', pageUrl: fixture.site.url, viewport: '1280 × 720', recordedAt: null }]
     expect(readSiteHomeView(fixture, 'fixture-site')).toEqual(fixture)
     expect(() => readSiteHomeView({ ...fixture, uptime: { ...fixture.uptime, state: '100%' } }, 'fixture-site')).toThrow()
-    expect(() => readSiteHomeView({ ...fixture, captures: [{ ...fixture.captures[0], device: 'tablet' }] }, 'fixture-site')).toThrow()
+    expect(() => readSiteHomeView({ ...fixture, captures: [{ ...fixture.captures![0], device: 'tablet' }] }, 'fixture-site')).toThrow()
     expect(() => readSiteHomeView({ ...fixture, uptime: { ...fixture.uptime, segments: [{ ...fixture.uptime!.segments[0], checked: -1 }] } }, 'fixture-site')).toThrow()
   })
 

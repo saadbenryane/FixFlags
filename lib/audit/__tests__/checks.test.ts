@@ -385,9 +385,9 @@ describe('runSeoChecks', () => {
 })
 
 describe('runTrustChecks', () => {
-  it('flags HTTP, missing legal/contact info, and cookie consent gaps', () => {
+  it('flags missing legal/contact info and cookie consent gaps', () => {
     assert.ok(
-      checkIds(runTrustChecks('http://example.com', healthyMeta())).includes('no-https')
+      checkIds(runSecurityBasicsChecks('http://example.com', healthyMeta())).includes('no-https')
     )
     assert.ok(
       checkIds(runTrustChecks('https://example.com', healthyMeta({ hasPrivacyPolicy: false }))).includes(
@@ -1206,8 +1206,8 @@ describe('computeRubricScores', () => {
   })
 })
 
-describe('form-missing-validation severity ratio (50% threshold)', () => {
-  it('marks IMPORTANT when missing validation ratio is >= 50%', () => {
+describe('missing native validation attributes are bounded guidance', () => {
+  it('does not infer mandatory fields or runtime failure from half the inputs', () => {
     const flags = runContentChecks(
       healthyMeta({
         forms: 1,
@@ -1217,10 +1217,11 @@ describe('form-missing-validation severity ratio (50% threshold)', () => {
     )
     const flag = flags.find((f) => f.checkId === 'form-missing-validation')
     assert.ok(flag)
-    assert.equal(flag!.severity, 'IMPORTANT')
+    assert.equal(flag!.severity, 'POLISH')
+    assert.match(flag!.evidence, /not established/)
   })
 
-  it('marks IMPORTANT when all inputs are missing validation', () => {
+  it('keeps the observation a Recommendation even when no native constraints exist', () => {
     const flags = runContentChecks(
       healthyMeta({
         forms: 1,
@@ -1230,7 +1231,8 @@ describe('form-missing-validation severity ratio (50% threshold)', () => {
     )
     const flag = flags.find((f) => f.checkId === 'form-missing-validation')
     assert.ok(flag)
-    assert.equal(flag!.severity, 'IMPORTANT')
+    assert.equal(flag!.severity, 'POLISH')
+    assert.match(flag!.evidence, /not established/)
   })
 
   it('marks POLISH when missing validation ratio is below 50%', () => {
@@ -1246,7 +1248,7 @@ describe('form-missing-validation severity ratio (50% threshold)', () => {
     assert.equal(flag!.severity, 'POLISH')
   })
 
-  it('treats zero totalFormInputs as full miss (IMPORTANT)', () => {
+  it('does not infer behavioral severity from an unavailable denominator', () => {
     const flags = runContentChecks(
       healthyMeta({
         forms: 1,
@@ -1256,7 +1258,8 @@ describe('form-missing-validation severity ratio (50% threshold)', () => {
     )
     const flag = flags.find((f) => f.checkId === 'form-missing-validation')
     assert.ok(flag)
-    assert.equal(flag!.severity, 'IMPORTANT')
+    assert.equal(flag!.severity, 'POLISH')
+    assert.match(flag!.evidence, /not established/)
   })
 })
 
@@ -1493,7 +1496,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
         ],
         'https://example.com/'
       ).map((flag) => flag.checkId),
-    'no-https': () => checkIds(runTrustChecks('http://example.com', healthyMeta())),
+    'no-https': () => checkIds(runSecurityBasicsChecks('http://example.com', healthyMeta())),
     'no-privacy-policy': () =>
       checkIds(
         runTrustChecks('https://example.com', healthyMeta({ hasPrivacyPolicy: false }))
@@ -1539,6 +1542,10 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'mobile-lcp-poor': () => checkIds(runMobileChecks(healthyMobilePs({ lcp: 3000 }))),
     'mobile-cls-critical': () => checkIds(runMobileChecks(healthyMobilePs({ cls: 0.3 }))),
     'mobile-cls-poor': () => checkIds(runMobileChecks(healthyMobilePs({ cls: 0.15 }))),
+    'mobile-render-blocking': () => checkIds(runMobileChecks(healthyMobilePs({ opportunities: [{ id: 'render-blocking-resources', title: 'Blocking', savings: 600 }] }))),
+    'mobile-unused-js-large': () => checkIds(runMobileChecks(healthyMobilePs({ opportunities: [{ id: 'unused-javascript', title: 'JS', savings: 150_000 }] }))),
+    'mobile-unused-css-large': () => checkIds(runMobileChecks(healthyMobilePs({ opportunities: [{ id: 'unused-css-rules', title: 'CSS', savings: 60_000 }] }))),
+    'mobile-unoptimized-images': () => checkIds(runMobileChecks(healthyMobilePs({ opportunities: [{ id: 'uses-optimized-images', title: 'Images', savings: 80_000 }] }))),
     'h1-generic': () =>
       checkIds(runContentChecks(healthyMeta({ h1s: ['Welcome home'] }))),
     'no-cta-detected': () =>
@@ -2247,6 +2254,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'journey-signup-no-form': () => ['journey-signup-no-form'],
     'journey-signup-too-many-fields': () => ['journey-signup-too-many-fields'],
     'journey-contact-not-found': () => ['journey-contact-not-found'],
+    'journey-hidden-cta': () => ['journey-hidden-cta'],
+    'journey-dead-end': () => ['journey-dead-end'],
     'journey-funnel-step-failed': () => ['journey-funnel-step-failed'],
     'journey-funnel-loop-detected': () => ['journey-funnel-loop-detected'],
     'journey-funnel-timeout': () => ['journey-funnel-timeout'],

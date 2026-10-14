@@ -3,6 +3,7 @@ import type { Browser, Route } from 'playwright'
 import type { JourneyRouteGuardOptions } from '../journey-safety'
 
 vi.mock('../../progressive/capacity', () => ({ browserCapacity: { acquire: vi.fn(async () => vi.fn()) } }))
+vi.mock('../request-boundary', () => ({ installRequestBoundary: vi.fn() }))
 
 vi.mock('../journey-safety', () => ({
   blockFormSubmits: vi.fn(),

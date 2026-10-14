@@ -1,5 +1,6 @@
 import { SEO } from './copy'
 import { PUBLIC_OFFER } from './copy/public-offer'
+import { PUBLIC_RESEARCH_COPY } from './copy/research'
 
 export type SeoPageKey = keyof typeof SEO
 
@@ -28,6 +29,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/docs/site-care', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/docs/fix-with-ai', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/docs/troubleshooting', seoKey: 'docs', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/docs/integrations/github', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/docs/integrations', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/docs/integrations/shopify', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/docs/integrations/google-analytics', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
@@ -49,6 +51,7 @@ export type LlmsSection = {
   title: string
   links: ReadonlyArray<{ path: string; label: string; note?: string }>
   optional?: boolean
+  requiresReviewedResearch?: boolean
 }
 
 export const LLMS_SECTIONS: readonly LlmsSection[] = [
@@ -56,7 +59,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     title: 'Product',
     links: [
       { path: '/', label: 'Home', note: 'Your website, looked after' },
-      { path: '/integrations', label: 'Integrations', note: 'Shopify, Analytics, and Search Console available; other sources marked as planned' },
+      { path: '/integrations', label: 'Integrations', note: 'GitHub authorization available; every other connection coming soon' },
       { path: '/coverage', label: 'What FixFlags checks', note: 'Coverage, setup, and evidence limits' },
       { path: '/security', label: 'Privacy and security', note: 'Evidence access, AI processing, and control' },
       { path: '/use-cases', label: 'Use cases', note: 'For people responsible for websites' },
@@ -72,9 +75,10 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/docs/site-care', label: 'Site care', note: 'Coverage, evidence, Verify, and Watch' },
       { path: '/docs/fix-with-ai', label: 'Fix with your AI', note: 'Use a fix prompt and learn about MCP' },
       { path: '/docs/integrations', label: 'Integration guides' },
-      { path: '/docs/integrations/shopify', label: 'Shopify', note: 'Connect a store and verify checkout entry' },
-      { path: '/docs/integrations/google-analytics', label: 'Google Analytics', note: 'Page-session context' },
-      { path: '/docs/integrations/google-search-console', label: 'Google Search Console', note: 'Query, impression, and click context' },
+      { path: '/docs/integrations/github', label: 'GitHub', note: 'Account authorization and independent website verification' },
+      { path: '/docs/integrations/shopify', label: 'Shopify', note: 'Coming soon: store and selected product-path context' },
+      { path: '/docs/integrations/google-analytics', label: 'Google Analytics', note: 'Coming soon: page-session context' },
+      { path: '/docs/integrations/google-search-console', label: 'Google Search Console', note: 'Coming soon: query, impression, and click context' },
       { path: '/docs/troubleshooting', label: 'Troubleshooting', note: 'Blocked pages and incomplete coverage' },
       { path: '/help', label: 'Help Center', note: 'URL checks, Sites, and contact' },
       { path: '/help/getting-started/analyze-a-website', label: 'Analyze a website' },
@@ -101,8 +105,9 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   },
   {
     title: 'Flag Library',
+    requiresReviewedResearch: true,
     links: [
-      { path: '/issues', label: 'Issues we detect', note: 'Frequency, fixes, and affected frameworks' },
+      { path: '/issues', label: 'Issues we detect', note: PUBLIC_RESEARCH_COPY.llmsLibraryNote },
     ],
   },
   {

@@ -240,7 +240,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     const slowReplayStart = ctx.clock.now().getTime()
     try {
       const browser = await getAuditBrowser()
-      slowReplayResult = await runSlowReplay(browser, ctx.auditId, normalizedUrl)
+      slowReplayResult = await runSlowReplay(browser, ctx.auditId, normalizedUrl,
+        { deadline: ctx.deadline, scanAccess: ctx.scanAccess, pageKey: `p${input.position}` })
       await ctx.events.log({
         stage: 'capturing',
         event: 'slow_replay_completed',
@@ -291,7 +292,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots.desktopHtml
       ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
       : await fetchAndParseMetadata(normalizedUrl, {
-          headers: scanAccessToFetchHeaders(ctx.scanAccess),
+          headers: scanAccessToFetchHeaders(ctx.scanAccess, normalizedUrl),
         }),
     screenshots.runtimeHeadMetadata
   )
@@ -466,8 +467,9 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const checksStart = ctx.clock.now().getTime()
   ctx.searchResources ??= new Map()
   const search = await runSearchWorkflow({
-    auditId: ctx.auditId, pageUrl: normalizedUrl,
+    collectorVersion: 2, auditId: ctx.auditId, pageUrl: normalizedUrl,
     original: screenshots.originalDocument,
+    renderedSearchSnapshot: screenshots.collectionRestrictions?.length ? undefined : screenshots.renderedSearchSnapshot,
     renderedHtml: screenshots.desktopHtml, finalUrl: screenshots.desktopFinalUrl,
     headers: screenshots.responseHeaders, status: screenshots.desktopHttpStatus,
     privateCapture: Boolean(ctx.scanAccess), deadline: ctx.deadline,
@@ -494,6 +496,9 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     true, undefined, { tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
       accessibilityEvidence: screenshots.accessibilityEvidence, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
   )
+
+  const unfinishedModules = [...new Set([...failedModules, ...executions
+    .filter(execution => execution.applicable && execution.complete === false).map(execution => execution.module)])]
 
   for (const execution of executions) {
     const targetKey = `module:${execution.module}`
@@ -592,7 +597,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       }
       flowResult = await runFlowScan(flowSession.page, ctx.auditId, normalizedUrl, {
         landingStep,
-        fetchHeaders: scanAccessToFetchHeaders(ctx.scanAccess),
+        scanAccess: ctx.scanAccess,
         deadlineMs: Math.max(
           1,
           Math.min(20_000, ctx.deadline - ctx.clock.now().getTime() - MIN_JUDGE_BUDGET_MS)
@@ -688,6 +693,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   flags.splice(0, flags.length, ...flagsWithTargets)
 
   const completeness =
+    unfinishedModules.length === 0 &&
     search.receipt.complete &&
     (screenshots?.mobileUrl || mobileBase64) &&
     pagespeed?.desktop &&
@@ -711,6 +717,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   return {
     searchReceipt: search.receipt,
+    renderedScope: screenshots?.renderedScope,
     pageId: page.id,
     url: normalizedUrl,
     metadata,
@@ -725,7 +732,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     desktopBase64,
     mobileBase64,
     flags,
-    failedModules,
+    failedModules: unfinishedModules,
     triage,
     triageFailure,
     runTriage: true,

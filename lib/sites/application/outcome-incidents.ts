@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { comparableOutcomeCoverage } from '../domain/outcome-proof'
@@ -15,16 +15,23 @@ export async function persistOutcomeAssessment(input: AssessmentInput) {
   const { projectId, bindingKeys, failureFlagIds, outcomeKind, ...assessment } = input
   return executionTransaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`fixflags:outcome-incident:${input.outcomeId}`}, 0))`
+    const request = await tx.runRequest.findFirst({ where: { id: input.runRequestId, projectId }, select: { requestedAt: true } })
+    if (!request) throw new Error('Outcome assessment has no matching Site request')
     const existing = await tx.outcomeAssessment.findUnique({ where: { runRequestId_outcomeId: {
       runRequestId: input.runRequestId, outcomeId: input.outcomeId } } })
     if (existing) return existing
+    const superseding = await tx.outcomeAssessment.findFirst({ where: {
+      outcomeId: input.outcomeId, runRequestId: { not: input.runRequestId },
+      runRequest: { projectId, requestedAt: { gte: request.requestedAt } },
+    }, select: { id: true } })
     const currentFlags = failureFlagIds.length ? await tx.flag.findMany({ where: { id: { in: failureFlagIds }, auditId: input.auditId,
       audit: { projectId }, fingerprint: { in: bindingKeys.map(key => outcomeFlagFingerprint(input.outcomeId, key)) } },
       select: { id: true, status: true } }) : []
     const previous = await tx.outcomeAssessment.findMany({ where: {
       outcomeId: input.outcomeId, auditId: { not: input.auditId }, state: { in: ['CLEAR', 'FLAG'] },
-      assessedAt: { lte: input.assessedAt as Date }, runRequest: { projectId },
-    }, orderBy: [{ assessedAt: 'desc' }, { id: 'desc' }], take: 50 })
+      evidence: { path: ['supersededByAssessmentId'], equals: Prisma.AnyNull },
+      assessedAt: { lte: input.assessedAt as Date }, runRequest: { projectId, requestedAt: { lt: request.requestedAt } },
+    }, orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }, { id: 'desc' }], take: 50 })
     let before = previous.find(row => comparableOutcomeCoverage(row.coverage, input.coverage)) ?? null
     if (before?.state === 'FLAG' && before.improvementId && !readOutcomeIncident(before.evidence) && bindingKeys.length === 1) {
       const sourceRun = await tx.runRequest.findUnique({ where: { id: before.runRequestId }, select: {
@@ -48,7 +55,13 @@ export async function persistOutcomeAssessment(input: AssessmentInput) {
     }
     const incident = outcomeIncidentTransition({ state: input.state, coverage: input.coverage, evidence: input.evidence,
       runRequestId: input.runRequestId, flagIds: currentFlags.map(flag => flag.id), previous: before })
-    if (incident.transition === 'recovery' && incident.incidentRunRequestId) {
+    // A superseded observation remains part of its run's history, but cannot
+    // recover or reclassify the current incident or emit a recovery transition.
+    if (superseding && ['recovery', 'regression'].includes(incident.transition)) {
+      incident.transition = input.state === 'CLEAR' ? 'clear' : 'failure'
+      incident.recoveredFlagIds = []
+    }
+    if (!superseding && incident.transition === 'recovery' && incident.incidentRunRequestId) {
       const roots = await tx.flag.findMany({ where: { id: { in: incident.recoveredFlagIds }, audit: { projectId },
         status: { in: ['OPEN', 'REGRESSED'] } }, select: { id: true } })
       incident.recoveredFlagIds = roots.map(flag => flag.id)
@@ -68,13 +81,13 @@ export async function persistOutcomeAssessment(input: AssessmentInput) {
       if (before?.improvementId) await tx.improvement.updateMany({ where: { id: before.improvementId, projectId,
         outcomeId: input.outcomeId, status: { notIn: ['REJECTED', 'SUPERSEDED'] } }, data: { status: 'VERIFIED' } })
     }
-    if (incident.transition === 'regression') {
+    if (!superseding && incident.transition === 'regression') {
       await tx.flag.updateMany({ where: { id: { in: incident.flagIds }, status: 'OPEN' }, data: { status: 'REGRESSED' } })
       await tx.improvementOccurrence.updateMany({ where: { flagId: { in: incident.flagIds } }, data: { kind: 'REGRESSED' } })
     }
     const evidence = input.evidence && typeof input.evidence === 'object' && !Array.isArray(input.evidence) ? input.evidence : {}
     return tx.outcomeAssessment.create({ data: { ...assessment,
       improvementId: input.improvementId ?? (readOutcomeIncident(before?.evidence) ? before?.improvementId : undefined),
-      evidence: { ...evidence, incident } as Prisma.InputJsonValue } })
+      evidence: { ...evidence, ...(superseding ? { supersededByAssessmentId: superseding.id } : {}), incident } as Prisma.InputJsonValue } })
   })
 }

@@ -1,10 +1,16 @@
 export const SHOPIFY_CONNECTION_RECOVERY = {
-  not_configured: 'Shopify connections are temporarily unavailable. Contact support if the controls are missing from Site settings.',
-  missing: 'Authorization was incomplete. Start a new connection from the Site you own.',
-  hmac: 'The Shopify authorization could not be verified. Start a new connection from Site settings.',
-  state: 'This authorization link is invalid or expired. Start a new connection from Site settings.',
-  token: 'Authorization or Site attachment could not finish. Retry from Site settings, or contact support if the store is already attached elsewhere.',
-  fixture_shop: 'The store could not be identified. Use the store’s myshopify.com domain in Site settings.',
+  not_configured: 'Shopify connections are temporarily unavailable. Contact support if the controls are missing from Integrations.',
+  missing: 'The connection did not finish. Try again from Integrations for your saved website.',
+  hmac: 'The Shopify connection could not be confirmed. Start again from Integrations.',
+  state: 'This connection link is invalid or expired. Start again from Integrations.',
+  token: 'The store could not be connected to your website. Try again from Integrations, or contact support if the store is already connected elsewhere.',
+  fixture_shop: 'The store could not be identified. Use its original myshopify.com address in Integrations.',
+} as const
+
+export const SHOPIFY_GUIDE_RECOVERY = {
+  title: 'Shopify connection did not finish',
+  openSites: 'Open your Sites',
+  nextStep: 'Select your website, then open Integrations to try again.',
 } as const
 
 export const HEALTH_COPY = {

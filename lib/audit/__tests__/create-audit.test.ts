@@ -29,6 +29,7 @@ const prismaMock = vi.hoisted(() => ({
   },
   project: {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     upsert: vi.fn(),
   },
   // Anonymous scan reuse is scoped to the visitor's own board, so the create
@@ -142,6 +143,7 @@ describe('createAndEnqueueAudit', () => {
     resolveIncludeAiForNewAudit.mockResolvedValue(false)
     wouldBlockNewCheckWithCredits.mockResolvedValue({ allowed: true })
     ensureProductProject.mockResolvedValue({ id: 'project-1', productIntelligence: null })
+    prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', url: AUDIT_URL, deletedAt: null, scanAccessEncrypted: null })
     ensureSiteForAudit.mockResolvedValue({
       siteId: 'project-1',
       kind: 'project',
@@ -650,9 +652,10 @@ describe('createAndEnqueueAudit', () => {
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(true)
   })
 
-  it('inherits encrypted scan access from the parent project', async () => {
-    const config = { httpBasic: { username: 'preview', password: 'secret' } }
-    const encrypted = encryptScanAccess(config)
+  it('uses current Site access instead of credentials retained on the parent', async () => {
+    const config = { httpBasic: { username: 'preview', password: 'new-secret' } }
+    const encrypted = encryptScanAccess({ httpBasic: { username: 'preview', password: 'old-secret' } })
+    prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', url: AUDIT_URL, deletedAt: null, scanAccessEncrypted: encryptScanAccess(config) })
     prismaMock.audit.findUnique.mockResolvedValue({
       id: 'parent-1',
       userId: 'user-1',
@@ -670,6 +673,14 @@ describe('createAndEnqueueAudit', () => {
     const created = prismaMock.audit.create.mock.calls[0][0].data
     expect(decryptScanAccess(created.scanAccessEncrypted)).toEqual(config)
     expect(created.isPublic).toBe(false)
+  })
+
+  it.each([{ scanAccess: null }, { useProjectScanAccess: false }])('seals a public access decision despite configured Site credentials: %s', async options => {
+    prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', url: AUDIT_URL, deletedAt: null,
+      scanAccessEncrypted: encryptScanAccess({ headers: { Authorization: 'SECRET' } }) })
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', ...options })
+    expect(prismaMock.audit.create.mock.calls[0][0].data).toMatchObject({ scanAccessEncrypted: null,
+      executionSpec: { scanAccess: { kind: 'public', origin: 'https://example.com' } } })
   })
 
   it('respects explicit scan access over project inheritance', async () => {

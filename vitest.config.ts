@@ -13,7 +13,8 @@ const env = { NODE_ENV: 'test' as const }
 const websiteOnly = process.env.FIXFLAGS_TEST_PROFILE === 'website'
 const projectExcludes = ['node_modules', '.next', ...(websiteOnly ? [
   'lib/mcp/**', 'lib/repo-scan/**', 'app/api/mcp/**', 'app/api/api-keys/**',
-  'app/api/integrations/github/**', 'app/api/repo-scans/**', 'app/api/webhooks/railway/**',
+  'app/api/integrations/github/repos/**', 'app/api/integrations/github/select/**',
+  'app/api/repo-scans/**', 'app/api/webhooks/railway/**',
 ] : [])]
 
 export default defineConfig({

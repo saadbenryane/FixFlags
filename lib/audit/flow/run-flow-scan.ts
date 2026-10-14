@@ -1,7 +1,11 @@
+import { scanAccessToFetchHeaders, type ScanAccessConfig } from '../scan-access'
+import { auditPageObservation } from '../browser/observation-scope'
 import type { Browser, Page, Response as BrowserResponse } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { discoverFlowCtasWithFallback, flowCtaSelector, rankCtaCandidate } from './discover-cta'
+import { createOverlayInteractionRecorder, type OverlayInteractionRecorder, type OverlayInspection } from '../browser/overlay-interaction'
+import type { OverlayObservation, OverlayTarget } from '../checks/overlay-evidence'
 import { resolveSameOrigin, isIntentionalExternalCta, isSameSiteOrigin } from './link-scoring'
 import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
 import { anchorFromViewportRect } from './flow-evidence'
@@ -24,6 +28,7 @@ import {
 } from '@/lib/audit/browser/overlay-probe'
 import { primaryPageContext, type PrimaryActionEvidence } from './primary-action-evidence'
 import { isBotInterstitialPage } from '../browser/page-capture'
+import { actionPanelOpened, visibleActionPanels, type ActionPanelObservation } from './action-panels'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -57,6 +62,8 @@ export type FlowClickFailure =
   | 'timeout'
 
 export interface FlowScanResult {
+  overlayObservations?: OverlayObservation[]
+  primaryOverlayObservation?: OverlayObservation
   actionEvidence?: PrimaryActionEvidence
   status: FlowScanStatus
   steps: FlowScanStep[]
@@ -88,6 +95,9 @@ export interface FlowScanResult {
 }
 
 export interface RunFlowScanOptions {
+  overlayRecorder?: OverlayInteractionRecorder
+  expectedOverlayTargets?: OverlayTarget[]
+  overlayOnly?: boolean
   /** A repair checks the original recorded control rather than today's top CTA. */
   expectedActionContexts?: string[]
   primaryOnly?: boolean
@@ -97,8 +107,9 @@ export interface RunFlowScanOptions {
   /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
   landingStep?: FlowScanStep | null
   allowLocalhost?: boolean
-  fetchHeaders?: Record<string, string>
+  scanAccess?: ScanAccessConfig | null
   includeFormValidation?: boolean
+  includeMobileNavigation?: boolean
 }
 
 async function captureFlowStep(
@@ -130,10 +141,10 @@ function isConversionPathUrl(origin: string, url: string): boolean {
 
 async function fetchDestinationTrust(
   finalUrl: string,
-  fetchHeaders?: Record<string, string>
+  scanAccess?: ScanAccessConfig | null
 ): Promise<FlowScanResult['destinationTrust']> {
   try {
-    const meta = await fetchAndParseMetadata(finalUrl, { headers: fetchHeaders })
+    const meta = await fetchAndParseMetadata(finalUrl, { headers: scanAccessToFetchHeaders(scanAccess, finalUrl) })
     return {
       hasPrivacyPolicy: meta.hasPrivacyPolicy,
       hasContactInfo: meta.hasContactInfo,
@@ -183,6 +194,7 @@ async function runFlowScanWithinBudget(
   const deadlineMs = options.deadlineMs ?? FLOW_SCAN_TIMEOUT_MS
   const started = Date.now()
   const origin = new URL(pageUrl).origin
+  const scanAccess = options.scanAccess ? { ...options.scanAccess, origin: options.scanAccess.origin ?? origin } : null
   const steps: FlowScanStep[] = []
 
   if (Date.now() - started > deadlineMs) {
@@ -198,7 +210,9 @@ async function runFlowScanWithinBudget(
   }
 
   const landingUrl = page.url()
-  const multiStep = options.primaryOnly ? undefined : await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation })
+  const multiStep = options.primaryOnly ? undefined : await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation, includeMobileNavigation: options.includeMobileNavigation, overlayRecorder: options.overlayRecorder, overlayOnly: options.overlayOnly })
+  if (options.overlayOnly && !options.expectedOverlayTargets?.some(target => target.kind === 'cta' && target.context.split(':')[3].startsWith('primary_action')))
+    return { status: 'skipped', steps, finalUrl: page.url(), multiStep }
   // Form/nav probes can leave auth or result dialogs open (dogfood: GradLoom
   // "Show My Career Path" opens a Saved Career Paths modal). Dismiss residue
   // before ranking/clicking the primary CTA so we do not self-inflict overlay FPs.
@@ -207,9 +221,16 @@ async function runFlowScanWithinBudget(
 
   const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
   const actionEvidence: PrimaryActionEvidence = { version: 1,
-    pageContext: primaryPageContext(pageUrl, page.url(), page.viewportSize()), controlContext: null,
+    pageContext: primaryPageContext(pageUrl, page.url(), page.viewportSize(), auditPageObservation(page)?.scope), controlContext: null,
     candidateCount: candidates.length, clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null }
-  const cta = options.expectedActionContexts ? candidates.find(candidate => candidate.context && options.expectedActionContexts!.includes(candidate.context)) ?? null : rankCtaCandidate(candidates)
+  const originalActions = options.expectedOverlayTargets?.filter(target => target.kind === 'cta' && target.context.split(':')[3].startsWith('primary_action'))
+  const originalIndexes = originalActions?.length ? await page.evaluate(selectors => selectors.flatMap(selector => {
+    const element = document.querySelector(selector)
+    const index = element?.getAttribute('data-fixflags-flow-idx')
+    return index == null ? [] : [Number(index)]
+  }), originalActions.map(target => target.selector)) : undefined
+  const cta = originalIndexes ? candidates.find(candidate => originalIndexes.includes(candidate.flowIdx)) ?? null
+    : options.expectedActionContexts ? candidates.find(candidate => candidate.context && options.expectedActionContexts!.includes(candidate.context)) ?? null : rankCtaCandidate(candidates)
   if (!cta) {
     return { status: options.expectedActionContexts ? 'skipped' : 'no_cta', steps, finalUrl: page.url(), multiStep, actionEvidence }
   }
@@ -239,6 +260,8 @@ async function runFlowScanWithinBudget(
   let clicked = false
   let clickResponseStatus: number | undefined
   let clickResponse: BrowserResponse | null = null
+  let beforeInspection: OverlayInspection | undefined
+  let panelsBefore: ActionPanelObservation[] | null = null
 
   try {
     await page.evaluate((sel) => {
@@ -267,6 +290,22 @@ async function runFlowScanWithinBudget(
       }
     }
     actionEvidence.clickBlocked = !(await clickTarget.isEnabled().catch(() => true))
+    if (actionEvidence.clickBlocked) {
+      // Disabled controls are a direct observation. Optional overlay inspection
+      // excludes them and cannot replace this known failure with a skipped scan.
+      await clickTarget.dispose().catch(() => {})
+      return { status: 'unclickable', steps, finalUrl: page.url(), clickFailure: 'interaction_error',
+        clickError: 'The primary control is disabled', ...ctaMeta }
+    }
+    const inspected = await options.overlayRecorder?.inspect(selector, 'cta', 'primary_action')
+    beforeInspection = inspected
+    if (inspected && !inspected.matchesExpected) return { status: 'skipped', steps, finalUrl: page.url(), ...ctaMeta }
+    if (inspected?.observation?.controls.some(control => control.disposition === 'failed')) {
+      actionEvidence.clickBlocked = true
+      return { status: 'unclickable', steps, finalUrl: page.url(), overlayBlocker: inspected.blocker, primaryOverlayObservation: inspected.observation, clickFailure: 'interaction_error', ...ctaMeta }
+    }
+    if (options.overlayOnly && !options.overlayRecorder?.activationRequired('primary_action')) return { status: 'success', steps, finalUrl: page.url(), ...ctaMeta }
+    panelsBefore = await visibleActionPanels(page)
 
     // Bound the Playwright click itself. For real navigable hrefs, arm
     // waitForNavigation before the click so we do not miss the response.
@@ -281,6 +320,7 @@ async function runFlowScanWithinBudget(
       clicked = true
       actionEvidence.clicked = true
       actionEvidence.clickBlocked = false
+      options.overlayRecorder?.activated(beforeInspection)
     } catch (err) {
       await clickTarget.dispose().catch(() => {})
       throw err
@@ -300,6 +340,7 @@ async function runFlowScanWithinBudget(
   } catch (err) {
     logger.error('Flow CTA click failed', err)
     const overlayBlocker = !clicked ? await detectOverlayAtPoint(page, selector) : null
+    const inspected = !clicked ? await options.overlayRecorder?.inspect(selector, 'cta', 'primary_action_after') : undefined
     const obscuredBy =
       !clicked
         ? overlayBlocker ?? (await detectObscuringElementAtPoint(page, selector))
@@ -312,6 +353,7 @@ async function runFlowScanWithinBudget(
       steps,
       finalUrl: page.url(),
       overlayBlocker,
+      primaryOverlayObservation: inspected?.observation,
       obscuredBy,
       clickFailure: clicked ? undefined : 'interaction_error',
       clickError: clicked ? undefined : clickError || null,
@@ -337,8 +379,11 @@ async function runFlowScanWithinBudget(
     : [401, 403, 429].includes(clickResponseStatus) ? 'restricted' : clickResponseStatus >= 400 ? 'error'
       : clickResponseStatus >= 200 && clickResponseStatus < 300 ? 'healthy' : 'unknown'
   const declaredPanelOpened = Boolean(cta.controls && !panelWasVisible && await controlledPanelVisible(page, cta.controls))
-  actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) || declaredPanelOpened ? 'changed'
-    : !skipNavigationWait ? 'same' : 'unknown'
+  const semanticPanelOpened = !urlsMeaningfullyChanged(landingUrl, page.url())
+    ? actionPanelOpened(panelsBefore, await visibleActionPanels(page)) : false
+  if (declaredPanelOpened || semanticPanelOpened) actionEvidence.samePageProgress = declaredPanelOpened ? 'declared-panel' : 'semantic-panel'
+  actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) || declaredPanelOpened || semanticPanelOpened ? 'changed'
+    : !skipNavigationWait && semanticPanelOpened !== null ? 'same' : 'unknown'
   if (actionEvidence.response === 'restricted' || actionEvidence.response === 'challenge') {
     return { status: 'skipped', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
   }
@@ -352,11 +397,11 @@ async function runFlowScanWithinBudget(
 
   const destinationTrust =
     !options.primaryOnly && urlsMeaningfullyChanged(landingUrl, finalUrl)
-      ? await fetchDestinationTrust(finalUrl, options.fetchHeaders)
+      ? await fetchDestinationTrust(finalUrl, scanAccess)
       : undefined
 
   const destinationUX = !options.primaryOnly && urlsMeaningfullyChanged(landingUrl, finalUrl)
-    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, options.fetchHeaders)
+    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, scanAccess)
     : undefined
 
   if (actionEvidence.response === 'error') {
@@ -382,7 +427,7 @@ async function runFlowScanWithinBudget(
   }
 
   if (!urlsMeaningfullyChanged(landingUrl, finalUrl)) {
-    if (skipNavigationWait || declaredPanelOpened || isIntentionalExternalCta(origin, cta.href ?? null)) {
+    if (skipNavigationWait || declaredPanelOpened || semanticPanelOpened || isIntentionalExternalCta(origin, cta.href ?? null)) {
       return {
         status: 'success',
         steps,
@@ -468,6 +513,7 @@ export async function runFlowScan(
     1,
     Math.min(options.deadlineMs ?? FLOW_SCAN_TIMEOUT_MS, FLOW_SCAN_TIMEOUT_MS)
   )
+  const overlayRecorder = options.overlayRecorder ?? createOverlayInteractionRecorder(page, { deadline: Date.now() + deadlineMs, expectedTargets: options.expectedOverlayTargets })
 
   return new Promise<FlowScanResult>((resolve) => {
     let settled = false
@@ -475,20 +521,21 @@ export async function runFlowScan(
       if (settled) return
       settled = true
       const finalUrl = page.isClosed() ? pageUrl : page.url()
-      resolve({ status: 'timeout', steps: [], finalUrl })
+      resolve({ status: 'timeout', steps: [], finalUrl, overlayObservations: overlayRecorder.observations() })
       void page.close().catch(() => {})
     }, deadlineMs)
     timer.unref?.()
 
     void runFlowScanWithinBudget(page, auditId, pageUrl, {
       ...options,
+      overlayRecorder,
       deadlineMs: Math.min(deadlineMs, PRIMARY_CTA_BUDGET_MS),
     }).then(
       (result) => {
         if (settled) return
         settled = true
         clearTimeout(timer)
-        resolve(result)
+        resolve({ ...result, overlayObservations: overlayRecorder.observations() })
       },
       (error) => {
         if (settled) return
@@ -497,6 +544,7 @@ export async function runFlowScan(
         logger.error('Flow scan failed inside deadline', error)
         resolve({
           status: 'skipped',
+          overlayObservations: overlayRecorder.observations(),
           steps: [],
           finalUrl: page.isClosed() ? pageUrl : page.url(),
         })

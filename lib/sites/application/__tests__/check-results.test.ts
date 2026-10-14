@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
-const { findMany, findFirst } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null) }))
-vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany, findFirst } } }))
+const { findMany, findFirst, transaction } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null), transaction: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany, findFirst }, $transaction: transaction } }))
 import { loadSiteCheckResults, loadSiteCheckResultPage, CHECK_RESULT_PAGE_SIZE } from '../check-results'
 
 describe('Site result access and provenance', () => {
@@ -25,7 +25,8 @@ describe('Site result access and provenance', () => {
     await expect(loadSiteCheckResultPage(site, 'latest', current.nextCursor!, new Map([['security', { id: 'category-2' }]]) as never))
       .rejects.toThrow('Invalid check history cursor')
   })
-  beforeEach(() => { vi.clearAllMocks(); findMany.mockResolvedValue([]); findFirst.mockResolvedValue(null) })
+  beforeEach(() => { vi.clearAllMocks(); findMany.mockReset().mockResolvedValue([]); findFirst.mockReset().mockResolvedValue(null)
+    transaction.mockImplementation(operation => operation({ auditVerifierExecution: { findMany, findFirst } })) })
   it('never reads receipts by host or by a missing provisional identity', async () => {
     await loadSiteCheckResults({ projectId: 'site-1' } as SiteRecord, 'latest')
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -75,4 +76,72 @@ describe('Site result access and provenance', () => {
     const history = await loadSiteCheckResultPage({ projectId: 'site-1' } as SiteRecord, 'latest', current.nextCursor!)
     expect(history.results).toMatchObject([{ status: 'completed', historical: true }])
   })
+  it('filters mixed observations before the 100-result boundary and binds continuations to the scope', async () => {
+    const site = { siteId: 'owned-site', projectId: 'site-1' } as SiteRecord
+    const row = { id: 'mixed', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED',
+      pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14'), detail: {
+        assertions: Array.from({ length: 240 }, (_, index) => ({ key: index % 2 ? 'title-presence' : 'viewport-presence',
+          name: 'Assertion ' + index, passed: true, expected: 'Present', observed: 'Recorded', context: String(index) })),
+      } }
+    findMany.mockResolvedValueOnce([row])
+    const first = await loadSiteCheckResultPage(site, 'latest', undefined, new Map(), { area: 'search', pageUrl: row.pageUrl })
+    expect(first.results).toHaveLength(100)
+    expect(first.results.every(item => item.area === 'search' && item.pageUrl === row.pageUrl)).toBe(true)
+    expect(first.results[99].name).toBe('Assertion 199')
+    expect(first.nextCursor).not.toBeNull()
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ pageUrl: row.pageUrl,
+      targetKey: { in: expect.arrayContaining(['module:metadata']) } }) }))
+    for (const scope of [{ area: 'site' as const, pageUrl: row.pageUrl }, { area: 'search' as const, pageUrl: 'https://example.com/other' }])
+      await expect(loadSiteCheckResultPage(site, 'latest', first.nextCursor!, new Map(), scope)).rejects.toThrow('Invalid check history cursor')
+    await expect(loadSiteCheckResultPage({ ...site, siteId: 'foreign' }, 'latest', first.nextCursor!, new Map(), { area: 'search', pageUrl: row.pageUrl })).rejects.toThrow('Invalid check history cursor')
+    findFirst.mockResolvedValueOnce({ id: row.id })
+    findMany.mockResolvedValueOnce([row])
+    const second = await loadSiteCheckResultPage(site, 'latest', first.nextCursor!, new Map(), { area: 'search', pageUrl: row.pageUrl })
+    expect(second.results.filter(item => item.kind === 'assertion')).toHaveLength(20)
+    expect(second.results.filter(item => item.kind === 'execution')).toHaveLength(1)
+    expect(second.results[0].name).toBe('Assertion 201')
+    expect(second.nextCursor).toBeNull()
+    expect(new Set([...first.results, ...second.results].map(item => item.id)).size).toBe(121)
+  })
+
+  it('returns an explicit exhausted filtered scope instead of unrelated results', async () => {
+    findMany.mockResolvedValueOnce([{ id: 'mixed', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED',
+      detail: {}, pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14') }])
+    const page = await loadSiteCheckResultPage({ projectId: 'site' } as SiteRecord, 'latest', undefined, new Map(), { area: 'accessibility' })
+    expect(page).toEqual({ results: [], nextCursor: null, total: 0 })
+  })
+
+  it('counts more than 100 filtered results and rejects changed receipt evidence at the same timestamp', async () => {
+    const site = { siteId: 'owned-site', projectId: 'site-1' } as SiteRecord
+    const row = { id: 'mixed', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED',
+      pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14'), detail: {
+        assertions: Array.from({ length: 240 }, (_, index) => ({ key: index % 2 ? 'title-presence' : 'viewport-presence',
+          name: 'Assertion ' + index, passed: true, expected: 'Present', observed: 'Recorded', context: String(index) })),
+      } }
+    findMany.mockImplementation(async query => query.where.auditId.in ? [row] : [])
+    findFirst.mockImplementation(async query => query.where.id === row.id ? { id: row.id } : null)
+    const filter = { area: 'search' as const, pageUrl: row.pageUrl }
+    const first = await loadSiteCheckResultPage(site, 'latest', undefined, new Map(), filter, true)
+    expect(first.total).toBe(121)
+    expect(first.results).toHaveLength(100)
+    expect(transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'RepeatableRead', timeout: 15000 })
+    const second = await loadSiteCheckResultPage(site, 'latest', first.nextCursor!, new Map(), filter, true)
+    expect(second.total).toBe(121)
+    expect(second.results).toHaveLength(21)
+    expect(second.nextCursor).toBeNull()
+    row.detail.assertions[1].observed = 'A different recorded observation'
+    await expect(loadSiteCheckResultPage(site, 'latest', first.nextCursor!, new Map(), filter, true))
+      .rejects.toThrow('Check evidence selection changed')
+  })
+  it('exhausts the scope when physical history contains no additional visible observations', async () => {
+    const row = { id: 'metadata', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED', detail: {},
+      pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14') }
+    findMany.mockResolvedValue([row]); findFirst.mockResolvedValue({ id: row.id })
+    const page = await loadSiteCheckResultPage({ projectId: 'site' } as SiteRecord, 'latest', undefined,
+      new Map([['security', { id: 'category' }]]) as never, {}, true)
+    expect(page.results).toHaveLength(1)
+    expect(page.total).toBe(1)
+    expect(page.nextCursor).toBeNull()
+  })
+
 })

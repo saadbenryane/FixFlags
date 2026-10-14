@@ -22,6 +22,7 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
         id: 'improvement-1', sourceFlagId: 'flag-1', problem: 'Checkout button is hidden',
         whyItMatters: 'Customers cannot buy.', evidence: 'The button is outside the viewport.',
         evidenceMissing: false, fix: 'Move the button into view.', pageUrl: 'https://example.com/product',
+        affectedPaths: ['https://example.com/product', 'https://example.com/other-product'],
         relatedOutcome: { id: 'checkout', name: 'Checkout' }, expectedBehavior: 'The button is visible.',
       },
     })
@@ -49,6 +50,7 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(response.status).toBe(200)
     expect(body.prompt).toContain('FixFlags Flag: Checkout button is hidden')
     expect(body.prompt).toContain('Expected after a fix: The button is visible.')
+    expect(body.prompt).toContain('Affected pages:\n- https://example.com/product\n- https://example.com/other-product')
     expect(body.handoff).toEqual({ improvementId: 'improvement-1' })
     expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ flagId: 'flag-1', builder: 'copy' }))
   })

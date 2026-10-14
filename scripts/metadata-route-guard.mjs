@@ -25,6 +25,7 @@ const ROUTE_TO_PAGE = {
   '/docs/site-care': 'app/(docs)/docs/[slug]/page.tsx',
   '/docs/troubleshooting': 'app/(docs)/docs/[slug]/page.tsx',
   '/docs/integrations': 'app/(docs)/docs/integrations/page.tsx',
+  '/docs/integrations/github': 'app/(docs)/docs/integrations/[integration]/page.tsx',
   '/docs/integrations/shopify': 'app/(docs)/docs/integrations/[integration]/page.tsx',
   '/docs/integrations/google-analytics': 'app/(docs)/docs/integrations/[integration]/page.tsx',
   '/docs/integrations/google-search-console': 'app/(docs)/docs/integrations/[integration]/page.tsx',

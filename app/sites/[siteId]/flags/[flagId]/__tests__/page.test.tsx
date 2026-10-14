@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import SiteFlagPage from '../page'
+import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 
 const ATTEMPTED = '2026-09-23T22:57:11.000Z'
@@ -60,6 +61,7 @@ function attempt(id: string, builder: string, outcome: string | null) {
 }
 
 describe('Flag verification attempts', () => {
+  afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
     mocks.recordSiteLifecycleEvent.mockResolvedValue(undefined)
     mocks.requireSiteAccess.mockResolvedValue({
@@ -139,7 +141,21 @@ describe('Flag verification attempts', () => {
     ).toHaveAttribute('href', 'https://shop.example/products/tote')
   })
 
+  it('copies instructions for the displayed capture even when its incident can advance', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag,
+      id: 'grouped-incident', sourceFlagId: 'displayed-capture' } })
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'Instructions for the displayed capture', handoff: null }) })
+    vi.stubGlobal('fetch', fetch)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'grouped-incident' }), searchParams: Promise.resolve({}) }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/flags/displayed-capture/fix', expect.anything()))
+    expect(fetch).not.toHaveBeenCalledWith('/api/sites/site-1/flags/grouped-incident/fix', expect.anything())
+  })
+
   it('keeps anonymous evidence visible while requiring sign-in for fixes and private attempts', async () => {
+    mocks.loadSiteHome.mockResolvedValue({ ...siteViewFixture(), actions: siteViewerActions(false) })
     mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'site-1' } } })
     render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
     expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
@@ -148,6 +164,6 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByRole('button', { name: 'Copy fix prompt' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Verification history' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
+    expect(screen.getByRole('link', { name: 'Sign in to copy the fix prompt' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
   })
 })

@@ -6,6 +6,7 @@ import {
   planReviewTargets,
   rankDestinations,
   buildReviewCoverage,
+  monitoringReviewUrls,
 } from '@/lib/audit/review-depth'
 import { collectEligibleDestinations } from '@/lib/audit/url-identity'
 import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
@@ -21,6 +22,20 @@ const LINKS = [
 ]
 
 describe('review depth', () => {
+  it('retains observed pages before new discovery without exceeding the existing depth and ceiling', () => {
+    const retainedUrls = ['https://example.com/old-pricing', 'https://www.example.com/flow?mode=original#step']
+    const plan = planReviewTargets({ pastedUrl: ORIGIN, depth: 2, pastedLinks: LINKS, retainedUrls, reviewCeiling: 3 })
+    expect(plan.reviewUrls).toEqual([ORIGIN, ...retainedUrls])
+    expect(plan.truncated).toBe(true)
+    expect(planReviewTargets({ pastedUrl: ORIGIN, depth: 1, pastedLinks: LINKS, retainedUrls }).reviewUrls).toEqual([ORIGIN])
+    expect(monitoringReviewUrls(ORIGIN, retainedUrls)).toEqual([ORIGIN, ...retainedUrls])
+  })
+  it('excludes foreign, malformed, credential-bearing and non-page history, retaining a bounded navigation cohort', () => {
+    const recorded = ['https://foreign.test/page', 'https://secret:password@example.com/', 'javascript:alert(1)', '/relative',
+      'https://example.com/manual.pdf', 'https://other.example.com/', 'https://example.com/pricing', 'https://example.com/pricing']
+    expect(monitoringReviewUrls(ORIGIN, recorded)).toEqual([ORIGIN, 'https://example.com/pricing'])
+    expect(monitoringReviewUrls(ORIGIN, Array.from({ length: 50 }, (_, index) => 'https://example.com/p' + index))).toHaveLength(24)
+  })
   it('keeps Free and anonymous at this page only', () => {
     const plan = planReviewTargets({
       pastedUrl: ORIGIN,

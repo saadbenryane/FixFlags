@@ -23,25 +23,11 @@ export function publicTrustObservations(meta: PageMetadata): Record<'privacy-lin
 }
 
 export function runTrustChecks(
-  url: string,
+  _url: string,
   meta: PageMetadata,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const observations = publicTrustObservations(meta)
-
-  if (!url.startsWith('https://')) {
-    findings.push({
-      checkId: 'no-https',
-      rubric: 'REACH',
-      impactTag: 'TRUST',
-      severity: 'CRITICAL',
-      problem: 'Site is not served over HTTPS',
-      evidence: `URL: ${url}`,
-      fix: '1. Enable HTTPS on your hosting provider (Railway, Vercel, Netlify offer free SSL)\n2. Set up a 301 redirect from HTTP to HTTPS\n3. Update all internal links to use https:// URLs',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
 
   if (!observations['privacy-link'].passed) {
     findings.push({

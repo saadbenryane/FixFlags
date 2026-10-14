@@ -15,11 +15,11 @@ describe('integrations marketing page', () => {
     expect(screen.queryByRole('heading', { name: 'Available connections' })).not.toBeInTheDocument()
     expect(screen.queryByText('Exploring other connections')).not.toBeInTheDocument()
     expect(screen.getAllByRole('article')).toHaveLength(10)
-    expect(screen.getAllByText('Coming soon')).toHaveLength(7)
-    expect(screen.getAllByRole('article').slice(0, 3).every(card => card.dataset.status === 'available')).toBe(true)
+    expect(screen.getAllByText('Coming soon')).toHaveLength(9)
+    expect(screen.getAllByRole('article')[0].dataset.status === 'available').toBe(true)
     expect(screen.queryByRole('heading', { name: 'More signals to bring in' })).not.toBeInTheDocument()
     expect(C.items).toHaveLength(10)
-    expect(C.items.filter(item => item.status === 'available')).toHaveLength(3)
+    expect(C.items.filter(item => item.status === 'available')).toHaveLength(1)
     for (const item of C.items) {
       const card = document.getElementById(item.id)!
       expect(within(card).getByRole('heading', { name: item.title })).toBeInTheDocument()
@@ -55,8 +55,8 @@ describe('integrations marketing page', () => {
     expect(FOOTER_COLUMNS.product).toContainEqual({ href: '/integrations', label: 'Integrations' })
     expect(FOOTER_COLUMNS.product.some(link => link.label === 'Shopify')).toBe(false)
     for (const item of C.items.filter(item => item.status === 'available')) {
-      expect(item.action).toBe('Read integration guide')
-      expect(item.href).toMatch(/^\/docs\/integrations\//)
+      expect(item.action).toBe('Manage GitHub connection')
+      expect(item.href).toBe('/settings/integrations')
     }
   })
 })

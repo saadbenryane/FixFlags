@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it } from 'node:test'
 import {
   boundPayload,
@@ -103,9 +106,22 @@ describe('project-agent', () => {
     ])
   })
 
-  it('lists real validated learnings', () => {
-    const learnings = listLearnings(cwd)
-    assert.ok(learnings.length > 0)
-    assert.ok(learnings.every((item) => item.id && item.title && item.updatedAt))
+  it('lists scoped local learnings without requiring archived records', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'fixflags-agent-learnings-'))
+    try {
+      assert.deepEqual(listLearnings(fixture), [])
+      const directory = join(fixture, '.agents/learnings')
+      mkdirSync(directory, { recursive: true })
+      writeFileSync(join(directory, 'README.md'), '# Local evidence conventions\n')
+      assert.deepEqual(listLearnings(fixture), [])
+      writeFileSync(join(directory, 'validated-observation.md'), '# Validated observation\n')
+      const learnings = listLearnings(fixture)
+      assert.equal(learnings.length, 1)
+      assert.equal(learnings[0].id, 'validated-observation')
+      assert.equal(learnings[0].title, 'Validated observation')
+      assert.ok(Number.isFinite(Date.parse(learnings[0].updatedAt)))
+    } finally {
+      rmSync(fixture, { recursive: true, force: true })
+    }
   })
 })

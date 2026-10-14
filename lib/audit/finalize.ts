@@ -46,7 +46,8 @@ function completenessFromEvidence(evidence: {
   metadata: boolean
   desktopPageSpeed: boolean
   mobilePageSpeed: boolean
-}): 'FULL' | 'PARTIAL' {
+}, unfinishedModules?: unknown): 'FULL' | 'PARTIAL' {
+  if (Array.isArray(unfinishedModules) && unfinishedModules.some(module => typeof module === 'string' && module.length > 0)) return 'PARTIAL'
   return evidence.desktopScreenshot &&
     evidence.metadata &&
     evidence.desktopPageSpeed &&
@@ -90,8 +91,8 @@ export async function persistImprovementCycle(
       await persistFlagDiffSummary(parentId, auditId)
       // Classification consumes the committed diagnostic and Outcome projections.
       // A first Watch still owns an alert without inventing comparison history.
-      const { notifyWatchRegression } = await import('@/lib/audit/project-watch')
-      await notifyWatchRegression(parentId, auditId)
+      const { classifyWatchResult } = await import('@/lib/audit/project-watch')
+      await classifyWatchResult(parentId, auditId)
     }
     // improvementProjectedAt is a completion receipt, not a lease. Write it
     // only after every idempotent projection step succeeds so a process crash
@@ -120,7 +121,7 @@ async function completeImprovementProjection(
 }
 
 /**
- * Union of deterministic check-module names that threw across page runs.
+ * Union of failed or incomplete check modules across page runs.
  * Persisted so the report can surface "some checks couldn't run" instead of
  * silently dropping an entire check area.
  */
@@ -146,6 +147,7 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
       parentId: true,
       completedAt: true,
       triageAt: true,
+      failedModules: true,
     },
   })
   if (!audit) throw new Error(`Audit ${input.auditId} not found during triage finalization`)
@@ -175,7 +177,7 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     throw new Error('Required audit evidence is incomplete')
   }
 
-  const completeness = completenessFromEvidence(input.evidence)
+  const completeness = completenessFromEvidence(input.evidence, audit.failedModules)
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'triage_completed' })
 
@@ -328,6 +330,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
       parentId: true,
       completedAt: true,
       aiReviewAt: true,
+      failedModules: true,
     },
   })
   if (!audit) throw new Error(`Audit ${input.auditId} not found during finalization`)
@@ -357,7 +360,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     throw new Error('Required audit evidence is incomplete')
   }
 
-  const completeness = completenessFromEvidence(input.evidence)
+  const completeness = completenessFromEvidence(input.evidence, audit.failedModules)
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'completed' })
 
@@ -501,6 +504,7 @@ export async function finalizeDeterministicOnly(
       id: true,
       status: true,
       completedAt: true,
+      failedModules: true,
     },
   })
   if (!audit) return
@@ -516,7 +520,7 @@ export async function finalizeDeterministicOnly(
     openCheckRequests: input.openCheckRequests,
   })
 
-  const completeness = completenessFromEvidence(input.evidence)
+  const completeness = completenessFromEvidence(input.evidence, audit.failedModules)
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'deterministic_completed' })
 

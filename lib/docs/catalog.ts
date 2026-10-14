@@ -10,6 +10,7 @@ export type DocsPageKey =
   | 'fix-with-ai'
   | 'mcp'
   | 'integrations'
+  | 'github'
   | 'shopify'
   | 'google-analytics'
   | 'google-search-console'
@@ -42,7 +43,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     path: '/docs',
     group: 'Start',
     title: 'FixFlags documentation',
-    description: 'Enter a URL, open a Site board, and keep watching.',
+    description: 'Check your website, understand the results, and fix problems.',
     source: 'index.md',
     order: 0,
     headings: [
@@ -57,15 +58,16 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     path: '/docs/getting-started',
     group: 'Start',
     title: 'Getting started',
-    description: 'Analyze a website URL, verify a Flag, and keep watching.',
+    description: 'Run your first check, save your website, and check a fix.',
     source: 'getting-started.md',
     order: 1,
     headings: [
       { id: 'before-you-start', title: 'Before you start' },
       { id: 'analyze-a-website', title: 'Analyze a website' },
-      { id: 'shopify-connection', title: 'Shopify connection' },
       { id: 'verify-a-flag', title: 'Verify a Flag' },
       { id: 'keep-watching', title: 'Keep watching' },
+      { id: 'shopify-connection', title: 'Shopify connection' },
+      { id: 'get-help', title: 'Get help' },
     ],
     relatedHelpSlugs: [
       'analyze-a-website',
@@ -78,15 +80,17 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     key: 'site-care',
     path: '/docs/site-care',
     group: 'Use FixFlags',
-    title: 'Flags and proof',
-    description: 'Coverage, Flags, Verify, Watch, and the Shopify connection.',
+    title: 'Understand your results',
+    description: 'Read problems, check fixes, and follow your website over time.',
     source: 'site-care.md',
     order: 2,
     headings: [
       { id: 'site-board', title: 'Site board' },
+      { id: 'workspace', title: 'Workspace' },
       { id: 'flags-and-evidence', title: 'Flags and evidence' },
       { id: 'verify', title: 'Verify' },
       { id: 'watch', title: 'Watch' },
+      { id: 'automatic-account-checks', title: 'Automatic account checks' },
       { id: 'shopify-connection', title: 'Shopify connection' },
     ],
     relatedHelpSlugs: [
@@ -101,7 +105,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     path: '/docs/fix-with-ai',
     group: 'Use FixFlags',
     title: 'Fix with your AI',
-    description: 'Use a fix prompt, publish the change, and verify it. Learn what MCP does.',
+    description: 'Copy a suggested fix into your AI tool and check the result.',
     source: 'fix-with-ai.md',
     order: 2.5,
     headings: [
@@ -131,29 +135,31 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
   {
     key: 'integrations', path: '/docs/integrations', group: 'Integrations',
     title: 'Integration guides',
-    description: 'Connect store, traffic, and search data to the Site you own.',
+    description: 'Connect GitHub and explore other integrations coming soon.',
     source: 'integrations.md', order: 4,
     headings: [
       { id: 'available-integrations', title: 'Available integrations' },
+      { id: 'planned-integrations', title: 'Planned integrations' },
       { id: 'connect-to-a-site', title: 'Connect to a Site' },
       { id: 'context-and-proof', title: 'Context and proof' },
     ],
     relatedHelpSlugs: ['connect-shopify', 'connect-google-data'],
   },
   ...([
-    { key: 'shopify', title: 'Shopify', description: 'Connect your store and verify selected purchase paths through checkout entry.', relatedHelpSlugs: ['connect-shopify', 'shopify-access-and-removal'], order: 5 },
-    { key: 'google-analytics', title: 'Google Analytics', description: 'Add page-session context from a matching Analytics property.', relatedHelpSlugs: ['connect-google-data'], order: 6 },
-    { key: 'google-search-console', title: 'Google Search Console', description: 'Add query, impression, and click context from a matching Search Console property.', relatedHelpSlugs: ['connect-google-data'], order: 7 },
+    { key: 'github', title: 'GitHub', description: 'Authorize your GitHub account, hand off a fix prompt, and verify your deployed change.', relatedHelpSlugs: ['verify-a-flag'], order: 4.5 },
+    { key: 'shopify', title: 'Shopify', description: 'Coming soon: store and selected product-path context.', relatedHelpSlugs: ['connect-shopify', 'shopify-access-and-removal'], order: 5 },
+    { key: 'google-analytics', title: 'Google Analytics', description: 'Coming soon: traffic context beside matching checked pages.', relatedHelpSlugs: ['connect-google-data'], order: 6 },
+    { key: 'google-search-console', title: 'Google Search Console', description: 'Coming soon: search and recorded indexing context.', relatedHelpSlugs: ['connect-google-data'], order: 7 },
   ] as const).map((integration): DocsPageDefinition => ({
     ...integration, path: `/docs/integrations/${integration.key}`, group: 'Integrations',
     parentKey: 'integrations', source: `${integration.key}.md`,
     headings: [
       { id: 'what-it-adds', title: 'What it adds' },
       { id: 'before-you-connect', title: 'Before you connect' },
-      { id: 'permissions-and-data', title: 'Permissions and data' },
       { id: 'connect', title: 'Connect' },
       { id: 'confirm-the-connection', title: 'Confirm the connection' },
       { id: 'coverage-and-limitations', title: 'Coverage and limitations' },
+      { id: 'permissions-and-data', title: 'Permissions and data' },
       { id: 'reconnect-or-disconnect', title: 'Reconnect or disconnect' },
       { id: 'troubleshooting', title: 'Troubleshooting' },
       { id: 'get-help', title: 'Get help' },
@@ -170,7 +176,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     headings: [
       { id: 'analysis-did-not-finish', title: 'Analysis did not finish' },
       { id: 'site-could-not-be-reached', title: 'Site could not be reached' },
-      { id: 'password-or-bot-wall', title: 'Password or bot wall' },
+      { id: 'page-asks-for-a-password-or-human-check', title: 'Page asks for a password or human check' },
       { id: 'verify-is-still-in-progress', title: 'Verify is still in progress' },
       { id: 'shopify-connection', title: 'Shopify connection' },
       { id: 'contact-support', title: 'Contact support' },

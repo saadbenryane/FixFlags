@@ -19,7 +19,8 @@ import { verificationResult, verificationResultLabel } from '@/lib/sites/present
 import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { BoardDetails } from '@/components/sites/BoardDetails'
-import { CARE_HOME } from '@/lib/marketing/copy'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SiteActionContinuation } from '@/components/sites/SiteActionContinuation'
 import styles from './FlagDetailPage.module.css'
 
 function attemptLabel(attempt: Parameters<typeof verificationResult>[0]): string {
@@ -44,6 +45,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   if (!detail) notFound()
 
   const { site, flag, capture } = detail
+  const actionFlagId = flag.sourceFlagId ?? flag.id
   const affectedPaths = flag.affectedPaths ?? (flag.pageUrl ? [flag.pageUrl] : [])
   if (access.decision.role === 'owner') {
     await recordSiteLifecycleEvent({
@@ -66,12 +68,14 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const outcomes = await listSiteOutcomes(site)
   const connectionContext = site.projectId ? connectionLines((await loadSiteConnectionViews(site.projectId)).facts, flag.pageUrl) : []
   const relatedOutcome = outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
-  const home = await loadSiteHome(resolvedId, { ownerEvidence: access.decision.role === 'owner' })
+  const home = await loadSiteHome(resolvedId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
   if (!home) notFound()
 
   const proofId = flagRecoveryProofId({
     status: flag.status,
     resolvedInId: flag.resolvedInId,
+    sourceAuditId: flag.sourceAuditId,
+    sourceFlagId: flag.sourceFlagId,
     attempts: flag.attempts,
   })
   const proofAudit =
@@ -81,6 +85,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             id: proofId,
             projectId: site.projectId,
             status: 'COMPLETED',
+            ...(!flag.resolvedInId ? { parentId: flag.sourceAuditId } : {}),
           },
           select: {
             id: true,
@@ -112,11 +117,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     : flag.problem
 
   return (
-    <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
+    <SiteShell actions={home.actions} siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="-ml-4 text-muted-foreground" asChild>
-            <Link href={`/sites/${resolvedId}#category-${flag.area}`}>
+            <Link href={`/sites/${resolvedId}?category=${flag.area}#category-${flag.area}`}>
               <ChevronLeft aria-hidden="true" />
               Back to Overview
             </Link>
@@ -125,7 +130,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
-        <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={flag.id} initial={home}>
+        <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={actionFlagId} initial={home}>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}
@@ -138,7 +143,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
           <div className={`${styles.evidenceGrid} ${resolution.kind === 'open' || resolution.kind === 'verifying' ? styles.withActions : ''}`}>
             <div className="space-y-6">
               <section className="overflow-hidden rounded-[17px] border border-border bg-background shadow-sm" aria-labelledby="flag-evidence-heading">
-                <div className="flex items-center gap-3 border-b border-border/70 px-5 py-4 sm:px-6">
+                <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full border border-brand text-brand">
                     <CircleAlert className="h-4 w-4" aria-hidden="true" />
                   </span>
@@ -150,7 +155,26 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   </div>
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
-                  {flag.evidenceMissing ? <p className="text-sm leading-relaxed text-muted-foreground">Evidence for this Flag was not stored. Verify will capture a fresh look at the same page.</p> : <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{flag.evidence}</p>}
+                  {flag.evidenceMissing ? <p className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.flagEvidence.missing}</p> : <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{flag.evidence}</p>}
+                  {flag.evidenceContext ? <details className="text-sm">
+                    <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.evidence}</summary>
+                    <dl className="mt-3 space-y-3 text-xs text-muted-foreground">
+                      <div><dt>{SITE_ACTION_COPY.flagEvidence.source}</dt><dd>{SITE_ACTION_COPY.flagEvidence.sources[flag.evidenceContext.source as keyof typeof SITE_ACTION_COPY.flagEvidence.sources] ?? SITE_ACTION_COPY.flagEvidence.unknown}</dd></div>
+                      {flag.evidenceContext.recordedAt ? <div><dt>{SITE_ACTION_COPY.flagEvidence.recorded}</dt><dd><time dateTime={flag.evidenceContext.recordedAt}>{formatEvidenceTimestamp(flag.evidenceContext.recordedAt)}</time></dd></div> : null}
+                      {flag.evidenceContext.references.length ? <div><dt>{SITE_ACTION_COPY.flagEvidence.references}</dt><dd><ul className="mt-2 space-y-2">{flag.evidenceContext.references.map((reference, index) => <li key={index} className="break-words">{[reference.label, reference.selector, reference.device].filter(Boolean).join(' · ')}</li>)}</ul></dd></div> : null}
+                    </dl>
+                  </details> : null}
+                  {flag.area === 'performance' && flag.evidenceContext?.source === 'DETERMINISTIC' ? <div className="space-y-3 rounded-control bg-muted/30 p-4 text-sm">
+                    <p>{flag.checkId?.startsWith('inp-') ? SITE_ACTION_COPY.flagEvidence.field : SITE_ACTION_COPY.flagEvidence.lab}</p>
+                    {flag.performanceEvidence?.length ? <details>
+                      <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.flagEvidence.conditions}</summary>
+                      <ul className="space-y-3">{flag.performanceEvidence.map((measurement, index) => <li key={index}>
+                        <p>{[measurement.strategy, measurement.formFactor, measurement.throttlingMethod, measurement.lighthouseVersion ? `Lighthouse ${measurement.lighthouseVersion}` : null].filter(Boolean).join(' · ')}</p>
+                        <p className="text-xs text-muted-foreground">{measurement.measuredAt ? SITE_ACTION_COPY.flagEvidence.measured : SITE_ACTION_COPY.flagEvidence.received}: <time dateTime={measurement.measuredAt ?? measurement.receivedAt}>{formatEvidenceTimestamp(measurement.measuredAt ?? measurement.receivedAt)}</time></p>
+                      </li>)}</ul>
+                    </details> : <p className="text-xs text-muted-foreground">{SITE_ACTION_COPY.flagEvidence.conditionsUnknown}</p>}
+                    {flag.pageUrl ? <a className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(flag.pageUrl)}`} target="_blank" rel="noopener noreferrer">{SITE_ACTION_COPY.flagEvidence.retestPerformance}</a> : null}
+                  </div> : null}
                   {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
                   <div className="rounded-[13px] bg-muted p-4">
                     <div className="flex items-start gap-3">
@@ -210,12 +234,12 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </h2>
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flag.fix}</p>
                 <div className="mt-6">
-                  <SiteFlagActions siteId={resolvedId} flagId={flag.id} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.outcome === null && attempt.verificationAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
+                  <SiteFlagActions siteId={resolvedId} flagId={actionFlagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
                 </div>
               </aside>
             ) : null}
 
-            {!ownsSite ? <Button asChild variant="outline"><Link href={`/sign-in?next=${encodeURIComponent(`/sites/${resolvedId}/flags/${flag.id}`)}`}>{CARE_HOME.signIn}</Link></Button> : null}
+            {!ownsSite ? <SiteActionContinuation availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} action="copy" /> : null}
             {ownsSite ? <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
               <div className="flex items-center gap-3">
                 <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
@@ -233,7 +257,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   {flag.attempts.map((attempt) => {
                     const when = formatEvidenceTimestamp(attempt.createdAt)
                     return (
-                      <li id={`attempt-${attempt.id}`} key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 border-b border-border/70 pb-5 last:border-b-0 last:pb-0">
+                      <li id={`attempt-${attempt.id}`} key={attempt.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3 pb-5 last:pb-0">
                         <AttemptIcon outcome={attempt.outcome} />
                         <div className="min-w-0">
                           <p className="font-medium">{attemptLabel(attempt)}</p>

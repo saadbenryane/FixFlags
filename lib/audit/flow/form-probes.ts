@@ -1,11 +1,16 @@
 import { createHash } from 'node:crypto'
+import { auditPageObservation, captureObservationKey } from '../browser/observation-scope'
 import type { Page, JSHandle } from 'playwright'
 import { detectOverlayAtPoint, type OverlayBlockerInfo } from '@/lib/audit/browser/overlay-probe'
 import type { ProbeOutcome } from './nav-probes'
 import type { FormEvidence } from './form-evidence'
 import { sleep } from '@/lib/utils/sleep'
+import { createOverlayInteractionRecorder, type OverlayInteractionRecorder, type OverlayInspection } from '../browser/overlay-interaction'
+import type { OverlayObservation } from '../checks/overlay-evidence'
 
 export interface FormProbeResult {
+  overlayObservations?: OverlayObservation[]
+  formOverlayObservation?: OverlayObservation
   formValidation: ProbeOutcome
   formLabel?: string
   feedbackMs?: number | null
@@ -19,6 +24,9 @@ export async function probeFormValidation(page: Page, options: {
   isolated?: boolean; localValidationToken?: string; deadline?: number; safetyRefused?: () => boolean
   expectedTargets?: Array<{ context: string; selector: string; label: string }>
   unavailableDependencies?: boolean
+  overlayRecorder?: OverlayInteractionRecorder
+  overlayOnly?: boolean
+  overlayPhase?: string
 } = {}): Promise<FormProbeResult> {
   const candidates = await page.evaluate(() => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
@@ -60,9 +68,17 @@ export async function probeFormValidation(page: Page, options: {
     return { candidates, incomplete: allForms.length > 40 }
   })
   const pageUrl = page.url()
+  const captureScope = auditPageObservation(page)?.scope
   const scoped = candidates.candidates.map(candidate => ({ ...candidate,
-    context: 'form:' + createHash('sha256').update(JSON.stringify([pageUrl, candidate.signature])).digest('hex') }))
-  const formMeta = options.expectedTargets?.length ? scoped.find(candidate => options.expectedTargets!.some(target => target.context === candidate.context)) : scoped[0]
+    context: 'form:' + createHash('sha256').update(JSON.stringify([pageUrl, candidate.signature, ...(captureScope ? [captureObservationKey(captureScope)] : [])])).digest('hex') }))
+  const phase = options.overlayPhase ?? 'form_validation'
+  const originalSubmit = options.overlayRecorder?.expectedSelector('form', phase)
+  const originalFormSelector = originalSubmit ? await page.evaluate(selector => {
+    const form = document.querySelector(selector)?.closest('form'), index = form?.getAttribute('data-fixflags-form-probe')
+    return index === null || index === undefined ? null : `form[data-fixflags-form-probe="${index}"]`
+  }, originalSubmit) : undefined
+  const formMeta = originalSubmit ? scoped.find(candidate => candidate.selector === originalFormSelector)
+    : options.expectedTargets?.length ? scoped.find(candidate => options.expectedTargets!.some(target => target.context === candidate.context)) : scoped[0]
   if (!formMeta) {
     const expected = options.expectedTargets?.[0] ?? (candidates.incomplete ? { selector: 'form', label: 'Conversion form inventory',
       context: 'form:' + createHash('sha256').update(pageUrl + ':inventory').digest('hex') } : undefined)
@@ -71,15 +87,25 @@ export async function probeFormValidation(page: Page, options: {
   }
   const { selector, context } = formMeta
   const submitSelector = `${selector} button[type="submit"], ${selector} input[type="submit"], ${selector} button:not([type])`
+  const overlayRecorder = options.overlayRecorder ?? createOverlayInteractionRecorder(page, { deadline: options.deadline,
+    restricted: () => options.unavailableDependencies === true || options.safetyRefused?.() === true })
+  let formInspection: OverlayInspection | undefined
   const finish = (disposition: FormEvidence['disposition'], reason: FormEvidence['reason'], feedbackMs: number | null = null,
     formOverlay?: OverlayBlockerInfo | null): FormProbeResult => ({
     formValidation: disposition === 'passed' ? 'ok' : disposition === 'failed' ? 'broken' : 'skipped',
+    overlayObservations: overlayRecorder.observations(),
     formLabel: formMeta.label, feedbackMs, formOverlay,
+    formOverlayObservation: formInspection?.observation,
     evidence: { version: 1, pageUrl, selector: formMeta.evidenceSelector, context, label: formMeta.label, disposition, reason, feedbackMs },
   })
   if (formMeta.incomplete) return finish('unknown', 'observation_incomplete')
   if (formMeta.prefilled) return finish('unknown', 'prefilled_fields')
   if (!formMeta.hasSubmit) return finish('failed', 'missing_submit')
+  const inspected = await overlayRecorder.inspect(submitSelector, 'form', phase)
+  formInspection = inspected
+  if (!inspected.matchesExpected) return finish('unknown', 'form_changed')
+  if (inspected.observation?.controls.some(control => control.disposition === 'failed')) return finish('unknown', 'execution_interrupted', null, inspected.blocker)
+  if (options.overlayOnly && !overlayRecorder.activationRequired(phase)) return finish('unknown', 'observation_incomplete')
   let requestRefused = false
   if (options.isolated) {
     const deny = async (route: import('playwright').Route) => { requestRefused = true; await route.abort('blockedbyclient') }
@@ -135,7 +161,7 @@ export async function probeFormValidation(page: Page, options: {
     const baseline = await readState(true)
     if (!baseline) return finish('unknown', 'form_changed')
     if (refused()) return finish('unknown', 'submission_blocked')
-    if (baseline.native) return finish('passed', 'native_validation', 0)
+    if (baseline.native && !(options.overlayOnly && overlayRecorder.activationRequired(phase))) return finish('passed', 'native_validation', 0)
     if (baseline.feedback) return finish('unknown', 'preexisting_feedback')
     let incompleteObservation = baseline.textTruncated
     const observationBudget = Math.max(0, Math.min(2000, (options.deadline ?? Date.now() + 2000) - Date.now()))
@@ -147,6 +173,8 @@ export async function probeFormValidation(page: Page, options: {
     if (!submit) return finish('unknown', 'form_changed')
     const startedAt = Date.now()
     await submit.click({ timeout: Math.max(1, observationBudget) })
+    overlayRecorder.activated(inspected)
+    if (baseline.native) return refused() ? finish('unknown', 'submission_blocked') : finish('passed', 'native_validation', 0)
     const observedFeedback = async () => timing ? await timing.evaluate(tracker => tracker.read()) : null
     const elapsed = async () => timing ? await timing.evaluate(tracker => tracker.elapsed()) : Date.now() - startedAt
     const stopAt = options.deadline ?? startedAt + observationBudget + 2000
@@ -177,6 +205,7 @@ export async function probeFormValidation(page: Page, options: {
       !options.unavailableDependencies && !incompleteObservation
     return finish(conclusive ? 'failed' : 'unknown', conclusive ? 'missing_feedback' : 'observation_incomplete')
   } catch {
+    formInspection = await overlayRecorder.inspect(submitSelector, 'form', phase + '_after')
     const overlay = await detectOverlayAtPoint(page, submitSelector).catch(() => null)
     return finish('unknown', 'execution_interrupted', null, overlay)
   } finally {

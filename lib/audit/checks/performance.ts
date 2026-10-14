@@ -52,7 +52,14 @@ export function runPerformanceChecks(
     })
   }
 
-  findings.push(...runLabVitalsChecks(ps))
+  findings.push(...runLabVitalsChecks(ps), ...runResourceChecks(ps))
+  if (mobile) findings.push(...runInpChecks(mobile))
+  return findings
+}
+
+/** Both devices evaluate the same measured resource policy in their own scope. */
+export function runResourceChecks(ps: PageSpeedResult): DeterministicFlag[] {
+  const findings: DeterministicFlag[] = []
 
   const renderBlocking = ps.opportunities.find((o) => o.id === 'render-blocking-resources')
   if (renderBlocking && renderBlocking.savings > PERFORMANCE_RESOURCE_THRESHOLDS.renderBlocking) {
@@ -112,9 +119,9 @@ export function runPerformanceChecks(
     })
   }
 
-  if (mobile) findings.push(...runInpChecks(mobile))
-
-  return findings
+  return ps.strategy === 'mobile' ? findings.map(flag => ({ ...flag,
+    checkId: 'mobile-' + flag.checkId, problem: 'Mobile ' + flag.problem, evidence: 'Mobile ' + flag.evidence,
+  })) : findings
 }
 
 /** Lab LCP and CLS share thresholds while retaining device-specific finding identities. */

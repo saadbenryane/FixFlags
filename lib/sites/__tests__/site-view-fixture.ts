@@ -1,8 +1,10 @@
+import { siteScopeCounts } from '@/lib/sites/scope-counts'
+import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import type { SiteHomeView } from '../application/queries'
 
 export function siteViewFixture(): SiteHomeView {
   return {
-    schemaVersion: 2, inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
+    schemaVersion: 2, counts: siteScopeCounts([], [], 0), actions: siteViewerActions(true), inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
     site: { siteId: 'fixture-site', kind: 'project', url: 'https://example.com', canonicalHost: 'example.com', name: 'Example',
       projectId: 'fixture-site', provisionalSiteId: null, primaryAuditId: 'audit-1', watchInterval: null,
       watchNextRunAt: null, watchLastRunAt: null, watchLastError: null, watchConsecutiveFailures: 0, userId: 'owner-1' },

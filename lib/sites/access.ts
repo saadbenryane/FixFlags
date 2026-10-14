@@ -11,7 +11,7 @@ export type SiteViewer = {
 }
 
 export type SiteAccessDecision =
-  | { ok: true; site: SiteRecord; role: 'owner' | 'provisional_session' }
+  | { ok: true; site: SiteRecord; role: 'owner' | 'provisional_session'; authenticated?: boolean }
   | { ok: false; reason: 'not_found' | 'denied' }
 
 /**
@@ -27,7 +27,7 @@ export async function resolveSiteAccess(
 
   if (site.kind === 'project') {
     if (viewer.userId && site.userId && viewer.userId === site.userId) {
-      return { ok: true, site, role: 'owner' }
+      return { ok: true, site, role: 'owner', authenticated: true }
     }
     return { ok: false, reason: 'denied' }
   }
@@ -48,12 +48,12 @@ export async function resolveSiteAccess(
 
   const sessionKey = viewer.sessionKey?.trim() || ''
   if (sessionKey && provisional.sessionKey === sessionKey) {
-    return { ok: true, site, role: 'provisional_session' }
+    return { ok: true, site, role: 'provisional_session', authenticated: Boolean(viewer.userId) }
   }
 
   const anonIds = viewer.anonAuditIds ?? []
   if (provisional.primaryAuditId && anonIds.includes(provisional.primaryAuditId)) {
-    return { ok: true, site, role: 'provisional_session' }
+    return { ok: true, site, role: 'provisional_session', authenticated: Boolean(viewer.userId) }
   }
 
   return { ok: false, reason: 'denied' }

@@ -1,5 +1,6 @@
 import type { Page } from 'playwright'
 import { primaryControlContext, primaryPageContext } from './primary-action-evidence'
+import { auditPageObservation } from '../browser/observation-scope'
 import {
   FLOW_IDX_ATTR,
   rankScoredCtaCandidate,
@@ -100,7 +101,7 @@ export async function discoverFlowCtas(page: Page, pageUrl: string, includeNavig
     { selectors: CTA_SELECTORS, attr: FLOW_IDX_ATTR, includeNavigation }
   )
 
-  const pageContext = primaryPageContext(pageUrl, page.url(), page.viewportSize())
+  const pageContext = primaryPageContext(pageUrl, page.url(), page.viewportSize(), auditPageObservation(page)?.scope)
   const byIndex = new Map(raw.map(item => [item.idx, item]))
   return scoreCtaCandidates(pageUrl, raw).map((item) => {
     const element = byIndex.get(item.idx)!

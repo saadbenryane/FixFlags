@@ -1,35 +1,32 @@
 ## Use your fix prompt
 
-A fix prompt tells your AI which page needs attention, what went wrong, and what should happen after the fix.
+A **fix prompt** is a message you can copy from a Flag. It tells your AI tool which page has a problem, what happened, and what the fix should achieve.
 
-1. Open your website project in the AI tool you use to build it.
-2. Paste the copied prompt into its chat and ask it to fix the problem.
-3. Review the change, then publish it to your live website.
+1. Open a Flag and copy its fix prompt.
+2. Open your website project in the AI tool you use to build it.
+3. Paste the prompt into its chat and ask it to make the change.
+4. Review the change, then publish it to your live website.
 
-You can also give the prompt to your developer. No MCP connection is needed to use a copied prompt.
+You can also send the prompt to your developer. Copying it does not change your website.
 
-The homepage prompts are examples. Analyze your own website to get Flags for your Site.
+Prompts on the FixFlags homepage are examples. [Check your own website](/new) to get fixes for problems found there.
 
 ## Verify the fix
 
-After publishing, return to the same Flag in FixFlags and select **Check now**. This returns to Monitor: FixFlags checks the same page and action again. The saved monitoring schedule continues independently.
+Return to the same Flag after publishing and select **Check now**. FixFlags checks the affected page or action again to see whether the problem is fixed.
 
-Copying a prompt or making a code change does not close the Flag. A fresh check must show that the problem is fixed. If FixFlags cannot complete the check, it says **Couldn't verify**.
+If FixFlags cannot confirm the result, it shows **Couldn't verify**. The Flag does not close just because a prompt was copied or code was changed. Your saved monitoring schedule continues separately.
 
-If you have not saved the Site yet, sign in or create an account from the Site board first. [How to save your Site](/help/getting-started/save-your-site).
+If needed, [save the website to your account](/help/getting-started/save-your-site) first so you can return to the Flag.
 
 ## What is MCP?
 
-MCP stands for Model Context Protocol. It lets an AI tool use another service directly. Instead of you copying information between tools, your AI can ask the connected service for it.
+MCP is a way for an AI tool to use another service directly. It stands for Model Context Protocol.
 
-For FixFlags, that means a coding agent can request a website check and read the results in its own workflow. Your AI makes the change. FixFlags checks the live website independently.
-
-New FixFlags MCP connections are not available yet. For now, use a copied fix prompt and verify the result in FixFlags.
-
-For more about the protocol, read the [official MCP introduction](https://modelcontextprotocol.io/docs/getting-started/intro).
+New FixFlags MCP connections are not available yet. You can use fix prompts now by copying and pasting them, with no connection setup.
 
 ## Get started
 
-[Analyze your website](/new) to see what needs attention. You can start with a public URL before creating an account.
+[Analyze your website](/new), open a Flag, and copy its fix prompt. You can start the first check before creating an account.
 
-When you are ready to save your Site and verify fixes, [create an account](/sign-up) or [sign in](/sign-in). If you already have a Site, return to its board to continue.
+When you want to save your results, [create an account](/sign-up) or [sign in](/sign-in) from the website's results page.

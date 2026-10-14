@@ -15,8 +15,13 @@ import { canonicalizeDestination } from '../url-identity'
 import { publicLinkObservations, publicLinkUrls, resolvedPageLinks } from '../checks/public-links'
 import { checkReceiptSchema } from '../checks/receipt'
 import { commitCheckReceipt } from './results'
+import { overlayCheckReceipts, overlayReceiptScope, overlayTargetSchema, scopedOverlayRule, runObservedOverlayChecks, type OverlayObservation } from '../checks/overlay-evidence'
+import { capturePageKey } from '../browser/observation-scope'
+import { JOURNEY_ASSERTIONS, JOURNEY_VERIFICATION_RULE, journeyReceipts, journeyReceiptScope, nativeJourneyFlags, readJourneyContext, type JourneyObservation } from '../checks/journey-evidence'
+import type { JourneyFindingDraft } from '../journey/types'
+import { durableCheckId } from '../flag-identity'
 import { runCheckedPageSearch } from '../search/workflow'
-import { runCorridorConsistencyChecks } from '../checks/corridor-consistency'
+import { evaluateCorridorConsistency } from '../checks/corridor-consistency'
 import { runBoundOutcomeExecutions } from '@/lib/sites/application/checkout-execution'
 import { reconcileSafeFixtureCleanup, executeSafeFormFixture, safeFormExecutionResultSchema } from '@/lib/sites/application/safe-form-executor'
 import { runJourneyReviewsForAudit } from '../journey/run-journey-reviews'
@@ -28,18 +33,19 @@ import { triageOutputSchema } from '../judge-triage-schema'
 import { finalizeFromOutcome } from '../pipeline/finalize-from-outcome'
 import { finalizeTriageDegraded, persistImprovementCycle } from '../finalize'
 import { persistDeterministicFlags } from '../persist'
-import { productScoresFromFlags, collapsedPageFlags } from '../pipeline/combine-pages'
+import { productScoresFromFlags } from '../pipeline/combine-pages'
 import { readScreenshot } from '@/lib/storage/screenshots'
 import type { PageRun, PipelineContext } from '../pipeline/types'
 import type { TaskContext, TaskHandler } from './registry'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 
 const findingsSchema = z.object({ flags: z.array(flagSchema).max(500) }).strict()
+const crossPageSchema = findingsSchema.extend({ receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const discoverySchema = z.object({ flags: z.array(flagSchema).max(500),
   pages: z.array(z.string().url()).max(24), openCheckCount: z.number().int().nonnegative().max(120), truncated: z.boolean(),
   receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), bindingKey: z.string() }).strict()
-const journeySchema = z.object({ findingCount: z.number().int().nonnegative() }).strict()
+const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional() }).strict()
 const usageSchema = z.object({ inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), model: z.string(),
   cacheReadTokens: z.number().nonnegative().optional(), cacheWriteTokens: z.number().nonnegative().optional() }).strict()
 const judgeSchema = z.object({ triage: z.object({ output: triageOutputSchema, usage: usageSchema }).strict().optional(),
@@ -60,22 +66,36 @@ async function pipelineContext(context: TaskContext): Promise<PipelineContext> {
 export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma): Promise<PageRun[]> {
   // Project metadata, media references and observations in PostgreSQL. Summary
   // readers never transfer collected HTML, network traces or sitemap bodies.
-  const tasks = await db.$queryRaw<Array<Pick<AuditVerifierExecution, 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
+  const tasksQuery = db.$queryRaw<Array<Pick<AuditVerifierExecution, 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
     SELECT "workKind", "workState", "status", "workInput",
       CASE WHEN "workKind" = 'browser' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata',
         'snapshot', jsonb_build_object('desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl',
-          'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
+          'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl',
+          'renderedScope', "workResult"->'data'->'snapshot'->'renderedScope')))
       WHEN "workKind" = 'captures' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'pageId', "workResult"->'data'->'pageId', 'snapshot', jsonb_build_object(
           'desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl', 'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
       WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata'))
-      WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'journeys', 'fixture-setup', 'automatic-accounts', 'finalize') THEN NULL
+      WHEN "workKind" IN ('journeys', 'cross-page') THEN jsonb_set("workResult", '{data}', jsonb_build_object('flags', "workResult"->'data'->'flags'))
+      WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'fixture-setup', 'automatic-accounts', 'finalize') THEN NULL
       ELSE "workResult" END AS "workResult"
     FROM "audit_verifier_executions" WHERE "auditId" = ${auditId} AND "targetKey" LIKE 'task:%'
       ${pageUrl ? Prisma.sql`AND "pageUrl" = ${pageUrl}` : Prisma.empty}
     ORDER BY "createdAt", "id" LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
+  const gapsQuery = db.$queryRaw<Array<{ pageUrl: string; targetKey: string }>>`
+    SELECT DISTINCT COALESCE(task."pageUrl", receipt."pageUrl") AS "pageUrl", receipt."targetKey"
+    FROM "audit_verifier_executions" receipt
+    LEFT JOIN "audit_verifier_executions" task ON task."id" = (receipt."evidenceReference"->>'taskId')
+      AND task."auditId" = receipt."auditId" AND task."targetKey" LIKE 'task:%'
+    WHERE receipt."auditId" = ${auditId} AND receipt."targetKey" LIKE 'module:%'
+      AND receipt."status" <> 'NOT_APPLICABLE' AND receipt."detail"->>'complete' = 'false'
+      AND COALESCE(task."pageUrl", receipt."pageUrl") IS NOT NULL
+      ${pageUrl ? Prisma.sql`AND COALESCE(task."pageUrl", receipt."pageUrl") = ${pageUrl}` : Prisma.empty}
+    LIMIT ${MAX_TASKS_PER_AUDIT + 1}`
+  const [tasks, gaps] = await Promise.all([tasksQuery, gapsQuery])
   if (tasks.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
+  if (gaps.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('EXECUTION_TASK_LIMIT', false)
   const positions = [...new Set(tasks.flatMap(task => {
     const input = task.workInput as { position?: number } | null
     return typeof input?.position === 'number' ? [input.position] : []
@@ -86,7 +106,7 @@ export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<
     const find = (kind: string) => pageTasks.find(task => task.workKind === kind && task.workState === 'COMPLETED')
     const browserTask = find('browser'), httpTask = find('http'), searchTask = pageTasks.find(task => task.workKind === 'search' && task.workState === 'COMPLETED' &&
       (!((task.workInput as { module?: string })?.module) || (task.workInput as { module?: string })?.module === 'summary')), judgeTask = find('judge')
-    const browser = browserTask?.workResult ? browserArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true }) }).parse(readArtifact(browserTask.workResult, 'browser').data) : null
+    const browser = browserTask?.workResult ? browserArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true, renderedScope: true }).extend({ renderedScope: screenshotSnapshotSchema.shape.renderedScope.nullable() }) }).parse(readArtifact(browserTask.workResult, 'browser').data) : null
     const captureTask = find('captures')
     const captures = captureTask?.workResult ? captureArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true }) }).parse(readArtifact(captureTask.workResult, 'captures').data) : null
     const response = httpTask?.workResult ? httpArtifactSchema.pick({ metadata: true }).parse(readArtifact(httpTask.workResult, 'http').data) : null
@@ -105,12 +125,16 @@ export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<
     })
     const url = (pageTasks[0].workInput as { pageUrl: string }).pageUrl
     pages.push({ pageId: browser?.pageId ?? '', url, metadata, desktop: speed?.desktop ?? null, mobile: speed?.mobile ?? null,
+      renderedScope: browser?.snapshot.renderedScope ?? undefined,
       desktopError: speed?.desktopError, mobileError: speed?.mobileError,
       desktopScreenshot: Boolean(captures?.snapshot.desktopUrl ?? browser?.snapshot.desktopUrl), mobileScreenshot: Boolean(captures?.snapshot.mobileUrl ?? browser?.snapshot.mobileUrl),
       desktopBase64: '', mobileBase64: null, flowScan: pageTasks.some(task => task.workKind === 'flow' && task.workState === 'COMPLETED' &&
         (task.workInput as { module?: string })?.module !== 'form-validation'),
-      flags, failedModules: pageTasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task =>
-        (task.workInput as { module?: string })?.module ?? task.workKind ?? 'unknown'),
+      flags, failedModules: [...new Set([
+        ...pageTasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task =>
+          (task.workInput as { module?: string })?.module ?? task.workKind ?? 'unknown'),
+        ...gaps.filter(gap => gap.pageUrl === url).map(gap => gap.targetKey.slice('module:'.length)),
+      ])],
       triage: judged?.triage, triageFailure: judged?.triageFailure, searchReceipt: search?.receipt,
       detectedTech: [], industryGuess: null })
   }
@@ -156,6 +180,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const pages = await recordedPages(context.audit.id), primary = pages.find(page => page.url === spec.targetUrl)
       const depth = asReviewDepth(spec.reviewDepth ?? context.audit.reviewDepth)
       const plan = planReviewTargets({ pastedUrl: spec.targetUrl, depth, pastedLinks: primary ? resolvedPageLinks(primary.url, primary.metadata) : [],
+        retainedUrls: spec.monitoringPages,
         linkedPageLinks: context.input.module === 'second' ? pages.filter(page => page !== primary).map(page => ({ pageUrl: page.url, links: resolvedPageLinks(page.url, page.metadata) })) : [] })
       const existing = await loadTaskGraph(context.audit.id)
       const allPlans: TaskPlan[] = existing.map(task => ({ kind: task.workKind as TaskPlan['kind'], key: task.targetKey.slice(5),
@@ -193,13 +218,22 @@ export const lifecycleHandlers: TaskHandler[] = [
     },
   },
   { kind: 'cross-page', replay: 'read_only', timeoutMs: 12_000,
-    validateResult: artifact => { findingsSchema.parse(artifact.data) }, commit: commitFindings,
+    validateResult: artifact => { crossPageSchema.parse(artifact.data) },
+    async commit(context, artifact, tx) {
+      for (const receipt of crossPageSchema.parse(artifact.data).receipts ?? []) await commitCheckReceipt(context, receipt, tx)
+      await commitFindings(context, artifact, tx)
+    },
     async evaluate(context) {
       const pages = await recordedPages(context.audit.id)
       const search = await runCheckedPageSearch(pages.flatMap(page => page.searchReceipt ? [page.searchReceipt] : []))
-      const corridor = runCorridorConsistencyChecks(pages.map((page, index) => ({ url: page.url, role: index ? 'linked' : 'primary',
-        title: page.metadata.title, ogTitle: page.metadata.ogTitle, ogDescription: page.metadata.ogDescription })))
-      return serializeArtifact('cross-page', findingsSchema.parse({ flags: [...search, ...corridor] }))
+      const corridor = evaluateCorridorConsistency(pages.map((page, index) => ({ url: page.url, role: index ? 'linked' : 'primary',
+        title: page.metadata.title, ogTitle: page.metadata.ogTitle, ogDescription: page.metadata.ogDescription, scope: page.renderedScope })))
+      const receipts = [...corridor.assertions].map(([pageUrl, assertions]) => checkReceiptSchema.parse({
+        kind: 'site-module-check', version: 1, module: 'corridor', pageUrl, applicable: assertions.some(assertion => assertion.disposition !== 'observed'),
+        complete: assertions.every(assertion => assertion.complete), passed: assertions.every(assertion => assertion.complete && (assertion.disposition === 'observed' || assertion.passed)), assertions,
+        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+      }))
+      return serializeArtifact('cross-page', crossPageSchema.parse({ flags: [...search, ...corridor.flags], receipts }))
     },
   },
   { kind: 'bindings', replay: 'protected', timeoutMs: 90_000,
@@ -223,11 +257,54 @@ export const lifecycleHandlers: TaskHandler[] = [
   },
   { kind: 'journeys', replay: 'read_only', timeoutMs: 60_000,
     validateResult: artifact => { journeySchema.parse(artifact.data) },
+    async commit(context, artifact, tx) {
+      for (const receipt of journeySchema.parse(artifact.data).overlayReceipts ?? []) await commitCheckReceipt(context, receipt, tx, overlayReceiptScope(receipt))
+      for (const receipt of journeySchema.parse(artifact.data).pageReceipts ?? []) await commitCheckReceipt(context, receipt, tx, journeyReceiptScope(receipt))
+      await commitFindings(context, artifact, tx)
+      const rows = await tx.journeyFinding.findMany({ where: { journeyReview: { auditId: context.audit.id }, flagId: null,
+        OR: [{ checkId: { in: ['overlay-blocks-nav', 'overlay-blocks-cta', 'overlay-blocks-form', ...Object.values(JOURNEY_ASSERTIONS).flat()] } },
+          { checkId: { endsWith: '-hidden-cta' } }, { checkId: { endsWith: '-dead-end' } }] }, take: 500, select: { id: true, checkId: true, url: true, journeyReview: { select: { startUrl: true } } } })
+      for (const row of rows) {
+        const flag = await tx.flag.findFirst({ where: { auditId: context.audit.id, checkId: durableCheckId(row.checkId),
+          OR: [{ pageUrl: row.journeyReview.startUrl }, { affectedPaths: { array_contains: row.journeyReview.startUrl } }] }, select: { id: true } })
+        if (flag) await tx.journeyFinding.update({ where: { id: row.id }, data: { flagId: flag.id } })
+      }
+    },
     async evaluate(context) {
       if (!browserEvidence(context)?.metadata) throw new TaskFailure('JOURNEY_PAGE_UNAVAILABLE', false)
+      const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
+      const phases = spec?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.overlayPhases?.filter(phase => phase.startsWith('journey_'))
+      const sources = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: { auditId: target.parentAuditId,
+        audit: { projectId: context.audit.projectId }, checkId: target.checkId }, take: 100, select: { evidenceTargets: true, verificationRule: true } })
+        : context.audit.projectId ? await prisma.flag.findMany({ where: { auditId: { not: context.audit.id },
+          audit: { projectId: context.audit.projectId, status: 'COMPLETED' }, verificationRule: JOURNEY_VERIFICATION_RULE },
+          orderBy: { createdAt: 'desc' }, take: 100, select: { evidenceTargets: true, verificationRule: true } }) : []
+      const expected = sources.flatMap(flag => scopedOverlayRule(flag.verificationRule) && Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
+        const parsed = z.object({ context: z.string(), selector: z.string(), label: z.string() }).safeParse(value)
+        if (!parsed.success || !parsed.data.context.startsWith('overlay:' + capturePageKey(context.input.pageUrl) + ':') || !phases?.includes(parsed.data.context.split(':')[3])) return []
+        const scoped = overlayTargetSchema.safeParse({ ...parsed.data, kind: parsed.data.context.split(':')[4] })
+        return scoped.success ? [scoped.data] : []
+      }) : [])
+      const journeyTarget = target?.kind === 'DIAGNOSTIC' && Object.values(JOURNEY_ASSERTIONS).flat().some(checkId => checkId === target.checkId)
+      const conditions = sources.flatMap(flag => flag.verificationRule === JOURNEY_VERIFICATION_RULE && Array.isArray(flag.evidenceTargets)
+        ? flag.evidenceTargets.flatMap(value => {
+          const parsed = z.object({ context: z.string() }).passthrough().safeParse(value)
+          const condition = parsed.success ? readJourneyContext(parsed.data.context) : undefined
+          return condition?.pageKey === capturePageKey(context.input.pageUrl) ? [condition] : []
+        }) : [])
+      const observations: OverlayObservation[] = []
+      const pages: JourneyObservation[] = [], findings: JourneyFindingDraft[] = []
       const findingCount = await runJourneyReviewsForAudit(context.audit.id, context.input.pageUrl,
-        { included: true, deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id) })
-      return serializeArtifact('journeys', journeySchema.parse({ findingCount }))
+        { included: true, deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id),
+          ...(phases?.length ? { overlayPhases: phases, overlayExpectedTargets: expected, allowedCheckIds: Object.keys(spec!.checks) } : {}),
+          ...(journeyTarget ? { expectedJourneyConditions: conditions, allowedCheckIds: Object.keys(spec!.checks) } : {}),
+          ...(!journeyTarget && conditions.length ? { recordedJourneyConditions: conditions } : {}),
+          onOverlayObservations: found => observations.push(...found),
+          onPageObservations: found => pages.push(...found), onJourneyFindings: found => findings.push(...found) })
+      return serializeArtifact('journeys', journeySchema.parse({ findingCount,
+        flags: [...observations.flatMap(runObservedOverlayChecks), ...nativeJourneyFlags(findings)],
+        pageReceipts: journeyReceipts(pages, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
+        overlayReceipts: overlayCheckReceipts(observations, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }) }))
     },
   },
   { kind: 'judge', replay: 'read_only', timeoutMs: 75_000,
@@ -290,7 +367,8 @@ export const lifecycleHandlers: TaskHandler[] = [
         const missingPages = spec.category.pages.filter(url => !pages.some(page => page.url === url))
         if (missingPages.length) failed.push('category-pages')
         if (pages.some(page => page.searchReceipt?.complete === false)) failed.push('search')
-        await persistDeterministicFlags(latest.id, collapsedPageFlags(pages), { MESSAGE: null, EXPERIENCE: null, REACH: null })
+        await persistDeterministicFlags(latest.id, pages.flatMap(page => page.flags), { MESSAGE: null, EXPERIENCE: null, REACH: null },
+          undefined, { authoritativeProjection: true })
         await persistAuditRunCost(latest.id, { durationMs: Date.now() - (latest.startedAt ?? latest.createdAt).getTime(),
           llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'none',
           pagespeedCalls: pages.reduce((count, page) => count + Number(Boolean(page.desktop)) + Number(Boolean(page.mobile)), 0), pagesReviewed: pages.length })
@@ -320,7 +398,8 @@ export const lifecycleHandlers: TaskHandler[] = [
       await executionWrite(tx => tx.audit.update({ where: { id: latest.id }, data: { status: 'FINALIZING',
         reviewCoverage: buildReviewCoverage({ reviewedPageCount: pages.length, openCheckCount: 0, partial: failed.length > 0 }),
         failedModules: failed } }))
-      await persistDeterministicFlags(latest.id, collapsedPageFlags(pages), productScoresFromFlags(pages))
+      await persistDeterministicFlags(latest.id, pages.flatMap(page => page.flags), productScoresFromFlags(pages),
+        undefined, { authoritativeProjection: true })
       if (pages.length) await finalizeFromOutcome({ ctx, auditId: latest.id, auditUrl: latest.url, pageRuns: pages, startedAt: ctx.startedAt,
         captureAdditionalEvidence: false })
       else await finalizeTriageDegraded({ auditId: latest.id, durationMs: Date.now() - ctx.startedAt.getTime(), pagespeedCalls: 0,

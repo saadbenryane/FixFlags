@@ -31,6 +31,7 @@ export async function POST(
       evidence: detail.flag.evidenceMissing ? null : detail.flag.evidence,
       fix: detail.flag.fix,
       pageUrl: detail.flag.pageUrl,
+      affectedPaths: detail.flag.affectedPaths,
       journeyName: detail.flag.relatedOutcome?.name,
       expectedBehavior: detail.flag.expectedBehavior,
     })

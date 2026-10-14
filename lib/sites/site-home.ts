@@ -20,9 +20,12 @@ import type { UptimeIncidentView,UptimeSummary } from '@/lib/uptime/domain'
 import type { AccountChecksView } from './accounts/contracts'
 import { type ExecutionProgress } from './application/execution-progress'
 import { type ActiveSiteRun } from './application/site-execution'
+import type { SiteViewerActions } from './viewer-actions'
 
 export type SiteHomeView = {
   schemaVersion: 2
+  actions: SiteViewerActions
+  counts: import('./scope-counts').SiteScopeCounts
   captures?: SiteCapture[]
   uptime?: UptimeSummary | null
   uptimeEvents?: UptimeIncidentView[]

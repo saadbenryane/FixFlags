@@ -23,6 +23,7 @@ import {
 import { RUBRIC_ORDER } from './constants'
 import { PIPELINE_PROGRESS } from './progress'
 import { collapseFlagsWithAffectedPaths, flagFingerprint } from './flag-identity'
+import { projectDeterministicFlags } from './flag-projection'
 import type { DeterministicFlag, DeterministicFlagRow, AiFlagRow } from './flag-types'
 import { groundedReportVerdict, groundedRubricSummary } from './verdict'
 import { parseProductContract } from './product-contract'
@@ -147,7 +148,7 @@ export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null
 }
 
 /** Stable projection identities; repeated publication never deletes originating evidence. */
-async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, rows: Prisma.FlagCreateManyInput[]) {
+async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, rows: Prisma.FlagCreateManyInput[], authoritativePaths = false) {
   await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
   const previous = await tx.flag.findMany({ where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] } },
     select: { id: true, fingerprint: true, source: true, affectedPaths: true } })
@@ -157,7 +158,7 @@ async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, ro
     const prior = existing.get(row.source + ':' + row.fingerprint)
     if (!prior) { created.push(row); continue }
     const paths = [...new Set([
-      ...(Array.isArray(prior.affectedPaths) ? prior.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
+      ...(!authoritativePaths && Array.isArray(prior.affectedPaths) ? prior.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
       ...(Array.isArray(row.affectedPaths) ? row.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
     ])]
     await tx.flag.update({ where: { id: prior.id }, data: { ...row, affectedPaths: paths.length ? paths : undefined } })
@@ -181,13 +182,15 @@ function journeySeverityPenalty(severity: string): number {
 
 /**
  * Persist deterministic flags and partial rubric scores during the pipeline run.
- * Callers supply the collapsed union; committed Flag identities remain stable.
+ * Incremental callers retain prior paths. Authoritative projection callers supply
+ * every committed observation, including overlaps, to update the current union.
  */
 export async function persistDeterministicFlags(
   auditId: string,
   deterministicFlags: DeterministicFlag[],
   rubricScores: Partial<Record<RubricName, number | null>>,
   transaction?: Prisma.TransactionClient,
+  options: { authoritativeProjection?: boolean } = {},
 ): Promise<void> {
   const persist = async (tx: Prisma.TransactionClient) => {
 
@@ -242,13 +245,24 @@ export async function persistDeterministicFlags(
 
     const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
 
-    const collapsed = collapseFlagsWithAffectedPaths(deterministicFlags)
+    const collapsed = options.authoritativeProjection ? projectDeterministicFlags(deterministicFlags) : collapseFlagsWithAffectedPaths(deterministicFlags)
     const flagRows = collapsed.map((f, i) => ({
       ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName),
       auditId,
     }))
 
-    await persistFlagRows(tx, auditId, flagRows)
+    await persistFlagRows(tx, auditId, flagRows, options.authoritativeProjection)
+    if (options.authoritativeProjection) {
+      const retained = new Set(collapsed.map(flagFingerprint))
+      const superseded = [...new Set(deterministicFlags.map(flagFingerprint))].filter(identity => !retained.has(identity))
+      // Only transient duplicate projection rows can disappear. Source receipts,
+      // completed reports and findings tied to customer actions are retained.
+      if (superseded.length) await tx.flag.deleteMany({ where: {
+        auditId, source: 'DETERMINISTIC', fingerprint: { in: superseded }, status: 'OPEN', resolvedInId: null,
+        issueId: null, feedback: { none: {} }, improvementOccurrence: { is: null },
+        audit: { finalizedAt: null, status: { notIn: ['COMPLETED', 'FAILED'] } },
+      } })
+    }
 
     const overallScore = calculateOverallScore(rubricScores)
     await tx.audit.update({
@@ -476,11 +490,14 @@ export async function mergePrescriptionResults(
       // schema's `.min(1)` accepts whitespace-only evidence, which would
       // otherwise overwrite real triage content with an empty string.
       if (isBlankText(item.evidence)) continue
+      const measuredSource = flag.source !== 'AI' && Array.isArray(flag.evidenceTargets) && flag.evidenceTargets.some(target =>
+        target && typeof target === 'object' && !Array.isArray(target) && target.source === 'measured' &&
+        typeof target.context === 'string' && target.context.length > 0)
 
       await tx.flag.update({
         where: { id: flag.id },
         data: {
-          evidence: item.evidence,
+          evidence: measuredSource ? flag.evidence : item.evidence,
           whyItMatters: item.whyItMatters,
           fix: item.fix,
           agentPrompt: item.agentPrompt ?? null,
@@ -489,7 +506,7 @@ export async function mergePrescriptionResults(
           windsurfPrompt: item.windsurfPrompt ?? null,
           lovablePrompt: item.lovablePrompt ?? null,
           boltPrompt: item.boltPrompt ?? null,
-          verificationRule: item.verificationRule,
+          verificationRule: measuredSource ? flag.verificationRule : item.verificationRule,
         },
       })
     }

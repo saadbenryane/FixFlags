@@ -130,6 +130,13 @@ describe('POST /api/reports/[id]/retry', () => {
     expect(body.status).toBe('QUEUED')
     expect(retryAudit).toHaveBeenCalledWith('a1', { userId: 'u1', anonymousAuditIds: ['anon-1'], visitorKey: 'visitor-own', clientId: 'test-client' })
   })
+  it('uses the shared retry boundary for an owned Site instead of requesting broad care', async () => {
+    retryAudit.mockResolvedValue({ status: 'CHECKING', auditId: 'retry-audit', runId: 'retry-run', siteId: 'site-1', reused: true })
+    prismaMock.audit.findUnique.mockResolvedValue(baseAudit({ projectId: 'site-1' }))
+    const res = await POST(postReq(), { params: Promise.resolve({ id: 'category-audit' }) })
+    expect(await res.json()).toMatchObject({ status: 'CHECKING', auditId: 'retry-audit', runId: 'retry-run', reused: true })
+    expect(retryAudit).toHaveBeenCalledWith('category-audit', expect.objectContaining({ userId: 'u1' }))
+  })
 
   it('returns 200 and enqueues retry when audit is AI-degraded (completed without triage)', async () => {
     retryAudit.mockResolvedValue({ status: 'QUEUED' })

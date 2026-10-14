@@ -1,16 +1,17 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { executionTransaction, executionWrite } from '@/lib/audit/execution-ownership'
-import { accessTokenForConnection } from '@/lib/sites/connections/google'
-import { searchPropertyCoversUrl } from '@/lib/sites/connections/match'
+import { accessTokenForConnection, googleConnectionGrantScope } from '@/lib/sites/connections/google'
+import { searchPropertyCoversUrl } from '@/lib/sites/connections/report-scope'
 import { getGscAccessToken, inspectSearchUrl, querySearchAnalytics, SearchConsoleError, type SearchUrlInspection, type GscSearchRow } from '@/lib/integrations/google-search-console'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { searchObservationSchema, searchReceiptSchema, type SearchObservation, type SearchReceipt } from './contracts'
 import { searchFindings } from './registry'
+import { googleIndexObservations } from './google-index'
 
 type Failure = keyof typeof C.googleFailures
 type GoogleReceiptModule = 'search-google' | 'search-google-index' | 'search-google-performance'
-type GoogleAccess = { token: string; property: string; connectionId: string | null; legacyUserId: string | null }
+type GoogleAccess = { token: string; property: string; connectionId: string | null; legacyUserId: string | null; connectionScope?: Prisma.SiteConnectionWhereInput }
 
 function providerObservation(pageUrl: string, input: {
   checkId: string; source: 'google-index' | 'google-analytics'; disposition: SearchObservation['disposition'];
@@ -37,10 +38,11 @@ async function googleAccess(projectId: string, userId: string): Promise<GoogleAc
     // A revoked or refused Site connection never falls through to broader legacy credentials.
     if (connection.status === 'REVOKED') return 'NOT_CONNECTED'
     if (connection.status === 'MISMATCH' || !connection.propertyId) return 'PROPERTY_MISMATCH'
-    if (connection.status !== 'CONNECTED') return 'AUTH_EXPIRED'
+    if (!['CONNECTED', 'UNAVAILABLE'].includes(connection.status)) return 'AUTH_EXPIRED'
     try {
       const token = await accessTokenForConnection(connection)
-      return token ? { token, property: connection.propertyId, connectionId: connection.id, legacyUserId: null } : 'AUTH_EXPIRED'
+      return token ? { token, property: connection.propertyId, connectionId: connection.id, legacyUserId: null,
+        connectionScope: googleConnectionGrantScope(connection) } : 'AUTH_EXPIRED'
     } catch { return 'AUTH_EXPIRED' }
   }
   const legacy = await prisma.gscConnection.findUnique({ where: { userId }, select: { siteUrl: true } })
@@ -131,29 +133,14 @@ export async function runGoogleSearchForAudit(input: {
         inspection = index.value
         const status = inspection.indexStatusResult
         if (!status?.verdict) observations.push(failed(page.url, 'MALFORMED_PROVIDER_RESPONSE', 'google-index', collectedAt))
-        else observations.push(providerObservation(page.url, { checkId: 'search-google-index', source: 'google-index', disposition: 'observed',
-          reason: 'google_indexed_version_recorded', collectedAt, locator: 'indexStatusResult',
-          google: { property: access.property, verdict: status.verdict, lastCrawlAt: status.lastCrawlTime },
-          observed: `Google verdict: ${status.verdict}. ${status.coverageState ?? ''} Robots: ${status.robotsTxtState ?? 'not supplied'}. Indexing: ${status.indexingState ?? 'not supplied'}. Last crawl: ${status.lastCrawlTime ?? 'not supplied'}. Google canonical: ${status.googleCanonical ?? 'not supplied'}. Declared canonical: ${status.userCanonical ?? 'not supplied'}.` }))
         if (status?.verdict) {
           const prior = audit.parentId ? await prisma.auditVerifierExecution.findUnique({
             where: { auditId_targetKey_scopeKey: { auditId: audit.parentId, targetKey: `module:${moduleName}`, scopeKey: `page:${page.url}` } },
             select: { detail: true },
           }) : null
           const priorReceipt = searchReceiptSchema.safeParse(prior?.detail)
-          const priorIndex = priorReceipt.success ? priorReceipt.data.observations.find(item => item.checkId === 'indexing-failure') : undefined
-          const localAllows = page.local?.observations.some(item => item.checkId === 'robots-blocks-indexing' && item.reason === 'no_index_restrictions' && item.disposition === 'passed')
-          const sameProperty = priorIndex?.google?.property === access.property
-          const newerCrawl = Boolean(status.lastCrawlTime && priorIndex?.google?.lastCrawlAt &&
-            new Date(status.lastCrawlTime) > new Date(priorIndex.google.lastCrawlAt))
-          const failure = status.verdict === 'FAIL' && localAllows && sameProperty &&
-            (priorIndex?.disposition === 'passed' && newerCrawl || priorIndex?.attention.kind === 'flag')
-          observations.push(providerObservation(page.url, { checkId: 'indexing-failure', source: 'google-index',
-            disposition: status.verdict === 'PASS' ? 'passed' : status.verdict === 'FAIL' ? 'failed' : 'unknown',
-            reason: failure ? 'google_indexing_regression' : 'google_indexed_version_assessment',
-            attention: failure ? 'flag' : 'observation', collectedAt, locator: 'indexStatusResult',
-            google: { property: access.property, verdict: status.verdict, lastCrawlAt: status.lastCrawlTime },
-            observed: `Google’s indexed-version verdict is ${status.verdict}; last crawl ${status.lastCrawlTime ?? 'unknown'}.` }))
+          observations.push(...googleIndexObservations({ pageUrl: page.url, property: access.property, collectedAt, status,
+            previous: priorReceipt.success ? priorReceipt.data : null, local: page.local }))
         }
         if (inspection.richResultsResult) observations.push(providerObservation(page.url, {
           checkId: 'search-google-rich-results', source: 'google-index', disposition: 'observed', reason: 'google_rich_results_recorded', collectedAt,
@@ -183,7 +170,7 @@ export async function runGoogleSearchForAudit(input: {
       providerRefusal = failedAccess.find(code => ['AUTH_EXPIRED', 'PERMISSION_REFUSED', 'PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE'].includes(code)) ?? null
       const connectionId = access.connectionId
       if (connectionId && failedAccess.some(code => code === 'AUTH_EXPIRED' || code === 'PERMISSION_REFUSED')) {
-        await executionWrite(tx => tx.siteConnection.update({ where: { id: connectionId }, data: { status: 'NEEDS_REAUTH', statusDetail: C.googleFailures.AUTH_EXPIRED } }))
+        await executionWrite(tx => tx.siteConnection.updateMany({ where: { ...access.connectionScope, id: connectionId }, data: { status: 'NEEDS_REAUTH', statusDetail: C.googleFailures.AUTH_EXPIRED } }))
       }
     }
     const selected = observations.filter(item => item.source === 'google-index' ? indexRequested : analyticsRequested)

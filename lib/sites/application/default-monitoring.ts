@@ -1,6 +1,6 @@
-import type { Prisma, User } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { allowedWatchIntervals } from '@/lib/auth/entitlements'
+import { resolveEffectiveEntitlements, type EffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { toStoredWatchInterval, fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { bindingForConfirmedKind } from '@/lib/sites/outcomes'
 import { expectationForKind } from '@/lib/sites/outcome-kinds'
@@ -8,23 +8,26 @@ import { outcomeFreshnessMinutes } from './care-policy'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { logger } from '@/lib/logger'
 
-function defaultCadence(user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>) {
-  const allowed = allowedWatchIntervals(user)
-  const paid = user.plan !== 'FREE' && !['PAST_DUE', 'CANCELED', 'UNPAID'].includes(user.subscriptionStatus)
-  return (paid || user.role === 'admin') && allowed.includes('daily') ? 'daily' : allowed.includes('weekly') ? 'weekly' : null
+function defaultCadence(policy: EffectiveEntitlements) {
+  return (policy.plan !== 'FREE' || policy.sources.includes('ADMIN')) && policy.watchIntervals.includes('daily')
+    ? 'daily' : policy.watchIntervals.includes('weekly') ? 'weekly' : null
 }
 
 /** Public availability needs no privileged consent. Persist defaults with Site identity. */
 export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, projectId: string, userId: string, now = new Date()) {
   const project = await tx.project.findFirst({
-    where: { id: projectId, userId, deletedAt: null },
+    where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     select: { id: true, url: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true,
       watchLastAttemptAt: true, watchLastRunAt: true, watchLastError: true,
-      user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } } },
+      user: { select: { id: true, role: true, plan: true, subscriptionStatus: true, lifecycleStatus: true,
+        auditsLimit: true, deepReviewsLimit: true, licensedSiteQuantity: true,
+        entitlementGrants: { where: { revokedAt: null, expiresAt: { gt: now } } } } } },
   })
   if (!project) return false
-  const cadence = fromStoredWatchInterval(project.watchInterval) ?? defaultCadence(project.user)
-  if (!cadence || !allowedWatchIntervals(project.user).includes(cadence)) return false
+  const policy = resolveEffectiveEntitlements(project.user, project.user.entitlementGrants, now)
+  if (!policy.available) return false
+  const cadence = fromStoredWatchInterval(project.watchInterval) ?? defaultCadence(policy)
+  if (!cadence || !policy.watchIntervals.includes(cadence)) return false
   // Repeated admissions and the worker backfill must honor an explicit pause.
   if (!project.watchInterval && (project.watchLastError || project.watchLastAttemptAt || project.watchLastRunAt)) return false
   const binding = bindingForConfirmedKind('AVAILABILITY', project.url)!
@@ -39,7 +42,7 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
   })
   if (!project.watchInterval) {
     await tx.project.updateMany({
-      where: { id: projectId, userId, deletedAt: null, watchInterval: null, watchNextRunAt: null,
+      where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: null, watchNextRunAt: null,
         watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null },
       data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: now },
     })
@@ -50,7 +53,7 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
 /** Bounded worker upkeep covers existing Sites without a customer browser session. */
 export async function initializeDefaultMonitoring(limit: number, now: Date) {
   const projects = await prisma.project.findMany({
-    where: { deletedAt: null, watchInterval: null, watchNextRunAt: null, watchLastAttemptAt: null,
+    where: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: null, watchNextRunAt: null, watchLastAttemptAt: null,
       watchLastRunAt: null, watchLastError: null },
     select: { id: true, userId: true }, orderBy: { createdAt: 'asc' }, take: limit,
   })

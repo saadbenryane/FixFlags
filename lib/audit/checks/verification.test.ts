@@ -6,8 +6,18 @@ const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1
   pageUrl: 'https://example.com/', applicable: true, passed: false,
   assertions: [{ key: 'content-security-policy', name: 'CSP', expected: 'An enforcing CSP is present', observed: 'CSP absent', passed: false }],
   execution: { auditId: 'after', taskId: 'task', checkVersion: 1, source: 'http', collectedAt: '2026-10-11T10:00:00.000Z' } })
+const keyboardPrefix = `keyboard:${'a'.repeat(64)}:${'b'.repeat(64)}:`
 
 describe('exact assertion verification', () => {
+  it('keeps historical keyboard controls without capture conditions unverified', () => {
+    const target = { selector: '#action', label: 'Action' }
+    const keyboard = checkReceiptSchema.parse({ ...receipt, module: 'keyboard', complete: true, passed: true,
+      assertions: [{ key: 'focus-styles', name: 'Focus', expected: 'Visible focus', observed: 'Styled', passed: true, complete: true, targets: [target] }],
+      execution: { ...receipt.execution!, source: 'keyboard' } })
+    expect(scopedAssertionForTarget({ receipt: keyboard, checkId: 'focus-visible-missing', flag: {
+      verificationRule: 'Keyboard probe: repeat navigation', evidenceTargets: [target],
+    } })).toBeUndefined()
+  })
   it('does not use CSP presence to verify an unsafe CSP or module absence to verify a finding', () => {
     expect(assertionForTarget(receipt, 'security-csp-missing')?.passed).toBe(false)
     expect(assertionForTarget(receipt, 'security-csp-unsafe-inline')).toBeUndefined()
@@ -30,7 +40,7 @@ describe('exact assertion verification', () => {
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'security-csp-missing', pageUrl: receipt.pageUrl }
     const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue([
       { improvement: { occurrences: [{ flag }, { flag: { ...flag, pageUrl: 'https://example.com/private' } }] } },
-    ]) }, auditVerifierExecution: { upsert } }
+    ]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt }, tx as never)
     expect(upsert).toHaveBeenCalledTimes(1)
     expect(upsert.mock.calls[0][0]).toMatchObject({ update: {}, create: {
@@ -39,26 +49,27 @@ describe('exact assertion verification', () => {
     } })
   })
   it('certifies a keyboard repair only for the same observed controls in complete evidence', async () => {
+    const target = { selector: '#action', label: 'Action', context: keyboardPrefix + 'page_load' }
     const keyboard = checkReceiptSchema.parse({ ...receipt, module: 'keyboard', complete: true, passed: true,
-      assertions: [{ key: 'focus-styles', name: 'Focus styles', expected: 'Observable focus style', observed: 'Style observed', passed: true, targets: [{ selector: '#action', label: 'Action' }] }],
+      assertions: [{ key: 'focus-styles', name: 'Focus styles', expected: 'Observable focus style', observed: 'Style observed', passed: true, targets: [target] }],
       execution: { ...receipt.execution!, source: 'keyboard' } })
     const upsert = vi.fn()
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'focus-visible-missing', pageUrl: keyboard.pageUrl,
-      verificationRule: 'Keyboard probe: repeat navigation', evidenceTargets: [{ selector: '#action', label: 'Action' }] }
+      verificationRule: 'Keyboard probe: repeat navigation', evidenceTargets: [target] }
     const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue([
       { improvement: { occurrences: [{ flag }, { flag: { ...flag, evidenceTargets: [{ selector: '#unvisited', label: 'Unvisited' }] } },
         { flag: { ...flag, evidenceTargets: [{ selector: '#action', label: 'Different action' }] } },
         { flag: { ...flag, verificationRule: 'Historical Lighthouse result' } }] } },
-    ]) }, auditVerifierExecution: { upsert } }
+    ]) }, auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: keyboard }, tx as never)
     expect(upsert).toHaveBeenCalledTimes(1)
-    expect(upsert.mock.calls[0][0].create.detail).toMatchObject({ verdict: 'passed', source: 'keyboard', assertion: { targets: [{ selector: '#action', label: 'Action' }] } })
+    expect(upsert.mock.calls[0][0].create.detail).toMatchObject({ verdict: 'passed', source: 'keyboard', assertion: { targets: [target] } })
     upsert.mockClear()
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: { ...keyboard, complete: false } }, tx as never)
     expect(upsert).not.toHaveBeenCalled()
   })
   it('verifies an observed popup scope independently and never uses closed-page or unknown evidence', async () => {
-    const context = 'menu:#options=>#menu'
+    const context = keyboardPrefix + 'menu:#options=>#menu'
     const target = { selector: '#action', label: 'Action', context }
     const flag = { source: 'DETERMINISTIC', fingerprint: null, checkId: 'focus-visible-missing', pageUrl: receipt.pageUrl,
       verificationRule: 'Keyboard probe: repeat navigation', evidenceTargets: [target] }
@@ -68,7 +79,7 @@ describe('exact assertion verification', () => {
       assertions: [assertion], execution: { ...receipt.execution!, source: 'keyboard' } })
     const upsert = vi.fn()
     const tx = { improvementAttempt: { findMany: vi.fn().mockResolvedValue([{ improvement: { occurrences: [{ flag }] } }]) },
-      auditVerifierExecution: { upsert } }
+      auditVerifierExecution: { upsert, findMany: vi.fn().mockResolvedValue([]) } }
     await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true, receipt: keyboard }, tx as never)
     expect(upsert).toHaveBeenCalledTimes(1)
     upsert.mockClear()
@@ -76,11 +87,26 @@ describe('exact assertion verification', () => {
       { ...assertion, targets: [{ selector: '#action', label: 'Action' }] },
       { ...assertion, targets: [{ ...target, context: 'menu:#different=>#menu' }] },
       { ...assertion, passed: false, complete: false },
+      { ...assertion, disposition: 'observed' as const },
     ]) {
       await recordAssertionVerifiers({ auditId: 'after', parentId: 'before', primary: true,
         receipt: { ...keyboard, assertions: [observation] } }, tx as never)
     }
     expect(upsert).not.toHaveBeenCalled()
+  })
+  it('requires every original keyboard page from the same execution and check version', () => {
+    const targets = ['a', 'c'].map(page => ({ selector: '#action', label: 'Action',
+      context: `keyboard:${page.repeat(64)}:${'b'.repeat(64)}:page_load` }))
+    const observed = targets.map((target, index) => checkReceiptSchema.parse({ ...receipt, module: 'keyboard', complete: true, passed: true,
+      pageUrl: `https://example.com/${index}`, assertions: [{ key: 'focus-styles', name: 'Focus', expected: 'Visible focus', observed: 'Styled',
+        passed: true, complete: true, targets: [target] }], execution: { ...receipt.execution!, source: 'keyboard', taskId: 'keyboard-' + index } }))
+    const compare = (sources: typeof observed) => scopedAssertionForTarget({ receipt: observed[0], receipts: sources,
+      checkId: 'focus-visible-missing', flag: { verificationRule: 'Keyboard probe: repeat navigation', evidenceTargets: targets } })
+    expect(compare([observed[0]])).toBeUndefined()
+    expect(compare(observed)?.assertion.passed).toBe(true)
+    expect(compare(observed)?.supportingTasks.map(task => task.taskId)).toEqual(['keyboard-0', 'keyboard-1'])
+    for (const execution of [{ ...observed[1].execution!, auditId: 'other' }, { ...observed[1].execution!, checkVersion: 2 },
+      { ...observed[1].execution!, source: 'rendered-dom' as const }]) expect(compare([observed[0], { ...observed[1], execution }])).toBeUndefined()
   })
 
   it('requires the original Tracking endpoint and phase, retaining unknown for suppressed or unobserved scopes', async () => {

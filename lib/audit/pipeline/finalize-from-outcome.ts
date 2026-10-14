@@ -222,7 +222,7 @@ export async function retryPrimaryTriage(
 export async function finalizeFromOutcome(input: FinalizeFromOutcomeInput): Promise<boolean> {
   const outcome = resolveAuditOutcome(input.pageRuns)
 
-  // Surface any check modules that threw before the report completes, so
+  // Surface failed and incomplete check modules before the report completes, so
   // "all fixes" never silently loses an entire check area.
   await persistAuditFailedModules(input.auditId, input.pageRuns)
 

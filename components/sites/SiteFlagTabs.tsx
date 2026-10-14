@@ -13,7 +13,7 @@ export function SiteFlagTabs({ siteId, tab, openCount, resolvedCount }: { siteId
     { id: 'open' as const, label: `Open (${openCount})`, href: `/sites/${siteId}/flags?tab=open` },
     { id: 'resolved' as const, label: `Resolved (${resolvedCount})`, href: `/sites/${siteId}/flags?tab=resolved` },
   ]
-  return <div className="mb-6 flex gap-2 border-b border-border/40" role="tablist" aria-label="Flag lists">
+  return <div className="mb-6 flex gap-2 border-border/40" role="tablist" aria-label="Flag lists">
     {tabs.map((item, index) => <Button key={item.id} role="tab" id={`${item.id}-flags-tab`} aria-controls={`${item.id}-flags-panel`} aria-selected={tab === item.id} tabIndex={tab === item.id ? 0 : -1} variant={tab === item.id ? 'brand' : 'ghost'} size="sm" asChild>
       <Link ref={(node) => { refs.current[index] = node }} href={item.href as Route} onKeyDown={(event) => {
         const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length

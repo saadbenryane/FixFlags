@@ -1,3 +1,4 @@
+import { analyticsMarkupSignals } from './metadata-markup-signals'
 import * as cheerio from 'cheerio'
 import { safeFetchHtml } from './url'
 import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
@@ -313,85 +314,8 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     if (placeholder) ctaTexts.push(placeholder)
   })
 
-  // Analytics detection
   const htmlStr = html.toLowerCase()
-  const hasAnalytics = !!(
-    htmlStr.includes('google-analytics') ||
-    htmlStr.includes('googletagmanager') ||
-    htmlStr.includes('gtag(') ||
-    htmlStr.includes('gtag/js') ||
-    htmlStr.includes('segment.com') ||
-    htmlStr.includes('segment.io') ||
-    htmlStr.includes('cdn.segment') ||
-    htmlStr.includes('mixpanel') ||
-    htmlStr.includes('plausible') ||
-    htmlStr.includes('fathom') ||
-    htmlStr.includes('amplitude') ||
-    htmlStr.includes('hotjar') ||
-    htmlStr.includes('hubspot') ||
-    htmlStr.includes('fbq(') ||
-    htmlStr.includes('snaptr.com') ||
-    htmlStr.includes('static.ads-twitter.com') ||
-    htmlStr.includes('bat.bing.com') ||
-    htmlStr.includes('matomo') ||
-    htmlStr.includes('heap-analytics') ||
-    htmlStr.includes('fullstory.com') ||
-    htmlStr.includes('cdn.heapanalytics.com') ||
-    // Commonly-missed modern vendors (these caused false "no analytics" flags on
-    // well-instrumented sites like Vercel and PostHog-based apps).
-    htmlStr.includes('posthog') ||
-    htmlStr.includes('/_vercel/insights') ||
-    htmlStr.includes('vercel-scripts.com') ||
-    htmlStr.includes('vercel-analytics') ||
-    htmlStr.includes('clarity.ms') ||
-    htmlStr.includes('cloudflareinsights.com') ||
-    htmlStr.includes('static.cloudflareinsights') ||
-    htmlStr.includes('pendo') ||
-    htmlStr.includes('datadog') ||
-    htmlStr.includes('newrelic') ||
-    htmlStr.includes('nr-data.net') ||
-    htmlStr.includes('june.so') ||
-    htmlStr.includes('umami') ||
-    htmlStr.includes('rudderstack') ||
-    htmlStr.includes('rudderlabs') ||
-    htmlStr.includes('statsig') ||
-    htmlStr.includes('growthbook')
-  )
-
-  // Cookie-less analytics providers that do NOT set cookies and therefore do
-  // not require a cookie consent banner. This list is intentionally narrow:
-  // when in doubt, treat a provider as cookie-based.
-  const hasCookieBasedAnalytics = hasAnalytics && !!(
-    htmlStr.includes('google-analytics') ||
-    htmlStr.includes('googletagmanager') ||
-    htmlStr.includes('gtag(') ||
-    htmlStr.includes('gtag/js') ||
-    htmlStr.includes('segment.com') ||
-    htmlStr.includes('segment.io') ||
-    htmlStr.includes('cdn.segment') ||
-    htmlStr.includes('mixpanel') ||
-    htmlStr.includes('amplitude') ||
-    htmlStr.includes('hotjar') ||
-    htmlStr.includes('hubspot') ||
-    htmlStr.includes('fbq(') ||
-    htmlStr.includes('snaptr.com') ||
-    htmlStr.includes('static.ads-twitter.com') ||
-    htmlStr.includes('bat.bing.com') ||
-    htmlStr.includes('matomo') ||
-    htmlStr.includes('heap-analytics') ||
-    htmlStr.includes('fullstory.com') ||
-    htmlStr.includes('cdn.heapanalytics.com') ||
-    htmlStr.includes('clarity.ms') ||
-    htmlStr.includes('pendo') ||
-    htmlStr.includes('datadog') ||
-    htmlStr.includes('newrelic') ||
-    htmlStr.includes('nr-data.net') ||
-    htmlStr.includes('june.so') ||
-    htmlStr.includes('rudderstack') ||
-    htmlStr.includes('rudderlabs') ||
-    htmlStr.includes('statsig') ||
-    htmlStr.includes('growthbook')
-  )
+  const { hasAnalytics, hasCookieBasedAnalytics } = analyticsMarkupSignals(htmlStr)
 
   // Cookie consent
   const hasCookieConsent = !!(

@@ -43,6 +43,21 @@ describe('customer Flags from a page walk', () => {
     mocks.findingUpdate.mockResolvedValue({ count: 1 })
   })
 
+  it('retains deferred native overlay evidence when another probe already created the customer Flag', async () => {
+    const overlay = { ...missingStep, checkId: 'overlay-blocks-nav',
+      verificationRule: 'Control overlay observation v2',
+      evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const,
+        selector: '#original', label: 'Original navigation', context: 'overlay:recorded:journey_signup_nav' }] }
+    mocks.flagFindMany.mockResolvedValue([{ problem: overlay.problem, pageUrl: page }])
+    await persistJourneyResult('audit-1', { findings: [overlay], steps: [], journeyType: 'signup', startUrl: page,
+      status: 'FAILED', goalAchieved: false, blockedReason: null, abandonedReason: null, durationMs: 10,
+      formProbe: null, actionTimeline: [] }, undefined, undefined, true)
+    expect(mocks.flagCreate).not.toHaveBeenCalled()
+    expect(mocks.reviewCreate.mock.calls[0][0].data.findings.create).toEqual([
+      expect.objectContaining({ checkId: 'overlay-blocks-nav', evidence: expect.stringContaining(overlay.evidence) }),
+    ])
+  })
+
   it('keeps one Flag when a later walk repeats the same missing action', async () => {
     expect(omitRepeatedCustomerFindings(
       [{ problem: missingStep.problem, pageUrl: page }],

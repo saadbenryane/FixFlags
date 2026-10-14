@@ -12,6 +12,7 @@ export default function PrivacyPage() {
   const sections = [
     PRIVACY_SECTIONS.collect,
     PRIVACY_SECTIONS.use,
+    PRIVACY_SECTIONS.research,
     PRIVACY_SECTIONS.reportAccess,
     PRIVACY_SECTIONS.thirdParties,
     PRIVACY_SECTIONS.retentionAndDeletion,

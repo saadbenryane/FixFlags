@@ -10,17 +10,21 @@ import { showFixPromptCopied } from './FixPromptToast'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { executeSiteAction } from '@/lib/sites/client-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
+import { SiteActionContinuation } from './SiteActionContinuation'
+import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
 
 export function SitePromptCopyButton({
   siteId,
   flagId,
   compact = false,
   iconOnly = false,
+  availability = 'available',
 }: {
   siteId: string
   flagId: string
   compact?: boolean
   iconOnly?: boolean
+  availability?: SiteActionAvailability
 }) {
   const { busy, message, error, submit } = useSiteAction()
   const [copied, setCopied] = useState(false)
@@ -52,6 +56,9 @@ export function SitePromptCopyButton({
       }
     }, copied => copied ? SITE_BOARD_COPY.copyPromptCopied : null)
   }
+
+  if (availability !== 'available') return <SiteActionContinuation availability={availability}
+    destination={`/sites/${siteId}/flags/${flagId}`} action="copy" compact />
 
   return (
     <>

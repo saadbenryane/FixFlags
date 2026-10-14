@@ -9,6 +9,10 @@ const captures: SiteCapture[] = [
 describe('website capture preview', () => {
   it('uses the selected capture and its provenance, then restores focus after enlargement', async () => {
     const view = render(<SitePreviewCard host="example.com" captures={captures} />)
+    expect(screen.queryByRole('heading', { name: 'Website preview' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Mobile' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Desktop' }).textContent).toBe('')
     expect(screen.queryByText(/Previous capture/)).not.toBeInTheDocument()
     expect(screen.queryByText('https://example.com/')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open captured page for example.com' }))
@@ -16,6 +20,8 @@ describe('website capture preview', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Capture time unavailable')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(screen.getByRole('button', { name: 'Mobile' }))
+    expect(screen.getByRole('button', { name: 'Mobile' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Desktop' })).toHaveAttribute('aria-pressed', 'false')
     expect(view.container.querySelector('img')).toHaveAttribute('src', captures[1].url)
     expect(view.container.querySelector('img')).toHaveAttribute('width', '390')
     expect(view.container.querySelector('img')).toHaveAttribute('height', '844')

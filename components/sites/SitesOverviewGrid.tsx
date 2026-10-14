@@ -33,7 +33,7 @@ export function SitesOverviewGrid({ sites }: { sites: SiteSummary[] }) {
           <Link
             key={site.id}
             href={`/sites/${site.id}` as Route}
-            className="group grid min-h-24 grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-4 border-b border-border/60 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:grid-cols-[88px_minmax(0,1fr)_minmax(300px,auto)_auto] sm:px-5"
+            className="group grid min-h-24 grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:grid-cols-[88px_minmax(0,1fr)_minmax(300px,auto)_auto] sm:px-5"
           >
             {site.presentation.identity.preview ? (
               <span className="h-14 w-[72px] overflow-hidden rounded-control border border-border bg-muted sm:h-16 sm:w-[88px]">

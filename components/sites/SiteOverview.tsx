@@ -18,10 +18,12 @@ export function SiteOverview({ host, captures, summaryItems, summaryLabel, notic
     {notice ? <p role="status" className={styles.notice}>{notice}</p> : null}
     <div className={`${styles.layout} ${technologies.length ? styles.withTools : ''}`}>
       <SitePreviewCard host={host} captures={captures} />
-      <section className={styles.findings} aria-label="Findings summary">
-        <BoardSummaryStrip items={summaryItems} label={summaryLabel} onSelect={onSelectSummary} />
-      </section>
-      <DetectedToolsCard items={technologies} onSelect={onSelectTechnology} />
+      <div className={styles.summaries}>
+        <section className={styles.findings} aria-label="Findings summary">
+          <BoardSummaryStrip items={summaryItems} label={summaryLabel} onSelect={onSelectSummary} />
+        </section>
+        <DetectedToolsCard items={technologies} onSelect={onSelectTechnology} />
+      </div>
     </div>
   </div>
 }

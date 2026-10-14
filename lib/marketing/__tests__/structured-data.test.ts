@@ -123,6 +123,25 @@ describe('structured data', () => {
     )
   })
 
+  it('preserves the reviewed dataset window, method, denominator, and limitations', () => {
+    const schema = issuePageSchema({
+      checkId: 'security-headers-missing', title: 'Missing headers', description: 'Reviewed observations.',
+      rubric: 'REACH', siteCount: 20, occurrenceCount: 30, path: '/issues/security-headers-missing',
+      research: {
+        windowStart: '2026-09-01T00:00:00Z', windowEnd: '2026-09-30T00:00:00Z',
+        reviewedAt: '2026-10-01T00:00:00Z', sampleSiteCount: 100,
+        methodology: 'Reviewed observational sample.', limitations: ['Not population prevalence.'],
+      },
+    })
+    expect(schema['@graph']).toEqual(expect.arrayContaining([expect.objectContaining({
+      '@type': 'Dataset',
+      temporalCoverage: '2026-09-01T00:00:00Z/2026-09-30T00:00:00Z',
+      measurementTechnique: 'Reviewed observational sample.',
+      abstract: 'Not population prevalence.',
+      variableMeasured: expect.arrayContaining([expect.objectContaining({ name: 'sampleSiteCount', value: 100 })]),
+    })]))
+  })
+
   it('emits BlogPosting schema for blog posts', () => {
     const post = BLOG_POSTS[0]
     const schema = blogPostingSchema(post)

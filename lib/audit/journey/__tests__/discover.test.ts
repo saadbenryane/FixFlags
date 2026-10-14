@@ -36,6 +36,7 @@ describe('discoverJourneyLinks', () => {
       { href: '/pricing', text: 'Pricing again' },
       { href: 'mailto:hi@example.com', text: 'Email us' },
       { href: 'https://other-site.com/pricing', text: 'External' },
+      { href: 'https://example.com.other-site.com/pricing', text: 'Lookalike origin' },
       { href: '/blog', text: 'Blog' },
       { href: 'javascript:void(0)', text: 'Broken' },
     ])

@@ -144,6 +144,10 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'mobile-lcp-poor': 'PageSpeed Insights mobile LCP should be under 2.5s.',
   'mobile-cls-critical': 'Lighthouse mobile CLS should be 0.1 or lower.',
   'mobile-cls-poor': 'Lighthouse mobile CLS should be 0.1 or lower.',
+  'mobile-render-blocking': 'A fresh mobile PageSpeed measurement should report at most 500ms of render-blocking savings.',
+  'mobile-unused-js-large': 'A fresh mobile PageSpeed measurement should report at most 100,000 bytes of unused JavaScript savings.',
+  'mobile-unused-css-large': 'A fresh mobile PageSpeed measurement should report at most 50,000 bytes of unused CSS savings.',
+  'mobile-unoptimized-images': 'Fresh mobile image delivery measurements should report at most 50,000 bytes of image savings.',
   'h1-generic':
     'H1 should describe a specific product outcome, not a generic welcome or AI-builder category headline.',
   'heading-hierarchy-missing':
@@ -167,7 +171,7 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'unreplaced-template-token':
     'No {{token}}, ${var}, or %VAR% placeholders should appear in rendered page text.',
   'cta-dead-link':
-    'Primary CTA links should not use href="#" or empty href; point to a real destination URL.',
+    'Use a real destination URL for navigation, or a button for a dialog or other action. Confirm the action works with a mouse and keyboard.',
   'social-proof-unverifiable':
     'Remove fake stats and placeholder testimonials, or replace with verifiable proof.',
   'flow-no-cta-found':
@@ -388,6 +392,8 @@ const JOURNEY_VERIFY =
 export const JOURNEY_VERIFICATION_RULES: Record<string, string> = {
   'journey-first-visit-unclear-value-prop': JOURNEY_VERIFY,
   'journey-first-visit-hidden-cta': JOURNEY_VERIFY,
+  'journey-hidden-cta': JOURNEY_VERIFY,
+  'journey-dead-end': JOURNEY_VERIFY,
   'journey-first-visit-dead-end': JOURNEY_VERIFY,
   'journey-first-visit-nav-broken': JOURNEY_VERIFY,
   'journey-first-visit-destination-no-headline': JOURNEY_VERIFY,

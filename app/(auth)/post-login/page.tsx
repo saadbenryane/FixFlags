@@ -30,6 +30,7 @@ function PostLoginRedirect() {
     void runPostLoginClaimFlow({
       claim: () => claimAnonymous({ showToast: true }),
       shouldEnroll: shouldShowPasskeyEnroll,
+      skipEnrollment: Boolean(next),
       showEnrollment: () => setShowPasskeyEnroll(true),
       beforeNavigate: () => {
         if (isNewOauthUser && user && !trackedRef.current) {
@@ -79,6 +80,7 @@ function PostLoginRedirect() {
               void runPostLoginClaimFlow({
                 claim: () => claimAnonymous({ showToast: true }),
                 shouldEnroll: shouldShowPasskeyEnroll,
+                skipEnrollment: Boolean(next),
                 showEnrollment: () => setShowPasskeyEnroll(true),
                 beforeNavigate: () => {},
                 navigate: navigateAfterAuth,

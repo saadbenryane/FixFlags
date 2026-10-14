@@ -15,6 +15,51 @@ function observedReceipt(module: string, assertions: string[]) {
 }
 
 describe('site card packaging', () => {
+  it('attributes an unavailable mobile tap audit to Conversion while retaining measured performance', () => {
+    const now = new Date('2026-10-14T12:00:00Z')
+    const mobile = observedReceipt('mobile', ['score', 'tap-targets'])
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { mobilePageSpeed: true, flowScan: true }, failedModules: ['mobile'], flags: [],
+      verifierExecutions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: { ...mobile, complete: false,
+        assertions: mobile.assertions.map(assertion => assertion.key === 'tap-targets' ? { ...assertion, passed: false, complete: false } : { ...assertion, complete: true }) } }] })
+    expect(facts.find(fact => fact.area === 'conversion')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'healthy' })
+    expect(facts.find(fact => fact.area === 'performance')?.incompleteReason).toBeFalsy()
+  })
+  it('keeps measured tap evidence independent of a missing mobile performance assertion', () => {
+    const now = new Date('2026-10-14T12:00:00Z')
+    const mobile = observedReceipt('mobile', ['score', 'tap-targets'])
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { mobilePageSpeed: true, flowScan: true }, failedModules: ['mobile'], flags: [],
+      verifierExecutions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: { ...mobile, complete: false,
+        assertions: mobile.assertions.map(assertion => assertion.key === 'score' ? { ...assertion, passed: false, complete: false } : { ...assertion, complete: true }) } }] })
+    expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(facts.find(fact => fact.area === 'conversion')).toMatchObject({ state: 'healthy' })
+    expect(facts.find(fact => fact.area === 'conversion')?.incompleteReason).toBeFalsy()
+  })
+  it('attributes an incomplete mobile font assertion to Accessibility rather than Performance', () => {
+    const now = new Date('2026-10-14T12:00:00Z')
+    const layout = observedReceipt('mobile-ux-quality', ['mobile-input-fonts'])
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { mobilePageSpeed: true, flowScan: true }, failedModules: ['mobile-ux-quality'], flags: [],
+      verifierExecutions: [
+        { targetKey: 'module:accessibility', status: 'COMPLETED', detail: observedReceipt('accessibility', ['automated-accessibility']) },
+        { targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: { ...layout, complete: false,
+          assertions: layout.assertions.map(assertion => ({ ...assertion, passed: false, complete: false })) } },
+      ] })
+    expect(facts.find(fact => fact.area === 'accessibility')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'healthy' })
+    expect(facts.find(fact => fact.area === 'performance')?.incompleteReason).toBeFalsy()
+  })
+  it.each(['FAILED', 'COMPLETED'])('keeps every area of an unobserved shared mobile module unknown: %s', status => {
+    const now = new Date('2026-10-14T12:00:00Z')
+    const facts = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { mobilePageSpeed: true, flowScan: true }, failedModules: ['mobile'], flags: [],
+      verifierExecutions: [{ targetKey: 'module:mobile', status, detail: {
+        ...observedReceipt('mobile', []), complete: false, failed: true,
+      } }] })
+    for (const area of ['conversion', 'performance']) expect(facts.find(fact => fact.area === area)).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+  })
   it('keeps incomplete action evidence consistent across coverage, cards, and overall health', () => {
     const now = new Date('2026-10-12T12:00:00Z')
     const base = { auditStatus: 'COMPLETED', completedAt: now, now,

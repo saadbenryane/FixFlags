@@ -5,7 +5,7 @@ vi.mock('@/lib/db', () => ({ prisma: { uptimeMonitor: { findUnique: db.monitor }
 import { loadUptimeHistory, loadUptimeSummary } from './queries'
 import { uptimeSummarySchema } from './contracts'
 const project = { id: 'owned-project', url: 'https://example.com/', deletedAt: null, watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-20T12:00:00Z'),
-  user: { id: 'owner', role: 'admin', plan: 'FREE', subscriptionStatus: null } }
+  user: { id: 'owner', role: 'admin', plan: 'FREE', subscriptionStatus: null, lifecycleStatus: 'ACTIVE' } }
 beforeEach(() => {
   vi.clearAllMocks()
   db.monitor.mockResolvedValue(null); db.project.mockResolvedValue(project)
@@ -26,9 +26,21 @@ describe('Uptime before the first recorded observation', () => {
     db.project.mockResolvedValue({ ...project, watchNextRunAt: null })
     expect(await loadUptimeHistory(project.id)).toMatchObject({ enabled: false, state: 'paused' })
   })
+  it('shows suspended accounts as paused before a monitor exists', async () => {
+    db.project.mockResolvedValue({ ...project, user: { ...project.user, lifecycleStatus: 'SUSPENDED' } })
+    expect(await loadUptimeHistory(project.id)).toMatchObject({ enabled: false, state: 'paused', nextCheckAt: null })
+  })
 })
 
 describe('Uptime summary reads', () => {
+  it('retains an earlier observation without reporting active monitoring for a suspended account', async () => {
+    const now = new Date('2026-10-13T12:00:00Z')
+    db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url,
+      project: { ...project, user: { ...project.user, lifecycleStatus: 'SUSPENDED' } },
+      enabled: true, state: 'online', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null })
+    expect(await loadUptimeSummary(project.id, now)).toMatchObject({ enabled: false, state: 'paused',
+      nextCheckAt: null, lastCheckedAt: now.toISOString() })
+  })
   it('uses the same facts as history without loading detailed probes or incidents', async () => {
     const now = new Date('2026-10-13T12:00:00Z')
     db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: project.url, project,

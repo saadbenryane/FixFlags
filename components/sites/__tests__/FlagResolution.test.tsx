@@ -81,7 +81,7 @@ describe('Flag resolution panel', () => {
 
   it('shows Recovered when a verified Flag cites its completed improved attempt', () => {
     const resolution = flagResolutionView({
-      status: siteFlagDetailStatus('VERIFIED', 'OPEN'),
+      status: siteFlagDetailStatus('VERIFIED', 'OPEN', true),
       resolvedInId: null,
       attemptProofId: 'audit-proof',
       sourceAuditId: 'audit-source',

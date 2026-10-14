@@ -84,6 +84,7 @@ async function verifyEmail(account: SiteTestAccount, browser: AccountBrowser, in
 async function ensureSignedIn(account: SiteTestAccount, input: AccountExecution): Promise<{ browser: AccountBrowser; observations: AccountObservation[]; active: boolean }> {
   const url = account.state === 'ACTIVE' ? account.homeUrl ?? account.loginUrl ?? account.signupUrl : account.signupUrl
   const browser = await openAccountBrowser({ url, origin: account.origin, values: valuesFor(account), deadline: input.deadline,
+    retainErrorDocument: account.state === 'ACTIVE' || account.state === 'DELETING',
     permission: () => permission(input), storageState: account.encryptedSession && account.state !== 'DELETING' ? JSON.parse(decryptSecret(account.encryptedSession)) : undefined })
   const observations: AccountObservation[] = []
   try {

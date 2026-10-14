@@ -16,7 +16,9 @@ const watchWrite = z.object({
   if (body.interval === 'custom' && body.everyMinutes === undefined) context.addIssue({ code: 'custom', message: 'Missing custom schedule timing', path: ['everyMinutes'] })
 })
 export const siteActionSchemas = {
+  githubDisconnect: z.object({ ok: z.literal(true), revocation: z.enum(['confirmed', 'unconfirmed', 'not_needed']) }).strict(),
   agentReply: agentReplySchema,
+  scanAccess: z.object({ configured: z.boolean(), summary: z.object({ hasHttpBasic: z.boolean(), cookieCount: z.number().int().nonnegative().max(20), headerKeys: z.array(z.string()), label: z.string().nullable() }).strict().nullable() }).strict(),
   connectionSync: z.object({ status: z.enum(['connected', 'mismatch', 'needs_reauth', 'unavailable']), detail: z.string() }).strict(),
   acknowledgement: z.object({ ok: z.literal(true) }).strict(),
   authorize: z.object({ authorizeUrl: z.string().url().refine(url => new URL(url).protocol === 'https:') }).strict(),

@@ -33,6 +33,7 @@ export interface ReviewStageResult<TArtifact = unknown> {
 
 /** Result of running the pipeline against a single reviewed page. */
 export interface PageRun {
+  renderedScope?: import('../browser/observation-scope').CaptureObservationScope
   searchReceipt?: import('../search/contracts').SearchReceipt
   pageId: string
   url: string

@@ -20,9 +20,11 @@ import { watchBoardState } from '@/lib/sites/watch-state'
 import { siteCardHealth } from '@/lib/sites/site-health'
 import { siteCoverageExecutionSelect } from './site-execution'
 import { currentOutcomeState } from '../outcome-state'
+import { assessmentIsComparable } from '../domain/assessment-comparability'
+import { loadOutcomeBindingRevisions } from './outcome-binding-revisions'
 import { loadCategoryEvidence, applicableCategoryEvidence, overlayCategoryCoverage } from './category-evidence'
-import { currentIncidentFlags, incidentAffectedPaths } from '../flag-resolution'
-import { loadIncidentRecoveryProofs } from './incident-proofs'
+import { currentImprovementFlags, currentUnboundFindings, incidentAffectedPaths } from '../flag-resolution'
+import { currentImprovementWhere, loadIncidentRecoveryProofs, unboundSiteFindingWhere } from './incident-proofs'
 
 export type SiteSummary = {
   id: string
@@ -32,8 +34,6 @@ export type SiteSummary = {
   /** Application-only ordering fact. Not rendered as a second status. */
   lastUsefulChangeAt: string
 }
-
-const openImprovementStates = ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'READY_TO_VERIFY', 'UNVERIFIED'] as const
 
 /**
  * Website rows need a summary, not a complete Site home. These batched reads
@@ -90,23 +90,33 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         verifierExecutions: siteCoverageExecutionSelect, failedModules: true },
     }),
     prisma.improvement.findMany({
-      where: { projectId: { in: projectIds }, status: { in: [...openImprovementStates] } },
+      where: { projectId: { in: projectIds }, ...currentImprovementWhere },
       select: {
         projectId: true,
         outcomeId: true,
+        status: true,
         fingerprint: true,
+        attempts: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 12, select: {
+          outcome: true, comparable: true, sourceAuditId: true, handoffReference: true, verificationAuditId: true,
+          verificationAudit: { select: { id: true, projectId: true, parentId: true, status: true } },
+        } },
         occurrences: {
           orderBy: { createdAt: 'desc' },
           select: {
             flag: {
               select: {
                 status: true,
+                id: true,
+                auditId: true,
                 resolvedInId: true,
                 affectedPaths: true,
                 severity: true,
                 confidence: true,
                 pageUrl: true,
                 checkId: true,
+                verificationRule: true,
+                evidenceTargets: true,
+                attentionPolicy: true,
                 rubric: true,
                 impactTag: true,
               },
@@ -117,18 +127,21 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
     }),
     prisma.siteOutcome.findMany({
       where: { projectId: { in: projectIds }, enabled: true },
-      select: { projectId: true, enabled: true,
+      select: { projectId: true, enabled: true, environment: true,
+        bindings: { where: { enabled: true }, select: { key: true, required: true, mechanism: true, version: true, config: true } },
         assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1,
-          select: { state: true, validUntil: true } },
+          select: { state: true, validUntil: true, coverage: true } },
       },
     }),
     loadCategoryEvidence(projectIds),
   ])
 
+  const bindingRevisions = await loadOutcomeBindingRevisions(outcomes)
+
   const latestByProject = new Map(latestAudits.flatMap((audit) => audit.projectId ? [[audit.projectId, audit] as const] : []))
   const completedByProject = new Map(latestCompletedAudits.flatMap((audit) => audit.projectId ? [[audit.projectId, audit] as const] : []))
   const auditIds = [...new Set([...latestAudits, ...latestCompletedAudits].map((audit) => audit.id))]
-  const [auditPages, screenshots, latestAuditFlags] = await Promise.all([
+  const [auditPages, screenshots, unboundFlags] = await Promise.all([
     prisma.auditPage.findMany({
       where: { auditId: { in: auditIds } },
       select: { auditId: true, status: true },
@@ -146,8 +159,13 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       },
     }),
     prisma.flag.findMany({
-      where: { auditId: { in: latestAudits.map((audit) => audit.id) }, status: { in: ['OPEN', 'REGRESSED'] } },
+      where: unboundSiteFindingWhere(projectIds),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: {
+        id: true,
+        status: true,
+        resolvedInId: true,
+        audit: { select: { projectId: true } },
         auditId: true,
         fingerprint: true,
         severity: true,
@@ -156,18 +174,29 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         checkId: true,
         rubric: true,
         impactTag: true,
+        verificationRule: true,
+        affectedPaths: true,
+        evidenceTargets: true,
+        attentionPolicy: true,
       },
     }),
   ])
 
   const pagesByAudit = groupBy(auditPages, (page) => page.auditId)
   const shotsByAudit = groupBy(screenshots, (shot) => shot.auditId)
-  const flagsByAudit = groupBy(latestAuditFlags, (flag) => flag.auditId)
+  const unboundByProject = groupBy(unboundFlags, flag => flag.audit.projectId ?? '')
   const improvementsByProject = groupBy(improvements, (improvement) => improvement.projectId)
-  const recoveryIds = await loadIncidentRecoveryProofs(improvements.map(improvement => ({ projectId: improvement.projectId,
-    flags: improvement.occurrences.map(occurrence => occurrence.flag) })))
+  const recoveryIds = await loadIncidentRecoveryProofs([
+    ...improvements.map(improvement => ({ projectId: improvement.projectId, flags: improvement.occurrences.map(occurrence => occurrence.flag) })),
+    ...[...unboundByProject].map(([projectId, flags]) => ({ projectId, flags })),
+  ])
   const outcomesByProject = groupBy(outcomes, outcome => outcome.projectId)
   const now = new Date()
+  const currentStates = new Map(outcomes.map((outcome, index) => {
+    const assessment = outcome.assessments[0] ?? null
+    return [outcome, assessment && !assessmentIsComparable(assessment.coverage, bindingRevisions[index], outcome.environment)
+      ? 'COULD_NOT_VERIFY' as const : currentOutcomeState(assessment, now)] as const
+  }))
 
   return projects.map((project): SiteSummary => {
     const watchInterval = fromStoredWatchInterval(project.watchInterval)
@@ -178,15 +207,16 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
     const pagesExpected = pages.length
 
     const durable = improvementsByProject.get(project.id) ?? []
-    const represented = new Set(durable.map((improvement) => improvement.fingerprint))
+    const represented = new Set(durable.filter(improvement => improvement.occurrences?.length).map(improvement => improvement.fingerprint))
     const durableFlags = durable.flatMap((improvement) => {
-      const active = currentIncidentFlags(improvement.occurrences.map(occurrence => occurrence.flag), recoveryIds.get(project.id) ?? new Set<string>())
+      const active = currentImprovementFlags(improvement.occurrences.map(occurrence => occurrence.flag), recoveryIds.get(project.id) ?? new Set<string>(),
+        improvement.status, improvement.attempts ?? [], project.id)
       const occurrence = active[0]
       if (!occurrence || !isCustomerFlag(occurrence)) return []
       const affectedPageCount = incidentAffectedPaths(active).length
       return [{ severity: occurrence.severity, priority: flagPriority({ severity: occurrence.severity, confidence: occurrence.confidence, affectedPageCount, outcomeId: improvement.outcomeId }) }]
     })
-    const unprojected = (latest ? flagsByAudit.get(latest.id) ?? [] : [])
+    const unprojected = currentUnboundFindings(unboundByProject.get(project.id) ?? [], recoveryIds.get(project.id) ?? new Set<string>())
       .filter((flag) => (!flag.fingerprint || !represented.has(flag.fingerprint)) && isCustomerFlag(flag))
       .map((flag) => ({ severity: flag.severity, priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: flag.pageUrl ? 1 : 0 }) }))
     const customerFlags = [...durableFlags, ...unprojected]
@@ -204,7 +234,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
     const stale = evidenced.length > 0 && evidenced.every((fact) => fact.stale === true)
     const hasCurrentEvidence = isAuditFinished(completed?.status) && evidenced.some((fact) => !fact.stale)
     const watched = (outcomesByProject.get(project.id) ?? []).map(outcome => ({ enabled: outcome.enabled,
-      state: currentOutcomeState(outcome.assessments[0] ?? null, now), validUntil: outcome.assessments[0]?.validUntil }))
+      state: currentStates.get(outcome)!, validUntil: outcome.assessments[0]?.validUntil }))
     const health = siteCardHealth({ inFlight: isAuditInFlight(latest?.status), finished: isAuditFinished(latest?.status),
       hasLastKnown: Boolean(completed), flags: customerFlags, coverage: facts, now,
       executionSpec: latest?.executionSpec,

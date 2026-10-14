@@ -1,30 +1,38 @@
 ## Analysis did not finish
 
-Open the Site and use its retry action. FixFlags keeps the Site and shows whether URL validation, capture, queueing, or analysis failed without exposing provider or configuration details.
+Open your website in FixFlags and read the message beside the results. Use the retry action shown there to try again. Your saved website and earlier results stay available.
+
+If it fails again, contact support with the website address and the message you saw.
 
 ## Site could not be reached
 
-Open the URL in a signed-out browser. The first check requires a public HTML page. Private networks, localhost, password gates, and bot challenges remain unsupported or limited.
+1. Open the website address in a private or signed-out browser window.
+2. Check that the page loads and the address is correct.
+3. If it only runs on your computer, publish it to a public address first.
+4. Return to FixFlags and try again.
 
-## Password or bot wall
+The first check needs a public webpage. It cannot reach a private company network or a website running only on your computer.
 
-Those results remain an explicit limitation. They do not become healthy and they do not resolve an existing Flag. Remove the temporary restriction when appropriate, then retry.
+## Page asks for a password or human check
+
+Some websites show a password screen or a challenge such as “prove you're human” before visitors can enter. These screens can also stop FixFlags from checking the page.
+
+Use a publicly accessible page, or ask the person managing your website to help with access. FixFlags shows what it could not check. A blocked page does not count as a passing result or a verified fix.
 
 ## Verify is still in progress
 
-The Flag page refreshes while a verification attempt is running. Refreshing the browser or pressing Verify again does not create a second pending attempt.
+Wait on the Flag page while the new check runs. The results refresh there. Refreshing the browser or selecting the action again does not start a duplicate pending check.
+
+If the check fails, read the reason and use the retry action. Contact support if it keeps failing.
 
 ## Shopify connection
 
-Use the [Shopify troubleshooting guide](/docs/integrations/shopify#troubleshooting). Retry expired authorization from the owned Site's settings. A store attached elsewhere cannot be reassigned by its hostname. For Google property mismatches, empty results, or expired access, use the [integration guides](/docs/integrations).
+Open **Integrations** for your website and try the connection again. For a specific message, follow the [Shopify troubleshooting steps](/docs/integrations/shopify#troubleshooting).
+
+For Google account access, wrong properties, or missing numbers, use the [Google Analytics](/docs/integrations/google-analytics#troubleshooting) or [Search Console](/docs/integrations/google-search-console#troubleshooting) guide.
 
 ## Contact support
 
-Open the FixFlags Agent on an owned Site and choose Talk to support, or email hello@fixflags.com. Include the Site and Flag, but never send passwords, private keys, payment details, or customer data.
+Open the FixFlags Agent on your saved website and choose **Talk to support**, or email [hello@fixflags.com](mailto:hello@fixflags.com).
 
-## Get help
-
-- [A check failed or is stuck](/help/troubleshooting/check-failed-or-stuck)
-- [Coverage limitations](/help/sites-and-coverage/coverage-limitations)
-- [Connect Shopify](/help/shopify/connect-shopify)
-- [Contact support](/help/troubleshooting/contact-support)
+Include the website address, what you were trying to do, and the message you saw. Do not send passwords, access tokens, or customer payment data.

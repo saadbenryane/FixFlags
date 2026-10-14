@@ -7,8 +7,10 @@ import { verifyShopifyOAuthHmac } from '@/lib/shopify/hmac'
 import { buildShopifyAuthorizeUrl, signShopifyInstallState } from '@/lib/shopify/oauth'
 import { trackEvent } from '@/lib/analytics/events'
 import { accountLinkIsUsable } from '@/lib/shopify/account-link'
+import { integrationRelease } from '@/lib/integrations/release-policy'
 
 export async function GET(request: NextRequest) {
+  if (integrationRelease('shopify') !== 'available') return NextResponse.json({ error: 'Shopify is coming soon.', code: 'INTEGRATION_COMING_SOON' }, { status: 409 })
   if (!isShopifyConfigured()) {
     return NextResponse.json({ error: 'Shopify app is not configured' }, { status: 503 })
   }

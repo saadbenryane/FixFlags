@@ -9,7 +9,7 @@
 .scheduleLabel i[data-active='true'] { background: hsl(var(--success)); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .schedule .actions { margin-top: 0; }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid hsl(var(--border) / .65); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; margin-top: 20px; padding-top: 16px; }
 .facts dt { font-size: 11px; color: hsl(var(--muted-foreground)); }
 .facts dd { margin-top: 5px; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
 .field { display: grid; gap: 8px; margin-top: 20px; font-size: 13px; font-weight: 500; }
@@ -28,5 +28,5 @@
 .results span[data-state='verified'] { color: hsl(var(--success)); }
 .results p, .results time { grid-column: 1 / -1; line-height: 1.6; color: hsl(var(--muted-foreground)); }
 .results time { font-size: 11px; }
-.removal { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px; padding: 20px 0 0; border-top: 1px solid hsl(var(--border) / .65); }
+.removal { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px; padding: 20px 0 0; }
 .removal > div { flex: 1 1 240px; }

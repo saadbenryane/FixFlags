@@ -7,6 +7,9 @@ export type JourneyType =
   | 'multi-step-funnel'
 
 export interface JourneyFindingDraft {
+  verificationRule?: string
+  evidenceTargets?: import('../evidence-targets').EvidenceTarget[]
+  affectedPaths?: string[]
   checkId: string
   stepNumber: number
   url: string
@@ -59,6 +62,8 @@ export interface JourneyStepDraft {
 }
 
 export interface JourneyRunResult {
+  pageObservations?: import('../checks/journey-evidence').JourneyObservation[]
+  overlayObservations?: import('../checks/overlay-evidence').OverlayObservation[]
   journeyType: JourneyType
   startUrl: string
   status: 'COMPLETED' | 'ABANDONED' | 'FAILED'

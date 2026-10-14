@@ -45,13 +45,15 @@ export async function requireSiteAccess(siteId: string): Promise<
 /** Resolve an authenticated owner and the private Project behind one Site. */
 export async function requireSiteOwner(siteId: string): Promise<
   | { ok: true; decision: Extract<SiteAccessDecision, { ok: true }>; projectId: string }
-  | { ok: false; status: 403 | 404; message: string }
+  | { ok: false; status: 401 | 403 | 404; message: string }
 > {
   const access = await requireSiteAccess(siteId)
   if (!access.ok) return access
   const projectId = access.decision.site.projectId
   if (access.decision.role !== 'owner' || !projectId) {
-    return { ok: false, status: 403, message: 'Claim this Site first.' }
+    return access.decision.authenticated
+      ? { ok: false, status: 403, message: 'Claim this Site first.' }
+      : { ok: false, status: 401, message: 'Sign in required' }
   }
   return { ok: true, decision: access.decision, projectId }
 }

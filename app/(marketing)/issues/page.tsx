@@ -1,49 +1,32 @@
 import Link from 'next/link'
 import { cache } from 'react'
-import type { Metadata } from 'next'
+import type { Metadata, Route } from 'next'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Heading, Muted } from '@/components/ui/typography'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
-import { getIndexableIssueCheckIds, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
+import { getPublicIssueLibrary, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { issueIndexStructuredData } from '@/lib/marketing/structured-data'
 import { humanizeCheckId } from '@/lib/marketing/issue-page'
 import { rubricBadgeClasses } from '@/lib/rubric-icons'
-import { prisma } from '@/lib/db'
 import { FLAG_LIBRARY } from '@/lib/marketing/copy/library'
+import { withCampaignTags, type CampaignQuery } from '@/lib/analytics/entry-surface'
 
-const indexableIssues = cache(getIndexableIssueCheckIds)
+const indexableIssues = cache(getPublicIssueLibrary)
 
 export async function generateMetadata(): Promise<Metadata> {
   const issues = await indexableIssues()
   return { ...buildPageMetadata('issues', '/issues'), robots: { index: issues.length > 0, follow: true } }
 }
-// This library is a live projection of the PostgreSQL knowledge graph.
+// This library is a projection of a reviewed public research release.
 export const dynamic = 'force-dynamic'
 
-export default async function IssuesIndexPage() {
-  const issues = await indexableIssues()
-
-  const checkIds = issues.map((i) => i.checkId)
-
-  const issuesWithMeta =
-    checkIds.length > 0
-      ? await prisma.issue.findMany({
-          where: { checkId: { in: checkIds } },
-          distinct: ['checkId'],
-          orderBy: { siteCount: 'desc' },
-          select: {
-            checkId: true,
-            rubric: true,
-            problemTemplate: true,
-            siteCount: true,
-            occurrenceCount: true,
-          },
-        })
-      : []
+export default async function IssuesIndexPage({ searchParams }: { searchParams?: Promise<CampaignQuery> }) {
+  const issuesWithMeta = await indexableIssues()
+  const campaign = await searchParams ?? {}
 
   const issueIndexJsonLd = issueIndexStructuredData(
     issuesWithMeta.map((issue) => ({
@@ -79,7 +62,7 @@ export default async function IssuesIndexPage() {
               {issuesWithMeta.map((issue) => (
                 <Link
                   key={issue.checkId}
-                  href={`/issues/${issue.checkId}?utm_source=issue_index&utm_medium=organic&utm_campaign=${issue.checkId}`}
+                  href={withCampaignTags(`/issues/${issue.checkId}`, campaign) as Route}
                 >
                   <Card variant="solid" interactive className="h-full">
                     <CardContent className="p-5 space-y-3">

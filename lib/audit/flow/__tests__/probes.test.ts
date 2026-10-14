@@ -7,7 +7,7 @@ vi.mock('@/lib/utils/sleep', () => ({
   sleep: vi.fn(async () => {}),
 }))
 
-import { probePricingNav, probeMobileMenu, restoreDesktopCaptureViewport } from '../nav-probes'
+import { probePricingNav, restoreDesktopCaptureViewport } from '../nav-probes'
 import { probeFormValidation } from '../form-probes'
 import { probeGhostSections } from '../scroll-probes'
 import { measurePostClickLoading } from '../post-click-probes'
@@ -158,75 +158,6 @@ describe('probePricingNav', () => {
     document.body.innerHTML = '<header><nav><a href="/pricing">Pricing</a></nav></header>'
     const result = await probePricingNav(makePage({ url: 'https://example.com/pricing', navigationStatus: 500 }))
     assert.equal(result.pricingNav, 'broken')
-  })
-})
-
-describe('probeMobileMenu', () => {
-  beforeEach(() => {
-    document.body.innerHTML = ''
-    styleOverrides.clear()
-    stubComputedStyle()
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('skips when the page is closed', async () => {
-    const result = await probeMobileMenu(makePage({ closed: true }))
-    assert.deepEqual(result, { mobileMenu: 'skipped' })
-  })
-
-  it('skips when there are no nav links', async () => {
-    document.body.innerHTML = '<main><p>No nav</p></main>'
-    const result = await probeMobileMenu(makePage())
-    assert.deepEqual(result, { mobileMenu: 'skipped' })
-  })
-
-  it('reports broken when a full nav has no menu toggle', async () => {
-    document.body.innerHTML =
-      '<header><nav>' +
-      Array.from({ length: 6 }, (_, i) => `<a href="/page-${i}">Page ${i}</a>`).join('') +
-      '</nav></header>'
-    const result = await probeMobileMenu(makePage())
-    assert.deepEqual(result, { mobileMenu: 'broken' })
-  })
-
-  it('skips when a compact nav has no toggle', async () => {
-    document.body.innerHTML = '<header><nav><a href="/page-1">Page 1</a></nav></header>'
-    const link = document.querySelector('header nav a') as Element
-    setRect(link, { top: 10, width: 100, height: 20 })
-    const result = await probeMobileMenu(makePage())
-    assert.deepEqual(result, { mobileMenu: 'skipped' })
-  })
-
-  it('reports ok when the toggle reveals links', async () => {
-    document.body.innerHTML =
-      '<header><nav>' +
-      Array.from({ length: 6 }, (_, i) => `<a href="/page-${i}">Page ${i}</a>`).join('') +
-      '</nav></header>' +
-      '<button id="toggle" aria-label="Open menu">Menu</button>'
-    // After the click, the nav links become "visible" via the style stub.
-    const page = makePage()
-    // Simulate: click makes links visible by giving them size.
-    const click = page.click as ReturnType<typeof vi.fn>
-    click.mockImplementation(async () => {
-      for (const a of document.querySelectorAll('header nav a')) {
-        setRect(a, { top: 10, width: 100, height: 20 })
-      }
-    })
-    const result = await probeMobileMenu(page)
-    assert.deepEqual(result, { mobileMenu: 'ok' })
-  })
-
-  it('skips when links stay hidden after the toggle', async () => {
-    document.body.innerHTML =
-      '<header><nav>' +
-      Array.from({ length: 6 }, (_, i) => `<a href="/page-${i}">Page ${i}</a>`).join('') +
-      '</nav></header>' +
-      '<button id="toggle" aria-label="Open menu">Menu</button>'
-    const result = await probeMobileMenu(makePage())
-    assert.deepEqual(result, { mobileMenu: 'skipped' })
   })
 })
 

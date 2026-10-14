@@ -1,14 +1,11 @@
 import { isCustomerFlag,isResolvedFlagStatus } from '@/lib/audit/attention'
-import { executionWrite } from '@/lib/audit/execution-ownership'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { flagFingerprint } from '@/lib/audit/flag-identity'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import { prisma } from '@/lib/db'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 import { adoptLegacyOutcomeIdentity } from '@/lib/sites/application/outcome-identity'
-import type {
-ImprovementOccurrenceKind,
-ImprovementStatus
-} from '@prisma/client'
+import type { ImprovementOccurrenceKind } from '@prisma/client'
 
 import type { ImprovementFlag } from './service-types'
 
@@ -60,16 +57,23 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
   const candidates = rankFlagsByPriority(customerFlags, [], customerFlags.length)
     .map(({ flag }) => flag).concat(recommendations.filter(flag => recommendationPriorities.has(improvementFingerprint(flag))))
 
-  const improvementsByFingerprint = new Map<string, { id: string; status: ImprovementStatus }>()
+  const observationsByFingerprint = new Map<string, ImprovementFlag[]>()
+  for (const flag of flags) {
+    const fingerprint = improvementFingerprint(flag)
+    const observations = observationsByFingerprint.get(fingerprint) ?? []
+    observations.push(flag)
+    observationsByFingerprint.set(fingerprint, observations)
+  }
+  const projected = new Set<string>()
   let uniquePriority = 0
   for (const flag of candidates) {
     const fingerprint = improvementFingerprint(flag)
-    let improvement = improvementsByFingerprint.get(fingerprint)
-    if (!improvement) {
-      const priority = isCustomerFlag(flag) ? uniquePriority++ : recommendationPriorities.get(fingerprint)!
-      improvement = await executionWrite(async tx => {
-        await adoptLegacyOutcomeIdentity(tx, { projectId, fingerprint, executionSpec: audit.executionSpec })
-        return tx.improvement.upsert({
+    if (projected.has(fingerprint)) continue
+    projected.add(fingerprint)
+    const priority = isCustomerFlag(flag) ? uniquePriority++ : recommendationPriorities.get(fingerprint)!
+    await executionTransaction(async tx => {
+      await adoptLegacyOutcomeIdentity(tx, { projectId, fingerprint, executionSpec: audit.executionSpec })
+      const improvement = await tx.improvement.upsert({
         where: { projectId_fingerprint: { projectId, fingerprint } },
         create: {
           projectId,
@@ -93,42 +97,36 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
             flag.verificationRule || 'Recovery criteria have not been established.',
           priority,
         },
-      }) })
-      improvementsByFingerprint.set(fingerprint, improvement)
-    }
-    if (improvement.status === 'VERIFIED') {
-      await executionWrite(tx => tx.improvement.update({
+      })
+      if (improvement.status === 'VERIFIED') await tx.improvement.update({
         where: { id: improvement.id },
         data: { status: 'PROPOSED' },
-      }))
-    }
-    const observedFlags = flags.filter(
-      (candidate) => improvementFingerprint(candidate) === fingerprint
-    )
-    for (const observedFlag of observedFlags) {
-      const occurrence = await executionWrite(tx => tx.improvementOccurrence.upsert({
-        where: { flagId: observedFlag.id },
-        create: {
-          improvementId: improvement.id,
-          auditId,
-          flagId: observedFlag.id,
-          kind: occurrenceKind(observedFlag.status),
-        },
-        update: {
-          improvementId: improvement.id,
-          auditId,
-          kind: occurrenceKind(observedFlag.status),
-        },
-      }))
-      await appendImprovementCycleEvent({
-        projectId: audit.projectId,
-        improvementId: improvement.id,
-        occurrenceId: occurrence.id,
-        sourceAuditId: auditId,
-        idempotencyKey: `generated:${observedFlag.id}`,
-        type: 'GENERATED',
-        transport: 'SYSTEM',
       })
-    }
+      for (const observedFlag of observationsByFingerprint.get(fingerprint)!) {
+        const occurrence = await tx.improvementOccurrence.upsert({
+          where: { flagId: observedFlag.id },
+          create: {
+            improvementId: improvement.id,
+            auditId,
+            flagId: observedFlag.id,
+            kind: occurrenceKind(observedFlag.status),
+          },
+          update: {
+            improvementId: improvement.id,
+            auditId,
+            kind: occurrenceKind(observedFlag.status),
+          },
+        })
+        await appendImprovementCycleEvent({
+          projectId,
+          improvementId: improvement.id,
+          occurrenceId: occurrence.id,
+          sourceAuditId: auditId,
+          idempotencyKey: `generated:${observedFlag.id}`,
+          type: 'GENERATED',
+          transport: 'SYSTEM',
+        }, tx)
+      }
+    })
   }
 }

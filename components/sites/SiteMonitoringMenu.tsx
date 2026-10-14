@@ -7,12 +7,13 @@ import { ChevronDown, Radio } from 'lucide-react'
 import { MONITORING_SCHEDULE_COPY as C } from '@/lib/marketing/copy/monitoring'
 import styles from './SiteMonitoringMenu.module.css'
 
-export function SiteMonitoringMenu({ label, state, nextCheck, onManage, manageHref }: {
+export function SiteMonitoringMenu({ label, state, nextCheck, onManage, manageHref, manageLabel = C.edit }: {
   label: string
   state: 'healthy' | 'attention' | 'unknown'
   nextCheck: string | (() => string)
   onManage?: () => void
   manageHref?: Route
+  manageLabel?: string
 }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -64,7 +65,7 @@ export function SiteMonitoringMenu({ label, state, nextCheck, onManage, manageHr
       <strong>{C.title}</strong>
       <p>{typeof nextCheck === 'function' ? nextCheck() : nextCheck}</p>
       {onManage ? <button type="button" className={styles.manage} onClick={() => { setOpen(false); onManage() }}>{C.edit}</button>
-        : manageHref ? <Link className={styles.manage} href={manageHref} onClick={() => setOpen(false)}>{C.edit}</Link> : null}
+        : manageHref ? <Link className={styles.manage} href={manageHref} onClick={() => setOpen(false)}>{manageLabel}</Link> : null}
     </div> : null}
   </div>
 }

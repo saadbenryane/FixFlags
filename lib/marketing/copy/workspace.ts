@@ -12,6 +12,8 @@ export const OUTCOME_DETAIL_COPY = {
   neverVerified: 'No completed verification yet',
   evidenceHeading: 'Independent evidence',
   noEvidence: 'This method has not produced evidence yet.',
+  currentEvidenceMissing: 'This method needs a fresh check. Earlier results are in History.',
+  methodPassed: 'FixFlags completed this check.',
   limitationHeading: 'What FixFlags could not establish',
   flagsHeading: 'Flags',
   noFlags: 'No open Flag is tied to this Outcome.',

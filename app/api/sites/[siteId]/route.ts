@@ -13,7 +13,7 @@ export async function GET(
     const access = await requireSiteAccess(siteId)
     if (!access.ok) return apiError(access.message, access.status)
 
-    const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner' })
+    const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
     if (!home) return apiError('Site not found', 404)
     return NextResponse.json(home, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {

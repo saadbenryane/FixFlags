@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ upload: vi.fn(), axe: vi.fn(), screenshot: vi.fn(), close: vi.fn(), truncated: vi.fn() }))
+const mocks = vi.hoisted(() => ({ upload: vi.fn(), axe: vi.fn(), screenshot: vi.fn(), close: vi.fn(), truncated: vi.fn(),
+  loading: vi.fn(), wait: vi.fn() }))
 vi.mock('@/lib/storage/screenshots', () => ({ uploadScreenshot: mocks.upload }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl: vi.fn() }))
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
@@ -13,10 +14,10 @@ vi.mock('@axe-core/playwright', () => ({ AxeBuilder: class {
 vi.mock('@/lib/audit/capture-metrics', () => ({ measureMobileLayout: async () => ({ viewportWidth: 375 }) }))
 vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), createAuditPage: async () => ({
   page: { url: () => 'https://example.com/', close: mocks.close, context: () => ({ close: mocks.close }),
-    screenshot: mocks.screenshot, waitForFunction: async () => {},
+    screenshot: mocks.screenshot, waitForFunction: mocks.wait,
     evaluate: async (fn: (...args: unknown[]) => unknown, argument: unknown) => {
       if (Array.isArray(argument)) return []
-      if (typeof argument === 'string') return { readyState: 'complete', title: 'Example', loadingVisible: false, loadingLabel: null }
+      if (typeof argument === 'string' || argument === false) return { readyState: 'complete', title: 'Example', loadingVisible: mocks.loading(), loadingLabel: 'hero-skeleton' }
       if (fn.toString().includes('outerHTML')) return { html: '<html><head><title>Example</title></head><body>Content</body></html>', truncated: false }
       if (fn.toString().includes('document.readyState ===')) return true
       return { title: 'Example', description: null, ogTitle: null, ogDescription: null, ogImage: null,
@@ -31,9 +32,35 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
 import { captureScreenshots } from '../screenshot'
 
 describe('independent rendered evidence', () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.truncated.mockReturnValue(false); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable'));
+  beforeEach(() => { vi.clearAllMocks(); mocks.truncated.mockReturnValue(false); mocks.loading.mockReturnValue(false); mocks.wait.mockResolvedValue(undefined);
+    mocks.screenshot.mockResolvedValue(new Uint8Array([1])); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable'));
     mocks.axe.mockResolvedValue({ url: 'https://example.com/', testEngine: { version: 'fixture-axe' }, violations: [], incomplete: [],
       passes: [{ id: 'button-name', nodes: [{ target: ['button'] }] }], inapplicable: [] }) })
+  afterEach(() => { vi.useRealTimers() })
+  it('measures loading clearance independently of media uploads and a delayed document title', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(0)
+    const pause = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+    mocks.loading.mockImplementation(() => Date.now() < 500)
+    mocks.wait.mockImplementation(async (fn, argument) => {
+      if (typeof argument === 'string' || argument === true) {
+        await pause(Math.max(0, 500 - Date.now()))
+        if (argument === true) await pause(3500)
+        return { jsonValue: async () => 500 }
+      }
+      else if (fn.toString().includes('document.title')) await pause(3000)
+    })
+    mocks.upload.mockImplementation(async () => { await pause(5000); return 'https://example.com/capture.png' })
+    const pending = captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, mediaOnly: true })
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect((await pending).loadExperience).toMatchObject({ loadingVisibleAtInitial: true, loadingVisibleAtFinal: false,
+      loadingClearedMs: 500, initialCaptureElapsedMs: 0, initialScreenshotUrl: 'https://example.com/capture.png' })
+  })
+  it('leaves clearance unknown when the browser observation fails', async () => {
+    mocks.loading.mockReturnValueOnce(true).mockReturnValueOnce(true).mockReturnValue(false)
+    mocks.wait.mockImplementation(async (_fn, argument) => { if (argument === true) throw new Error('Observation unavailable') })
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, captureMedia: false })
+    expect(result.loadExperience).toMatchObject({ loadingVisibleAtInitial: true, loadingVisibleAtFinal: false, loadingClearedMs: null })
+  })
   it('records DOM and an actually completed axe scan without accessing media storage', async () => {
     const result = await captureScreenshots('https://example.com/', 'audit', undefined, { runFlow: false, captureMedia: false })
     expect(result.captureFailures).toEqual([])

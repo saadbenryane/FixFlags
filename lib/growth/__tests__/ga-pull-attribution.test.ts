@@ -17,6 +17,8 @@ describe('GA landing journey export', () => {
       ),
     ).toEqual({
       ...metadata,
+      reportingTimeZone: null,
+      providerLimited: false,
       status: 'available',
       journeys: [{ journeyId, eventCount: 2 }],
       unattributedEventCount: 0,
@@ -35,6 +37,8 @@ describe('GA landing journey export', () => {
       ),
     ).toEqual({
       ...metadata,
+      reportingTimeZone: null,
+      providerLimited: false,
       status: 'partial',
       journeys: [],
       unattributedEventCount: 10,
@@ -51,5 +55,13 @@ describe('GA landing journey export', () => {
         1,
       ),
     ).toMatchObject({ status: 'partial', rowLimitReached: true })
+  })
+
+  it('preserves provider limitations even when every journey row has a valid key', () => {
+    const artifact = buildGaLandingJourneyArtifact(
+      [{ 'customEvent:journey_id': `ffj_${'a'.repeat(32)}`, eventCount: 1 }],
+      { ...metadata, reportingTimeZone: 'Africa/Casablanca', providerLimited: true },
+    )
+    expect(artifact).toMatchObject({ status: 'partial', reportingTimeZone: 'Africa/Casablanca', providerLimited: true })
   })
 })

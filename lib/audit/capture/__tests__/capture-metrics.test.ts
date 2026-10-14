@@ -57,12 +57,25 @@ function stubComputedStyle(): void {
 }
 
 function fakePage(emulateMediaImpl?: (options: { reducedMotion: string }) => Promise<void>): Page {
+  let reduced = false
+  vi.stubGlobal('matchMedia', () => ({ matches: reduced }))
+  vi.stubGlobal('CSS', { escape: (value: string) => value })
+  Object.defineProperty(document, 'getAnimations', { configurable: true, value: () => [...document.querySelectorAll('*')].flatMap(element => {
+    const style = { ...defaultStyle, ...styleOverrides.get(element) }
+    if (!style.animationName || style.animationName === 'none') return []
+    const duration = parseFloat(style.animationDuration ?? '0') * (style.animationDuration?.endsWith('ms') ? 1 : 1000)
+    return [{ animationName: style.animationName, pending: false, playState: 'running', effect: { target: element,
+      getComputedTiming: () => ({ duration, iterations: style.animationIterationCount === 'infinite' ? Infinity : 1, progress: 0.5, currentIteration: 0, localTime: 500, delay: 0 }),
+      getKeyframes: () => [{ opacity: '0' }, { opacity: '1' }],
+    } }]
+  }) })
   const evaluate = vi.fn(async (fn: () => unknown) => {
     return fn()
   })
   return {
     evaluate,
     emulateMedia: vi.fn(async (opts: { reducedMotion: string }) => {
+      reduced = opts.reducedMotion === 'reduce'
       // Default: reduced-motion is honored, so animations disappear.
       if (emulateMediaImpl) return emulateMediaImpl(opts)
       if (opts.reducedMotion === 'reduce') {
@@ -106,6 +119,7 @@ describe('measureMobileLayout', () => {
   it('prefers a hero search input over the generic topmost CTA', async () => {
     document.body.innerHTML =
       '<main><form><input id="search" type="search" placeholder="Search for a doctor"><button type="submit">Search</button></form><a id="cta" href="/pricing">Pricing</a></main>'
+    setRect(document.querySelector('button')!, { top: 300, width: 100, height: 48 })
     const input = document.querySelector('#search') as Element
     const cta = document.querySelector('#cta') as Element
     setRect(input, { top: 300, width: 300, height: 44 })
@@ -230,6 +244,27 @@ describe('measureMotionA11y', () => {
 
     const result = await measureMotionA11y(fakePage())
     assert.deepEqual(result, { motionIgnoresReducedPreference: false, motionSampleLabel: null, motionComplete: true })
+  })
+  it('does not let duplicate ancestor roots hide the unchanged majority of moving elements', async () => {
+    document.body.innerHTML = '<main><section class="hero"><div id="honored"></div></section></main><div id="one"></div><div id="two"></div>'
+    for (const id of ['honored', 'one', 'two']) {
+      const element = document.getElementById(id)!
+      setRect(element, { top: 0, width: 100, height: 50 })
+      setStyle(element, { animationName: 'move', animationDuration: '1s', animationIterationCount: 'infinite' })
+    }
+    const result = await measureMotionA11y(fakePage(async options => {
+      if (options.reducedMotion === 'reduce') setStyle(document.getElementById('honored')!, { animationName: 'none' })
+    }))
+    assert.equal(result.motionIgnoresReducedPreference, true)
+  })
+  it('excludes animation below a transparent ancestor', async () => {
+    document.body.innerHTML = '<main><section id="hidden"><div id="animated"></div></section></main>'
+    setStyle(document.getElementById('hidden')!, { opacity: '0' })
+    const element = document.getElementById('animated')!
+    setRect(element, { top: 0, width: 100, height: 50 })
+    setStyle(element, { animationName: 'move', animationDuration: '1s', animationIterationCount: 'infinite' })
+    const result = await measureMotionA11y(fakePage(async () => {}))
+    assert.equal(result.motionIgnoresReducedPreference, false)
   })
 
   it('reports ignored reduced-motion preference when animations persist', async () => {

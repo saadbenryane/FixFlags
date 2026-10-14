@@ -2,7 +2,7 @@ import { computeRubricScores } from '../checks'
 import type { TriageOutput } from '../judge-triage-schema'
 import type { PageRun } from './types'
 import type { PageSpeedResult } from '../pagespeed'
-import { collapseFlagsWithAffectedPaths } from '../flag-identity'
+import { projectDeterministicFlags } from '../flag-projection'
 import type { DeterministicFlag } from '../flag-types'
 import type { RubricName } from '../constants'
 
@@ -24,7 +24,7 @@ export function productScoresFromFlags(
   if (pageRuns.length === 0) {
     return { MESSAGE: null, EXPERIENCE: null, REACH: null }
   }
-  const collapsed = collapseFlagsWithAffectedPaths(pageRuns.flatMap((page) => page.flags))
+  const collapsed = collapsedPageFlags(pageRuns)
   const failedModules = [...new Set(pageRuns.flatMap((page) => page.failedModules))]
   const desktop = lowestPagespeed(pageRuns.map((page) => page.desktop))
   const mobile = lowestPagespeed(pageRuns.map((page) => page.mobile))
@@ -72,5 +72,5 @@ export function buildCombinedTriageOutput(pageRuns: PageRun[]): TriageOutput {
 }
 
 export function collapsedPageFlags(pageRuns: PageRun[]): DeterministicFlag[] {
-  return collapseFlagsWithAffectedPaths(pageRuns.flatMap((page) => page.flags))
+  return projectDeterministicFlags(pageRuns.flatMap((page) => page.flags))
 }

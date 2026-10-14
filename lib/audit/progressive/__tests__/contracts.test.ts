@@ -7,6 +7,49 @@ import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('durable bounded work contracts', () => {
+  it('starts retained Site pages independently of entry-page discovery and preserves their admitted navigation URLs', () => {
+    const monitoringPages = [input.pageUrl, 'https://example.com/pricing?mode=original#step']
+    const spec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
+      reviewDepth: 2 as const, checks: { 'title-missing': 1 }, monitoringPages, outcomes: [], verificationTarget: null }
+    const graph = initialTaskPlan(spec)
+    expect(graph.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual(monitoringPages)
+    expect(graph.filter(task => task.kind === 'browser').every(task => task.dependencies.length === 0)).toBe(true)
+    expect(graph.find(task => task.kind === 'cross-page')!.dependencies).toContain('p1:search')
+    expect(initialTaskPlan({ ...spec, reviewDepth: 1 }).filter(task => task.kind === 'browser')).toHaveLength(1)
+    expect(() => executionSpecSchema.parse({ ...spec, scope: 'OUTCOMES' })).toThrow('monitoring page scope')
+    validateTaskGraph(graph)
+  })
+  it('rechecks all original preview pages with only browser collection and the cross-page comparison', () => {
+    const pages = [input.pageUrl, 'https://example.com/pricing', 'https://example.com/features']
+    const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: pages[1], environment: 'production', scope: 'DIAGNOSTIC',
+      checks: { 'corridor-og-title-drift': 1 }, outcomes: [], verificationScopes: pages.map(pageUrl => ({ pageUrl, phases: ['page_load'] })),
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'corridor-og-title-drift', pageUrl: pages[1], attemptId: 'attempt', parentAuditId: 'before' } })
+    expect(graph.map(task => task.kind)).toEqual(['browser', 'browser', 'browser', 'cross-page', 'finalize'])
+    expect(graph.find(task => task.kind === 'cross-page')!.dependencies).toEqual(['p0:browser', 'p1:browser', 'p2:browser'])
+    validateTaskGraph(graph)
+  })
+  it('plans only the frozen overlay interaction workflow for diagnostic repair', () => {
+    for (const phase of ['primary_action', 'pricing_navigation', 'form_validation', 'journey_signup_form']) {
+      const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production', scope: 'DIAGNOSTIC',
+        checks: { 'overlay-blocks-form': 1 }, outcomes: [], verificationScopes: [{ pageUrl: input.pageUrl, phases: ['page_load'], overlayPhases: [phase] }],
+        verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'overlay-blocks-form', pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+      expect(graph.some(task => task.kind === 'overlays'), phase).toBe(false)
+      expect(graph.some(task => task.kind === 'pagespeed' || task.kind === 'google'), phase).toBe(false)
+      expect(graph.some(task => phase === 'journey_signup_form' ? task.kind === 'journeys' : task.kind === 'flow'), phase).toBe(true)
+      validateTaskGraph(graph)
+    }
+  })
+  it('admits independent overlay repair for every originally checked device without navigation work', () => {
+    for (const checkId of ['overlay-blocks-nav', 'overlay-blocks-cta', 'overlay-blocks-form']) {
+      const graph = initialTaskPlan({ version: 1, engine: 'progressive-v1', targetUrl: input.pageUrl, environment: 'production',
+        scope: 'DIAGNOSTIC', checks: { [checkId]: 1 }, outcomes: [],
+        verificationTarget: { kind: 'DIAGNOSTIC', checkId, pageUrl: input.pageUrl, attemptId: 'attempt', parentAuditId: 'before' } })
+      expect(graph.map(task => task.kind)).toEqual(['overlays', 'overlays', 'finalize'])
+      expect(graph.slice(0, 2).map(task => task.input.device)).toEqual(['desktop', 'mobile'])
+      expect(graph.slice(0, 2).every(task => !task.dependencies.length)).toBe(true)
+      validateTaskGraph(graph)
+    }
+  })
   it.each(['search', 'performance', 'conversion', 'security', 'tracking', 'accessibility'] as const)('plans only %s work and its required collectors for every frozen page', area => {
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: input.pageUrl,
       environment: 'production', category: { area, sourceAuditId: 'full', pages: [input.pageUrl, 'https://example.com/second'] },
@@ -16,7 +59,8 @@ describe('durable bounded work contracts', () => {
     validateTaskGraph(graph)
     expect(graph.filter(task => task.kind === 'browser').map(task => task.input.pageUrl)).toEqual(spec.category!.pages)
     expect(graph.some(task => ['captures', 'judge', 'discovery'].includes(task.kind))).toBe(false)
-    if (area !== 'search') expect(graph.some(task => ['search', 'google', 'search-resources', 'cross-page'].includes(task.kind))).toBe(false)
+    if (area !== 'search') expect(graph.some(task => ['search', 'google', 'search-resources'].includes(task.kind))).toBe(false)
+    expect(graph.some(task => task.kind === 'cross-page')).toBe(area === 'search' || area === 'conversion')
     if (area !== 'performance') {
       expect(graph.some(task => task.kind === 'slow-replay')).toBe(false)
       for (const collector of graph.filter(task => task.kind === 'pagespeed'))
@@ -61,6 +105,9 @@ describe('durable bounded work contracts', () => {
     expect(byKey.get('p0:browser')!.dependencies).toEqual([])
     expect(byKey.get('p0:captures')!.dependencies).toEqual([])
     expect(byKey.get('p0:accessibility')!.dependencies).toEqual(['p0:browser'])
+    expect(byKey.get('p0:motion')!.dependencies).toEqual(['p0:browser'])
+    expect(byKey.get('p0:interaction')!.dependencies).toContain('p0:motion')
+    expect(byKey.get('p0:metadata')!.dependencies).not.toContain('p0:motion')
     expect(byKey.get('p0:keyboard')!.dependencies).toEqual(['p0:keyboard-evidence'])
     expect(byKey.get('p0:keyboard-evidence')!.dependencies).toEqual([])
     expect(byKey.get('p0:metadata')!.dependencies).not.toContain('p0:captures')

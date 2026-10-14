@@ -5,6 +5,7 @@ import {
   canonicalizeDestination,
   reviewPathLabel,
   type EligibleLink,
+  isEligiblePublicDestination,
 } from '@/lib/audit/url-identity'
 import { DEFAULT_OPEN_CHECK_CEILING } from '@/lib/audit/open-check'
 import type { ReviewCoverage } from './review-coverage'
@@ -27,6 +28,19 @@ export type RankedDestination = EligibleLink & {
 
 /** Internal safety ceiling. Do not advertise. */
 export const INTERNAL_REVIEW_PAGE_CEILING = 24
+
+/** Keep observed navigation conditions, rather than replacing them with URL deduplication keys. */
+export function monitoringReviewUrls(targetUrl: string, recorded: readonly unknown[]): string[] {
+  const urls = new Set([targetUrl])
+  for (const value of recorded) {
+    if (urls.size >= INTERNAL_REVIEW_PAGE_CEILING) break
+    if (typeof value !== 'string' || !URL.canParse(value)) continue
+    const url = new URL(value)
+    if (url.username || url.password || !isEligiblePublicDestination(url.href, targetUrl)) continue
+    urls.add(url.href)
+  }
+  return [...urls]
+}
 
 export const IMPORTANCE_BAND_ORDER: Record<ImportanceBand, number> = {
   'primary-nav': 0,
@@ -111,6 +125,7 @@ export function planReviewTargets(input: {
   pastedLinks: Array<{ href: string; text: string }>
   linkedPageLinks?: Array<{ pageUrl: string; links: Array<{ href: string; text: string }> }>
   reviewCeiling?: number
+  retainedUrls?: readonly string[]
 }): ReviewPlan {
   const pasted = canonicalizeDestination(input.pastedUrl)
   const origin = pasted?.url ?? input.pastedUrl
@@ -121,18 +136,19 @@ export function planReviewTargets(input: {
   const reviewKeys = new Set<string>()
   const reviewUrls: string[] = []
 
-  const addReview = (url: string) => {
+  const addReview = (url: string, preserveNavigation = false) => {
     const canonical = canonicalizeDestination(url, origin)
     if (!canonical) return
     if (reviewKeys.has(canonical.key)) return
     if (reviewUrls.length >= reviewCeiling) return
     reviewKeys.add(canonical.key)
-    reviewUrls.push(canonical.url)
+    reviewUrls.push(preserveNavigation ? new URL(url).href : canonical.url)
   }
 
   addReview(origin)
 
   if (input.depth >= 2) {
+    for (const url of monitoringReviewUrls(input.pastedUrl, input.retainedUrls ?? [])) addReview(url, true)
     for (const destination of rankedFromPasted) addReview(destination.canonical.url)
   }
 
@@ -156,6 +172,10 @@ export function planReviewTargets(input: {
   }
 
   const uniqueEligibleReview = new Set<string>(reviewKeys)
+  if (input.depth >= 2) for (const url of monitoringReviewUrls(input.pastedUrl, input.retainedUrls ?? [])) {
+    const canonical = canonicalizeDestination(url)
+    if (canonical) uniqueEligibleReview.add(canonical.key)
+  }
   for (const destination of rankedFromPasted) {
     if (input.depth >= 2) uniqueEligibleReview.add(destination.canonical.key)
   }

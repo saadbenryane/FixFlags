@@ -123,7 +123,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://example.com/broken',
     tier: 'broken',
     maxImportantFalseBlockers: 99,
-    expectedTop3: ['title-missing', 'form-missing-validation', 'h1-generic'],
+    expectedTop3: ['title-missing', 'trust-no-direct-contact', 'images-missing-alt'],
     knownFalsePositives: ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy'],
     expectedPresent: [
       'title-missing',
