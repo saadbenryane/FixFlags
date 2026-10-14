@@ -1,7 +1,7 @@
 # Research publication boundary, local review cut
 
-Branch: `codex/research-publication-live`.
-Base: `b09761772f88302546a7b72b0cb29febc4ad0951`, the latest successful production web deployment verified through Railway metadata.
+Branch: `codex/research-publication-current`.
+Base: `62cad129afa010d14b4e166456aa28b12679b13b`, successful production web deployment `f7498350-10bd-4244-848c-f3c21ab2802f`, rechecked on 2026-10-14.
 
 Live public issue pages still display the older three-site threshold and examples.
 Their permission provenance is unverified. The dated public observation is in
@@ -27,21 +27,21 @@ analytics reports and unrelated design work remain in the original checkout.
 No environment files, credentials, customer datasets or schema/dependency changes
 are included.
 
-Verification passed against the live baseline and its exact lockfile: 138 focused
-tests, two isolated local PostgreSQL checks and a full Next.js 15.5.27 production
-build with standalone packaging. The build performed lint and type checks.
-Research pages, sitemap and llms.txt are absent from the prerender manifest.
-No browser or E2E tests ran. Fixture configuration used unreachable loopback
-services and no production credentials. The fixture-built bundle is not a
-deployment artifact; production must build the source with its own configuration.
+Verification passed on the current live baseline and exact lockfile: 138 focused
+tests, two isolated PostgreSQL checks, targeted lint, the SEO guard, Next.js 16.4.0
+production compilation and type checking, standalone packaging, and worker
+compilation. Research pages, sitemap and llms.txt remain dynamic. No browser or
+E2E tests ran. The local build used synthetic loopback configuration and no
+production credentials. Railway will rebuild the committed source with its
+existing service configuration.
 
-This is a local review cut, not a deployment. Railway reports deployment
-`958f330a-d826-4b2b-9bdd-fe9bef283cbc` at the selected live base as successful,
-while the newer `a274d585` web deployment failed. The earlier review branch based
-on that newer revision is retained but is not the production candidate. The live
-cut excludes 254 unrelated files between those baselines. Recheck production
-revision before releasing and follow the user's testing constraints. Deployment, production artifact changes, counter
-refreshes, data removal and public publication require explicit authorization.
+The previous candidate `cfe9754d` remains preserved on its reviewed branch. The
+runtime files in this release are byte-identical to that approved patch. There
+are no schema, migration, dependency, Dockerfile or Railway configuration changes
+relative to the current live baseline. Production had advanced from `b0976177`
+to `62cad129` before authorization, so applying only the patch preserves the
+intervening changes. Deployment metadata was read, without reading service secrets.
+
 No existing customer is opted in, and no approved research dataset is installed.
 Post-release observation must confirm withholding, discovery and consent behavior.
 External copies of already published material cannot be recalled by this patch.
@@ -50,4 +50,8 @@ The proposed production action is a web-service source deployment only. It does
 not update the worker, install a research artifact, refresh graph counters or
 change any existing permission. With no eligible reviewed release, current issue
 detail pages and research discovery links will be withheld. Owner opt-in remains
-off by default. No production action is authorized or performed yet.
+off by default. The user authorized the web deployment on 2026-10-14. The approved patch from
+`cfe9754d` was applied cleanly to the newer live revision to preserve intervening
+production changes. No worker deployment or research artifact installation is
+authorized. Current-baseline checks above passed before deployment. The production action
+remains limited to the web service.
