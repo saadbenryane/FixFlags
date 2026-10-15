@@ -101,9 +101,9 @@ export function PricingCTAButton({
   return (
     <div className="space-y-2">
       {destination && !(isCurrent && isPaidPlan) ? <Button asChild className="w-full" variant={variant ?? (highlight ? 'default' : 'outline')}>
-        <Link href={destination} onClick={() => {
+        <a href={destination} onClick={() => {
           if (isPaidPlan && !waitlistGated) trackEvent('started_checkout', { plan, is_logged_in: resolvedLoggedIn })
-        }}>{waitlistGated && isPaidPlan ? plan === 'TEAM' ? BILLING_ACTION_COPY.waitlist.submitStudio : BILLING_ACTION_COPY.waitlist.submitPro : cta}</Link>
+        }}>{waitlistGated && isPaidPlan ? plan === 'TEAM' ? BILLING_ACTION_COPY.waitlist.submitStudio : BILLING_ACTION_COPY.waitlist.submitPro : cta}</a>
       </Button> : <Button
         className="w-full"
         variant={variant ?? (highlight ? 'default' : 'outline')}

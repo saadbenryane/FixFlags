@@ -1,12 +1,5 @@
 .launcher {
-  position: fixed;
-  right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
-  bottom: calc(var(--floating-action-offset) + 4.5rem + env(safe-area-inset-bottom));
-  z-index: var(--z-fab);
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 50%;
-  box-shadow: var(--shadow-card);
+  flex-shrink: 0;
 }
 
 .panel {
@@ -27,7 +20,6 @@
 }
 
 @media (min-width: 1024px) {
-  .launcher,
   .panel {
     bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
   }

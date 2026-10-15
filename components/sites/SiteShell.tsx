@@ -114,7 +114,10 @@ function SiteShellContent({
             state={watch.state === 'watching' ? 'healthy' : watch.state === 'delayed' || watch.state === 'quota' ? 'attention' : 'unknown'}
             nextCheck={() => nextCheckLabel(watch.nextRunAt, Date.now())}
             manageLabel={ownsSite ? undefined : SITE_ACTION_COPY.access.monitoring}
-            manageHref={ownsSite ? `/sites/${siteId}/settings#watch` as Route : siteContinuationHref(actions.monitoring as 'sign_in' | 'claim', `/sites/${siteId}/settings#watch`) as Route} />{headerAction}</div>
+            manageHref={ownsSite ? `/sites/${siteId}/settings#watch` as Route : siteContinuationHref(actions.monitoring as 'sign_in' | 'claim', `/sites/${siteId}/settings#watch`) as Route} />{headerAction}
+            <LazySiteChat key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
+              host={host} ownsSite={ownsSite} flagId={chatFlag?.id} flagTitle={chatFlag?.title} />
+          </div>
         </header>
         {statusMessage ? <p role="status" className="text-sm">{statusMessage}</p> : null}
         {children}
@@ -122,7 +125,5 @@ function SiteShellContent({
     </div>
     <SiteWorkspaceNavigation activeRoute={activeRoute} label="Mobile Site" showSettings={showSettings} mobile className={cn(customerMobileBarClass, 'md:hidden')}
       renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
-    <LazySiteChat key={`${siteId}:${chatFlag?.id ?? 'site'}:${ownsSite}`} siteId={siteId}
-      host={host} ownsSite={ownsSite} flagId={chatFlag?.id} flagTitle={chatFlag?.title} />
   </div>
 }
