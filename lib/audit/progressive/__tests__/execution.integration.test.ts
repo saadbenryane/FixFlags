@@ -1296,7 +1296,9 @@ run('migrated progressive execution', () => {
 
   it('observes delayed signup completion and preserves actionable failure, uncertainty, repair and recurrence', async () => {
     const transport = fixtureTransport()
+    const browserWasPaused = await getAuditTaskQueue('browser').isPaused()
     try {
+      await getAuditTaskQueue('browser').resume()
       const fixture = await prisma.outcomeFixture.create({ data: { projectId, name: 'Reversible signup', targetUrl: origin + '/signup-flow',
         fieldMapping: { fields: { email: { by: 'label', value: 'Email' } }, submit: { by: 'role', role: 'button', value: 'Sign up' } },
         encryptedValues: encryptSecret(JSON.stringify({ email: 'synthetic@example.test' })),
@@ -1359,7 +1361,10 @@ run('migrated progressive execution', () => {
       const verificationHistory = await prisma.improvementCycleEvent.findMany({ where: { attemptId, type: 'OUTCOME_ISSUED' },
         orderBy: { occurredAt: 'asc' }, select: { outcome: true, verificationAuditId: true } })
       expect(verificationHistory).toEqual([{ outcome: 'INCONCLUSIVE', verificationAuditId: audits[1] }, { outcome: 'IMPROVED', verificationAuditId: audits[3] }])
-    } finally { signupMode = 'success'; signupCleanupOk = true; transport.mockRestore() }
+    } finally {
+      signupMode = 'success'; signupCleanupOk = true; transport.mockRestore()
+      if (browserWasPaused) await getAuditTaskQueue('browser').pause()
+    }
   }, 60_000)
 
   it('preserves the latest Watch delivery across stale readers and expired senders using the real notification ledger', async () => {
