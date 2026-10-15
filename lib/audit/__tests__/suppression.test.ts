@@ -33,14 +33,21 @@ it('does not let consolidated security findings on one page hide another page ha
 it('keeps a collapsed multi-page issue until every affected page has a specific finding', () => {
   const root = 'https://example.com/'
   const pricing = 'https://example.com/pricing'
-  const broad = scopedFlag('perf-score-poor', root, [root, pricing])
-  const rootSpecific = scopedFlag('cls-critical', root)
+  const broad = scopedFlag('hierarchy-no-headline', root, [root, pricing])
+  const rootSpecific = scopedFlag('h1-missing', root)
   expect(suppressOverlappingFlags([broad, rootSpecific])).toEqual([broad, rootSpecific])
-  expect(suppressOverlappingFlags([broad, rootSpecific, scopedFlag('cls-critical', pricing)]))
-    .toEqual([rootSpecific, scopedFlag('cls-critical', pricing)])
+  expect(suppressOverlappingFlags([broad, rootSpecific, scopedFlag('h1-missing', pricing)]))
+    .toEqual([rootSpecific, scopedFlag('h1-missing', pricing)])
 })
 
 it('keeps unknown page scopes separate from explicit observations', () => {
-  const flags = [scopedFlag('perf-score-poor'), scopedFlag('cls-critical', 'https://example.com/')]
+  const flags = [scopedFlag('hierarchy-no-headline'), scopedFlag('h1-missing', 'https://example.com/')]
+  expect(suppressOverlappingFlags(flags)).toEqual(flags)
+})
+
+it('retains independent performance identities on the same page for repair and recurrence', () => {
+  const flags = ['mobile-load-delay-content', 'loading-state-slow', 'slow-3g-cta-delayed',
+    'slow-3g-blank-screen', 'perf-score-poor', 'perf-score-critical', 'cls-critical']
+    .map(id => scopedFlag(id, 'https://example.com/'))
   expect(suppressOverlappingFlags(flags)).toEqual(flags)
 })

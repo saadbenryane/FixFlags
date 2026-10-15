@@ -803,7 +803,7 @@ describe('page-role suppression', () => {
 })
 
 describe('overlap suppression', () => {
-  it('keeps the root slow-3G blank-screen finding instead of its CTA symptom', () => {
+  it('keeps independently observed slow-connection content and action failures', () => {
     const makeFlag = (checkId: string) => ({
       checkId,
       rubric: 'EXPERIENCE',
@@ -818,10 +818,10 @@ describe('overlap suppression', () => {
       makeFlag('slow-3g-blank-screen'),
       makeFlag('slow-3g-cta-delayed'),
     ])
-    assert.deepEqual(flags.map((flag) => flag.checkId), ['slow-3g-blank-screen'])
+    assert.deepEqual(flags.map((flag) => flag.checkId), ['slow-3g-blank-screen', 'slow-3g-cta-delayed'])
   })
 
-  it('drops an aggregate performance score when a specific severe metric is present', () => {
+  it('retains performance score and layout stability as separate measured findings', () => {
     const makeFlag = (checkId: string) => ({
       checkId,
       rubric: 'EXPERIENCE',
@@ -836,7 +836,7 @@ describe('overlap suppression', () => {
       makeFlag('perf-score-poor'),
       makeFlag('cls-critical'),
     ])
-    assert.deepEqual(flags.map((flag) => flag.checkId), ['cls-critical'])
+    assert.deepEqual(flags.map((flag) => flag.checkId), ['perf-score-poor', 'cls-critical'])
   })
 })
 
