@@ -7,7 +7,7 @@
 .scheduleLabel { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .scheduleLabel i { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--muted-foreground)); }
 .scheduleLabel i[data-active='true'] { background: hsl(var(--success)); }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.actions { display: flex; flex-wrap: wrap; min-width: 0; max-width: 100%; gap: 8px; margin-top: 16px; }
 .schedule .actions { margin-top: 0; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; margin-top: 20px; padding-top: 16px; }
 .facts dt { font-size: 11px; color: hsl(var(--muted-foreground)); }
