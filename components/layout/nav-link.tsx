@@ -13,6 +13,7 @@ interface NavLinkProps {
   activeClassName?: string
   inactiveClassName?: string
   onNavigate?: () => void
+  prefetch?: boolean
 }
 
 export function NavLink({
@@ -22,6 +23,7 @@ export function NavLink({
   activeClassName,
   inactiveClassName,
   onNavigate,
+  prefetch,
 }: NavLinkProps) {
   const pathname = usePathname()
   const active = isNavActive(pathname, href)
@@ -35,6 +37,7 @@ export function NavLink({
 
   return (
     <Link
+      prefetch={prefetch}
       href={href as Route}
       aria-current={active ? 'page' : undefined}
       onClick={handleClick}

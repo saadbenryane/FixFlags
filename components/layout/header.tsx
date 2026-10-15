@@ -147,6 +147,7 @@ export function Header({
                 <NavLink
                   key={link.href}
                   href={link.href}
+                  prefetch={isMarketing ? false : undefined}
                   onNavigate={() => { if (isMarketing) trackPublicNavigation(link.label) }}
                   className={isMarketing ? NAV_LINK_MARKETING : NAV_LINK_BASE}
                   activeClassName={NAV_LINK_ACTIVE}
@@ -206,6 +207,7 @@ export function Header({
                         <NavLink
                           key={link.href}
                           href={link.href}
+                          prefetch={isMarketing ? false : undefined}
                           onNavigate={() => { if (isMarketing) trackPublicNavigation(link.label); setOpen(false) }}
                           className={NAV_LINK_MOBILE_BASE}
                           activeClassName={NAV_LINK_MOBILE_ACTIVE}

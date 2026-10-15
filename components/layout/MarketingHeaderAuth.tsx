@@ -29,7 +29,7 @@ export function MarketingHeaderAuth({
   if (!user) {
     if (mode === "mobileTop") {
       return (
-        <Link href="/sign-in" onClick={onNavigate} className="inline-flex min-h-11 min-w-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Link prefetch={false} href="/sign-in" onClick={onNavigate} className="inline-flex min-h-11 min-w-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {AUTH.signIn.cta}
         </Link>
       );
@@ -37,8 +37,8 @@ export function MarketingHeaderAuth({
 
     return (
       <div className={cn("flex items-center gap-2", mode === "mobileSheet" && "flex-col items-stretch")}>
-        {mode === "mobileSheet" ? <Button variant="outline" size="sm" className="w-full" asChild><Link href="/sign-in" onClick={onNavigate}>{AUTH.signIn.cta}</Link></Button> :
-          <Link href="/sign-in" onClick={onNavigate} className="inline-flex min-h-11 min-w-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{AUTH.signIn.cta}</Link>}
+        {mode === "mobileSheet" ? <Button variant="outline" size="sm" className="w-full" asChild><Link prefetch={false} href="/sign-in" onClick={onNavigate}>{AUTH.signIn.cta}</Link></Button> :
+          <Link prefetch={false} href="/sign-in" onClick={onNavigate} className="inline-flex min-h-11 min-w-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{AUTH.signIn.cta}</Link>}
         {analyze}
       </div>
     );
@@ -47,7 +47,7 @@ export function MarketingHeaderAuth({
   if (mode === "mobileSheet") {
     return <div className="flex flex-col items-stretch gap-2">
       <Button variant="outline" size="sm" className="w-full justify-center" asChild>
-        <Link href="/dashboard" onClick={onNavigate}>Dashboard</Link>
+        <Link prefetch={false} href="/dashboard" onClick={onNavigate}>Dashboard</Link>
       </Button>
       {analyze}
     </div>;

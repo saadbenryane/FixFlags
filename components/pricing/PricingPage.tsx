@@ -15,14 +15,14 @@ export function PricingPage() {
     <PricingViewTracker />
     <Container variant="marketing" className={s.container}>
       <MarketingPageHeader eyebrow={PRICING.label} title={<>{PRICING.headlineLead}{' '}<span className={s.betaHeadline}>{PRICING.headlineAccent}</span></>} description={PRICING.subhead}>
-        <Button asChild variant="brand" size="lg"><Link href={PRICING.signupHref}>{PRICING.signupCta}<ArrowRight aria-hidden size={16} /></Link></Button>
+        <Button asChild variant="brand" size="lg"><Link prefetch={false} href={PRICING.signupHref}>{PRICING.signupCta}<ArrowRight aria-hidden size={16} /></Link></Button>
         <p className={s.signupNote}>{PRICING.signupNote}</p>
       </MarketingPageHeader>
       <div className={s.sections}>
         <section aria-labelledby="pricing-comparison-heading" className={s.comparison} id="compare-plans">
           <h2 className="sr-only" id="pricing-comparison-heading">{PRICING.compareTitle}</h2>
           <PricingComparisonTable />
-          <div className={s.links}><Link href="/docs/site-care">{PRICING.coverageLink}<ArrowRight aria-hidden size={16} /></Link><Link href="/docs/integrations">{PRICING.connectionsLink}<ArrowRight aria-hidden size={16} /></Link></div>
+          <div className={s.links}><Link prefetch={false} href="/docs/site-care">{PRICING.coverageLink}<ArrowRight aria-hidden size={16} /></Link><Link prefetch={false} href="/docs/integrations">{PRICING.connectionsLink}<ArrowRight aria-hidden size={16} /></Link></div>
         </section>
         <div className={s.faq}><FaqSection items={PRICING_FAQ} title={PRICING.faqTitle} sectionLabel={null} /></div>
       </div>

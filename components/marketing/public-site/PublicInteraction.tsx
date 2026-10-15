@@ -12,7 +12,8 @@ const PUBLIC_PATHS = new Set([
 ])
 
 export function PublicLink({ target, children, onClick, ...props }: ComponentProps<typeof Link> & { target: string }) {
-  return <Link {...props} onClick={event => {
+  // Public navigation does not preload every visible footer destination.
+  return <Link prefetch={false} {...props} onClick={event => {
     trackPublicNavigation(target)
     onClick?.(event)
   }}>{children}</Link>
