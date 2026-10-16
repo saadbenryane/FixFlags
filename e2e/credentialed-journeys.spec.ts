@@ -6,6 +6,8 @@ import { promisify } from 'node:util'
 import { PrismaClient } from '@prisma/client'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
+import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
 
 const execFileAsync = promisify(execFile)
@@ -324,16 +326,16 @@ test.describe('credentialed revenue journeys', () => {
     await revoked.close()
   })
 
-  test('[journey:watch-child-notification] a measured scheduled failure produces one accepted and provider-delivered alert', async ({ browser }) => {
+  test('[journey:watch-child-notification] a new failure and verified recovery produce one delivered summary', async ({ browser }) => {
     test.setTimeout(600_000)
     const user = await signedInPage(browser, 'E2E_WATCH_EMAIL', 'E2E_WATCH_PASSWORD')
     const projectId = requiredEnv('E2E_WATCH_PROJECT_ID')
     const database = requiredEnv('RELEASE_FRESH_DATABASE_URL')
     expect(new URL(database).pathname).toMatch(/release|test/i)
     const fixtureDb = new PrismaClient({ datasources: { db: { url: database } } })
-    const control = async (missingTitle: boolean) => {
+    const control = async (data: Record<string, boolean>) => {
       const response = await user.page.request.post(requiredEnv('E2E_DEPLOYMENT_TRIGGER_URL'), {
-        headers: { authorization: `Bearer ${requiredEnv('E2E_DEPLOYMENT_TRIGGER_TOKEN')}` }, data: { missingTitle },
+        headers: { authorization: `Bearer ${requiredEnv('E2E_DEPLOYMENT_TRIGGER_TOKEN')}` }, data,
       })
       expect(response.status()).toBe(200)
     }
@@ -346,11 +348,50 @@ test.describe('credentialed revenue journeys', () => {
     }
     const beganAt = new Date()
     try {
+      // Recent broad evidence is reused by quick scheduled binding checks.
+      // Exercise their actual HTTP conditions instead of expecting a title audit.
+      expect((await user.page.request.patch(`/api/sites/${projectId}/settings`, {
+        data: { notificationLevel: 'OFF', notifyOnRecovery: false },
+      })).status()).toBe(200)
+      const target = new URL(requiredEnv('E2E_DEPLOYMENT_TRIGGER_URL')).origin
+      const outcomeIds: string[] = []
+      for (const pathname of ['/pricing', '/checkout']) {
+        const created = await user.page.request.post(`/api/sites/${projectId}/outcomes`, {
+          data: { action: 'create', kind: 'AVAILABILITY', targetUrl: target + pathname },
+        })
+        expect(created.status(), await created.text()).toBe(200)
+        const body = await created.json() as { outcome?: { id: string } }
+        expect(body.outcome?.id).toBeTruthy()
+        outcomeIds.push(body.outcome!.id)
+      }
+      await control({ brokenPricing: true, broken: false })
+      const baselineResponse = await user.page.request.post(`/api/sites/${projectId}/runs`, {
+        headers: { 'Idempotency-Key': `notification-baseline:${requiredEnv('RELEASE_RUN_ID')}` },
+        data: { outcomeIds },
+      })
+      expect([200, 202], await baselineResponse.text()).toContain(baselineResponse.status())
+      const baseline = await baselineResponse.json() as { runId: string; auditId: string }
+      await expect.poll(async () => {
+        const response = await user.page.request.get(`/api/sites/${projectId}/runs/${baseline.runId}`)
+        expect(response.status()).toBe(200)
+        return (await response.json()).status
+      }, { timeout: 120_000, intervals: [1000] }).toBe('COMPLETED')
+      const baselineAssessments = await fixtureDb.outcomeAssessment.findMany({
+        where: { auditId: baseline.auditId, outcomeId: { in: outcomeIds } },
+        select: { id: true, outcomeId: true, state: true, evidence: true },
+      })
+      const originalPricing = baselineAssessments.find(row => row.outcomeId === outcomeIds[0])!
+      expect(originalPricing).toMatchObject({ state: 'FLAG' })
+      expect(baselineAssessments).toContainEqual(expect.objectContaining({ outcomeId: outcomeIds[1], state: 'CLEAR' }))
+      const originalIncident = readOutcomeIncident(originalPricing.evidence)
+      expect(originalIncident?.flagIds.length).toBeGreaterThan(0)
+      expect((await fixtureDb.audit.findUniqueOrThrow({ where: { id: baseline.auditId } })).watchNotificationProviderId).toBeNull()
+
+      await control({ brokenPricing: false, broken: true })
       const settings = await user.page.request.patch(`/api/sites/${projectId}/settings`, {
-        data: { notificationLevel: 'FLAGS', notifyOnRecovery: false },
+        data: { notificationLevel: 'FLAGS', notifyOnRecovery: true },
       })
       expect(settings.status(), await settings.text()).toBe(200)
-      await control(true)
       expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
       // This designated release fixture accelerates scheduling. It does not
       // establish a natural production full-check cycle.
@@ -360,8 +401,24 @@ test.describe('credentialed revenue journeys', () => {
         select: { id: true },
       }), { timeout: 420_000, intervals: [1000] }).not.toBeNull()
       const child = await fixtureDb.audit.findFirstOrThrow({ where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt } }, orderBy: { createdAt: 'desc' } })
-      expect(child).toMatchObject({ parentId: expect.any(String), status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: expect.any(String) })
+      expect(child).toMatchObject({ parentId: baseline.auditId, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: expect.any(String),
+        executionSpec: expect.objectContaining({ scope: 'OUTCOMES', outcomes: expect.arrayContaining(outcomeIds.map(id => expect.objectContaining({ id }))) }) })
       expect(child.watchRegressionCount).toBeGreaterThan(0)
+      expect(child.watchRecoveryCount).toBeGreaterThan(0)
+      const assessments = await fixtureDb.outcomeAssessment.findMany({
+        where: { auditId: child.id, outcomeId: { in: outcomeIds } }, select: { outcomeId: true, state: true, evidence: true },
+      })
+      const pricing = assessments.find(row => row.outcomeId === outcomeIds[0])!
+      const checkout = assessments.find(row => row.outcomeId === outcomeIds[1])!
+      expect(pricing).toMatchObject({ state: 'CLEAR' })
+      expect(checkout).toMatchObject({ state: 'FLAG' })
+      const recovery = readOutcomeIncident(pricing.evidence)!, failure = readOutcomeIncident(checkout.evidence)!
+      expect(recovery).toMatchObject({ transition: 'recovery', previousAssessmentId: originalPricing.id,
+        recoveredFlagIds: expect.arrayContaining(originalIncident!.flagIds) })
+      expect(['failure', 'regression']).toContain(failure?.transition)
+      expect(failure?.flagIds.length).toBeGreaterThan(0)
+      expect(await fixtureDb.outcomeAssessment.findUnique({ where: { id: originalPricing.id },
+        select: { id: true, outcomeId: true, state: true, evidence: true } })).toEqual(originalPricing)
       const providerId = child.watchNotificationProviderId!
       await expect.poll(async () => (await provider<ProviderEmail>(`emails/${providerId}`)).last_event,
         { timeout: 120_000, intervals: [2000] }).toBe('delivered')
@@ -369,16 +426,33 @@ test.describe('credentialed revenue journeys', () => {
       expect(accepted.to).toContain(requiredEnv('E2E_WATCH_EMAIL'))
       expect(accepted.tags).toContainEqual({ name: 'audit_id', value: child.id })
       expect(accepted.html, 'Actual provider message uses the shared brand').toContain('/icon-192.png')
-      expect(accepted.html).toContain('See evidence and next steps')
-      expect(accepted.html?.match(/<li>/g)?.length ?? 0, 'All eligible findings appear in the combined message')
-        .toBe(child.watchRegressionCount)
+      expect(accepted.html).toContain(NOTIFICATION_EMAIL_COPY.evidence)
+      expect(accepted.html).toContain(NOTIFICATION_EMAIL_COPY.attention)
+      expect(accepted.html).toContain(NOTIFICATION_EMAIL_COPY.recovery)
+      expect(accepted.html?.match(/<li>/g)?.length ?? 0, 'Every eligible finding and requested verified recovery appears in one message')
+        .toBe(child.watchRegressionCount! + child.watchRecoveryCount!)
+      const recoverySection = accepted.html!.split(NOTIFICATION_EMAIL_COPY.recovery)[1]?.split('</ul>')[0] ?? ''
+      const attentionSection = accepted.html!.split(NOTIFICATION_EMAIL_COPY.attention)[1]?.split('</ul>')[0] ?? ''
+      for (const id of recovery.recoveredFlagIds) expect(recoverySection).toContain(`/flags/${encodeURIComponent(id)}?`)
+      for (const id of failure.flagIds) expect(attentionSection).toContain(`/flags/${encodeURIComponent(id)}?`)
       const evidenceLinks = [...(accepted.html ?? '').matchAll(/href="([^"]+)"/g)]
         .map(match => new URL(match[1].replaceAll('&amp;', '&')))
         .filter(url => url.pathname.startsWith(`/sites/${projectId}/flags/`))
       expect(evidenceLinks.length, 'Actual notification links return to the same Site').toBeGreaterThan(0)
       for (const url of evidenceLinks) expect(url.origin).toBe(new URL(requiredEnv('RELEASE_ENV_URL')).origin)
-      await user.page.goto(evidenceLinks[0].href)
-      await expect(user.page.getByRole('heading', { name: 'What FixFlags saw', exact: true })).toBeVisible()
+      const distinctLinks = [...new Set(evidenceLinks.map(url => url.href))]
+      expect(distinctLinks.length, 'Failure and recovery each retain their own evidence link').toBeGreaterThanOrEqual(2)
+      const otherOwner = await signedInPage(browser, 'E2E_GATE_NON_MEMBER_EMAIL', 'E2E_GATE_NON_MEMBER_PASSWORD')
+      try {
+        expect((await otherOwner.page.request.get(`/api/sites/${projectId}/flags`)).status()).toBe(404)
+        for (const link of distinctLinks) {
+          await user.page.goto(link)
+          await expect(user.page.getByRole('heading', { name: 'What FixFlags saw', exact: true })).toBeVisible()
+          const url = new URL(link)
+          const forbidden = await otherOwner.page.request.post('/api' + url.pathname + '/fix', { data: { action: 'copy' } })
+          expect(forbidden.status(), 'An unrelated owner cannot retrieve a private notification fix prompt').toBe(404)
+        }
+      } finally { await otherOwner.close() }
       const listed = await provider<{ data: ProviderEmail[]; has_more: boolean }>('emails?limit=100')
       expect(!listed.has_more || listed.data.some(email => new Date(email.created_at).getTime() < beganAt.getTime()),
         'Provider list must cover the complete observation window').toBe(true)
@@ -392,13 +466,16 @@ test.describe('credentialed revenue journeys', () => {
       }
       expect(matches).toEqual([providerId])
       await test.info().attach('independent-notification-receipt', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
-        auditId: child.id, providerId, acceptanceRecorded: true, providerDelivery: accepted.last_event,
+        originalAuditId: baseline.auditId, auditId: child.id, providerId, acceptanceRecorded: true, providerDelivery: accepted.last_event,
+        regressionCount: child.watchRegressionCount, recoveryCount: child.watchRecoveryCount, executionScope: 'OUTCOMES',
+        recoveredOutcomeId: outcomeIds[0], failingOutcomeId: outcomeIds[1], originalAssessmentId: originalPricing.id,
+        recoveredFlagIds: recovery.recoveredFlagIds, failingFlagIds: failure.flagIds,
         matchingMessages: matches.length, humanReceiptOrRead: false, naturalProductionCycle: false,
       })) })
     } finally {
       try {
         await user.page.request.patch(`/api/sites/${projectId}/settings`, { data: { notificationLevel: 'OFF', notifyOnRecovery: false } })
-        await control(false)
+        await control({ brokenPricing: false, broken: false })
       } finally { await fixtureDb.$disconnect(); await user.close() }
     }
   })
