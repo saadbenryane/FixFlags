@@ -4,6 +4,10 @@ export const ANALYTICS_PREFERENCES_EVENT = 'fixflags:analytics-preferences'
 
 export type AnalyticsConsent = 'granted' | 'denied'
 
+/** Only a remembered preference changes the neutral server-rendered notice.
+ * This runs before paint and never authorizes or loads an analytics script. */
+export const ANALYTICS_CONSENT_BOOTSTRAP = `(()=>{try{const value=document.cookie.split('; ').find(entry=>entry.startsWith(${JSON.stringify(ANALYTICS_CONSENT_COOKIE + '=')}))?.split('=')[1];if(value==='granted'||value==='denied')document.documentElement.setAttribute('data-analytics-consent',value)}catch{}})()`
+
 export function readAnalyticsConsent(): AnalyticsConsent | null {
   if (typeof document === 'undefined') return null
   const raw = document.cookie

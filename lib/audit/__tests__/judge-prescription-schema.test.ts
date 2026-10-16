@@ -53,15 +53,27 @@ describe('prescription provider identity contract', () => {
     assert.equal(flagItem.required.includes('flagKey'), false)
     const objects = schema.properties as Record<string, { additionalProperties: boolean }>
     assert.equal(objects.flagPrescriptions.additionalProperties, false)
+    assert.deepEqual(hits.find(hit => hit.path === 'rubricPrescriptions')!.required, ['MESSAGE', 'EXPERIENCE', 'REACH'])
+    assert.equal(objects.rubricPrescriptions.additionalProperties, false)
   })
 
   const payload = () => ({ evidence: 'The recorded button is hidden outside the mobile viewport.', whyItMatters: 'Visitors cannot continue to the cart.', fix: '1. Move the button into view.\n2. Keep its existing label.', agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null, verificationRule: 'Verify the button at the same viewport.' })
-  const rubrics = ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Address the recorded findings.', cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null }))
+  const rubric = { rubricPrompt: 'Address the recorded findings.', cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null }
+  const rubrics = { MESSAGE: rubric, EXPERIENCE: rubric, REACH: rubric }
 
   it('preserves exact identities independently of provider property order and repeated occurrences', () => {
     const parsed = parsePrescriptionProviderOutput({ flagPrescriptions: { 'flag-b': payload(), 'flag-a': payload() }, rubricPrescriptions: rubrics }, ['flag-a', 'flag-b', 'flag-a'])
     assert.deepEqual(parsed.flagPrescriptions.map(item => item.flagKey), ['flag-a', 'flag-b'])
     assert.equal(parsed.flagPrescriptions[0].evidence, payload().evidence)
+    assert.deepEqual(parsed.rubricPrescriptions.map(item => item.name), ['MESSAGE', 'EXPERIENCE', 'REACH'])
+  })
+
+  it('rejects absent, repeated-array and invented rubric identities at the provider boundary', () => {
+    for (const rubricPrescriptions of [{ MESSAGE: rubric, EXPERIENCE: rubric }, [],
+      [{ name: 'MESSAGE', ...rubric }, { name: 'MESSAGE', ...rubric }, { name: 'MESSAGE', ...rubric }],
+      { ...rubrics, CONVERSION: rubric }]) {
+      assert.throws(() => parsePrescriptionProviderOutput({ flagPrescriptions: {}, rubricPrescriptions }, []), /Invalid prescription output/)
+    }
   })
 
   it('refuses missing, invented and nested replacement identities instead of fabricating prescriptions', () => {

@@ -251,6 +251,8 @@ VERIFICATION RULE: For every flag, write one concrete action someone can take on
 - RULE: The verification must be something a non-technical person can do (reload, resize, view source) or a specific tool command (Lighthouse, curl). Never write "verify" without specifying HOW.
 
 RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once.
+- Return rubricPrescriptions as an object with exactly MESSAGE, EXPERIENCE, and REACH as required keys. Each value contains the prescription without repeating name.
+- If a rubric has no admitted findings, state that no change is prescribed from the available evidence. Do not invent an issue or a fix to fill the rubric.
 - Structure the rubric prompt as a numbered list of changes, one per flag
 - Each step: name the element, current text, replacement text
 - Include a "Do NOT change" section listing sections or elements that should be left alone

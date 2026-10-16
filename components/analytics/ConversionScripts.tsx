@@ -53,7 +53,8 @@ export function ConversionScripts() {
   const gaId = getGoogleAnalyticsId()
   const adsId = getGoogleAdsId()
   const pixelId = getMetaPixelId()
-  // Resolve the cookie after hydration so returning visitors never see a stale prompt.
+  // The neutral notice is present in the first HTML. The pre-paint preference
+  // bootstrap suppresses it for returning visitors until hydration resolves.
   const [consent, setConsent] = useState<AnalyticsConsent | null>()
   const [showPreferences, setShowPreferences] = useState(false)
   const preferencesOpener = useRef<HTMLElement | null>(null)
@@ -99,7 +100,7 @@ export function ConversionScripts() {
   }, [privateAdmin])
 
   const enabled = !privateAdmin && consent === 'granted'
-  const asking = !privateAdmin && (consent === null || showPreferences)
+  const asking = !privateAdmin && (consent == null || showPreferences)
   const notice = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!showPreferences) return
@@ -142,6 +143,7 @@ export function ConversionScripts() {
         <div
           ref={notice}
           data-fixed-bottom-notice="analytics"
+          data-consent-unresolved={consent === undefined ? '' : undefined}
           role="dialog"
           aria-label={ANALYTICS_CONSENT_COPY.title}
           aria-describedby="analytics-consent-description"

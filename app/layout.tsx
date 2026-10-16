@@ -11,6 +11,7 @@ import { BRAND, SITE_URL, SEO } from '@/lib/marketing/copy'
 import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
 import { bodyFont, displayFont } from './fonts'
+import { ANALYTICS_CONSENT_BOOTSTRAP } from '@/lib/analytics/consent'
 
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
 
@@ -65,6 +66,7 @@ export default function RootLayout({
     <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`} suppressHydrationWarning>
       <head>
         <link rel="describedby" href="/llms.txt" type="text/plain" />
+        <script dangerouslySetInnerHTML={{ __html: ANALYTICS_CONSENT_BOOTSTRAP }} />
       </head>
       {/* Fonts are served by this deployment. Next preloads the primary text faces. */}
       <body className={`${fontVariables} font-sans antialiased`}>

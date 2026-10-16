@@ -58,23 +58,41 @@ async function withinTaskDeadline(context: TaskContext, work: (check: () => void
 
 export async function persistTaskPlan(auditId: string, plans: TaskPlan[]) {
   validateTaskGraph(plans)
+  const admitted = plans.map(plan => taskPlanSchema.parse(plan))
   return executionTransaction(async tx => {
     const parent = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
     if (!parent.length) throw new Error('Execution not found')
-    for (const plan of plans) {
-      const valid = taskPlanSchema.parse(plan), targetKey = 'task:' + valid.key
-      await tx.auditVerifierExecution.upsert({
-        where: { auditId_targetKey_scopeKey: { auditId, targetKey, scopeKey: valid.scope } },
-        create: { auditId, targetKey, scopeKey: valid.scope, pageUrl: valid.input.pageUrl, source: 'EXECUTION', status: 'PENDING',
-          workKind: valid.kind, workInput: valid.input, workDependencies: valid.dependencies,
-          workState: valid.dependencies.length ? 'WAITING' : 'READY', workRetryAt: new Date(), workDispatchState: 'PENDING' },
-        update: {},
-      })
-      if (valid.kind === 'finalize' || valid.kind === 'cross-page') await tx.auditVerifierExecution.updateMany({
-        where: { auditId, targetKey, scopeKey: valid.scope, workState: 'WAITING' },
-        data: { workDependencies: valid.dependencies },
-      })
+    const existing = await tx.auditVerifierExecution.findMany({ where: { auditId, targetKey: { startsWith: 'task:' } },
+      select: { id: true, targetKey: true, scopeKey: true, workKind: true, workInput: true, workDependencies: true, workState: true },
+      take: MAX_TASKS_PER_AUDIT + 1 })
+    const existingByKey = new Map(existing.map(task => [task.targetKey.slice(5), task]))
+    if (existingByKey.size !== existing.length) throw new Error('Duplicate task identity')
+    const effective = new Map(existing.map(task => [task.targetKey.slice(5), taskPlanSchema.parse({ key: task.targetKey.slice(5),
+      kind: task.workKind, scope: task.scopeKey, input: task.workInput, dependencies: task.workDependencies })]))
+    const additions: TaskPlan[] = [], updates: Array<{ id: string; dependencies: string[] }> = []
+    for (const plan of admitted) {
+      const recorded = effective.get(plan.key)
+      if (!recorded) { additions.push(plan); effective.set(plan.key, plan); continue }
+      if (recorded.scope !== plan.scope || recorded.kind !== plan.kind) throw new Error('Execution task identity changed')
+      const task = existingByKey.get(plan.key)!
+      if (task.workState !== 'WAITING' || !['finalize', 'cross-page'].includes(plan.kind)) continue
+      // Discovery retries can carry an older graph. Never remove obligations
+      // committed by another expansion while updating a waiting summary.
+      const dependencies = [...new Set([...recorded.dependencies, ...plan.dependencies])]
+      if (dependencies.length !== recorded.dependencies.length) {
+        effective.set(plan.key, { ...recorded, dependencies })
+        updates.push({ id: task.id, dependencies })
+      }
     }
+    validateTaskGraph([...effective.values()])
+    if (additions.length) await tx.auditVerifierExecution.createMany({ data: additions.map(plan => ({
+      auditId, targetKey: 'task:' + plan.key, scopeKey: plan.scope, pageUrl: plan.input.pageUrl, source: 'EXECUTION', status: 'PENDING',
+      workKind: plan.kind, workInput: plan.input, workDependencies: plan.dependencies,
+      workState: plan.dependencies.length ? 'WAITING' : 'READY', workRetryAt: new Date(), workDispatchState: 'PENDING',
+    })), skipDuplicates: true })
+    for (const update of updates) await tx.auditVerifierExecution.updateMany({
+      where: { id: update.id, workState: 'WAITING' }, data: { workDependencies: update.dependencies },
+    })
     await recordProgress(tx, auditId, { kind: 'plan', state: 'admitted' })
   })
 }

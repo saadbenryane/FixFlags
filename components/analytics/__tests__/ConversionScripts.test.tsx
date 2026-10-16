@@ -7,6 +7,7 @@ import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy'
 import {
   ANALYTICS_CONSENT_COOKIE,
+  ANALYTICS_CONSENT_BOOTSTRAP,
   ANALYTICS_PREFERENCES_EVENT,
 } from '@/lib/analytics/consent'
 import { CLICK_IDS_COOKIE } from '@/lib/analytics/click-ids'
@@ -31,6 +32,7 @@ describe('ConversionScripts consent', () => {
     window.history.replaceState({}, '', '/')
     document.documentElement.style.paddingTop = ''
     document.documentElement.style.paddingBottom = ''
+    document.documentElement.removeAttribute('data-analytics-consent')
     delete window.dataLayer
     delete window.gtag
     delete window.fbq
@@ -69,9 +71,23 @@ describe('ConversionScripts consent', () => {
     expect(screen.queryByTestId('analytics-script')).not.toBeInTheDocument()
   })
 
-  it('keeps visitor-specific consent out of the prerendered HTML', () => {
+  it('prerenders the neutral choice without visitor-specific consent or optional scripts', () => {
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
-    expect(renderToString(<ConversionScripts />)).toBe('')
+    const html = renderToString(<ConversionScripts />)
+    expect(html).toContain(ANALYTICS_CONSENT_COPY.body)
+    expect(html).toContain('data-consent-unresolved=""')
+    expect(html).not.toContain('analytics-script')
+    expect(html).not.toContain('data-analytics-consent="granted"')
+  })
+
+  it.each(['granted', 'denied', 'invalid', ''])('bootstraps only a valid remembered %s preference before paint', choice => {
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=${choice}; Path=/`
+    new Function(ANALYTICS_CONSENT_BOOTSTRAP)()
+    expect(document.documentElement.getAttribute('data-analytics-consent')).toBe(
+      choice === 'granted' || choice === 'denied' ? choice : null,
+    )
+    expect(window.gtag).toBeUndefined()
+    expect(window.fbq).toBeUndefined()
   })
 
   it.each(['granted', 'denied'])('does not flash the prompt for a remembered %s choice', async (choice) => {

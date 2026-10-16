@@ -162,3 +162,8 @@
     scroll-padding-top: 16px;
   }
 }
+/* A valid remembered choice suppresses only the unresolved initial notice.
+   Explicitly reopened preferences remain available after hydration. */
+html[data-analytics-consent] [data-consent-unresolved] {
+  display: none;
+}

@@ -6,10 +6,13 @@ import { prisma } from '@/lib/db'
 import { createQueueRedis, createWorkerRedis } from '@/lib/queue/redis'
 import { dispatchReadyTasks, dispatchTask, executeTask, loadTaskGraph, persistTaskPlan, reconcileTasks, recoverProgressiveTasks } from '../engine'
 import { dispatchPendingAudits } from '@/lib/audit/dispatch'
-import { serializeArtifact, TaskFailure, TASK_CRASH_LIMIT, type TaskKind } from '../contracts'
+import { serializeArtifact, TaskFailure, TASK_CRASH_LIMIT, MAX_TASKS_PER_AUDIT, type TaskKind, type TaskPlan } from '../contracts'
 import { executionWrite, executionTransaction, withExecutionOwnership, currentExecutionOwnership, ExecutionOwnershipLost } from '@/lib/audit/execution-ownership'
 import type { TaskHandler } from '../registry'
 import { lifecycleHandlers } from '../lifecycle'
+import * as openChecks from '@/lib/audit/open-check'
+import { initialTaskPlan } from '../graph'
+import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -81,6 +84,73 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       })
     }, { timeout: 10_000, interval: 25 })
   }
+
+  it('admits a maximum-sized graph in bulk and preserves completed execution on identical replay', async () => {
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/' } })
+    auditIds.push(audit.id)
+    const plans: TaskPlan[] = Array.from({ length: MAX_TASKS_PER_AUDIT }, (_, index) => ({
+      kind: 'http', key: 'bounded:' + index, scope: 'page:' + index,
+      input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies: [],
+    }))
+    await persistTaskPlan(audit.id, plans)
+    const before = await loadTaskGraph(audit.id)
+    expect(before).toHaveLength(MAX_TASKS_PER_AUDIT)
+    const completed = await prisma.auditVerifierExecution.update({ where: { id: before[0].id }, data: {
+      workState: 'COMPLETED', status: 'COMPLETED', workAttempts: 2, workGeneration: 3,
+      workResult: serializeArtifact('http', { observed: 'original immutable evidence' }),
+    } })
+    await persistTaskPlan(audit.id, plans)
+    const after = await loadTaskGraph(audit.id)
+    expect(after.map(task => task.id).sort()).toEqual(before.map(task => task.id).sort())
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: completed.id } })).toEqual(completed)
+  })
+
+  it('retains both concurrent discoveries when a later admission carries an older summary graph', async () => {
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/' } })
+    auditIds.push(audit.id)
+    const task = (key: string, kind: TaskKind = 'http', dependencies: string[] = []): TaskPlan => ({ key, kind,
+      scope: key, input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies })
+    const graph = (key?: string): TaskPlan[] => [task('root'), ...(key ? [task(key)] : []),
+      task('cross-page', 'cross-page', ['root', ...(key ? [key] : [])]),
+      task('finalize', 'finalize', ['root', 'cross-page', ...(key ? [key] : [])])]
+    await persistTaskPlan(audit.id, graph())
+    const original = await loadTaskGraph(audit.id)
+    await Promise.all([persistTaskPlan(audit.id, graph('discovered-a')), persistTaskPlan(audit.id, graph('discovered-b'))])
+    await persistTaskPlan(audit.id, graph())
+    const rows = await loadTaskGraph(audit.id)
+    expect(rows).toHaveLength(5)
+    for (const key of ['cross-page', 'finalize']) {
+      const summary = rows.find(row => row.targetKey === 'task:' + key)!
+      expect(summary.workDependencies).toEqual(expect.arrayContaining(['discovered-a', 'discovered-b']))
+      expect(summary.id).toBe(original.find(row => row.targetKey === summary.targetKey)!.id)
+    }
+    const invalid = [task('root'), task('new-task'), task('cross-page', 'cross-page', ['finalize']),
+      task('finalize', 'finalize', ['root'])]
+    await expect(persistTaskPlan(audit.id, invalid)).rejects.toThrow('Cyclic task dependency')
+    expect(await loadTaskGraph(audit.id)).toEqual(rows)
+    await expect(persistTaskPlan(audit.id, [task('root', 'browser')])).rejects.toThrow('Execution task identity changed')
+  })
+
+  it('replays depth-three discovery after its expansion committed but collection was interrupted', async () => {
+    const audit = await prisma.audit.create({ data: { url: 'https://example.com/', reviewDepth: 3,
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: 'https://example.com/',
+        environment: 'production', reviewDepth: 3, checks: {}, outcomes: [], verificationTarget: null } } })
+    auditIds.push(audit.id)
+    const input = { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }
+    await persistTaskPlan(audit.id, initialTaskPlan(executionSpecSchema.parse(audit.executionSpec)))
+    const handler = lifecycleHandlers.find(handler => handler.kind === 'discovery')!
+    const context = { audit, task: await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'discovery' } }),
+      input, deadline: Date.now() + 45_000, dependencies: new Map() }
+    const collect = vi.spyOn(openChecks, 'openCheckDestinations').mockRejectedValueOnce(new Error('Controlled interruption after graph admission'))
+    try {
+      await expect(handler.evaluate(context)).rejects.toThrow('Controlled interruption after graph admission')
+      const expanded = await loadTaskGraph(audit.id)
+      expect(expanded.filter(task => task.targetKey === 'task:discovery:second')).toHaveLength(1)
+      const artifact = await handler.evaluate(context)
+      handler.validateResult(artifact)
+      expect((await loadTaskGraph(audit.id)).map(task => task.id)).toEqual(expanded.map(task => task.id))
+    } finally { collect.mockRestore() }
+  })
 
   it('retries prescription delivery from completed triage without repeating observations or losing the report', async () => {
     const { audit, tasks } = await admission(['finalize'])

@@ -237,7 +237,7 @@ export const lifecycleHandlers: TaskHandler[] = [
         allPlans.push(...pageTaskPlan({ pageUrl: url, primary: false, position: nextPosition++, role: 'linked' }, spec))
         known.add(canonicalizeDestination(url)?.key)
       }
-      if (depth === 3 && context.input.module !== 'second') allPlans.push({ kind: 'discovery', key: 'discovery:second', scope: 'site:second',
+      if (depth === 3 && context.input.module !== 'second' && !allPlans.some(task => task.key === 'discovery:second')) allPlans.push({ kind: 'discovery', key: 'discovery:second', scope: 'site:second',
         input: { ...context.input, module: 'second' }, dependencies: ['discovery', ...allPlans.filter(task => task.input.position > 0 && ['browser', 'http'].includes(task.kind)).map(task => task.key)] })
       for (const task of allPlans) {
         if (task.kind === 'cross-page') task.dependencies = allPlans.filter(item => ['discovery', 'search'].includes(item.kind)).map(item => item.key)
