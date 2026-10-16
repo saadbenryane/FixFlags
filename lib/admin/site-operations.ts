@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { accountsAwaitingAction } from './account-operations'
 
 /** Aggregate operating evidence only. The calling admin page enforces operator access. */
 export async function loadSiteOperations(now = new Date()) {
@@ -24,11 +25,7 @@ export async function loadSiteOperations(now = new Date()) {
       },
     }),
     prisma.siteTestAccount.count({
-      where: {
-        project: { deletedAt: null },
-        state: { in: ['SUBMITTING', 'VERIFYING', 'DELETING'] },
-        updatedAt: { lt: thresholds.interrupted },
-      },
+      where: accountsAwaitingAction(thresholds.interrupted),
     }),
     prisma.uptimeMonitor.count({
       where: { enabled: true, project: activeSite, nextProbeAt: { lt: thresholds.overdue } },

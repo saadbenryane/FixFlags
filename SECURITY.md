@@ -235,7 +235,7 @@ Product Signal ingestion is the explicit exception.
 ## Dependency risks
 
 - Playwright: production Docker uses system Chromium (no browser download in image); local may use Playwright-managed browser
-- Next.js 15: regular updates, check security advisories
+- Next.js 16: regular updates, check security advisories
 - better-auth 1.6: relatively new auth library, audit updates
 - BullMQ 5: relies on Redis security
 - Runtime packages: `npm run security:audit` blocks every moderate-or-higher advisory.

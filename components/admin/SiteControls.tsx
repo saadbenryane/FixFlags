@@ -106,7 +106,6 @@ export function SiteControls({
         <AdminActionButton action="SITE_CHECK" targetId={id} />
         <AdminActionButton action="SITE_RECONCILE" targetId={id} />
         <AdminActionButton action="SITE_ACCOUNT_RECONCILE" targetId={id} />
-        <AdminActionButton action="SITE_ACCOUNT_CLEANUP" targetId={id} />
         {remainingAccounts === 0 && <AdminActionButton action="SITE_REMOVE" targetId={id} />}
       </div>
       {remainingAccounts > 0 && (

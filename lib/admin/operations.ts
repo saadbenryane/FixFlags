@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client'
+import { accountsAwaitingAction, requiresAccountCleanup } from './account-operations'
 import type { AdminActor } from '@/lib/auth/require-admin'
 import { adminRead } from './workspace-queries'
 import { adminPagination, readAdminListQuery } from './list-query'
@@ -28,10 +29,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       audit: { project: active },
       updatedAt: { gte: new Date(now.getTime() - 86400000) },
     }
-    const accounts: Prisma.SiteTestAccountWhereInput = {
-      state: { in: ['SUBMITTING', 'VERIFYING', 'DELETING'] },
-      updatedAt: { lt: interrupted },
-    }
+    const accounts = accountsAwaitingAction(interrupted)
     const uptime: Prisma.UptimeMonitorWhereInput = {
       enabled: true,
       project: active,
@@ -67,6 +65,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
         | 'SITE_RECONCILE'
         | 'AUDIT_RETRY'
         | 'SITE_ACCOUNT_RECONCILE'
+        | 'SITE_ACCOUNT_CLEANUP'
         | 'UPTIME_NOTIFICATION_RETRY'
         | 'WATCH_NOTIFICATION_RETRY'
       targetId: string
@@ -121,16 +120,16 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
             id: true,
             state: true,
             updatedAt: true,
-            project: { select: { id: true, name: true } },
+            project: { select: { id: true, name: true, deletedAt: true, accountChecksEnabled: true } },
           },
         })
       ).map((a) => ({
         id: a.id,
         siteId: a.project.id,
         label: a.project.name,
-        state: a.state,
+        state: requiresAccountCleanup(a.project) ? `${a.state} · Cleanup required` : a.state,
         at: a.updatedAt,
-        action: 'SITE_ACCOUNT_RECONCILE',
+        action: requiresAccountCleanup(a.project) ? 'SITE_ACCOUNT_CLEANUP' : 'SITE_ACCOUNT_RECONCILE',
         targetId: a.project.id,
       }))
     if (queue === 'uptime')

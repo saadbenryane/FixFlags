@@ -4,6 +4,7 @@ import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import { loadAdminSite } from '@/lib/admin/workspace-queries'
 import { adminDate } from '@/lib/admin/format'
 import { AdminPageFrame, AdminSurface } from '@/components/admin/AdminPageFrame'
+import { AdminActionButton } from '@/components/admin/AdminActionButton'
 import { SiteControls } from '@/components/admin/SiteControls'
 export default async function SitePage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requireAdminPage()
@@ -50,6 +51,9 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         />
       )}
       <AdminSurface title="Test account cleanup">
+        {data.testAccounts.some((account) => account.state !== 'DELETED') && (
+          <AdminActionButton action="SITE_ACCOUNT_CLEANUP" targetId={data.id} />
+        )}
         {data.testAccounts.map((account) => (
           <p key={account.id} className="text-sm">
             {account.state} · last checked {adminDate(account.lastCheckedAt)}
