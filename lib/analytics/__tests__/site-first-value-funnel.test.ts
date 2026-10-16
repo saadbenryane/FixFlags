@@ -313,8 +313,8 @@ describe('Site first-value funnel', () => {
     })
     expect(findLifecycleEvents).toHaveBeenNthCalledWith(2, {
       where: {
-        name: 'first_useful_result',
-        idempotencyKey: { in: ['first_useful_result:a1'] },
+        name: { in: ['analysis_completed', 'first_useful_result'] },
+        idempotencyKey: { in: ['analysis_completed:a1', 'first_useful_result:a1'] },
       },
       select: { idempotencyKey: true },
     })

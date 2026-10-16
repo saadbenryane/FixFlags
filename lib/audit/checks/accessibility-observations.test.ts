@@ -10,7 +10,7 @@ import { checkReceiptSchema } from './receipt'
 import { CHECK_REGISTRY } from '../check-registry'
 import { ACCESSIBILITY_TAGS, ACCESSIBILITY_ADDITIONAL_RULE_IDS, AXE_POLICY_RULE_IDS, axeRuleToCheckId } from './accessibility-rules'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
-import { collapseFlagsWithAffectedPaths } from '../flag-identity'
+import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '@/lib/audit/__tests__/recorded-flag-fixtures'
 import { runAllChecks } from './index'
 import { screenshotSnapshotSchema } from '../progressive/snapshots'
 

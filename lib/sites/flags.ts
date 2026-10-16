@@ -1,4 +1,5 @@
 import { flagEvidenceContext, type FlagEvidenceContext } from './flag-evidence'
+import { publicSupportingObservations } from '@/lib/audit/flag-observations'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { searchAttentionDecision } from '@/lib/audit/search/policy'
@@ -336,6 +337,7 @@ export type SiteFlagAttemptView = {
 }
 
 export type SiteFlagDetail = SiteFlagSeed & {
+  supportingObservations?: ReturnType<typeof publicSupportingObservations>
   outcomeId: string | null
   sourceAuditId: string
   evidenceContext?: FlagEvidenceContext
@@ -380,7 +382,7 @@ export async function loadSiteFlagDetail(
     where: { improvementId: incidentId, audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
     orderBy: { createdAt: 'desc' },
     select: { createdAt: true, flag: { select: { id: true, auditId: true, pageUrl: true, affectedPaths: true, status: true, resolvedInId: true,
-      checkId: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true } } },
+      checkId: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
   }) : []
   const recoveries = site.projectId ? (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
     flags: [flagRow, ...occurrenceScope.map(occurrence => occurrence.flag)] }])).get(site.projectId) : null
@@ -451,6 +453,7 @@ export async function loadSiteFlagDetail(
     outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
     evidenceContext: flagEvidenceContext(flagRow),
+    supportingObservations: publicSupportingObservations(flagRow.supportingObservations),
     verificationRule: flagRow.verificationRule,
     confidence: flagRow?.confidence ?? null,
     causeCertainty: flagRow?.causeCertainty ?? null,

@@ -78,6 +78,10 @@ export type WatchLaunchReadiness = {
     quietViolations: number
     repeatedFailureGroups: number
     duplicateActiveFlagGroups: number
+    recordedSpendUsd: number
+    spendByStatus: Array<{ status: string; executions: number; recordedSpendUsd: number; missingCostExecutions: number }>
+    p95RecordedCostUsd: number | null
+    maximumRecordedCostUsd: number | null
     costedExecutions: number
     missingCostExecutions: number
     medianWatchCostUsd: number | null
@@ -207,6 +211,23 @@ export function calculateWatchLaunchReadiness(input: {
     }
   }
 
+  const spendByStatus = new Map<string, { status: string; executions: number; recordedSpendUsd: number; missingCostExecutions: number }>()
+  const recordedCosts: number[] = []
+  for (const run of settled) {
+    const group = spendByStatus.get(run.status) ?? { status: run.status, executions: 0, recordedSpendUsd: 0, missingCostExecutions: 0 }
+    group.executions += 1
+    const cost = run.audit?.estimatedCostUsd
+    if (cost != null && Number.isFinite(cost) && cost >= 0) {
+      group.recordedSpendUsd += cost
+      recordedCosts.push(cost)
+    } else group.missingCostExecutions += 1
+    spendByStatus.set(run.status, group)
+  }
+  recordedCosts.sort((a, b) => a - b)
+  const recordedSpendUsd = recordedCosts.reduce((sum, cost) => sum + cost, 0)
+  const p95RecordedCostUsd = recordedCosts.length ? recordedCosts[Math.ceil(recordedCosts.length * 0.95) - 1]! : null
+  const maximumRecordedCostUsd = recordedCosts.at(-1) ?? null
+
   const costEligible = completedAudits.filter((run) => !validTargetFailure(run))
   const costs = costEligible
     .map((run) => run.audit?.estimatedCostUsd ?? null)
@@ -292,6 +313,10 @@ export function calculateWatchLaunchReadiness(input: {
       quietViolations,
       repeatedFailureGroups,
       duplicateActiveFlagGroups,
+      recordedSpendUsd,
+      spendByStatus: [...spendByStatus.values()].sort((a, b) => a.status.localeCompare(b.status)),
+      p95RecordedCostUsd,
+      maximumRecordedCostUsd,
       costedExecutions: costs.length,
       missingCostExecutions,
       medianWatchCostUsd,

@@ -1,4 +1,5 @@
-import { describe, it, afterEach, vi } from 'vitest'
+import { PAGE_CHECKS } from '../checks/catalog'
+import { describe, it, afterEach, vi, expect } from 'vitest'
 
 vi.mock('node:dns/promises', () => ({ resolve4: vi.fn(async () => ['93.184.216.34']), resolve6: vi.fn(async () => []) }))
 import assert from 'node:assert/strict'
@@ -915,6 +916,17 @@ describe('runAllChecks', () => {
     )
     const titleFindings = findings.filter((f) => f.checkId === 'title-missing')
     assert.equal(titleFindings.length, 1)
+  })
+
+  it('retains distinct observations with the same check identity until recorded-source grouping', async () => {
+    const registration = PAGE_CHECKS.get('metadata')!
+    const evaluate = registration.evaluate
+    const flag = { checkId: 'title-missing', pageUrl: 'https://example.com/', rubric: 'REACH', severity: 'IMPORTANT', problem: 'Missing title', evidence: 'Desktop title is absent', fix: 'Add a title', confidence: 1, source: 'DETERMINISTIC' as const }
+    registration.evaluate = () => [flag, { ...flag, evidence: 'Mobile title is absent' }, flag]
+    try {
+      const result = await runAllChecks(flag.pageUrl, healthyMeta(), null, null, [], undefined, undefined, undefined, undefined, false, ['metadata'])
+      expect(result.flags.map(item => item.evidence)).toEqual(['Desktop title is absent', 'Mobile title is absent'])
+    } finally { registration.evaluate = evaluate }
   })
 
   it('returns only registry checkIds', async () => {

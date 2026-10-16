@@ -13,6 +13,7 @@ import {
   stripDeterministicFixesFromRubrics,
   stripDeterministicFixesFromFlags,
   stripLegacyDeterministicAudit,
+  stripSupportingObservationsFromFlags,
 } from '@/lib/audit/report-access'
 import {
   deriveScreenshotCaptureStatus,
@@ -368,6 +369,13 @@ export async function getGatedAuditForRequest(id: string) {
     reportFlags = stripAiPrescriptionFromFlags(
       reportFlags
     ) as typeof reportFlags
+  }
+
+  if (!showDeterministicFixes) {
+    reportFlags = stripSupportingObservationsFromFlags(reportFlags) as typeof reportFlags
+    sanitizedRubrics = sanitizedRubrics.map(rubric => ({ ...rubric,
+      flags: stripSupportingObservationsFromFlags(rubric.flags),
+    })) as typeof sanitizedRubrics
   }
 
   const stripped = stripInternalAuditFields({

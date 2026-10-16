@@ -95,12 +95,15 @@ describe('report-access', () => {
         problem: 'det flag',
         fix: 'hidden',
         verificationRule: 'hidden verification',
+        supportingObservations: { version: 1, items: [{ verificationRule: 'nested gated rule', evidenceTargets: [{ context: 'private comparison' }], provenance: { taskId: 'private-task' } }] },
         evidence: 'kept evidence',
         whyItMatters: 'kept why',
       },
     ])
     assert.equal(stripped[0]?.fix, null)
     assert.equal(stripped[0]?.verificationRule, null)
+    assert.equal(stripped[0]?.supportingObservations, null)
+    assert.doesNotMatch(JSON.stringify(stripped), /nested gated rule|private comparison|private-task/)
     assert.equal(stripped[0]?.evidence, 'kept evidence')
     assert.equal(stripped[0]?.whyItMatters, 'kept why')
   })
@@ -177,12 +180,13 @@ describe('report-access', () => {
     const stripped = stripDeterministicFixesFromRubrics([
       {
         rubricPrompt: 'x',
-        flags: [{ problem: 'flag a', fix: 'hidden', evidence: 'kept' }],
+        flags: [{ problem: 'flag a', fix: 'hidden', evidence: 'kept', supportingObservations: { private: 'nested context' } }],
       },
     ])
     assert.equal(stripped[0]?.rubricPrompt, null)
     assert.equal(stripped[0]?.flags?.[0]?.fix, null)
     assert.equal(stripped[0]?.flags?.[0]?.evidence, 'kept')
+    assert.equal(stripped[0]?.flags?.[0]?.supportingObservations, null)
   })
 
   it('hides all AI fields on legacy deterministic-only audits', () => {

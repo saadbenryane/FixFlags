@@ -6,6 +6,8 @@ export const SITE_EVENT_VERSION = 1
 export const SITE_LIFECYCLE_EVENTS = [
   'analyze_started',
   'first_useful_result',
+  'analysis_completed',
+  'flag_feedback_recorded',
   'site_claimed',
   'analysis_claimed',
   'flag_opened',

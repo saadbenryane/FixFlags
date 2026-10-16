@@ -1,3 +1,4 @@
+import { assessFormProbeResponse, assessFormProbeConfirmation } from './form-probe-assessment'
 import type { Browser, Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { createAuditPage, settleAuditPage } from '@/lib/audit/browser/page-session'
@@ -941,83 +942,16 @@ export async function runJourneyTemplate(
     const step = steps.length || 1
     const alreadyHas = (id: string) => findings.some((f) => f.checkId === id)
 
-    if (session.formProbe && session.formProbe.status >= 400) {
-      const statusCode = session.formProbe.status
-      const checkId =
-        statusCode === 401 || statusCode === 403
-          ? 'form-submit-api-unauthorized'
-          : statusCode >= 500
-            ? 'form-submit-api-server-error'
-            : 'form-submit-api-unauthorized'
-      if (!alreadyHas(checkId)) {
-        timeline.push('network', `Form probe ${statusCode}`, {
-          url: session.formProbe.url,
-          status: statusCode,
-        })
-        findings.push(
-          finding({
-            checkId,
-            stepNumber: step,
-            url: page.url(),
-            rubric: 'EXPERIENCE',
-            severity: 'CRITICAL',
-            impactTag: 'CONVERSION',
-            problem:
-              statusCode === 401 || statusCode === 403
-                ? 'Form submission API returned unauthorized'
-                : 'Form submission API returned an error',
-            evidence: `Reproduced at step ${step}. ${session.formProbe.method} ${session.formProbe.status} ${session.formProbe.url}`,
-            whyItMatters:
-              'Users who complete the form cannot finish signup, newsletter, or contact.',
-            fix: '1. Fix auth or server errors on the engagement submit endpoint.\n2. Show a clear error to the user.\n3. Re-check the form after deploying.',
-          })
-        )
-      }
+    function applyAssessment(assessment: ReturnType<typeof assessFormProbeResponse>) {
+      for (const { kind, label, ...detail } of assessment.events) timeline.push(kind, label, detail)
+      findings.push(...assessment.findings)
     }
-
-    if (session.formProbe && session.formProbe.status > 0 && !alreadyHas('form-submit-silent-failure')) {
-      const showsSuccess = await pageShowsFormSuccess(page).catch(() => false)
-      const okStatus = session.formProbe.status >= 200 && session.formProbe.status < 300
-      if (okStatus && !showsSuccess) {
-        timeline.push('form', 'Silent form failure (2xx, no success UI)', {
-          url: session.formProbe.url,
-          status: session.formProbe.status,
-        })
-        findings.push(
-          finding({
-            checkId: 'form-submit-silent-failure',
-            stepNumber: step,
-            url: page.url(),
-            rubric: 'EXPERIENCE',
-            severity: 'CRITICAL',
-            impactTag: 'CONVERSION',
-            problem:
-              'Form submit succeeds without a clear success state (or shows success after a failed API)',
-            evidence: `Reproduced at step ${step}. ${session.formProbe.method} ${session.formProbe.status} ${session.formProbe.url} · API returned success but no thank-you or confirmation copy appeared`,
-            whyItMatters: 'Users think nothing happened after submit and abandon or resubmit.',
-            fix: '1. After a successful submit, show a thank-you or confirmation state.\n2. Never show success copy when the API failed.\n3. Re-check the form after deploying.',
-          })
-        )
-      } else if (!okStatus && showsSuccess) {
-        timeline.push('form', 'Misleading success UI after failed API', {
-          url: session.formProbe.url,
-          status: session.formProbe.status,
-        })
-        findings.push(
-          finding({
-            checkId: 'form-submit-silent-failure',
-            stepNumber: step,
-            url: page.url(),
-            rubric: 'EXPERIENCE',
-            severity: 'CRITICAL',
-            impactTag: 'CONVERSION',
-            problem:
-              'Form submit succeeds without a clear success state (or shows success after a failed API)',
-            evidence: `Reproduced at step ${step}. ${session.formProbe.method} ${session.formProbe.status} ${session.formProbe.url} · Page showed success copy after a failed API response`,
-            whyItMatters: 'Users trust a fake confirmation while the submission never completed.',
-            fix: '1. After a successful submit, show a thank-you or confirmation state.\n2. Never show success copy when the API failed.\n3. Re-check the form after deploying.',
-          })
-        )
+    if (session.formProbe) {
+      const input = () => ({ probe: session.formProbe!, stepNumber: step, pageUrl: page.url(), existingCheckIds: new Set(findings.map(item => item.checkId)) })
+      applyAssessment(assessFormProbeResponse(input()))
+      if (session.formProbe.status > 0 && !alreadyHas('form-submit-silent-failure')) {
+        const showsSuccess = await pageShowsFormSuccess(page).catch(() => false)
+        applyAssessment(assessFormProbeConfirmation({ ...input(), showsSuccess }))
       }
     }
 

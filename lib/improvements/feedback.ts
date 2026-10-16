@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { recordOwnerFlagFeedbackDecision } from '@/lib/improvements/service'
 import { normalizeImprovementRejectionReason } from '@/lib/improvements/rejection-reasons'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { logger } from '@/lib/logger'
 
 export type RecordFlagFeedbackInput = {
   flagId: string
@@ -21,7 +23,7 @@ export async function recordFlagFeedback(input: RecordFlagFeedbackInput) {
     where: { id: input.flagId },
     select: {
       id: true,
-      audit: { select: { userId: true } },
+      audit: { select: { userId: true, projectId: true } },
     },
   })
   if (!flag) return null
@@ -58,6 +60,14 @@ export async function recordFlagFeedback(input: RecordFlagFeedbackInput) {
       reason: rejectionReason,
     },
   })
+
+  if (input.userId && flag.audit.userId === input.userId) {
+    await recordSiteLifecycleEvent({ name: 'flag_feedback_recorded',
+      idempotencyKey: `flag-feedback:${feedback.id}:${input.vote}:${rejectionReason ?? 'none'}`,
+      userId: input.userId, projectId: flag.audit.projectId,
+      properties: { vote: input.vote, reason: rejectionReason, owner: true },
+    }).catch(error => logger.warn('Flag feedback telemetry could not be recorded', { error: error instanceof Error ? error.message : 'unknown' }))
+  }
 
   if (
     input.dismiss &&

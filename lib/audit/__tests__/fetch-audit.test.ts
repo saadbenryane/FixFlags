@@ -332,6 +332,29 @@ describe('getGatedAuditForRequest', () => {
     }
   })
 
+  it('removes nested private observations from deterministic reports without triage for non-owners', async () => {
+    mocks.resolveAuditAccess.mockResolvedValue('public_viewer')
+    const flag = { id: 'f1', source: 'DETERMINISTIC', rubric: 'MESSAGE', severity: 'IMPORTANT', problem: 'Original observation', evidence: 'Public-safe evidence', fix: 'Retained legacy fix', supportingObservations: { version: 1, items: [{ verificationRule: 'PRIVATE_RULE', evidenceTargets: [{ context: 'PRIVATE_CONTEXT' }], provenance: { taskId: 'PRIVATE_TASK' } }] } }
+    mocks.findUnique.mockResolvedValue({ ...fullRow, triageAt: null, aiReviewAt: null, includeAi: false, flags: [flag], rubrics: [{ ...fullRow.rubrics[0], flags: [flag] }] })
+    const result = await getGatedAuditForRequest('a1')
+    assert.equal(result.kind, 'ok')
+    if (result.kind === 'ok') {
+      assert.equal(result.audit.flags[0].supportingObservations, null)
+      assert.equal('supportingObservations' in result.audit.rubricRows[0].flags[0], false)
+      assert.equal(result.audit.flags[0].evidence, 'Public-safe evidence')
+      assert.doesNotMatch(JSON.stringify(result.audit), /PRIVATE_RULE|PRIVATE_CONTEXT|PRIVATE_TASK/)
+    }
+  })
+
+  it('retains original supporting observations for the owner of a deterministic report', async () => {
+    const supportingObservations = { version: 1, items: [{ provenance: { taskId: 'owned-source' }, evidenceTargets: [{ context: 'owned-comparison' }] }] }
+    mocks.findUnique.mockResolvedValue({ ...fullRow, triageAt: null, aiReviewAt: null, includeAi: false,
+      flags: [{ id: 'owned-flag', source: 'DETERMINISTIC', rubric: 'MESSAGE', severity: 'POLISH', problem: 'Observed copy', evidence: 'Recorded copy', supportingObservations }] })
+    const result = await getGatedAuditForRequest('a1')
+    assert.equal(result.kind, 'ok')
+    if (result.kind === 'ok') assert.deepEqual(result.audit.flags[0].supportingObservations, supportingObservations)
+  })
+
   it('never projects prompt access into a live public report', async () => {
     mocks.resolveAuditAccess.mockResolvedValue('public_viewer')
     mocks.findUnique.mockResolvedValue(fullRow)

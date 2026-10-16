@@ -290,10 +290,12 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByText('Just now')).not.toBeInTheDocument()
   })
 
-  it('links the intro to public MCP guidance and provides settings in the sample navigation', () => {
+  it('links the intro to fix guidance and provides settings in the sample navigation', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('link', { name: 'MCP', exact: true }).closest('p')).toHaveTextContent(`${S.subtitle} Copy a fix prompt into your AI. Learn about MCP.`)
-    expect(screen.getByRole('link', { name: 'MCP', exact: true })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
+    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true }).closest('p')).toHaveTextContent(S.subtitle)
+    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(screen.getByText(C.hero.body)).toBeVisible()
+    expect(screen.getByText(C.hero.setup)).toBeVisible()
     const board = screen.getByRole('region', { name: C.boardAria })
     const nav = within(board).getByRole('navigation', { name: S.navigationLabel })
     expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Overview', 'Timeline', 'Integrations', 'Settings'])
@@ -446,7 +448,7 @@ describe('comprehensive homepage experience', () => {
     const tracking = within(coverage).getByRole('button', { name: C.checks.explore('Tracking') }).closest('article')!
     for (const page of C.checks.previews.tracking.pages) expect(within(tracking).getByText(page.page)).toBeVisible()
     expect(within(tracking).queryByText('/products')).not.toBeInTheDocument()
-    expect(within(coverage).getByText('Flag what prevents you from making money.')).toBeVisible()
+    expect(within(coverage).getByText('Find obstacles in your visitors’ next steps.')).toBeVisible()
     expect(within(coverage).queryByText(/Stripe|Payment form missing|Script blocked/)).not.toBeInTheDocument()
     expect(screen.queryByText('Illustrative check examples')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: C.story.title })).not.toBeInTheDocument()
@@ -520,9 +522,9 @@ describe('comprehensive homepage experience', () => {
     const intro = within(product).getByRole('heading', { name: S.title }).parentElement!
     expect(guides.closest('section')).toBe(hero)
     expect(intro).toHaveTextContent(S.subtitle)
-    expect(intro).toHaveTextContent(S.mcpLead)
-    expect(within(intro).getByRole('link', { name: S.mcpLabel })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
-    expect(entry.nextElementSibling).toBe(guides.parentElement)
+    expect(within(intro).getByRole('link', { name: C.workflow.action })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(entry.nextElementSibling).toHaveTextContent(C.hero.setup)
+    expect(entry.nextElementSibling?.nextElementSibling).toBe(guides.parentElement)
     expect(entry.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.queryByText('No credit card required')).not.toBeInTheDocument()
     const benefits = screen.getByRole('list', { name: 'What FixFlags does' })

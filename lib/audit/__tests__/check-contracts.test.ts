@@ -25,9 +25,11 @@ describe('registered check and evidence contracts', () => {
     expect(CHECK_MODULES.measurement.area).toBe('tracking')
   })
   it('preserves accepted non-Search Flag eligibility', () => {
-    for (const checkId of ['flow-destination-no-cta', 'trust-no-authority-signals', 'messaging-weak-value-prop', 'security-csp-missing']) {
+    for (const checkId of ['flow-destination-no-cta', 'security-csp-missing']) {
       expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1 })).toBe(true)
     }
+    for (const checkId of ['messaging-weak-value-prop', 'trust-no-authority-signals'])
+      expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1 })).toBe(false)
     expect(isCustomerFlag({ checkId: 'flow-cta-404', severity: 'IMPORTANT', confidence: 1 })).toBe(true)
     expect(isCustomerFlag({ checkId: 'no-https', severity: 'CRITICAL', confidence: 1 })).toBe(true)
   })

@@ -19,8 +19,9 @@ const admin = new PrismaClient()
 let created = false
 let redisCreated = false
 
+// Full browser repair cycles need a bounded suite budget beyond individual task deadlines.
 function run(command, args, env = process.env) {
-  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 1_200_000 })
+  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 2_700_000, maxBuffer: 32 * 1024 * 1024 })
   if (result.status !== 0) throw new Error([result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n') || 'Verification process failed')
   return result.stdout.trim()
 }

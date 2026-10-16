@@ -342,14 +342,14 @@ describe('deduplicateFlags', () => {
     assert.equal(deduplicateFlags(det, ai).length, 1)
   })
 
-  it('deduplicates AI flags against each other', () => {
+  it('retains paraphrases without an explicit shared check identity', () => {
     const det: DeterministicFlag[] = []
     const ai = [
       makeAiFlag({ problem: 'Page load time too slow exceeds threshold', evidence: 'LCP very slow four point five seconds' }),
       makeAiFlag({ problem: 'Page load time exceeds threshold LCP is very slow', evidence: 'Slow load time over four point five seconds' }),
     ]
     const result = deduplicateFlags(det, ai)
-    assert.ok(result.length < ai.length, `Expected deduplication: ${ai.length} → ${result.length}`)
+    assert.equal(result.length, ai.length)
   })
 
   it('returns empty array when no AI flags provided', () => {

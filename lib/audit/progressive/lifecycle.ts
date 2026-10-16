@@ -43,6 +43,7 @@ import { persistAuditRunCost } from '@/lib/billing/costs'
 import { enqueuePendingAiReview } from '../enqueue-ai-review'
 import { runAiReview } from '../run-ai-review'
 import { JudgeContractError } from '../validate-judge-output'
+import { admitAiObservation } from '../ai-observation-identity'
 
 const findingsSchema = z.object({ flags: z.array(flagSchema).max(500) }).strict()
 const crossPageSchema = findingsSchema.extend({ receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
@@ -73,8 +74,8 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
   // Project metadata, media references and observations in PostgreSQL. Summary
   // readers never transfer whole-document HTML, network traces or sitemap bodies.
   // Discovery reuses only the bounded native anchor section and its observed base.
-  const tasksQuery = db.$queryRaw<Array<Pick<AuditVerifierExecution, 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
-    SELECT "workKind", "workState", "status", "workInput",
+  const tasksQuery = db.$queryRaw<Array<Pick<AuditVerifierExecution, 'id' | 'workKind' | 'workState' | 'status' | 'workInput' | 'workResult'>>>`
+    SELECT "id", "workKind", "workState", "status", "workInput",
       CASE WHEN "workKind" = 'browser' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata',
         'preview', "workResult"->'data'->'preview',
@@ -136,7 +137,12 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       mobile: speedResults.find(item => item.mobile)?.mobile ?? null,
       desktopError: speedResults.find(item => item.desktopError)?.desktopError, mobileError: speedResults.find(item => item.mobileError)?.mobileError } : null
     const search = searchTask?.workResult ? searchArtifactSchema.parse(readArtifact(searchTask.workResult, 'search').data) : null
-    const judged = judgeTask?.workResult ? judgeSchema.parse(readArtifact(judgeTask.workResult, 'judge').data) : null
+    const judgeArtifact = judgeTask?.workResult ? readArtifact(judgeTask.workResult, 'judge') : null
+    const judged = judgeArtifact ? judgeSchema.parse(judgeArtifact.data) : null
+    const triage = judged?.triage && judgeTask && judgeArtifact ? { ...judged.triage,
+      output: { ...judged.triage.output, newFlags: judged.triage.output.newFlags.map(flag => admitAiObservation(flag, {
+        auditId, taskId: judgeTask.id, collectedAt: judgeArtifact.collectedAt,
+      })) } } : undefined
     const flags = pageTasks.filter(task => task.workState === 'COMPLETED' && task.workResult).flatMap(task => {
       const artifact = readArtifact(task.workResult, task.workKind as TaskArtifact['kind'])
       return artifact.data.flags ? z.array(flagSchema).parse(artifact.data.flags) : []
@@ -157,7 +163,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
           (task.workInput as { module?: string })?.module ?? task.workKind ?? 'unknown'),
         ...gaps.filter(gap => gap.pageUrl === url).map(gap => gap.targetKey.slice('module:'.length)),
       ])],
-      triage: judged?.triage, triageFailure: judged?.triageFailure, searchReceipt: search?.receipt,
+      triage, triageFailure: judged?.triageFailure, searchReceipt: search?.receipt,
       detectedTech: [], industryGuess: null })
   }
   return pages
@@ -335,6 +341,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const pages: JourneyObservation[] = [], findings: JourneyFindingDraft[] = []
       const findingCount = await runJourneyReviewsForAudit(context.audit.id, context.input.pageUrl,
         { included: true, deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id),
+          ...(spec ? { allowedCheckIds: Object.keys(spec.checks) } : {}),
           ...(phases?.length ? { overlayPhases: phases, overlayExpectedTargets: expected, allowedCheckIds: Object.keys(spec!.checks) } : {}),
           ...(journeyTarget ? { expectedJourneyConditions: conditions, allowedCheckIds: Object.keys(spec!.checks) } : {}),
           ...(!journeyTarget && conditions.length ? { recordedJourneyConditions: conditions } : {}),
@@ -411,7 +418,8 @@ export const lifecycleHandlers: TaskHandler[] = [
         const missingPages = spec.category.pages.filter(url => !pages.some(page => page.url === url))
         if (missingPages.length) failed.push('category-pages')
         if (pages.some(page => page.searchReceipt?.complete === false)) failed.push('search')
-        await persistDeterministicFlags(latest.id, pages.flatMap(page => page.flags), { MESSAGE: null, EXPERIENCE: null, REACH: null },
+        const recordedFlags = await recordedTaskFindings(latest.id, prisma, latest.executionSpec)
+        await persistDeterministicFlags(latest.id, recordedFlags, { MESSAGE: null, EXPERIENCE: null, REACH: null },
           undefined, { authoritativeProjection: true })
         await persistAuditRunCost(latest.id, { durationMs: Date.now() - (latest.startedAt ?? latest.createdAt).getTime(),
           llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'none',
@@ -442,7 +450,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       await executionWrite(tx => tx.audit.update({ where: { id: latest.id }, data: { status: 'FINALIZING',
         reviewCoverage: buildReviewCoverage({ reviewedPageCount: pages.length, openCheckCount: 0, partial: failed.length > 0 }),
         failedModules: failed } }))
-      const recordedFlags = await recordedTaskFindings(latest.id, prisma)
+      const recordedFlags = await recordedTaskFindings(latest.id, prisma, latest.executionSpec)
       await persistDeterministicFlags(latest.id, recordedFlags, productScoresFromFlags(pages, recordedFlags),
         undefined, { authoritativeProjection: true })
       if (pages.length) await finalizeFromOutcome({ ctx, auditId: latest.id, auditUrl: latest.url, pageRuns: pages, startedAt: ctx.startedAt,

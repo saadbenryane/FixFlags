@@ -42,6 +42,8 @@ export function brandColorViolations(file, source) {
   // Scanner test documents model third-party websites, not product styling.
   if (/^lib\/audit\/.*(?:\.test\.tsx?$|\/fixtures\/)/.test(file)) return []
   const stylingSource = source.replace(/\b(?:href|id)=(['"])[^'"]*\1/g, '')
+    .replace(/\bselector\s*:\s*(['"])[^'"]*\1/g, '')
+    .replace(/\b(?:querySelector|querySelectorAll|locator)\(\s*(['"])[^'"]*\1/g, '')
   return stylingSource.match(HEX_RE) ?? []
 }
 

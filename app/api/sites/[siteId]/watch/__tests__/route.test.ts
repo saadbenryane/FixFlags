@@ -5,14 +5,14 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   requireSiteAccess: vi.fn(),
   executeSiteCommand: vi.fn(),
-  allowedWatchIntervals: vi.fn(),
+  monitoringOptions: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: mocks.getSession } } }))
 vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers()) }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
 vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: mocks.executeSiteCommand }))
-vi.mock('@/lib/auth/entitlements', () => ({ allowedWatchIntervals: mocks.allowedWatchIntervals }))
+vi.mock('@/lib/sites/application/monitoring-activation', () => ({ monitoringOptions: mocks.monitoringOptions }))
 vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: vi.fn() }, project: { findFirst: vi.fn(), updateMany: vi.fn() } } }))
 
 import { POST } from '@/app/api/sites/[siteId]/watch/route'
@@ -40,7 +40,7 @@ describe('POST /api/sites/[siteId]/watch', () => {
       decision: { role: 'owner', site: { siteId: 'site-1', projectId: 'project-1' } },
     })
     mocks.executeSiteCommand.mockResolvedValue({ ok: true })
-    mocks.allowedWatchIntervals.mockReturnValue(['weekly'])
+    mocks.monitoringOptions.mockResolvedValue(['weekly'])
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       plan: 'FREE',
       subscriptionStatus: 'ACTIVE',
@@ -70,7 +70,7 @@ describe('POST /api/sites/[siteId]/watch', () => {
   })
 
   it('saves the requested cadence without rewriting it', async () => {
-    mocks.allowedWatchIntervals.mockReturnValue(['weekly', 'daily'])
+    mocks.monitoringOptions.mockResolvedValue(['weekly', 'daily'])
     const response = await POST(request('daily'), context)
 
     expect(response.status).toBe(200)
@@ -132,7 +132,7 @@ describe('POST /api/sites/[siteId]/watch', () => {
   })
 
   it('does not fall back to a cadence the plan does not allow', async () => {
-    mocks.allowedWatchIntervals.mockReturnValue([])
+    mocks.monitoringOptions.mockResolvedValue([])
     mocks.executeSiteCommand.mockResolvedValue({
       ok: false,
       error: 'Watching is not available on this account.',

@@ -13,6 +13,7 @@ import type { CategoryArea } from '../domain/execution-spec'
 import { siteWideAnalysisAuditWhere } from './analysis-scope'
 import { SiteRunRefusal } from './run-refusal'
 import { monitoringReviewUrls } from '@/lib/audit/review-depth'
+import { readSupportingObservations } from '@/lib/audit/flag-observations'
 
 type SpecOutcome = { id: string; kind: string; expectation?: string | null; bindingPolicy?: string;
   bindings: Array<{ key: string; version: number; mechanism: string; required: boolean; config: Prisma.JsonValue; scope?: Prisma.JsonValue | null }> }
@@ -71,20 +72,24 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   if (input.verificationTarget?.kind === 'DIAGNOSTIC') {
     const flags = await prisma.flag.findMany({ where: { auditId: input.verificationTarget.parentAuditId,
       audit: { projectId: input.projectId }, pageUrl: input.verificationTarget.pageUrl,
-      checkId: input.verificationTarget.checkId }, take: 100, select: { evidenceTargets: true, affectedPaths: true } })
+      checkId: input.verificationTarget.checkId }, take: 100, select: { evidenceTargets: true, affectedPaths: true, supportingObservations: true } })
+    const observations = flags.flatMap(flag => readSupportingObservations(flag.supportingObservations)?.items ?? [])
+    const evidenceTargets = [...flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets : []),
+      ...observations.flatMap(item => item.evidenceTargets)]
     if (diagnosticModule === 'console') consoleObservationMs = Math.max(2000, ...flags.map(flag => consoleObservationMinimum(flag.evidenceTargets)))
-    const contexts = flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
+    const contexts = evidenceTargets.flatMap(value => {
       const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
       return typeof context === 'string' && context.startsWith('tracking:') && context.length <= 4200 ? [context] : []
-    }) : [])
-    const pages = [...new Set([input.verificationTarget.pageUrl, ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])])]
+    })
+    const pages = [...new Set([input.verificationTarget.pageUrl, ...observations.flatMap(item => item.pageUrl ? [item.pageUrl] : []),
+      ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])])]
     verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
       contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
     if (diagnosticModule === 'overlays') {
-      const contexts = flags.flatMap(flag => Array.isArray(flag.evidenceTargets) ? flag.evidenceTargets.flatMap(value => {
+      const contexts = evidenceTargets.flatMap(value => {
         const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
         return typeof context === 'string' && /^overlay:[a-f0-9]{64}:[a-f0-9]{64}:(page_load|primary_action(?:_after)?|pricing_navigation(?:_after)?|(?:flow_)?form_validation(?:_after)?|journey_[a-z0-9_-]+):(nav|cta|form):[a-f0-9]{64}$/.test(context) ? [context] : []
-      }) : [])
+      })
       verificationScopes = verificationScopes.map(scope => ({ ...scope, overlayPhases: [...new Set(contexts.filter(context =>
         context.startsWith('overlay:' + capturePageKey(scope.pageUrl) + ':')).map(context => context.split(':')[3]))] }))
     }

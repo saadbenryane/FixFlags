@@ -37,7 +37,7 @@ export const SITE_ACTION_COPY = {
   invalidResponse: 'FixFlags could not confirm this action. Refresh before trying again.',
   added: 'Card added. Verify it for fresh evidence. Your Watch schedule is unchanged.',
   currentResults: 'Current results', previousResults: 'Previous evidence', moreResults: 'Load more recorded results',
-  flagEvidence: { source: 'Evidence source', recorded: 'Finding recorded', references: 'Recorded element references', unknown: 'Source not recorded',
+  flagEvidence: { observed: 'Observed', supporting: 'Supporting observations', source: 'Evidence source', recorded: 'Finding recorded', references: 'Recorded element references', unknown: 'Source not recorded',
     sources: { DETERMINISTIC: 'Website check', AI: 'Visual review', JOURNEY: 'Visitor action', SEARCH: 'Search evidence' },
     lab: 'Google PageSpeed lab measurement. This controlled result does not describe every visitor’s experience.',
     field: 'Google CrUX field observation. The reported metric describes the 75th percentile over its recorded device and reporting scope.',

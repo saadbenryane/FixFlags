@@ -1,6 +1,7 @@
 import type { EvidenceTarget } from './evidence-targets'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 import { mergeSearchAttentionPolicies } from './search/attention-scope'
+import { mergeSupportingObservations, observationsForFlag } from './flag-observations'
 
 export function baseCheckId(checkId: string | null | undefined): string | null {
   return checkId?.split('::page:')[0] ?? null
@@ -41,6 +42,7 @@ function isStableStoredIdentity(value: string): boolean {
  * identity when one exists; otherwise they key on rubric plus normalized title.
  */
 export function observationIdentity(input: ObservationIdentityInput): string {
+  if (input.fingerprint?.startsWith('ai-observation:v1::')) return input.fingerprint
   if (input.fingerprint?.startsWith('outcome:v1:')) return input.fingerprint
   const checkId = durableCheckId(input.checkId)
   if (checkId) return `check:${checkId}`
@@ -53,6 +55,7 @@ export function observationIdentity(input: ObservationIdentityInput): string {
 
 /** Every key that should match this observation, including legacy stored hashes. */
 export function observationMatchKeys(input: ObservationIdentityInput): string[] {
+  if (input.fingerprint?.startsWith('ai-observation:v1::')) return [input.fingerprint]
   if (input.fingerprint?.startsWith('outcome:v1:')) return [input.fingerprint]
   const keys = new Set<string>()
   keys.add(observationIdentity({ ...input, fingerprint: undefined }))
@@ -109,6 +112,10 @@ export function collapseFlagsWithAffectedPaths<
     evidenceTargets?: EvidenceTarget[]
     affectedPaths?: string[]
     attentionPolicy?: unknown
+    source?: string
+    verificationRule?: string | null
+    supportingObservations?: unknown
+    fingerprint?: string | null
   },
 >(flags: T[]): Array<T & { affectedPaths: string[] }> {
   const groups = new Map<string, T[]>()
@@ -139,12 +146,12 @@ export function collapseFlagsWithAffectedPaths<
       return [JSON.stringify([target.context, target.selector, target.label, target.device]), measured] as const
     }))).values()] : undefined
     const attentionPolicy = mergeSearchAttentionPolicies(group.map(flag => flag.attentionPolicy), representative.attentionPolicy)
+    const supportingObservations = mergeSupportingObservations(group.map(flag => observationsForFlag(flag)))
     const evidence =
       group.length === 1
         ? representative.evidence
         : [
-            ...(scoped || attentionPolicy?.pageScopes ? [...new Set(group.map(flag => attentionPolicy?.pageScopes && flag.pageUrl && flag.evidence
-              ? `${flag.pageUrl}: ${flag.evidence}` : flag.evidence))] : [representative.evidence]),
+            ...[...new Set(group.map(flag => flag.pageUrl && flag.evidence ? `${flag.pageUrl}: ${flag.evidence}` : flag.evidence))],
             `Observed on ${affectedPaths.length} pages.`,
           ]
             .filter(Boolean)
@@ -153,6 +160,7 @@ export function collapseFlagsWithAffectedPaths<
       ...representative,
       checkId: durableCheckId(representative.checkId) ?? representative.checkId,
       evidence,
+      supportingObservations,
       ...(attentionPolicy ? { attentionPolicy } : {}),
       ...(scopedTargets ? { evidenceTargets: scopedTargets } : {}),
       affectedPaths,

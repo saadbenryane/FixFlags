@@ -8,6 +8,13 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js']
 const CORE_ROUTE_ADAPTERS = new Set([
   'app/api/sites/[siteId]/route.ts',
   'app/api/sites/[siteId]/settings/route.ts',
+  'app/api/sites/[siteId]/account-checks/route.ts',
+  'app/api/sites/[siteId]/flags/[flagId]/fix/route.ts',
+  'app/api/sites/[siteId]/flags/[flagId]/verify/route.ts',
+  'app/api/sites/[siteId]/outcomes/[outcomeId]/verify/route.ts',
+  'app/api/sites/[siteId]/runs/route.ts',
+  'app/api/sites/[siteId]/watch/route.ts',
+  'app/api/sites/[siteId]/watch/activate/route.ts',
   'app/api/flags/[id]/attempts/route.ts',
   'app/api/flags/[id]/feedback/route.ts',
   'app/api/products/[id]/signals/route.ts',

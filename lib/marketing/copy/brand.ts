@@ -103,7 +103,7 @@ export const ROAST_COPY = {
   wantFixes: 'Want a fix prompt for every Flag?',
   runFullAudit: 'Run a full FixFlags check',
   taglines: {
-    A: 'Ship it. This is ready for humans.',
+    A: 'The checked areas scored well. Review any remaining Flags and coverage limits.',
     B: 'Solid foundation. A few tweaks and you are golden.',
     C: 'Not bad. Some issues visitors notice.',
     D: 'Your site has feelings. Mostly pain.',
@@ -112,25 +112,25 @@ export const ROAST_COPY = {
   },
   rubricVerdicts: {
     MESSAGE: {
-      A: 'Clear, focused, and built to convert.',
+      A: 'Messaging checks scored well on the content inspected.',
       B: 'Good messaging. Minor clarity gaps.',
-      C: 'Visitors understand what you do. Eventually.',
-      D: 'Your headline is working against you.',
-      F: 'Visitors have no idea what this is about.',
+      C: 'Messaging findings need a closer look.',
+      D: 'Review the headline findings and supporting evidence.',
+      F: 'Start with the highest-priority messaging Flags.',
     },
     EXPERIENCE: {
-      A: 'Fast, accessible, and free of dead ends.',
+      A: 'Experience checks scored well within the inspected scope.',
       B: 'Works well. A few rough edges.',
       C: 'It loads. That is about the nicest thing we can say.',
-      D: 'Your users are leaving. We can see why.',
+      D: 'Important experience problems need attention.',
       F: 'This is a usability incident.',
     },
     REACH: {
-      A: 'Google will find you. So will everyone else.',
-      B: 'SEO is solid. A few meta gaps.',
+      A: 'Search-access checks scored well on the pages inspected.',
+      B: 'Review the remaining search-access findings.',
       C: 'You exist on the internet. Technically.',
-      D: 'Your SEO is actively hiding you.',
-      F: 'You are invisible to search engines.',
+      D: 'Important search-access problems need attention.',
+      F: 'Start with the highest-priority search-access Flags.',
     },
   },
 } as const
@@ -198,7 +198,7 @@ export const SUPPORT_CHAT = {
 /** Strict severity meanings (enum stays CRITICAL | IMPORTANT | POLISH). */
 export const SEVERITY_MEANINGS = {
   CRITICAL: 'Prevents a core user outcome (blocking).',
-  IMPORTANT: 'Materially harms conversion, access, or acquisition.',
+  IMPORTANT: 'A consequential problem supported by the recorded observation.',
   POLISH: 'Meaningful improvement or best practice.',
 } as const
 

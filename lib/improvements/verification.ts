@@ -226,7 +226,7 @@ export async function reconcileImprovementVerification(input: {
             improvementOccurrence: { improvementId: occurrence.improvementId }, audit: { projectId: verificationAudit.projectId },
             source: 'DETERMINISTIC', status: { in: ['OPEN', 'REGRESSED'] }, createdAt: { lte: verificationAudit.startedAt },
           }, take: 100, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: {
-            id: true, checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, evidenceTargets: true, verificationRule: true,
+            id: true, checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, evidenceTargets: true, verificationRule: true, supportingObservations: true,
           } })
           const recovered = unresolved.filter(flag => hasRecordedRecoveryEvidence({ auditId: verificationAudit.id,
             executionSpec: verificationAudit.executionSpec, flag, executions: verificationAudit.verifierExecutions }))

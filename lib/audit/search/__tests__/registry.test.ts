@@ -91,8 +91,10 @@ describe('Search responsibilities and classification', () => {
     expect(searchFindings(result)).toEqual([])
   })
   it('preserves accepted unrelated Flag eligibility', () => {
-    for (const checkId of ['messaging-weak-value-prop', 'trust-no-authority-signals', 'security-csp-missing', 'journey-first-visit-hidden-cta'])
+    for (const checkId of ['security-csp-missing', 'journey-first-visit-hidden-cta'])
       expect(isCustomerFlag({ checkId, severity: 'IMPORTANT', confidence: 1 })).toBe(true)
+    for (const checkId of ['messaging-weak-value-prop', 'trust-no-authority-signals'])
+      expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1 })).toBe(false)
     expect(isCustomerFlag({ checkId: 'description-missing', severity: 'IMPORTANT', confidence: 1 })).toBe(false)
   })
 })

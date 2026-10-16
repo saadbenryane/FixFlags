@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, ExternalLink, History, Target } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, ExternalLink, History } from 'lucide-react'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
@@ -20,6 +20,7 @@ import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { BoardDetails } from '@/components/sites/BoardDetails'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { FlagEvidenceDetails } from '@/components/sites/FlagEvidenceDetails'
 import { SiteActionContinuation } from '@/components/sites/SiteActionContinuation'
 import styles from './FlagDetailPage.module.css'
 
@@ -155,7 +156,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   </div>
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
-                  {flag.evidenceMissing ? <p className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.flagEvidence.missing}</p> : <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{flag.evidence}</p>}
+                  <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior}
+                    supportingObservations={flag.supportingObservations} />
                   {flag.evidenceContext ? <details className="text-sm">
                     <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.evidence}</summary>
                     <dl className="mt-3 space-y-3 text-xs text-muted-foreground">
@@ -176,15 +178,6 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     {flag.pageUrl ? <a className="inline-flex min-h-11 items-center underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(flag.pageUrl)}`} target="_blank" rel="noopener noreferrer">{SITE_ACTION_COPY.flagEvidence.retestPerformance}</a> : null}
                   </div> : null}
                   {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
-                  <div className="rounded-[13px] bg-muted p-4">
-                    <div className="flex items-start gap-3">
-                      <Target className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <div>
-                        <h3 className="text-xs font-medium text-muted-foreground">{SITE_BOARD_COPY.flagExpected}</h3>
-                        <p className="mt-1 text-sm leading-relaxed">{flag.expectedBehavior}</p>
-                      </div>
-                    </div>
-                  </div>
                   <div>
                     <h3 className="text-xs font-medium text-muted-foreground">{SITE_BOARD_COPY.flagScope}</h3>
                     <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">

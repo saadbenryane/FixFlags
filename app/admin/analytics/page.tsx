@@ -525,7 +525,7 @@ export default async function AdminAnalyticsPage() {
         </SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
           One opaque journey ID joins a consented homepage journey to the exact anonymous Site
-          start, first useful result, and later claim. It is created only after analytics consent,
+          start, completed analysis, and later claim. It is created only after analytics consent,
           lasts for one browser tab, and contains no visitor cookie, URL, account, or customer
           content.
         </p>
@@ -604,7 +604,7 @@ export default async function AdminAnalyticsPage() {
         <SectionTitle>Anonymous Site first-value cohort (started in the last 30 days)</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
           Each start is fixed by its immutable server event, then matched to the same check&apos;s
-          first useful result and later account claim. Claiming a Site never removes its start from
+          completed analysis and later account claim. Claiming a Site never removes its start from
           this denominator.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -614,7 +614,7 @@ export default async function AdminAnalyticsPage() {
             variant="subtle"
           />
           <MetricCard
-            label="First useful result"
+            label="Completed analysis"
             value={firstValueFunnel.firstUsefulResult.toLocaleString()}
             detail={
               <span className="text-xs text-muted-foreground">

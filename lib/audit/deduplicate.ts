@@ -17,7 +17,7 @@ function normalizedPage(pageUrl: string | null | undefined): string | undefined 
   }
 }
 
-/** Similar wording is only redundant when it describes the same reviewed page. */
+/** Resolve the reviewed page before applying an explicit ownership rule. */
 function sharesPage(left: PageScopedFlag, right: PageScopedFlag, primaryPageUrl?: string): boolean {
   const leftPages = [left.pageUrl, ...(left.affectedPaths ?? [])].filter((page): page is string => Boolean(page))
   const rightPages = [right.pageUrl, ...(right.affectedPaths ?? [])].filter((page): page is string => Boolean(page))
@@ -34,17 +34,6 @@ function normalizedWords(value: string): Set<string> {
       .split(/\s+/)
       .filter((word) => word.length > 2)
   )
-}
-
-function similarity(a: string, b: string): number {
-  const left = normalizedWords(a)
-  const right = normalizedWords(b)
-  if (left.size === 0 || right.size === 0) return 0
-  let intersection = 0
-  for (const word of left) {
-    if (right.has(word)) intersection++
-  }
-  return intersection / (left.size + right.size - intersection)
 }
 
 /** Themes where AI flags often paraphrase deterministic checks across rubrics. */
@@ -150,22 +139,6 @@ function matchesDeterministicTheme(
   return false
 }
 
-function isNearDuplicateOfDeterministic(
-  flag: DeterministicFlag,
-  candidate: ThemeMatchableFlag
-): boolean {
-  if (similarity(flag.problem, candidate.problem) >= 0.5) return true
-  if (
-    similarity(
-      `${flag.problem} ${flag.evidence}`,
-      `${candidate.problem} ${candidate.evidence}`
-    ) >= 0.55
-  ) {
-    return true
-  }
-  return false
-}
-
 export function flagFingerprint(input: {
   checkId?: string | null
   pageUrl?: string | null
@@ -180,6 +153,12 @@ export function flagFingerprint(input: {
     .digest('hex')
 }
 
+/** Without a recorded check identity, only an exact repeated observation is redundant.
+ * Different quotes or mechanisms remain separate even when their titles overlap. */
+function exactObservationKey(flag: ThemeMatchableFlag & { rubric: string }): string {
+  return JSON.stringify([flag.rubric, flag.problem.trim(), flag.evidence.trim()])
+}
+
 export function deduplicateFlags(
   deterministic: DeterministicFlag[],
   aiFlags: JudgeOutput['newFlags'],
@@ -189,18 +168,14 @@ export function deduplicateFlags(
 
   for (const candidate of aiFlags) {
     const duplicatesDeterministic =
-      matchesDeterministicTheme(deterministic, candidate, primaryPageUrl) ||
-      deterministic.some((flag) => sharesPage(flag, candidate, primaryPageUrl) && isNearDuplicateOfDeterministic(flag, candidate))
+      matchesDeterministicTheme(deterministic, candidate, primaryPageUrl)
 
     if (duplicatesDeterministic) continue
 
     const duplicatesAi = accepted.some(
       (flag) =>
         sharesPage(flag, candidate, primaryPageUrl) &&
-        similarity(
-          `${flag.problem} ${flag.evidence}`,
-          `${candidate.problem} ${candidate.evidence}`
-        ) >= 0.65
+        exactObservationKey(flag) === exactObservationKey(candidate)
     )
     if (!duplicatesAi) accepted.push(candidate)
   }
@@ -217,13 +192,12 @@ export function deduplicateTriageFlags(
 
   for (const candidate of aiFlags) {
     const duplicatesDeterministic =
-      matchesDeterministicTheme(deterministic, candidate, primaryPageUrl) ||
-      deterministic.some((flag) => sharesPage(flag, candidate, primaryPageUrl) && isNearDuplicateOfDeterministic(flag, candidate))
+      matchesDeterministicTheme(deterministic, candidate, primaryPageUrl)
 
     if (duplicatesDeterministic) continue
 
     const duplicateIndex = accepted.findIndex(
-      (flag) => sharesPage(flag, candidate, primaryPageUrl) && similarity(flag.problem, candidate.problem) >= 0.65
+      (flag) => sharesPage(flag, candidate, primaryPageUrl) && exactObservationKey(flag) === exactObservationKey(candidate)
     )
     if (duplicateIndex < 0) accepted.push(candidate)
     else {

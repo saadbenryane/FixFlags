@@ -3,7 +3,7 @@ import { runSlowReplayChecks, slowReplayAssertions } from '@/lib/audit/checks/sl
 import { SLOW_REPLAY_PROFILE, SLOW_REPLAY_VERIFICATION_RULE } from '@/lib/audit/flow/slow-replay-contract'
 import { scopedAssertionForTarget } from '@/lib/audit/checks/verification'
 import { checkReceiptSchema } from '@/lib/audit/checks/receipt'
-import { collapseFlagsWithAffectedPaths } from '../flag-identity'
+import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '@/lib/audit/__tests__/recorded-flag-fixtures'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 
 describe('slow connection CTA check', () => {

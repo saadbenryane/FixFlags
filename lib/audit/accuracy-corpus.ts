@@ -29,6 +29,16 @@ export interface AccuracyHtmlFixture {
 export const ACCURACY_FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 
 export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
+  // Reviewed synthetic pairs supplement recorded websites. HTML fixtures cannot prove runtime form submission.
+  { file: 'precision-form-repaired.html', url: 'https://forms.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
+    expectedTop3: [], expectedPresent: [], knownFalsePositives: ['form-inputs-no-label', 'buttons-no-text', 'form-missing-validation'] },
+  { file: 'precision-form-broken.html', url: 'https://forms.example.com/', tier: 'broken', maxImportantFalseBlockers: 99,
+    expectedTop3: [], expectedPresent: ['form-inputs-no-label', 'buttons-no-text'], knownFalsePositives: [] },
+  { file: 'precision-docs-guide.html', url: 'https://docs.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
+    expectedTop3: [], expectedPresent: [], knownFalsePositives: ['placeholder-copy-detected', 'template-default-copy', 'no-cta-detected'] },
+  { file: 'precision-portfolio.html', url: 'https://studio.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
+    expectedTop3: [], expectedPresent: [], knownFalsePositives: ['messaging-no-audience', 'messaging-weak-value-prop', 'no-contact-info'] },
+
   {
     file: 'clean-page.html',
     url: 'https://fixflags.com/demo/v1',

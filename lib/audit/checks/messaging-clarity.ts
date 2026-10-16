@@ -27,12 +27,12 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
   const h1 = normalizeHeadingText(h1s[0] ?? '')
   const h2s = meta.h2s ?? []
 
-  const combinedTopText = [h1, ...h2s.slice(0, 3)].filter(Boolean).join(' ')
+  const combinedTopText = [h1, meta.headlineSupport, ...h2s.slice(0, 3)].filter(Boolean).join(' ')
 
   const hasAudience = AUDIENCE_REGEX.test(combinedTopText)
   const hasOutcome = OUTCOME_REGEX.test(combinedTopText)
   recordObservation(record, 'headline-outcome', 'Headline positioning signals', 'Captured headline avoids the generic-category-only pattern',
-    `Headline: ${h1}. Audience pattern ${hasAudience}, outcome pattern ${hasOutcome}.`,
+    `Headline: ${h1}. Supporting introduction: ${meta.headlineSupport ?? 'not recorded'}. Audience pattern ${hasAudience}, outcome pattern ${hasOutcome}.`,
     h1 ? !WEAK_VALUE_WORDS.test(h1) || hasAudience || hasOutcome : undefined, true)
 
   if (h1 && WEAK_VALUE_WORDS.test(h1) && !hasAudience && !hasOutcome) {
@@ -80,8 +80,8 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: isHighDensity ? 'IMPORTANT' : 'POLISH',
-      problem: `Headings contain marketing jargon that reduces clarity`,
-      evidence: `Found in visible headings: ${allMatches.slice(0, 3).join(', ')}. These words sound impressive but don't tell the user what the product does.`,
+      problem: `Headings contain wording to review`,
+      evidence: `Found in visible headings: ${allMatches.slice(0, 3).join(', ')}. These phrase matches are suggestions for a wording review.`,
       fix: '1. Replace each jargon word with specific, concrete language\n2. Use "build apps" instead of "empower innovation"\n3. Use "works at any size" instead of "scalable enterprise-grade"\n4. Read each heading aloud - if it would sound natural in a conversation, keep it',
       confidence: 0.9,
       source: 'DETERMINISTIC',
@@ -128,7 +128,8 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
     const alphaWords = words.filter((w) => /^[A-Za-z][A-Za-z'’-]*$/.test(w)).length
     return alphaWords / words.length >= 0.6
   }
-  const sentences = bodyText.split(/[.!?]+/).filter(isProse)
+  const proseBlocks = meta.renderedCopy?.proseBlocks
+  const sentences = (proseBlocks ?? [bodyText]).flatMap(block => block.split(/[.!?]+/)).filter(isProse)
   const longSentences = sentences.filter((s) => s.trim().split(/\s+/).filter(Boolean).length > sentLengthThreshold)
 
   const hasRepeatedLongSentences = longSentences.length >= 3
@@ -143,7 +144,7 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
-      problem: `${longSentences.length} body sentences exceed ${sentLengthThreshold} words, hurting scannability`,
+      problem: `${longSentences.length} body sentences exceed ${sentLengthThreshold} words, in the sampled prose`,
       evidence: `Sample: "${longSentences[0].trim().slice(0, 120)}..." (${longSentences[0].trim().split(/\s+/).filter(Boolean).length} words)`,
       fix: '1. Break long sentences into 2-3 shorter ones (aim for under 20 words)\n2. Use bullet points for complex lists instead of paragraph form\n3. Read copy aloud - if you run out of breath, split the sentence',
       confidence: 0.85,

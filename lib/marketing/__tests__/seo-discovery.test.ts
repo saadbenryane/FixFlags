@@ -9,10 +9,10 @@ describe('pre-publish brand discovery copy', () => {
   it('keeps FixFlags first on the official homepage snippet', () => {
     assert.match(SEO.home.title, /^FixFlags/)
     assert.match(SEO.home.title, /FixFlags watches/i)
-    assert.match(SEO.home.description, /Monitor\. Flag\. Fix/ )
-    assert.match(SEO.home.description, /checks your live website/ )
-    assert.match(SEO.home.description, /with evidence/ )
-    assert.match(SEO.home.description, /checks again after you publish a fix/ )
+    assert.match(SEO.home.description, /Start with a public URL/ )
+    assert.match(SEO.home.description, /meaningful website problems/ )
+    assert.match(SEO.home.description, /evidence behind them/ )
+    assert.match(SEO.home.description, /Publish the change, then check it again/ )
     assert.doesNotMatch(SEO.home.description, FEATURE_FLAG_INFRA)
   })
 

@@ -1273,6 +1273,7 @@ model Flag {
   fingerprint           String?
   position              Int
   evidenceTargets       Json?
+  supportingObservations Json?
   status                FlagStatus             @default(OPEN)
   resolvedInId          String?
   createdAt             DateTime               @default(now())

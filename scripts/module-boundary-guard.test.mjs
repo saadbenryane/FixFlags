@@ -29,3 +29,10 @@ test('rejects client database imports, route persistence bypasses, cycles, and p
   assert.ok(failures.some((failure) => failure.includes('runtime dependency cycle')))
   assert.ok(failures.some((failure) => failure.includes('parked Canvas API')))
 })
+
+test('guards website run, verification, monitoring and account adapters', () => {
+  for (const route of ['runs', 'watch', 'watch/activate', 'account-checks', 'flags/[flagId]/fix', 'flags/[flagId]/verify', 'outcomes/[outcomeId]/verify']) {
+    const file = `app/api/sites/[siteId]/${route}/route.ts`
+    assert.ok(moduleBoundaryFailures({ sources: { [file]: "import { prisma } from '@/lib/db'" } }).some(failure => failure.includes('application boundary')))
+  }
+})

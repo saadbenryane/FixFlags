@@ -5,6 +5,7 @@ import { chmodSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'no
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { releaseStageCommands } from './release-receipts.mjs'
 
 function runJson(executable, args) {
   return JSON.parse(execFileSync(executable, args, { encoding: 'utf8' }))
@@ -38,7 +39,7 @@ export function attestSuccessfulChecks(checkRuns) {
 }
 
 export function attestLocalFoundation(receipt, gitSha) {
-  const labels = ['clean-install', 'fresh-database', 'upgrade-database', 'full-verification', 'container-build', 'container-ready']
+  const labels = releaseStageCommands('foundation').map(([label]) => label)
   if (receipt?.schemaVersion !== 2 || receipt.stage !== 'foundation' || receipt.status !== 'PASS' || receipt.profile !== 'free-launch' || receipt.gitSha !== gitSha)
     throw new Error('Local foundation proof must be a passing free-launch receipt for the exact candidate')
   if (JSON.stringify(receipt.commands?.map(command => command.label)) !== JSON.stringify(labels) || receipt.commands.some(command => command.exitCode !== 0))

@@ -26,10 +26,10 @@ export async function projectSiteAnalysis(auditId: string): Promise<void> {
   if (!site) throw new Error('Site disappeared during analysis projection')
   await syncOutcomesFromAudit({ site, auditId, url: audit.url })
   await recordSiteLifecycleEvent({
-    name: 'first_useful_result',
-    idempotencyKey: `first_useful_result:${auditId}`,
+    name: 'analysis_completed',
+    idempotencyKey: `analysis_completed:${auditId}`,
     userId: audit.userId,
     projectId: audit.projectId,
-    properties: { provisional: !audit.projectId },
+    properties: { provisional: !audit.projectId, usefulnessAssessed: false },
   }).catch(() => undefined)
 }

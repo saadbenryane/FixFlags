@@ -12,10 +12,11 @@ import { SECURITY_HEADER_VERIFICATION_RULE } from './checks/security-headers'
 import { SLOW_REPLAY_VERIFICATION_RULE } from './flow/slow-replay-contract'
 import { PAGESPEED_LAB_RULE, performanceLabKey } from './performance-measurement'
 import { TAP_TARGET_VERIFICATION_RULE } from './pagespeed-tap-targets'
+import { readSupportingObservations } from './flag-observations'
 
 export type RecoveryExecution = { targetKey: string; status: string; detail: unknown }
 export type RecoveryFlag = { checkId?: string | null; pageUrl?: string | null; affectedPaths?: unknown; attentionPolicy?: unknown;
-  evidenceTargets?: unknown; verificationRule?: string | null }
+  evidenceTargets?: unknown; verificationRule?: string | null; supportingObservations?: unknown }
 const recoveryUrl = normalizeVerifierUrl
 type Verdict = 'passed' | 'failed' | null
 function combinedVerdict(verdicts: Verdict[]): Verdict {
@@ -25,6 +26,22 @@ function combinedVerdict(verdicts: Verdict[]): Verdict {
 
 /** One comparable failure disproves repair; passing requires every original scope. */
 export function recordedVerificationVerdict(input: {
+  auditId: string; executionSpec: unknown; flag: RecoveryFlag; executions: RecoveryExecution[];
+}): Verdict {
+  if (input.flag.supportingObservations == null) return recordedConditionVerdict(input)
+  const observations = readSupportingObservations(input.flag.supportingObservations)
+  if (!observations) return null
+  const spec = readExecutionSpec(input.executionSpec)
+  return combinedVerdict(observations.items.map(item => {
+    if (!item.checkId || !item.checkVersion || !item.provenance || !item.pageUrl ||
+      spec?.checks[baseCheckId(item.checkId)!] !== item.checkVersion) return null
+    return recordedConditionVerdict({ ...input, flag: { ...input.flag, supportingObservations: undefined,
+      checkId: item.checkId, pageUrl: item.pageUrl, affectedPaths: [item.pageUrl],
+      verificationRule: item.verificationRule, evidenceTargets: item.evidenceTargets } })
+  }))
+}
+
+function recordedConditionVerdict(input: {
   auditId: string; executionSpec: unknown; flag: RecoveryFlag; executions: RecoveryExecution[];
 }): Verdict {
   const spec = readExecutionSpec(input.executionSpec), checkId = baseCheckId(input.flag.checkId)

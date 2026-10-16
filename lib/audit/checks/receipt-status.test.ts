@@ -49,7 +49,7 @@ describe('check receipt summaries', () => {
     const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
     async function observed(role: string) {
       const context = { audit: { id: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
-        environment: 'production', scope: 'SITE', checks: { 'messaging-no-audience': 1 }, outcomes: [], verificationTarget: null } },
+        environment: 'production', scope: 'SITE', checks: { 'messaging-no-audience': 2 }, outcomes: [], verificationTarget: null } },
         task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role, module: 'messaging-clarity' }, deadline: Date.now() + 5000,
         dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
           pageId: 'page', metadata, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopFinalUrl: pageUrl,

@@ -40,6 +40,12 @@ describe('attention judgment', () => {
 })
 
 describe('customer Flag projector', () => {
+  it.each(['journey-funnel-broken-promise', 'journey-funnel-confusion', 'journey-funnel-accessibility-barrier'])('keeps qualitative journey judgment %s advisory', checkId => {
+    expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1 })).toBe(false)
+  })
+  it.each(['MESSAGE', 'EXPERIENCE', 'REACH'])('keeps unregistered %s judgments as Recommendations', rubric => {
+    expect(isCustomerFlag({ rubric, severity: 'CRITICAL', confidence: 1 })).toBe(false)
+  })
   it.each(['h1-generic', 'no-cta-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
     expect(isCustomerFlag({ checkId, severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
   })

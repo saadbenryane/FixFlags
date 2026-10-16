@@ -30,12 +30,12 @@ export function faqEntryAnchor(question: string): string {
 export const FAQ: readonly FaqEntry[] = [
   {
     question: 'How do I start?',
-    answer: 'Enter a public website URL for your first analysis. Save your Site and turn on monitoring to keep checking what matters.',
+    answer: 'Enter a public website URL for your first analysis. Save the same Site to your account to keep its results and start its default monitoring schedule. A Site you previously paused stays paused.',
     learnMore: { href: '/docs/getting-started', label: 'Get started' },
   },
   {
     question: 'What does FixFlags actually check?',
-    answer: 'FixFlags checks reachable pages, public action destinations, and available evidence across eight website areas. Connections and configured journeys add coverage. Every result applies to the pages and actions actually checked.',
+    answer: 'FixFlags checks reachable pages, public action destinations, and available evidence across eight website areas. Coverage depends on the pages and supported actions FixFlags can inspect. Planned integrations are labeled separately. Every result applies to the pages and actions actually checked.',
     learnMore: { href: '/coverage', label: 'What FixFlags checks' },
   },
   {
@@ -55,12 +55,12 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'When does monitoring start?',
-    answer: 'Save your Site and enable monitoring. Confirm the schedule and next check in Site settings. Monitoring follows configured coverage, and notifications follow your preferences.',
+    answer: 'Saving a new Site sets its default monitoring schedule. Open Site settings to see the interval and next check, or change or pause monitoring. A Site you previously paused stays paused. Monitoring follows configured coverage, and notifications follow your preferences.',
     learnMore: { href: '/docs/site-care#watch', label: 'Understand monitoring' },
   },
   {
     question: 'Do you record my visitors?',
-    answer: 'FixFlags records its own website checks, including screenshots and browser observations. It does not record your visitors’ sessions. Optional connections can add store, traffic, or search context.',
+    answer: 'FixFlags records its own website checks, including screenshots and browser observations. It does not record your visitors’ sessions. Planned connections will add store, traffic, or search context when released.',
     learnMore: { href: '/security', label: 'Privacy and security' },
   },
   {
@@ -75,7 +75,7 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'What about Shopify?',
-    answer: 'Shopify adds product information and selected purchase-path checks to the same Site. You can start with a public URL and connect your store from Site settings when that context helps.',
+    answer: 'Shopify is coming soon while its connection and execution are tested and validated. You can analyze a public website URL now. Existing Shopify connections can still be disconnected from Site settings.',
     learnMore: { href: '/docs/integrations/shopify', label: 'Read the Shopify guide' },
   },
   {

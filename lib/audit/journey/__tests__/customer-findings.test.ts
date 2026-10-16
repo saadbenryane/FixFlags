@@ -5,13 +5,30 @@ const mocks = vi.hoisted(() => ({
   flagCreate: vi.fn(),
   reviewCreate: vi.fn(),
   findingUpdate: vi.fn(),
+  flagUpdate: vi.fn(),
+  auditFindUnique: vi.fn(),
+  flagFindUnique: vi.fn(),
+  writeTail: Promise.resolve() as Promise<unknown>,
+  owner: undefined as { taskId: string } | undefined,
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    flag: { findMany: mocks.flagFindMany, create: mocks.flagCreate },
+    flag: { findMany: mocks.flagFindMany, create: mocks.flagCreate, update: mocks.flagUpdate },
+    audit: { findUnique: mocks.auditFindUnique },
     journeyReview: { create: mocks.reviewCreate },
     journeyFinding: { updateMany: mocks.findingUpdate },
+  },
+}))
+vi.mock('@/lib/audit/execution-ownership', () => ({
+  currentExecutionOwnership: () => mocks.owner,
+  executionWrite: (work: (tx: unknown) => unknown) => {
+    const result = mocks.writeTail.then(() => work({
+    flag: { findMany: mocks.flagFindMany, findUniqueOrThrow: mocks.flagFindUnique, create: mocks.flagCreate, update: mocks.flagUpdate },
+    journeyReview: { create: mocks.reviewCreate }, journeyFinding: { updateMany: mocks.findingUpdate },
+    }))
+    mocks.writeTail = result.then(() => undefined, () => undefined)
+    return result
   },
 }))
 
@@ -19,6 +36,8 @@ import {
   omitRepeatedCustomerFindings,
   persistJourneyResult,
 } from '@/lib/audit/journey/run-journey-reviews'
+import { observationsForFlag } from '@/lib/audit/flag-observations'
+import { deriveTruthLabel } from '@/lib/report/explorer-model'
 
 const page = 'https://example.net/'
 const missingStep = {
@@ -38,6 +57,13 @@ const missingStep = {
 describe('customer Flags from a page walk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.owner = undefined
+    mocks.writeTail = Promise.resolve()
+    mocks.flagUpdate.mockReset()
+    mocks.flagFindUnique.mockReset()
+    mocks.flagFindMany.mockResolvedValue([])
+    mocks.auditFindUnique.mockResolvedValue({ executionSpec: { version: 1, scope: 'SITE', targetUrl: page,
+      environment: 'production', checks: { 'journey-hidden-cta': 1 }, outcomes: [], verificationTarget: null } })
     mocks.reviewCreate.mockResolvedValue({ id: 'review-1' })
     mocks.flagCreate.mockResolvedValue({ id: 'flag-1' })
     mocks.findingUpdate.mockResolvedValue({ count: 1 })
@@ -60,12 +86,12 @@ describe('customer Flags from a page walk', () => {
 
   it('keeps one Flag when a later walk repeats the same missing action', async () => {
     expect(omitRepeatedCustomerFindings(
-      [{ problem: missingStep.problem, pageUrl: page }],
+      [{ checkId: missingStep.checkId, problem: missingStep.problem, pageUrl: page }],
       [missingStep],
     )).toEqual([])
 
     mocks.flagFindMany.mockResolvedValue([
-      { problem: missingStep.problem, pageUrl: page },
+      { id: 'original', checkId: missingStep.checkId, problem: missingStep.problem, pageUrl: page },
     ])
 
     await persistJourneyResult('audit-1', {
@@ -82,6 +108,77 @@ describe('customer Flags from a page walk', () => {
       actionTimeline: [],
     })
 
+    expect(mocks.flagCreate).not.toHaveBeenCalled()
+    expect(mocks.reviewCreate.mock.calls[0][0].data.findings.create).toHaveLength(1)
+    expect(mocks.findingUpdate.mock.calls[0][0].data.flagId).toBe('original')
+  })
+
+  it('never establishes equivalence from a matching title alone', () => {
+    expect(omitRepeatedCustomerFindings([{ problem: missingStep.problem, pageUrl: page }], [missingStep])).toEqual([missingStep])
+    expect(omitRepeatedCustomerFindings([{ checkId: 'journey-signup-no-form', problem: missingStep.problem, pageUrl: page }], [missingStep])).toEqual([missingStep])
+  })
+
+  it('keeps every repeat walk observation behind the single check action with actual task provenance', async () => {
+    mocks.owner = { taskId: 'journey-task' }
+    await persistJourneyResult('audit-1', { findings: [missingStep, { ...missingStep, stepNumber: 2, evidence: 'The action is also absent after opening navigation.' }],
+      steps: [], journeyType: 'first-visit', startUrl: page, status: 'ABANDONED', goalAchieved: false,
+      blockedReason: null, abandonedReason: null, durationMs: 10, formProbe: null, actionTimeline: [] })
+    expect(mocks.flagCreate).toHaveBeenCalledTimes(1)
+    const saved = mocks.flagCreate.mock.calls[0][0].data
+    expect(saved.supportingObservations.items).toHaveLength(2)
+    expect(saved.supportingObservations.items[1]).toMatchObject({ checkVersion: 1, evidence: expect.stringContaining('after opening navigation'),
+      provenance: { auditId: 'audit-1', taskId: 'journey-task' } })
+    expect(mocks.reviewCreate.mock.calls[0][0].data.findings.create).toHaveLength(2)
+    expect(mocks.findingUpdate.mock.calls[0][0].where.OR).toHaveLength(2)
+  })
+
+  it('keeps different evaluator diagnoses distinct even when their title and class match', async () => {
+    const ai = { ...missingStep, checkId: 'journey-funnel-broken-promise', findingType: 'broken-promise' as const }
+    await persistJourneyResult('audit-1', { findings: [ai, { ...ai, evidence: 'The trial destination is a contact form.' }],
+      steps: [], journeyType: 'first-visit', startUrl: page, status: 'COMPLETED', goalAchieved: true,
+      blockedReason: null, abandonedReason: null, durationMs: 10, formProbe: null, actionTimeline: [] })
+    expect(mocks.flagCreate).toHaveBeenCalledTimes(2)
+    const saved = mocks.flagCreate.mock.calls.map(call => call[0].data)
+    expect(saved[0].fingerprint).not.toBe(saved[1].fingerprint)
+    expect(saved[0].evidence).toMatch(/^Reviewed at step/)
+    expect(saved[0].source).toBe('AI')
+    expect(deriveTruthLabel(saved[0].source, saved[0].checkId)).toBe('Observed')
+  })
+
+  it('appends a later equivalent observation without replacing the first task evidence', async () => {
+    mocks.owner = { taskId: 'later-task' }
+    const original = observationsForFlag({ ...missingStep, checkId: 'journey-hidden-cta', source: 'JOURNEY', pageUrl: page },
+      { auditId: 'audit-1', taskId: 'original-task', checkVersion: 1, collectedAt: '2026-10-16T10:00:00.000Z' })
+    const row = { ...missingStep, id: 'original-flag', source: 'JOURNEY', pageUrl: page, supportingObservations: original }
+    mocks.flagFindMany.mockResolvedValue([row])
+    mocks.flagFindUnique.mockResolvedValue(row)
+    await persistJourneyResult('audit-1', { findings: [{ ...missingStep, evidence: 'The same action remains absent on a later walk.' }],
+      steps: [], journeyType: 'first-visit', startUrl: page, status: 'ABANDONED', goalAchieved: false,
+      blockedReason: null, abandonedReason: null, durationMs: 10, formProbe: null, actionTimeline: [] })
+    expect(mocks.flagCreate).not.toHaveBeenCalled()
+    const saved = mocks.flagUpdate.mock.calls[0][0]
+    expect(saved.where).toEqual({ id: 'original-flag' })
+    expect(saved.data.supportingObservations.items).toEqual([original.items[0], expect.objectContaining({
+      evidence: expect.stringContaining('later walk'), provenance: expect.objectContaining({ taskId: 'later-task' }),
+    })])
+  })
+
+  it('serializes concurrent appends against the current stored observations', async () => {
+    mocks.owner = { taskId: 'concurrent-task' }
+    const original = observationsForFlag({ ...missingStep, source: 'JOURNEY', pageUrl: page },
+      { auditId: 'audit-1', taskId: 'first-task', checkVersion: 1, collectedAt: '2026-10-16T10:00:00.000Z' })
+    let stored = { ...missingStep, id: 'original-flag', source: 'JOURNEY', pageUrl: page, supportingObservations: original }
+    mocks.flagFindMany.mockImplementation(async () => [{ ...stored }])
+    mocks.flagFindUnique.mockImplementation(async () => ({ ...stored }))
+    mocks.flagUpdate.mockImplementation(async ({ data }) => { stored = { ...stored, ...data }; return stored })
+    const result = (evidence: string) => ({ findings: [{ ...missingStep, evidence }], steps: [], journeyType: 'first-visit' as const,
+      startUrl: page, status: 'ABANDONED' as const, goalAchieved: false, blockedReason: null, abandonedReason: null,
+      durationMs: 10, formProbe: null, actionTimeline: [] })
+    await Promise.all([persistJourneyResult('audit-1', result('First independent walk.')), persistJourneyResult('audit-1', result('Second independent walk.'))])
+    expect(stored.supportingObservations.items).toHaveLength(3)
+    expect(stored.supportingObservations.items.map(item => item.evidence)).toEqual([
+      original.items[0].evidence, expect.stringContaining('First independent walk'), expect.stringContaining('Second independent walk'),
+    ])
     expect(mocks.flagCreate).not.toHaveBeenCalled()
   })
 
@@ -102,8 +199,9 @@ describe('customer Flags from a page walk', () => {
     })
 
     expect(mocks.flagCreate).toHaveBeenCalledTimes(1)
-    const saved = mocks.flagCreate.mock.calls[0][0].data as { problem: string; whyItMatters: string }
+    const saved = mocks.flagCreate.mock.calls[0][0].data as { problem: string; whyItMatters: string; source: string; checkId: string }
     expect(saved.problem).toBe('No obvious primary CTA on first visit')
     expect(`${saved.problem} ${saved.whyItMatters}`.toLowerCase()).not.toContain('journey')
+    expect(deriveTruthLabel(saved.source, saved.checkId)).toBe('Reproduced')
   })
 })

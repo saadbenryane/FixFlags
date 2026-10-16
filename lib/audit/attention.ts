@@ -20,6 +20,7 @@ function isPolishSeverity(severity?: string | null): boolean {
 }
 
 export type CustomerFlagInput = {
+  rubric?: string | null
   severity?: string | null
   confidence?: number | null
   status?: string | null
@@ -53,7 +54,9 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   if (search) return search.kind === 'flag'
   // These identities record attributes or phrase matches. They do not prove
   // behavioral failure, even when a historical collector gave higher severity.
-  if (['form-missing-validation', 'h1-generic', 'no-cta-detected'].includes(checkBaseId(flag.checkId))) return false
+  if (['form-missing-validation', 'h1-generic', 'no-cta-detected'].includes(checkBaseId(flag.checkId)) ||
+    /^(messaging-|friction-|trust-|hierarchy-|journey-funnel-(hesitation|confusion|too-many-steps|unclear-progress|missing-feedback|broken-promise|accessibility-barrier)$)/.test(checkBaseId(flag.checkId)) ||
+    !flag.checkId && ['MESSAGE', 'EXPERIENCE', 'REACH'].includes(flag.rubric ?? '')) return false
   if (isJourneyCritical(flag)) return true
   if (flag.severity === 'CRITICAL') return true
   if (isPolishSeverity(flag.severity)) return false

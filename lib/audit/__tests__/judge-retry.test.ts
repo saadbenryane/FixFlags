@@ -74,6 +74,10 @@ describe('isRetryableJudgeError', () => {
 })
 
 describe('validatePrescriptionOutput', () => {
+  it('rejects duplicate rubric names even when the count is three', () => {
+    const rubricPrescriptions = Array.from({ length: 3 }, () => ({ name: 'MESSAGE', rubricPrompt: 'Review the message.' }))
+    assert.throws(() => validatePrescriptionOutput({ flagPrescriptions: [], rubricPrescriptions } as any, []), /exactly one prescription for each rubric/)
+  })
   const makeFlag = (flagKey: string): any => ({ flagKey, id: `id-${flagKey}` })
 
   it('accepts one precise action while refusing blank or nonspecific advice', () => {

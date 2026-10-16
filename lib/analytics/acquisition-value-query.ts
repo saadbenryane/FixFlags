@@ -20,8 +20,8 @@ export async function loadAcquisitionValueCohort(input: { since: Date; now?: Dat
     const audits = ids.length ? await tx.audit.findMany({ where: { id: { in: ids } }, select: auditSelect }) : []
     const projects = [...new Set(audits.map((audit) => audit.projectId).filter((id): id is string => Boolean(id)))]
     const [results, claims, cycles] = await Promise.all([
-      ids.length ? tx.siteLifecycleEvent.findMany({ where: { name: 'first_useful_result', version: 1,
-        idempotencyKey: { in: ids.map((id) => `first_useful_result:${id}`) }, createdAt: { lte: now } },
+      ids.length ? tx.siteLifecycleEvent.findMany({ where: { name: { in: ['analysis_completed', 'first_useful_result'] }, version: 1,
+        idempotencyKey: { in: ids.flatMap((id) => [`analysis_completed:${id}`, `first_useful_result:${id}`]) }, createdAt: { lte: now } },
         select: { idempotencyKey: true, createdAt: true } }) : [],
       projects.length ? tx.siteLifecycleEvent.findMany({ where: { name: 'analysis_claimed', version: 1,
         projectId: { in: projects }, idempotencyKey: { in: ids.map((id) => `analysis_claimed:${id}`) }, createdAt: { lte: now } },

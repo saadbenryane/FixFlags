@@ -15,11 +15,11 @@ export const AUTH = {
   reportContext: {
     title: (hostname: string) => `Save ${hostname}`,
     loadingTitle: 'Save this Site',
-    body: 'Get every fix prompt and keep this Site for Verify and Watch on the same URL.',
+    body: 'Save this Site, get its fix prompts, and keep its evidence and monitoring history together.',
     backCta: 'Back to Site',
     saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your Site',
     unlocking: 'Preparing your Flags',
-    redirecting: 'Analyze was the first look. Taking you to your Site so you can monitor it.',
+    redirecting: 'Opening your saved Site and its results.',
     waiting: 'This will only take a moment.',
     saveError: 'Your account is ready, but we could not save your Site yet.',
     retryCta: 'Try saving again',

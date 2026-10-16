@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateCorridorConsistency, runCorridorConsistencyChecks, type CorridorPageMeta } from '@/lib/audit/checks/corridor-consistency'
-import { collapseFlagsWithAffectedPaths } from '@/lib/audit/flag-identity'
+import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '@/lib/audit/__tests__/recorded-flag-fixtures'
 import { checkReceiptSchema } from '@/lib/audit/checks/receipt'
 import { scopedAssertionForTarget } from '@/lib/audit/checks/verification'
 import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'

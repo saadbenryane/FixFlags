@@ -9,5 +9,7 @@ test('brand guard distinguishes link fragments and scanner documents from produc
   assert.deepEqual(brandColorViolations('components/Button.tsx', '<button style={{ color: "#fff" }}>Go</button>'), ['#fff'])
   assert.deepEqual(brandColorViolations('components/__tests__/Button.test.tsx', '<button style={{ color: "#fff" }}>Go</button>'), ['#fff'])
   assert.deepEqual(brandColorViolations('lib/ui.ts', 'const color = "#abc"'), ['#abc'])
+  assert.deepEqual(brandColorViolations('lib/probe.ts', `const step = { selector: '#add' }; document.querySelector("#add"); page.locator('#abc')`), [])
+  assert.deepEqual(brandColorViolations('lib/probe.ts', `const step = { selector: '#add', color: '#fff' }`), ['#fff'])
   assert.deepEqual(brandColorViolations('components/Link.tsx', '<a href="#abc" style={{color:"#fff"}}>Go</a>'), ['#fff'])
 })

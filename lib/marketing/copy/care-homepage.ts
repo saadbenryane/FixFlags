@@ -13,10 +13,7 @@ const CART_EXAMPLE = {
 
 export type HomepageAudienceKey = 'website' | 'store' | 'webapp'
 
-const HERO_BODY_LINES = [
-  'FixFlags monitors your customer journeys, flags critical issues,',
-  'and helps you fix them while you focus on building with your AI.',
-] as const
+export const WEBSITE_PROMISE = 'Start with a public URL. See meaningful website problems, the evidence behind them, and what to fix next. Publish the change, then check it again.'
 
 export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
@@ -25,9 +22,8 @@ export const CARE_HOME = {
   headlinePunctuation: '.',
   hero: {
     eyebrow: 'INDEPENDENT WEBSITE MONITORING',
-    body: HERO_BODY_LINES.join(' '),
-    bodyLines: HERO_BODY_LINES,
-    proof: '100+ automated tests. Real browser journeys. Independent verification.',
+    body: WEBSITE_PROMISE,
+    setup: 'No installation needed for public-page analysis.',
     cta: 'Analyze now',
     placeholder: 'yourwebsite.com',
     benefits: [
@@ -174,7 +170,7 @@ export const CARE_HOME = {
     title: 'See the problem. Know when it’s fixed.',
     body: 'Give the evidence to your teammate or AI. After the fix, let FixFlags check again.',
     steps: [
-      { id: 'monitor', label: 'Monitor', title: 'Keep checking what matters.', body: 'Start with a URL, then save your Site and turn on scheduled checks. Check again after a fix.' },
+      { id: 'monitor', label: 'Monitor', title: 'Keep checking what matters.', body: 'Start with a public URL. Save your Site to start its default monitoring schedule, then check the affected behavior again after a fix.' },
       { id: 'flag', label: 'Flag', title: 'See what needs attention.', body: 'Find the affected page, what went wrong, and the evidence behind it.' },
       { id: 'fix', label: 'Fix', title: 'Give your developer or AI a clear next step.', body: 'Use the fix prompt, publish the change, then return to Monitor with Check now.' },
     ],
@@ -199,7 +195,7 @@ export const CARE_HOME = {
     analysisLabel: 'Also analyzed',
     analysis: ['Performance', 'Accessibility', 'Search', 'Security', 'Tracking', 'Layout'],
     boundary: 'Automatic account checks use a reusable FixFlags identity and a separate disposable account for signup and deletion. Unsupported authentication flows remain unverified.',
-    setupNote: 'Supported account checks need no customer setup.',
+    setupNote: 'Public-page analysis needs no installation. Additional account and signup coverage depends on supported behavior and any required authorization.',
     audiences: [
       {
         id: 'website', label: 'Website', question: 'Is the site reachable?', monitored: 'Public page availability',

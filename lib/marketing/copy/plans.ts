@@ -85,7 +85,7 @@ export const PRICING = {
   assurances: ['No credit card.', 'No automatic charge.', 'We’ll tell you before the beta offer changes.'] as const,
   studioLine: 'Need another website?', studioCta: 'Join the paid-plan waitlist', studioHref: '/waitlist',
   sharedTitle: 'Included in every check',
-  sharedFeatures: ['Website analysis', 'Flags and evidence', 'Fix guidance', 'Independent verification', 'Supported connections', 'Agent access'] as const,
+  sharedFeatures: ['Website analysis', 'Flags and evidence', 'Fix guidance', 'Independent rechecks', 'Monitoring history'] as const,
   sharedNote: 'The full suite across your configured website coverage.',
   compareTitle: 'Compare plans', compareLabel: 'Available now and coming soon',
   compareBody: 'Start with the full product on one website. Paid plans are coming soon for more websites and ongoing care.',

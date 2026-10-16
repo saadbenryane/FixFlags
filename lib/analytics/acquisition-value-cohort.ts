@@ -1,6 +1,6 @@
 export const ACQUISITION_FOLLOWUP_DAYS = 7
 const START_PREFIX = 'analyze_started:'
-const RESULT_PREFIX = 'first_useful_result:'
+const RESULT_PREFIXES = ['analysis_completed:', 'first_useful_result:']
 const DAY = 86_400_000
 const SURFACES = new Set(['HOMEPAGE', 'TOOL_PAGE', 'ISSUE_PAGE', 'BENCHMARK_PAGE', 'REPORT', 'API', 'MCP', 'DASHBOARD', 'UNKNOWN'])
 
@@ -79,8 +79,9 @@ export function calculateAcquisitionValueCohort(input: {
   const audits = new Map(input.audits.map((audit) => [audit.id, audit]))
   const resultsByAudit = new Map<string, AcquisitionResult[]>()
   for (const result of input.results) {
-    if (!result.idempotencyKey.startsWith(RESULT_PREFIX)) continue
-    const id = result.idempotencyKey.slice(RESULT_PREFIX.length)
+    const prefix = RESULT_PREFIXES.find(value => result.idempotencyKey.startsWith(value))
+    if (!prefix) continue
+    const id = result.idempotencyKey.slice(prefix.length)
     group(resultsByAudit, id, result)
   }
   const claimsByProject = new Map<string | null, AcquisitionClaim[]>()

@@ -3,7 +3,7 @@ import { googleIndexObservations } from '../google-index'
 import { searchFindings } from '../registry'
 import { searchReceiptSchema, type SearchReceipt } from '../contracts'
 import { assessSearchRecovery } from '../recovery'
-import { collapseFlagsWithAffectedPaths } from '@/lib/audit/flag-identity'
+import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '@/lib/audit/__tests__/recorded-flag-fixtures'
 import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
 
 const root = 'https://example.com/', peer = 'https://example.com/pricing', property = 'sc-domain:example.com'

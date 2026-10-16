@@ -20,13 +20,14 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
       <div className={s.heroContent}>
         <p className={s.heroEyebrow}>{C.hero.eyebrow}</p>
         <h1><span className={s.headlineLead}><span className={s.headlineAccent}>{C.headlineAccent}</span>{' '}{C.headlineLines[0]}</span><br /><span className={s.headlineLead}>{C.headlineLines[1]}<span className={s.headlineAccent}>{C.headlinePunctuation}</span></span></h1>
-        <p className={s.heroBody}>{C.hero.bodyLines[0]}{' '}<br />{C.hero.bodyLines[1]}</p>
+        <p className={s.heroBody}>{C.hero.body}</p>
         <HomepageUrlEntry />
+        <p className="mt-3 text-sm text-muted-foreground">{C.hero.setup}</p>
         <HomepageEditorTools />
       </div>
     </section>
     <section className={`${s.section} ${s.sampleSection}`} id="product" tabIndex={-1}>
-      <HomepageIntro title={S.title} body={<>{S.subtitle} {S.mcpLead} <Link className={s.introMcpLink} href="/docs/fix-with-ai#what-is-mcp">{S.mcpLabel}</Link>{S.mcpBody}</>} />
+      <HomepageIntro title={S.title} body={<>{S.subtitle} <Link className={s.introMcpLink} href="/docs/fix-with-ai">{C.workflow.action}</Link></>} />
       <ul className={s.heroBenefits} aria-label="What FixFlags does">
         {C.hero.benefits.map((benefit, index) => {
           const Icon = BENEFIT_ICONS[index]

@@ -13,7 +13,7 @@ New customer Site behavior is governed by [the PRD](docs/product-prd.md). Curren
 
 ## System overview
 
-Next.js 15 application (App Router) with:
+Next.js 16.4.0 application (App Router) with:
 - PostgreSQL 16 database with Prisma 6 ORM
 - Redis 7 queue (BullMQ 5) for async audit processing
 - Required dedicated worker process for audits, Chromium, recovery, and scheduled work
@@ -191,15 +191,9 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 ## Billing
 
-Target marketing prices (Stripe price IDs may lag until a revenue ops change):
+The website beta admits one website. Monitoring is enabled automatically when the Site is saved, while an explicit customer pause stays paused. Public paid enrollment is waitlisted. Existing subscriptions and purchased entitlements retain their runtime access.
 
-| Plan | Env price ID | Public list | Sold as |
-|------|--------------|-------------|---------|
-| Free | — | $0 | 1 website, verified weekly |
-| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $49/website/mo | Verified every day. Live Stripe ID may still be $39 until a checkout pass. |
-| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | Volume | Quoted waitlist. Live Stripe ID may still be $129. |
-
-Existing review metering (`auditLimit` 3/30/90) and plan access are compatibility behavior, not the public SKU. Actual current limits and capabilities come from lib/billing/plans.ts and lib/auth/entitlements.ts. Paid checkout stays closed (`STRIPE_PAID_OPEN`). Target responsibility-based plans and the `$12`/site COGS envelope are defined in knowledge/strategy.md and require explicit implementation before charging.
+`lib/billing/plans.ts`, `lib/auth/entitlements.ts`, and the runtime beta policy own actual limits and cadence. Rendered pricing lives in `lib/marketing/copy/`; this document does not duplicate mutable prices or infer a live Stripe price from an environment-variable name. Paid checkout remains closed through the runtime release policy.
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)

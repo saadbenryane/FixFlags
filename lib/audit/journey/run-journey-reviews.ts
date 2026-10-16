@@ -1,5 +1,10 @@
-import { executionWrite } from '@/lib/audit/execution-ownership'
+import { executionWrite, currentExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
+import { newAiObservationFingerprint } from '../ai-observation-identity'
+import { observationsForFlag, mergeSupportingObservations } from '../flag-observations'
+import { parseEvidenceTargets } from '../evidence-targets'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { journeyFindingIdentity } from './finding-identity'
 import { prisma } from '@/lib/db'
 import type { ImpactTag, Prisma, RubricName, Severity } from '@prisma/client'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
@@ -119,7 +124,7 @@ function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
   if (/reproduced at step/i.test(f.evidence)) return f
   return {
     ...f,
-    evidence: `Reproduced at step ${f.stepNumber}. ${f.evidence}`,
+    evidence: `${f.findingType ? 'Reviewed' : 'Reproduced'} at step ${f.stepNumber}. ${f.evidence}`,
   }
 }
 
@@ -144,13 +149,13 @@ export function convertEvaluationToFindings(
       evidence: fp.evidence,
       whyItMatters:
         fp.type === 'hesitation'
-          ? 'Hesitation signals indicate uncertainty that causes visitors to abandon.'
+          ? 'Review the recorded step for unclear choices or missing context.'
           : fp.type === 'confusion'
-            ? 'Confused visitors cannot find the path forward and leave.'
+            ? 'Review whether the next action is clear at this step.'
             : fp.type === 'too-many-steps'
-              ? 'Long funnels have compounding drop-off at each step.'
+              ? 'Review whether each observed step is needed to complete this task.'
               : fp.type === 'unclear-progress'
-                ? 'Visitors lose context when they cannot tell where they are in the flow.'
+                ? 'A visible progress indicator can help explain the remaining steps.'
                 : 'Missing feedback after actions makes visitors uncertain whether anything happened.',
       fix: frictionFix(fp),
       screenshotUrl: step?.screenshotAfterUrl,
@@ -172,7 +177,7 @@ export function convertEvaluationToFindings(
       impactTag: 'TRUST',
       problem: `Broken promise: expected "${bp.expected}" but got "${bp.actual}"`,
       evidence: bp.evidence,
-      whyItMatters: 'Broken promises erode trust and cause immediate abandonment.',
+      whyItMatters: 'Review the observed difference between the action promise and its destination.',
       fix: '1. Align page content with what was promised in the previous step\n2. Ensure headlines, CTAs, and page content tell a consistent story\n3. Remove misleading claims',
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
@@ -204,16 +209,14 @@ export function convertEvaluationToFindings(
   return findings
 }
 
-/** Same customer sentence on the same page is one Flag, even if two walks found it. */
-export function omitRepeatedCustomerFindings<T extends { problem: string; url: string }>(
-  existing: Array<{ problem: string; pageUrl: string | null }>,
+/** Equivalent measured checks can share an action while their observations remain recorded. */
+export function omitRepeatedCustomerFindings<T extends { checkId?: string | null; problem: string; evidence?: string; url: string }>(
+  existing: Array<{ checkId?: string | null; problem: string; evidence?: string; pageUrl: string | null }>,
   incoming: T[],
 ): T[] {
-  const seen = new Set(
-    existing.map((flag) => `${flag.problem.trim().toLowerCase()}|${flag.pageUrl ?? ''}`),
-  )
-  return incoming.filter((finding) => {
-    const key = `${finding.problem.trim().toLowerCase()}|${finding.url}`
+  const seen = new Set(existing.map(journeyFindingIdentity))
+  return incoming.filter(finding => {
+    const key = journeyFindingIdentity(finding)
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -228,10 +231,6 @@ export async function persistJourneyResult(
   deferProjectedFlags = false,
 ): Promise<JourneyFindingDraft[]> {
   const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence)).filter(finding => !allowedCheckIds || allowedCheckIds.includes(baseCheckId(finding.checkId)!) || projectedJourneyFinding(finding) && allowedCheckIds.includes(durableCheckId(finding.checkId)!))
-  const alreadyRecorded = await prisma.flag.findMany({
-    where: { auditId, ...(boundOutcome ? { fingerprint: outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) } : {}) },
-    select: { problem: true, pageUrl: true },
-  })
   for (const finding of filteredFindings) if (!deferProjectedFlags && scopedOverlayRule(finding.verificationRule) && finding.evidenceTargets?.length) {
     await executionWrite(async tx => {
       const existing = await tx.flag.findFirst({ where: { auditId, checkId: finding.checkId,
@@ -248,13 +247,11 @@ export async function persistJourneyResult(
           ...finding.affectedPaths ?? [], finding.url])] } })
     })
   }
-  const findingsToPersist = omitRepeatedCustomerFindings(alreadyRecorded, [...filteredFindings])
 
   const networkFlags = runNetworkEngagementChecks([], result.formProbe)
   for (const nf of networkFlags) {
     if (allowedCheckIds && !allowedCheckIds.includes(nf.checkId)) continue
-    if (findingsToPersist.some((f) => f.checkId === nf.checkId)) continue
-    findingsToPersist.push(
+    filteredFindings.push(
       withStepEvidence({
         checkId: nf.checkId,
         stepNumber: result.steps.length || 1,
@@ -264,18 +261,27 @@ export async function persistJourneyResult(
         impactTag: (nf.impactTag ?? 'CONVERSION') as JourneyFindingDraft['impactTag'],
         problem: nf.problem,
         evidence: nf.evidence,
-        whyItMatters: 'Engagement paths that fail at the API layer lose conversions.',
+        whyItMatters: 'The recorded response did not complete the requested action.',
         fix: nf.fix,
         confidence: nf.confidence,
       })
     )
   }
 
-  // Customer deduplication must not erase native evidence owned by this review.
-  // The common projection links these observations to the single customer Flag.
-  const findingsToRecord = deferProjectedFlags
-    ? [...findingsToPersist, ...filteredFindings.filter(finding => (scopedOverlayRule(finding.verificationRule) || projectedJourneyFinding(finding)) && !findingsToPersist.includes(finding))]
-    : findingsToPersist
+  // Every observation survives customer-level grouping, including repeat walks.
+  const findingsToPersist = omitRepeatedCustomerFindings([], filteredFindings)
+  const findingsToRecord = filteredFindings
+  const owner = currentExecutionOwnership()
+  const admitted = owner?.taskId ? readExecutionSpec((await prisma.audit.findUnique({
+    where: { id: auditId }, select: { executionSpec: true },
+  }))?.executionSpec) : null
+  const collectedAt = new Date().toISOString()
+  const observations = (finding: JourneyFindingDraft) => observationsForFlag({ ...finding, source: finding.findingType ? 'AI' : 'JOURNEY',
+    checkId: durableCheckId(finding.checkId) ?? finding.checkId,
+    pageUrl: finding.verificationRule === JOURNEY_VERIFICATION_RULE ? finding.affectedPaths?.[0] ?? finding.url : finding.url,
+  }, owner?.taskId ? { auditId, taskId: owner.taskId, collectedAt,
+    checkVersion: finding.findingType ? null : admitted?.checks[baseCheckId(finding.checkId)!] ?? admitted?.checks[durableCheckId(finding.checkId)!] ?? null } : undefined)
+  const members = (finding: JourneyFindingDraft) => findingsToRecord.filter(item => journeyFindingIdentity(item) === journeyFindingIdentity(finding))
 
   const review = await executionWrite(tx => tx.journeyReview.create({
     data: {
@@ -338,36 +344,51 @@ export async function persistJourneyResult(
 
   for (const f of findingsToPersist) {
     if (deferProjectedFlags && (scopedOverlayRule(f.verificationRule) || projectedJourneyFinding(f))) continue
-    const created = await executionWrite(tx => tx.flag.create({
-      data: {
-        auditId,
-        checkId: f.checkId,
-        rubric: f.rubric,
-        severity: f.severity as Severity,
-        impactTag: f.impactTag as ImpactTag,
-        problem: f.problem,
-        evidence: f.evidence,
-        whyItMatters: f.whyItMatters,
-        fix: f.fix,
-        confidence: f.confidence ?? 0.85,
-        source: 'JOURNEY',
+    const grouped = members(f)
+    // The execution guard locks the Audit before this read, merge and admission.
+    // Parallel walks therefore cannot lose an observation or admit the same action twice.
+    const saved = await executionWrite(async tx => {
+      const candidates = await tx.flag.findMany({
+        where: { auditId, ...(boundOutcome ? { fingerprint: outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) } : {}) },
+        select: { id: true, checkId: true, problem: true, evidence: true, pageUrl: true },
+      })
+      const existing = candidates.find(candidate => journeyFindingIdentity(candidate) === journeyFindingIdentity(f))
+      if (existing) {
+        if (owner?.taskId) {
+          const current = await tx.flag.findUniqueOrThrow({ where: { id: existing.id }, select: {
+            source: true, checkId: true, pageUrl: true, evidence: true, verificationRule: true,
+            evidenceTargets: true, supportingObservations: true,
+          } })
+          await tx.flag.update({ where: { id: existing.id }, data: { supportingObservations: mergeSupportingObservations([
+            observationsForFlag({ ...current, evidenceTargets: parseEvidenceTargets(current.evidenceTargets) }),
+            ...grouped.map(observations),
+          ]) as Prisma.InputJsonValue } })
+        }
+        return existing
+      }
+      return tx.flag.create({ data: {
+        auditId, checkId: f.checkId, rubric: f.rubric, severity: f.severity as Severity,
+        impactTag: f.impactTag as ImpactTag, problem: f.problem, evidence: f.evidence,
+        whyItMatters: f.whyItMatters, fix: f.fix, confidence: f.confidence ?? 0.85,
+        source: f.findingType ? 'AI' : 'JOURNEY',
+        supportingObservations: owner?.taskId ? mergeSupportingObservations(grouped.map(observations)) as Prisma.InputJsonValue : undefined,
         verificationRule: f.verificationRule, evidenceTargets: f.evidenceTargets as Prisma.InputJsonValue | undefined,
         affectedPaths: f.affectedPaths,
         pageUrl: f.verificationRule === JOURNEY_VERIFICATION_RULE ? f.affectedPaths?.[0] ?? f.url : f.url,
         fingerprint: boundOutcome && f.checkId.startsWith('journey-checkout-failed-')
-          ? outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) : `journey:${f.checkId}:${f.url}`,
+          ? outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey)
+          : f.findingType ? newAiObservationFingerprint({ ...f, pageUrl: f.url }) : `journey:${f.checkId}:${f.url}`,
         position: f.stepNumber,
-      },
-    }))
-    await executionWrite(tx => tx.journeyFinding.updateMany({
-      where: { journeyReviewId: review.id, checkId: f.checkId, stepNumber: f.stepNumber },
-      data: { flagId: created.id },
-    }))
+      } })
+    })
+    await executionWrite(tx => tx.journeyFinding.updateMany({ where: { journeyReviewId: review.id,
+      OR: grouped.map(finding => ({ checkId: finding.checkId, stepNumber: finding.stepNumber, evidence: finding.evidence })),
+    }, data: { flagId: saved.id } }))
   }
 
   await mergeActionTimeline(auditId, result.actionTimeline as ActionTimelineEvent[] | undefined)
 
-  return findingsToPersist
+  return findingsToRecord
 }
 
 export async function runJourneyReviewsForAudit(
@@ -542,7 +563,7 @@ export async function runJourneyReviewsForAudit(
               ...result,
               findings: evalFindings,
               journeyType,
-            })
+            }, undefined, options.allowedCheckIds)
             findingCount += persisted.length
           }
           await executionWrite(tx => tx.journeyReview.updateMany({

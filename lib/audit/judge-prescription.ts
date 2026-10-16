@@ -71,8 +71,9 @@ export function validatePrescriptionOutput(
     }
   }
 
-  if (output.rubricPrescriptions.length !== 3) {
-    throw new JudgeContractError('expected exactly 3 rubric prescriptions')
+  if (output.rubricPrescriptions.length !== 3 ||
+    !['MESSAGE', 'EXPERIENCE', 'REACH'].every(name => output.rubricPrescriptions.some(item => item.name === name))) {
+    throw new JudgeContractError('expected exactly one prescription for each rubric')
   }
 
   for (const rx of output.flagPrescriptions) {

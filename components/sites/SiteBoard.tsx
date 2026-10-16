@@ -26,7 +26,8 @@ import { outcomeCardFreshness,projectSiteBoard } from '@/lib/sites/board-view'
 import { siteCardArea, type SiteCardArea } from '@/lib/sites/card-areas'
 import { cardExecution } from '@/lib/sites/card-execution'
 import { siteCheckNotice,siteSummaryNotice } from '@/lib/sites/check-notice'
-import { createSiteActionController,executeSiteAction,type SiteActionError } from '@/lib/sites/client-actions'
+import { executeSiteAction } from '@/lib/sites/client-actions'
+import { useSiteAction } from '@/hooks/useSiteAction'
 import { outcomeCoverageLabel,UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import { helpHrefForFailureCode } from '@/lib/help/contextual'
 import { runBanner } from '@/lib/sites/presentation'
@@ -49,10 +50,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
   const disconnected = updatesDisconnected || Boolean(view.recoveryUnavailable)
   const ownsSite = view.actions.ownership === 'owner'
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(initialCategory)
-  const [busy, setBusy] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
-  const action = useRef(createSiteActionController(`site:${siteId}`)).current
-  const [actionError, setActionError] = useState<SiteActionError | null>(null)
+  const { busy, message: toast, error: actionError, submit: submitAction, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
   const opener = useRef<HTMLElement | null>(null)
   useEffect(() => { setSelectedCard(viewMode === 'home' ? initialCategory : null) }, [siteId, initialCategory, viewMode])
   useEffect(() => {
@@ -103,7 +101,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
 
   async function verifyOutcome(outcomeId: string) {
     await submit(() => executeSiteAction(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
-        method: 'POST', headers: { 'Idempotency-Key': action.requestKey(`outcome:${outcomeId}`) },
+        method: 'POST', headers: { 'Idempotency-Key': requestKey(`outcome:${outcomeId}`) },
       }, 'run'), `outcome:${outcomeId}`)
   }
 
@@ -114,20 +112,14 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': action.requestKey(intent),
+          'Idempotency-Key': requestKey(intent),
         },
         body: JSON.stringify(category ? { scope: 'category', area: category } : { scope: 'site', outcomeIds: [] }),
       }, 'run'), intent)
   }
 
   async function submit(mutation: () => Promise<unknown>, intent?: string) {
-    if (action.pending) return
-    setBusy(true); setToast(null); setActionError(null)
-    const completed = await action.submit(mutation, () => refresh(), () => { if (intent) action.completeIntent(intent); setToast(SITE_BOARD_COPY.checkStarted); setActionError(null) })
-    if (completed.kind === 'refused') { setToast(completed.error.message); setActionError(completed.error) }
-    else if (completed.kind === 'saved_refresh_pending') setToast(SITE_ACTION_COPY.refreshPending)
-    else if (completed.kind === 'saved') { setToast(SITE_BOARD_COPY.checkStarted); setActionError(null) }
-    setBusy(false)
+    await submitAction(mutation, () => { if (intent) completeIntent(intent); return SITE_BOARD_COPY.checkStarted }, refresh)
   }
 
   const { selected, selectedFlags, findingPages, selectedRecommendations, cardsById, visibleCategories,

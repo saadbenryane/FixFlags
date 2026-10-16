@@ -9,6 +9,8 @@ import { collectFormInventory } from './metadata-form-inventory'
 
 export interface PageMetadata {
   renderedCopy?: import('./browser/rendered-copy').RenderedCopy | null
+  /** Visible introductory prose following the primary headline, before another heading. */
+  headlineSupport?: string | null
   /** Observed document base used to resolve relative navigation declarations. */
   linkBaseUrl?: string
   title: string | null

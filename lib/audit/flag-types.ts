@@ -49,6 +49,7 @@ export type CauseCertainty = 'REPRODUCED' | 'DETECTED' | 'OBSERVED' | 'LIKELY'
  * add it explicitly.
  */
 export interface FlagData extends AgentPrompts {
+  supportingObservations?: unknown
   attentionPolicy?: unknown
   id?: string
   checkId: string | null
@@ -80,6 +81,7 @@ export interface FlagData extends AgentPrompts {
  * PageUrl is optional because not all checks know the URL at emit time.
  */
 export interface DeterministicFlag {
+  supportingObservations?: import('./flag-observations').SupportingObservations
   verificationRule?: string
   attentionPolicy?: import('./search/contracts').SearchAttention
   checkId: string
@@ -102,6 +104,7 @@ export interface DeterministicFlag {
  * persist boundary for createMany compatibility.
  */
 export type DeterministicFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
+  supportingObservations?: import('@prisma/client').Prisma.InputJsonValue
   attentionPolicy?: import('@prisma/client').Prisma.InputJsonValue
   auditId: string
   pageId: string | null
@@ -118,6 +121,7 @@ export type DeterministicFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
  * Post-persist query shape for AI-generated flags.
  */
 export type AiFlagRow = Omit<FlagData, 'severity' | 'impactTag' | 'attentionPolicy'> & {
+  supportingObservations?: import('@prisma/client').Prisma.InputJsonValue
   auditId: string
   pageId: string | null
   rubricId: string | null

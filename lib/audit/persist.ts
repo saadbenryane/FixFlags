@@ -27,6 +27,8 @@ import { projectDeterministicFlags } from './flag-projection'
 import type { DeterministicFlag, DeterministicFlagRow, AiFlagRow } from './flag-types'
 import { groundedReportVerdict, groundedRubricSummary } from './verdict'
 import { parseProductContract } from './product-contract'
+import { observationsForFlag, mergeSupportingObservations, readSupportingObservations } from './flag-observations'
+import { admitAiObservation, newAiObservationFingerprint } from './ai-observation-identity'
 
 export type { DeterministicFlagRow, AiFlagRow } from './flag-types'
 
@@ -48,6 +50,7 @@ export function buildDeterministicFlagRow(
     attentionPolicy: flag.attentionPolicy as Prisma.InputJsonValue | undefined,
     problem: flag.problem,
     evidence: flag.evidence,
+    supportingObservations: observationsForFlag(flag) as Prisma.InputJsonValue,
     whyItMatters:
       flag.attentionPolicy?.policy === 'search'
         ? SEARCH_COPY.consequences[SEARCH_CHECK_REGISTRY[flag.checkId.split('::page:')[0] as keyof typeof SEARCH_CHECK_REGISTRY]?.responsibility ?? 'presentation']
@@ -83,7 +86,7 @@ export function buildDeterministicFlagRow(
 }
 
 export function buildAiFlagRow(
-  flag: JudgeOutput['newFlags'][number],
+  flag: JudgeOutput['newFlags'][number] & { fingerprint?: string | null; supportingObservations?: unknown },
   i: number,
   pageIdByUrl: Map<string, string>,
   rubricIdByName: Map<string, string>,
@@ -94,6 +97,7 @@ export function buildAiFlagRow(
     pageId: flag.pageUrl ? pageIdByUrl.get(new URL(flag.pageUrl).toString()) ?? null : null,
     rubricId: rubricIdByName.get(flag.rubric) ?? null,
     source: 'AI',
+    supportingObservations: observationsForFlag({ ...flag, source: 'AI' }) as Prisma.InputJsonValue,
     rubric: flag.rubric,
     impactTag: aiImpactToEnum(flag.impactTag),
     severity: aiSeverityToEnum(flag.severity),
@@ -111,7 +115,7 @@ export function buildAiFlagRow(
     verificationRule: flag.verificationRule ?? 'Confirm the issue described in evidence on the live page.',
     checkId: null,
     pageUrl: flag.pageUrl ?? null,
-    fingerprint: flagFingerprint(flag),
+    fingerprint: newAiObservationFingerprint(flag),
     position: positionOffset + i,
   }
 }
@@ -151,7 +155,7 @@ export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null
 async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, rows: Prisma.FlagCreateManyInput[], authoritativePaths = false) {
   await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
   const previous = await tx.flag.findMany({ where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] } },
-    select: { id: true, fingerprint: true, source: true, affectedPaths: true } })
+    select: { id: true, fingerprint: true, source: true, affectedPaths: true, supportingObservations: true } })
   const existing = new Map(previous.map(row => [row.source + ':' + row.fingerprint, row]))
   const created: Prisma.FlagCreateManyInput[] = []
   for (const row of rows) {
@@ -161,7 +165,11 @@ async function persistFlagRows(tx: Prisma.TransactionClient, auditId: string, ro
       ...(!authoritativePaths && Array.isArray(prior.affectedPaths) ? prior.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
       ...(Array.isArray(row.affectedPaths) ? row.affectedPaths.filter((value): value is string => typeof value === 'string') : []),
     ])]
-    await tx.flag.update({ where: { id: prior.id }, data: { ...row, affectedPaths: paths.length ? paths : undefined } })
+    const oldObservations = readSupportingObservations(prior.supportingObservations)
+    const newObservations = readSupportingObservations(row.supportingObservations)
+    const supportingObservations = !authoritativePaths && oldObservations && newObservations
+      ? mergeSupportingObservations([oldObservations, newObservations]) as Prisma.InputJsonValue : row.supportingObservations
+    await tx.flag.update({ where: { id: prior.id }, data: { ...row, supportingObservations, affectedPaths: paths.length ? paths : undefined } })
   }
   if (created.length) await tx.flag.createMany({ data: created })
 }
@@ -278,7 +286,7 @@ export async function persistDeterministicFlags(
 }
 
 export function buildTriageAiFlagRow(
-  flag: TriageOutput['newFlags'][number],
+  flag: TriageOutput['newFlags'][number] & { fingerprint?: string | null; supportingObservations?: unknown },
   i: number,
   pageIdByUrl: Map<string, string>,
   rubricIdByName: Map<string, string>,
@@ -289,6 +297,7 @@ export function buildTriageAiFlagRow(
     pageId: flag.pageUrl ? pageIdByUrl.get(new URL(flag.pageUrl).toString()) ?? null : null,
     rubricId: rubricIdByName.get(flag.rubric) ?? null,
     source: 'AI',
+    supportingObservations: observationsForFlag({ ...flag, source: 'AI' }) as Prisma.InputJsonValue,
     rubric: flag.rubric,
     impactTag: aiImpactToEnum(flag.impactTag),
     severity: aiSeverityToEnum(flag.severity),
@@ -312,7 +321,7 @@ export function buildTriageAiFlagRow(
       'affectedPaths' in flag && Array.isArray(flag.affectedPaths) && flag.affectedPaths.length > 0
         ? (flag.affectedPaths as unknown as Prisma.InputJsonValue)
         : undefined,
-    fingerprint: flagFingerprint(flag),
+    fingerprint: newAiObservationFingerprint(flag),
     position: positionOffset + i,
   }
 }
@@ -321,6 +330,7 @@ export function flagKeyForRow(flag: {
   checkId: string | null
   fingerprint: string | null
 }): string {
+  if (flag.fingerprint?.startsWith('ai-observation:v1::')) return flag.fingerprint
   return flag.checkId ?? flag.fingerprint ?? ''
 }
 
@@ -424,7 +434,7 @@ export async function persistTriageResults(
     const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
 
     const collapsedDeterministic = collapseFlagsWithAffectedPaths(deterministicFlags)
-    const collapsedAi = collapseFlagsWithAffectedPaths(triageOutput.newFlags)
+    const collapsedAi = collapseFlagsWithAffectedPaths(triageOutput.newFlags.map(flag => ({ ...admitAiObservation(flag), source: 'AI' })))
 
     const flagRows = [
       ...collapsedDeterministic.map((f, i) => ({

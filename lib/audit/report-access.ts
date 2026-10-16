@@ -88,6 +88,11 @@ export function stripAiPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[
   }))
 }
 
+/** Raw comparison context and task provenance stay in owner-only projections. */
+export function stripSupportingObservationsFromFlags<T extends FlagLike>(flags: T[]): T[] {
+  return flags.map(flag => ({ ...flag, supportingObservations: null }))
+}
+
 /** Strip fix prompts for anonymous / non-owner viewers. Keep evidence and whyItMatters (triage value). */
 export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[]): T[] {
   return flags.map((f) => ({
@@ -99,6 +104,7 @@ export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[])
     boltPrompt: null,
     fix: null,
     verificationRule: null,
+    supportingObservations: null,
   }))
 }
 

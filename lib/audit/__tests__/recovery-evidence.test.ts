@@ -10,6 +10,7 @@ import { runSecurityHeaderChecks, securityHeaderObservations } from '../checks/s
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from './check-fixtures'
 import { performanceConditionContext, scopePerformanceAssertions } from '../performance-measurement'
 import { runPerformanceChecks } from '../checks/performance'
+import { mergeSupportingObservations, observationsForFlag } from '../flag-observations'
 
 const url = 'https://example.com/pricing'
 function spec(checkId: string) {
@@ -35,6 +36,22 @@ function recovered(checkId: string, executions: RecoveryExecution[], extraFlag =
 }
 
 describe('automatic recovery uses recorded responsibility evidence', () => {
+  it('requires every structured original observation and its exact admitted version', () => {
+    const peer = 'https://example.com/other'
+    const original = (pageUrl: string) => observationsForFlag({ ...labFlag(pageUrl), pageUrl }, {
+      auditId: 'before', taskId: 'source:' + pageUrl, checkVersion: 1,
+    })
+    const support = mergeSupportingObservations([original(url), original(peer)])
+    const assess = (executions: RecoveryExecution[], supportingObservations: unknown = support) => recordedVerificationVerdict({
+      auditId: 'after', executionSpec: spec('lcp-poor'), flag: { ...labFlag(), supportingObservations }, executions,
+    })
+    expect(assess([row()])).toBeNull()
+    expect(assess([row(), row({ pageUrl: peer })])).toBe('passed')
+    expect(assess([row(), row({ pageUrl: peer, assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast', observed: '6000ms', passed: false, complete: true }] })])).toBe('failed')
+    expect(assess([row()], { ...support, items: [{ ...support.items[0], checkVersion: 2 }] })).toBeNull()
+    expect(assess([row()], { ...support, items: [{ ...support.items[0], provenance: null }] })).toBeNull()
+    expect(assess([row()], { version: 2, items: [] })).toBeNull()
+  })
   it('requires every original page to pass, while an original failure disproves repair across a gap', () => {
     const peer = 'https://example.com/other'
     const assess = (executions: RecoveryExecution[]) => recordedVerificationVerdict({ auditId: 'after', executionSpec: spec('lcp-poor'),

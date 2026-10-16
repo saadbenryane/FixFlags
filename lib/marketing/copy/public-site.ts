@@ -4,7 +4,7 @@ export const PUBLIC_SITE_COPY = {
   coverage: 'What FixFlags checks',
   guide: 'Read the guide',
   nextTitle: 'Start with your website.',
-  nextBody: 'Enter a public URL for your first analysis. Save your Site and turn on monitoring to keep checking what matters.',
+  nextBody: 'Enter a public URL for your first analysis. Save your Site to start automatic monitoring.',
   howItWorks: {
     label: 'How it works',
     title: 'Monitor. Flag. Fix. Repeat.',
@@ -15,7 +15,7 @@ export const PUBLIC_SITE_COPY = {
       { id: 'fix', label: 'Fix', title: 'Give your developer or AI a clear next step.', body: 'Use the fix prompt, review the change, and publish it. Then return to Monitor with Check now.' },
     ],
     setupTitle: 'Keep building. We’ll keep watch.',
-    setupBody: 'Analyze your live website. Fix what needs attention, then save your Site and turn on monitoring.',
+    setupBody: 'Analyze your live website. Fix what needs attention, then save your Site to start automatic monitoring.',
     setupLink: 'See coverage and setup',
     monitor: {
       title: 'Your whole website, in view.',

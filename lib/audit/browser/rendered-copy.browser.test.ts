@@ -9,6 +9,19 @@ import { MAX_RAW_TEXT } from '../page-text-limits'
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('rendered copy evidence', () => {
   afterAll(closeBrowser)
+  it('captures visible introductory paragraphs and stops at the next heading', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      await page.setContent('<main><h1>The platform</h1><p>Plan releases <span>for engineering teams.</span></p>' +
+        '<p hidden>Hidden audience</p><nav><p>Navigation text</p></nav><h2>Other information</h2><p>Unrelated later audience</p></main>')
+      const copy = await observeRenderedCopy(page)
+      expect(copy.headlineSupport).toBe('Plan releases for engineering teams.')
+      expect(copy.proseBlocks).toContain('Plan releases for engineering teams.')
+      expect(copy.proseBlocks).not.toContain('Navigation text')
+      expect(copy.proseBlocks).not.toContain('Hidden audience')
+    } finally { await context.close() }
+  })
   it('does not report retired CSS-hidden placeholder content as visible page copy', async () => {
     const context = await (await getAuditBrowser()).newContext()
     try {

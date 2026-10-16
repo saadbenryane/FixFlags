@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   flagFindUnique: vi.fn(),
   feedbackUpsert: vi.fn(),
+  lifecycleUpsert: vi.fn(),
   recordRateLimit: vi.fn(),
   recordOwnerFlagFeedbackDecision: vi.fn(),
 }))
@@ -13,6 +14,7 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     flag: { findUnique: mocks.flagFindUnique },
     flagFeedback: { upsert: mocks.feedbackUpsert },
+    siteLifecycleEvent: { upsert: mocks.lifecycleUpsert },
   },
 }))
 vi.mock('@/lib/auth', () => ({
@@ -46,9 +48,10 @@ describe('Flag feedback lifecycle boundary', () => {
     mocks.getSession.mockResolvedValue({ user: { id: 'owner-1' } })
     mocks.flagFindUnique.mockResolvedValue({
       id: 'flag-1',
-      audit: { userId: 'owner-1' },
+      audit: { userId: 'owner-1', projectId: 'project-1' },
     })
     mocks.feedbackUpsert.mockResolvedValue({ id: 'feedback-1', vote: -1 })
+    mocks.lifecycleUpsert.mockResolvedValue({})
     mocks.recordRateLimit.mockResolvedValue(undefined)
     mocks.recordOwnerFlagFeedbackDecision.mockResolvedValue({ action: 'REJECT' })
   })
@@ -60,6 +63,8 @@ describe('Flag feedback lifecycle boundary', () => {
     )
 
     expect(response.status).toBe(200)
+    expect(mocks.lifecycleUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ name: 'flag_feedback_recorded', userId: 'owner-1', projectId: 'project-1', properties: { vote: -1, reason: 'LOW_IMPACT', owner: true } }) }))
+    expect(JSON.stringify(mocks.lifecycleUpsert.mock.calls)).not.toContain('Later')
     expect(mocks.recordOwnerFlagFeedbackDecision).toHaveBeenCalledWith({
       flagId: 'flag-1',
       userId: 'owner-1',
@@ -79,5 +84,6 @@ describe('Flag feedback lifecycle boundary', () => {
     expect(response.status).toBe(200)
     expect(mocks.feedbackUpsert).toHaveBeenCalled()
     expect(mocks.recordOwnerFlagFeedbackDecision).not.toHaveBeenCalled()
+    expect(mocks.lifecycleUpsert).not.toHaveBeenCalled()
   })
 })

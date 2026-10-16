@@ -6,8 +6,7 @@ import { headers } from 'next/headers'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { requireSiteOwner, requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { allowedWatchIntervals } from '@/lib/auth/entitlements'
-import { prisma } from '@/lib/db'
+import { monitoringOptions } from '@/lib/sites/application/monitoring-activation'
 
 const schema = watchScheduleSchema
 
@@ -40,12 +39,7 @@ function statusForCode(code?: string): number {
  * propose a cadence the domain would reject.
  */
 async function bestEntitledInterval(userId: string): Promise<WatchInterval | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, subscriptionStatus: true, role: true, id: true },
-  })
-  if (!user) return null
-  const allowed = allowedWatchIntervals(user)
+  const allowed = await monitoringOptions(userId)
   return CADENCE_ORDER.find((interval) => allowed.includes(interval)) ?? null
 }
 
@@ -139,7 +133,6 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ siteId
     const { siteId } = await context.params
     const access = await requireSiteOwner(siteId)
     if (!access.ok) return apiError(access.message, access.status)
-    const { monitoringOptions } = await import('@/lib/sites/application/monitoring-activation')
     return NextResponse.json({ intervals: await monitoringOptions(access.decision.site.userId!) }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) { return handleRouteError(error, 'We couldn’t load your monitoring options.') }
 }

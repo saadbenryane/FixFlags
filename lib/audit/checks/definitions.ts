@@ -136,13 +136,13 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'auth-destination': assertion('conversion', ['auth-page-broken']),
     'checkout-destination': assertion('conversion', ['checkout-link-dead']),
   }),
-  'messaging-clarity': define('messaging-clarity', 'conversion', 'Message clarity', 'metadata', {
+  'messaging-clarity': { ...define('messaging-clarity', 'conversion', 'Message clarity', 'metadata', {
     'headline-outcome': assertion('conversion', ['messaging-weak-value-prop']),
     'heading-jargon': assertion('conversion', ['messaging-jargon-overload']),
     'audience-or-outcome': assertion('conversion', ['messaging-no-audience']),
     'prose-sentence-length': assertion('conversion', ['messaging-long-sentences']),
     'headline-length': assertion('conversion', ['messaging-headline-too-short']),
-  }),
+  }), version: 2 },
   'conversion-friction': define('conversion-friction', 'conversion', 'Action friction', 'metadata', {
     'first-step-signals': assertion('conversion', ['friction-no-commitment-path']),
     'trial-payment-wording': assertion('conversion', ['friction-trial-commitment-unclear']),

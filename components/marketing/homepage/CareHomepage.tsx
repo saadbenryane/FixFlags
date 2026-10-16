@@ -10,6 +10,7 @@ import { BoardStatus } from '@/components/sites/BoardCard'
 import { PageCapturePreview } from '@/components/sites/PageCapturePreview'
 import { showFixPromptCopied } from '@/components/sites/FixPromptToast'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { FlagEvidenceDetails } from '@/components/sites/FlagEvidenceDetails'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
@@ -91,10 +92,8 @@ export function CareHomepage() {
       <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
       <DialogDescription>{selectedFlag?.scope ?? selectedCard?.context ?? ''}</DialogDescription>
       {selectedFlag ? <>
-        <dl className={s.flagFacts}>
-          <div><dt>{S.observedLabel}</dt><dd>{selectedFlag.observed}</dd></div>
-          <div><dt>{S.expectedLabel}</dt><dd>{selectedFlag.expected}</dd></div>
-        </dl>
+        <FlagEvidenceDetails observed={selectedFlag.observed} expected={selectedFlag.expected}
+          observedLabel={S.observedLabel} expectedLabel={S.expectedLabel} factsClassName={s.flagFacts} />
         <section className={s.flagSource} aria-label="Affected page">
           {selectedFlag.image ? <Image src={selectedFlag.image} alt={selectedFlag.imageAlt ?? ''} width={1280} height={720} /> : null}
           <a href={selectedFlag.url}>{selectedFlag.page}</a>

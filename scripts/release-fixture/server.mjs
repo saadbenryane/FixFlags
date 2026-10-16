@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { randomBytes, randomUUID, createHash, scryptSync, timingSafeEqual } from 'node:crypto'
 import { PrismaClient } from '@prisma/client'
 import { parseEmailBudget, reserveVerificationEmail } from './email-budget.mjs'
+import { pricingResponse, storefrontContent } from './storefront.mjs'
 
 // Separate controlled website, never a customer route or an application fixture.
 const origin = new URL(process.env.RELEASE_TARGET_ORIGIN ?? '').origin
@@ -71,7 +72,7 @@ const server = createServer(async (request, response) => {
       if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return json(response, 403, { error: 'Unauthorized' })
       if (request.method === 'POST') {
         const update = JSON.parse(await body(request)), current = await settings()
-        for (const key of ['broken', 'missingTitle', 'outage', 'deletionUnavailable']) if (typeof update[key] === 'boolean') current[key] = update[key]
+        for (const key of ['broken', 'missingTitle', 'outage', 'deletionUnavailable', 'brokenPricing', 'unlabelledSearch']) if (typeof update[key] === 'boolean') current[key] = update[key]
         await db.$executeRaw`UPDATE release_target_settings SET value = ${JSON.stringify(current)}::jsonb WHERE id = 1`
       }
       const counts = await db.$queryRaw`SELECT count(*)::int AS total, count(*) FILTER (WHERE deleted_at IS NULL)::int AS remaining,
@@ -141,7 +142,9 @@ const server = createServer(async (request, response) => {
     if (url.pathname === '/signup' || url.pathname === '/login') return page(response, accountForm(url.pathname.slice(1)), config)
     if (url.pathname === '/checkout') return page(response, `<h1>${config.broken ? 'Checkout unavailable' : 'Checkout'}</h1><p>This controlled fixture never places an order.</p>${config.broken ? '' : '<p>Payment</p><label>Card number<input inputmode="numeric" autocomplete="cc-number" disabled></label><button type="button" disabled>Pay now</button>'}`, config, config.broken ? 503 : 200)
     if (url.pathname === '/privacy') return page(response, '<h1>Privacy</h1><p>This controlled website stores only synthetic test identities and verification receipts.</p>', config)
-    return page(response, '<h1>Equipment for your next outdoor adventure</h1><p>Trail Pack, $75. Choose your hiking pack and review checkout.</p><button type="button" id="add">Add to cart</button><div id="CartDrawer" hidden><p>Item added</p><p>Your cart (1)</p><a href="/checkout">Checkout</a></div><script>document.getElementById("add").onclick=()=>{document.getElementById("CartDrawer").hidden=false}</script><nav><a href="/signup">Create account</a><a href="/login">Log in</a></nav>', config)
+    if (url.pathname === '/pricing') { const result = pricingResponse(config); return page(response, result.content, config, result.status) }
+    if (url.pathname === '/search') return page(response, '<h1>Equipment search</h1><p>Trail Pack, $75.</p><a href="/">View equipment</a>', config)
+    return page(response, storefrontContent(config), config)
   } catch { if (!response.headersSent) json(response, 500, { error: 'Controlled fixture operation failed' }); else response.end() }
 })
 server.listen(Number(process.env.PORT ?? 8080), '0.0.0.0')

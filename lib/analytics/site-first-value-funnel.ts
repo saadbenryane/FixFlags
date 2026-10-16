@@ -3,6 +3,12 @@ import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 const START_PREFIX = 'analyze_started:'
 const RESULT_PREFIX = 'first_useful_result:'
+const COMPLETED_PREFIX = 'analysis_completed:'
+
+/** The old event name measured completion too, never customer usefulness. */
+function resultAuditId(key: string): string | null {
+  return eventAuditId(key, COMPLETED_PREFIX) ?? eventAuditId(key, RESULT_PREFIX)
+}
 
 type StartEventRow = {
   idempotencyKey: string
@@ -188,7 +194,7 @@ export function calculateSiteFirstValueFunnel(input: {
   )
   const resultIds = new Set(
     input.results
-      .map((event) => eventAuditId(event.idempotencyKey, RESULT_PREFIX))
+      .map((event) => resultAuditId(event.idempotencyKey))
       .filter((auditId): auditId is string => auditId !== null)
       .filter((auditId) => startedIds.has(auditId)),
   )
@@ -248,7 +254,7 @@ export function calculateSiteFirstValueFunnel(input: {
       Boolean(event.createdAt && Number.isFinite(event.createdAt.getTime())))
   if (landingJourneyIds && comparableLanding) {
     const artifact = input.landingArtifact!
-    const allResultIds = new Set(input.results.map((result) => eventAuditId(result.idempotencyKey, RESULT_PREFIX)))
+    const allResultIds = new Set(input.results.map((result) => resultAuditId(result.idempotencyKey)))
     const allAuditsById = new Map(input.audits.map((audit) => [audit.id, audit]))
     for (const event of landingStarts) {
       if (!isAnonymousStart(event.properties) || !event.createdAt ||
@@ -363,9 +369,9 @@ export async function loadSiteFirstValueFunnel(
     }),
     prisma.siteLifecycleEvent.findMany({
       where: {
-        name: 'first_useful_result',
+        name: { in: ['analysis_completed', 'first_useful_result'] },
         idempotencyKey: {
-          in: auditIds.map((auditId) => `${RESULT_PREFIX}${auditId}`),
+          in: auditIds.flatMap((auditId) => [`${COMPLETED_PREFIX}${auditId}`, `${RESULT_PREFIX}${auditId}`]),
         },
       },
       select: { idempotencyKey: true },

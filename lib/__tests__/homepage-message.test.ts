@@ -11,7 +11,7 @@ describe('shared product story contracts', () => {
     expect(PUBLIC_SITE_COPY.howItWorks.steps.map(step => step.id)).toEqual(expected)
     expect(PUBLIC_SITE_COPY.howItWorks.title).toBe('Monitor. Flag. Fix. Repeat.')
     expect(CARE_HOME.workflow.steps[2].body).toContain('Check now')
-    expect(SEO.home.description).toContain('checks again after you publish a fix')
+    expect(SEO.home.description).toContain('Publish the change, then check it again')
   })
   it('keeps the first analysis and public evidence destinations reachable before signup', () => {
     expect(REVIEW_ENTRY.href).toBe('/new')

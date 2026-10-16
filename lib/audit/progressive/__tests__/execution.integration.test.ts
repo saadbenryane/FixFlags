@@ -984,6 +984,17 @@ run('migrated progressive execution', () => {
         expect(readExecutionSpec(audit.executionSpec)).toMatchObject({ scope: 'CATEGORY', targetUrl: origin + '/headers', category: { area, sourceAuditId: source.auditId } })
         const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: audit.id, workKind: { not: null } } })
         expect(tasks.some(task => ['captures', 'judge', 'discovery', 'pagespeed', 'slow-replay', 'journeys'].includes(task.workKind!))).toBe(false)
+        const categoryFindings = await prisma.flag.findMany({ where: { auditId: audit.id } })
+        for (const finding of categoryFindings) {
+          const supporting = finding.supportingObservations as { version: number; items: Array<{ checkVersion: number; provenance: { auditId: string; taskId: string } }> }
+          expect(supporting).toMatchObject({ version: 1, items: expect.any(Array) })
+          expect(supporting.items.length).toBeGreaterThan(0)
+          for (const item of supporting.items) {
+            expect(item.checkVersion).toBeGreaterThan(0)
+            expect(item.provenance.auditId).toBe(audit.id)
+            expect(tasks.some(task => task.id === item.provenance.taskId)).toBe(true)
+          }
+        }
         const runView = await getOwnedRun(userId, admitted.runId)
         expect(runView).toMatchObject({ scope: 'CATEGORY', area, status: 'COMPLETED', result: expect.any(String) })
         const home = (await loadSiteHome(projectId))!

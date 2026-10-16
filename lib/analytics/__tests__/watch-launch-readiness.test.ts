@@ -95,6 +95,18 @@ describe('Watch launch readiness', () => {
     expect(Object.values(readiness.gates).every((gate) => gate.status === 'passed')).toBe(true)
   })
 
+  it('includes failed execution spend and reports the expensive tail separately from the success estimate', () => {
+    const ordinary = run(0)
+    const failed = run(1, { status: 'FAILED', errorCode: 'SITE_UNREACHABLE', audit: { ...run(1).audit!, status: 'FAILED', estimatedCostUsd: 8 } })
+    const missing = run(2, { status: 'FAILED', audit: null })
+    const readiness = calculateWatchLaunchReadiness({ asOf: AS_OF, firstWatchRequestedAt: null, runs: [ordinary, failed, missing] })
+    expect(readiness.metrics.recordedSpendUsd).toBe(8.3)
+    expect(readiness.metrics.p95RecordedCostUsd).toBe(8)
+    expect(readiness.metrics.maximumRecordedCostUsd).toBe(8)
+    expect(readiness.metrics.spendByStatus).toContainEqual({ status: 'FAILED', executions: 2, recordedSpendUsd: 8, missingCostExecutions: 1 })
+    expect(readiness.metrics.medianWatchCostUsd).toBe(0.3)
+  })
+
   it('keeps unexercised paths collecting instead of treating absence as success', () => {
     const readiness = calculateWatchLaunchReadiness({
       asOf: AS_OF,

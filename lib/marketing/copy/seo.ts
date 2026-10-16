@@ -1,3 +1,4 @@
+import { WEBSITE_PROMISE } from './care-homepage'
 import { PUBLIC_OFFER } from './public-offer'
 
 export const SEO = {
@@ -16,7 +17,7 @@ export const SEO = {
   home: {
     title: 'FixFlags - Your software runs. FixFlags watches.',
     description:
-      'Monitor. Flag. Fix. FixFlags checks your live website, shows problems with evidence, and checks again after you publish a fix.',
+      WEBSITE_PROMISE,
   },
   integrations: {
     title: 'FixFlags Integrations',

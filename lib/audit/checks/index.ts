@@ -86,8 +86,9 @@ export async function runAllChecks(
   }))
   const seen = new Set<string>()
   const flags = results.flatMap(result => result.flags).filter(flag => {
-    if (seen.has(flag.checkId)) return false
-    seen.add(flag.checkId); return true
+    const observation = JSON.stringify(flag)
+    if (seen.has(observation)) return false
+    seen.add(observation); return true
   })
   return { flags: filterToolingPathFlags(suppressOverlappingFlags(searchHandled
       ? flags.filter(flag => !SEARCH_HANDLED_CHECK_IDS.has(flag.checkId)) : flags)),

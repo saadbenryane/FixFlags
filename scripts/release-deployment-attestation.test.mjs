@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { releaseStageCommands } from './release-receipts.mjs'
 import {
   attestRailwayDeployment,
   attestLocalFoundation,
@@ -28,10 +29,13 @@ describe('release deployment attestation', () => {
       startedAt: '2026-08-25T19:00:00.000Z', completedAt: checks[0].completed_at,
       containerImageDigest: 'sha256:' + 'b'.repeat(64),
       previousGitSha: 'b'.repeat(40), artifacts: [{ label: 'upgrade-evidence', sha256: 'c'.repeat(64) }],
-      commands: ['clean-install', 'fresh-database', 'upgrade-database', 'full-verification', 'container-build', 'container-ready'].map(label => ({ label, exitCode: 0 })) }
+      commands: releaseStageCommands('foundation').map(([label]) => ({ label, exitCode: 0 })) }
     assert.equal(attestLocalFoundation(foundation, SHA).source, 'local-foundation')
     for (const invalid of [{ ...foundation, gitSha: 'c'.repeat(40) }, { ...foundation, status: 'FAIL' },
       { ...foundation, commands: foundation.commands.slice(1) }, { ...foundation, completedAt: 'invalid' },
+      { ...foundation, commands: foundation.commands.filter(command => command.label !== 'progressive-execution') },
+      { ...foundation, commands: foundation.commands.filter(command => command.label !== 'website-persistence') },
+      { ...foundation, commands: foundation.commands.filter(command => command.label !== 'uptime-persistence') },
       { ...foundation, commands: foundation.commands.map(command => ({ ...command, exitCode: 1 })) }])
       assert.throws(() => attestLocalFoundation(invalid, SHA))
     const evidence = buildDeploymentAttestation({ gitSha: SHA, repository: 'saadbenryane/FixFlags', localFoundation: foundation,

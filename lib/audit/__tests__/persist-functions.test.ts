@@ -1,3 +1,5 @@
+import { observationsForFlag } from '../flag-observations'
+import { admitAiObservation } from '../ai-observation-identity'
 import { describe, it, vi, expect, beforeEach } from 'vitest'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
@@ -156,6 +158,22 @@ describe('persistDeterministicFlags', () => {
     expect(mockTx.flag.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'stable-flag' } }))
   })
 
+  it('retains all source observations on incremental replay and uses the complete authoritative set on finalization', async () => {
+    const first = makeDet({ checkId: 'title-missing', pageUrl: 'https://example.com/' })
+    first.supportingObservations = observationsForFlag(first, { auditId: 'audit-1', taskId: 'first', checkVersion: 1 })
+    await persistDeterministicFlags('audit-1', [first], baseRubricScores())
+    const row = mockTx.flag.createMany.mock.calls.at(-1)![0].data[0]
+    mockTx.flag.findMany.mockResolvedValue([{ id: 'stable', ...row }])
+    const peer = makeDet({ checkId: first.checkId, pageUrl: 'https://example.com/pricing', evidence: 'Pricing title absent' })
+    peer.supportingObservations = observationsForFlag(peer, { auditId: 'audit-1', taskId: 'peer', checkVersion: 1 })
+    await persistDeterministicFlags('audit-1', [peer], baseRubricScores())
+    const incremental = mockTx.flag.update.mock.calls.at(-1)![0].data.supportingObservations
+    expect(incremental.items.map((item: { provenance: { taskId: string } }) => item.provenance.taskId)).toEqual(['first', 'peer'])
+    await persistDeterministicFlags('audit-1', [peer], baseRubricScores(), undefined, { authoritativeProjection: true })
+    expect(mockTx.flag.update.mock.calls.at(-1)![0].data.supportingObservations.items).toHaveLength(1)
+    expect(mockTx.flag.deleteMany).not.toHaveBeenCalled()
+  })
+
   it('handles partial rubric scores (some null)', async () => {
     const scores = { MESSAGE: 90, EXPERIENCE: null, REACH: null } as Partial<Record<RubricName, number | null>>
 
@@ -256,6 +274,21 @@ describe('persistTriageResults', () => {
     const flagData = (mockTx.flag.createMany.mock.calls[0] as unknown[])[0] as { data: unknown[] }
     const flag = flagData.data[0] as { problem: string }
     expect(flag.problem).toBe('AI discovered issue')
+  })
+
+  it('persists independent same-title AI observations with their original task evidence', async () => {
+    const original = { rubric: 'EXPERIENCE' as const, impactTag: 'ACCESSIBILITY' as const, severity: 'IMPORTANT' as const,
+      problem: 'Primary action is unclear', evidence: 'A consent dialog covers the signup action.',
+      whyItMatters: 'Review the observed action.', confidence: 0.8, pageUrl: 'https://example.com/' }
+    const origin = { auditId: 'audit-1', taskId: 'judge-1', collectedAt: '2026-10-16T10:00:00.000Z' }
+    const first = admitAiObservation(original, origin)
+    const second = admitAiObservation({ ...original, evidence: 'The action promise differs from its destination.' }, origin)
+    await persistTriageResults('audit-1', makeTriageOutput({ newFlags: [first, second, first] }), [], {})
+    const rows = mockTx.flag.createMany.mock.calls[0][0].data
+    expect(rows).toHaveLength(2)
+    expect(rows.map((row: { fingerprint: string }) => row.fingerprint)).toEqual([first.fingerprint, second.fingerprint])
+    expect(rows[0].supportingObservations.items).toEqual(first.supportingObservations.items)
+    expect(rows[1].supportingObservations.items).toEqual(second.supportingObservations.items)
   })
 
   it('handles 0 new AI flags', async () => {
@@ -474,6 +507,20 @@ describe('mergePrescriptionResults', () => {
         whyItMatters: 'Updated impact',
       }),
     })
+  })
+
+  it('enriches same-title observations only through their exact admitted identities', async () => {
+    const base = { rubric: 'EXPERIENCE', problem: 'Primary action is unclear', pageUrl: 'https://example.com/' }
+    const first = admitAiObservation({ ...base, evidence: 'Covered action' })
+    const second = admitAiObservation({ ...base, evidence: 'Mismatched destination' })
+    mockTx.flag.findMany.mockResolvedValue([{ ...first, id: 'first', checkId: null }, { ...second, id: 'second', checkId: null }])
+    const prescription = { flagKey: second.fingerprint, evidence: 'Mismatched destination', whyItMatters: 'The destination should match the promise.',
+      fix: 'Correct this destination.', agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null,
+      lovablePrompt: null, boltPrompt: null, verificationRule: 'Inspect the destination.' }
+    await mergePrescriptionResults('audit-1', { flagPrescriptions: [prescription], rubricPrescriptions: [] })
+    expect(mockTx.flag.update).toHaveBeenCalledTimes(1)
+    expect(mockTx.flag.update).toHaveBeenCalledWith({ where: { id: 'second' }, data: expect.objectContaining({ fix: prescription.fix }) })
+    expect(mockTx.flag.update.mock.calls[0][0].data).not.toHaveProperty('fingerprint')
   })
 
   it('applies rubric prescriptions to matching rubrics', async () => {

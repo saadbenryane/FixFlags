@@ -355,14 +355,15 @@ it('does not let an unsupported AI observation suppress a later source-backed fi
   }
 })
 
-it('keeps supporting observations together when same-page triage findings are redundant', () => {
+it('retains distinct supporting evidence without inferring equivalence from an AI title', () => {
   const headline = ai({ pageUrl: root })
   const subheading = ai({ pageUrl: root, evidence: 'The subheading "Make progress today" also leaves the audience unspecified.' })
   const flags = [headline, subheading, { ...subheading }]
   const before = structuredClone(flags)
   const result = deduplicateTriageFlags([], flags)
-  assert.equal(result.length, 1)
-  assert.equal(result[0].evidence, `${headline.evidence}\n${subheading.evidence}`)
+  assert.equal(result.length, 2)
+  assert.equal(result[0].evidence, headline.evidence)
+  assert.equal(result[1].evidence, subheading.evidence)
   assert.deepEqual(flags, before)
   assert.equal(deduplicateTriageFlags([], [headline, { ...subheading, pageUrl: pricing }]).length, 2)
 })
