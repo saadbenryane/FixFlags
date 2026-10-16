@@ -2,7 +2,7 @@
 
 The current release profile is website-only public validation with one-website open-beta access. The [completion ledger](product-masterplan.md#public-website-validation-completion-ledger) supersedes broader machine-client launch obligations for this release. Parked MCP/CLI journeys cannot satisfy or block website acceptance. Account lifecycle, uptime, category rechecks, notification recovery, and acknowledged Site removal require actual execution evidence. GitHub Actions CI and Railway Wait for CI remain disabled by explicit release direction. Local verification and exact-revision deployment attestation must identify their actual proof source without manufacturing successful CI checks.
 
-Real receiving configuration remains open: the Resend domain and MX record are verified and receiving is enabled, but the production receiving webhook is disabled. Production automatic-account execution remains disabled until webhook processing and a controlled lifecycle are verified. A natural scheduled production full-check cycle remains required. The owner subsequently directed this task to conduct usability review independently. Record agent task observations accurately, with no invented human participants or five-person study. Accelerated fixtures and automated interaction checks retain their separate evidence scope.
+Record current domain, MX, receiving webhook, provider quota and runtime gate configuration in the candidate receipts. Credentials and enabled infrastructure do not establish lifecycle proof. Enable production automatic-account execution only after actual receiving-event processing and a controlled normal-engine lifecycle are verified. A natural scheduled production full-check cycle remains required. The owner subsequently directed this task to conduct usability review independently. Record agent task observations accurately, with no invented human participants or five-person study. Accelerated fixtures and automated interaction checks retain their separate evidence scope.
 
 The isolated `public-validation` environment permits normal account execution only on its explicit controlled HTTPS origin while the production lifecycle gate remains false. The controlled target has its own database and external email/password signup, verification, session and deletion flows. Its protected controls induce real failures without adding test controls to customer routes. The required website capability journeys use a separate free-beta owner, including explicit acknowledgement when external account deletion remains unavailable.
 
@@ -45,9 +45,9 @@ candidate SHA, they are *implemented and specified*, not *proven*.
 | Outcome-first UI responsive, accessible, keyboard reachable | `journey:site-surfaces`, `e2e/site-surface-bar.ts` |
 | Another owner cannot read, run, or verify a Site | `journey:tenant-isolation` |
 
-## Waiting on credentials this repository does not hold
+## Required external proof
 
-These cannot be closed here. Each needs a real session or a real deployment.
+Resolve access from the current environment and record the prerequisite check. Each item needs actual execution on the candidate revision; old credential and deployment snapshots cannot establish current readiness.
 
 ### 1. Production canary and exact-SHA attestation
 
@@ -62,7 +62,7 @@ npm run verify:release:stage deployed
 `scripts/release-deployment-attestation.mjs` records the deployed commit.
 `scripts/release-revision-attestation.mjs` refuses a release environment whose
 reported commit is not the full expected SHA. `npm run smoke:release` then probes
-the production origin. None of this has run.
+the production origin. Record the actual attestation and smoke receipts for the candidate; an earlier revision does not satisfy this requirement.
 
 ### 2. Codex, Claude Code, and Cursor sessions (parked)
 
