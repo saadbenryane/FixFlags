@@ -34,14 +34,17 @@ export async function ensureProductProject(
       select: { id: true, productIntelligence: true, deletedAt: true },
     })
     if (existing) {
-      if (existing.deletedAt) await assertCanCreateProduct(tx, userId)
+      if (!existing.deletedAt) {
+        await ensureDefaultMonitoring(tx, existing.id, userId)
+        return existing
+      }
+      await assertCanCreateProduct(tx, userId)
       const project = await tx.project.update({
         where: { id: existing.id },
         data: { deletedAt: null },
         select: { id: true, productIntelligence: true },
       })
-      if (existing.deletedAt) await ensureDefaultMonitoring(tx, project.id, userId, undefined, { restored: true })
-      else await ensureDefaultMonitoring(tx, project.id, userId)
+      await ensureDefaultMonitoring(tx, project.id, userId, undefined, { restored: true })
       return project
     }
 

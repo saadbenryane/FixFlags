@@ -55,5 +55,7 @@ describe('ensureProductProject', () => {
 
     expect(assertCanCreateProduct).not.toHaveBeenCalled()
     expect(prismaMock.project.upsert).not.toHaveBeenCalled()
+    expect(prismaMock.project.update).not.toHaveBeenCalled()
+    expect(ensureDefaultMonitoring).toHaveBeenCalledWith(prismaMock, 'anchor-1', 'user-1')
   })
 })

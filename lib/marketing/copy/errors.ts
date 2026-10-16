@@ -1,5 +1,6 @@
 export const AUDIT_ERRORS = {
   checkFailedTitle: 'Check failed',
+  admissionBusy: 'This website request could not finish. Try again in a moment.',
   retryCta: 'Retry',
   checkAnotherSite: 'Check another site',
   goHome: 'Go home',

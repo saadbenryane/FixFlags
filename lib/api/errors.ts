@@ -1,3 +1,5 @@
+import { ProductAdmissionBusy } from '@/lib/billing/product-transaction'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy/errors'
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/usage'
@@ -67,6 +69,12 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
       requestId,
     })
     response.headers.set('Retry-After', String(err.retryAfter))
+    return response
+  }
+
+  if (err instanceof ProductAdmissionBusy) {
+    const response = apiError(AUDIT_ERRORS.admissionBusy, 503, { code: err.code, action: 'retry', requestId })
+    response.headers.set('Retry-After', '1')
     return response
   }
 

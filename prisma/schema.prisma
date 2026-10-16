@@ -749,6 +749,7 @@ model Audit {
   @@index([createdAt(sort: Desc)])
   @@index([status, updatedAt])
   @@index([userId, status])
+  @@index([projectId, createdAt(sort: Desc)], map: "audits_project_created_idx")
   @@index([parentId])
   @@index([normalizedDomain])
   @@index([siteId])

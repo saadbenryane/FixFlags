@@ -1,3 +1,4 @@
+import { productTransaction } from '@/lib/billing/product-transaction'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { prisma } from '@/lib/db'
 import { dispatchAudit } from './dispatch'
@@ -318,215 +319,196 @@ export async function createAndEnqueueAudit(
   }
   const isWatchReview = options.recheckTrigger === 'WATCH'
   if (userId) {
-    let conflicts = 0
-    while (true) {
-      try {
-        audit = await prisma.$transaction(
-          async (tx) => {
-            const cleanup = Boolean(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup')
-            const policy = await loadEffectiveEntitlements(userId,tx)
-            if(!policy || !policy.available && !cleanup) throw new ParentAuditError('This account cannot start new work.',403)
-            if (!cleanup) {
-              try {
-                const ownedProject = await ensureProductProject(userId, url, tx)
-                if (options.parentId && projectId && projectId !== ownedProject.id) {
-                  throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
-                }
-                projectId = ownedProject.id
-              } catch (error) {
-                if (error instanceof ProductLimitReached) throw new AuditLimitError('UPGRADE_REQUIRED', {
-                  action: 'upgrade', message: PLAN_LIMIT_NOTICE.copy['site-limit'].body,
-                })
-                throw error
-              }
-            }
-            if(cleanup && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new ParentAuditError('Cleanup Site not found.',404)
-            const user = await rollUserUsagePeriod(tx, userId)
-            if (!user) throw new Error('User not found')
-            if (options.operator && projectId) await assertAdminDomainActor(options.operator, userId, projectId, tx)
-            if (user.lifecycleStatus !== 'ACTIVE' && !(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup'))
-              throw new ParentAuditError('This account cannot start new work.', 403)
-
-            if (options.verificationAttemptId) {
-              await tx.$executeRaw`
-                SELECT pg_advisory_xact_lock(
-                  hashtextextended(${`fixflags:verification-audit:${options.verificationAttemptId}`}, 0)
-                )
-              `
-              const attempt = await tx.improvementAttempt.findFirst({
-                where: {
-                  id: options.verificationAttemptId,
-                  sourceAuditId: options.parentId,
-                  improvement: {
-                    projectId: projectId ?? undefined,
-                    project: { userId },
-                  },
-                },
-                select: {
-                  id: true,
-                  verificationAudit: {
-                    select: { id: true, status: true, parentId: true },
-                  },
-                },
-              })
-              if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
-              if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
-                return packageAudit(tx, { ...attempt.verificationAudit, reused: true })
-              }
-              if (attempt.verificationAudit?.status === 'FAILED') {
-                await tx.improvementAttempt.update({
-                  where: { id: attempt.id },
-                  data: { verificationAuditId: null },
-                })
-              }
-            }
-
-            if (projectId && !isWatchReview) {
-              await tx.$executeRaw`
-                SELECT pg_advisory_xact_lock(
-                  hashtextextended(${`fixflags:manual-review:${projectId}`}, 0)
-                )
-              `
-            }
-
-            if (options.runRequestAdmission) {
-              const intent = options.runRequestAdmission
-              const existing = await tx.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
-                projectId: intent.projectId, source: intent.source!, idempotencyKey: intent.idempotencyKey,
-              } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true, selections: { select: { outcomeId: true } } } })
-              if (existing) {
-                if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== (options.operator?.actorId ?? userId))
-                  throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
-                if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
-                throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort())
-              }
-            }
-
-            // A Product has one foreground/manual Review at a time. This lives
-            // in the serializable creation boundary so repeated clicks and
-            // concurrent transports resume the same Review without spending a
-            // second credit or enqueueing duplicate work. Watch runs use their
-            // own lease and are intentionally excluded.
-            const activeManualReview = projectId && !isWatchReview
-              ? await tx.audit.findFirst({
-                  where: {
-                    projectId,
-                    status: { notIn: ['COMPLETED', 'FAILED'] },
-                    OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
-                  },
-                  orderBy: { createdAt: 'desc' },
-                  select: { id: true, status: true, parentId: true },
-                })
-              : null
-            if (activeManualReview) {
-              if (options.verificationAttemptId || options.reuseActiveManual === false) {
-                throw new ParentAuditError(
-                  'Another Site check is still running. Try Verify again when it finishes.',
-                  409,
-                )
-              }
-              return packageAudit(tx, { ...activeManualReview, reused: true })
-            }
-
-            if (
-              !options.skipUsageCount &&
-              !hasUnlimitedScans(user) &&
-              !isAdminUser(user)
-            ) {
-              const limit = policy.scanLimit ?? -1
-              if (!isUnlimitedScanLimit(limit)) {
-                const pending = await tx.audit.count({
-                  where: {
-                    userId: user.id,
-                    skipUsageCount: false,
-                    status: { notIn: ['COMPLETED', 'FAILED'] },
-                  },
-                })
-
-                // Revoked paid subscriptions are treated as FREE for hard gates.
-                const gateUser =
-                  user.plan !== 'FREE' && hasRevokedSubscriptionStatus(user.subscriptionStatus)
-                    ? { ...user, plan: 'FREE' as const }
-                    : user
-
-                const gate = await wouldBlockNewCheckWithCredits({ ...gateUser, plan: policy.plan, auditsLimit: policy.scanLimit ?? -1 }, pending)
-                if (!gate.allowed) {
-                  throw new AuditLimitError(
-                    gate.code === 'TOKEN_LIMIT' ? 'TOKEN_LIMIT' : 'UPGRADE_REQUIRED',
-                    {
-                      action:
-                        gate.action === 'buy_credits' || gate.action === 'upgrade'
-                          ? gate.action
-                          : undefined,
-                      message: gate.error,
-                      renewalAt: user.usagePeriodEnd,
-                    }
-                  )
-                }
-              }
-            }
-
-            const access = await admitScanAccess(tx, { projectId, userId, targetUrl: url,
-              explicit: options.scanAccess, useProject: options.useProjectScanAccess, allowRemovedForCleanup: cleanup })
-            data.scanAccessEncrypted = access.config ? encryptScanAccess(access.config) : null
-            data.executionSpec = { ...executionSpec, reviewDepth, scanAccess: access.intent } as Prisma.InputJsonValue
-            if (access.config) data.isPublic = false
-            const created = await tx.audit.create({
-              data: { ...data, projectId, planAtAdmission: user.plan, journeyReviewIncluded: true },
-              select: { id: true, parentId: true },
-            })
-            if (options.runRequestAdmission) {
-              if (options.runRequestAdmission.projectId !== projectId || options.runRequestAdmission.requestedByUserId !== (options.operator?.actorId ?? userId))
-                throw new ParentAuditError('Run admission does not match this Site owner', 400)
-              if (executionSpec.fixtureSetup) {
-                const setup = executionSpec.fixtureSetup
-                const admitted = await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: projectId!,
-                  version: setup.version, enabled: true }, data: { authorizedAt: null, lastDryRunVersion: null,
-                  lastDryRunAt: null, lastDryRunResult: Prisma.DbNull } })
-                if (admitted.count !== 1) throw new ParentAuditError('Signup configuration changed before admission. Run it again.', 409)
-              }
-              await tx.runRequest.create({ data: { ...options.runRequestAdmission, auditId: created.id,
-                executionSpec: data.executionSpec } })
-            }
-            if (options.runRequestId && !options.runRequestAdmission) {
-              const attached = await tx.runRequest.updateMany({
-                where: {
-                  id: options.runRequestId,
-                  projectId: projectId ?? undefined,
-                  requestedByUserId: userId,
-                  auditId: null,
-                },
-                data: { auditId: created.id },
-              })
-              if (attached.count !== 1) {
-                throw new ParentAuditError('Outcome run request not found', 404)
-              }
-            }
-            if (options.verificationAttemptId) {
-              await tx.improvementAttempt.update({
-                where: { id: options.verificationAttemptId },
-                data: { verificationAuditId: created.id },
-              })
-            }
-            return packageAudit(tx, {
-              id: created.id, status: 'QUEUED' as const, reused: false, parentId: created.parentId,
-            })
-          },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-        )
-        break
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2034' &&
-          conflicts < 2
-        ) {
-          conflicts++
-          continue
+    audit = await productTransaction(async (tx) => {
+      const cleanup = Boolean(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup')
+      const policy = await loadEffectiveEntitlements(userId,tx)
+      if(!policy || !policy.available && !cleanup) throw new ParentAuditError('This account cannot start new work.',403)
+      if (!cleanup) {
+        try {
+          const ownedProject = await ensureProductProject(userId, url, tx)
+          if (options.parentId && projectId && projectId !== ownedProject.id) {
+            throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
+          }
+          projectId = ownedProject.id
+        } catch (error) {
+          if (error instanceof ProductLimitReached) throw new AuditLimitError('UPGRADE_REQUIRED', {
+            action: 'upgrade', message: PLAN_LIMIT_NOTICE.copy['site-limit'].body,
+          })
+          throw error
         }
-        throw error
       }
-    }
+      if(cleanup && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new ParentAuditError('Cleanup Site not found.',404)
+      const user = await rollUserUsagePeriod(tx, userId)
+      if (!user) throw new Error('User not found')
+      if (options.operator && projectId) await assertAdminDomainActor(options.operator, userId, projectId, tx)
+      if (user.lifecycleStatus !== 'ACTIVE' && !(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup'))
+        throw new ParentAuditError('This account cannot start new work.', 403)
+
+      if (options.verificationAttemptId) {
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${`fixflags:verification-audit:${options.verificationAttemptId}`}, 0)
+          )
+        `
+        const attempt = await tx.improvementAttempt.findFirst({
+          where: {
+            id: options.verificationAttemptId,
+            sourceAuditId: options.parentId,
+            improvement: {
+              projectId: projectId ?? undefined,
+              project: { userId },
+            },
+          },
+          select: {
+            id: true,
+            verificationAudit: {
+              select: { id: true, status: true, parentId: true },
+            },
+          },
+        })
+        if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
+        if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
+          return packageAudit(tx, { ...attempt.verificationAudit, reused: true })
+        }
+        if (attempt.verificationAudit?.status === 'FAILED') {
+          await tx.improvementAttempt.update({
+            where: { id: attempt.id },
+            data: { verificationAuditId: null },
+          })
+        }
+      }
+
+      if (projectId && !isWatchReview) {
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${`fixflags:manual-review:${projectId}`}, 0)
+          )
+        `
+      }
+
+      if (options.runRequestAdmission) {
+        const intent = options.runRequestAdmission
+        const existing = await tx.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
+          projectId: intent.projectId, source: intent.source!, idempotencyKey: intent.idempotencyKey,
+        } }, select: { id: true, auditId: true, requestHash: true, requestedByUserId: true, selections: { select: { outcomeId: true } } } })
+        if (existing) {
+          if (existing.requestHash !== intent.requestHash || existing.requestedByUserId !== (options.operator?.actorId ?? userId))
+            throw new ParentAuditError('Run idempotency key belongs to another Site run', 409)
+          if (!existing.auditId) throw new ParentAuditError('The previous run has no admitted execution.', 409)
+          throw new RunAdmissionReplay(existing.id, existing.auditId, existing.selections.map(item => item.outcomeId).sort())
+        }
+      }
+
+      // A Product has one foreground/manual Review at a time. This lives
+      // in the serializable creation boundary so repeated clicks and
+      // concurrent transports resume the same Review without spending a
+      // second credit or enqueueing duplicate work. Watch runs use their
+      // own lease and are intentionally excluded.
+      const activeManualReview = projectId && !isWatchReview
+        ? await tx.audit.findFirst({
+            where: {
+              projectId,
+              status: { notIn: ['COMPLETED', 'FAILED'] },
+              OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, status: true, parentId: true },
+          })
+        : null
+      if (activeManualReview) {
+        if (options.verificationAttemptId || options.reuseActiveManual === false) {
+          throw new ParentAuditError(
+            'Another Site check is still running. Try Verify again when it finishes.',
+            409,
+          )
+        }
+        return packageAudit(tx, { ...activeManualReview, reused: true })
+      }
+
+      if (
+        !options.skipUsageCount &&
+        !hasUnlimitedScans(user) &&
+        !isAdminUser(user)
+      ) {
+        const limit = policy.scanLimit ?? -1
+        if (!isUnlimitedScanLimit(limit)) {
+          const pending = await tx.audit.count({
+            where: {
+              userId: user.id,
+              skipUsageCount: false,
+              status: { notIn: ['COMPLETED', 'FAILED'] },
+            },
+          })
+
+          // Revoked paid subscriptions are treated as FREE for hard gates.
+          const gateUser =
+            user.plan !== 'FREE' && hasRevokedSubscriptionStatus(user.subscriptionStatus)
+              ? { ...user, plan: 'FREE' as const }
+              : user
+
+          const gate = await wouldBlockNewCheckWithCredits({ ...gateUser, plan: policy.plan, auditsLimit: policy.scanLimit ?? -1 }, pending)
+          if (!gate.allowed) {
+            throw new AuditLimitError(
+              gate.code === 'TOKEN_LIMIT' ? 'TOKEN_LIMIT' : 'UPGRADE_REQUIRED',
+              {
+                action:
+                  gate.action === 'buy_credits' || gate.action === 'upgrade'
+                    ? gate.action
+                    : undefined,
+                message: gate.error,
+                renewalAt: user.usagePeriodEnd,
+              }
+            )
+          }
+        }
+      }
+
+      const access = await admitScanAccess(tx, { projectId, userId, targetUrl: url,
+        explicit: options.scanAccess, useProject: options.useProjectScanAccess, allowRemovedForCleanup: cleanup })
+      data.scanAccessEncrypted = access.config ? encryptScanAccess(access.config) : null
+      data.executionSpec = { ...executionSpec, reviewDepth, scanAccess: access.intent } as Prisma.InputJsonValue
+      if (access.config) data.isPublic = false
+      const created = await tx.audit.create({
+        data: { ...data, projectId, planAtAdmission: user.plan, journeyReviewIncluded: true },
+        select: { id: true, parentId: true },
+      })
+      if (options.runRequestAdmission) {
+        if (options.runRequestAdmission.projectId !== projectId || options.runRequestAdmission.requestedByUserId !== (options.operator?.actorId ?? userId))
+          throw new ParentAuditError('Run admission does not match this Site owner', 400)
+        if (executionSpec.fixtureSetup) {
+          const setup = executionSpec.fixtureSetup
+          const admitted = await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: projectId!,
+            version: setup.version, enabled: true }, data: { authorizedAt: null, lastDryRunVersion: null,
+            lastDryRunAt: null, lastDryRunResult: Prisma.DbNull } })
+          if (admitted.count !== 1) throw new ParentAuditError('Signup configuration changed before admission. Run it again.', 409)
+        }
+        await tx.runRequest.create({ data: { ...options.runRequestAdmission, auditId: created.id,
+          executionSpec: data.executionSpec } })
+      }
+      if (options.runRequestId && !options.runRequestAdmission) {
+        const attached = await tx.runRequest.updateMany({
+          where: {
+            id: options.runRequestId,
+            projectId: projectId ?? undefined,
+            requestedByUserId: userId,
+            auditId: null,
+          },
+          data: { auditId: created.id },
+        })
+        if (attached.count !== 1) {
+          throw new ParentAuditError('Outcome run request not found', 404)
+        }
+      }
+      if (options.verificationAttemptId) {
+        await tx.improvementAttempt.update({
+          where: { id: options.verificationAttemptId },
+          data: { verificationAuditId: created.id },
+        })
+      }
+      return packageAudit(tx, {
+        id: created.id, status: 'QUEUED' as const, reused: false, parentId: created.parentId,
+      })
+    })
   } else {
     audit = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`

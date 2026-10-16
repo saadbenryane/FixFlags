@@ -1,3 +1,5 @@
+import { ProductAdmissionBusy } from '@/lib/billing/product-transaction'
+import { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), run: vi.fn() }))
@@ -35,4 +37,15 @@ describe('Site category run admission route', () => {
     mocks.session.mockResolvedValue(null)
     expect((await POST(request({ scope: 'category', area: 'search' }), context)).status).toBe(401)
   })
+  it('reports exhausted admission contention as retryable without claiming an admitted run', async () => {
+    mocks.run.mockRejectedValue(new ProductAdmissionBusy(new Prisma.PrismaClientKnownRequestError('Serialization conflict', { code: 'P2034', clientVersion: 'test' })))
+    const response = await POST(request({ scope: 'site' }), context)
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('1')
+    const body = await response.json()
+    expect(body).toMatchObject({ code: 'ADMISSION_BUSY', action: 'retry' })
+    expect(body.runId).toBeUndefined()
+    expect(body.auditId).toBeUndefined()
+  })
+
 })
