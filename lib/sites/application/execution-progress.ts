@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
-import { taskInputSchema } from '@/lib/audit/progressive/contracts'
+import { analysisTaskWhere, taskInputSchema } from '@/lib/audit/progressive/contracts'
 import { categoryExecutionRecovery, executionRecovery, type ExecutionRecovery } from '../execution-recovery'
 import type { SiteCardArea } from '../card-areas'
 import { summarizeExecutionTasks, type ExecutionTaskSummary } from '../execution-summary'
@@ -41,13 +41,13 @@ export async function readSiteEvents(site: SiteRecord, after: bigint) {
 export async function loadExecutionProgress(site: SiteRecord, auditId: string | null): Promise<ExecutionProgress | null> {
   if (!auditId) return null
   const audit = await prisma.audit.findFirst({ where: { AND: [{ id: auditId }, siteAuditScope(site)] },
-    select: { recoveryUntil: true, verifierExecutions: { where: { targetKey: { startsWith: 'task:' } },
+    select: { recoveryUntil: true, verifierExecutions: { where: analysisTaskWhere,
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 1200,
       select: { id: true, status: true, workState: true, workKind: true, workInput: true, workAttempts: true, workErrorCode: true, workRetryAt: true } } } })
   if (!audit?.verifierExecutions.length) return null
   const rows = audit.verifierExecutions
   const counts = await prisma.auditVerifierExecution.groupBy({
-    by: ['status', 'workState', 'workErrorCode'], where: { auditId, targetKey: { startsWith: 'task:' } }, _count: { _all: true },
+    by: ['status', 'workState', 'workErrorCode'], where: { auditId, ...analysisTaskWhere }, _count: { _all: true },
   })
   const summary = summarizeExecutionTasks(counts.map(row => ({ ...row, count: row._count._all })))
   const countState = (states: string[]) => counts.reduce((sum, row) => sum + (row.status !== 'NOT_APPLICABLE' && states.includes(row.workState ?? '') ? row._count._all : 0), 0)

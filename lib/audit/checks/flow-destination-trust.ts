@@ -7,8 +7,8 @@ export function runDestinationTrustChecks(result: FlowScanResult): Deterministic
 
   const missing: string[] = []
   if (!trust.isHttps) missing.push('HTTPS')
-  if (!trust.hasPrivacyPolicy) missing.push('privacy policy link')
-  if (!trust.hasContactInfo) missing.push('contact information')
+  if (trust.hasPrivacyPolicy === false) missing.push('privacy policy link')
+  if (trust.hasContactInfo === false) missing.push('contact information')
 
   if (missing.length === 0) return []
 

@@ -43,7 +43,7 @@ describe('MCP record_fix receipts', () => {
     mocks.record.mockResolvedValue(receipt)
     const result = await handler({ siteId: 'site', flagId: 'flag', idempotencyKey: 'repair-key', changeSummary: 'Recorded repair', commit: 'recorded-commit' })
     expect(result.structuredContent).toMatchObject({ status: 'RECORDED', ...receipt, next: stage === 'admitted'
-      ? { tool: MCP_TOOLS.getRun.name, arguments: { siteId: 'site', runId: 'run' } }
+      ? { tool: MCP_TOOLS.getRun.name, arguments: { runId: 'run' } }
       : stage === 'completed' ? { tool: MCP_TOOLS.getFlag.name, arguments: { siteId: 'site', flagId: 'flag' } }
       : { tool: MCP_TOOLS.verifyFlag.name, arguments: { siteId: 'site', flagId: 'flag', attemptId: 'attempt' } } })
     expect(mocks.run).toHaveBeenCalledTimes(stage === 'admitted' ? 1 : 0)

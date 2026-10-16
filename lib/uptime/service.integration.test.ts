@@ -1,3 +1,4 @@
+import { fixedClock, systemClock } from '@/lib/time/clock'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrismaClient } from '@prisma/client'
 
@@ -31,10 +32,53 @@ async function monitorFixture() {
 describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
   beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(originTime)
-    fixture.enqueue.mockClear()
+    fixture.enqueue.mockReset()
     await db().user.deleteMany({ where: { email: { endsWith: '@uptime-test.example' } } })
   })
-  afterAll(async () => { vi.useRealTimers(); await fixture.db?.$disconnect() })
+  afterAll(async () => {
+    vi.useRealTimers()
+    try { await fixture.db?.user.deleteMany({ where: { email: { endsWith: '@uptime-test.example' } } }) }
+    finally { await fixture.db?.$disconnect() }
+  })
+
+  it('publishes a current slot for the next monitor after an earlier queue delay', async () => {
+    const first = await monitorFixture()
+    const secondSite = await db().project.create({ data: { userId: first.user.id, name: 'Later Site', canonicalHost: 'later.example.com',
+      url: 'https://later.example.com/', watchInterval: 'WEEKLY', watchNextRunAt: originTime } })
+    const second = await db().uptimeMonitor.create({ data: { projectId: secondSite.id, targetUrl: secondSite.url, nextProbeAt: new Date(originTime.getTime() + 1) } })
+    // Both rows are due at selection. Only publication of the first is delayed.
+    vi.setSystemTime(new Date(originTime.getTime() + 1000))
+    fixture.enqueue.mockImplementation(async job => {
+      if (job.monitorId === first.monitor.id) vi.setSystemTime(new Date(originTime.getTime() + 6 * 60_000))
+    })
+    await scheduleUptimeProbes(systemClock, 10)
+    const job = fixture.enqueue.mock.calls.find(([job]) => job.monitorId === second.id)![0]
+    expect(job.scheduledAt).toBe(new Date(originTime.getTime() + 5 * 60_000).toISOString())
+    expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: second.id } }))
+      .toMatchObject({ lastDispatchAttemptAt: new Date(originTime.getTime() + 6 * 60_000) })
+    await executeUptimeProbe(job, async () => online)
+    expect(await db().uptimeProbe.findFirst({ where: { monitorId: second.id } }))
+      .toMatchObject({ result: 'ONLINE', observedAt: new Date(originTime.getTime() + 6 * 60_000) })
+  })
+
+  it.each([60_000, 6 * 60_000])('refreshes probe admission after a %s ms authority read', async delay => {
+    const fixture = await monitorFixture(), read = db().project.findUnique.bind(db().project)
+    const lookup = vi.spyOn(db().project, 'findUnique').mockImplementation(async input => {
+      const value = await read(input)
+      vi.setSystemTime(new Date(originTime.getTime() + delay))
+      return value
+    })
+    const observe = vi.fn(async () => {
+      expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: fixture.monitor.id } }))
+        .toMatchObject({ leaseUntil: new Date(originTime.getTime() + delay + 30_000) })
+      return online
+    })
+    try {
+      await executeUptimeProbe(fixture.job, observe)
+      expect(observe).toHaveBeenCalledTimes(delay < 5 * 60_000 ? 1 : 0)
+      expect(await db().uptimeProbe.count({ where: { monitorId: fixture.monitor.id } })).toBe(delay < 5 * 60_000 ? 1 : 0)
+    } finally { lookup.mockRestore() }
+  })
 
   it('claims overlapping jobs once and does not create an analysis or consume credits', async () => {
     const { job, user } = await monitorFixture()
@@ -56,7 +100,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     }
     const setup = vi.spyOn(db().uptimeMonitor, 'upsert').mockRejectedValueOnce(new Error('Controlled Site initialization failure'))
     try {
-      await scheduleUptimeProbes(originTime, 10)
+      await scheduleUptimeProbes(fixedClock(originTime), 10)
       expect(setup.mock.calls[0][0].where.projectId).toBe(projects[0].id)
       expect(await db().uptimeMonitor.findUnique({ where: { projectId: projects[0].id } })).toBeNull()
       const initialized = await db().uptimeMonitor.findUniqueOrThrow({ where: { projectId: projects[1].id } })
@@ -65,12 +109,113 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
         expect(fixture.enqueue).toHaveBeenCalledWith(expect.objectContaining({ monitorId: id, attempt: 1 }), originTime)
     } finally { setup.mockRestore() }
     fixture.enqueue.mockClear()
-    await scheduleUptimeProbes(originTime, 10, projects[0].id)
+    const retryAt = new Date(originTime.getTime() + 120_000)
+    await scheduleUptimeProbes(fixedClock(retryAt), 10, projects[0].id)
     const retried = await db().uptimeMonitor.findUniqueOrThrow({ where: { projectId: projects[0].id } })
     expect(fixture.enqueue).toHaveBeenCalledOnce()
-    expect(fixture.enqueue).toHaveBeenCalledWith(expect.objectContaining({ monitorId: retried.id, attempt: 1 }), originTime)
+    expect(fixture.enqueue).toHaveBeenCalledWith(expect.objectContaining({ monitorId: retried.id, attempt: 1 }), retryAt)
     expect(await db().audit.count()).toBe(0)
     expect((await db().user.findUniqueOrThrow({ where: { id: user.id } })).auditsUsed).toBe(3)
+  })
+
+  it('advances bounded monitor initialization past repeated setup failures', async () => {
+    const { user } = await monitorFixture()
+    const sites = await Promise.all(['failed-initialization', 'following-initialization'].map((host, index) => db().project.create({ data: {
+      userId: user.id, name: host, url: 'https://' + host + '.example.com/', canonicalHost: host + '.example.com',
+      watchInterval: 'WEEKLY', watchNextRunAt: originTime, createdAt: new Date('2000-01-0' + (index + 1) + 'T00:00:00Z'),
+    } })))
+    const original = db().uptimeMonitor.upsert.bind(db().uptimeMonitor)
+    let rejectSetup = true
+    const failure = vi.spyOn(db().uptimeMonitor, 'upsert').mockImplementation(args => {
+      if (rejectSetup && args.where.projectId === sites[0].id) throw new Error('Controlled persistent uptime initialization failure')
+      return original(args)
+    })
+    try {
+      await scheduleUptimeProbes(fixedClock(originTime), 1)
+      await scheduleUptimeProbes(fixedClock(originTime), 1)
+      expect(await db().uptimeMonitor.findUnique({ where: { projectId: sites[0].id } })).toBeNull()
+      expect(await db().uptimeMonitor.findUnique({ where: { projectId: sites[1].id } })).not.toBeNull()
+      expect(await db().project.findUniqueOrThrow({ where: { id: sites[0].id } })).toMatchObject({ monitoringSetupRetryAt: new Date(originTime.getTime() + 60_000),
+        watchInterval: 'WEEKLY', watchLastError: null })
+      rejectSetup = false
+      await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 30_000)), 1, sites[0].id)
+      expect(await db().uptimeMonitor.findUnique({ where: { projectId: sites[0].id } })).toBeNull()
+      await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 120_000)), 1, sites[0].id)
+      expect(await db().uptimeMonitor.count({ where: { projectId: sites[0].id } })).toBe(1)
+      expect(await db().project.findUniqueOrThrow({ where: { id: sites[0].id } })).toMatchObject({ monitoringSetupRetryAt: null })
+    } finally { failure.mockRestore() }
+  })
+  it('does not let an unsafe legacy target occupy every initialization batch', async () => {
+    const { user } = await monitorFixture()
+    const unsafe = await db().project.create({ data: { userId: user.id, name: 'Unsafe retained target', url: 'http://127.0.0.1/',
+      canonicalHost: '127.0.0.1', watchInterval: 'WEEKLY', watchNextRunAt: originTime, createdAt: new Date('2000-01-01') } })
+    const following = await db().project.create({ data: { userId: user.id, name: 'Public following target', url: 'https://following.example.com/',
+      canonicalHost: 'following.example.com', watchInterval: 'WEEKLY', watchNextRunAt: originTime, createdAt: new Date('2000-01-02') } })
+    await scheduleUptimeProbes(fixedClock(originTime), 1)
+    await scheduleUptimeProbes(fixedClock(originTime), 1)
+    expect(await db().uptimeMonitor.findUnique({ where: { projectId: unsafe.id } })).toBeNull()
+    expect(await db().project.findUniqueOrThrow({ where: { id: unsafe.id } })).toMatchObject({ monitoringSetupRetryAt: new Date(originTime.getTime() + 60_000) })
+    expect(await db().uptimeMonitor.findUnique({ where: { projectId: following.id } })).not.toBeNull()
+    expect(await db().uptimeIncident.count()).toBe(0)
+  })
+  it.each([true, false])('gives later due monitors a turn while an earlier dispatch remains pending (failure: %s)', async (rejectDispatch) => {
+    const { user, monitor } = await monitorFixture()
+    await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { nextProbeAt: new Date(originTime.getTime() - 60_000) } })
+    const following = await db().project.create({ data: { userId: user.id, name: 'Following', canonicalHost: 'following.example.com',
+      url: 'https://following.example.com/', watchInterval: 'WEEKLY', watchNextRunAt: originTime } })
+    const later = await db().uptimeMonitor.create({ data: { projectId: following.id, targetUrl: following.url, nextProbeAt: originTime } })
+    fixture.enqueue.mockImplementation(async (job) => {
+      if (rejectDispatch && job.monitorId === monitor.id) throw new Error('Controlled persistent enqueue failure')
+    })
+    await scheduleUptimeProbes(fixedClock(originTime), 1)
+    await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 1000)), 1)
+    expect(fixture.enqueue.mock.calls.map(([job]) => job.monitorId)).toEqual([monitor.id, later.id])
+    expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({
+      nextProbeAt: new Date(originTime.getTime() - 60_000), lastCheckedAt: null, lastScheduledAt: null,
+      lastDispatchAttemptAt: originTime,
+    })
+    expect(await db().uptimeProbe.count()).toBe(0)
+    expect(await db().uptimeIncident.count()).toBe(0)
+    await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 2000)), 1)
+    expect(fixture.enqueue.mock.calls.at(-1)?.[0].monitorId).toBe(monitor.id)
+  })
+
+  it('dispatches a due confirmation in its fair turn using the original failure slot', async () => {
+    const { user, monitor } = await monitorFixture()
+    const site = await db().project.create({ data: { userId: user.id, name: 'Confirmation', canonicalHost: 'confirm.example.com',
+      url: 'https://confirm.example.com/', watchInterval: 'WEEKLY', watchNextRunAt: originTime } })
+    const pendingSlotAt = new Date(originTime.getTime() - 30_000)
+    const confirmation = await db().uptimeMonitor.create({ data: { projectId: site.id, targetUrl: site.url,
+      nextProbeAt: new Date(originTime.getTime() + 300_000), pendingSlotAt, pendingFailureAt: pendingSlotAt, confirmationDueAt: originTime } })
+    fixture.enqueue.mockRejectedValueOnce(new Error('Controlled earlier dispatch failure'))
+    await scheduleUptimeProbes(fixedClock(originTime), 1)
+    await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 1000)), 1)
+    expect(fixture.enqueue.mock.calls.map(([job]) => job.monitorId)).toEqual([monitor.id, confirmation.id])
+    expect(fixture.enqueue).toHaveBeenLastCalledWith({ monitorId: confirmation.id, version: 1, scheduledAt: pendingSlotAt.toISOString(), attempt: 2 }, originTime)
+    expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: confirmation.id } })).toMatchObject({
+      pendingSlotAt, pendingFailureAt: pendingSlotAt, confirmationDueAt: originTime, lastCheckedAt: null,
+    })
+    expect(await db().uptimeIncident.count()).toBe(0)
+  })
+
+  it.each(['pause', 'retarget', 'suspend', 'lease'] as const)('refuses publication when %s changes after selection', async change => {
+    const { user, project, monitor } = await monitorFixture()
+    const original = db().uptimeMonitor.updateMany.bind(db().uptimeMonitor)
+    const boundary = vi.spyOn(db().uptimeMonitor, 'updateMany').mockImplementation(async args => {
+      if (args.data.lastDispatchAttemptAt) {
+        if (change === 'pause') await db().project.update({ where: { id: project.id }, data: { watchInterval: null, watchNextRunAt: null } })
+        if (change === 'retarget') await db().project.update({ where: { id: project.id }, data: { url: 'https://changed.example.com/' } })
+        if (change === 'suspend') await db().user.update({ where: { id: user.id }, data: { lifecycleStatus: 'SUSPENDED' } })
+        if (change === 'lease') await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { leaseUntil: new Date(originTime.getTime() + 30_000), leaseToken: 'concurrent-worker' } })
+      }
+      return original(args)
+    })
+    try {
+      await scheduleUptimeProbes(fixedClock(originTime), 1)
+      expect(fixture.enqueue).not.toHaveBeenCalled()
+      expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({ lastDispatchAttemptAt: null, lastCheckedAt: null })
+      expect(await db().uptimeProbe.count()).toBe(0)
+    } finally { boundary.mockRestore() }
   })
 
   it('opens one incident after confirmation and creates one recovery receipt', async () => {
@@ -138,7 +283,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     expect(await loadUptimeHistory(monitor.projectId, '24h', null, originTime)).toMatchObject({ enabled: false, state: 'paused' })
     const observe = vi.fn(async () => online)
     await executeUptimeProbe(job, observe)
-    await scheduleUptimeProbes(originTime, 1)
+    await scheduleUptimeProbes(fixedClock(originTime), 1)
     expect(observe).not.toHaveBeenCalled()
     expect(fixture.enqueue).not.toHaveBeenCalled()
     expect(await db().uptimeProbe.count()).toBe(0)
@@ -192,7 +337,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
       } })
       await db().uptimeMonitor.create({ data: { projectId: project.id, targetUrl: project.url, nextProbeAt: older } })
     }
-    await scheduleUptimeProbes(originTime, 3)
+    await scheduleUptimeProbes(fixedClock(originTime), 3)
     expect(fixture.enqueue).toHaveBeenCalledOnce()
     expect(fixture.enqueue).toHaveBeenCalledWith(expect.objectContaining({ monitorId: monitor.id, attempt: 1 }), originTime)
   })
@@ -201,7 +346,7 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     const { project, monitor } = await monitorFixture()
     await db().uptimeMonitor.update({ where: { id: monitor.id }, data: { enabled: false, state: 'paused' } })
     await db().project.update({ where: { id: project.id }, data: { watchNextRunAt: originTime } })
-    await scheduleUptimeProbes(originTime)
+    await scheduleUptimeProbes(fixedClock(originTime))
     expect(fixture.enqueue).toHaveBeenCalledWith(expect.objectContaining({ monitorId: monitor.id, version: 1, attempt: 1 }), originTime)
     expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({ enabled: true, state: 'unknown' })
   })

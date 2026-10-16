@@ -22,6 +22,7 @@ export interface PathStepEvidence {
   label: PathStepLabel
   url: string
   screenshotUrl: string | null
+  destinationUrl?: string
 }
 
 export interface WalkOutcome {

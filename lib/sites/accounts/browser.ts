@@ -73,7 +73,8 @@ export async function openAccountBrowser(input: { url: string; origin: string; v
       page.on('popup', popup => void popup.close())
     } })
   session.page.setDefaultTimeout(5000)
-  return { session, mutation: (next, target) => { action = next; endpoint = target; mutations = 0 }, refused: () => refused,
+  return { session, mutation: (next, target) => { action = next; endpoint = target; mutations = 0 },
+    refused: () => refused || session.safetyRestrictions.includes('auxiliary_document_unavailable'),
     closed: async () => { session.disposeNetwork(); await session.page.context().close().catch(() => undefined) } }
 }
 export async function emailVerificationPending(page: Page) {

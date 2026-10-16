@@ -1,6 +1,6 @@
 import type { CheerioAPI } from 'cheerio'
-import type { AnyNode } from 'domhandler'
 import { z } from 'zod'
+import { htmlDocumentBase, isInertHtmlNode } from './html-document'
 
 const MAX_REFERENCES = 2000
 const MAX_INSECURE = 200
@@ -10,15 +10,6 @@ export const resourceTransportSchema = z.object({
 }).strict()
 export type ResourceTransport = z.infer<typeof resourceTransportSchema>
 export const RESOURCE_TRANSPORT_SCOPE = 'Inspects resource URLs declared in this HTML, including responsive candidates. CSS contents, JavaScript-created requests, nested documents and actual browser delivery are outside this observation.'
-
-function isInert(element: AnyNode): boolean {
-  // Cheerio's parent selectors stop at template document fragments, whose
-  // DOM parent still records the actual template boundary.
-  for (let parent = element.parent; parent; parent = parent.parent) {
-    if ('name' in parent && (parent.name === 'template' || parent.name === 'noscript')) return true
-  }
-  return false
-}
 
 /** Read URL tokens before descriptors. Commas inside data URLs are not separators. */
 function srcsetUrls(value: string): string[] {
@@ -55,10 +46,7 @@ function srcsetUrls(value: string): string[] {
 /** No fetches. Preserve a bounded, redacted inventory from the collected HTML. */
 export function collectResourceTransport($: CheerioAPI, pageUrl: string): ResourceTransport {
   const result: ResourceTransport = { version: 1, complete: true, inspected: 0, insecure: [] }
-  let base = pageUrl
-  const baseElement = $('base[href]').toArray().find(element => !isInert(element))
-  const declaredBase = baseElement ? $(baseElement).attr('href') : undefined
-  if (declaredBase) { try { base = new URL(declaredBase, pageUrl).href } catch { /* Invalid bases use the document URL. */ } }
+  const base = htmlDocumentBase($, pageUrl)
   const seen = new Set<string>()
   const add = (value: string | undefined, kind: string) => {
     if (!value?.trim()) return
@@ -82,7 +70,7 @@ export function collectResourceTransport($: CheerioAPI, pageUrl: string): Resour
   $('script[src], link[href], link[imagesrcset], img, iframe[src], audio[src], video, source, track[src], embed[src], object[data], input[type="image"][src]').each((_, element) => {
     if (result.inspected >= MAX_REFERENCES) { result.complete = false; return false }
     const node = $(element)
-    if (isInert(element)) return
+    if (isInertHtmlNode(element)) return
     const tag = element.tagName.toLowerCase()
     if (tag === 'script' && node.attr('type') && !/^(?:module|(?:text|application)\/(?:java|ecma)script)$/i.test(node.attr('type')!.split(';')[0].trim())) return
     if (tag === 'source' && !node.parent().is('picture, audio, video')) return

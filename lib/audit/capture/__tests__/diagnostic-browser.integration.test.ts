@@ -59,14 +59,13 @@ browserTests('diagnostic observations from Chromium', () => {
   })
   it('inspects actual computed input fonts before and after a CSS change without claiming iOS or runtime-form proof', async () => {
     await fixture('input{font-size:12px}', '<label for="email">Email</label><input id="email" name="email" type="email"><a href="/signup">Get started free</a>')
-    const metadata = parseMetadataFromHtml(await page.content(), url)
     const before = await measureMobileLayout(page)
     expect(before.inputsBelow16px).toContainEqual({ selector: '#email', fontSize: 12 })
-    expect(runMobileUXQualityChecks(metadata, before).map(flag => flag.checkId)).toContain('mobile-input-zoom')
+    expect(runMobileUXQualityChecks(before).map(flag => flag.checkId)).toContain('mobile-input-zoom')
     await page.addStyleTag({ content: 'input{font-size:16px}' })
     const after = await measureMobileLayout(page)
     const observations: CheckAssertion[] = []
-    runMobileUXQualityChecks(metadata, after, 'marketing', assertion => observations.push(assertion))
+    runMobileUXQualityChecks(after, 'marketing', assertion => observations.push(assertion))
     expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true })
     expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')?.disposition).toBeUndefined()
   })

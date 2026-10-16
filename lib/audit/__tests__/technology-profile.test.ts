@@ -32,6 +32,7 @@ import {
   loadTechnologyProfile,
   persistTechnologyObservations,
 } from '@/lib/audit/technology-profile'
+const scope = { pageUrl: 'https://example.com/', finalUrl: 'https://example.com/', profile: 'desktop-v1', access: 'public' }
 
 describe('technology profile persistence', () => {
   beforeEach(() => {
@@ -80,6 +81,7 @@ describe('technology profile persistence', () => {
       .mockResolvedValueOnce({
         parentId: 'audit_parent',
         technologyDetectionStatus: 'COMPLETE',
+        technologyObservationScope: scope,
         technologyDetectorVersion: 'same-version',
         technologyDetectedAt: new Date('2026-07-23T10:00:00Z'),
         technologyObservations: [
@@ -98,6 +100,7 @@ describe('technology profile persistence', () => {
       .mockResolvedValueOnce({
         technologyDetectorVersion: 'same-version',
         technologyDetectionStatus: 'COMPLETE',
+        technologyObservationScope: scope,
         technologyObservations: [
           { confidence: 0.95, technology: { name: 'Next.js' } },
           { confidence: 0.95, technology: { name: 'Plausible' } },
@@ -123,6 +126,7 @@ describe('technology profile persistence', () => {
       .mockResolvedValueOnce({
         parentId: 'audit_parent',
         technologyDetectionStatus: 'COMPLETE',
+        technologyObservationScope: scope,
         technologyDetectorVersion: 'new-version',
         technologyDetectedAt: new Date(),
         technologyObservations: [{
@@ -134,9 +138,27 @@ describe('technology profile persistence', () => {
       .mockResolvedValueOnce({
         technologyDetectorVersion: 'old-version',
         technologyDetectionStatus: 'COMPLETE',
+        technologyObservationScope: scope,
         technologyObservations: [],
       })
 
     expect((await loadTechnologyProfile('audit_current')).recheckDiff).toBeUndefined()
+  })
+
+  it.each([
+    null, { ...scope, pageUrl: 'https://example.com/other' }, { ...scope, finalUrl: 'https://example.com/login' },
+    { ...scope, profile: 'other-profile' }, { ...scope, access: 'credentialed:other-grant' },
+  ])('withholds removals when the parent capture scope is missing or different (%j)', async parentScope => {
+    prismaMock.audit.findUnique.mockResolvedValueOnce({ parentId: 'parent', technologyDetectionStatus: 'COMPLETE',
+      technologyDetectorVersion: 'same', technologyObservationScope: scope, technologyDetectedAt: new Date(), technologyObservations: [] })
+      .mockResolvedValueOnce({ technologyDetectionStatus: 'COMPLETE', technologyDetectorVersion: 'same', technologyObservationScope: parentScope,
+        technologyObservations: [{ confidence: 0.95, technology: { name: 'Next.js' } }] })
+    expect((await loadTechnologyProfile('current')).recheckDiff).toBeUndefined()
+  })
+
+  it('withholds removals from a partial capture even with matching conditions', async () => {
+    prismaMock.audit.findUnique.mockResolvedValueOnce({ parentId: 'parent', technologyDetectionStatus: 'PARTIAL',
+      technologyDetectorVersion: 'same', technologyObservationScope: scope, technologyDetectedAt: new Date(), technologyObservations: [] })
+    expect((await loadTechnologyProfile('current')).recheckDiff).toBeUndefined()
   })
 })

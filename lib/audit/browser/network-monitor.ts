@@ -1,6 +1,8 @@
 import type { Page, Request, Response } from 'playwright'
 import { classifyTrackingEndpoint } from '../tracking/endpoints'
 import { MAX_TRACKING_REQUESTS, type TrackingEvidence, type TrackingRequest } from '../tracking/contracts'
+import { trackingRequestKey } from '../tracking/identity'
+import { auditPageObservation, captureObservationKey } from './observation-scope'
 
 export interface NetworkFailureRecord {
   url: string
@@ -76,6 +78,12 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
   const tracked = new WeakMap<Request, TrackingRequest>()
   let phase: TrackingRequest['phase'] = 'page_load', trackingTruncated = false
   const phaseStarts: Partial<Record<TrackingRequest['phase'], number>> = { page_load: startedAt }
+  const phaseCaptures: Partial<Record<TrackingRequest['phase'], string>> = {}
+  const captureKey = () => {
+    const observation = auditPageObservation(page)
+    const key = observation ? captureObservationKey(observation.scope) : undefined
+    return key === 'unknown' ? undefined : key
+  }
   const onRequest = (request: Request) => {
     if (tracked.has(request)) return
     const endpoint = classifyTrackingEndpoint(request.url(), request.resourceType(), pageOrigin)
@@ -84,6 +92,7 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     if (trackingRequests.length >= MAX_TRACKING_REQUESTS) { trackingTruncated = true; return }
     const method = request.method().toUpperCase()
     const record: TrackingRequest = { ...endpoint, method: ['GET', 'HEAD', 'OPTIONS', 'POST'].includes(method) ? method as TrackingRequest['method'] : 'OTHER',
+      requestKey: trackingRequestKey(request.url(), method),
       phase, state: 'pending', status: null, reason: null, atMs: Math.max(0, Date.now() - (phaseStarts[phase] ?? startedAt)) }
     tracked.set(request, record); trackingRequests.push(record)
   }
@@ -165,10 +174,14 @@ export function attachNetworkMonitor(page: Page, pageOrigin: string): NetworkMon
     resources,
     resourcesTruncated: () => technologyResourcesTruncated,
     tracking: (selected = phase) => ({ version: 1, phase: selected,
+      captureKey: selected === phase ? captureKey() : phaseCaptures[selected],
       requests: trackingRequests.filter(record => record.phase === selected).map(record => ({ ...record })),
       truncated: trackingTruncated, durationMs: Math.max(0, Date.now() - (phaseStarts[selected] ?? Date.now())),
       consentInteraction: selected === 'page_load' ? 'none' : 'existing_flow' }),
-    setTrackingPhase: value => { phase = value; phaseStarts[value] ??= Date.now() },
+    setTrackingPhase: value => {
+      if (value !== phase) phaseCaptures[phase] = captureKey()
+      phase = value; phaseStarts[value] ??= Date.now()
+    },
     suppressTracking: request => {
       if (!tracked.has(request)) onRequest(request)
       const record = tracked.get(request)

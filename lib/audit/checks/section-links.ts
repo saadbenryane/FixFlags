@@ -5,7 +5,7 @@ import type { CheckAssertion } from './assertion'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
 
 export const SECTION_LINK_VERIFICATION_RULE = 'Section link: independently inspect every originally missing fragment under the same rendered page, viewport and access conditions.'
-export const SECTION_LINK_LIMITATION = 'Section links cover up to 300 distinct declared targets in the captured document. Additional targets, custom routing, text fragments, later content and click or scroll behavior remain outside this observation.'
+export const SECTION_LINK_LIMITATION = 'Section links cover up to 300 distinct declared targets in the active captured document. Inactive template and noscript content cannot establish a live link or target. Additional targets, custom routing, text fragments, later content and click or scroll behavior remain outside this observation.'
 const MAX_SECTION_TARGETS = 300
 
 function decodedFragment(fragment: string) {
@@ -31,7 +31,7 @@ function sameDocument(left: URL, right: URL) {
  * cannot produce an assertion for the originally failed target. */
 export function sectionLinkObservations(pageUrl: string, metadata: PageMetadata, scope?: CaptureObservationScope) {
   const links = new Map<string, { fragment: string; text: string; count: number }>()
-  for (const link of metadata.links) {
+  for (const link of metadata.documentLinks ?? metadata.links) {
     try {
       const destination = new URL(link.href, metadata.linkBaseUrl ?? pageUrl)
       if (!destination.hash || !sameDocument(destination, new URL(pageUrl))) continue
@@ -41,14 +41,15 @@ export function sectionLinkObservations(pageUrl: string, metadata: PageMetadata,
     } catch { /* Invalid navigation does not establish a missing section. */ }
   }
   const pageScope = scope ? captureObservationKey(scope) : 'unknown'
-  const comparable = pageScope !== 'unknown' && metadata.anchorNames !== undefined
+  const currentDocument = metadata.documentLinks !== undefined
+  const comparable = pageScope !== 'unknown' && metadata.anchorNames !== undefined && currentDocument
   const targets = sectionTargetSet(metadata)
   const assertions: CheckAssertion[] = []
   const missing: Array<{ text: string; fragment: string; context: string; count: number }> = []
   for (const { fragment, text, count } of [...links.values()].slice(0, MAX_SECTION_TARGETS)) {
     const inspectable = !fragment.startsWith('/') && !fragment.startsWith('!') && !fragment.includes(':~:')
     const passed = inspectable && sectionTargetExists(metadata, fragment, targets)
-    const context = 'section:' + pageScope + ':' + createHash('sha256').update(fragment).digest('hex')
+    const context = (currentDocument ? 'section:v2:' : 'section:') + pageScope + ':' + createHash('sha256').update(fragment).digest('hex')
     assertions.push({ key: 'section-target', name: 'Section link target', expected: 'The linked section exists in the same captured document',
       observed: inspectable ? `${text ? 'Linked section' : 'Section'} target ${passed ? 'exists' : 'is absent'} in the captured document. Click and scroll behavior was not tested.`
         : 'This fragment uses routing or text navigation whose behavior was not inspected.',

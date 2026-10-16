@@ -71,6 +71,6 @@ export async function POST(request: NextRequest) {
       topic,
       error: error instanceof Error ? error.message : String(error),
     })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ error: 'Webhook processing incomplete' }, { status: 500 })
   }
 }

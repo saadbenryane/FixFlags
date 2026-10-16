@@ -30,9 +30,11 @@ import {
 import type { PipelineContext, PageRun } from './pipeline/types'
 import { runJourneyReviewsForAudit } from './journey/run-journey-reviews'
 import { runCorridorConsistencyChecks } from './checks/corridor-consistency'
+import { pagePreviewForComparison } from './checks/page-preview'
 import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
 import { runGoogleSearchForAudit } from './search/google'
 import { runCheckedPageSearch } from './search/workflow'
+import { enqueuePendingAiReview } from './enqueue-ai-review'
 import {
   asReviewDepth,
   auditDeadlineMsForDepth,
@@ -73,10 +75,14 @@ export async function runAudit(auditId: string): Promise<void> {
     await coordinateProgressiveAudit(auditId)
     return
   }
-  const owner = await claimExecution(auditId, audit.status === 'COMPLETED')
+  // Delivery can fail after the report and its Improvement projection commit.
+  // Resume it even when there is no remaining projection lease to claim.
+  if (audit.status === 'COMPLETED') await enqueuePendingAiReview(auditId)
+  const owner = await claimExecution(auditId, { projectionOnly: audit.status === 'COMPLETED' })
   if (!owner) return
   await withExecutionOwnership(owner, async () => {
     await runOwnedAudit(auditId, audit)
+    if (audit.status !== 'COMPLETED') await enqueuePendingAiReview(auditId)
     const terminal = await prisma.audit.findUnique({ where: { id: auditId }, select: { status: true } })
     if (terminal && !['COMPLETED', 'FAILED'].includes(terminal.status)) {
       await executionWrite(tx => tx.audit.update({ where: { id: auditId }, data: {
@@ -165,7 +171,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
         pastedUrl: audit.url,
         retainedUrls: readExecutionSpec(audit.executionSpec)?.monitoringPages,
         depth: reviewDepth,
-        pastedLinks: resolvedPageLinks(primary.url, primary.metadata),
+        pastedLinks: resolvedPageLinks(primary.url, primary.navigation ?? primary.metadata),
       })
 
       const { results, truncated: openCheckTruncated } = await openCheckDestinations(
@@ -178,7 +184,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
       )
       openCheckResults = results
       ctx.openCheckCount = results.length
-      if (openCheckTruncated) ctx.supplementalPagesSkipped = true
+      if (openCheckTruncated || primary.navigation?.complete === false) ctx.supplementalPagesSkipped = true
 
       const deadFlags = deadDestinationFlags(results, primary.url)
       if (deadFlags.length > 0) {
@@ -236,12 +242,13 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
           pastedUrl: audit.url,
           retainedUrls: readExecutionSpec(audit.executionSpec)?.monitoringPages,
           depth: 3,
-          pastedLinks: resolvedPageLinks(primary.url, primary.metadata),
+          pastedLinks: resolvedPageLinks(primary.url, primary.navigation ?? primary.metadata),
           linkedPageLinks: pageRuns.slice(1).map((page) => ({
             pageUrl: page.url,
-            links: resolvedPageLinks(page.url, page.metadata),
+            links: resolvedPageLinks(page.url, page.navigation ?? page.metadata),
           })),
         })
+        if (pageRuns.some(page => page.navigation?.complete === false)) ctx.supplementalPagesSkipped = true
         const extraOpenCheck = hop2Plan.openCheckUrls.filter((url) => {
           const key = canonicalizeDestination(url)?.key
           return key ? !openCheckResults.some((result) => canonicalizeDestination(result.canonicalUrl)?.key === key) : true
@@ -312,14 +319,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
 
       if (pageRuns.length > 1) {
         const corridorFlags = runCorridorConsistencyChecks(
-          pageRuns.map((page, index) => ({
-            url: page.url,
-            role: index === 0 ? 'primary' : 'other',
-            ogTitle: page.metadata.ogTitle ?? null,
-            ogDescription: page.metadata.ogDescription ?? null,
-            title: page.metadata.title ?? null,
-            scope: page.renderedScope,
-          }))
+          pageRuns.map((page, index) => pagePreviewForComparison(page, index === 0 ? 'primary' : 'other'))
         )
         if (corridorFlags.length > 0) {
           pageRuns[0].flags.push(...corridorFlags)

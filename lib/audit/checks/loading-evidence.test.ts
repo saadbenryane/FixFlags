@@ -3,7 +3,6 @@ import type { CaptureMetrics, PageLoadExperience } from '../capture-metrics'
 import type { CheckAssertion } from './assertion'
 import { runInteractionChecks } from './interaction'
 import { runMobileUXQualityChecks } from './mobile-ux-quality'
-import { parseMetadataFromHtml } from '../metadata'
 import { checkReceiptSchema } from './receipt'
 import { scopedAssertionForTarget } from './verification'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
@@ -32,7 +31,7 @@ function metrics(mobile = window('mobile'), desktop = window('desktop')): Captur
 function receipt(data: CaptureMetrics, module = 'interaction') {
   const assertions: CheckAssertion[] = []
   if (module === 'interaction') runInteractionChecks(data, assertion => assertions.push(assertion))
-  else runMobileUXQualityChecks(parseMetadataFromHtml('<main><h1>Useful product information</h1></main>', pageUrl), data, 'marketing', assertion => assertions.push(assertion))
+  else runMobileUXQualityChecks(data, 'marketing', assertion => assertions.push(assertion))
   return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module, pageUrl, applicable: true,
     passed: assertions.every(assertion => assertion.passed), complete: assertions.every(assertion => assertion.complete !== false), assertions,
     execution: { auditId: 'after', taskId: 'task', checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() } })
@@ -61,6 +60,11 @@ describe('source-conditioned loading repair evidence', () => {
     expect(scopedAssertionForTarget({ receipt: repaired, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: true, complete: true })
     const partial = receipt(metrics(window('mobile', 5200), window('desktop', 500)))
     expect(scopedAssertionForTarget({ receipt: partial, checkId: flag.checkId, flag })?.assertion).toMatchObject({ passed: false, complete: true })
+    const unavailable = window('desktop', 500)
+    unavailable.observation!.restricted = true
+    expect(scopedAssertionForTarget({ receipt: receipt(metrics(window('mobile', 5200), unavailable)), checkId: flag.checkId, flag })?.assertion)
+      .toMatchObject({ passed: false, complete: true })
+    expect(scopedAssertionForTarget({ receipt: receipt(metrics(window('mobile', 500), unavailable)), checkId: flag.checkId, flag })).toBeUndefined()
     repaired.assertions = repaired.assertions.filter(assertion => !assertion.context?.startsWith('loading:desktop:'))
     expect(scopedAssertionForTarget({ receipt: repaired, checkId: flag.checkId, flag })).toBeUndefined()
     const healthy = receipt(metrics(window('mobile', 500), window('desktop', 500)))
@@ -86,7 +90,7 @@ describe('source-conditioned loading repair evidence', () => {
     const stuck = runInteractionChecks(metrics(window('mobile', null), window('desktop', 500)))[0]
     const healthy = metrics(window('mobile', 500), window('desktop', 500))
     expect(scopedAssertionForTarget({ receipt: receipt(healthy), checkId: stuck.checkId, flag: stuck })?.assertion.passed).toBe(true)
-    const mobile = runMobileUXQualityChecks(parseMetadataFromHtml('<main><h1>Useful product information</h1></main>', pageUrl), metrics())
+    const mobile = runMobileUXQualityChecks(metrics())
       .find(flag => flag.checkId === 'mobile-load-delay-content')!
     expect(scopedAssertionForTarget({ receipt: receipt(healthy, 'mobile-ux-quality'), checkId: mobile.checkId, flag: mobile })?.assertion.passed).toBe(true)
     const legacy = { ...mobile, verificationRule: undefined, evidenceTargets: undefined }

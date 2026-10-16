@@ -1066,4 +1066,13 @@ describe('Tracking verification admission', () => {
     expect(spec.verificationScopes).toEqual([{ pageUrl, phases: ['page_load'] }, { pageUrl: other, phases: ['public_action'] }])
     expect(executionIntentHash(spec)).toBe(executionIntentHash({ ...spec, verificationScopes: [{ pageUrl, phases: ['page_load'] }] }))
   })
+  it('retains exact recorded fragment and trailing-slash pages for capture-comparable verification', async () => {
+    const pageUrl = 'https://shop.example/pricing', slash = pageUrl + '/', fragment = pageUrl + '#plans'
+    mocks.flagFindMany.mockResolvedValue([{ affectedPaths: [pageUrl, slash, fragment, pageUrl], evidenceTargets: [
+      { context: 'tracking:page_load:library:page:' + trackingPageKey(pageUrl) },
+    ] }])
+    const spec = await buildExecutionSpec({ projectId: 'project-1', targetUrl: pageUrl, environment: 'production', scope: 'DIAGNOSTIC', outcomes: [],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'tracking-library-http-error', pageUrl, parentAuditId: 'before', attemptId: 'attempt' } })
+    expect(spec.verificationScopes).toEqual([pageUrl, slash, fragment].map(pageUrl => ({ pageUrl, phases: ['page_load'] })))
+  })
 })

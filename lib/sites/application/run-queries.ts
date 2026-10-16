@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { analysisTaskWhere } from '@/lib/audit/progressive/contracts'
 import { currentOutcomeState } from '@/lib/sites/outcome-state'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { buildCoverageFacts } from '../coverage'
@@ -21,7 +22,7 @@ export async function getOwnedRun(userId: string, runId: string) {
         verifierExecutions: { ...siteCoverageExecutionSelect,
           select: { ...siteCoverageExecutionSelect.select, workState: true },
           where: { OR: [...siteCoverageExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET },
-            { targetKey: { startsWith: 'task:' }, audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } } }] } },
+            { ...analysisTaskWhere, audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } } }] } },
         pages: { select: { url: true, status: true } },
         verificationAttempts: { select: { id: true, sourceAuditId: true, verificationAuditId: true,
           outcome: true, comparable: true, evidenceReference: true } },

@@ -8,6 +8,7 @@ import type { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../checks'
 import { prisma } from '@/lib/db'
 import { observationIdentity } from '@/lib/audit/flag-identity'
+import { renderedContentMetadata } from '../browser/rendered-copy'
 
 interface TriageStepInput {
   url: string
@@ -33,10 +34,13 @@ export async function runTriageStep(
   await ctx.events.log({ stage: 'judging', event: 'triage_started' })
 
   const maxTimeoutMs = Math.max(0, ctx.deadline - ctx.clock.now().getTime() - FINALIZE_RESERVE_MS)
+  if (input.metadata.renderedCopy !== undefined && !input.metadata.renderedCopy?.complete) {
+    throw new Error('Rendered page copy could not be observed.')
+  }
   const knownObservations = await loadKnownObservations(ctx.auditId)
   const result = await runTriageWithRetry(
     input.url,
-    input.metadata,
+    renderedContentMetadata(input.metadata),
     input.desktop,
     input.mobile,
     input.flags,

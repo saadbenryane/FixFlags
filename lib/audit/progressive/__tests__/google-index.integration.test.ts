@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { requestSiteRun } from '@/lib/sites/application/run-requests'
+import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { startWorker } from '@/lib/queue/worker'
 import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
@@ -11,6 +11,9 @@ import { getAuditBrowser, getBrowserDiagnostics, closeBrowser } from '@/lib/audi
 import { encryptSecret } from '@/lib/security/crypto'
 import * as pageSessions from '@/lib/audit/browser/page-session'
 import { searchReceiptSchema } from '@/lib/audit/search/contracts'
+import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
+import { loadSiteRecord } from '@/lib/sites/ensure-site'
+import { loadSiteFlags } from '@/lib/sites/flags'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('Google indexed-version worker observations', () => {
@@ -97,6 +100,12 @@ run('Google indexed-version worker observations', () => {
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: failure.auditId!, checkId: 'indexing-failure' } })
     expect(flag.evidence).toContain('SOFT_404')
     expect(flag.affectedPaths).toEqual(expect.arrayContaining([pageUrl, peerUrl]))
+    const site = (await loadSiteRecord(projectId))!
+    const sourceHistory = async () => (await loadMonitoringHistory(site)).timeline.find(entry => entry.id === failure.auditId)
+    expect(await getOwnedRun(userId, failure.runId)).toMatchObject({ result: 'FLAG' })
+    expect(await loadSiteFlags(site)).toEqual(expect.arrayContaining([expect.objectContaining({ sourceFlagId: flag.id, checkId: 'indexing-failure' })]))
+    expect(await sourceHistory()).toMatchObject({ result: 'FLAG', flagCount: 1,
+      flags: [{ id: flag.id, title: flag.problem }] })
     const saved = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { auditId_targetKey_scopeKey: {
       auditId: failure.auditId!, targetKey: 'module:search-google-index', scopeKey: 'page:' + pageUrl } } })
     expect(searchReceiptSchema.parse(saved.detail).observations.find(item => item.checkId === 'search-google-fetch'))
@@ -115,11 +124,16 @@ run('Google indexed-version worker observations', () => {
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome: phase === 'fresh' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: phase === 'fresh' })
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'fresh' ? 'FIXED' : 'OPEN' })
     }
+    expect(await loadSiteFlags(site)).not.toEqual(expect.arrayContaining([expect.objectContaining({ checkId: 'indexing-failure' })]))
+    expect(await sourceHistory()).toMatchObject({ result: 'FLAG', flagCount: 1,
+      flags: [{ id: flag.id, title: flag.problem }] })
     verdict = 'NEUTRAL'; fetchState = 'SOFT_404'; crawl = '2026-10-13T12:00:00Z'; peerCrawl = '2026-10-13T18:00:00Z'
     const recurring = await category('google-index-recurrence')
     const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: 'indexing-failure' } })
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     const source = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: source.improvementId })
+    expect((await loadMonitoringHistory(site)).timeline.find(entry => entry.id === recurring.auditId))
+      .toMatchObject({ result: 'FLAG', flagCount: 1, flags: [{ id: recurrence.id, title: recurrence.problem }] })
   }, 240_000)
 })

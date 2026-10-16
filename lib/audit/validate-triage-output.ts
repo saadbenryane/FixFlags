@@ -91,19 +91,20 @@ export function validateTriageOutput(
   output: TriageOutput,
   deterministicFlags: DeterministicFlag[],
   pagePurpose: PagePurpose = 'unknown',
-  context?: Pick<TriageContext, 'pageText' | 'metadata'>
+  context?: Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'url'>>
 ): TriageOutput {
   assertValidRubrics(output.rubrics)
   assertRubricConsistency(output.rubrics)
   assertValidLaunchChecklist(output.launchChecklist)
 
-  const deduplicatedFlags = deduplicateTriageFlags(deterministicFlags, output.newFlags)
   // A positively identified placeholder has no product funnel to critique.
   // Keep captured deterministic facts, but reject model-invented conversion,
   // navigation, or trust priorities for a page whose job is to be minimal.
-  const purposeGroundedFlags = pagePurpose === 'placeholder' ? [] : deduplicatedFlags
+  const purposeGroundedFlags = pagePurpose === 'placeholder' ? [] : output.newFlags
   const groundedFlags = context ? groundTriageTextFlags(purposeGroundedFlags, context) : purposeGroundedFlags
-  const newFlags = enforceAiConfidenceGates(groundedFlags)
+  // An unsupported observation must not discard a later source-backed finding.
+  const deduplicatedFlags = deduplicateTriageFlags(deterministicFlags, groundedFlags, context?.url)
+  const newFlags = enforceAiConfidenceGates(deduplicatedFlags)
   return {
     ...output,
     // The verdict is a public judgment surface. Anchor it to the same highest-

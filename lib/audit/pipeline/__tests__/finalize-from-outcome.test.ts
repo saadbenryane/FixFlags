@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, expect } from 'vitest'
-import type { PipelineContext, PageRun } from '../types'
+import type { PipelineContext, PageEvidence, PageRun } from '../types'
 import { systemClock } from '@/lib/time/clock'
 
-const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAnchorsForAudit, mergeFlowCtaEvidenceAnchors, tryCaptureVisualEvidenceForAudit, finalizeTriageAudit, finalizeTriageDegraded, persistAuditFailedModules, enqueueAiReview, runTriageStep, accumulateTriageUsage, productScoresFromFlags, buildCombinedTriageOutput, primaryPageRun, resolveAuditOutcome, parseTriageFailure } =
+const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAnchorsForAudit, mergeFlowCtaEvidenceAnchors, tryCaptureVisualEvidenceForAudit, finalizeTriageAudit, finalizeTriageDegraded, persistAuditFailedModules, runTriageStep, accumulateTriageUsage, productScoresFromFlags, buildCombinedTriageOutput, primaryPageRun, resolveAuditOutcome, parseTriageFailure } =
   vi.hoisted(() => {
     return {
       prismaMock: {
@@ -18,7 +18,6 @@ const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAn
       finalizeTriageAudit: vi.fn(async () => {}),
       finalizeTriageDegraded: vi.fn(async () => {}),
       persistAuditFailedModules: vi.fn(async () => {}),
-      enqueueAiReview: vi.fn(async () => {}),
       runTriageStep: vi.fn(),
       accumulateTriageUsage: vi.fn(),
       productScoresFromFlags: vi.fn(() => ({})),
@@ -44,7 +43,6 @@ vi.mock('@/lib/audit/finalize', () => ({
   finalizeTriageDegraded,
   persistAuditFailedModules,
 }))
-vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview }))
 vi.mock('@/lib/audit/pipeline/triage-step', () => ({ runTriageStep }))
 vi.mock('@/lib/audit/pipeline/context', () => ({ accumulateTriageUsage }))
 vi.mock('@/lib/audit/pipeline/combine-pages', () => ({
@@ -162,7 +160,20 @@ describe('finalizeFromOutcome', () => {
     prismaMock.flag.findMany.mockResolvedValue([])
   })
 
-  it('finalizes a complete triage and enqueues the AI review when claimed', async () => {
+  it.each(['triage_complete', 'triage_degraded'] as const)('retains missing metadata and primary-page facts in %s summaries', async kind => {
+    const runs: PageEvidence[] = [{ ...pageRun(), metadata: null, failedModules: ['content'] },
+      pageRun({ pageId: 'peer', url: 'https://example.com/pricing' })]
+    persistTriageResults.mockResolvedValue(undefined)
+    resolveAuditOutcome.mockReturnValue({ kind, pageRuns: runs, reason: 'no_provider_keys', message: 'No provider keys' })
+    await finalizeFromOutcome({ ctx: ctx(), auditId: 'audit-1', auditUrl: runs[0].url,
+      pageRuns: runs, startedAt: new Date(), captureAdditionalEvidence: false })
+    expect(persistAuditFailedModules).toHaveBeenCalledWith('audit-1', runs)
+    expect(kind === 'triage_complete' ? finalizeTriageAudit : finalizeTriageDegraded).toHaveBeenCalledWith(expect.objectContaining({
+      pagesReviewed: 2, evidence: expect.objectContaining({ metadata: false, desktopScreenshot: true }),
+    }))
+  })
+
+  it('persists a complete triage independently of its later prescription delivery', async () => {
     resolveAuditOutcome.mockReturnValue({
       kind: 'triage_complete',
       pageRuns: [pageRun()],
@@ -177,40 +188,7 @@ describe('finalizeFromOutcome', () => {
     assert.equal(ok, true)
     expect(persistTriageResults).toHaveBeenCalled()
     expect(finalizeTriageAudit).toHaveBeenCalled()
-    expect(enqueueAiReview).toHaveBeenCalledWith('audit-1')
     expect(persistAuditFailedModules).toHaveBeenCalled()
-  })
-
-  it('skips the AI review enqueue when includeAi is false', async () => {
-    resolveAuditOutcome.mockReturnValue({
-      kind: 'triage_complete',
-      pageRuns: [pageRun()],
-    })
-    prismaMock.audit.findUnique.mockResolvedValue({ includeAi: false, aiReviewAt: null })
-    await finalizeFromOutcome({
-      ctx: ctx(),
-      auditId: 'audit-1',
-      auditUrl: 'https://example.com/',
-      pageRuns: [pageRun()],
-      startedAt: new Date(),
-    })
-    expect(enqueueAiReview).not.toHaveBeenCalled()
-  })
-
-  it('skips the AI review enqueue when the review already ran', async () => {
-    resolveAuditOutcome.mockReturnValue({
-      kind: 'triage_complete',
-      pageRuns: [pageRun()],
-    })
-    prismaMock.audit.findUnique.mockResolvedValue({ includeAi: true, aiReviewAt: new Date() })
-    await finalizeFromOutcome({
-      ctx: ctx(),
-      auditId: 'audit-1',
-      auditUrl: 'https://example.com/',
-      pageRuns: [pageRun()],
-      startedAt: new Date(),
-    })
-    expect(enqueueAiReview).not.toHaveBeenCalled()
   })
 
   it('falls back to the degraded path and returns false when persistence fails', async () => {

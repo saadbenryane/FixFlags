@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isBotInterstitialPage, isBotInterstitialDocument, pageCaptureFailureFromError, PageCaptureError } from '@/lib/audit/browser/page-capture'
+import { isBotInterstitialPage, isBotInterstitialDocument, publicResponseRestriction, pageCaptureFailureFromError, PageCaptureError } from '@/lib/audit/browser/page-capture'
 
 describe('isBotInterstitialPage', () => {
   it('treats Cloudflare challenge headers as a block', () => {
@@ -23,6 +23,14 @@ describe('isBotInterstitialPage', () => {
 })
 
 describe('public document challenge evidence', () => {
+  it('distinguishes ordinary access restrictions from bot challenges and genuine page errors', () => {
+    const response = (status: number, body = '<title>Example</title><p>The request could not be served.</p>') => ({ status, body, headers: {} })
+    expect(publicResponseRestriction(response(401))).toBe('authentication_required')
+    expect(publicResponseRestriction(response(403))).toBe('access_denied')
+    expect(publicResponseRestriction(response(429))).toBe('rate_limited')
+    expect(publicResponseRestriction(response(403, '<title>Just a moment...</title>'))).toBe('bot_challenge')
+    for (const status of [200, 404, 410, 500, 503]) expect(publicResponseRestriction(response(status))).toBeNull()
+  })
   it('does not confuse ordinary Cloudflare, CAPTCHA resources or quoted examples with a wall', () => {
     expect(isBotInterstitialDocument({ status: 200, headers: { server: 'cloudflare' }, body:
       '<title>Sign up</title><script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>' +

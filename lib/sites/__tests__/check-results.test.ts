@@ -56,7 +56,7 @@ describe('customer check results', () => {
       assertions: [{ key: 'tracking-initiation', name: 'Attempt', expected: 'Request initiated', observed: 'Suppressed by FixFlags', passed: true, complete: true, disposition: 'observed' },
         { key: 'tracking-http-response', name: 'Destination', expected: 'Response', observed: 'Suppressed', passed: false, complete: false }],
     } }])
-    expect(results.map(result => result.status)).toEqual(['observed', 'unknown', 'completed'])
+    expect(results.map(result => result.status)).toEqual(['observed', 'unknown', 'unknown'])
     expect(results[0].assertionKey).toBe('tracking-initiation')
   })
 

@@ -7,8 +7,9 @@
  */
 import type { TechnologyResourceRecord } from './browser/network-monitor'
 import type { GraphTechKind } from '@/lib/graph/types'
+import { MAX_TRACKING_REQUESTS, TRACKING_PROVIDERS, type TrackingEvidence } from './tracking/contracts'
 
-export const TECHNOLOGY_DETECTOR_VERSION = '2026.07.23.1'
+export const TECHNOLOGY_DETECTOR_VERSION = '2026.10.16.1'
 export const TECHNOLOGY_MIN_CONFIDENCE = 0.8
 
 export type TechnologyEvidenceType = 'html' | 'meta' | 'header' | 'resource' | 'runtime'
@@ -356,6 +357,18 @@ const RULES: TechnologyRule[] = [
     signals: [strongResource(/(?:^|\.)plausible\.io\//i, 'Plausible analytics script')],
   },
   {
+    // Their first-party or canonicalized endpoints are already classified by
+    // the shared Tracking observer. Do not maintain a second endpoint inventory.
+    name: 'Vercel Analytics',
+    kind: 'analytics',
+    signals: [],
+  },
+  {
+    name: 'Cloudflare Web Analytics',
+    kind: 'analytics',
+    signals: [],
+  },
+  {
     name: 'Hotjar',
     kind: 'analytics',
     signals: [strongResource(/(?:^|\.)hotjar\.com\//i, 'Hotjar request')],
@@ -648,11 +661,10 @@ function sanitizeHeaders(headers: Record<string, string>): string {
     .join('\n')
 }
 
-function resourceText(resources: TechnologyResourceRecord[]): string {
+function resourceText(resources: TechnologyResourceRecord[]): string[] {
   return resources
     .slice(0, 300)
     .map((resource) => `${resource.hostname}${resource.pathname}`)
-    .join('\n')
 }
 
 function uniqueEvidence(items: TechnologyEvidence[]): TechnologyEvidence[] {
@@ -674,13 +686,14 @@ export function detectTechnologies(
   html: string,
   responseHeaders: Record<string, string> = {},
   resources: TechnologyResourceRecord[] = [],
-  runtimeMarkers: string[] = []
+  runtimeMarkers: string[] = [],
+  tracking?: TrackingEvidence,
 ): DetectedTech[] {
-  const sources: Record<SignalSource, string> = {
-    html: html.slice(0, 2_000_000),
-    headers: sanitizeHeaders(responseHeaders),
+  const sources: Record<SignalSource, string[]> = {
+    html: [html.slice(0, 2_000_000)],
+    headers: [sanitizeHeaders(responseHeaders)],
     resources: resourceText(resources),
-    runtime: runtimeMarkers.slice(0, 32).join('\n'),
+    runtime: [runtimeMarkers.slice(0, 32).join('\n')],
   }
 
   const detections: DetectedTech[] = []
@@ -689,10 +702,16 @@ export function detectTechnologies(
     let weight = 0
     const evidence: TechnologyEvidence[] = []
     for (const candidate of rule.signals) {
-      candidate.pattern.lastIndex = 0
-      if (!candidate.pattern.test(sources[candidate.source])) continue
+      // Host anchors belong to each resource, not just the first line of a
+      // concatenated inventory. A preceding document must not hide a vendor.
+      if (!sources[candidate.source].some(source => { candidate.pattern.lastIndex = 0; return candidate.pattern.test(source) })) continue
       weight += candidate.weight
       evidence.push(candidate.evidence)
+    }
+    const request = tracking?.requests.slice(0, MAX_TRACKING_REQUESTS).find(request => TRACKING_PROVIDERS[request.provider] === rule.name)
+    if (request) {
+      weight = Math.max(weight, 0.2)
+      evidence.push({ type: 'resource', label: `${rule.name} ${request.role === 'library' ? 'library request' : 'event attempt'}` })
     }
 
     const confidence = Math.min(0.99, 0.62 + weight)

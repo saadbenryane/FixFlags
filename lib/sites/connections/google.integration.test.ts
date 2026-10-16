@@ -19,6 +19,7 @@ run('Google credential ownership during refresh', () => {
     await prisma.user.create({ data: { id: userId, email: userId + '@example.test', preferredTools: [] } })
   })
   afterEach(async () => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.useRealTimers()
@@ -101,8 +102,8 @@ run('Google credential ownership during refresh', () => {
     expect((await loadSiteConnectionViews(connection.projectId)).facts).toEqual([])
     expect(await prisma.siteConnectionFact.findUnique({ where: { id: historical.id } })).not.toBeNull()
     const transport = vi.fn(async (target: string, options?: RequestInit) => {
-      if (target.endsWith('/accountSummaries')) return new Response(JSON.stringify({ accountSummaries: [{ propertySummaries: [{ property: 'properties/123', displayName: 'Several websites' }] }] }))
-      if (target.endsWith('/dataStreams')) return new Response(JSON.stringify({ dataStreams: [
+      if (new URL(target).pathname.endsWith('/accountSummaries')) return new Response(JSON.stringify({ accountSummaries: [{ propertySummaries: [{ property: 'properties/123', displayName: 'Several websites' }] }] }))
+      if (new URL(target).pathname.endsWith('/dataStreams')) return new Response(JSON.stringify({ dataStreams: [
         { webStreamData: { defaultUri: 'https://example.com/' } }, { webStreamData: { defaultUri: 'https://other.example/' } },
       ] }))
       if (target.endsWith(':batchRunReports')) {
@@ -143,7 +144,7 @@ run('Google credential ownership during refresh', () => {
       kind: 'analytics_site', subject: 'audience', sessions: 7, activeUsers: 5, observedAt,
       reportScope: { version: 1, kind: 'analytics-hostnames', propertyId: 'properties/1', hostnames: ['example.com', 'www.example.com'] } } })
     const queryAnalytics = vi.fn(async () => ({ pages: [], audience: {} }))
-    const client = { listAnalyticsProperties: async () => [{ propertyId: 'properties/1', label: 'Site', streamUrls: ['https://example.com/'] }], queryAnalytics } as unknown as GoogleConnectionClient
+    const client = { findAnalyticsProperty: async () => ({ propertyId: 'properties/1', label: 'Site', streamUrls: ['https://example.com/'] }), queryAnalytics } as unknown as GoogleConnectionClient
     const input = { connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS' as const, host: 'example.com',
       accessToken: 'fixture-expired-access', client }
     expect(await syncGoogleConnection(input)).toMatchObject({ status: 'UNAVAILABLE' })
@@ -182,7 +183,7 @@ run('Google credential ownership during refresh', () => {
       ] }))
     })
     vi.stubGlobal('fetch', transport)
-    const client = { ...liveGoogleClient(), listAnalyticsProperties: async () => [{ propertyId: 'properties/123', label: 'Site', streamUrls: ['https://example.com/'] }] }
+    const client = { ...liveGoogleClient(), findAnalyticsProperty: async () => ({ propertyId: 'properties/123', label: 'Site', streamUrls: ['https://example.com/'] }) }
     await expect(syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS', host: 'example.com',
       siteUrl, accessToken: 'fixture-expired-access', client })).resolves.toMatchObject({ status: 'CONNECTED' })
     const saved = await prisma.siteConnectionFact.findMany({ where: { connectionId: connection.id } })
@@ -196,6 +197,76 @@ run('Google credential ownership during refresh', () => {
     expect(connectionLines(view.facts, 'https://example.com/missing')).toEqual([])
     expect(connectionLines(view.facts, 'https://other.example/watched')).toEqual([])
     expect(transport).toHaveBeenCalledOnce()
+  })
+
+  it.each(['properties', 'accounts', 'streams'] as const)('discovers the Site Analytics property beyond the first %s batch', async boundary => {
+    const connection = await connectionFixture()
+    const requests: URL[] = []
+    vi.stubGlobal('fetch', vi.fn(async (target: string) => {
+      const url = new URL(target)
+      requests.push(url)
+      if (url.pathname.endsWith('/accountSummaries')) {
+        const properties = boundary === 'properties' ? Array.from({ length: 26 }, (_, i) => ({ property: 'properties/' + (i + 1) }))
+          : [{ property: boundary === 'accounts' && !url.searchParams.has('pageToken') ? 'properties/1' : 'properties/26' }]
+        return Response.json({ accountSummaries: [{ propertySummaries: properties }],
+          ...(boundary === 'accounts' && !url.searchParams.has('pageToken') ? { nextPageToken: 'accounts+/=' } : {}) })
+      }
+      if (url.pathname.endsWith('/dataStreams')) {
+        const matching = url.pathname.includes('/properties/26/') && (boundary !== 'streams' || url.searchParams.get('pageToken') === 'streams+/=')
+        return Response.json({ dataStreams: [{ webStreamData: { defaultUri: matching ? 'https://www.example.com/' : 'https://other.example/' } }],
+          ...(boundary === 'streams' && !url.searchParams.has('pageToken') ? { nextPageToken: 'streams+/=' } : {}) })
+      }
+      throw new Error('Unexpected discovery fixture request')
+    }))
+    const client = { ...liveGoogleClient(), queryAnalytics: async () => ({ pages: [], audience: { sessions: 5, activeUsers: 3 } }) }
+    await expect(syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS',
+      host: 'example.com', siteUrl: 'https://example.com/', accessToken: 'fixture-expired-access', client }))
+      .resolves.toMatchObject({ status: 'CONNECTED', propertyId: 'properties/26' })
+    expect(await prisma.siteConnectionFact.findFirstOrThrow({ where: { connectionId: connection.id, kind: 'analytics_site' } }))
+      .toMatchObject({ sessions: 5, activeUsers: 3, reportScope: { propertyId: 'properties/26', hostnames: ['example.com', 'www.example.com'] } })
+    if (boundary === 'accounts') expect(requests.some(url => url.searchParams.get('pageToken') === 'accounts+/=')).toBe(true)
+    if (boundary === 'streams') expect(requests.some(url => url.searchParams.get('pageToken') === 'streams+/=')).toBe(true)
+  })
+
+  it('refreshes a retained Analytics property without depending on unrelated account discovery', async () => {
+    enableGoogleFixture()
+    const now = new Date(), connection = await monitoredContext('example.com', now)
+    await prisma.siteConnection.update({ where: { id: connection.id }, data: { propertyId: 'properties/123' } })
+    const requests: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (target: string) => {
+      const path = new URL(target).pathname
+      requests.push(path)
+      if (path === '/v1beta/properties/123') return Response.json({ displayName: 'The retained Site' })
+      if (path === '/v1beta/properties/123/dataStreams') return Response.json({ dataStreams: [{ webStreamData: { defaultUri: 'https://example.com/' } }] })
+      throw new Error('Unrelated Analytics discovery is unavailable')
+    }))
+    const queryAnalytics = vi.fn(async () => ({ pages: [], audience: { sessions: 9 } }))
+    await refreshDueGoogleContexts(now, 20, { client: { ...liveGoogleClient(), queryAnalytics } })
+    expect(requests).toEqual(['/v1beta/properties/123', '/v1beta/properties/123/dataStreams'])
+    expect(queryAnalytics).toHaveBeenCalledOnce()
+    expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } }))
+      .toMatchObject({ status: 'CONNECTED', propertyId: 'properties/123', propertyLabel: 'The retained Site', lastSyncedAt: expect.any(Date) })
+    expect(await prisma.siteConnectionFact.findFirstOrThrow({ where: { connectionId: connection.id, kind: 'analytics_site' } }))
+      .toMatchObject({ sessions: 9, reportScope: { propertyId: 'properties/123' } })
+  })
+
+  it.each(['accounts', 'streams'] as const)('retains dated facts when %s pagination cannot complete', async boundary => {
+    const initial = await connectionFixture()
+    const connection = await prisma.siteConnection.update({ where: { id: initial.id }, data: { propertyId: 'properties/123', propertyLabel: 'Recorded Site' } })
+    const previous = await prisma.siteConnectionFact.create({ data: { connectionId: connection.id, projectId: connection.projectId,
+      kind: 'analytics_site', subject: 'audience', sessions: 7, observedAt: new Date('2026-10-01T12:00:00Z'),
+      reportScope: { version: 1, kind: 'analytics-hostnames', propertyId: 'properties/123', hostnames: ['example.com', 'www.example.com'] } } })
+    vi.stubGlobal('fetch', vi.fn(async (target: string) => new URL(target).pathname.endsWith('/accountSummaries')
+      ? Response.json({ accountSummaries: [{ propertySummaries: boundary === 'accounts' ? [] : [{ property: 'properties/123' }] }],
+        ...(boundary === 'accounts' ? { nextPageToken: 'repeat' } : {}) })
+      : Response.json({ dataStreams: [], nextPageToken: 'repeat' })))
+    await expect(syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS',
+      host: 'example.com', siteUrl: 'https://example.com/', accessToken: 'fixture-expired-access' })).resolves.toMatchObject({ status: 'UNAVAILABLE' })
+    expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } }))
+      .toMatchObject({ status: 'UNAVAILABLE', propertyId: 'properties/123', propertyLabel: 'Recorded Site', lastSyncedAt: null })
+    expect(await prisma.siteConnectionFact.findMany({ where: { connectionId: connection.id } })).toEqual([previous])
+    const view = await loadSiteConnectionViews(connection.projectId)
+    expect(view.facts).toEqual([expect.objectContaining({ sessions: 7, observedAt: previous.observedAt.toISOString(), contextState: 'unavailable' })])
   })
 
   it('cannot restore credentials after disconnect while a refresh request is in flight', async () => {
@@ -247,7 +318,7 @@ run('Google credential ownership during refresh', () => {
       kind: 'analytics', subject: 'retained observation', sessions: 2 } })
     let finish!: (rows: Array<{ pagePath: string; sessions: number }>) => void
     const queryAnalytics = vi.fn(() => new Promise<AnalyticsReport>(resolve => { finish = rows => resolve({ pages: rows, audience: {} }) }))
-    const client = { listAnalyticsProperties: async () => [{ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }],
+    const client = { findAnalyticsProperty: async () => ({ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }),
       queryAnalytics } as unknown as GoogleConnectionClient
     const reading = syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS',
       host: 'example.com', siteUrl: 'https://example.com/', accessToken: decryptSecret(connection.encryptedAccessToken!), client })
@@ -269,7 +340,7 @@ run('Google credential ownership during refresh', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ access_token: 'fixture-current-access', expires_in: 3600 }), { status: 200 })))
     const token = await accessTokenForConnection(connection)
     expect(token).toBe('fixture-current-access')
-    const client = { listAnalyticsProperties: async () => [{ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }],
+    const client = { findAnalyticsProperty: async () => ({ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }),
       queryAnalytics: async () => ({ pages: [{ pagePath: '/', sessions: 7 }], audience: {} }) } as unknown as GoogleConnectionClient
     expect(await syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS',
       host: 'example.com', siteUrl: 'https://example.com/', accessToken: token!, client })).toMatchObject({ status: 'CONNECTED' })
@@ -297,7 +368,7 @@ run('Google credential ownership during refresh', () => {
     vi.stubEnv('BETTER_AUTH_SECRET', 'google-authorization-fixture-secret')
     const client = {
       exchangeCode: async () => ({ accessToken: 'fixture-new-access', refreshToken: null, expiresInSeconds: 3600 }),
-      listAnalyticsProperties: async () => [{ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }],
+      findAnalyticsProperty: async () => ({ propertyId: 'properties/fixture', label: 'Fixture', streamUrls: ['https://example.com/'] }),
       queryAnalytics: async () => ({ pages: [], audience: { sessions: 0, activeUsers: 0 } }),
     } as unknown as GoogleConnectionClient
     const state = signConnectionState({ userId, projectId: connection.projectId, provider: 'ANALYTICS' })
@@ -316,7 +387,7 @@ run('Google credential ownership during refresh', () => {
   }
 
   function contextClient(hosts: string[], queryAnalytics: GoogleConnectionClient['queryAnalytics']) {
-    return { listAnalyticsProperties: async () => hosts.map((host, index) => ({ propertyId: `properties/${index}`, label: host, streamUrls: [`https://${host}/`] })),
+    return { findAnalyticsProperty: async (_token: string, host: string) => { const index = hosts.indexOf(host); return index < 0 ? null : { propertyId: `properties/${index}`, label: host, streamUrls: [`https://${host}/`] } },
       queryAnalytics } as unknown as GoogleConnectionClient
   }
 
@@ -356,6 +427,135 @@ run('Google credential ownership during refresh', () => {
     await prisma.siteConnection.update({ where: { id: connection.id }, data: { tokenExpiresAt: new Date(Date.now() + 3600_000) } })
     await refreshDueGoogleContexts(new Date(), 20, { client })
     expect(queryAnalytics).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['SUSPENDED', 'DELETING'] as const)('excludes %s owners before selecting the bounded upkeep batch', async lifecycleStatus => {
+    enableGoogleFixture()
+    const now = new Date()
+    const inactive = await monitoredContext('inactive.example.com', now)
+    await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })
+    const activeOwner = 'google-active-' + randomUUID()
+    await prisma.user.create({ data: { id: activeOwner, email: activeOwner + '@example.test' } })
+    const active = await monitoredContext('active.example.com', now)
+    await prisma.project.update({ where: { id: active.projectId }, data: { userId: activeOwner } })
+    // Both have never been attempted. Order explicitly so the inactive owner would occupy the sole slot.
+    await prisma.siteConnection.update({ where: { id: inactive.id }, data: { lastSyncAttemptAt: new Date(1) } })
+    await prisma.siteConnection.update({ where: { id: active.id }, data: { lastSyncAttemptAt: new Date(2) } })
+    const queryAnalytics = vi.fn(async () => ({ pages: [{ pagePath: '/', sessions: 5 }], audience: {} }))
+    try {
+      await refreshDueGoogleContexts(now, 1, { client: contextClient(['inactive.example.com', 'active.example.com'], queryAnalytics) })
+      expect(queryAnalytics).toHaveBeenCalledOnce()
+      expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: inactive.id } }))
+        .toMatchObject({ lastSyncAttemptAt: new Date(1), lastSyncedAt: null })
+      expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: active.id } }))
+        .toMatchObject({ lastSyncedAt: expect.any(Date) })
+    } finally { await prisma.user.delete({ where: { id: activeOwner } }) }
+  })
+
+  it.each(['SUSPENDED', 'DELETING'] as const)('refuses cached and refresh credentials for a %s owner', async lifecycleStatus => {
+    const connection = await monitoredContext('example.com', new Date())
+    await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })
+    const transport = vi.fn()
+    vi.stubGlobal('fetch', transport)
+    expect(await accessTokenForConnection(connection)).toBeNull()
+    const expired = await prisma.siteConnection.update({ where: { id: connection.id }, data: { tokenExpiresAt: new Date(0) } })
+    expect(await accessTokenForConnection(expired)).toBeNull()
+    expect(transport).not.toHaveBeenCalled()
+  })
+
+  it.each(['SUSPENDED', 'DELETING'] as const)('retains earlier facts when the owner becomes %s during a provider read', async lifecycleStatus => {
+    enableGoogleFixture()
+    const connection = await monitoredContext('example.com', new Date())
+    const previous = await prisma.siteConnectionFact.create({ data: { connectionId: connection.id, projectId: connection.projectId,
+      kind: 'analytics_site', subject: 'audience', sessions: 7, observedAt: new Date('2026-10-01T12:00:00Z') } })
+    let finish!: (report: AnalyticsReport) => void
+    const queryAnalytics = vi.fn(() => new Promise<AnalyticsReport>(resolve => { finish = resolve }))
+    const reading = syncGoogleConnection({ connectionId: connection.id, projectId: connection.projectId, provider: 'ANALYTICS',
+      host: 'example.com', siteUrl: 'https://example.com/', accessToken: 'fixture-expired-access', client: contextClient(['example.com'], queryAnalytics) })
+    // Attach rejection handling before releasing the provider response.
+    const settled = reading.then(result => ({ result, error: null }), error => ({ result: null, error }))
+    try {
+      await vi.waitFor(() => expect(queryAnalytics).toHaveBeenCalledOnce())
+      await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })
+    } finally { finish({ pages: [{ pagePath: '/', sessions: 99 }], audience: { sessions: 99 } }) }
+    expect((await settled).error).toBeInstanceOf(Error)
+    expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } })).toMatchObject({ lastSyncedAt: null })
+    expect(await prisma.siteConnectionFact.findMany({ where: { connectionId: connection.id } })).toEqual([previous])
+  })
+
+  it.each(['SUSPENDED', 'DELETING'] as const)('does not rotate tokens after the owner becomes %s during refresh', async lifecycleStatus => {
+    const connection = await connectionFixture()
+    let finish!: (response: Response) => void
+    const transport = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
+    vi.stubGlobal('fetch', transport)
+    const refreshing = accessTokenForConnection(connection)
+    try {
+      await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce())
+      await prisma.user.update({ where: { id: userId }, data: { lifecycleStatus } })
+    } finally { finish(new Response(JSON.stringify({ access_token: 'fixture-late-access', expires_in: 3600 }))) }
+    expect(await refreshing).toBeNull()
+    expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } }))
+      .toMatchObject({ encryptedAccessToken: connection.encryptedAccessToken, tokenExpiresAt: connection.tokenExpiresAt })
+  })
+
+  it('continues later context batches after one connection claim fails', async () => {
+    enableGoogleFixture()
+    const now = new Date(), hosts = ['failed.example.com', 'second.example.com', 'third.example.com']
+    const connections = []
+    for (const [index, host] of hosts.entries()) {
+      const connection = await monitoredContext(host, now)
+      await prisma.siteConnection.update({ where: { id: connection.id }, data: { lastSyncAttemptAt: new Date(index + 1) } })
+      connections.push(connection)
+    }
+    const update = prisma.siteConnection.updateMany.bind(prisma.siteConnection)
+    const interrupted = vi.spyOn(prisma.siteConnection, 'updateMany').mockImplementation(input => {
+      if (input?.where?.id === connections[0].id) throw new Error('Controlled context claim failure')
+      return update(input)
+    })
+    const queryAnalytics = vi.fn(async () => ({ pages: [{ pagePath: '/', sessions: 5 }], audience: {} }))
+    let error: unknown
+    try {
+      try { await refreshDueGoogleContexts(now, 3, { client: contextClient(hosts, queryAnalytics) }) } catch (caught) { error = caught }
+      // The other member of the first batch must settle even if its sibling failed.
+      await vi.waitFor(async () => expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connections[1].id } }))
+        .toMatchObject({ lastSyncedAt: expect.any(Date) }))
+      expect(error).toBeUndefined()
+      expect(queryAnalytics).toHaveBeenCalledTimes(2)
+      expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connections[2].id } }))
+        .toMatchObject({ lastSyncedAt: expect.any(Date) })
+      expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connections[0].id } }))
+        .toMatchObject({ lastSyncAttemptAt: new Date(1), lastSyncedAt: null })
+    } finally { interrupted.mockRestore() }
+  })
+
+  it('continues later contexts when a refused commit also fails to persist its fallback state', async () => {
+    enableGoogleFixture()
+    const now = new Date(), hosts = ['removed.example.com', 'second.example.com', 'third.example.com']
+    const connections = []
+    for (const [index, host] of hosts.entries()) {
+      const connection = await monitoredContext(host, now)
+      await prisma.siteConnection.update({ where: { id: connection.id }, data: { lastSyncAttemptAt: new Date(index + 1) } })
+      connections.push(connection)
+    }
+    const update = prisma.siteConnection.updateMany.bind(prisma.siteConnection)
+    const interrupted = vi.spyOn(prisma.siteConnection, 'updateMany').mockImplementation(input => {
+      if (input?.where?.id === connections[0].id && input.data.status === 'UNAVAILABLE')
+        throw new Error('Controlled context fallback failure')
+      return update(input)
+    })
+    const queryAnalytics = vi.fn<GoogleConnectionClient['queryAnalytics']>(async (_token, scope) => {
+      if (scope.propertyId === 'properties/0') await prisma.project.update({ where: { id: connections[0].projectId }, data: { deletedAt: now } })
+      return { pages: [{ pagePath: '/', sessions: 5 }], audience: {} }
+    })
+    try {
+      await refreshDueGoogleContexts(now, 3, { client: contextClient(hosts, queryAnalytics) })
+      expect(queryAnalytics).toHaveBeenCalledTimes(3)
+      for (const connection of connections.slice(1)) expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connection.id } }))
+        .toMatchObject({ lastSyncedAt: expect.any(Date) })
+      expect(await prisma.siteConnection.findUniqueOrThrow({ where: { id: connections[0].id } }))
+        .toMatchObject({ lastSyncedAt: null })
+      expect(await prisma.siteConnectionFact.count({ where: { connectionId: connections[0].id } })).toBe(0)
+    } finally { interrupted.mockRestore() }
   })
 
   it('bounds concurrent provider reads and stops admitting later contexts when its scheduler lease is lost', async () => {

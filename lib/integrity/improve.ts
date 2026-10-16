@@ -7,6 +7,7 @@ import { runConversionFrictionChecks } from '@/lib/audit/checks/conversion-frict
 import { runSecurityHeaderChecks } from '@/lib/audit/checks/security-headers'
 import { detectPagePurpose } from '@/lib/audit/page-purpose'
 import { logger } from '@/lib/logger'
+import { integrityPathWrite } from './path-authority'
 
 const CAP = 8
 
@@ -30,7 +31,7 @@ export async function runIntegrityImprove(pathId: string): Promise<number> {
     where: { id: pathId },
     include: { shop: true },
   })
-  if (!path || path.shop.uninstalledAt) return 0
+  if (!path || path.shop.uninstalledAt || !path.shop.encryptedAccessToken) return 0
   if (path.health !== 'GREEN') return 0
 
   try {
@@ -47,21 +48,15 @@ export async function runIntegrityImprove(pathId: string): Promise<number> {
       .filter((flag) => GROUP_FOR[flag.checkId])
       .slice(0, CAP)
 
-    await prisma.$transaction([
-      prisma.improveItem.deleteMany({ where: { pathId } }),
-      ...flags.map((flag) =>
-        prisma.improveItem.create({
-          data: {
-            pathId,
-            group: GROUP_FOR[flag.checkId] ?? 'Technical',
-            title: flag.problem,
-            why: flag.evidence,
-            checkId: flag.checkId,
-          },
-        })
-      ),
-    ])
-    return flags.length
+    return await integrityPathWrite(path, async (tx, current) => {
+      if (current.health !== 'GREEN' || current.lastVerificationRunId !== path.lastVerificationRunId || current.lastVerifiedAt?.getTime() !== path.lastVerifiedAt?.getTime()) return 0
+      await tx.improveItem.deleteMany({ where: { pathId } })
+      if (flags.length) await tx.improveItem.createMany({ data: flags.map(flag => ({ pathId,
+        group: GROUP_FOR[flag.checkId] ?? 'Technical', title: flag.problem, why: flag.evidence, checkId: flag.checkId,
+      })) })
+      return flags.length
+    }) ?? 0
+
   } catch (error) {
     logger.warn('Integrity Improve failed', {
       pathId,

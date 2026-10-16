@@ -58,7 +58,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         ? 503
         : result.code === 'STUDIO_REQUIRED' || result.code === 'INTERVAL_NOT_ALLOWED'
           ? 403
-          : 400
+          : result.code === 'WATCH_CHANGED' || result.code === 'SCHEDULE_REQUIRED'
+            ? 409
+            : 400
       return apiError(result.error, status, {
         code: result.code ?? 'WATCH_UPDATE_FAILED',
       })

@@ -8,6 +8,7 @@ import {
 } from './tech-detect'
 import type { GraphTechKind } from '@/lib/graph/types'
 import { MADE_WITH_COPY } from '@/lib/marketing/copy'
+import { captureObservationKey, captureObservationScopeSchema, type CaptureObservationScope } from './browser/observation-scope'
 
 export type TechnologyProfileStatus = 'complete' | 'partial' | 'unavailable' | 'not_captured'
 export type TechnologyConfidenceBand = 'verified' | 'supported'
@@ -51,6 +52,8 @@ const CATEGORY_ORDER: GraphTechKind[] = [
   'monitoring',
   'payments',
   'support',
+  'security',
+  'form',
 ]
 
 function statusForRead(status: TechnologyDetectionStatus): TechnologyProfileStatus {
@@ -147,9 +150,10 @@ export async function persistTechnologyObservations(
   detections: DetectedTech[],
   status: Exclude<TechnologyDetectionStatus, 'NOT_CAPTURED'>,
   detectorVersion = TECHNOLOGY_DETECTOR_VERSION,
-  detectedAt = new Date()
+  detectedAt = new Date(),
+  options: { tx?: Prisma.TransactionClient; scope?: CaptureObservationScope | null } = {},
 ): Promise<void> {
-  await executionTransaction(async (tx) => {
+  const persist = async (tx: Prisma.TransactionClient) => {
     await tx.auditTechnologyObservation.deleteMany({ where: { auditId } })
 
     for (const detection of detections) {
@@ -176,9 +180,12 @@ export async function persistTechnologyObservations(
         technologyDetectionStatus: status,
         technologyDetectorVersion: detectorVersion,
         technologyDetectedAt: detectedAt,
+        technologyObservationScope: options.scope ?? Prisma.DbNull,
       },
     })
-  })
+  }
+  if (options.tx) await persist(options.tx)
+  else await executionTransaction(persist)
 }
 
 export async function loadTechnologyProfile(
@@ -192,6 +199,7 @@ export async function loadTechnologyProfile(
       technologyDetectionStatus: true,
       technologyDetectorVersion: true,
       technologyDetectedAt: true,
+      technologyObservationScope: true,
       technologyObservations: {
         orderBy: [{ confidence: 'desc' }, { technology: { name: 'asc' } }],
         select: {
@@ -223,16 +231,18 @@ export async function loadTechnologyProfile(
     )
 
   let recheckDiff: TechnologyRecheckDiff | undefined
+  const scope = captureObservationScopeSchema.safeParse(audit.technologyObservationScope)
   if (
     audit.parentId &&
     audit.technologyDetectorVersion &&
-    audit.technologyDetectionStatus === 'COMPLETE'
+    audit.technologyDetectionStatus === 'COMPLETE' && scope.success && captureObservationKey(scope.data) !== 'unknown'
   ) {
     const parent = await prisma.audit.findUnique({
       where: { id: audit.parentId },
       select: {
         technologyDetectorVersion: true,
         technologyDetectionStatus: true,
+        technologyObservationScope: true,
         technologyObservations: {
           select: {
             confidence: true,
@@ -242,9 +252,11 @@ export async function loadTechnologyProfile(
       },
     })
 
+    const parentScope = captureObservationScopeSchema.safeParse(parent?.technologyObservationScope)
     if (
       parent?.technologyDetectionStatus === 'COMPLETE' &&
-      parent.technologyDetectorVersion === audit.technologyDetectorVersion
+      parent.technologyDetectorVersion === audit.technologyDetectorVersion &&
+      parentScope.success && captureObservationKey(parentScope.data) === captureObservationKey(scope.data)
     ) {
       const current = new Map(
         audit.technologyObservations.map((item) => [item.technology.name, item.confidence])

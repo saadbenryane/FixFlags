@@ -11,6 +11,7 @@ export const primaryActionEvidenceSchema = z.object({
   version: z.literal(1), pageContext: z.string().regex(/^flow:page:[a-f0-9]{64}$/),
   controlContext: z.string().regex(/^flow:control:[a-f0-9]{64}$/).nullable(),
   candidateCount: z.number().int().min(0).max(10000), clicked: z.boolean(), clickBlocked: z.boolean(),
+  candidateComplete: z.boolean().optional(), presenceVersion: z.union([z.literal(2), z.literal(3)]).optional(),
   navigation: z.enum(['changed', 'same', 'unknown']),
   samePageProgress: z.enum(['declared-panel', 'semantic-panel']).optional(),
   response: z.enum(['healthy', 'error', 'restricted', 'challenge', 'unknown']),
@@ -26,13 +27,14 @@ export function primaryControlContext(input: { pageContext: string; identity: st
   return 'flow:control:' + hash([input.pageContext, input.identity, input.label.trim().replace(/\s+/g, ' '), input.href, input.controls])
 }
 
-export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefined, actionRequired = true): CheckAssertion[] {
+export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefined, actionRequired: boolean | null = true): CheckAssertion[] {
   if (!evidence) return []
   const base = { expected: 'An applicable primary action is visible in the inspected viewport',
     observed: `${evidence.candidateCount} applicable visible controls recorded. This does not establish completed signup, payment or other business outcomes.` }
   const assertions: CheckAssertion[] = [{ key: 'primary-action-presence', name: 'Visible primary action', ...base,
-    passed: evidence.candidateCount > 0, complete: true, context: evidence.pageContext,
-    ...(!actionRequired && evidence.candidateCount === 0 ? { disposition: 'observed' as const } : {}) }]
+    passed: evidence.candidateCount > 0, complete: evidence.candidateComplete !== false && (actionRequired !== null || evidence.candidateCount > 0),
+    context: evidence.presenceVersion ? 'flow:page:' + hash([evidence.pageContext, 'rendered-action-presence-v' + evidence.presenceVersion]) : evidence.pageContext,
+    ...(actionRequired === false && evidence.candidateCount === 0 ? { disposition: 'observed' as const } : {}) }]
   if (!evidence.controlContext) return assertions
   assertions.push({ key: 'primary-action-click', name: 'Primary control receives a click',
     expected: 'The same visible primary control receives the browser click',

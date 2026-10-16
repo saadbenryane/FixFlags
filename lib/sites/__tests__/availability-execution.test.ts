@@ -206,6 +206,20 @@ describe('availability Outcome execution', () => {
     ]).state).toBe('COULD_NOT_VERIFY')
   })
 
+  it.each([401, 403, 429])('keeps an ordinary HTTP %s access restriction unknown instead of opening an outage', async status => {
+    const fetchMock = vi.fn(async () => new Response('The request is not permitted.', { status }))
+    vi.stubGlobal('fetch', fetchMock)
+    await runBoundCheckoutForAudit('audit-1')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(mocks.createAuditPage).not.toHaveBeenCalled()
+    expect(mocks.flagCreate).not.toHaveBeenCalled()
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      disposition: 'BLOCKED', reason: 'access_restricted', detail: expect.objectContaining({ status, source: 'public-http' }),
+    }) }))
+    expect(assessRequiredBindings([binding], [{ key: binding.key, disposition: 'BLOCKED', reason: 'access_restricted' }]).state)
+      .toBe('COULD_NOT_VERIFY')
+  })
+
   it('checks a healthy page containing Cloudflare and CAPTCHA resources instead of declaring a wall', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<title>Example</title><script src="https://static.cloudflareinsights.com/beacon.min.js"></script><div class="cf-turnstile">Captcha</div>', { status: 200 })))
     await runBoundCheckoutForAudit('audit-1')

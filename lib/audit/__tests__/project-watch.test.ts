@@ -1,8 +1,11 @@
+import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
+import { prisma } from '@/lib/db'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Resend } from 'resend'
 
 const mocks = vi.hoisted(() => ({
   userFindUnique:vi.fn(),
+  assertOperator: vi.fn(),
   projectFindMany: vi.fn(),
   projectUpdate: vi.fn(),
   projectUpdateMany: vi.fn(),
@@ -43,6 +46,7 @@ vi.mock('@/lib/db', () => ({
     siteOutcome: { findMany: mocks.siteOutcomeFindMany, updateMany: mocks.siteOutcomeUpdateMany },
   },
 }))
+vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.assertOperator }))
 vi.mock('@/lib/sites/application/scheduled-runs', () => ({
   requestScheduledSiteRun: mocks.requestScheduledSiteRun,
 }))
@@ -59,7 +63,6 @@ import {
   notifyWatchRegression,
   processDueProjectWatches,
   retryPendingWatchNotifications,
-  setProjectWatch,
 } from '@/lib/audit/project-watch'
 import { fixedClock } from '@/lib/time/clock'
 
@@ -70,6 +73,15 @@ const project = {
   watchNextRunAt: new Date('2026-07-22T10:00:00.000Z'),
   watchConsecutiveFailures: 0,
   user: { lifecycleStatus:'ACTIVE',entitlementGrants:[],licensedSiteQuantity:0,auditsLimit:3,deepReviewsLimit:1,id: 'user-1', plan: 'TEAM', role: 'user', subscriptionStatus: 'ACTIVE' },
+}
+
+function completedWatch<T extends { project?: Record<string, unknown> } & Record<string, unknown>>(row: T) {
+  return {
+    userId: 'user-1', status: 'COMPLETED' as const,
+    completedAt: new Date('2026-07-22T12:00:00Z'), improvementProjectedAt: new Date('2026-07-22T12:00:01Z'),
+    ...row,
+    project: { userId: 'user-1', deletedAt: null, ...row.project },
+  }
 }
 
 describe('Product Watch', () => {
@@ -83,10 +95,10 @@ describe('Product Watch', () => {
     mocks.projectUpdate.mockResolvedValue(project)
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
     mocks.siteOutcomeUpdateMany.mockResolvedValue({ count: 1 })
-    mocks.transaction.mockImplementation(async (operations: Array<Promise<unknown>>) => Promise.all(operations))
+    mocks.transaction.mockImplementation(async (operations: Array<Promise<unknown>> | ((tx: unknown) => unknown)) => typeof operations === 'function' ? operations(prisma) : Promise.all(operations))
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
     mocks.sendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null })
-    mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user, watchInterval: project.watchInterval })
+    mocks.projectFindFirst.mockResolvedValue({ ...project, watchEveryMinutes: null })
     mocks.siteOutcomeFindMany.mockResolvedValue([])
     mocks.requestScheduledSiteRun.mockResolvedValue({ runId: 'run-1', auditId: 'child-1', reused: false })
     mocks.refreshGoogleContext.mockResolvedValue(undefined)
@@ -97,6 +109,28 @@ describe('Product Watch', () => {
     vi.unstubAllEnvs()
   })
 
+  it('retains the operator grant through scheduled admission', async () => {
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    await processDueProjectWatches(1, { clock: fixedClock(new Date('2026-07-22T12:00:00Z')), onlyProjectId: project.id, operator })
+    expect(mocks.assertOperator).toHaveBeenCalledWith(operator, project.userId, project.id)
+    expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ operator }))
+  })
+
+  it('refuses an unscoped operator sweep before default setup or scheduling', async () => {
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    await expect(processDueProjectWatches(1, { operator })).rejects.toMatchObject({ code: 'ADMIN_DOMAIN_SCOPE_DENIED' })
+    expect(mocks.initializeDefaultMonitoring).not.toHaveBeenCalled()
+    expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
+  })
+
+  it('refuses revoked operator authority before changing monitoring state', async () => {
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    mocks.assertOperator.mockRejectedValue(new Error('Revoked operator'))
+    await expect(processDueProjectWatches(1, { onlyProjectId: project.id, operator })).rejects.toThrow('Revoked operator')
+    expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.requestScheduledSiteRun).not.toHaveBeenCalled()
+  })
+
   it('enables weekly scheduled reviews for a Studio Product', async () => {
     const result = await setProjectWatch({
       projectId: 'project-1',
@@ -105,8 +139,8 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ ok: true })
-    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'project-1' },
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'project-1', userId: 'user-1' }),
       data: expect.objectContaining({ watchInterval: 'WEEKLY' }),
     }))
   })
@@ -163,6 +197,41 @@ describe('Product Watch', () => {
     expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-2' }))
   })
 
+  it('uses each Site admission time after earlier work and policy lookup delay', async () => {
+    const start = new Date('2026-10-11T09:00:00Z')
+    let instant = start.getTime()
+    mocks.projectFindMany.mockResolvedValue([project, { ...project, id: 'project-2', userId: 'user-2' }])
+    mocks.userFindUnique.mockImplementation(async ({ where }) => {
+      if (where.id === 'user-2') instant += 15 * 60_000
+      return { ...project.user, id: where.id }
+    })
+    mocks.requestScheduledSiteRun.mockImplementation(async ({ projectId }) => {
+      if (projectId === project.id) instant += 20 * 60_000
+      return { runId: projectId, auditId: projectId, reused: false }
+    })
+    expect(await processDueProjectWatches(20, { clock: { now: () => new Date(instant) } })).toEqual({ processed: 2, enqueued: 2, errors: 0 })
+    const admissions = mocks.requestScheduledSiteRun.mock.calls.map(([input]) => input)
+    expect(admissions[1].now).toEqual(new Date(start.getTime() + 35 * 60_000))
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'project-2' }), data: { watchLeaseUntil: new Date(start.getTime() + 45 * 60_000) },
+    }))
+    expect(admissions[1].scheduledAt).toEqual(project.watchNextRunAt)
+  })
+
+  it.each(['failure', 'expired-renewal'])('schedules %s from the actual result time', async result => {
+    const start = new Date('2026-10-11T09:00:00Z')
+    let instant = start.getTime()
+    mocks.projectFindMany.mockResolvedValue([{ ...project, watchInterval: 'HOURLY' }])
+    mocks.requestScheduledSiteRun.mockImplementation(async () => {
+      instant += 2 * 60 * 60_000
+      throw Object.assign(new Error('Delayed admission failure'), result === 'expired-renewal'
+        ? { code: 'TOKEN_LIMIT', renewalAt: new Date(start.getTime() + 60 * 60_000) } : {})
+    })
+    await processDueProjectWatches(20, { clock: { now: () => new Date(instant) } })
+    const next = new Date(instant + (result === 'failure' ? 15 : 60) * 60_000)
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchNextRunAt: next }) }))
+  })
+
   it('does not clear a replacement lease after the original worker finishes admission', async () => {
     const now = new Date('2026-10-11T09:00:00.000Z'), replacement = new Date('2026-10-11T09:30:00.000Z')
     let liveLease: Date | null = null
@@ -184,14 +253,14 @@ describe('Product Watch', () => {
 
   it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with its duration', async (interval, everyMinutes, stored) => {
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval, ...(everyMinutes ? { everyMinutes } : {}) })).toEqual({ ok: true })
-    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchInterval: stored, watchEveryMinutes: everyMinutes ?? null }) }))
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchInterval: stored, watchEveryMinutes: everyMinutes ?? null }) }))
   })
 
   it('rejects malformed custom timing and hourly monitoring on Free', async () => {
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'custom', everyMinutes: 0 })).toMatchObject({ ok: false, code: 'INVALID_INTERVAL' })
     mocks.projectFindFirst.mockResolvedValue({ ...project, user: { ...project.user, plan: 'FREE' } })
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'hourly' })).toMatchObject({ ok: false, code: 'INTERVAL_NOT_ALLOWED' })
-    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+    expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
   })
 
   it('advances a custom worker schedule by its saved duration', async () => {
@@ -248,7 +317,7 @@ describe('Product Watch', () => {
       error: 'Daily watching is available on Pro and Studio. Free Sites watch weekly.',
       code: 'INTERVAL_NOT_ALLOWED',
     })
-    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+    expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
   })
 
   it('pauses the schedule and returns Outcomes to manual freshness', async () => {
@@ -259,14 +328,14 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ ok: true })
-    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: 'project-1' }),
       data: expect.objectContaining({
         watchNextRunAt: null,
         watchLastError: 'Paused. This Site is not on a check schedule.',
       }),
     }))
-    expect(mocks.projectUpdate.mock.calls[0][0].data.watchInterval).toBeNull()
+    expect(mocks.projectUpdateMany.mock.calls[0][0].data.watchInterval).toBeNull()
     expect(mocks.siteOutcomeUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: { staleAfterMinutes: 11520 },
     }))
@@ -286,7 +355,7 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ ok: true })
-    expect(mocks.projectUpdate).toHaveBeenCalled()
+    expect(mocks.projectUpdateMany).toHaveBeenCalled()
   })
 
   it('enables daily Watch on the same terms as weekly Watch', async () => {
@@ -297,7 +366,7 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ ok: true })
-    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ watchInterval: 'DAILY', watchNextRunAt: expect.any(Date) }),
     }))
     expect(mocks.siteOutcomeUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -385,7 +454,7 @@ describe('Product Watch', () => {
   })
 
   it('sends at most one regression notification per child report', async () => {
-    mocks.auditFindUnique.mockResolvedValue({
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({
       id: 'child-1',
       url: 'https://example.com/',
       projectId: 'project-1',
@@ -396,7 +465,7 @@ describe('Product Watch', () => {
       watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
-    })
+    }))
     mocks.getFlagDiffSummary.mockResolvedValue({
       fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
     })
@@ -408,9 +477,9 @@ describe('Product Watch', () => {
   })
 
   it.each(['removed', 'suspended', 'other-owner'])('refuses an alert for a %s Site or account before delivery admission', async reason => {
-    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', userId: 'user-1', projectId: 'project-1', recheckTrigger: 'WATCH',
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', userId: 'user-1', projectId: 'project-1', recheckTrigger: 'WATCH',
       user: { lifecycleStatus: reason === 'suspended' ? 'SUSPENDED' : 'ACTIVE', email: 'owner@example.com' },
-      project: { userId: reason === 'other-owner' ? 'other' : 'user-1', deletedAt: reason === 'removed' ? new Date() : null } })
+      project: { userId: reason === 'other-owner' ? 'other' : 'user-1', deletedAt: reason === 'removed' ? new Date() : null } }))
     await notifyWatchRegression(null, 'child-1')
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
@@ -418,15 +487,16 @@ describe('Product Watch', () => {
   })
 
   it('checks the current owner, recipient and preferences in the physical delivery claim', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', userId: 'user-1', projectId: 'project-1', url: 'https://example.com/',
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', userId: 'user-1', projectId: 'project-1', url: 'https://example.com/',
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1, watchRecoveryCount: 0,
       watchNotificationStatus: 'PENDING', watchNotificationAttempts: 0, watchNotificationAttemptCeiling: 5,
       user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' },
-      project: { userId: 'user-1', deletedAt: null, notificationLevel: 'FLAGS', notifyOnRecovery: true } })
+      project: { userId: 'user-1', deletedAt: null, notificationLevel: 'FLAGS', notifyOnRecovery: true } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], regressed: [], newIssues: [{ id: 'new' }] })
     mocks.auditUpdateMany.mockResolvedValue({ count: 0 })
     await notifyWatchRegression(null, 'child-1')
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      status: 'COMPLETED', completedAt: expect.any(Date), improvementProjectedAt: { not: null },
       user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' },
       project: { userId: 'user-1', deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: 'FLAGS', notifyOnRecovery: true },
     }), data: expect.objectContaining({ watchNotificationStatus: 'SENDING' }) }))
@@ -442,7 +512,7 @@ describe('Product Watch', () => {
   })
 
   it('sends only for a measured regression with a stable idempotency key', async () => {
-    mocks.auditFindUnique.mockResolvedValue({
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({
       id: 'child-1',
       url: 'https://example.com/',
       projectId: 'project-1',
@@ -453,7 +523,7 @@ describe('Product Watch', () => {
       watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
-    })
+    }))
     mocks.getFlagDiffSummary.mockResolvedValue({
       fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
     })
@@ -472,7 +542,7 @@ describe('Product Watch', () => {
   })
 
   it('records a clean watch result without sending email', async () => {
-    mocks.auditFindUnique.mockResolvedValue({
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({
       id: 'child-1',
       url: 'https://example.com/',
       projectId: 'project-1',
@@ -483,7 +553,7 @@ describe('Product Watch', () => {
       watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
-    })
+    }))
     mocks.getFlagDiffSummary.mockResolvedValue({
       fixed: [{ id: 'fixed' }], inconclusive: [], unchanged: [], newIssues: [], regressed: [],
     })
@@ -502,10 +572,11 @@ describe('Product Watch', () => {
   })
 
   it('persists a due alert without making a provider request or consuming an attempt', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      improvementProjectedAt: null,
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: null, watchRecoveryCount: null,
       watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
-      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com' }, project: { notificationLevel: 'FLAGS' } })
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com' }, project: { notificationLevel: 'FLAGS' } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], regressed: [],
       newIssues: [{ checkId: 'title-missing', severity: 'IMPORTANT', confidence: 1, status: 'OPEN' }] })
     await classifyWatchResult(null, 'child-1')
@@ -514,6 +585,28 @@ describe('Product Watch', () => {
     expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
       watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING',
     } }))
+  })
+
+  it.each(['QUEUED', 'CHECKING', 'FAILED', 'undated'])('refuses classification and delivery for an incomplete Watch: %s', async state => {
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', projectId: 'project-1', recheckTrigger: 'WATCH',
+      status: state === 'undated' ? 'COMPLETED' : state, completedAt: state === 'undated' ? null : new Date(),
+      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' } }))
+    await classifyWatchResult(null, 'child-1')
+    await notifyWatchRegression(null, 'child-1')
+    expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('refuses direct delivery before the durable projection receipt', async () => {
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', projectId: 'project-1', recheckTrigger: 'WATCH',
+      improvementProjectedAt: null, user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' } }))
+    await notifyWatchRegression(null, 'child-1')
+    expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
 
   it('admits notification delivery only after the durable monitoring projection receipt', async () => {
@@ -525,11 +618,11 @@ describe('Product Watch', () => {
   })
 
   it('combines simultaneous findings and recoveries into one branded provider request', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
       recheckTrigger: 'WATCH', completedAt: new Date('2026-10-13T00:00:00Z'),
       watchRegressionCount: null, watchNotificationStatus: 'PENDING', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' },
-      project: { watchInterval: 'WEEKLY', notificationLevel: 'FLAGS', notifyOnRecovery: true } })
+      project: { watchInterval: 'WEEKLY', notificationLevel: 'FLAGS', notifyOnRecovery: true } }))
     const flag = { checkId: 'title-missing', severity: 'IMPORTANT', confidence: 0.95, status: 'OPEN', rubric: 'SEO' }
     mocks.getFlagDiffSummary.mockResolvedValue({
       newIssues: [{ ...flag, id: 'new', problem: 'Missing title' }],
@@ -552,10 +645,10 @@ describe('Product Watch', () => {
     const payload = { version: 1, from: 'FixFlags <hello@fixflags.com>', to: 'owner@example.com',
       subject: 'Recorded subject', html: '<p>Recorded evidence</p>', text: 'Recorded evidence',
       tags: [{ name: 'audit_id', value: 'child-1' }, { name: 'purpose', value: 'watch' }] }
-    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1,
       watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1, watchNotificationPayload: payload,
-      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Updated name' }, project: { watchInterval: 'WEEKLY' } })
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Updated name' }, project: { watchInterval: 'WEEKLY' } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
     await notifyWatchRegression('parent-1', 'child-1')
     const { version, ...body } = payload
@@ -565,12 +658,12 @@ describe('Product Watch', () => {
   })
 
   it('does not send a recorded message to an address that the owner changed', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
       recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: 1,
       watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
       watchNotificationPayload: { version: 1, from: 'FixFlags <hello@fixflags.com>', to: 'old@example.com',
         subject: 'Recorded subject', html: '<p>Evidence</p>', text: 'Evidence', tags: [{ name: 'audit_id', value: 'child-1' }] },
-      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' }, project: { watchInterval: 'WEEKLY' } })
+      user: { lifecycleStatus:'ACTIVE',email: 'owner@example.com', name: 'Owner' }, project: { watchInterval: 'WEEKLY' } }))
     mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [] })
     await notifyWatchRegression('parent-1', 'child-1')
     expect(mocks.sendEmail).not.toHaveBeenCalled()
@@ -580,7 +673,7 @@ describe('Product Watch', () => {
   })
 
   it('links a recovery notification to the parent Flag that holds its proof', async () => {
-    mocks.auditFindUnique.mockResolvedValue({
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({
       id: 'child-1',
       url: 'https://example.com/',
       projectId: 'project-1',
@@ -595,7 +688,7 @@ describe('Product Watch', () => {
         notificationLevel: 'ALL',
         notifyOnRecovery: true,
       },
-    })
+    }))
     mocks.getFlagDiffSummary.mockResolvedValue({
       fixed: [{
         id: 'parent-fixed-flag',
@@ -627,14 +720,14 @@ describe('Product Watch', () => {
     const important = { id: 'important', checkId: 'title-missing', problem: 'Search title is missing', rubric: 'SEO', severity: 'IMPORTANT', confidence: 0.95, status: 'OPEN' }
     const critical = { ...important, id: 'critical', checkId: 'journey-checkout-failed', problem: 'Checkout <failed>', severity: 'CRITICAL' }
     beforeEach(() => {
-      mocks.auditFindUnique.mockResolvedValue({
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({
         id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
         recheckTrigger: 'WATCH', completedAt: new Date('2026-10-10T12:00:00Z'),
         watchRegressionCount: 1, watchRecoveryCount: 0,
         watchNotificationStatus: 'FAILED', watchNotificationAttemptCeiling:5,watchNotificationAttempts: 1,
         user: { lifecycleStatus:'ACTIVE',email: 'owner@example.test', name: 'Owner <img src=x>' },
         project: { notificationLevel: 'CRITICAL_ONLY', notifyOnRecovery: true },
-      })
+      }))
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [important, critical], regressed: [] })
     })
 
@@ -655,8 +748,8 @@ describe('Product Watch', () => {
     it.each(['critical-only', 'disable-recovery'] as const)('revises a recorded message after %s and preserves that retry body', async preference => {
       const child = await mocks.auditFindUnique()
       const recovered = { ...important, id: 'recovered', problem: 'Repaired navigation' }
-      mocks.auditFindUnique.mockResolvedValue({ ...child, watchNotificationPayload: null,
-        project: { notificationLevel: 'FLAGS', notifyOnRecovery: true } })
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({ ...child, watchNotificationPayload: null,
+        project: { notificationLevel: 'FLAGS', notifyOnRecovery: true } }))
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [recovered], inconclusive: [], unchanged: [],
         newIssues: [important, critical], regressed: [] })
       mocks.sendEmail.mockResolvedValue({ data: null, error: { message: 'Uncertain delivery' } })
@@ -665,8 +758,8 @@ describe('Product Watch', () => {
       const firstKey = mocks.sendEmail.mock.calls[0][1].idempotencyKey
       const settings = { notificationLevel: preference === 'critical-only' ? 'CRITICAL_ONLY' : 'FLAGS',
         notifyOnRecovery: preference !== 'disable-recovery' }
-      mocks.auditFindUnique.mockResolvedValue({ ...child, watchNotificationAttempts: 2,
-        watchNotificationPayload: firstPayload, project: settings })
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({ ...child, watchNotificationAttempts: 2,
+        watchNotificationPayload: firstPayload, project: settings }))
       await notifyWatchRegression('parent-1', 'child-1')
       const [revisedBody, revisedOptions] = mocks.sendEmail.mock.calls[1]
       expect(revisedOptions.idempotencyKey).not.toBe(firstKey)
@@ -676,9 +769,9 @@ describe('Product Watch', () => {
       expect(revisedSave.where.watchNotificationPayload).toEqual({ equals: firstPayload })
       const revisedPayload = revisedSave.data.watchNotificationPayload
       expect(revisedPayload.previous).toEqual([firstPayload])
-      mocks.auditFindUnique.mockResolvedValue({ ...child, watchNotificationAttempts: 3,
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({ ...child, watchNotificationAttempts: 3,
         watchNotificationPayload: revisedPayload, project: settings,
-        user: { ...child.user, name: 'Changed owner name' } })
+        user: { ...child.user, name: 'Changed owner name' } }))
       mocks.sendEmail.mockResolvedValue({ data: { id: 'accepted' }, error: null })
       await notifyWatchRegression('parent-1', 'child-1')
       expect(mocks.sendEmail.mock.calls[2][0]).toEqual(revisedBody)
@@ -690,7 +783,7 @@ describe('Product Watch', () => {
 
     it('respects an opt-out during retry, including recovery email', async () => {
       const child = await mocks.auditFindUnique()
-      mocks.auditFindUnique.mockResolvedValue({ ...child, project: { notificationLevel: 'OFF', notifyOnRecovery: true } })
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({ ...child, project: { notificationLevel: 'OFF', notifyOnRecovery: true } }))
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [critical], inconclusive: [], unchanged: [], newIssues: [critical], regressed: [] })
       await notifyWatchRegression('parent-1', 'child-1')
       expect(mocks.sendEmail).not.toHaveBeenCalled()
@@ -706,7 +799,7 @@ describe('Product Watch', () => {
 
   describe('notification delivery truth', () => {
     beforeEach(() => {
-      mocks.auditFindUnique.mockResolvedValue({
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({
         id: 'child-1',
         url: 'https://example.com/',
         projectId: 'project-1',
@@ -717,7 +810,7 @@ describe('Product Watch', () => {
         watchNotificationAttemptCeiling:5,watchNotificationAttempts: 0,
         user: { lifecycleStatus:'ACTIVE',email: 'owner@example.test', name: 'Owner' },
         project: { watchInterval: 'WEEKLY' },
-      })
+      }))
       mocks.getFlagDiffSummary.mockResolvedValue({
         fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
       })
@@ -866,7 +959,7 @@ describe('Product Watch', () => {
     // status leaves the alert in a state no retry can see. The customer would
     // never learn their Site regressed, which breaks the promise that FixFlags
     // watches while unattended.
-    const strandedChild = {
+    const strandedChild = completedWatch({
       id: 'child-1',
       url: 'https://example.com/',
       projectId: 'project-1',
@@ -878,7 +971,7 @@ describe('Product Watch', () => {
       watchNotificationClaimedAt: new Date('2026-07-22T12:00:00.000Z'),
       user: { lifecycleStatus:'ACTIVE',email: 'owner@example.test', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' as const },
-    }
+    })
 
     beforeEach(() => {
       mocks.auditFindUnique.mockResolvedValue(strandedChild)
@@ -942,10 +1035,10 @@ describe('Product Watch', () => {
 
     it('leaves a SENDING claim alone while its lease is still valid', async () => {
       // A second worker must never steal a claim that is still in flight.
-      mocks.auditFindUnique.mockResolvedValue({
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({
         ...strandedChild,
         watchNotificationLeaseUntil: new Date(Date.now() + 60_000),
-      })
+      }))
       mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
 
       await retryPendingWatchNotifications()
@@ -961,11 +1054,11 @@ describe('Product Watch', () => {
     })
 
     it.each([new Date(Date.now() - 60_000), null])('terminalizes an inactive final claim without risking a sixth send: %s', async expired => {
-      mocks.auditFindUnique.mockResolvedValue({
+      mocks.auditFindUnique.mockResolvedValue(completedWatch({
         ...strandedChild,
         watchNotificationAttemptCeiling:5,watchNotificationAttempts: 5,
         watchNotificationLeaseUntil: expired,
-      })
+      }))
 
       await notifyWatchRegression('parent-1', 'child-1')
 

@@ -6,6 +6,7 @@ import { scopedAssertionForTarget } from '@/lib/audit/checks/verification'
 import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
 import { projectCheckResults } from '@/lib/sites/check-results'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
+import { capturedPagePreview, pagePreviewForComparison } from '@/lib/audit/checks/page-preview'
 
 describe('runCorridorConsistencyChecks', () => {
   it('flags identical og titles across corridor pages', () => {
@@ -62,6 +63,42 @@ describe('runCorridorConsistencyChecks', () => {
       execution: { auditId: 'after', taskId: 'cross-page', checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
     }))
   }
+  it('keeps native observed absence separate from older parsed values', () => {
+    const scope = pages()[0].scope!
+    const preview = capturedPagePreview({ runtimeHeadScope: scope,
+      runtimeHeadMetadata: { title: 'Current title', ogTitle: null, ogDescription: null } })!
+    expect(pagePreviewForComparison({ url: scope.pageUrl, preview, metadata: {
+      title: 'Older title', ogTitle: 'Older preview', ogDescription: 'Older description',
+    } }, 'primary')).toMatchObject({ title: 'Current title', ogTitle: null, ogDescription: null,
+      titleComplete: true, descriptionComplete: true, scope, source: 'native-head-v1' })
+  })
+  it.each([
+    { title: undefined, ogTitle: 'Known', ogDescription: 'Known description' },
+    { title: 'Known', ogTitle: undefined, ogDescription: 'Known description' },
+    { title: 'x'.repeat(8001), ogTitle: 'Known', ogDescription: 'Known description' },
+  ])('withholds title comparison when a required native field is unavailable', runtimeHeadMetadata => {
+    const preview = capturedPagePreview({ runtimeHeadScope: pages()[0].scope!, runtimeHeadMetadata })!
+    expect(preview).toMatchObject({ titleComplete: false, descriptionComplete: true })
+    expect(JSON.stringify(preview).length).toBeLessThan(10_000)
+  })
+  it('retains known title comparison independently of a missing description or capture restriction', () => {
+    const capture = { runtimeHeadScope: pages()[0].scope!, runtimeHeadMetadata: { title: 'Known title', ogTitle: null } }
+    expect(capturedPagePreview(capture)).toMatchObject({ titleComplete: true, descriptionComplete: false })
+    expect(capturedPagePreview({ ...capture, collectionRestrictions: ['read_only_refusal'] }))
+      .toMatchObject({ titleComplete: false, descriptionComplete: false })
+    expect(capturedPagePreview({ runtimeHeadMetadata: capture.runtimeHeadMetadata })).toBeUndefined()
+  })
+  it('does not borrow native head provenance to certify an older metadata comparison', () => {
+    const original = pages(), flag = collapseFlagsWithAffectedPaths(runCorridorConsistencyChecks(original))[0]
+    const native = original.map(page => ({ ...page, source: 'native-head-v1' as const }))
+    const repaired = native.map((page, index) => ({ ...page, ogTitle: 'Distinct preview ' + index }))
+    const current = receipts(repaired)
+    expect(scopedAssertionForTarget({ receipt: current[0], receipts: current, checkId: flag.checkId, flag })).toBeUndefined()
+    const nativeFlag = collapseFlagsWithAffectedPaths(runCorridorConsistencyChecks(native))[0]
+    expect(scopedAssertionForTarget({ receipt: current[0], receipts: current, checkId: nativeFlag.checkId, flag: nativeFlag })?.assertion.passed).toBe(true)
+    const incomplete = receipts(repaired.map((page, index) => index === 2 ? { ...page, titleComplete: false } : page))
+    expect(scopedAssertionForTarget({ receipt: incomplete[0], receipts: incomplete, checkId: nativeFlag.checkId, flag: nativeFlag })?.assertion.passed).not.toBe(true)
+  })
   it('records inspected optional absence without declaring a comparison passed or blocking other Conversion evidence', () => {
     const inspected = pages().map((page, index) => ({ ...page, ogTitle: null, ogDescription: null, title: 'Page ' + index }))
     const observations = evaluateCorridorConsistency(inspected)

@@ -6,7 +6,7 @@ import { JOURNEY_ASSERTIONS } from './journey-definitions'
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
   version: 1 | 2; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
-  input: 'metadata' | 'headers' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard' | 'console';
+  input: 'metadata' | 'headers' | 'http' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard' | 'console';
   evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
   assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only' | 'protected';
 }
@@ -15,19 +15,24 @@ function define(evaluator: string, area: SiteCardArea, name: string, input: Page
   assertions: Record<string, AssertionDefinition> = {}): PageCheckDefinition {
   return { version: 1, area, name, input, evaluator, source: 'DETERMINISTIC', assertions,
     resultSchema: 'site-module-check-v1', timeoutMs: 12_000, replaySafety: 'read_only',
-    requiredEvidence: evaluator === 'measurement' ? ['rendered-html', 'browser-network'] : input === 'headers' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
+    requiredEvidence: evaluator === 'metadata' ? ['rendered-head'] : evaluator === 'measurement' ? ['rendered-html', 'browser-network'] : input === 'headers' || input === 'http' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
       : input === 'mobile' ? ['pagespeed-mobile'] : evaluator === 'security' ? ['original-html']
       : input === 'console' ? ['desktop-console', 'mobile-console'] : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe']
-        : evaluator === 'auth-checkout' || evaluator === 'og-image' ? ['rendered-html', 'public-destination-response'] : ['rendered-html'] }
+        : evaluator === 'og-image' ? ['rendered-head', 'public-destination-response']
+          : evaluator === 'auth-checkout' ? ['rendered-html', 'public-destination-response'] : ['rendered-html'] }
 }
 
 /** Portable contracts. Server registration supplies the declared evaluator. */
 export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
+  'page-response': define('page-response', 'site', 'Public page response', 'http', {
+    'page-response': assertion('site', ['page-http-error']),
+  }),
   metadata: define('metadata', 'search', 'Page metadata', 'metadata', {
     'title-presence': assertion('search'), 'description-presence': assertion('search'),
     'preview-image-presence': assertion('search', ['og-image-missing']),
     'preview-title-presence': assertion('search', ['og-title-missing']),
     'preview-description-presence': assertion('search', ['og-description-missing']),
+    'favicon-presence': assertion('search', ['favicon-missing']),
     'viewport-presence': assertion('accessibility', ['viewport-missing']), 'language-presence': assertion('accessibility', ['lang-missing']),
   }),
   'og-image': define('og-image', 'search', 'Link preview image', 'metadata', {
@@ -73,7 +78,7 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'hsts-duration': assertion('security', ['security-hsts-missing', 'security-hsts-too-short', 'security-headers-missing']),
     'hsts-subdomains': assertion('security', ['security-hsts-no-subdomains', 'security-headers-hardening']),
     'hsts-preload': assertion('security', ['security-hsts-no-preload', 'security-headers-hardening']),
-    'frame-protection': assertion('security', ['security-frame-options-missing', 'security-frame-options-too-permissive', 'security-headers-missing']),
+    'frame-protection': assertion('security', ['security-frame-options-missing', 'security-frame-options-too-permissive', 'security-csp-frame-ancestors-permissive', 'security-headers-missing']),
     'x-content-type-options': assertion('security', ['security-content-type-options-missing', 'security-headers-missing']),
     'referrer-policy': assertion('security', ['security-referrer-policy-missing', 'security-referrer-policy-weak', 'security-headers-hardening']),
     'opener-policy': assertion('security', ['security-coop-missing', 'security-headers-hardening']),
@@ -182,6 +187,10 @@ export const PRIMARY_ACTION_ASSERTIONS = {
   'primary-action-navigation': ['flow-cta-dead-end'],
   'primary-action-response': ['flow-cta-404'],
 } as const
+export const POST_CLICK_ASSERTIONS = {
+  'destination-content-timing': ['flow-cta-blank-destination', 'flow-destination-slow-load'],
+  'destination-loading-ui': ['flow-cta-stuck-loading', 'flow-destination-stuck-loading'],
+} as const
 export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
   corridor: { ...define('corridor', 'conversion', 'Cross-page previews', 'browser', {
     'preview-titles': assertion('conversion', ['corridor-og-title-drift']),
@@ -205,7 +214,9 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
     Object.fromEntries(Object.entries(accountAssertion).map(([kind, key]) => [key, assertion('conversion', [accountCheckId[kind as keyof typeof accountCheckId]])]))),
     replaySafety: 'protected', timeoutMs: 180_000, requiredEvidence: ['credential-bound-account-observation'] },
   flow: { ...define('flow', 'conversion', 'Public primary action', 'browser',
-    Object.fromEntries(Object.entries(PRIMARY_ACTION_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)]))),
+    { ...Object.fromEntries(Object.entries(PRIMARY_ACTION_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
+      ...Object.fromEntries(Object.entries(POST_CLICK_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
+      'pricing-navigation': assertion('conversion', ['flow-pricing-nav-broken']) }),
     requiredEvidence: ['public-primary-action'] },
   'form-validation': { ...define('form-validation', 'conversion', 'Form validation', 'browser', {
     'empty-form-validation': assertion('conversion', ['flow-form-no-validation']),

@@ -562,6 +562,7 @@ model Project {
   ///    * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
   productIntelligence         Json?
   watchNextRunAt              DateTime?
+  monitoringSetupRetryAt      DateTime?
   watchLastRunAt              DateTime?
   /// *
   ///    * Lowercase hostname without www. Exact Product identity within an account.
@@ -605,6 +606,7 @@ model Project {
   @@unique([userId, canonicalHost])
   @@index([userId])
   @@index([watchNextRunAt])
+  @@index([monitoringSetupRetryAt, createdAt, id])
   @@index([watchLeaseUntil])
   @@map("projects")
 }
@@ -699,6 +701,7 @@ model Audit {
   technologyDetectionStatus  TechnologyDetectionStatus    @default(NOT_CAPTURED)
   technologyDetectorVersion  String?
   technologyDetectedAt       DateTime?
+  technologyObservationScope Json?
   deepReviewUsageCountedAt   DateTime?
   /// How far this Product Review fully judges: 1 this page, 2 linked pages, 3 one level beyond.
   reviewDepth                Int                          @default(1)
@@ -1891,6 +1894,7 @@ model ShopifyShop {
   primaryUrl              String?
   encryptedAccessToken    String
   encryptedRefreshToken   String?
+  authorizationVersion    Int             @default(1)
   tokenExpiresAt          DateTime?
   refreshExpiresAt        DateTime?
   scopes                  String          @default("read_products")
@@ -1941,6 +1945,8 @@ model RevenuePath {
   reason               String?
   failedStep           String?
   lastVerifiedAt       DateTime?
+  /// Exact committed source. Historical dates cannot stand in for this receipt.
+  lastVerificationRunId String?
   lastTransitionAt     DateTime?
   lastVideoUrl         String?
   lastGifUrl           String?
@@ -2805,6 +2811,7 @@ model UptimeMonitor {
   nextProbeAt       DateTime         @default(now())
   lastCheckedAt     DateTime?
   lastScheduledAt   DateTime?
+  lastDispatchAttemptAt DateTime?
   pendingFailureAt  DateTime?
   pendingSlotAt     DateTime?
   confirmationDueAt DateTime?
@@ -2818,6 +2825,7 @@ model UptimeMonitor {
 
   @@index([nextProbeAt, leaseUntil])
   @@index([confirmationDueAt])
+  @@index([lastDispatchAttemptAt, nextProbeAt, id])
   @@map("uptime_monitors")
 }
 

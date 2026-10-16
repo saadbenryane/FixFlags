@@ -84,15 +84,34 @@ export async function pageShowsCheckoutError(page: Page): Promise<boolean> {
 export async function cartAppearsUpdated(page: Page): Promise<boolean> {
   return page
     .evaluate(() => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
       const url = window.location.pathname
       if (/\/cart(?:\/|$)/i.test(url)) return true
-      if (document.querySelector('[data-cart-drawer], #CartDrawer, .cart-drawer, #cart')) return true
+      const visible = (el: Element) => {
+        const rect = el.getBoundingClientRect()
+        if (rect.width < 8 || rect.height < 8 || getComputedStyle(el).visibility !== 'visible') return false
+        for (let ancestor: Element | null = el; ancestor; ancestor = ancestor.parentElement) {
+          const style = getComputedStyle(ancestor)
+          if (style.display === 'none' || Number(style.opacity) === 0 || style.contentVisibility === 'hidden' || ancestor.hasAttribute('inert')) return false
+        }
+        return true
+      }
+      if (Array.from(document.querySelectorAll('[data-cart-drawer], #CartDrawer, .cart-drawer, #cart')).some(visible)) return true
       const count = document.querySelector('[data-cart-count], .cart-count, #cart-icon-bubble')
-      if (count) {
+      if (count && visible(count)) {
         const value = Number((count.textContent ?? '').replace(/[^\d]/g, ''))
         if (value > 0) return true
       }
-      const text = (document.body?.innerText ?? '').slice(0, 2500)
+      const parts: string[] = []
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      let node: Node | null, length = 0, visited = 0
+      while ((node = walker.nextNode()) && ++visited <= 5000 && length < 2500) {
+        const element = node.parentElement
+        if (!element || element.closest('script,style,noscript,template') || !visible(element)) continue
+        const text = (node.textContent ?? '').slice(0, 2500 - length)
+        parts.push(text); length += text.length
+      }
+      const text = parts.join(' ')
       return /item added|added to cart|your cart|check\s*out/i.test(text)
     })
     .catch(() => false)

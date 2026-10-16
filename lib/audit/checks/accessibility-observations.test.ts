@@ -8,7 +8,7 @@ import { parseMetadataFromHtml } from '../metadata'
 import { scopedAssertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
 import { CHECK_REGISTRY } from '../check-registry'
-import { ACCESSIBILITY_TAGS, AXE_POLICY_RULE_IDS, axeRuleToCheckId } from './accessibility-rules'
+import { ACCESSIBILITY_TAGS, ACCESSIBILITY_ADDITIONAL_RULE_IDS, AXE_POLICY_RULE_IDS, axeRuleToCheckId } from './accessibility-rules'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 import { collapseFlagsWithAffectedPaths } from '../flag-identity'
 import { runAllChecks } from './index'
@@ -35,7 +35,11 @@ const proof = (value: AccessibilityEvidence) => scopedAssertionForTarget({ recei
 describe('automated accessibility responsibilities', () => {
   it('keeps the portable execution inventory aligned with the installed WCAG policy and registers every emitted rule identity', () => {
     expect(axe.getRules(ACCESSIBILITY_TAGS).map(rule => rule.ruleId).sort()).toEqual([...AXE_POLICY_RULE_IDS])
-    for (const ruleId of AXE_POLICY_RULE_IDS) expect(CHECK_REGISTRY[axeRuleToCheckId(ruleId)]).toMatchObject({ module: 'accessibility', area: 'accessibility' })
+    const installed = new Set(axe.getRules().map(rule => rule.ruleId))
+    for (const ruleId of [...AXE_POLICY_RULE_IDS, ...ACCESSIBILITY_ADDITIONAL_RULE_IDS]) {
+      expect(installed.has(ruleId), ruleId).toBe(true)
+      expect(CHECK_REGISTRY[axeRuleToCheckId(ruleId)]).toMatchObject({ module: 'accessibility', area: 'accessibility' })
+    }
   })
   it('retains unresolved outcomes when a rule also has passing nodes, and separates frame limits', () => {
     expect(isIframeAxeTarget(['iframe'])).toBe(false)

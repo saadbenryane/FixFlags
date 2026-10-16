@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { assessVerificationCoverage } from './verification-coverage'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
+import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 
 const complete = {
   status: 'COMPLETED',
@@ -27,7 +30,8 @@ describe('assessVerificationCoverage', () => {
       status: 'COMPLETED' as const, evidenceReference: { taskId: url }, detail: {
         kind: 'site-module-check', version: 1, module: 'performance', pageUrl: url, applicable: true, passed, complete: true,
         execution: { auditId: 'after', taskId: url, checkVersion: 1, source: 'pagespeed-desktop', collectedAt: '2026-10-12T12:00:00.000Z' },
-        assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast loading', observed: passed ? '1000ms' : '6000ms', passed, complete: true }],
+        assertions: scopePerformanceAssertions(healthyDesktopPs({ diagnostics: { measurement: pageSpeedMeasurementFixture(url) } }), url,
+          [{ key: 'lcp', name: 'LCP', expected: 'Fast loading', observed: passed ? '1000ms' : '6000ms', passed, complete: true }]),
       } })
     const main = receipt(pageUrl, true)
     const exact = { ...main, targetKey: 'check:lcp-poor', scopeKey: 'page:https://example.com', detail: {
@@ -37,7 +41,10 @@ describe('assessVerificationCoverage', () => {
     const input = { ...complete, auditId: 'after', checkId: 'lcp-poor', pageUrl, reportCompleteness: 'PARTIAL' as const,
       executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
         checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
-      originalFlag: { checkId: 'lcp-poor', pageUrl, affectedPaths: [pageUrl, peer], verificationRule: 'Comparable desktop LCP' },
+      originalFlag: { checkId: 'lcp-poor', pageUrl, affectedPaths: [pageUrl, peer],
+        verificationRule: runPerformanceChecks(healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl) } }), null, pageUrl)[0].verificationRule,
+        evidenceTargets: [pageUrl, peer].flatMap(url => runPerformanceChecks(healthyDesktopPs({ lcp: 3000,
+          diagnostics: { measurement: pageSpeedMeasurementFixture(url) } }), null, url)[0].evidenceTargets ?? []) },
       verifierExecutions: [main, exact, ...(scenario === 'missing-peer' ? [] : [receipt(peer, scenario === 'repaired')])],
     }
     const decision = assessVerificationCoverage(input)

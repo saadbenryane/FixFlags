@@ -1,11 +1,63 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { mergeRuntimeHeadMetadata, parseMetadataFromHtml } from '@/lib/audit/metadata'
+import { mergeRuntimeHeadMetadata, parseMetadataFromHtml, trimMetadataForStorage } from '@/lib/audit/metadata'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 
 const BASE_URL = 'https://example.com'
 
 describe('parseMetadataFromHtml', () => {
+  it('keeps inactive forms, actions and trust declarations out of rendered metadata', () => {
+    const markup = '<main><h1>Useful service</h1><a href="/details">Details</a></main>' +
+      '<noscript><form><label>Email<input type="email"></label><button>Sign up</button></form><a href="/checkout">Buy now</a><a href="/privacy">Privacy policy</a></noscript>' +
+      '<template><h1>Unused template heading</h1><form><input name="company"><button>Get started free</button></form>' +
+      '<a href="/login">Sign in</a><script type="application/ld+json">{"@type":"Organization"}</script></template>'
+    const rendered = parseMetadataFromHtml(markup, BASE_URL, 'rendered')
+    assert.equal(rendered.forms, 0)
+    assert.equal(rendered.totalFormInputs, 0)
+    assert.deepEqual(rendered.ctaTexts, [])
+    assert.deepEqual(rendered.links.map(link => link.href), ['/details'])
+    assert.deepEqual(rendered.h1s, ['Useful service'])
+    assert.equal(rendered.hasPrivacyPolicy, false)
+    assert.equal(rendered.hasStructuredData, false)
+    assert.ok(!rendered.pageText.includes('Unused template heading'))
+    const active = parseMetadataFromHtml(markup + '<form><label>Email<input type="email" name="email"></label><button>Sign up</button></form>', BASE_URL, 'rendered')
+    assert.equal(active.forms, 1)
+    assert.equal(active.totalFormInputs, 1)
+    assert.ok(active.ctaTexts.includes('Sign up'))
+    const crawler = parseMetadataFromHtml(markup, BASE_URL)
+    assert.ok(crawler.forms > 0)
+    assert.ok(crawler.links.some(link => link.href === '/checkout'))
+  })
+
+  it('keeps crawler fallback links separate from live fragment links and target identifiers', () => {
+    const metadata = parseMetadataFromHtml('<a href="#Live">Read section</a><section id="Live"></section><a name="Legacy"></a>' +
+      '<noscript><a href="#Fallback">Fallback</a><section id="Fallback"></section></noscript>' +
+      '<template><a href="#Template">Template</a><section id="Template"></section><a name="Inactive"></a></template>', BASE_URL)
+    assert.deepEqual(metadata.documentLinks, [{ href: '#Live', text: 'Read section' }])
+    assert.deepEqual(metadata.elementIds, ['Live'])
+    assert.deepEqual(metadata.anchorNames, ['Legacy'])
+    assert.ok(metadata.links.some(link => link.href === '#Fallback'))
+    const stored = trimMetadataForStorage(metadata)
+    assert.equal('documentLinks' in stored, false)
+    assert.equal('links' in stored, false)
+  })
+
+  it('resolves navigation, canonical and preview metadata against the first active document base', () => {
+    const meta = parseMetadataFromHtml('<!doctype html><html><head><template><base href="https://template.example/"></template>' +
+      '<noscript><base href="https://fallback.example/"></noscript><base href="/catalog/"><base href="/ignored/">' +
+      '<meta property="og:image" content="preview.png"><link rel="canonical" href="item"></head></html>', BASE_URL + '/start')
+    assert.equal(meta.linkBaseUrl, BASE_URL + '/catalog/')
+    assert.equal(meta.ogImage, BASE_URL + '/catalog/preview.png')
+    assert.equal(meta.canonical, BASE_URL + '/catalog/item')
+  })
+
+  it('keeps client-rendered preview and canonical destinations absolute under the same document base', () => {
+    const metadata = parseMetadataFromHtml('<base href="/catalog/"><meta property="og:image" content="initial.png">', BASE_URL + '/start')
+    const merged = mergeRuntimeHeadMetadata(metadata, { ogImage: 'preview.png', canonical: 'item' })
+    assert.equal(merged.ogImage, BASE_URL + '/catalog/preview.png')
+    assert.equal(merged.canonical, BASE_URL + '/catalog/item')
+  })
+
   it('does not treat optional radio choices as text fields missing validation', () => {
     const html = `<!doctype html><html><body>
       <form>
@@ -154,6 +206,39 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.buttonsWithoutText, 1)
   })
 
+  it.each([':r0:', 'plan.label', 'field[title]', 'a,b', '0-name', 'quoted"name', 'back\\slash'])
+    ('resolves literal document IDs without interpreting selector syntax: %s', id => {
+      const escaped = id.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+      const metadata = parseMetadataFromHtml('<title>Useful project planning</title><span id="' + escaped + '">Start trial</span>' +
+        '<button aria-labelledby="' + escaped + '"></button><a href="/start" aria-labelledby="' + escaped + '"></a>' +
+        '<label for="' + escaped + '-field">Project name</label><input id="' + escaped + '-field">', BASE_URL, 'rendered')
+      assert.equal(metadata.title, 'Useful project planning')
+      assert.equal(metadata.buttonsWithoutText, 0)
+      assert.equal(metadata.linksWithoutText, 0)
+      assert.equal(metadata.inputsWithoutLabel, 0)
+    })
+
+  it('cannot borrow unrelated selector matches as an ARIA label', () => {
+    const metadata = parseMetadataFromHtml('<span class="unrelated">Different control</span><button aria-labelledby="missing,.unrelated"></button>', BASE_URL)
+    assert.equal(metadata.buttonsWithoutText, 1)
+  })
+
+  it('does not assign an explicit label to a later control with a duplicate ID', () => {
+    const metadata = parseMetadataFromHtml('<span id="field"></span><label for="field">Project name</label><input id="field">', BASE_URL)
+    assert.equal(metadata.inputsWithoutLabel, 1)
+  })
+
+  it.each(['crawler', 'rendered'] as const)('resolves duplicate ID references to the first active element in %s metadata', mode => {
+    const metadata = parseMetadataFromHtml('<template><span id="label">Inactive label</span></template><span id="label"></span>' +
+      '<span id="label">Later duplicate</span><button aria-labelledby="label"></button>', BASE_URL, mode)
+    assert.equal(metadata.buttonsWithoutText, 1)
+  })
+
+  it('resolves multiple literal ID references without requiring CSS identifier escaping', () => {
+    const metadata = parseMetadataFromHtml('<span id=":r0:">Start</span><span id="plan.label">trial</span><button aria-labelledby=":r0: plan.label"></button>', BASE_URL)
+    assert.equal(metadata.buttonsWithoutText, 0)
+  })
+
   it('deduplicates responsive duplicate h1 text', () => {
     const html = `<!DOCTYPE html>
 <html>
@@ -219,6 +304,19 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.title, 'Runtime title from the hydrated app')
     assert.equal(meta.description, 'Server description that should remain available.')
     assert.equal(meta.hasFavicon, true)
+  })
+
+  it('retains native observations of removed declarations instead of restoring older parsed values', () => {
+    const parsed = parseMetadataFromHtml('<html lang="en"><head><title>Original title</title>' +
+      '<meta name="description" content="Original description"><meta property="og:title" content="Original preview">' +
+      '<meta name="viewport" content="width=device-width"><link rel="icon" href="/favicon.ico"></head></html>', BASE_URL)
+    const merged = mergeRuntimeHeadMetadata(parsed, { title: null, ogTitle: null, viewport: null, lang: null, hasFavicon: false })
+    assert.equal(merged.title, null)
+    assert.equal(merged.ogTitle, null)
+    assert.equal(merged.viewport, null)
+    assert.equal(merged.lang, null)
+    assert.equal(merged.hasFavicon, false)
+    assert.equal(merged.description, parsed.description)
   })
 })
 

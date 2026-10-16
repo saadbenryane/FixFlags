@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { JOURNEY_VERIFICATION_RULE, journeyAssertions, journeyReceipts, nativeJourneyFlags, scopedJourneyFinding, type JourneyObservation } from './journey-evidence'
+import { JOURNEY_VERIFICATION_RULE, journeyContext, journeyAssertions, journeyReceipts, nativeJourneyFlags, scopedJourneyFinding, type JourneyObservation } from './journey-evidence'
 import { CHECK_REGISTRY } from '../check-registry'
 import { collapseFlagsWithAffectedPaths } from '../flag-identity'
 import { scopedAssertionForTarget } from './verification'
@@ -23,6 +23,36 @@ function receipt(observed: JourneyObservation) {
 const compare = (observed: JourneyObservation) => scopedAssertionForTarget({ receipt: receipt(observed), checkId, flag })
 
 describe('independent public journey conditions', () => {
+  it('versions rendered action and path discovery without treating detector changes as repair', () => {
+    const original = { ...observation(), phase: 'landing' as const, route: [], primaryAction: false, nextPath: false }
+    const corrected = { ...original, actionVersion: 3 as const, pathVersion: 2 as const, actionComplete: true }
+    for (const checkId of ['journey-signup-hidden-cta', 'journey-signup-dead-end']) {
+      const historical = scopedJourneyFinding({ ...draft, checkId }, [original])!
+      const current = receipt({ ...corrected, primaryAction: true, nextPath: true })
+      expect(scopedAssertionForTarget({ receipt: current, checkId, flag: historical })).toBeUndefined()
+      const source = scopedJourneyFinding({ ...draft, checkId }, [corrected])!
+      expect(scopedAssertionForTarget({ receipt: current, checkId, flag: source })?.assertion.passed).toBe(true)
+    }
+    expect(scopedJourneyFinding({ ...draft, checkId: 'journey-signup-hidden-cta' }, [{ ...corrected, actionComplete: false }])).toBeUndefined()
+    expect(scopedJourneyFinding({ ...draft, checkId: 'journey-signup-dead-end' }, [{ ...corrected, pathComplete: false }])).toBeUndefined()
+  })
+  it('cannot use added native-input discovery to certify previous action findings as repaired', () => {
+    const older = { ...observation(), actionVersion: 3 as const, actionComplete: true, primaryAction: false }
+    const corrected = { ...older, actionVersion: 4 as const, primaryAction: true }
+    expect(journeyContext(older, 'destination-action')).not.toBe(journeyContext(corrected, 'destination-action'))
+    for (const condition of ['destination-form', 'destination-headline', 'landing-path']) {
+      expect(journeyContext(older, condition)).toBe(journeyContext(corrected, condition))
+    }
+  })
+  it('keeps corrected activation-control field counts separate without changing unrelated journey evidence', () => {
+    const older = observation(), corrected = { ...older, fieldVersion: 2 as const }
+    for (const condition of ['destination-form', 'destination-field-count']) {
+      expect(journeyContext(older, condition)).not.toBe(journeyContext(corrected, condition))
+    }
+    for (const condition of ['destination-action', 'destination-headline', 'landing-path']) {
+      expect(journeyContext(older, condition)).toBe(journeyContext(corrected, condition))
+    }
+  })
   it('retains the landing admission URL and independently checks the actual destination condition', () => {
     expect(flag).toMatchObject({ url: pageUrl + 'signup', affectedPaths: [pageUrl], verificationRule: JOURNEY_VERIFICATION_RULE })
     expect(compare(observation())?.assertion.passed).toBe(false)
@@ -51,6 +81,8 @@ describe('independent public journey conditions', () => {
     const healthy = receipt(observation(2)), failed = receipt(other)
     expect(scopedAssertionForTarget({ receipt: healthy, receipts: [failed], checkId, flag: combined })?.assertion.passed).toBe(false)
     expect(scopedAssertionForTarget({ receipt: healthy, checkId, flag: combined })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: receipt(observation()), checkId, flag: combined })?.assertion)
+      .toMatchObject({ passed: false, complete: true })
     const recovered = (data: JourneyObservation) => hasRecordedRecoveryEvidence({ auditId: 'after', flag: { ...flag, pageUrl },
       executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl, environment: 'production',
         checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null },
@@ -75,5 +107,34 @@ describe('independent public journey conditions', () => {
     const unscoped = nativeJourneyFlags([{ ...draft, checkId: 'journey-funnel-hidden-cta' }])[0]
     const combined = collapseFlagsWithAffectedPaths([shared, unscoped])[0]
     expect(scopedAssertionForTarget({ receipt: receipt({ ...original, primaryAction: true }), checkId: shared.checkId, flag: combined })).toBeUndefined()
+  })
+  it('withholds historical action recovery after detector changes while retaining unchanged page conditions', () => {
+    const original = { ...observation(), phase: 'landing' as const, route: [], primaryAction: false, headline: false }
+    const current = receipt({ ...original, primaryAction: true, headline: true })
+    const action = nativeJourneyFlags([scopedJourneyFinding({ ...draft, checkId: 'journey-signup-hidden-cta' }, [original])!])[0]
+    const historical = { ...action, evidenceTargets: action.evidenceTargets!.map(target => ({ ...target, context: journeyContext(original) })) }
+    expect(scopedAssertionForTarget({ receipt: current, checkId: action.checkId, flag: action })?.assertion.passed).toBe(true)
+    expect(scopedAssertionForTarget({ receipt: current, checkId: action.checkId, flag: historical })).toBeUndefined()
+    expect(hasRecordedRecoveryEvidence({ auditId: 'after', flag: { ...historical, pageUrl },
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl, environment: 'production',
+        checks: { [action.checkId]: 1 }, outcomes: [], verificationTarget: null },
+      executions: [{ targetKey: 'module:journeys', status: 'COMPLETED', detail: current }] })).toBe(false)
+    const headline = scopedJourneyFinding({ ...draft, checkId: 'journey-signup-unclear-value-prop' }, [original])!
+    expect(headline.evidenceTargets![0].context).toBe(journeyContext(original))
+    expect(scopedAssertionForTarget({ receipt: current, checkId: headline.checkId, flag: headline })?.assertion.passed).toBe(true)
+  })
+
+  it('versions native headline conditions without invalidating unrelated journey observations', () => {
+    const checkId = 'journey-first-visit-destination-no-headline'
+    const original = { ...observation(), journeyType: 'first-visit' as const, headline: false }
+    const historical = scopedJourneyFinding({ ...draft, checkId }, [original])!
+    const observed = { ...original, headlineVersion: 2 as const, headlineComplete: true }
+    const healthy = receipt({ ...observed, headline: true })
+    expect(scopedAssertionForTarget({ receipt: healthy, checkId, flag: historical })).toBeUndefined()
+    const current = scopedJourneyFinding({ ...draft, checkId }, [observed])!
+    expect(scopedAssertionForTarget({ receipt: healthy, checkId, flag: current })?.assertion.passed).toBe(true)
+    expect(scopedJourneyFinding({ ...draft, checkId }, [{ ...observed, headlineComplete: false }])).toBeUndefined()
+    const action = scopedJourneyFinding({ ...draft, checkId: 'journey-first-visit-destination-no-next-action' }, [{ ...original, primaryAction: false }])!
+    expect(scopedAssertionForTarget({ receipt: healthy, checkId: action.checkId, flag: action })?.assertion.passed).toBe(true)
   })
 })

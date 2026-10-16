@@ -26,16 +26,17 @@ export function SiteIntegrationsPanel({ shopify, searchConsole, analytics, busy 
       const google = item.id === 'analytics' ? analytics : item.id === 'search-console' ? searchConsole : null
       const savedShop = item.id === 'shopify' && Boolean(shopify.domain)
       const savedGoogle = google && google.propertyLabel
+      const disconnectable = savedShop || Boolean(google && google.propertyLabel && google.status !== 'revoked' && google.status !== 'not_connected')
       return <SiteSettingsSection key={item.id} id={`connection-${item.id}`}>
         <div className={styles.header}><ToolLogo name={item.title} /><div><h3>{item.title}</h3><span className={styles.status}>{item.status === 'available' ? C.available : C.comingSoon}</span></div></div>
         <p className={styles.description}>{item.summary}</p>
         {'href' in item && item.href.startsWith('/docs/') ? <Link className={styles.guide} href={item.href}>{C.guide(item.title)}</Link> : null}
         {item.id === 'github' ? <div className={styles.actions}><Button asChild variant="outline"><Link href={siteId ? `/settings/integrations?next=${encodeURIComponent(`/sites/${siteId}?view=integrations`)}` : '/settings/integrations'}>{C.manageGithub}</Link></Button></div> : null}
         {savedShop || savedGoogle ? <>
-          <p className={styles.description}>{C.savedConnection}</p>
+          <p className={styles.description}>{google?.status === 'revoked' ? google.detail ?? C.states.revoked : C.savedConnection}</p>
           <dl className={styles.property}><dt>{C.property}</dt><dd>{savedShop ? shopify.domain : google?.propertyLabel}</dd></dl>
           {google?.lastSyncedAt ? <p className={styles.timestamp}>{C.lastRead(formatEvidenceTimestamp(google.lastSyncedAt) ?? google.lastSyncedAt)}</p> : null}
-          <div className={styles.actions}><Button variant="outline" disabled={busy} onClick={() => savedShop ? onDisconnectShopify() : google ? onDisconnectGoogle(google.provider) : undefined}>{C.disconnect} {item.title}</Button></div>
+          {disconnectable ? <div className={styles.actions}><Button variant="outline" disabled={busy} onClick={() => savedShop ? onDisconnectShopify() : google ? onDisconnectGoogle(google.provider) : undefined}>{C.disconnect} {item.title}</Button></div> : null}
         </> : null}
       </SiteSettingsSection>
     })}

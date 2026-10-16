@@ -2,7 +2,7 @@ import { startUptimeRuntime } from '@/lib/uptime/runtime'
 import { Worker, UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
-import { runAiReview } from '../audit/run-ai-review'
+import { enqueuePendingAiReview } from '../audit/enqueue-ai-review'
 import { runRepoScan } from '../repo-scan/runner'
 import { runFixPr } from '../repo-scan/fix-pr-runner'
 import { createWorkerRedis } from './redis'
@@ -73,7 +73,8 @@ export function startWorker() {
       try {
         if (job.name === 'ai-review') {
           const { auditId } = job.data as { auditId: string }
-          await runAiReview(auditId)
+          // Drain old Redis-only jobs into the shared durable task ledger.
+          await enqueuePendingAiReview(auditId)
           return
         }
         const { auditId } = job.data as { auditId: string }

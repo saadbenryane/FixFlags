@@ -6,7 +6,9 @@ import { bindingForConfirmedKind } from '@/lib/sites/outcomes'
 import { expectationForKind } from '@/lib/sites/outcome-kinds'
 import { outcomeFreshnessMinutes } from './care-policy'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { deferMonitoringSetup, monitoringSetupDue, monitoringSetupOrder } from './monitoring-setup'
 import { logger } from '@/lib/logger'
+import { systemClock, type Clock } from '@/lib/time/clock'
 
 function defaultCadence(policy: EffectiveEntitlements) {
   return (policy.plan !== 'FREE' || policy.sources.includes('ADMIN')) && policy.watchIntervals.includes('daily')
@@ -14,11 +16,11 @@ function defaultCadence(policy: EffectiveEntitlements) {
 }
 
 /** Public availability needs no privileged consent. Persist defaults with Site identity. */
-export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, projectId: string, userId: string, now = new Date()) {
+export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, projectId: string, userId: string, now = new Date(), options: { restored?: boolean } = {}) {
   const project = await tx.project.findFirst({
     where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     select: { id: true, url: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true,
-      watchLastAttemptAt: true, watchLastRunAt: true, watchLastError: true,
+      watchLastAttemptAt: true, watchLastRunAt: true, watchLastError: true, monitoringSetupRetryAt: true,
       user: { select: { id: true, role: true, plan: true, subscriptionStatus: true, lifecycleStatus: true,
         auditsLimit: true, deepReviewsLimit: true, licensedSiteQuantity: true,
         entitlementGrants: { where: { revokedAt: null, expiresAt: { gt: now } } } } } },
@@ -28,8 +30,9 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
   if (!policy.available) return false
   const cadence = fromStoredWatchInterval(project.watchInterval) ?? defaultCadence(policy)
   if (!cadence || !policy.watchIntervals.includes(cadence)) return false
-  // Repeated admissions and the worker backfill must honor an explicit pause.
-  if (!project.watchInterval && (project.watchLastError || project.watchLastAttemptAt || project.watchLastRunAt)) return false
+  // Repeated admissions and worker upkeep retain explicit pauses. Only an
+  // owner admission that actually restored a removed Site starts defaults again.
+  if (!options.restored && !project.watchInterval && (project.watchLastError || project.watchLastAttemptAt || project.watchLastRunAt)) return false
   const binding = bindingForConfirmedKind('AVAILABILITY', project.url)!
   await tx.siteOutcome.upsert({
     where: { projectId_slug: { projectId, slug: 'page-loads' } },
@@ -41,24 +44,35 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
     update: {},
   })
   if (!project.watchInterval) {
-    await tx.project.updateMany({
+    const changed = await tx.project.updateMany({
       where: { id: projectId, userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: null, watchNextRunAt: null,
-        watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null },
-      data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: now },
+        watchLastAttemptAt: options.restored ? project.watchLastAttemptAt : null,
+        watchLastRunAt: options.restored ? project.watchLastRunAt : null, watchLastError: options.restored ? project.watchLastError : null },
+      data: { watchInterval: toStoredWatchInterval(cadence), watchNextRunAt: now,
+        ...(options.restored ? { watchEveryMinutes: null, watchLeaseUntil: null, watchLastError: null, watchConsecutiveFailures: 0 } : {}),
+        ...(project.monitoringSetupRetryAt ? { monitoringSetupRetryAt: null } : {}) },
     })
+    if (changed.count !== 1) return false
+    if (options.restored) await tx.siteOutcome.updateMany({ where: { projectId },
+      data: { staleAfterMinutes: outcomeFreshnessMinutes(cadence) } })
   }
   return true
 }
 
 /** Bounded worker upkeep covers existing Sites without a customer browser session. */
-export async function initializeDefaultMonitoring(limit: number, now: Date) {
+export async function initializeDefaultMonitoring(limit: number, clock: Clock = systemClock) {
+  const selectedAt = clock.now()
+  const eligible: Prisma.ProjectWhereInput = { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' },
+    watchInterval: null, watchNextRunAt: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null }
   const projects = await prisma.project.findMany({
-    where: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: null, watchNextRunAt: null, watchLastAttemptAt: null,
-      watchLastRunAt: null, watchLastError: null },
-    select: { id: true, userId: true }, orderBy: { createdAt: 'asc' }, take: limit,
+    where: { ...eligible, ...monitoringSetupDue(selectedAt) },
+    select: { id: true, userId: true, url: true, monitoringSetupRetryAt: true }, orderBy: monitoringSetupOrder, take: limit,
   })
   for (const project of projects) {
-    try { await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, now)) }
+    let initialized = false
+    try { initialized = await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, clock.now())) }
     catch (error) { logger.error('Default monitoring initialization failed', error instanceof Error ? error : new Error(String(error)), { projectId: project.id }) }
+    if (!initialized) await deferMonitoringSetup({ ...eligible, id: project.id, userId: project.userId,
+      url: project.url, monitoringSetupRetryAt: project.monitoringSetupRetryAt }, clock.now())
   }
 }

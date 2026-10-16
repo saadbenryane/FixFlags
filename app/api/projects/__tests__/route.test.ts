@@ -11,7 +11,7 @@ const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   $executeRaw: vi.fn(),
   user: { findUnique: vi.fn() },
-  project: { count: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
+  project: { count: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), upsert: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
 const ensureDefaultMonitoring = vi.hoisted(() => vi.fn())
@@ -56,6 +56,7 @@ describe('POST /api/projects - billing gating enforcement', () => {
     prismaMock.$executeRaw.mockResolvedValue(1)
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.project.count.mockResolvedValue(0)
+    prismaMock.project.findUniqueOrThrow.mockImplementation(async () => prismaMock.project.upsert.mock.results.at(-1)?.value)
     prismaMock.project.findUnique.mockResolvedValue(null)
     prismaMock.project.upsert.mockResolvedValue({ id: 'proj-1', name: 'My site', url: 'https://example.com' })
   })

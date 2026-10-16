@@ -1,5 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '../types'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 const mocks = vi.hoisted(() => ({ flag: vi.fn(), attempts: vi.fn(), occurrences: vi.fn(), outcome: vi.fn(), proofs: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: {
   flag: { findFirst: mocks.flag }, improvementAttempt: { findMany: mocks.attempts },
@@ -50,7 +53,8 @@ it('keeps unsupported historical journey recovery unverified even when an Audit 
   expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ status: 'UNVERIFIED', verificationState: 'could_not_verify', sourceFlagId: 'captured-flag' })
 })
 it('opens the unresolved original capture for an incident link while keeping exact capture links historical', async () => {
-  const captured = { ...await mocks.flag(), checkId: 'lcp-poor', rubric: 'PERFORMANCE', impactTag: null,
+  const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture('https://shop.test/checkout') } })
+  const captured = { ...await mocks.flag(), ...runPerformanceChecks(measurement, null, 'https://shop.test/checkout')[0], rubric: 'PERFORMANCE', impactTag: null,
     problem: 'Checkout content loads too slowly', evidence: 'Measured LCP of 4000ms', whyItMatters: 'Visitors wait for checkout content', fix: 'Improve checkout loading' }
   const latest = { ...captured, status: 'FIXED', resolvedInId: 'recovery' }
   const original = { ...captured, id: 'older-flag', auditId: 'older-audit', pageUrl: 'https://shop.test/original', status: 'OPEN', resolvedInId: null }
@@ -62,7 +66,8 @@ it('opens the unresolved original capture for an incident link while keeping exa
       checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
     verifierExecutions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: {
       kind: 'site-module-check', version: 1, module: 'performance', pageUrl: captured.pageUrl, passed: true, applicable: true,
-      assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true }],
+      assertions: scopePerformanceAssertions(measurement, captured.pageUrl,
+        [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true, complete: true }]),
       execution: { auditId: 'recovery', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: '2026-10-12T12:00:00Z' },
     } }],
   }])

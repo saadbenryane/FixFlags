@@ -77,7 +77,7 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
       const context = value && typeof value === 'object' && !Array.isArray(value) ? value.context : null
       return typeof context === 'string' && context.startsWith('tracking:') && context.length <= 4200 ? [context] : []
     }) : [])
-    const pages = [...new Map([input.verificationTarget.pageUrl, ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])].map(page => [trackingPageKey(page), page])).values()]
+    const pages = [...new Set([input.verificationTarget.pageUrl, ...flags.flatMap(flag => Array.isArray(flag.affectedPaths) ? flag.affectedPaths.filter((page): page is string => typeof page === 'string') : [])])]
     verificationScopes = pages.map(pageUrl => ({ pageUrl, phases: diagnosticModule === 'flow' ? ['public_action'] : diagnosticModule !== 'measurement' ? ['page_load'] : (['page_load', 'public_action'] as const).filter(phase =>
       contexts.some(context => context.startsWith('tracking:' + phase + ':') && context.endsWith(':page:' + trackingPageKey(pageUrl)))) }))
     if (diagnosticModule === 'overlays') {

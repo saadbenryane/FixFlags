@@ -25,7 +25,7 @@ const historySelect = {
   verifierExecutions: { where: { OR: [{ workKind: 'automatic-accounts', workState: 'COMPLETED' },
     { audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } }, OR: [...categoryCoverageExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET }] }] },
     select: categoryCoverageExecutionSelect.select },
-  flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true } },
+  flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true, attentionPolicy: true } },
 } satisfies Prisma.AuditSelect
 
 export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof historySelect }>, legacyIds: string[], proofFlags: Array<{ id: string; problem: string; auditId: string }> = [], accountTaskResult?: unknown): MonitoringHistoryEntry {

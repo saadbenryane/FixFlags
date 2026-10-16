@@ -1,27 +1,29 @@
-import { PageMetadata } from '../metadata'
+import type { RuntimeHeadMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { safeFetchDocument } from '../url'
 import { isBotInterstitialDocument } from '../browser/page-capture'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
-export function runMetadataChecks(meta: PageMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
+export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   // Record only the presence assertions actually evaluated here. These are
   // bounded observations, not claims about search ranking or rendered previews.
-  for (const [key, name, present] of [
-    ['title-presence', 'Page title is specified', Boolean(meta.title)],
-    ['description-presence', 'Meta description is specified', Boolean(meta.description)],
-    ['preview-image-presence', 'Link preview image is specified', Boolean(meta.ogImage)],
-    ['preview-title-presence', 'Link preview title is specified', Boolean(meta.ogTitle)],
-    ['preview-description-presence', 'Link preview description is specified', Boolean(meta.ogDescription)],
-    ['viewport-presence', 'Mobile viewport is declared', Boolean(meta.viewport)],
-    ['language-presence', 'Page language is declared', Boolean(meta.lang)],
+  for (const [key, name, value] of [
+    ['title-presence', 'Page title is specified', meta.title],
+    ['description-presence', 'Meta description is specified', meta.description],
+    ['preview-image-presence', 'Link preview image is specified', meta.ogImage],
+    ['preview-title-presence', 'Link preview title is specified', meta.ogTitle],
+    ['preview-description-presence', 'Link preview description is specified', meta.ogDescription],
+    ['favicon-presence', 'A favicon is declared', meta.hasFavicon],
+    ['viewport-presence', 'Mobile viewport is declared', meta.viewport],
+    ['language-presence', 'Page language is declared', meta.lang],
   ] as const) {
-    record?.({ key, name, expected: name, observed: present ? 'Present in captured page metadata' : 'Absent from captured page metadata', passed: present })
+    record?.({ key, name, expected: name, observed: value === undefined ? 'This head field could not be observed.'
+      : value ? 'Present in captured page metadata' : 'Absent from captured page metadata', passed: Boolean(value), complete: value !== undefined })
   }
 
-  if (!meta.title) {
+  if (meta.title !== undefined && !meta.title) {
     findings.push({
       checkId: 'title-missing',
       rubric: 'REACH',
@@ -33,7 +35,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else if (meta.title.length < 10) {
+  } else if (meta.title && meta.title.length < 10) {
     findings.push({
       checkId: 'title-too-short',
       rubric: 'REACH',
@@ -45,7 +47,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else if (meta.title.length > 60) {
+  } else if (meta.title && meta.title.length > 60) {
     findings.push({
       checkId: 'title-too-long',
       rubric: 'REACH',
@@ -59,7 +61,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.description) {
+  if (meta.description !== undefined && !meta.description) {
     findings.push({
       checkId: 'description-missing',
       rubric: 'REACH',
@@ -71,7 +73,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else if (meta.description.length < 50) {
+  } else if (meta.description && meta.description.length < 50) {
     findings.push({
       checkId: 'description-too-short',
       rubric: 'REACH',
@@ -83,7 +85,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else if (meta.description.length > 160) {
+  } else if (meta.description && meta.description.length > 160) {
     findings.push({
       checkId: 'description-too-long',
       rubric: 'REACH',
@@ -97,7 +99,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.ogImage) {
+  if (meta.ogImage !== undefined && !meta.ogImage) {
     findings.push({
       checkId: 'og-image-missing',
       rubric: 'REACH',
@@ -111,7 +113,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.ogTitle) {
+  if (meta.ogTitle !== undefined && !meta.ogTitle) {
     findings.push({
       checkId: 'og-title-missing',
       rubric: 'REACH',
@@ -125,7 +127,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.ogDescription) {
+  if (meta.ogDescription !== undefined && !meta.ogDescription) {
     findings.push({
       checkId: 'og-description-missing',
       rubric: 'REACH',
@@ -139,7 +141,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.viewport) {
+  if (meta.viewport !== undefined && !meta.viewport) {
     findings.push({
       checkId: 'viewport-missing',
       rubric: 'EXPERIENCE',
@@ -152,7 +154,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.lang) {
+  if (meta.lang !== undefined && !meta.lang) {
     findings.push({
       checkId: 'lang-missing',
       rubric: 'EXPERIENCE',
@@ -166,7 +168,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.canonical) {
+  if (meta.canonical !== undefined && !meta.canonical) {
     findings.push({
       checkId: 'canonical-missing',
       rubric: 'REACH',
@@ -194,7 +196,7 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
     })
   }
 
-  if (!meta.hasFavicon) {
+  if (meta.hasFavicon === false) {
     findings.push({
       checkId: 'favicon-missing',
       rubric: 'REACH',
@@ -213,14 +215,21 @@ export function runMetadataChecks(meta: PageMetadata, record?: (assertion: Check
 
 export async function runOgImageUrlCheck(
   pageUrl: string,
-  meta: PageMetadata,
+  meta: { ogImage?: string | null; linkBaseUrl?: string },
   options: DestinationCheckOptions = {},
 ): Promise<DeterministicFlag[]> {
   const limitation = 'A bounded public GET sample establishes response status and declared image content type. Full image decoding, rendered previews and platform caches were not evaluated.'
+  if (meta.ogImage === undefined) {
+    options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
+      expected: 'The declared image destination returns a successful GET response with image content type and content',
+      observed: 'The image declaration could not be observed.', passed: false, complete: false })
+    destinationScope(options, false, limitation)
+    return []
+  }
   if (!meta.ogImage) { destinationScope(options, true, limitation); return [] }
   let imageUrl: string
   let invalid = false
-  try { imageUrl = new URL(meta.ogImage, pageUrl).toString() }
+  try { imageUrl = new URL(meta.ogImage, meta.linkBaseUrl ?? pageUrl).toString() }
   catch { imageUrl = meta.ogImage; invalid = true }
   let complete = invalid, passed = false, broken = invalid
   let observed = 'The declared image URL could not be resolved.'

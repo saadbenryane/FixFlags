@@ -13,6 +13,7 @@ import { destinationContext, DESTINATION_VERIFICATION_RULE } from '../../checks/
 import { publicHttpCapacity } from '../capacity'
 import { openCheckDestination } from '../../open-check'
 import { collectDocument } from '../../search/collect'
+import { parseMetadataFromHtml } from '../../metadata'
 
 const pageUrl = 'https://example.com/pricing'
 const fetchMock = vi.fn()
@@ -38,6 +39,68 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('guarded public destination evidence', () => {
+  it('verifies observed native links without whole-page metadata and keeps out-of-window targets unknown', async () => {
+    function nativeContext(href: string | null, complete = true) {
+      const ctx = context('seo'), task = ctx.dependencies.get('browser')!
+      const data = readArtifact(task.workResult, 'browser').data
+      const empty = { html: '', complete: true, reason: null, observed: 0, limit: 2000 }
+      task.workResult = serializeArtifact('browser', { ...data, metadata: null, snapshot: { ...data.snapshot as object,
+        renderedSearchSnapshot: { version: 1, contract: 'rendered-search-v1', finalUrl: pageUrl, documentBaseUrl: 'https://example.com/catalog/',
+          collectedAt: new Date().toISOString(), language: 'en', sections: {
+            metadata: empty, indexing: empty, canonical: empty, structured: empty, text: empty,
+            links: { ...empty, html: href ? '<a href="' + href + '">Details</a>' : '', observed: complete ? href ? 1 : 0 : 2001,
+              complete, reason: complete ? null : 'section_limit' },
+          } },
+      } })
+      return ctx
+    }
+    fetchMock.mockImplementation(async () => new Response('Missing', { status: 404 }))
+    const before = await checked(nativeContext('item'))
+    expect(before.flags[0]).toMatchObject({ checkId: 'broken-internal-links', evidenceTargets: [{
+      context: destinationContext(pageUrl, 'https://example.com/catalog/item'),
+    }] })
+    fetchMock.mockImplementation(async () => new Response('Ready', { status: 200 }))
+    const partial = await checked(nativeContext('item', false))
+    expect(partial.receipt).toMatchObject({ complete: false, passed: false, assertions: [{ complete: true, passed: true }] })
+    expect(scopedAssertionForTarget({ receipt: partial.receipt, checkId: 'broken-internal-links', flag: before.flags[0] })?.assertion.passed).toBe(true)
+    for (const ctx of [nativeContext(null), nativeContext(null, false), nativeContext('other'), nativeContext('item?changed=1')]) {
+      const changed = await checked(ctx)
+      expect(scopedAssertionForTarget({ receipt: changed.receipt, checkId: 'broken-internal-links', flag: before.flags[0] })).toBeUndefined()
+    }
+  })
+
+  it.each(['https://example.com/catalog/', 'https://payments.example.com/catalog/'])('resolves public actions and preview images against the captured document base %s', async base => {
+    for (const checkModule of ['auth-checkout', 'og-image']) {
+      const relative = checkModule === 'auth-checkout' ? 'checkout?plan=paid' : 'preview.png'
+      const target = new URL(relative, base).href
+      const metadata = parseMetadataFromHtml('<base href="' + base + '"><a href="checkout?plan=paid">Subscribe</a><meta property="og:image" content="preview.png">', pageUrl)
+      fetchMock.mockImplementation(async (url: string) => new Response('Response', { status: url === target ? 404 : 200,
+        headers: { 'content-type': checkModule === 'og-image' ? 'image/png' : 'text/html' } }))
+      const before = await checked(context(checkModule, metadata))
+      const checkId = checkModule === 'auth-checkout' ? 'checkout-link-dead' : 'og-image-broken'
+      expect(before.flags[0]).toMatchObject({ checkId, evidenceTargets: [{ context: destinationContext(pageUrl, target) }] })
+      expect(fetchMock).toHaveBeenCalledWith(target, expect.objectContaining({ redirect: 'manual' }))
+      fetchMock.mockImplementation(async () => new Response('Available', { headers: { 'content-type': checkModule === 'og-image' ? 'image/png' : 'text/html' } }))
+      const repaired = await checked(context(checkModule, metadata))
+      expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId, flag: before.flags[0] })?.assertion.passed).toBe(true)
+      const changed = await checked(context(checkModule, parseMetadataFromHtml('<base href="https://example.com/other/"><a href="checkout?plan=paid">Subscribe</a><meta property="og:image" content="preview.png">', pageUrl)))
+      expect(scopedAssertionForTarget({ receipt: changed.receipt, checkId, flag: before.flags[0] })).toBeUndefined()
+      const historical = { ...before.flags[0], evidenceTargets: [{ kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const,
+        label: 'Earlier incorrectly resolved destination', context: destinationContext(pageUrl, new URL(relative, pageUrl).href) }] }
+      expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId, flag: historical })).toBeUndefined()
+      fetchMock.mockClear()
+    }
+  })
+
+  it('keeps private document-base destinations unavailable without contacting them', async () => {
+    const metadata = parseMetadataFromHtml('<base href="http://127.0.0.1/private/"><a href="checkout">Subscribe</a><meta property="og:image" content="preview.png">', pageUrl)
+    for (const checkModule of ['auth-checkout', 'og-image']) {
+      const result = await checked(context(checkModule, metadata))
+      expect(result).toMatchObject({ flags: [], receipt: { complete: false, passed: false } })
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('verifies broken public links with the same GET evidence used for discovery', async () => {
     const ctx = context('seo', actionMeta([{ href: '/missing', text: 'Details', rel: null }]))
     fetchMock.mockResolvedValue(new Response('<title>Page not found</title>', { status: 200, headers: { 'content-type': 'text/html' } }))

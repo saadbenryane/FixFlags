@@ -1,9 +1,11 @@
+import { fixedClock, systemClock } from '@/lib/time/clock'
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import * as transactions from '@/lib/billing/product-transaction'
 import { prisma } from '@/lib/db'
-import { productTransaction } from '@/lib/billing/product-transaction'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 import { ensureDefaultMonitoring, initializeDefaultMonitoring } from '../default-monitoring'
+import { removeSite } from '../settings-commands'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 
@@ -47,14 +49,63 @@ run('automatic monitoring with migrated PostgreSQL', () => {
     const binding = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: outcome.id } })
     await prisma.siteOutcome.update({ where: { id: outcome.id }, data: { name: 'Keep my website reachable', inferenceSource: 'user' } })
     await prisma.outcomeExecutionBinding.update({ where: { id: binding.id }, data: { version: 3 } })
-    await productTransaction(tx => ensureDefaultMonitoring(tx, site.id, userId, now))
+    await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, site.id, userId, now))
     const current = await prisma.project.findUniqueOrThrow({ where: { id: site.id } })
     const saved = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id }, include: { bindings: true } })
     expect(current.watchNextRunAt).toEqual(site.watchNextRunAt)
     expect(saved.name).toBe('Keep my website reachable')
     expect(saved.confirmedAt).toEqual(outcome.confirmedAt)
     expect(saved.bindings[0]).toMatchObject({ id: binding.id, version: 3 })
-    expect(await productTransaction(tx => ensureDefaultMonitoring(tx, site.id, 'foreign-user', now))).toBe(false)
+    expect(await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, site.id, 'foreign-user', now))).toBe(false)
+  })
+
+  it('rechecks an expiring grant for each Site after delayed setup', async () => {
+    const start = new Date('2026-10-16T12:00:00Z')
+    const sites = await Promise.all(['earlier-clock', 'later-clock'].map((host, index) => prisma.project.create({ data: {
+      userId, name: host, url: 'https://' + host + '.example.com/', canonicalHost: host + '.example.com', createdAt: new Date(100 + index),
+    } })))
+    const grant = await prisma.entitlementGrant.create({ data: { userId, operationId: 'clock-grant-' + randomUUID(),
+      grantedBy: 'local-fixture-operator', plan: 'TEAM', expiresAt: new Date(start.getTime() + 60_000) } })
+    const transact = transactions.productTransaction
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(start)
+    const delay = vi.spyOn(transactions, 'productTransaction').mockImplementation(async write => {
+      const result = await transact(write)
+      vi.setSystemTime(new Date(Date.now() + 2 * 60_000))
+      return result
+    })
+    try {
+      await initializeDefaultMonitoring(2, systemClock)
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[0].id } })).toMatchObject({ watchInterval: 'DAILY', watchNextRunAt: start })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[1].id } })).toMatchObject({ watchInterval: 'WEEKLY',
+        watchNextRunAt: new Date(start.getTime() + 2 * 60_000) })
+    } finally {
+      delay.mockRestore(); vi.useRealTimers()
+      await prisma.entitlementGrant.delete({ where: { id: grant.id } })
+      await prisma.project.deleteMany({ where: { id: { in: sites.map(site => site.id) } } })
+    }
+  })
+
+  it('restores default public monitoring through URL admission while retaining Outcome identity and historical assessment dates', async () => {
+    const restoreOwner = userId + '-restore'
+    await prisma.user.create({ data: { id: restoreOwner, email: restoreOwner + '@example.test' } })
+    try {
+    const site = await ensureProductProject(restoreOwner, 'https://restored-origin.example.com/')
+    const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId: site.id } })
+    const lastRunAt = new Date(now.getTime() - 86_400_000)
+    await prisma.project.update({ where: { id: site.id }, data: { watchInterval: 'CUSTOM', watchEveryMinutes: 180, watchLastRunAt: lastRunAt } })
+    await prisma.siteOutcome.update({ where: { id: outcome.id }, data: { staleAfterMinutes: 900 } })
+    const audit = await prisma.audit.create({ data: { userId: restoreOwner, projectId: site.id, url: 'https://restored-origin.example.com/', status: 'COMPLETED', completedAt: lastRunAt } })
+    const run = await prisma.runRequest.create({ data: { projectId: site.id, requestedByUserId: restoreOwner, source: 'WATCH', idempotencyKey: randomUUID(),
+      auditId: audit.id, status: 'COMPLETED', completedAt: lastRunAt } })
+    const assessment = await prisma.outcomeAssessment.create({ data: { outcomeId: outcome.id, runRequestId: run.id, auditId: audit.id,
+      state: 'CLEAR', summary: 'Historical fixture assessment', assessedAt: lastRunAt, validUntil: new Date(lastRunAt.getTime() + 900 * 60_000) } })
+    await removeSite({ projectId: site.id, userId: restoreOwner })
+    expect((await ensureProductProject(restoreOwner, 'https://restored-origin.example.com/again')).id).toBe(site.id)
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toMatchObject({ deletedAt: null, watchInterval: 'WEEKLY',
+      watchNextRunAt: expect.any(Date), watchLastRunAt: lastRunAt, accountChecksEnabled: false })
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })).toMatchObject({ staleAfterMinutes: 11520, confirmedAt: outcome.confirmedAt })
+    expect(await prisma.outcomeAssessment.findUniqueOrThrow({ where: { id: assessment.id } })).toMatchObject({ state: 'CLEAR', assessedAt: assessment.assessedAt, validUntil: assessment.validUntil })
+    } finally { await prisma.user.delete({ where: { id: restoreOwner } }) }
   })
 
   it('backfills untouched Sites without reactivating an explicit pause', async () => {
@@ -62,7 +113,7 @@ run('automatic monitoring with migrated PostgreSQL', () => {
     const existing = await prisma.project.findFirstOrThrow({ where: { userId } })
     await prisma.project.update({ where: { id: existing.id }, data: { watchInterval: null, watchNextRunAt: null, watchLastError: 'Paused.' } })
     const legacy = await prisma.project.create({ data: { userId, name: 'Legacy', url: 'https://legacy.example.com', canonicalHost: 'legacy.example.com' } })
-    await initializeDefaultMonitoring(20, now)
+    await initializeDefaultMonitoring(20, fixedClock(now))
     expect(await prisma.project.findUniqueOrThrow({ where: { id: legacy.id } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: now })
     expect(await prisma.siteOutcome.count({ where: { projectId: legacy.id, slug: 'page-loads', bindings: { some: { mechanism: 'HTTP_AVAILABILITY' } } } })).toBe(1)
     expect(await prisma.project.findUniqueOrThrow({ where: { id: existing.id } })).toMatchObject({ watchInterval: null, watchNextRunAt: null, watchLastError: 'Paused.' })
@@ -78,12 +129,41 @@ run('automatic monitoring with migrated PostgreSQL', () => {
         } })
         const site = await prisma.project.create({ data: { userId, name: 'Grant policy fixture',
           url: 'https://' + phase + '.example.com/', canonicalHost: phase + '.example.com' } })
-        expect(await productTransaction(tx => ensureDefaultMonitoring(tx, site.id, userId, policyNow))).toBe(true)
+        expect(await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, site.id, userId, policyNow))).toBe(true)
         expect(await prisma.project.findUniqueOrThrow({ where: { id: site.id } })).toMatchObject({
           watchInterval: phase === 'active' ? 'DAILY' : 'WEEKLY', watchNextRunAt: policyNow })
       }
       expect(await prisma.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({ plan: 'FREE', subscriptionStatus: 'NONE' })
     } finally { await prisma.entitlementGrant.delete({ where: { id: grant.id } }) }
+  })
+  it('advances a bounded setup batch past a persistent failure without treating it as an explicit pause', async () => {
+    const sites = await Promise.all(['failed-setup', 'following-setup'].map((host, index) => prisma.project.create({ data: {
+      userId, name: host, url: 'https://' + host + '.example.com/', canonicalHost: host + '.example.com',
+      createdAt: new Date('2000-01-0' + (index + 1) + 'T00:00:00Z'),
+    } })))
+    // A real per-Site write failure inside the serializable transaction.
+    if (!/^[a-z0-9]+$/.test(sites[0].id)) throw new Error('Unexpected fixture identity')
+    await prisma.$executeRawUnsafe(`ALTER TABLE site_outcomes ADD CONSTRAINT fixture_failed_monitoring_setup CHECK ("projectId" <> '${sites[0].id}') NOT VALID`)
+    try {
+      await initializeDefaultMonitoring(1, fixedClock(now))
+      await initializeDefaultMonitoring(1, fixedClock(now))
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[1].id } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: now })
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[0].id } })).toMatchObject({ watchInterval: null, watchLastError: null,
+        watchLastAttemptAt: null, monitoringSetupRetryAt: new Date(now.getTime() + 60_000) })
+      await prisma.$executeRawUnsafe('ALTER TABLE site_outcomes DROP CONSTRAINT fixture_failed_monitoring_setup')
+      const later = new Date(now.getTime() + 120_000)
+      await prisma.project.update({ where: { id: sites[0].id }, data: { watchLastError: 'Paused.' } })
+      await initializeDefaultMonitoring(1, fixedClock(later))
+      expect(await prisma.siteOutcome.count({ where: { projectId: sites[0].id } })).toBe(0)
+      await prisma.project.update({ where: { id: sites[0].id }, data: { watchLastError: null } })
+      await initializeDefaultMonitoring(1, fixedClock(later))
+      expect(await prisma.project.findUniqueOrThrow({ where: { id: sites[0].id } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: later,
+        monitoringSetupRetryAt: null })
+      expect(await prisma.siteOutcome.count({ where: { projectId: sites[0].id } })).toBe(1)
+    } finally {
+      await prisma.$executeRawUnsafe('ALTER TABLE site_outcomes DROP CONSTRAINT IF EXISTS fixture_failed_monitoring_setup')
+      await prisma.project.deleteMany({ where: { id: { in: sites.map(site => site.id) } } })
+    }
   })
   it('excludes inactive accounts before applying the backfill batch limit', async () => {
     const inactiveUser = 'inactive-monitoring-' + randomUUID(), policyNow = new Date()
@@ -93,8 +173,8 @@ run('automatic monitoring with migrated PostgreSQL', () => {
         url: 'https://inactive.example.com/', canonicalHost: 'inactive.example.com', createdAt: new Date(0) } })
       const active = await prisma.project.create({ data: { userId, name: 'Eligible fixture',
         url: 'https://eligible.example.com/', canonicalHost: 'eligible.example.com' } })
-      expect(await productTransaction(tx => ensureDefaultMonitoring(tx, paused.id, inactiveUser, policyNow))).toBe(false)
-      await initializeDefaultMonitoring(1, policyNow)
+      expect(await transactions.productTransaction(tx => ensureDefaultMonitoring(tx, paused.id, inactiveUser, policyNow))).toBe(false)
+      await initializeDefaultMonitoring(1, fixedClock(policyNow))
       expect(await prisma.project.findUniqueOrThrow({ where: { id: active.id } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: policyNow })
       expect(await prisma.project.findUniqueOrThrow({ where: { id: paused.id } })).toMatchObject({ watchInterval: null, watchNextRunAt: null })
       expect(await prisma.siteOutcome.count({ where: { projectId: paused.id } })).toBe(0)

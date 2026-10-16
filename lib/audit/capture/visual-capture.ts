@@ -2,12 +2,12 @@
  * Visual capture orchestrator. Decides what visual evidence to capture
  * for a given set of flags and composes the final outputs.
  */
-import type { Browser, Page } from 'playwright'
-import { uploadScreenshot } from '@/lib/storage/screenshots'
+import type { Page } from 'playwright'
+import { readScreenshot, uploadScreenshot } from '@/lib/storage/screenshots'
+import { getAppUrl } from '@/lib/get-app-url'
+import { flowCheckIdForStatus } from '../flow/flow-evidence'
+import type { FlowScanResult } from '../flow/run-flow-scan'
 import { logger } from '@/lib/logger'
-import { createAuditPage } from '@/lib/audit/browser/page-session'
-import type { ScanAccessConfig } from '@/lib/audit/scan-access'
-import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { getVisualDescriptor, type VisualDescriptor } from './visual-types'
 import { captureLoadFrames, captureInteractionFrames, type FrameSet } from './frames'
 import { renderOverlay, type OverlayContext } from './overlays'
@@ -19,6 +19,7 @@ export interface VisualEvidence {
   gifUrl: string | null
   overlayUrl: string | null
   type: 'animated-gif' | 'static-overlay' | 'side-by-side'
+  sourceFrames?: { source: string; destination: string }
 }
 
 export interface VisualCaptureResult {
@@ -42,13 +43,12 @@ const MAX_OVERLAYS_PER_DEVICE = 5
 const MAX_SIDE_BY_SIDE = 3
 
 export async function captureVisualEvidence(
-  browser: Browser,
   page: Page,
   auditId: string,
   flags: Array<{ checkId: string; severity: string; rubric: string }>,
   device: 'desktop' | 'mobile' = 'mobile',
   metrics?: VisualCaptureMetrics,
-  scanAccess?: ScanAccessConfig | null
+  deadline = Infinity
 ): Promise<VisualCaptureResult> {
   const result: VisualCaptureResult = { visuals: [], additionalFrames: [] }
 
@@ -69,11 +69,12 @@ export async function captureVisualEvidence(
   const sideBySideFlags = flags
     .filter((f) => {
       const d = getVisualDescriptor(f.checkId)
-      return d.type === 'side-by-side' && matchesDevice(d, device)
+      return d.type === 'side-by-side' && !['desktop-mobile', 'source-destination'].includes(d.sideBySideMode ?? '') && matchesDevice(d, device)
     })
     .slice(0, MAX_SIDE_BY_SIDE)
 
   for (const flag of gifFlags) {
+    if (Date.now() >= deadline) break
     const desc = getVisualDescriptor(flag.checkId)
     if (desc.type !== 'animated-gif') continue
     try {
@@ -120,7 +121,7 @@ export async function captureVisualEvidence(
           }
         )
         if (gif) {
-          const url = await uploadScreenshot(auditId, device, gif.buffer, `visual-${flag.checkId}`)
+          const url = await uploadScreenshot(auditId, device, gif.buffer, `visual-${flag.checkId}`, { deadline })
           result.visuals.push({
             checkId: flag.checkId,
             device,
@@ -135,20 +136,21 @@ export async function captureVisualEvidence(
     }
   }
 
-  if (overlayFlags.length > 0) {
+  if (overlayFlags.length > 0 && Date.now() < deadline) {
     const buf = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     const meta = await import('sharp').then((s) => s.default(buf).metadata())
     const w = meta.width ?? 1280
     const h = meta.height ?? 900
 
     for (const flag of overlayFlags) {
+      if (Date.now() >= deadline) break
       const desc = getVisualDescriptor(flag.checkId)
       if (desc.type !== 'static-overlay' || !desc.overlay) continue
       try {
         const ctx: OverlayContext = { screenshotBuffer: buf, width: w, height: h }
         enrichOverlayContext(ctx, flag.checkId, metrics)
         const res = await renderOverlay(desc.overlay, ctx)
-        const url = await uploadScreenshot(auditId, device, res.buffer, `visual-${flag.checkId}`)
+        const url = await uploadScreenshot(auditId, device, res.buffer, `visual-${flag.checkId}`, { deadline })
         result.visuals.push({
           checkId: flag.checkId,
           device,
@@ -163,17 +165,17 @@ export async function captureVisualEvidence(
   }
 
   for (const flag of sideBySideFlags) {
+    if (Date.now() >= deadline) break
     const desc = getVisualDescriptor(flag.checkId)
     if (desc.type !== 'side-by-side') continue
     try {
       const evidence = await captureSideBySide(
-        browser,
         page,
         auditId,
         flag.checkId,
         desc,
         device,
-        scanAccess
+        deadline
       )
       if (evidence) result.visuals.push(evidence)
     } catch (err) {
@@ -184,62 +186,97 @@ export async function captureVisualEvidence(
   return result
 }
 
+/** Compose only after both independent device sessions have released capacity. */
+export async function captureDeviceComparisonEvidence(
+  auditId: string,
+  flags: Array<{ checkId: string }>,
+  frames: { desktop?: Buffer; mobile?: Buffer },
+  deadline = Infinity,
+): Promise<VisualEvidence[]> {
+  if (!frames.desktop || !frames.mobile) return []
+  const visuals: VisualEvidence[] = []
+  const comparisons = flags.filter(flag => getVisualDescriptor(flag.checkId).sideBySideMode === 'desktop-mobile').slice(0, MAX_SIDE_BY_SIDE)
+  for (const flag of comparisons) {
+    if (Date.now() >= deadline) break
+    try {
+      visuals.push(await uploadComparison(auditId, flag.checkId, 'mobile', frames.desktop, frames.mobile, 'Desktop', 'Mobile', deadline))
+    } catch (error) { logger.error(`Failed to compose device comparison for ${flag.checkId}`, error) }
+  }
+  return visuals
+}
+
+function ownedDesktopFrame(auditId: string, reference: string | null) {
+  if (!reference || !/^[a-zA-Z0-9_-]{1,128}$/.test(auditId)) return undefined
+  try {
+    const app = new URL(getAppUrl()), url = new URL(reference, app)
+    if (url.origin !== app.origin || url.username || url.password || url.hash ||
+      url.pathname !== '/api/screenshots/' + auditId + '/desktop' ||
+      [...url.searchParams.keys()].some(key => key !== 'page') || url.searchParams.getAll('page').length > 1) return undefined
+    const pageKey = url.searchParams.get('page')
+    return pageKey === null || /^[a-zA-Z0-9_-]{1,80}$/.test(pageKey) ? { pageKey } : undefined
+  } catch { return undefined }
+}
+
+/** Stored flow frames retain the actual two states, without another navigation. */
+export async function captureRecordedFlowComparisonEvidence(auditId: string, flags: Array<{ checkId: string }>,
+  flows: readonly FlowScanResult[], deadline = Infinity): Promise<VisualEvidence[]> {
+  const visuals: VisualEvidence[] = []
+  const comparisons = flags.filter(flag => getVisualDescriptor(flag.checkId).sideBySideMode === 'source-destination').slice(0, MAX_SIDE_BY_SIDE)
+  for (const flag of comparisons) {
+    for (const flow of flows.filter(flow => flowCheckIdForStatus(flow.status) === flag.checkId).slice(0, MAX_SIDE_BY_SIDE)) {
+      if (Date.now() >= deadline) return visuals
+      if (!Array.isArray(flow.steps) || flow.steps.length < 2) continue
+      const first = flow.steps[0], last = flow.steps.at(-1)
+      if (!first || !last || first.label !== 'Landing' || last.label !== 'After click' || last.url !== flow.finalUrl) continue
+      const source = ownedDesktopFrame(auditId, first.screenshotUrl), destination = ownedDesktopFrame(auditId, last.screenshotUrl)
+      // Old deterministic flow-1 assets could be overwritten by a sibling walk.
+      if (!source || !destination || !destination.pageKey ||
+        !/^[a-zA-Z0-9_-]{1,30}-[a-f0-9]{32}-flow-1$/.test(destination.pageKey) || source.pageKey === destination.pageKey) continue
+      const sourceWalk = source.pageKey?.match(/^(.*)-flow-0$/)?.[1]
+      if (sourceWalk && sourceWalk !== destination.pageKey.slice(0, -7)) continue
+      try {
+        const [left, right] = await Promise.all([readScreenshot(auditId, 'desktop', source.pageKey, { deadline }),
+          readScreenshot(auditId, 'desktop', destination.pageKey, { deadline })])
+        if (!left || !right) continue
+        visuals.push({ ...await uploadComparison(auditId, flag.checkId, 'desktop', left, right, 'Source', 'Destination', deadline),
+          sourceFrames: { source: first.screenshotUrl!, destination: last.screenshotUrl! } })
+        break
+      } catch (error) { logger.warn('Recorded flow comparison unavailable', { auditId, checkId: flag.checkId, error }) }
+    }
+  }
+  return visuals
+}
+
 function matchesDevice(desc: VisualDescriptor, device: 'desktop' | 'mobile'): boolean {
   return desc.device === device || desc.device === 'both' || !desc.device
 }
 
 async function captureSideBySide(
-  browser: Browser,
   currentPage: Page,
   auditId: string,
   checkId: string,
   desc: VisualDescriptor,
   device: 'desktop' | 'mobile',
-  scanAccess?: ScanAccessConfig | null
+  deadline: number
 ): Promise<VisualEvidence | null> {
   const mode = desc.sideBySideMode ?? 'before-after'
+  if (mode !== 'before-after') return null
   const leftBuf = Buffer.from(await currentPage.screenshot({ type: 'png', fullPage: false }))
   let rightBuf: Buffer
-  let leftLabel = 'Before'
-  let rightLabel = 'After'
-
-  if (mode === 'desktop-mobile') {
-    leftLabel = 'Desktop'
-    rightLabel = 'Mobile'
-    const otherProfile = device === 'desktop' ? MOBILE_CAPTURE_PROFILE : DESKTOP_CAPTURE_PROFILE
-    const session = await createAuditPage(browser, currentPage.url(), {
-      profile: otherProfile,
-      settle: true,
-      scanAccess,
-    })
-    try {
-      rightBuf = Buffer.from(await session.page.screenshot({ type: 'png', fullPage: false }))
-    } finally {
-      const ctx = session.page.context()
-      await session.page.close().catch(() => {})
-      await ctx.close().catch(() => {})
-    }
-  } else if (mode === 'source-destination') {
-    leftLabel = 'Source'
-    rightLabel = 'Destination'
-    // Destination may already be the current page after a flow click; capture a
-    // second settle frame as the right panel so the stitch still communicates change.
-    await new Promise((r) => setTimeout(r, 400))
+  try {
+    await currentPage.emulateMedia({ reducedMotion: 'reduce' })
     rightBuf = Buffer.from(await currentPage.screenshot({ type: 'png', fullPage: false }))
-  } else {
-    // before-after: emulate reduced motion for the "after" panel when relevant
-    leftLabel = 'Default'
-    rightLabel = 'Reduced motion'
-    try {
-      await currentPage.emulateMedia({ reducedMotion: 'reduce' })
-      rightBuf = Buffer.from(await currentPage.screenshot({ type: 'png', fullPage: false }))
-    } finally {
-      await currentPage.emulateMedia({ reducedMotion: 'no-preference' }).catch(() => {})
-    }
+  } finally {
+    await currentPage.emulateMedia({ reducedMotion: 'no-preference' }).catch(() => {})
   }
 
-  const stitched = await composeSideBySide(leftBuf, rightBuf, { leftLabel, rightLabel })
-  const url = await uploadScreenshot(auditId, device, stitched, `visual-${checkId}`)
+  return uploadComparison(auditId, checkId, device, leftBuf, rightBuf, 'Default', 'Reduced motion', deadline)
+}
+
+async function uploadComparison(auditId: string, checkId: string, device: 'desktop' | 'mobile', left: Buffer, right: Buffer,
+  leftLabel: string, rightLabel: string, deadline: number): Promise<VisualEvidence> {
+  const stitched = await composeSideBySide(left, right, { leftLabel, rightLabel })
+  const url = await uploadScreenshot(auditId, device, stitched, `visual-${checkId}`, { deadline })
   return {
     checkId,
     device,

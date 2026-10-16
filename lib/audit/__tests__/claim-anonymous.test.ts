@@ -50,6 +50,7 @@ process.env.BETTER_AUTH_SECRET = 'test-anonymous-claim-secret-at-least-32-chars'
 
 function claimableAudit(id = 'teaser-1') {
   return { id, userId: null, status: 'COMPLETED', aiReviewAt: null, skipUsageCount: false,
+    triageAt: new Date(),
     usageCountedAt: null, url: 'https://example.com', projectId: null, productContract: null }
 }
 
@@ -127,7 +128,7 @@ describe('claimAnonymousAudits', () => {
     expect(prismaMock.audit.findMany).not.toHaveBeenCalled()
   })
 
-  it('assigns ownership, counts usage, and enqueues prescription before includeAi', async () => {
+  it('assigns ownership, counts usage and admits authorized prescription durably', async () => {
     const claimed = await claimAnonymousAudits('u1')
     expect(claimed).toBe(1)
     expect(prismaMock.audit.update).toHaveBeenCalledWith({
@@ -136,13 +137,6 @@ describe('claimAnonymousAudits', () => {
     })
     expect(incrementUsageOnCompleteForAudit).toHaveBeenCalledWith('teaser-1', 'u1')
     expect(enqueueAiReview).toHaveBeenCalledWith('teaser-1')
-    expect(prismaMock.audit.update).toHaveBeenCalledWith({
-      where: { id: 'teaser-1' },
-      data: { includeAi: true },
-    })
-    const enqueueOrder = enqueueAiReview.mock.invocationCallOrder[0]
-    const includeAiOrder = prismaMock.audit.update.mock.invocationCallOrder.at(-1)!
-    expect(enqueueOrder).toBeLessThan(includeAiOrder)
     expect(cookieStore.delete).toHaveBeenCalledWith(ANON_AUDIT_IDS_COOKIE)
     expect(recordSiteLifecycleEvent).toHaveBeenCalledWith({ name: 'analysis_claimed',
       idempotencyKey: 'analysis_claimed:teaser-1', userId: 'u1', projectId: 'project-1' })
@@ -174,9 +168,9 @@ describe('claimAnonymousAudits', () => {
     expect(recordSiteLifecycleEvent.mock.calls.map(([input]) => input.name)).not.toContain('analysis_claimed')
   })
 
-  it('keeps the claim retryable when enqueue fails', async () => {
-    enqueueAiReview.mockRejectedValue(new Error('queue down'))
-    await expect(claimAnonymousAudits('u1')).rejects.toThrow('queue down')
+  it('keeps the claim retryable when durable admission fails', async () => {
+    enqueueAiReview.mockRejectedValue(new Error('admission unavailable'))
+    await expect(claimAnonymousAudits('u1')).rejects.toThrow('admission unavailable')
     expect(cookieStore.delete).not.toHaveBeenCalled()
     expect(prismaMock.audit.update).not.toHaveBeenCalledWith({
       where: { id: 'teaser-1' },
@@ -209,6 +203,16 @@ describe('claimAnonymousAudits', () => {
     expect(cookieStore.delete).toHaveBeenCalledWith(ANON_AUDIT_IDS_COOKIE)
   })
 
+  it.each(['COMPLETED', 'FINALIZING'])('claims %s partial evidence without scheduling an impossible prescription', async status => {
+    prismaMock.audit.findMany.mockResolvedValue([{ ...claimableAudit(), status, triageAt: null }])
+    prismaMock.audit.findUnique.mockResolvedValue({ status: 'COMPLETED', aiReviewAt: null, triageAt: null })
+    expect(await claimAnonymousAudits('u1')).toBe(1)
+    expect(prismaMock.audit.update).toHaveBeenCalledWith({ where: { id: 'teaser-1' }, data: { includeAi: true } })
+    expect(enqueueAiReview).not.toHaveBeenCalled()
+    expect(cookieStore.delete).toHaveBeenCalledWith(ANON_AUDIT_IDS_COOKIE)
+    expect(monitoring.ensure).toHaveBeenCalled()
+  })
+
   it('enqueues once when an in-flight claim completes during handoff', async () => {
     prismaMock.audit.findMany.mockResolvedValue([
       {
@@ -226,6 +230,7 @@ describe('claimAnonymousAudits', () => {
     prismaMock.audit.findUnique.mockResolvedValue({
       status: 'COMPLETED',
       aiReviewAt: null,
+      triageAt: new Date(),
     })
 
     await claimAnonymousAudits('u1')

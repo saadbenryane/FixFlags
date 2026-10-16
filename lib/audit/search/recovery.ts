@@ -25,12 +25,19 @@ export function assessSearchRecovery(receipt: SearchReceipt, checkId: string, at
 function assessScope(receipt: SearchReceipt, checkId: string, attentionPolicy: unknown) {
   const policy = searchAttentionSchema.safeParse(attentionPolicy)
   const sources = policy.success ? policy.data.sources ?? [] : []
-  const observations = receipt.observations.filter(item => item.checkId === checkId && (!sources.length || sources.includes(item.source)))
+  const targets = policy.success ? policy.data.markupTargets ?? [] : []
+  // Nested and unrelated entities have their own observations. Repair concerns
+  // every recorded failing entity, type, source and property on this page.
+  const observations = receipt.observations.filter(item => item.checkId === checkId && (!sources.length || sources.includes(item.source)) &&
+    (!targets.length || targets.some(target => item.entityId === target.entityId && item.entityTypes?.includes(target.entityType) && item.source === target.source)))
   const expectedTypes = policy.success ? policy.data.entityTypes ?? [] : []
   const typesObserved = new Set(observations.flatMap(item => item.entityTypes ?? []))
   const comparable = observations.length > 0 && !receipt.observations.some(item => item.reason === 'observation_limit') &&
+    (checkId !== 'search-structured-feature' || targets.length > 0) &&
     observations.every(item => item.checkVersion === (policy.success ? policy.data.version : 1)) &&
     observations.every(item => item.disposition !== 'unknown' && item.disposition !== 'not_applicable') &&
+    targets.every(target => observations.some(item => item.entityId === target.entityId && item.entityTypes?.includes(target.entityType) &&
+      item.source === target.source && item.invalidProperties !== undefined)) &&
     sources.every(source => observations.some(item => item.source === source)) && expectedTypes.every(type => typesObserved.has(type))
   const googleComparable = observations.every(item => {
     if (item.source !== 'google-index') return true
@@ -41,7 +48,6 @@ function assessScope(receipt: SearchReceipt, checkId: string, attentionPolicy: u
   })
   const verifiedConflictRemoval = policy.success && policy.data.reason === 'sitemap_indexing_conflict' &&
     receipt.complete && observations.every(item => item.reason === 'declared_indexing_exclusion' || item.disposition === 'passed')
-  const targets = policy.success ? policy.data.markupTargets ?? [] : []
   const verifiedProperties = targets.length > 0 && targets.every(target => observations.some(item =>
     item.entityId === target.entityId && item.entityTypes?.includes(target.entityType) && item.source === target.source &&
     item.invalidProperties !== undefined && !target.properties.some(property => item.invalidProperties!.includes(property))))

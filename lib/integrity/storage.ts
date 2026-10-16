@@ -1,26 +1,10 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { getAppUrl } from '@/lib/get-app-url'
-import { isR2Configured, getScreenshotBytes } from '@/lib/storage/r2'
-import {
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3'
+import { pathIdForArtifactNamespace } from './artifact-namespace'
+import { putPrivateObject, getPrivateObjectBytes, deletePrivateObjectPrefixes, type StorageRequestOptions } from '@/lib/storage/r2'
 
 const LOCAL_DIR = path.join(process.cwd(), '.data', 'integrity')
-
-function r2Client(): S3Client {
-  return new S3Client({
-    region: 'auto',
-    endpoint:
-      process.env.R2_S3_ENDPOINT ||
-      `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-    },
-  })
-}
 
 export function integrityObjectKey(runId: string, filename: string): string {
   return `integrity/${runId}/${filename}`
@@ -30,18 +14,12 @@ export async function uploadIntegrityArtifact(
   runId: string,
   filename: string,
   bytes: Buffer,
-  contentType: string
+  contentType: string,
+  options: StorageRequestOptions = {},
 ): Promise<{ key: string; url: string; localPath: string | null }> {
   const key = integrityObjectKey(runId, filename)
-  if (process.env.NODE_ENV === 'production' && isR2Configured()) {
-    await r2Client().send(
-      new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME!,
-        Key: key,
-        Body: bytes,
-        ContentType: contentType,
-      })
-    )
+  if (process.env.NODE_ENV === 'production') {
+    await putPrivateObject(key, bytes, contentType, options)
     return {
       key,
       url: `${getAppUrl()}/api/integrity-assets/${runId}/${encodeURIComponent(filename)}`,
@@ -60,18 +38,43 @@ export async function uploadIntegrityArtifact(
   }
 }
 
-export async function deleteIntegrityPrefix(runId: string): Promise<void> {
-  const dir = path.join(LOCAL_DIR, runId)
-  await fs.rm(dir, { recursive: true, force: true }).catch(() => {})
+/** A rejected publisher removes its own attempt, never a replacement run. */
+export async function deleteIntegrityRunArtifacts(runId: string, options: StorageRequestOptions = {}): Promise<void> {
+  if (!pathIdForArtifactNamespace(runId)) throw new Error('A scoped integrity run ID is required')
+  if (process.env.NODE_ENV === 'production') {
+    await deletePrivateObjectPrefixes([`integrity/${runId}/`], options)
+  } else {
+    await fs.rm(path.join(LOCAL_DIR, runId), { recursive: true, force: true })
+  }
+}
+
+/** A path owns every timestamped attempt, including media whose receipt was lost. */
+export async function deleteIntegrityPathArtifacts(pathIds: string[], options: StorageRequestOptions = {}): Promise<void> {
+  if (!pathIds.length) return
+  if (pathIds.some(id => !/^[a-zA-Z0-9]+$/.test(id))) throw new Error('A canonical integrity path ID is required')
+  const prefixes = pathIds.map(id => `path-${id}-`)
+  if (process.env.NODE_ENV === 'production') {
+    await deletePrivateObjectPrefixes(prefixes.map(prefix => `integrity/${prefix}`), options)
+    return
+  }
+  let entries
+  try { entries = await fs.readdir(LOCAL_DIR, { withFileTypes: true }) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }
+  for (const entry of entries) {
+    if (entry.isDirectory() && prefixes.some(prefix => entry.name.startsWith(prefix))) {
+      await fs.rm(path.join(LOCAL_DIR, entry.name), { recursive: true, force: true })
+    }
+  }
 }
 
 export async function readIntegrityArtifact(
   runId: string,
-  filename: string
+  filename: string,
+  options: StorageRequestOptions = {},
 ): Promise<Buffer | null> {
   const key = integrityObjectKey(runId, filename)
-  if (process.env.NODE_ENV === 'production' && isR2Configured()) {
-    return getScreenshotBytes(key)
+  if (process.env.NODE_ENV === 'production') {
+    return getPrivateObjectBytes(key, options)
   }
   try {
     return await fs.readFile(path.join(LOCAL_DIR, runId, filename))

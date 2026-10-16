@@ -15,7 +15,7 @@ export function notificationEmailBody(payload: z.infer<typeof notificationEmailS
 
 /** Both monitoring senders abort the physical SDK request before their lease expires. */
 export async function sendNotificationEmail(provider: Pick<Resend, 'emails'>,
-  message: ReturnType<typeof notificationEmailBody>, idempotencyKey: string) {
+  message: Parameters<Resend['emails']['send']>[0], idempotencyKey: string) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(new Error('Notification provider deadline')), 20_000)
   try {

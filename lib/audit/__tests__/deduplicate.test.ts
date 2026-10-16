@@ -2,6 +2,8 @@ import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { deduplicateFlags, deduplicateTriageFlags } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'
+import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
+import { validateTriageOutput } from '@/lib/audit/validate-triage-output'
 
 function det(partial: Partial<DeterministicFlag> & Pick<DeterministicFlag, 'checkId' | 'problem'>): DeterministicFlag {
   return {
@@ -251,4 +253,116 @@ describe('deduplicateFlags', () => {
 
     assert.equal(deduplicateFlags(deterministic, aiFlags).length, 1)
   })
+})
+
+type TriageFlag = TriageOutput['newFlags'][number]
+
+function ai(partial: Partial<TriageFlag> = {}): TriageFlag {
+  return {
+    rubric: 'MESSAGE', impactTag: 'CLARITY', severity: 'IMPORTANT',
+    problem: 'Headline lacks audience specificity',
+    evidence: 'The headline "Build something better" does not identify its intended audience.',
+    whyItMatters: 'Visitors need to recognize whether the offer is relevant.',
+    confidence: 0.8, pageUrl: null, ...partial,
+  }
+}
+
+const root = 'https://example.com/'
+const pricing = 'https://example.com/pricing'
+const deduplicators = [
+  ['triage', deduplicateTriageFlags],
+  ['judge', (deterministic: DeterministicFlag[], flags: TriageFlag[], primaryPageUrl?: string) =>
+    deduplicateFlags(deterministic, flags.map(flag => ({ ...flag, pageUrl: flag.pageUrl ?? undefined, fix: 'Clarify the offer' })), primaryPageUrl)],
+] as const
+
+for (const [name, deduplicate] of deduplicators) {
+  describe(`${name} deduplication scope`, () => {
+    it('keeps a headline finding when its deterministic counterpart is on another page', () => {
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: pricing })]).length, 1)
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: root })]).length, 0)
+    })
+
+    it('keeps near-identical AI observations on distinct pages', () => {
+      assert.equal(deduplicate([], [ai({ pageUrl: root }), ai({ pageUrl: pricing })]).length, 2)
+      assert.equal(deduplicate([], [ai({ pageUrl: root }), ai({ pageUrl: root })]).length, 1)
+    })
+
+    it('uses affected paths when matching a collapsed deterministic finding', () => {
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity',
+        pageUrl: root, affectedPaths: [root, pricing] })]
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: pricing })]).length, 0)
+    })
+
+    it('resolves null page URLs to the supplied primary page without hiding other pages', () => {
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+      assert.equal(deduplicate(deterministic, [ai()], root).length, 0)
+      assert.equal(deduplicate(deterministic, [ai()], pricing).length, 1)
+      assert.equal(deduplicate([], [ai(), ai({ pageUrl: root })], root).length, 1)
+    })
+
+    it('keeps unknown scopes separate from explicit pages when no primary page is known', () => {
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity' })]
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: pricing })]).length, 1)
+      assert.equal(deduplicate([], [ai(), ai({ pageUrl: pricing })]).length, 2)
+    })
+
+    it('normalizes page fragments but preserves distinct query variants', () => {
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '#hero' })]).length, 0)
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '?variant=b' })]).length, 1)
+    })
+
+    it('retains a specific CTA promise mismatch instead of treating every primary CTA mention as geometry', () => {
+      const mismatch = ai({ problem: 'Primary CTA promises instant access but leads to a sales request',
+        evidence: 'The primary CTA says "Start now" but its destination asks visitors to book a demo.' })
+      assert.equal(deduplicate([], [mismatch]).length, 1)
+    })
+
+    it('still rejects unsupported geometry claims without a deterministic failure', () => {
+      assert.equal(deduplicate([], [ai({ rubric: 'EXPERIENCE', problem: 'Primary CTA is hidden below the fold on mobile' })]).length, 0)
+    })
+  })
+}
+
+function triageOutput(newFlags: TriageFlag[]): TriageOutput {
+  return {
+    pageJob: 'Explain the offer', pageType: 'homepage', verdict: 'Review the headline', score: 70,
+    launchReadiness: 'fix_first',
+    launchChecklist: (['https', 'social-preview', 'mobile-cta', 'console-errors', 'privacy-contact'] as const)
+      .map(id => ({ id, label: id, passed: true })),
+    rubrics: (['MESSAGE', 'EXPERIENCE', 'REACH'] as const).map(name => ({ name, score: 70,
+      grade: 'C', status: 'NEEDS_WORK', assessmentState: 'ASSESSED', confidence: 0.8, summary: 'Captured page evidence' })),
+    newFlags,
+  }
+}
+
+const context = { url: root, pageText: 'Build something better',
+  metadata: { title: null, description: null, h1s: ['Build something better'], ctaTexts: [], hasStructuredData: false } }
+
+it('passes the reviewed page from triage validation into deduplication', () => {
+  const output = triageOutput([ai()])
+  const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+  assert.equal(validateTriageOutput(output, deterministic, 'unknown', context).newFlags.length, 0)
+  assert.equal(validateTriageOutput(output, deterministic, 'unknown', { ...context, url: pricing }).newFlags.length, 1)
+})
+
+it('does not let an unsupported AI observation suppress a later source-backed finding', () => {
+  const supported = ai()
+  const unsupported = ai({ evidence: 'The headline says "Guaranteed results for everybody".' })
+  for (const newFlags of [[unsupported, supported], [supported, unsupported]]) {
+    assert.deepEqual(validateTriageOutput(triageOutput(newFlags), [], 'unknown', context).newFlags, [supported])
+  }
+})
+
+it('keeps supporting observations together when same-page triage findings are redundant', () => {
+  const headline = ai({ pageUrl: root })
+  const subheading = ai({ pageUrl: root, evidence: 'The subheading "Make progress today" also leaves the audience unspecified.' })
+  const flags = [headline, subheading, { ...subheading }]
+  const before = structuredClone(flags)
+  const result = deduplicateTriageFlags([], flags)
+  assert.equal(result.length, 1)
+  assert.equal(result[0].evidence, `${headline.evidence}\n${subheading.evidence}`)
+  assert.deepEqual(flags, before)
+  assert.equal(deduplicateTriageFlags([], [headline, { ...subheading, pageUrl: pricing }]).length, 2)
 })

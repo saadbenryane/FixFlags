@@ -433,12 +433,15 @@ async function runPrescriptionBatch(
   mobileBase64: string | null,
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
+  const deadline = maxTimeoutMs === undefined ? undefined : Date.now() + maxTimeoutMs
   return runLlmWithRetry({
     label: 'prescription',
     input: { context, desktopBase64, mobileBase64, maxTimeoutMs },
     attemptFn: (provider, { context, desktopBase64, mobileBase64, maxTimeoutMs }) =>
-      runPrescriptionWithProvider(provider, context, desktopBase64, mobileBase64, maxTimeoutMs),
+      runPrescriptionWithProvider(provider, context, desktopBase64, mobileBase64,
+        deadline === undefined ? maxTimeoutMs : Math.max(1, deadline - Date.now())),
     isRetryable: isPrescriptionAttemptRetryable,
+    deadline,
   })
 }
 
@@ -449,6 +452,7 @@ export async function runPrescriptionWithRetry(
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
   const flags = context.existingFlags
+  const deadline = maxTimeoutMs === undefined ? undefined : Date.now() + maxTimeoutMs
   const batches = prescriptionFlagBatches(flags, PRESCRIPTION_BATCH_SIZE)
   if (batches.length === 1) {
     return runPrescriptionBatch(context, desktopBase64, mobileBase64, maxTimeoutMs)
@@ -469,7 +473,7 @@ export async function runPrescriptionWithRetry(
       batchContext,
       desktopBase64,
       mobileBase64,
-      maxTimeoutMs
+      deadline === undefined ? undefined : Math.max(0, deadline - Date.now())
     )
     flagPrescriptions.push(...result.output.flagPrescriptions)
     if (rubricPrescriptions.length === 0) {

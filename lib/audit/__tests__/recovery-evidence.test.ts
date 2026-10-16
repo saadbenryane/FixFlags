@@ -5,6 +5,11 @@ import { checkReceiptSchema } from '../checks/receipt'
 import { evaluateSearch, searchFindings } from '../search/registry'
 import { searchReceiptSchema } from '../search/contracts'
 import { evidence, document, PAGE } from '../search/__tests__/fixtures'
+import { RESOURCE_REPAIR_RULE, resourceAuditContext } from '../pagespeed-opportunities'
+import { runSecurityHeaderChecks, securityHeaderObservations } from '../checks/security-headers'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from './check-fixtures'
+import { performanceConditionContext, scopePerformanceAssertions } from '../performance-measurement'
+import { runPerformanceChecks } from '../checks/performance'
 
 const url = 'https://example.com/pricing'
 function spec(checkId: string) {
@@ -12,14 +17,18 @@ function spec(checkId: string) {
     checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null }
 }
 function row(overrides = {}): RecoveryExecution {
-  return { targetKey: 'module:performance', status: 'COMPLETED', detail: checkReceiptSchema.parse({
+  const detail = checkReceiptSchema.parse({
     kind: 'site-module-check', version: 1, module: 'performance', pageUrl: url,
     applicable: true, passed: true, complete: true,
-    assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true }],
+    assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true, complete: true }],
     execution: { auditId: 'after', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: new Date().toISOString() },
     ...overrides,
-  }) }
+  })
+  detail.assertions = scopePerformanceAssertions(healthyDesktopPs({ diagnostics: { measurement: pageSpeedMeasurementFixture(detail.pageUrl) } }), detail.pageUrl, detail.assertions)
+  return { targetKey: 'module:performance', status: 'COMPLETED', detail }
 }
+const labFlag = (pageUrl = url) => runPerformanceChecks(healthyDesktopPs({ lcp: 3000,
+  diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl) } }), null, pageUrl).find(flag => flag.checkId === 'lcp-poor')!
 function recovered(checkId: string, executions: RecoveryExecution[], extraFlag = {}) {
   return hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec(checkId),
     flag: { checkId, pageUrl: url, ...extraFlag }, executions })
@@ -29,7 +38,7 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
   it('requires every original page to pass, while an original failure disproves repair across a gap', () => {
     const peer = 'https://example.com/other'
     const assess = (executions: RecoveryExecution[]) => recordedVerificationVerdict({ auditId: 'after', executionSpec: spec('lcp-poor'),
-      flag: { checkId: 'lcp-poor', pageUrl: url, affectedPaths: [url, peer], verificationRule: 'Comparable desktop LCP' }, executions })
+      flag: { ...labFlag(), pageUrl: url, affectedPaths: [url, peer], evidenceTargets: [...labFlag().evidenceTargets!, ...labFlag(peer).evidenceTargets!] }, executions })
     const failed = row({ pageUrl: peer, passed: false, assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast', observed: '6000ms',
       passed: false, complete: true }] })
     expect(assess([row()])).toBeNull()
@@ -50,7 +59,7 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
   it('allows a proved lab repair despite unrelated partial Site coverage, and rejects failed or different scope', () => {
     expect(isPageComparableAbsence({ auditStatus: 'COMPLETED', reportCompleteness: 'PARTIAL',
       childPages: [], auditId: 'after', executionSpec: spec('lcp-poor'),
-      parentFlag: { checkId: 'lcp-poor', pageUrl: url + '/#section' }, verifierExecutions: [row()] })).toBe(true)
+      parentFlag: { ...labFlag(), pageUrl: url + '/#section' }, verifierExecutions: [row()] })).toBe(true)
     for (const receipt of [row({ complete: false }), row({ applicable: false }), row({ failed: true }),
       row({ pageUrl: 'https://example.com/other' }), row({ assertions: [] }),
       row({ assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast', observed: '6000ms', passed: false }] }),
@@ -63,24 +72,38 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
     expect(recovered('render-blocking', [row()])).toBe(false)
     expect(recovered('inp-poor', [row()])).toBe(false)
     const headers = { ...row(), targetKey: 'module:security-headers', detail: checkReceiptSchema.parse({
-      ...(row().detail as object), module: 'security-headers', assertions: [{ key: 'content-security-policy',
-        name: 'CSP', expected: 'Present', observed: 'Present', passed: true }],
+      ...(row().detail as object), module: 'security-headers', assertions: securityHeaderObservations(url, { 'content-security-policy': "default-src 'self'" }),
       execution: { auditId: 'after', taskId: 'headers', checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() },
     }) }
-    expect(recovered('security-csp-missing', [headers])).toBe(true)
+    const source = runSecurityHeaderChecks(url, { 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY',
+      'strict-transport-security': 'max-age=31536000; includeSubDomains; preload' }).find(flag => flag.checkId === 'security-csp-missing')!
+    expect(recovered('security-csp-missing', [headers], source)).toBe(true)
+    expect(recovered('security-csp-missing', [headers])).toBe(false)
     expect(recovered('security-csp-unsafe-inline', [headers])).toBe(false)
   })
 
   it('uses the same exact Performance responsibility proof despite unrelated unknown audits', () => {
+    const context = performanceConditionContext(healthyDesktopPs({ diagnostics: { measurement: pageSpeedMeasurementFixture(url) } }), url,
+      resourceAuditContext(url, 'desktop', { providerAuditId: 'unused-javascript', unit: 'bytes' }, 100_000))
+    const flag = { verificationRule: RESOURCE_REPAIR_RULE,
+      evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', context }] }
     const assertion = { key: 'unused-javascript', name: 'Unused JavaScript', expected: 'No excessive measured waste',
-      observed: '0 bytes in the new measurement', passed: true, complete: true }
+      observed: '0 bytes in the new measurement', passed: true, complete: true,
+      targets: [{ selector: 'lighthouse:unused-javascript', label: 'unused-javascript', context }] }
     const partial = row({ complete: false, passed: false, assertions: [assertion] })
-    expect(recovered('unused-js-large', [partial])).toBe(true)
+    expect(recovered('unused-js-large', [partial], flag)).toBe(true)
+    expect(recovered('unused-js-large', [partial])).toBe(false)
+    const unscopedSummary = { targetKey: 'check:unused-js-large', status: 'COMPLETED', detail: {
+      kind: 'check-verifier', version: 1, auditId: 'after', taskId: 'speed', checkVersion: 1,
+      checkId: 'unused-js-large', pageUrl: url, source: 'pagespeed-desktop', collectedAt: new Date().toISOString(),
+      comparable: true, verdict: 'passed', assertion,
+    } }
+    expect(recovered('unused-js-large', [unscopedSummary])).toBe(false)
     expect(recovered('render-blocking', [partial])).toBe(false)
     expect(recovered('unused-css-large', [partial])).toBe(false)
-    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, complete: false }] })])).toBe(false)
-    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, complete: undefined }] })])).toBe(false)
-    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, passed: false }] })])).toBe(false)
+    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, complete: false }] })], flag)).toBe(false)
+    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, complete: undefined }] })], flag)).toBe(false)
+    expect(recovered('unused-js-large', [row({ complete: false, assertions: [{ ...assertion, passed: false }] })], flag)).toBe(false)
   })
 
   it('requires conclusive matching controls instead of a healthy subset of keyboard navigation', () => {

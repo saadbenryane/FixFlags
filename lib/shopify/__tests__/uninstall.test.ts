@@ -5,7 +5,7 @@ const update = vi.hoisted(() => vi.fn())
 const updateMany = vi.hoisted(() => vi.fn())
 const deleteMany = vi.hoisted(() => vi.fn())
 const findMany = vi.hoisted(() => vi.fn())
-const deleteIntegrityPrefix = vi.hoisted(() => vi.fn())
+const deleteIntegrityPathArtifacts = vi.hoisted(() => vi.fn())
 const trackEvent = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({
@@ -14,7 +14,7 @@ vi.mock('@/lib/db', () => ({
     revenuePath: { updateMany, findMany },
   },
 }))
-vi.mock('@/lib/integrity/storage', () => ({ deleteIntegrityPrefix }))
+vi.mock('@/lib/integrity/storage', () => ({ deleteIntegrityPathArtifacts }))
 vi.mock('@/lib/analytics/events', () => ({ trackEvent }))
 vi.mock('@/lib/integrity/enqueue', () => ({ enqueueIntegrityProbe: vi.fn() }))
 
@@ -27,12 +27,12 @@ describe('uninstall and redact', () => {
     findFirst.mockResolvedValue({
       id: 'shop-1',
       shopDomain: 'demo.myshopify.com',
-      paths: [{ runs: [{ id: 'r1', videoUrl: 'https://x/integrity-assets/run-1/walk.webm', gifUrl: null }] }],
+      paths: [{ id: 'path1' }, { id: 'path2' }],
     })
     update.mockResolvedValue({})
     updateMany.mockResolvedValue({ count: 1 })
     deleteMany.mockResolvedValue({ count: 1 })
-    deleteIntegrityPrefix.mockResolvedValue(undefined)
+    deleteIntegrityPathArtifacts.mockResolvedValue(undefined)
   })
 
   it('stops later watches and clears stored tokens', async () => {
@@ -55,8 +55,21 @@ describe('uninstall and redact', () => {
         }),
       })
     )
-    expect(deleteIntegrityPrefix).toHaveBeenCalledWith('run-1')
+    expect(deleteIntegrityPathArtifacts).toHaveBeenCalledWith(['path1', 'path2'])
     expect(trackEvent).toHaveBeenCalledWith('shopify_uninstalled', { shop: 'demo.myshopify.com' })
+  })
+
+  it('revokes tokens and stops scheduling before unavailable media cleanup, retaining records for retry', async () => {
+    deleteIntegrityPathArtifacts.mockImplementation(async () => {
+      expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ encryptedAccessToken: '', uninstalledAt: expect.any(Date) }) }))
+      expect(updateMany).toHaveBeenCalled()
+      throw new Error('Private storage unavailable')
+    })
+    await expect(redactShop('demo.myshopify.com')).rejects.toThrow('Private storage unavailable')
+    expect(deleteMany).not.toHaveBeenCalled()
+    deleteIntegrityPathArtifacts.mockResolvedValue(undefined)
+    await redactShop('demo.myshopify.com')
+    expect(deleteMany).toHaveBeenCalledOnce()
   })
 
   it('does not enqueue watches for uninstalled shops', async () => {
@@ -65,7 +78,7 @@ describe('uninstall and redact', () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          shop: { uninstalledAt: null },
+          shop: { uninstalledAt: null, encryptedAccessToken: { not: '' } },
         }),
       })
     )

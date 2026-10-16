@@ -6,7 +6,8 @@ import { logger } from '@/lib/logger'
 import { observeViewport } from '../browser/viewport-observation'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { PageCaptureError } from '@/lib/audit/browser/page-capture'
-import { sameSlowActionIdentity, SLOW_3G, SLOW_REPLAY_PROFILE, type SlowReplayResult, type SlowActionIdentity } from './slow-replay-contract'
+import { sameSlowActionIdentity, slowActionForObservation, SLOW_3G, SLOW_REPLAY_PROFILE, type SlowReplayResult, type SlowActionIdentity } from './slow-replay-contract'
+import { auditPageObservation } from '../browser/observation-scope'
 export type { SlowReplayResult } from './slow-replay-contract'
 
 const OBSERVATION_MS = 10_000
@@ -18,6 +19,7 @@ export async function observeSlowViewport(page: Page, expectedActions: SlowActio
 export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: string,
   options: { deadline?: number; pageKey?: string; expectedActions?: SlowActionIdentity[]; scanAccess?: import('../scan-access').ScanAccessConfig | null } = {},
 ): Promise<SlowReplayResult> {
+  const expectedActions = (options.expectedActions ?? []).slice(0, 20).map(slowActionForObservation)
   let page: Page | null = null, work: Promise<void> | undefined
   let disposeNetwork: (() => void) | undefined
   const controller = new AbortController()
@@ -27,7 +29,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
   signal.addEventListener('abort', abortPage, { once: true })
   const result: SlowReplayResult = { timeToFirstTextMs: 30_000, timeToCtaMs: 30_000, screenshotUrls: [], complete: false,
     profile: SLOW_REPLAY_PROFILE, pageUrl, navigationComplete: false, observedForMs: 0, textBlankThroughMs: 0, ctaAbsentThroughMs: 0,
-    timeToContentMs: 30_000, contentAbsentThroughMs: 0, captures: [], actions: (options.expectedActions ?? []).slice(0, 20).map(action => ({ ...action, timeToVisibleMs: 30_000, absentThroughMs: 0 })) }
+    timeToContentMs: 30_000, contentAbsentThroughMs: 0, captures: [], actions: expectedActions.map(action => ({ ...action, timeToVisibleMs: 30_000, absentThroughMs: 0 })) }
   try {
     const session = await createAuditPage(browser, pageUrl, {
       profile: MOBILE_CAPTURE_PROFILE, settle: false, deadline, scanAccess: options.scanAccess, journeySafe: true, readOnlyInteractions: true,
@@ -41,7 +43,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
         const poll = async () => {
           while (!signal.aborted && Date.now() - started < OBSERVATION_MS) {
             try {
-              const observed = await observeSlowViewport(current, options.expectedActions), elapsed = Date.now() - started
+              const observed = await observeSlowViewport(current, expectedActions), elapsed = Date.now() - started
               if (elapsed > OBSERVATION_MS || signal.aborted) break
               result.observedForMs = elapsed
               if (observed.text && result.timeToFirstTextMs === 30_000) result.timeToFirstTextMs = elapsed
@@ -73,7 +75,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
           try {
             const buffer = Buffer.from(await current.screenshot({ type: 'png', fullPage: false, timeout: Math.max(1, Math.min(1500, deadline - Date.now())) }))
             capturedAtMs = Date.now() - started
-            if (!signal.aborted) url = await uploadScreenshot(auditId, 'mobile', buffer, (options.pageKey ? options.pageKey + '-' : '') + 'flow-slow-' + targetMs / 1000 + 's')
+            if (!signal.aborted) url = await uploadScreenshot(auditId, 'mobile', buffer, (options.pageKey ? options.pageKey + '-' : '') + 'flow-slow-' + targetMs / 1000 + 's', { deadline, signal })
           } catch (error) { if (!signal.aborted) logger.warn('Slow replay capture unavailable', { error }) }
           result.captures!.push({ targetMs, startedAtMs, capturedAtMs, completedAtMs: Date.now() - started, url })
         }
@@ -88,6 +90,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
     await work
     result.restricted = (session.safetyRestrictions?.length ?? 0) > 0
     result.pageUrl = page.url()
+    result.scope = auditPageObservation(page)?.scope
     result.captures!.sort((a, b) => a.targetMs - b.targetMs)
     result.screenshotUrls = result.captures!.flatMap(capture => capture.url ? [capture.url] : [])
     result.complete = !signal.aborted && !result.restricted && (result.timeToContentMs! <= 5000 || result.contentAbsentThroughMs! > 5000)

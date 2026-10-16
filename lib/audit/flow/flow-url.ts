@@ -25,6 +25,7 @@ export function serializeFlowData(result: {
   finalUrl: string
   ctaText?: string
   ctaHref?: string | null
+  postClickMetrics?: import('./post-click-probes').PostClickMetrics
 }) {
   return {
     status: result.status,
@@ -32,5 +33,6 @@ export function serializeFlowData(result: {
     finalUrl: result.finalUrl,
     ctaText: result.ctaText ?? null,
     ctaHref: result.ctaHref ?? null,
+    ...(result.postClickMetrics ? { postClickMetrics: result.postClickMetrics } : {}),
   }
 }

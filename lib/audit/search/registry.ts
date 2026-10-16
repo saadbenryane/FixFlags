@@ -8,6 +8,7 @@ import { SEARCH_DEFINITIONS, SEARCH_CHECK_REGISTRY } from './definitions'
 import { inspectStructuredData, inspectFeature, entityValues } from './structured-data'
 import { searchObservationSchema, type PublicDocument, type SearchPageEvidence, type SearchObservation, type SearchReceipt } from './contracts'
 import { pageScopedSearchAttention } from './attention-scope'
+import { canonicalDeclarations } from './canonical-declarations'
 
 type Rule = keyof typeof C.rules
 type EvaluatorInput = { evidence: SearchPageEvidence; previous?: SearchReceipt | null }
@@ -179,18 +180,11 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
   for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     const $ = html(document, 'canonical')
     if (!$) { complete = false; continue }
-    const values: string[] = []
-    $('link[rel]').each((_, node) => { if (($(node).attr('rel') ?? '').toLowerCase().split(/\s+/).includes('canonical')) values.push($(node).attr('href') ?? '') })
-    if (source === 'original-html') for (const match of (document.headers.link ?? '').matchAll(/<([^>]+)>\s*;[^,]*?rel\s*=\s*"?canonical"?/gi)) values.push(match[1])
-    for (const raw of values) {
-      try {
-        if (!raw.trim()) throw new Error('empty canonical')
-        const target = new URL(raw, document.finalUrl)
-        if (!['http:', 'https:'].includes(target.protocol) || target.hash || target.username || target.password) throw new Error('invalid canonical')
-        declarations.push({ url: target.toString(), raw, document, source })
-      } catch { observations.push(observation(evidence, { checkId: 'search-canonical-invalid', rule: 'canonical', responsibility: 'canonical', source, document,
+    for (const { raw, url } of canonicalDeclarations($, document.finalUrl, source === 'original-html' ? document.headers.link : undefined)) {
+      if (url) declarations.push({ url, raw, document, source })
+      else observations.push(observation(evidence, { checkId: 'search-canonical-invalid', rule: 'canonical', responsibility: 'canonical', source, document,
         id: `search-canonical-invalid:${source}:${observations.length}`, disposition: 'failed', reason: 'canonical_declaration_invalid',
-        observed: raw || 'Empty canonical declaration.', attention: 'flag', locator: 'link[rel="canonical"], Link header' })) }
+        observed: raw || 'Empty canonical declaration.', attention: 'flag', locator: 'link[rel="canonical"], Link header' }))
     }
   }
   const urls = [...new Set(declarations.map(item => item.url))]
@@ -220,7 +214,7 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
     ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
       reason: 'canonical_optional_absent', observed: 'No canonical preference was recorded. This does not itself prevent indexing.' })
     : unknown(evidence, 'canonical-missing', 'canonical', 'canonical', 'http'))
-  return observations
+  return observations.map(item => ({ ...item, checkVersion: 3 as const, attention: { ...item.attention, version: 3 as const } }))
 }
 
 function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
@@ -273,6 +267,11 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
     ? `<html><head>${document.searchSnapshot.sections.metadata.html}</head><body>${document.searchSnapshot.sections.text.html}${document.searchSnapshot.sections.links.html}</body></html>` : null
   const context = contextBody ? cheerio.load(contextBody) : document.searchSnapshot ? null : $
   if (!$) return [unknown(evidence, 'no-structured-data', 'structured-data', 'markup', source)]
+  // Content matching enriches markup inspection. Missing or bounded page prose
+  // cannot discard independently collected syntax and entity observations.
+  const visible = context?.root().clone()
+  visible?.find('script, style, template, noscript, [hidden], [aria-hidden="true"]').remove()
+  const visibleText = visible?.text()
   for (const [snapshot, snapshotSource] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     if (!html(snapshot, 'structured')) { observations.push(unknown(evidence, 'search-structured-invalid', 'structured-data', 'markup', snapshotSource)); continue }
     const inspection = await inspectStructuredData(snapshot)
@@ -310,9 +309,7 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
           invalidProperties: feature?.invalid ?? [], limitation: C.structuredLimit,
           guidance: feature ? `${C.rules.feature.guidance} Reference: ${feature.source}` : C.rules.feature.guidance }))
         const name = entityValues(entity, profile === 'Article' ? 'headline' : 'name', inspection.entities)[0]
-        const visible = context!.root().clone()
-        visible.find('script, style, template, noscript, [hidden], [aria-hidden="true"]').remove()
-        if (context && snapshotSource === source && typeof name === 'string' && name.length > 3 && !visible.text().includes(name)) {
+        if (visibleText !== undefined && snapshotSource === source && typeof name === 'string' && name.length > 3 && !visibleText.includes(name)) {
           observations.push(observation(evidence, { id: `content:${entity.id}:${type}`, checkId: 'search-structured-content', rule: 'feature', responsibility: 'structured-data',
             source, document, disposition: 'observed', reason: 'content_correspondence_unconfirmed',
             observed: `The declared name was not located in the extracted page text: ${name.slice(0, 200)}`, attention: 'recommendation',
@@ -320,16 +317,19 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
         }
       }
     }
+    if (!context && snapshotSource === source && inspection.entities.some(entity => entity.types.length))
+      observations.push(observation(evidence, { checkId: 'search-structured-content', rule: 'feature', responsibility: 'structured-data', source, document,
+        disposition: 'unknown', reason: 'content_context_incomplete',
+        observed: 'Structured markup was inspected, but complete page context was unavailable for content matching.',
+        limitation: 'Independent markup syntax and feature-property results remain available. Text correspondence was not established.' }))
     if (context && inspection.complete && snapshotSource === source) {
       const suggested: string[] = []
-      const visible = context!.root().clone()
-      visible.find('script, style, template, noscript, [hidden], [aria-hidden="true"]').remove()
       if (new URL(evidence.pageUrl).pathname === '/' && context('title').text().trim()) suggested.push('WebSite')
       if (context('article').length && context('article h1, article h2').text().trim()) suggested.push('Article')
       if (context('[aria-label*="breadcrumb" i]').find('a').length >= 2) suggested.push('BreadcrumbList')
       if (context('meta[property="og:type"][content="product"]').length && /add to cart|buy now/i.test(context('button').text())) suggested.push('Product')
       const brand = context('meta[property="og:site_name"]').attr('content')?.trim()
-      if (new URL(evidence.pageUrl).pathname === '/' && brand && visible.find('footer').text().includes(brand)) suggested.push('Organization')
+      if (new URL(evidence.pageUrl).pathname === '/' && brand && visible?.find('footer').text().includes(brand)) suggested.push('Organization')
       if (context('meta[name="apple-itunes-app"]').length || context('a[href*="apps.apple.com/"], a[href*="play.google.com/store/apps/"]').length) suggested.push('SoftwareApplication')
       const types = new Set(inspection.entities.flatMap(entity => entity.types.map(type => ['BlogPosting', 'NewsArticle', 'TechArticle'].includes(type) ? 'Article' : type)))
       const missing = suggested.filter(type => !types.has(type))

@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { NextRequest, NextResponse } from 'next/server'
 import { watchScheduleSchema, type WatchInterval } from '@/lib/sites/watch-schedule'
 import { auth } from '@/lib/auth'
@@ -27,6 +26,8 @@ const STATUS_BY_CODE: Record<string, number> = {
   INTERVAL_NOT_ALLOWED: 403,
   STUDIO_REQUIRED: 403,
   WATCH_UNAVAILABLE: 503,
+  WATCH_CHANGED: 409,
+  SCHEDULE_REQUIRED: 409,
 }
 
 function statusForCode(code?: string): number {
@@ -71,17 +72,9 @@ export async function POST(
       if (!action.success) return apiError('Choose a valid monitoring action.', 400)
       const projectId = access.decision.site.projectId
       if (access.decision.role !== 'owner' || !projectId) return apiError('Claim this Site first.', 403)
-      const project = await prisma.project.findFirst({ where: { id: projectId, userId: session.user.id, deletedAt: null }, select: { watchInterval: true, watchEveryMinutes: true } })
-      const interval = fromStoredWatchInterval(project?.watchInterval ?? null)
-      if (!project || !interval) return apiError('Choose a monitoring schedule first.', 409)
-      if (action.data.action === 'pause') {
-        await prisma.project.updateMany({ where: { id: projectId, userId: session.user.id, deletedAt: null },
-          data: { watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'Paused. This Site is not on a check schedule.' } })
-      } else {
-        const result = await executeSiteCommand({ type: 'SET_WATCH', siteId: access.decision.site.siteId, userId: session.user.id,
-          interval, ...(interval === 'custom' && project.watchEveryMinutes ? { everyMinutes: project.watchEveryMinutes } : {}) })
-        if (isWatchRejection(result)) return apiError(result.error, statusForCode(result.code), { code: result.code })
-      }
+      const result = await executeSiteCommand({ type: 'SET_WATCH', siteId: access.decision.site.siteId,
+        userId: session.user.id, action: action.data.action })
+      if (isWatchRejection(result)) return apiError(result.error, statusForCode(result.code), { code: result.code })
       return NextResponse.json({ ok: true })
     }
     const body = schema.safeParse(raw)

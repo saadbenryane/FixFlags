@@ -2,8 +2,9 @@ import { PageSpeedResult } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
 import { runLabVitalsChecks, runResourceChecks } from './performance'
 import { TAP_TARGET_VERIFICATION_RULE } from '../pagespeed-tap-targets'
+import { scopePerformanceFlags } from '../performance-measurement'
 
-export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFlag[] {
+export function runMobileChecks(mobile: PageSpeedResult | null, pageUrl?: string): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
 
   if (!mobile) return findings
@@ -61,7 +62,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
     })
   }
 
-  findings.push(...runLabVitalsChecks(mobile), ...runResourceChecks(mobile))
+  findings.push(...runLabVitalsChecks(mobile), ...runResourceChecks(mobile, pageUrl))
 
-  return findings
+  return scopePerformanceFlags(mobile, pageUrl, findings)
 }

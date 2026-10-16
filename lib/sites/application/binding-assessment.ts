@@ -1,3 +1,5 @@
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+
 export type BindingDispositionName = 'SUCCEEDED' | 'FAILED' | 'BLOCKED'
 
 export type RequiredBinding = {
@@ -95,6 +97,7 @@ export function assessRequiredBindings(
 export function summaryFor(reason: string, state: BindingVerdict['state']): string {
   if (reason === 'binding_changed') return 'The check setup changed. Verify the current setup for comparable evidence.'
   if (state === 'CLEAR') return 'FixFlags completed every required check for this Outcome.'
+  if (reason === 'access_restricted') return SITE_ACTION_COPY.execution.availabilityAccess.summary
   if (reason === 'protected_or_irreversible') {
     return 'This flow is protected, so FixFlags did not submit it.'
   }

@@ -1,17 +1,16 @@
 import type { Project, User } from '@prisma/client'
-import { allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 
 export type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watchInterval' | 'watchNextRunAt'> & {
-  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus' | 'lifecycleStatus'>
+  user: Pick<User, 'id' | 'lifecycleStatus'>
 }
 
-/** Execution and read projections need the same current account authority. */
+/** Basic reachability is included separately on every plan. Analysis cadence,
+ * allowances and grants cannot revoke an active Site's uptime monitoring. */
 export const uptimeProjectInclude = {
-  user: { select: { id: true, role: true, plan: true, subscriptionStatus: true, lifecycleStatus: true } },
+  user: { select: { id: true, email: true, lifecycleStatus: true } },
 } as const
 
 export function uptimeEligible(project: MonitoringProject) {
-  const interval = fromStoredWatchInterval(project.watchInterval)
-  return project.user.lifecycleStatus === 'ACTIVE' && !project.deletedAt && Boolean(project.watchNextRunAt) && interval !== null && allowedWatchIntervals(project.user).includes(interval)
+  return project.user.lifecycleStatus === 'ACTIVE' && !project.deletedAt && fromStoredWatchInterval(project.watchInterval) !== null
 }

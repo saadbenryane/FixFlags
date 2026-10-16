@@ -38,17 +38,21 @@ export async function probeFormValidation(page: Page, options: {
     }
     const allForms = [...document.querySelectorAll('main form, [role="main"] form, form:not(header form):not(nav form)')]
     const forms = allForms.slice(0, 40)
+    document.querySelectorAll('[data-fixflags-submit-probe]').forEach(element => element.removeAttribute('data-fixflags-submit-probe'))
+    // Image submitters are associated with a form but excluded from form.elements.
+    const imageSubmitters = [...document.querySelectorAll<HTMLInputElement>('input[type="image"]')]
     const candidates = []
     for (const [index, element] of forms.entries()) {
       const form = element as HTMLFormElement
       if (form.closest('header, nav, [role="navigation"], [role="search"]')) continue
       if (form.closest('[hidden], [inert]')) continue
-      const controls = [...form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), textarea, select')]
+      const owned = [...form.elements, ...imageSubmitters.filter(input => input.form === form)]
+      const controls = owned.filter(element => element.matches('input:not([type="hidden"]):not([type="submit"]):not([type="image"]):not([type="button"]):not([type="search"]), textarea, select'))
       const fields = controls.slice(0, 100).filter(visible) as Array<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
       const incomplete = controls.length > 100 || form.action.length > 2048 || form.id.length > 200 || (form.getAttribute('name')?.length ?? 0) > 200 || fields.some(field => field.name.length > 200 || field.id.length > 200)
       if (!incomplete && !fields.some(field => field.required || field.getAttribute('aria-required') === 'true')) continue
-      const submit = [...form.querySelectorAll('button, input[type="submit"]')].find(element =>
-        visible(element) && ((element as HTMLButtonElement).type === 'submit' || !element.getAttribute('type')))
+      const submit = owned.find(element => visible(element) && (element instanceof HTMLButtonElement && element.type === 'submit' ||
+        element instanceof HTMLInputElement && ['submit', 'image'].includes(element.type)))
       const label = (form.getAttribute('aria-label') || form.querySelector('legend')?.textContent?.trim() || submit?.textContent?.trim() || 'Conversion form').slice(0, 160)
       const escape = (value: string) => typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(value) : value.replace(/[^a-zA-Z0-9_-]/g, character => '\\' + character)
       const segments: string[] = []
@@ -59,7 +63,8 @@ export async function probeFormValidation(page: Page, options: {
         if (element.tagName === 'BODY') break
       }
       form.setAttribute('data-fixflags-form-probe', String(index))
-      candidates.push({ selector: `form[data-fixflags-form-probe="${index}"]`, evidenceSelector: segments.join(' > '), label, hasSubmit: Boolean(submit), incomplete,
+      submit?.setAttribute('data-fixflags-submit-probe', String(index))
+      candidates.push({ selector: `form[data-fixflags-form-probe="${index}"]`, submitSelector: `[data-fixflags-submit-probe="${index}"]`, evidenceSelector: segments.join(' > '), label, hasSubmit: Boolean(submit), incomplete,
         prefilled: fields.some(field => (field.required || field.getAttribute('aria-required') === 'true') &&
           (field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type) ? field.checked : field.value.trim().length > 0)),
         signature: JSON.stringify({ form: (form.getAttribute('name') || form.id || String(index)).slice(0, 200), action: form.action.slice(0, 2048),
@@ -70,11 +75,13 @@ export async function probeFormValidation(page: Page, options: {
   const pageUrl = page.url()
   const captureScope = auditPageObservation(page)?.scope
   const scoped = candidates.candidates.map(candidate => ({ ...candidate,
-    context: 'form:' + createHash('sha256').update(JSON.stringify([pageUrl, candidate.signature, ...(captureScope ? [captureObservationKey(captureScope)] : [])])).digest('hex') }))
+    context: 'form:' + createHash('sha256').update(JSON.stringify(['native-form-owner-v2', pageUrl, candidate.signature, ...(captureScope ? [captureObservationKey(captureScope)] : [])])).digest('hex') }))
   const phase = options.overlayPhase ?? 'form_validation'
   const originalSubmit = options.overlayRecorder?.expectedSelector('form', phase)
   const originalFormSelector = originalSubmit ? await page.evaluate(selector => {
-    const form = document.querySelector(selector)?.closest('form'), index = form?.getAttribute('data-fixflags-form-probe')
+    const control = document.querySelector(selector)
+    const form = control instanceof HTMLButtonElement || control instanceof HTMLInputElement ? control.form : control?.closest('form')
+    const index = form?.getAttribute('data-fixflags-form-probe')
     return index === null || index === undefined ? null : `form[data-fixflags-form-probe="${index}"]`
   }, originalSubmit) : undefined
   const formMeta = originalSubmit ? scoped.find(candidate => candidate.selector === originalFormSelector)
@@ -85,8 +92,7 @@ export async function probeFormValidation(page: Page, options: {
     return expected ? { formValidation: 'skipped', evidence: { version: 1, pageUrl, ...expected,
       disposition: 'unknown', reason: candidates.incomplete ? 'observation_incomplete' : 'form_unavailable', feedbackMs: null } } : { formValidation: 'skipped' }
   }
-  const { selector, context } = formMeta
-  const submitSelector = `${selector} button[type="submit"], ${selector} input[type="submit"], ${selector} button:not([type])`
+  const { selector, submitSelector, context } = formMeta
   const overlayRecorder = options.overlayRecorder ?? createOverlayInteractionRecorder(page, { deadline: options.deadline,
     restricted: () => options.unavailableDependencies === true || options.safetyRefused?.() === true })
   let formInspection: OverlayInspection | undefined
@@ -120,26 +126,28 @@ export async function probeFormValidation(page: Page, options: {
   const refused = () => requestRefused || options.safetyRefused?.() === true
   let timing: JSHandle<{ setChecker(checker: () => boolean): void; read(): number | null; elapsed(): number | null; dispose(): void }> | undefined
   try {
-    if (options.isolated) timing = await page.evaluateHandle(sel => {
-      const form = document.querySelector(sel)!
+    if (options.isolated) timing = await page.evaluateHandle(({ selector, submitSelector }) => {
+      const form = document.querySelector(selector)!, submit = document.querySelector(submitSelector)!
       let clickedAt: number | null = null, feedbackAt: number | null = null, checker: (() => boolean) | undefined, frame = 0
       const inspect = () => {
         if (clickedAt !== null && feedbackAt === null && performance.now() - clickedAt <= 2000 && checker?.()) feedbackAt = performance.now()
       }
       const tick = () => { inspect(); if (clickedAt !== null && feedbackAt === null && performance.now() - clickedAt <= 2000) frame = requestAnimationFrame(tick) }
       const clicked = (event: Event) => { if (event.isTrusted && clickedAt === null) { clickedAt = event.timeStamp; frame = requestAnimationFrame(tick) } }
-      form.addEventListener('click', clicked, true)
+      submit.addEventListener('click', clicked, true)
       const observer = new MutationObserver(inspect)
       observer.observe(form, { subtree: true, attributes: true, childList: true, characterData: true })
       return { setChecker(value: () => boolean) { checker = value }, read() { inspect(); return clickedAt !== null && feedbackAt !== null ? feedbackAt - clickedAt : null },
         elapsed() { return clickedAt === null ? null : performance.now() - clickedAt },
-        dispose() { observer.disconnect(); cancelAnimationFrame(frame); form.removeEventListener('click', clicked, true) } }
-    }, selector)
-    const readState = (native: boolean) => page.evaluate(({ sel, native, tracker }) => {
+        dispose() { observer.disconnect(); cancelAnimationFrame(frame); submit.removeEventListener('click', clicked, true) } }
+    }, { selector, submitSelector })
+    const readState = (native: boolean) => page.evaluate(({ sel, submitSelector, native, tracker }) => {
       ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
       const form = document.querySelector(sel) as HTMLFormElement | null
       if (!form) return null
-      const nativeInvalid = native && !form.noValidate && !form.checkValidity()
+      const submit = document.querySelector(submitSelector)
+      const nativeInvalid = native && !form.noValidate && (submit instanceof HTMLButtonElement || submit instanceof HTMLInputElement) &&
+        submit.form === form && !submit.formNoValidate && !form.checkValidity()
       const isFeedback = (node: Element) => {
           const rect = node.getBoundingClientRect(), style = getComputedStyle(node)
           for (let parent = node.parentElement; parent; parent = parent.parentElement)
@@ -147,16 +155,19 @@ export async function probeFormValidation(page: Page, options: {
           return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' &&
             style.opacity !== '0' && !node.closest('[hidden]') && (node.getAttribute('aria-invalid') === 'true' || Boolean(node.textContent?.trim()))
       }
-      const references = () => [...form.querySelectorAll('[aria-errormessage]')].flatMap(field =>
+      const fields = [...form.elements]
+      const references = () => fields.filter(field => field.hasAttribute('aria-errormessage')).flatMap(field =>
         (field.getAttribute('aria-errormessage') ?? '').split(/\s+/).map(id => document.getElementById(id)).filter((node): node is HTMLElement => Boolean(node)))
-      const localFeedback = () => [...form.querySelectorAll('[aria-invalid="true"], [role="alert"], [aria-live="assertive"], [class*="error" i], [id*="error" i], .invalid-feedback'), ...references()].some(isFeedback)
+      const localFeedback = () => [...form.querySelectorAll('[aria-invalid="true"], [role="alert"], [aria-live="assertive"], [class*="error" i], [id*="error" i], .invalid-feedback'),
+        ...fields.filter(field => field.getAttribute('aria-invalid') === 'true'), ...references()].some(node =>
+        (!(node instanceof HTMLInputElement || node instanceof HTMLSelectElement || node instanceof HTMLTextAreaElement) || node.form === form) && isFeedback(node))
       const feedback = localFeedback()
       const referenced = references()
       tracker?.setChecker(localFeedback)
       const outside = [...document.querySelectorAll('[role="alert"], [aria-live="assertive"]')].filter(node => !form.contains(node) && !referenced.includes(node as HTMLElement) && isFeedback(node)).length
       return { native: nativeInvalid, feedback, outside, text: form.textContent?.slice(0, 64_000), textTruncated: (form.textContent?.length ?? 0) > 64_000,
         suppressed: form.hasAttribute('data-fixflags-submit-suppressed') }
-    }, { sel: selector, native, tracker: timing ?? null })
+    }, { sel: selector, submitSelector, native, tracker: timing ?? null })
 
     const baseline = await readState(true)
     if (!baseline) return finish('unknown', 'form_changed')
@@ -171,6 +182,8 @@ export async function probeFormValidation(page: Page, options: {
     }, { sel: selector, token: options.localValidationToken })
     const submit = await page.$(submitSelector)
     if (!submit) return finish('unknown', 'form_changed')
+    if (!await submit.evaluate((element, selector) => (element instanceof HTMLButtonElement || element instanceof HTMLInputElement) &&
+      element.form === document.querySelector(selector), selector)) return finish('unknown', 'form_changed')
     const startedAt = Date.now()
     await submit.click({ timeout: Math.max(1, observationBudget) })
     overlayRecorder.activated(inspected)

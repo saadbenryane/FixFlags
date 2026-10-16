@@ -23,8 +23,13 @@ describe('Uptime before the first recorded observation', () => {
     expect(await loadUptimeHistory(project.id)).toMatchObject({ enabled: true, state: 'unknown', probes: [] })
   })
   it('distinguishes a paused schedule from missing evidence', async () => {
-    db.project.mockResolvedValue({ ...project, watchNextRunAt: null })
+    db.project.mockResolvedValue({ ...project, watchInterval: null, watchNextRunAt: null })
     expect(await loadUptimeHistory(project.id)).toMatchObject({ enabled: false, state: 'paused' })
+  })
+  it('keeps included uptime enabled when the analysis cadence has no next run', async () => {
+    db.project.mockResolvedValue({ ...project, watchInterval: 'DAILY', watchNextRunAt: null,
+      user: { ...project.user, role: 'user', plan: 'FREE' } })
+    expect(await loadUptimeHistory(project.id)).toMatchObject({ enabled: true, state: 'unknown', nextCheckAt: null })
   })
   it('shows suspended accounts as paused before a monitor exists', async () => {
     db.project.mockResolvedValue({ ...project, user: { ...project.user, lifecycleStatus: 'SUSPENDED' } })

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { entityValues, inspectFeature, inspectStructuredData, schemaDocumentLoader } from '../structured-data'
 import { evaluateSearch, searchFindings } from '../registry'
 import { document, evidence, markup } from './fixtures'
+import { assessSearchRecovery } from '../recovery'
 
 afterEach(() => vi.unstubAllGlobals())
 describe('public structured-data inspection', () => {
@@ -90,5 +91,23 @@ describe('public structured-data inspection', () => {
   it('does not use the JSON-LD script itself as visible-content proof', async () => {
     const result = await evaluateSearch(evidence(markup({ '@context': 'https://schema.org', '@type': 'Organization', name: 'Unshown Organization', url: 'https://example.com/' }, '<h1>Different page</h1>')))
     expect(result.some(item => item.reason === 'content_correspondence_unconfirmed')).toBe(true)
+  })
+  it('verifies the original invalid property without borrowing another entity or requiring unrelated feature support', async () => {
+    const input = (price: string, id = '#product') => evidence(markup({ '@context': 'https://schema.org', '@type': 'Product',
+      '@id': id, name: 'Example', offers: { '@type': 'Offer', price } }, '<h1>Example</h1>'))
+    const source = await evaluateSearch(input('free'), undefined, ['structured-data'])
+    const flag = searchFindings(source).find(flag => flag.checkId === 'search-structured-feature')!
+    expect(flag.attentionPolicy?.markupTargets).toHaveLength(2)
+    for (const [price, id, verdict] of [['free', '#product', 'failed'], ['12', '#other', 'unknown'], ['12', '#product', 'passed']]) {
+      const observations = await evaluateSearch(input(price, id), undefined, ['structured-data'])
+      expect(observations.some(item => item.entityTypes?.includes('Offer') && item.disposition === 'not_applicable')).toBe(true)
+      expect(assessSearchRecovery({ kind: 'search-checks', version: 1, auditId: 'after', pageUrl: input(price).pageUrl,
+        collectedAt: new Date().toISOString(), complete: true, observations }, flag.checkId, flag.attentionPolicy).verdict).toBe(verdict)
+    }
+    const observations = await evaluateSearch(input('12'), undefined, ['structured-data'])
+    const legacy = { ...flag.attentionPolicy!, markupTargets: undefined,
+      pageScopes: flag.attentionPolicy!.pageScopes?.map(scope => ({ ...scope, markupTargets: undefined })) }
+    expect(assessSearchRecovery({ kind: 'search-checks', version: 1, auditId: 'after', pageUrl: input('12').pageUrl,
+      collectedAt: new Date().toISOString(), complete: true, observations }, flag.checkId, legacy).verdict).toBe('unknown')
   })
 })

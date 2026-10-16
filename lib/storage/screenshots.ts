@@ -5,6 +5,7 @@ import {
   isR2Configured,
   getScreenshotKey,
   getScreenshotBytes,
+  type StorageRequestOptions,
 } from './r2'
 import { deleteAuditScreenshots as deleteFromR2 } from './r2'
 import {
@@ -18,7 +19,7 @@ const LOCAL_SCREENSHOTS_DIR = path.join(process.cwd(), '.data', 'screenshots')
 export function getLocalScreenshotPath(
   auditId: string,
   device: string,
-  pageKey?: string | null
+  pageKey?: string | null,
 ): string {
   const filename = pageKey ? `${pageKey}-${device}.png` : `${device}.png`
   return path.join(LOCAL_SCREENSHOTS_DIR, auditId, filename)
@@ -37,7 +38,8 @@ export async function uploadScreenshot(
   auditId: string,
   device: 'desktop' | 'mobile',
   imageBuffer: Buffer,
-  pageKey?: string | null
+  pageKey?: string | null,
+  options: StorageRequestOptions = {},
 ): Promise<string> {
   if (process.env.NODE_ENV === 'production') {
     if (!isR2Configured()) {
@@ -46,7 +48,7 @@ export async function uploadScreenshot(
       )
     }
     try {
-      await uploadToR2(auditId, device, imageBuffer, pageKey)
+      await uploadToR2(auditId, device, imageBuffer, pageKey, options)
     } catch (err) {
       throw new StorageUploadError(
         `Failed to upload ${device} screenshot to R2: ${err instanceof Error ? err.message : String(err)}`,
@@ -70,10 +72,11 @@ export async function uploadScreenshot(
 export async function readScreenshot(
   auditId: string,
   device: string,
-  pageKey?: string | null
+  pageKey?: string | null,
+  options: StorageRequestOptions = {},
 ): Promise<Buffer | null> {
   if (process.env.NODE_ENV === 'production') {
-    return getScreenshotBytes(getScreenshotKey(auditId, device, pageKey))
+    return getScreenshotBytes(getScreenshotKey(auditId, device, pageKey), options)
   }
   try {
     return await fs.readFile(getLocalScreenshotPath(auditId, device, pageKey))
@@ -82,10 +85,10 @@ export async function readScreenshot(
   }
 }
 
-export async function deleteAuditScreenshotAssets(auditIds: string[]): Promise<void> {
+export async function deleteAuditScreenshotAssets(auditIds: string[], options: StorageRequestOptions = {}): Promise<void> {
   if (auditIds.length === 0) return
   if (process.env.NODE_ENV === 'production') {
-    await deleteFromR2(auditIds)
+    await deleteFromR2(auditIds, options)
     return
   }
   await Promise.all(

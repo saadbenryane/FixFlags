@@ -1,20 +1,25 @@
 import { trackEvent } from '@/lib/analytics/events'
 import { prisma } from '@/lib/db'
-import { deleteIntegrityPrefix } from '@/lib/integrity/storage'
+import { deleteIntegrityPathArtifacts } from '@/lib/integrity/storage'
 import { logger } from '@/lib/logger'
 
 export async function uninstallShop(shopDomain: string): Promise<void> {
   const shop = await prisma.shopifyShop.findFirst({
     where: { shopDomain },
-    include: { paths: { include: { runs: { select: { id: true, videoUrl: true, gifUrl: true } } } } },
+    include: { paths: { select: { id: true } } },
   })
   if (!shop) return
-  for (const path of shop.paths) {
-    for (const run of path.runs) {
-      const runId = run.videoUrl?.match(/integrity-assets\/([^/]+)/)?.[1]
-      if (runId) await deleteIntegrityPrefix(runId)
-    }
-  }
+  await prisma.shopifyShop.update({
+    where: { id: shop.id },
+    data: {
+      uninstalledAt: new Date(),
+      authorizationVersion: { increment: 1 },
+      encryptedAccessToken: '',
+      encryptedRefreshToken: null,
+      tokenExpiresAt: null,
+      refreshExpiresAt: null,
+    },
+  })
   await prisma.revenuePath.updateMany({
     where: { shopId: shop.id },
     data: {
@@ -24,16 +29,7 @@ export async function uninstallShop(shopDomain: string): Promise<void> {
       pulseLeaseUntil: null,
     },
   })
-  await prisma.shopifyShop.update({
-    where: { id: shop.id },
-    data: {
-      uninstalledAt: new Date(),
-      encryptedAccessToken: '',
-      encryptedRefreshToken: null,
-      tokenExpiresAt: null,
-      refreshExpiresAt: null,
-    },
-  })
+  await deleteIntegrityPathArtifacts(shop.paths.map(path => path.id))
   trackEvent('shopify_uninstalled', { shop: shopDomain })
   logger.info('Shopify shop uninstalled', { shopDomain })
 }

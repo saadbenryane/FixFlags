@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
+import { analysisTaskWhere } from '@/lib/audit/progressive/contracts'
 
 /** Both Site readers need the same compact observations, rather than full task artifacts. */
 export const siteCoverageExecutionSelect = {
@@ -12,7 +13,7 @@ export const siteCoverageExecutionSelect = {
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 export const categoryCoverageExecutionSelect = {
-  where: { OR: [...siteCoverageExecutionSelect.where.OR, { targetKey: { startsWith: 'task:' } }] },
+  where: { OR: [...siteCoverageExecutionSelect.where.OR, analysisTaskWhere] },
   select: { ...siteCoverageExecutionSelect.select, workState: true },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 

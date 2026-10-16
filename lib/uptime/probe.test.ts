@@ -20,6 +20,7 @@ describe('public HTTP reachability', () => {
   it('uses bounded public fetching without running browser verification', async () => {
     const fetch = vi.fn(async () => document)
     expect(await probeUptime(document.finalUrl, fetch)).toMatchObject({ result: 'ONLINE', statusCode: 200, finalUrl: document.finalUrl })
-    expect(fetch).toHaveBeenCalledWith(document.finalUrl, { timeoutMs: 8000, maxBytes: 64_000, maxRedirects: 5, publicOnly: true })
+    expect(fetch).toHaveBeenCalledWith(document.finalUrl, { timeoutMs: 8000, maxBytes: 64_000, maxRedirects: 5, publicOnly: true,
+      onRequestStart: expect.any(Function) })
   })
 })

@@ -30,9 +30,10 @@ run('Cross-page preview worker verification', () => {
     const title = unique ? 'Useful information ' + request.url : 'Shared preview title'
     const description = mode === 'without-descriptions' ? '' : unique ? 'Specific preview description for ' + request.url : 'The same long description used on every page.'
     response.setHeader('content-type', 'text/html')
-    response.end('<!doctype html><html lang="en"><head><title>Page ' + request.url + '</title><meta name="description" content="Useful service information.">' +
+    response.end('<!doctype html><html lang="en"><head><title>' + (mode === 'failed' ? 'Shared document title' : 'Page ' + request.url) + '</title><meta name="description" content="Useful service information.">' +
       '<meta property="og:title" content="' + title + '"><meta property="og:description" content="' + description + '"></head>' +
-      '<body><main><h1>Useful service information</h1><p>Read about the service and its prices.</p><a href="/pricing">Prices</a><a href="/features">Features</a></main></body></html>')
+      '<body><main><h1>Useful service information</h1><p>Read about the service and its prices.</p><a href="/pricing">Prices</a><a href="/features">Features</a>' +
+      (request.url === '/features' ? '<div hidden>' + 'x'.repeat(1_100_000) + '</div>' : '') + '</main></body></html>')
   })
   beforeAll(async () => {
     const database = new URL(process.env.DATABASE_URL!)
@@ -84,6 +85,11 @@ run('Cross-page preview worker verification', () => {
   }
   it('keeps original page comparisons through partial evidence, repair and same-incident recurrence', async () => {
     const before = await category('preview-failure')
+    const largeBrowser = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: before, workKind: 'browser', pageUrl: urls[2] } })
+    expect(largeBrowser.workResult).toMatchObject({ data: { metadata: null, preview: { version: 1, titleComplete: true, descriptionComplete: true },
+      snapshot: { desktopHtml: null, desktopHtmlTruncated: true } } })
+    const duplicate = await prisma.flag.findFirstOrThrow({ where: { auditId: before, checkId: 'search-duplicate-title' } })
+    expect(duplicate.evidence).toContain('3 checked pages')
     const flags = await prisma.flag.findMany({ where: { auditId: before, checkId: { in: ['corridor-og-title-drift', 'corridor-og-description-drift'] } }, orderBy: { checkId: 'asc' } })
     expect(flags).toHaveLength(2)
     const flag = flags.find(item => item.checkId === 'corridor-og-title-drift')!

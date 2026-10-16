@@ -20,6 +20,19 @@ function receipt(observed: ReturnType<typeof observe>) {
 }
 
 describe('declared section-link evidence', () => {
+  it('does not accept inactive fallback or template targets as repaired sections', () => {
+    const checked = observe('<a href="#contact">Contact</a><a href="#legacy">Legacy</a>' +
+      '<noscript><section id="contact"></section></noscript><template><a name="legacy"></a></template>')
+    expect(checked.flags[0]).toMatchObject({ problem: '2 on-page links point to missing sections' })
+    expect(checked.assertions.every(assertion => assertion.complete && !assertion.passed)).toBe(true)
+  })
+
+  it('does not invent live section links from inactive fallback and template content', () => {
+    const checked = observe('<noscript><a href="#missing">Fallback</a></noscript><template><a href="#absent">Template</a></template>')
+    expect(checked.flags).toEqual([])
+    expect(checked.assertions).toEqual([])
+  })
+
   it('matches exact IDs, percent-encoded targets and named anchors', () => {
     const checked = observe('<a href="#Contact">Contact</a><section id="Contact"></section>' +
       '<a href="#caf%C3%A9%20menu">Menu</a><section id="café menu"></section>' +
@@ -71,6 +84,20 @@ describe('declared section-link evidence', () => {
     expect(observe('<a href="#contact">Contact</a>', { access: 'credentialed:unknown' }).complete).toBe(false)
   })
 
+  it('retains historical observations without certifying a detector correction as repair', () => {
+    const metadata = parseMetadataFromHtml('<a href="#contact">Contact</a>', pageUrl)
+    delete metadata.documentLinks
+    const historical = sectionLinkObservations(pageUrl, metadata, scope)
+    expect(historical.assertions[0]).toMatchObject({ complete: false, passed: false })
+    expect(historical.flags[0].verificationRule).toBeUndefined()
+    const before = observe('<a href="#contact">Contact</a>')
+    const oldFlag = { ...before.flags[0], evidenceTargets: before.flags[0].evidenceTargets!.map(target => ({
+      ...target, context: target.context!.replace('section:v2:', 'section:'),
+    })) }
+    const repaired = observe('<a href="#contact">Contact</a><section id="contact"></section>')
+    expect(scopedAssertionForTarget({ receipt: receipt(repaired), checkId: 'broken-page-anchors', flag: oldFlag })).toBeUndefined()
+  })
+
   it('bounds large documents without discarding observed failures or certifying uninspected targets', () => {
     const checked = observe(Array.from({ length: 301 }, (_, index) => `<a href="#section-${index}">Section ${index}</a>`).join(''))
     expect(checked.assertions).toHaveLength(300)
@@ -95,9 +122,26 @@ describe('declared section-link evidence', () => {
     expect(scopedAssertionForTarget({ receipt: receipt(before), checkId: 'broken-page-anchors', flag: before.flags[0] })?.assertion.passed).toBe(false)
   })
 
+  it('retains an original broken section when another original link disappears', () => {
+    const before = observe('<a href="#contact">Contact</a><a href="#pricing">Pricing</a>')
+    const compare = (body: string) => scopedAssertionForTarget({ receipt: receipt(observe(body)), checkId: 'broken-page-anchors', flag: before.flags[0] })
+    expect(compare('<a href="#contact">Contact</a>')?.assertion).toMatchObject({ passed: false, complete: true,
+      observed: expect.stringContaining('1 of 2 original comparisons remain unavailable.') })
+    expect(compare('<a href="#contact">Contact</a><section id="contact"></section>')).toBeUndefined()
+    expect(compare('<a href="#unrelated">Unrelated</a>')).toBeUndefined()
+  })
+
   it('migrates both SEO detection and CTA placeholder checks to exact native targets', async () => {
     const metadata = parseMetadataFromHtml('<a href="#Contact">Contact sales</a><a name="Contact"></a>', pageUrl)
     expect((await runSeoChecks(pageUrl, metadata)).some(flag => flag.checkId === 'broken-page-anchors')).toBe(false)
     expect(runSlopChecks(metadata).some(flag => flag.checkId === 'cta-dead-link')).toBe(false)
+  })
+
+  it('uses the active document for CTA placeholder declarations and targets too', () => {
+    const inactive = parseMetadataFromHtml('<noscript><a href="#missing">Get started</a></noscript>' +
+      '<template><a href="#">Sign up</a></template>', pageUrl)
+    expect(runSlopChecks(inactive).some(flag => flag.checkId === 'cta-dead-link')).toBe(false)
+    const missing = parseMetadataFromHtml('<a href="#signup">Sign up</a><noscript><section id="signup"></section></noscript>', pageUrl)
+    expect(runSlopChecks(missing).some(flag => flag.checkId === 'cta-dead-link')).toBe(true)
   })
 })

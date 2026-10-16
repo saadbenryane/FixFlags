@@ -3,15 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteIntegrationsControls } from '@/components/sites/SiteIntegrationsControls'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
 import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
+import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
+import type { SiteHomeView } from '@/lib/sites/application/queries'
 
 const DAILY_ON_FREE =
   'Daily watching is available on Pro and Studio. Free Sites watch weekly.'
 
 const push = vi.fn()
-const refresh = vi.fn()
+const refresh = vi.fn(async () => undefined)
+const routeRefresh = vi.fn()
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, refresh, replace: vi.fn() }),
+  useRouter: () => ({ push, refresh: routeRefresh, replace: vi.fn() }),
 }))
 
 function respond(body: unknown, status = 200) {
@@ -22,30 +25,20 @@ function respond(body: unknown, status = 200) {
   }
 }
 
-function renderControls(googleConfigured = false, integrations = false) {
-  const Controls = integrations ? SiteIntegrationsControls : SiteSettingsControls
-  return render(
-    <Controls
-      siteId="site-1"
-      watch={{
-        state: 'off',
-        interval: null,
-        nextRunAt: null,
-        lastRunAt: null,
-        lastError: null,
-        covered: false,
-        label: 'Not monitored',
-        alert: { state: 'none', status: null, attempts: 0, at: null },
-      }}
-      initial={{
-        notificationLevel: 'FLAGS',
-        notifyOnRecovery: true,
-        shopify: { configured: true, state: 'not_connected', domain: null },
-        searchConsole: { provider: 'SEARCH_CONSOLE', configured: googleConfigured, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
-        analytics: { provider: 'ANALYTICS', configured: googleConfigured, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
-      }}
-    />
-  )
+function renderControls(googleConfigured = false, integrations = false, refreshed?: Partial<SiteHomeView['settings']>) {
+  const fixture = siteViewFixture()
+  let initial = { ...fixture.settings, shopify: { ...fixture.settings.shopify, configured: true },
+    searchConsole: { ...fixture.settings.searchConsole, configured: googleConfigured },
+    analytics: { ...fixture.settings.analytics, configured: googleConfigured } }
+  const onRefresh = async () => {
+    await refresh()
+    if (refreshed) { initial = { ...initial, ...refreshed }; view.rerender(element()) }
+  }
+  const element = () => integrations
+    ? <SiteIntegrationsControls siteId="site-1" initial={initial} onRefresh={onRefresh} />
+    : <SiteSettingsControls siteId="site-1" watch={fixture.watch} initial={initial} onRefresh={onRefresh} />
+  const view = render(element())
+  return view
 }
 
 async function choose(label: 'Weekly' | 'Daily') {
@@ -76,11 +69,11 @@ describe('SiteSettingsControls Watch', () => {
   it('persists notification preferences through the signed-in settings API', async () => {
     const fetchMock = vi.fn(async () => respond({ ok: true, notificationLevel: 'OFF', notifyOnRecovery: true }))
     vi.stubGlobal('fetch', fetchMock)
-    renderControls()
+    renderControls(false, false, { notificationLevel: 'OFF', notifyOnRecovery: true })
     fireEvent.change(screen.getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Email me' })).toHaveValue('OFF'))
     expect(fetchMock).toHaveBeenCalledWith('/api/sites/site-1/settings', expect.objectContaining({
-      method: 'PATCH', body: JSON.stringify({ notificationLevel: 'OFF', notifyOnRecovery: true }),
+      method: 'PATCH', body: JSON.stringify({ notificationLevel: 'OFF' }),
     }))
     expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).toBeDisabled()
     expect(refresh).toHaveBeenCalled()

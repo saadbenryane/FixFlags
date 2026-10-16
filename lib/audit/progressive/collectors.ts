@@ -8,17 +8,40 @@ import { resolveAuditScanAccess } from '../scan-access-store'
 import { fetchPageSpeedData, toStoredPageSpeedResult } from '../pagespeed'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
+import type { MetadataFailure } from './snapshots'
 import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import type { TaskHandler } from './registry'
 import { parseMetadataIsolated } from './cpu'
 import { getAuditBrowser } from '../screenshot'
-import { createAuditPage } from '../browser/page-session'
+import { createAuditPage, PAGE_TIMEOUT_MS } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { collectKeyboardEvidence, keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { motionObservationSchema, motionRequested } from '../checks/motion-evidence'
 import { collectReducedMotionWindow } from '../browser/motion-observation'
 import { captureAccessKey, captureProfileKey } from '../browser/observation-scope'
+import type { MetadataMode } from '../metadata'
+import { observeCapturedTechnologies } from '../technology-capture'
+import { persistTechnologyObservations } from '../technology-profile'
+import { capturedPagePreview } from '../checks/page-preview'
+import { capturedHeadMetadata } from '../checks/head-metadata'
+
+/** Parsing enriches an already collected document. A bounded local retry can
+ * replace a crashed parser without repeating its HTTP or browser observation. */
+async function collectMetadata(html: string, url: string, deadline: number, mode: MetadataMode = 'crawler') {
+  for (let attempts = 1; ; attempts++) {
+    try { return { metadata: await parseMetadataIsolated(html, url, deadline, mode) } }
+    catch (error) {
+      if (attempts < 2 && error instanceof TaskFailure && error.crash && error.retryable && Date.now() < deadline) continue
+      const metadataFailure: MetadataFailure = { code: error instanceof TaskFailure ? error.code : 'METADATA_PARSE_FAILED', attempts }
+      return { metadata: null, metadataFailure }
+    }
+  }
+}
+
+function requestedConsoleWindow(spec: ReturnType<typeof readExecutionSpec>, pageUrl: string) {
+  return spec?.consoleObservationScopes?.find(scope => new URL(scope.pageUrl).href === pageUrl)?.minimumMs ?? spec?.consoleObservationMs ?? 0
+}
 
 export const collectionHandlers: TaskHandler[] = [
   { kind: 'motion', replay: 'read_only', timeoutMs: 45_000,
@@ -70,11 +93,12 @@ export const collectionHandlers: TaskHandler[] = [
       const document = await collectDocument(context.input.pageUrl, context.deadline)
       if (document.status === null) throw new TaskFailure('HTTP_COLLECTION_UNAVAILABLE', true)
       const metadata = document.status >= 200 && document.status < 300 && document.complete && document.body && /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')
-        ? await parseMetadataIsolated(document.body, document.finalUrl, context.deadline) : null
-      return serializeArtifact('http', httpArtifactSchema.parse({ document, metadata }))
+        ? await collectMetadata(document.body, document.finalUrl, context.deadline) : { metadata: null }
+      return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata }))
     },
   },
-  { kind: 'browser', replay: 'read_only', timeoutMs: 90_000,
+  { kind: 'browser', replay: 'read_only', timeoutMs: (audit, input) => Math.max(90_000,
+    2 * (PAGE_TIMEOUT_MS + requestedConsoleWindow(readExecutionSpec(audit.executionSpec), input.pageUrl) + 5_000)),
     validateResult: artifact => { browserArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const pageUrl = new URL(context.input.pageUrl).toString()
@@ -85,14 +109,16 @@ export const collectionHandlers: TaskHandler[] = [
       }))
       const access = await resolveAuditScanAccess(context.audit.id)
       const spec = readExecutionSpec(context.audit.executionSpec)
-      const consoleObservationMs = spec?.consoleObservationScopes?.find(scope => new URL(scope.pageUrl).href === pageUrl)?.minimumMs ?? spec?.consoleObservationMs
+      const consoleObservationMs = requestedConsoleWindow(spec, pageUrl)
       // DOM and semantics have no private-storage dependency. Media has its own
       // checkpoint and recovery window, so an upload outage cannot erase this input.
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `p${context.input.position}-g${context.task.workGeneration}`, { runFlow: false, scanAccess: access, deadline: context.deadline,
           collectOriginalDocument: false, captureMedia: false, consoleObservationMs, captureMotion: motionRequested(spec), deferMotionComparison: true })
       const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= RENDERED_HTML_LIMIT
-      const metadata = htmlWithinBudget ? mergeRuntimeHeadMetadata(await parseMetadataIsolated(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline), captured.runtimeHeadMetadata) : null
+      const parsed = htmlWithinBudget ? await collectMetadata(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline, 'rendered') : { metadata: null }
+      const head = capturedHeadMetadata(captured)
+      const metadata = parsed.metadata ? mergeRuntimeHeadMetadata(parsed.metadata, head?.metadata, captured.renderedCopy) : null
       if (!metadata && !captured.desktopHtml && !captured.desktopHtmlTruncated && !captured.captureFailures?.some(failure => ['HTTP_ERROR', 'HTTP_FORBIDDEN', 'HTTP_RATE_LIMIT', 'NON_HTML_RESPONSE'].includes(failure.code)))
         throw new TaskFailure('BROWSER_COLLECTION_INTERRUPTED', true, undefined, true)
       await executionTransaction(async tx => {
@@ -109,10 +135,18 @@ export const collectionHandlers: TaskHandler[] = [
       // Secret-bearing original/rendered HTML never enters the durable public collector snapshot.
       const snapshot = { ...captured }
       delete snapshot.flowResult
-      return serializeArtifact('browser', browserArtifactSchema.parse({ pageId: page.id, metadata,
+      if (metadata) delete snapshot.renderedCopy // Parsed metadata owns this observation when available.
+      return serializeArtifact('browser', browserArtifactSchema.parse({ pageId: page.id, ...parsed, metadata,
+        preview: capturedPagePreview(captured),
+        ...(context.input.primary ? { technologies: observeCapturedTechnologies(captured) } : {}),
         snapshot: { ...snapshot, desktopBase64: null, mobileBase64: null,
           ...(!htmlWithinBudget ? { desktopHtml: null } : {}),
           ...(access ? { desktopHtml: null, originalDocument: undefined } : {}) } }))
+    },
+    async commit(context, artifact, tx) {
+      const { technologies } = browserArtifactSchema.parse(artifact.data)
+      if (context.input.primary && technologies) await persistTechnologyObservations(context.audit.id,
+        technologies.detections, technologies.status, technologies.detectorVersion, undefined, { tx, scope: technologies.scope })
     },
   },
   { kind: 'captures', replay: 'read_only', timeoutMs: 90_000,

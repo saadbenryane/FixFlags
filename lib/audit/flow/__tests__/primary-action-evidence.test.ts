@@ -17,6 +17,32 @@ function receipt(observation: PrimaryActionEvidence) {
     execution: { auditId: 'after', taskId: 'flow', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-12T12:00:00.000Z' } })
 }
 describe('primary action repair evidence', () => {
+  it('keeps positive action failures independently of page-purpose availability and withholds unclassified absence', () => {
+    const absent = evidence({ candidateCount: 0, controlContext: null, clicked: false })
+    expect(primaryActionAssertions(absent, null)[0]).toMatchObject({ complete: false, passed: false })
+    expect(runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: absent }, null)).toEqual([])
+    const failed = evidence({ response: 'error', httpStatus: 404 })
+    expect(runFlowChecks({ status: 'error_response', steps: [], finalUrl: pageUrl + 'start', httpStatus: 404, actionEvidence: failed }, null))
+      .toEqual([expect.objectContaining({ checkId: 'flow-cta-404' })])
+    expect(primaryActionAssertions(failed, null).every(assertion => assertion.complete)).toBe(true)
+  })
+
+  it('versions rendered presence corrections and withholds absence when inventory is incomplete', () => {
+    const old = evidence({ candidateCount: 0, controlContext: null, clicked: false })
+    const historical = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: old })[0]
+    const current = evidence({ presenceVersion: 2, candidateComplete: true })
+    expect(scopedAssertionForTarget({ receipt: receipt(current), checkId: historical.checkId, flag: historical })).toBeUndefined()
+    const freshMissing = { ...old, presenceVersion: 2 as const, candidateComplete: true }
+    const flag = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: freshMissing })[0]
+    expect(scopedAssertionForTarget({ receipt: receipt(current), checkId: flag.checkId, flag })?.assertion.passed).toBe(true)
+    expect(runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: { ...freshMissing, candidateComplete: false } })).toEqual([])
+  })
+  it('keeps native-input presence corrections separate from previous rendered presence evidence', () => {
+    const older = evidence({ candidateCount: 0, controlContext: null, presenceVersion: 2 })
+    const flag = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: older })[0]
+    expect(scopedAssertionForTarget({ receipt: receipt(evidence({ presenceVersion: 3 })), checkId: flag.checkId, flag })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: receipt(evidence({ presenceVersion: 2 })), checkId: flag.checkId, flag })?.assertion.passed).toBe(true)
+  })
   it('recognizes declared button roles as primary actions without treating arbitrary text as a control', () => {
     const elements = extractCtaElementsFromHtml('<div role="button">Get started</div><div>Get started</div>')
     expect(scoreCtaCandidates(pageUrl, elements)).toHaveLength(1)

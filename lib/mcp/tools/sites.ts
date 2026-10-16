@@ -265,7 +265,7 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
         return mcpStructuredResult({
           status: 'RECORDED',
           ...attempt,
-          next: admitted ? { tool: MCP_TOOLS.getRun.name, arguments: { siteId: site.siteId, runId: admitted.id } }
+          next: admitted ? { tool: MCP_TOOLS.getRun.name, arguments: { runId: admitted.id } }
             : attempt.outcome ? { tool: MCP_TOOLS.getFlag.name, arguments: { siteId: site.siteId, flagId } } : {
             tool: MCP_TOOLS.verifyFlag.name,
             arguments: { siteId: site.siteId, flagId, attemptId: attempt.attemptId, idempotencyKey: `flag-verify:${attempt.attemptId}` },

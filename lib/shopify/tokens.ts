@@ -12,6 +12,13 @@ export class ShopifyReauthorizeError extends Error {
   }
 }
 
+export class ShopifyConnectionChangedError extends Error {
+  constructor() {
+    super('Shopify connection changed during token refresh. Retry with the current connection.')
+    this.name = 'ShopifyConnectionChangedError'
+  }
+}
+
 export interface ShopifyTokenSet {
   accessToken: string
   refreshToken: string | null
@@ -153,6 +160,7 @@ export async function persistTokenSet(
       uninstalledAt: null,
     },
     update: {
+      authorizationVersion: { increment: 1 },
       name: extras.name,
       email: extras.email,
       primaryUrl: extras.primaryUrl,
@@ -184,14 +192,21 @@ export async function getValidOfflineToken(shopDomain: string): Promise<string> 
       refresh_token: decryptSecret(shop.encryptedRefreshToken),
     })
   )
+  const grant = { id: shop.id, uninstalledAt: null, authorizationVersion: shop.authorizationVersion, encryptedAccessToken: shop.encryptedAccessToken,
+    encryptedRefreshToken: shop.encryptedRefreshToken }
+  if (status !== 200 && !await prisma.shopifyShop.findFirst({ where: grant, select: { id: true } })) {
+    throw new ShopifyConnectionChangedError()
+  }
   if (status === 401) throw new ShopifyReauthorizeError()
   if (status === 429 || status >= 500) {
     throw new Error(`Shopify token refresh transient failure (${status})`)
   }
   if (status !== 200) throw new Error(`Shopify token refresh rejected (${status})`)
   const next = parseTokenPayload(payload)
-  await prisma.shopifyShop.update({
-    where: { id: shop.id },
+  // The provider response belongs to the exact credentials that admitted it.
+  // A revoked, reinstalled or concurrently refreshed connection owns new state.
+  const saved = await prisma.shopifyShop.updateMany({
+    where: grant,
     data: {
       encryptedAccessToken: encryptSecret(next.accessToken),
       encryptedRefreshToken: next.refreshToken ? encryptSecret(next.refreshToken) : shop.encryptedRefreshToken,
@@ -199,5 +214,6 @@ export async function getValidOfflineToken(shopDomain: string): Promise<string> 
       refreshExpiresAt: next.refreshExpiresAt ?? shop.refreshExpiresAt,
     },
   })
+  if (saved.count !== 1) throw new ShopifyConnectionChangedError()
   return next.accessToken
 }

@@ -20,9 +20,10 @@ const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe 
 run('Observed Site page monitoring continuity', () => {
   const userId = 'pages-' + randomUUID(), projectId = 'pages-' + randomUUID()
   const origin = 'https://example.com', peer = origin + '/pricing'
-  let linked = true, repaired = false
+  let linked = true, repaired = false, oversizedEntry = false
   let performance: 'failed' | 'partial' | 'missing-peer' | 'healthy' | null = null
   let representativePath = '/'
+  let pageResponse: 'failed' | 'challenge' | 'healthy' = 'healthy'
   let worker: ReturnType<typeof startWorker> | undefined
   const requests: string[] = []
   const server = createServer((request, response) => {
@@ -35,7 +36,9 @@ run('Observed Site page monitoring continuity', () => {
         response.statusCode = 403; response.end(JSON.stringify({ error: 'Fixture measurement unavailable' })); return
       }
       const slow = performance === 'failed' || performance === 'partial' && !representative
-      response.end(JSON.stringify({ lighthouseResult: { categories: { performance: { score: 0.95 } }, audits: {
+      response.end(JSON.stringify({ lighthouseResult: { requestedUrl: input.searchParams.get('url'), finalUrl: input.searchParams.get('url'), lighthouseVersion: '13.0.0',
+        configSettings: { formFactor: input.searchParams.get('strategy') ?? 'desktop', throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } },
+        categories: { performance: { score: 0.95 } }, audits: {
         'largest-contentful-paint': { numericValue: slow ? 3500 : 1000 }, 'cumulative-layout-shift': { numericValue: 0 },
         'first-contentful-paint': { numericValue: 500 }, 'total-blocking-time': { numericValue: 0 },
         'render-blocking-insight': { score: 1, metricSavings: { FCP: 0 } },
@@ -51,10 +54,17 @@ run('Observed Site page monitoring continuity', () => {
     }
     const pricing = request.url === '/pricing'
     response.setHeader('content-type', 'text/html')
+    if (pricing && pageResponse !== 'healthy') {
+      response.statusCode = pageResponse === 'failed' ? 503 : 200
+      response.end(pageResponse === 'failed' ? '<html><body>Service temporarily unavailable</body></html>'
+        : '<html><head><title>Just a moment...</title></head><body>Checking your browser before continuing</body></html>')
+      return
+    }
     response.end('<!doctype html><html lang="en"><head>' + (!pricing || repaired ? '<title>' + (pricing ? 'Our prices' : 'Useful service') + '</title>' : '') +
       '<meta name="description" content="Useful information about our service."><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
       '<body><main><h1>' + (pricing ? 'Our prices' : 'Useful service information') + '</h1><p>Read how our service helps you manage your work.</p>' +
-      (!pricing && linked ? '<a href="/pricing">See prices</a>' : '') + '</main></body></html>')
+      (!pricing && linked ? '<a href="/pricing">See prices</a>' : '') +
+      (!pricing && oversizedEntry ? '<div hidden>' + 'x'.repeat(1_100_000) + '</div>' : '') + '</main></body></html>')
   })
   beforeAll(async () => {
     const database = new URL(process.env.DATABASE_URL!)
@@ -110,11 +120,17 @@ run('Observed Site page monitoring continuity', () => {
     }
   }
   it('discovers a page, keeps checking after its link disappears, independently recovers and preserves recurrence', async () => {
+    oversizedEntry = true
     const first = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'pages-initial' })
     await complete(first.auditId!)
     expect((await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! }, select: { failedModules: true } })).failedModules)
       .not.toEqual(expect.arrayContaining(['corridor']))
     expect(await prisma.auditPage.findFirst({ where: { auditId: first.auditId!, url: peer } })).not.toBeNull()
+    expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: first.auditId!, workKind: 'browser', pageUrl: origin + '/' } }))
+      .toMatchObject({ workResult: { data: { metadata: null, snapshot: { desktopHtmlTruncated: true,
+        renderedSearchSnapshot: { sections: { links: { complete: true } } } } } } })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: first.auditId! } }))
+      .toMatchObject({ evidenceCoverage: { metadata: false }, reportCompleteness: 'PARTIAL' })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: first.auditId!, checkId: 'title-missing', pageUrl: peer } })
     linked = false; repaired = true; requests.length = 0
     const tick = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)
@@ -140,6 +156,7 @@ run('Observed Site page monitoring continuity', () => {
     expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
     const source = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
     expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: source.improvementId })
+    oversizedEntry = false
   }, 360_000)
 
   it('verifies every original Performance page despite a successful representative-page proof and recognizes recurrence', async () => {
@@ -183,5 +200,49 @@ run('Observed Site page monitoring continuity', () => {
       const recurringAudit = await prisma.audit.findUniqueOrThrow({ where: { id: recurring.auditId! }, select: { parentId: true } })
       expect((await getFlagDiffSummary(recurringAudit.parentId, recurring.auditId!)).regressed.map(item => item.id)).toContain(recurrence.id)
     } finally { performance = null; representativePath = '/'; linked = true; repaired = false }
+  }, 360_000)
+
+  it('flags a retained page response independently of the entry URL and verifies uncertainty, repair and recurrence', async () => {
+    linked = false; repaired = true; pageResponse = 'failed'
+    try {
+      // The page was previously discovered, but is no longer linked. Its raw
+      // response must remain actionable even when rendered inspection cannot run.
+      await prisma.audit.create({ data: { projectId, userId, url: origin + '/', status: 'COMPLETED', completedAt: new Date(),
+        executionSpec: { version: 1, scope: 'SITE', targetUrl: origin + '/', environment: 'production',
+          checks: {}, outcomes: [], verificationTarget: null },
+        pages: { create: [origin + '/', peer].map((url, position) => ({ url, normalizedUrl: url, position,
+          role: position ? 'linked' : 'primary', status: 'COMPLETED' })) } } })
+      const source = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'SITE', idempotencyKey: 'page-response-source' })
+      await complete(source.auditId!)
+      const original = await prisma.audit.findUniqueOrThrow({ where: { id: source.auditId! } })
+      expect(readExecutionSpec(original.executionSpec)).toMatchObject({ monitoringPages: [origin + '/', peer] })
+      const response = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: source.auditId!, pageUrl: peer, workKind: 'http' } })
+      expect(response.workResult).toMatchObject({ data: { document: { url: peer, status: 503, complete: true } } })
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.auditId!, checkId: 'page-http-error', pageUrl: peer } })
+      expect(flag.evidence).toContain('503')
+      expect(await prisma.flag.count({ where: { auditId: source.auditId!, checkId: 'page-http-error', pageUrl: origin + '/' } })).toBe(0)
+      const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
+      for (const phase of ['failed', 'challenge', 'healthy'] as const) {
+        pageResponse = phase
+        const fix = await recordSiteFlagFix({ siteId: projectId, userId, flagId: flag.id,
+          idempotencyKey: 'page-response-fix:' + phase, changeSummary: 'Restore the recorded page response' })
+        const verification = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: projectId, userId, flagId: flag.id,
+          attemptId: fix.attemptId, idempotencyKey: 'page-response-verify:' + phase })
+        if (!verification.ok || !('verificationAuditId' in verification)) throw new Error('Page response verification was not admitted')
+        await complete(verification.verificationAuditId!)
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({
+          outcome: phase === 'failed' ? 'UNCHANGED' : phase === 'challenge' ? 'INCONCLUSIVE' : 'IMPROVED', comparable: phase !== 'challenge' })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'healthy' ? 'FIXED' : 'OPEN' })
+        const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: verification.verificationAuditId!, targetKey: { startsWith: 'task:' } } })
+        expect(tasks.map(task => task.workKind).sort()).toEqual(['check', 'finalize', 'http'])
+      }
+      pageResponse = 'failed'
+      const tick = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)
+      const recurring = await requestScheduledSiteRun({ projectId, userId, interval: 'weekly', scheduledAt: tick, now: tick })
+      await complete(recurring.auditId!)
+      const recurrence = await prisma.flag.findFirstOrThrow({ where: { auditId: recurring.auditId!, checkId: flag.checkId, pageUrl: peer } })
+      expect(recurrence).toMatchObject({ status: 'REGRESSED', fingerprint: flag.fingerprint })
+      expect(await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: recurrence.id } })).toMatchObject({ improvementId: occurrence.improvementId })
+    } finally { pageResponse = 'healthy'; linked = true; repaired = false }
   }, 360_000)
 })

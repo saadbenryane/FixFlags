@@ -11,6 +11,17 @@ type StyleOverrides = Partial<{
   visibility: string
   display: string
   opacity: string
+  backgroundColor: string
+  backgroundImage: string
+  fontWeight: string
+  filter: string
+  backdropFilter: string
+  mixBlendMode: string
+  colorScheme: string
+  borderTopWidth: string
+  borderRightWidth: string
+  borderBottomWidth: string
+  borderLeftWidth: string
   animationName: string
   animationDuration: string
   animationIterationCount: string
@@ -44,6 +55,17 @@ const defaultStyle: StyleOverrides = {
   visibility: 'visible',
   display: 'block',
   opacity: '1',
+  backgroundColor: 'rgba(0, 0, 0, 0)',
+  backgroundImage: 'none',
+  fontWeight: '400',
+  filter: 'none',
+  backdropFilter: 'none',
+  mixBlendMode: 'normal',
+  colorScheme: 'normal',
+  borderTopWidth: '0px',
+  borderRightWidth: '0px',
+  borderBottomWidth: '0px',
+  borderLeftWidth: '0px',
   animationName: 'none',
   animationDuration: '0s',
   animationIterationCount: '1',
@@ -69,9 +91,7 @@ function fakePage(emulateMediaImpl?: (options: { reducedMotion: string }) => Pro
       getKeyframes: () => [{ opacity: '0' }, { opacity: '1' }],
     } }]
   }) })
-  const evaluate = vi.fn(async (fn: () => unknown) => {
-    return fn()
-  })
+  const evaluate = vi.fn(async (fn: (arg: unknown) => unknown, arg?: unknown) => fn(arg))
   return {
     evaluate,
     emulateMedia: vi.fn(async (opts: { reducedMotion: string }) => {
@@ -93,6 +113,9 @@ describe('measureMobileLayout', () => {
     document.body.innerHTML = ''
     styleOverrides.clear()
     stubComputedStyle()
+    Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: function (this: Range) {
+      return [this.startContainer.parentElement!.closest('a,button,[role="button"]')!.getBoundingClientRect()]
+    } })
     Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true })
     Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true })
   })
@@ -231,6 +254,9 @@ describe('measureMotionA11y', () => {
     document.body.innerHTML = ''
     styleOverrides.clear()
     stubComputedStyle()
+    Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: function (this: Range) {
+      return [this.startContainer.parentElement!.closest('a,button,[role="button"]')!.getBoundingClientRect()]
+    } })
   })
 
   afterEach(() => {

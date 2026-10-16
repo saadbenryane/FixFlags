@@ -6,10 +6,12 @@ import { applicableCategoryEvidence, loadCategoryEvidence, type CategoryEvidence
 import type { CategoryArea } from '../domain/execution-spec'
 import type { SiteCardArea } from '../card-areas'
 import { CHECK_MODULES, CHECK_ASSERTIONS } from '@/lib/audit/check-registry'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 export const CHECK_RESULT_PAGE_SIZE = 100
 const RECEIPT_BATCH_SIZE = 10
+const COUNT_RECEIPT_BATCH_SIZE = 100
+const COUNT_RECEIPT_BYTES = 1024 * 1024
 type ResultCursor = { version: 1 | 2 | 3 | 4; phase: 'current' | 'history'; receiptId: string | null; offset: number; snapshot?: string; evidence?: string }
 export type CheckResultFilter = { area?: SiteCardArea; pageUrl?: string }
 function encodeCursor(cursor: ResultCursor) { return Buffer.from(JSON.stringify(cursor)).toString('base64url') }
@@ -32,8 +34,40 @@ function decodeCursor(value?: string): ResultCursor {
   }
 }
 
-type ResultDatabase = Pick<Prisma.TransactionClient, 'auditVerifierExecution'>
+type ResultDatabase = Pick<Prisma.TransactionClient, 'auditVerifierExecution' | '$queryRaw'>
 type Receipt = Parameters<typeof projectCheckResults>[1][number] & { auditId: string }
+
+/** Count reads amortize round trips while bounding transferred detail. One
+ * oversized receipt must still be inspected on its own to preserve exact totals. */
+async function countReceiptBatch(database: ResultDatabase, site: SiteRecord, latestAuditId: string,
+  categoryIds: string[], filter: CheckResultFilter, phase: ResultCursor['phase'], after?: string) {
+  const modules = resultModules(filter)
+  if (modules?.length === 0) return []
+  const auditIds = phase === 'current' ? [latestAuditId, ...categoryIds] : categoryIds.length ? categoryIds : [latestAuditId]
+  const selection = phase === 'current' ? Prisma.sql`a.id IN (${Prisma.join(auditIds)})` : Prisma.sql`a.id NOT IN (${Prisma.join(auditIds)})`
+  return database.$queryRaw<Receipt[]>(Prisma.sql`
+    WITH candidates AS MATERIALIZED (
+      SELECT r.id, r."auditId", r."targetKey", r."pageUrl", r.source, r.status,
+        r.detail, r."updatedAt", r."createdAt", a."createdAt" AS "auditCreatedAt"
+      FROM "audit_verifier_executions" r JOIN audits a ON a.id = r."auditId"
+      WHERE ${site.projectId ? Prisma.sql`a."projectId" = ${site.projectId}` : Prisma.sql`a.id = ${site.primaryAuditId!}`}
+        AND ${selection}
+        AND ${modules ? Prisma.sql`r."targetKey" IN (${Prisma.join(modules)})` : Prisma.sql`r."targetKey" LIKE 'module:%'`}
+        ${filter.pageUrl ? Prisma.sql`AND r."pageUrl" = ${filter.pageUrl}` : Prisma.empty}
+        ${after ? Prisma.sql`AND (a."createdAt", r."createdAt", r.id) < (
+          SELECT cursor_audit."createdAt", cursor_row."createdAt", cursor_row.id
+          FROM "audit_verifier_executions" cursor_row JOIN audits cursor_audit ON cursor_audit.id = cursor_row."auditId"
+          WHERE cursor_row.id = ${after})` : Prisma.empty}
+      ORDER BY a."createdAt" DESC, r."createdAt" DESC, r.id DESC LIMIT ${COUNT_RECEIPT_BATCH_SIZE}
+    ), bounded AS (
+      SELECT *, ROW_NUMBER() OVER ordering AS position,
+        SUM(COALESCE(octet_length(detail::text), 0)) OVER ordering AS bytes
+      FROM candidates WINDOW ordering AS (ORDER BY "auditCreatedAt" DESC, "createdAt" DESC, id DESC)
+    )
+    SELECT id, "auditId", "targetKey", "pageUrl", source, status, detail, "updatedAt"
+    FROM bounded WHERE bytes <= ${COUNT_RECEIPT_BYTES} OR position = 1
+    ORDER BY "auditCreatedAt" DESC, "createdAt" DESC, id DESC`)
+}
 function scopedReceiptResults(receipt: Receipt, phase: ResultCursor['phase'], latestAuditId: string,
   categories: Map<CategoryArea, CategoryEvidenceAudit>, filter: CheckResultFilter) {
   return projectCheckResults(receipt.auditId, [receipt]).filter(result => {
@@ -52,23 +86,14 @@ function resultModules(filter: CheckResultFilter) {
 async function scopedResultTotal(database: ResultDatabase, site: SiteRecord, latestAuditId: string,
   categories: Map<CategoryArea, CategoryEvidenceAudit>, filter: CheckResultFilter, next: ResultCursor | null) {
   const categoriesIds = [...categories.values()].map(audit => audit.id)
-  const modules = resultModules(filter)
   const evidence = createHash('sha256')
   let total = 0, remaining = 0
   for (const phase of ['current', 'history'] as const) {
     let after: string | undefined
     let beyond = next?.phase === phase && next.receiptId === null || next?.phase === 'current' && phase === 'history'
     for (;;) {
-      const receipts = await database.auditVerifierExecution.findMany({
-        where: { audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId! },
-          targetKey: modules ? { in: modules } : { startsWith: 'module:' },
-          auditId: phase === 'current' ? { in: [latestAuditId, ...categoriesIds] }
-            : categoriesIds.length ? { notIn: categoriesIds } : { not: latestAuditId },
-          ...(filter.pageUrl ? { pageUrl: filter.pageUrl } : {}) },
-        orderBy: [{ audit: { createdAt: 'desc' } }, { createdAt: 'desc' }, { id: 'desc' }], take: RECEIPT_BATCH_SIZE,
-        ...(after ? { cursor: { id: after }, skip: 1 } : {}),
-        select: { id: true, auditId: true, targetKey: true, pageUrl: true, source: true, status: true, detail: true, updatedAt: true },
-      })
+      const receipts = await countReceiptBatch(database, site, latestAuditId, categoriesIds, filter, phase, after)
+      if (!receipts.length) break
       for (const receipt of receipts) {
         evidence.update(JSON.stringify([phase, receipt.id, receipt.auditId, receipt.targetKey, receipt.pageUrl,
           receipt.source, receipt.status, receipt.updatedAt.toISOString(), receipt.detail]))
@@ -78,7 +103,6 @@ async function scopedResultTotal(database: ResultDatabase, site: SiteRecord, lat
           beyond = true; remaining += Math.max(0, size - next.offset)
         } else if (beyond) remaining += size
       }
-      if (receipts.length < RECEIPT_BATCH_SIZE) break
       after = receipts.at(-1)!.id
     }
   }

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
+    $transaction: vi.fn(async callback => callback(prismaMock)),
+    $queryRaw: vi.fn(async () => []),
     technology: { upsert: vi.fn() },
     siteTechnology: {
       updateMany: vi.fn(),

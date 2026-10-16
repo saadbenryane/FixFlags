@@ -1,5 +1,5 @@
 import { SiteRunRefusal } from './run-refusal'
-import type { WatchInterval } from '@/lib/sites/watch-schedule'
+import type { MonitoringChange } from './monitoring-settings'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import {
   OutcomeFixtureRequiredError,
@@ -54,13 +54,7 @@ export type SiteCommand =
       idempotencyKey?: string
       source?: 'WEB' | 'MCP'
     }
-  | {
-      type: 'SET_WATCH'
-      siteId: string
-      userId: string
-      interval: WatchInterval | null
-      everyMinutes?: number
-    }
+  | ({ type: 'SET_WATCH'; siteId: string; userId: string } & MonitoringChange)
 
 export async function executeSiteCommand(command: SiteCommand) {
   switch (command.type) {
@@ -310,16 +304,19 @@ export async function executeSiteCommand(command: SiteCommand) {
         type: 'SET_WATCH',
         projectId: site.projectId,
         userId: command.userId,
-        interval: command.interval,
-        ...(command.everyMinutes !== undefined ? { everyMinutes: command.everyMinutes } : {}),
+        ...('action' in command ? { action: command.action } : { interval: command.interval,
+          ...(command.everyMinutes !== undefined ? { everyMinutes: command.everyMinutes } : {}) }),
       })
-      if (result.ok && command.interval) {
+      if (!result.ok || ('action' in command && command.action === 'pause')) return result
+      const interval = 'action' in command ? result.interval : command.interval
+      const everyMinutes = 'action' in command ? result.everyMinutes : command.everyMinutes
+      if (interval) {
         await recordSiteLifecycleEvent({
           name: 'watch_enabled',
-          idempotencyKey: `watch-enabled:${site.projectId}:${command.interval}:${command.everyMinutes ?? ''}`,
+          idempotencyKey: `watch-enabled:${site.projectId}:${interval}:${everyMinutes ?? ''}`,
           userId: command.userId,
           projectId: site.projectId,
-          properties: { interval: command.interval, everyMinutes: command.everyMinutes },
+          properties: { interval, everyMinutes },
         })
       }
       return result

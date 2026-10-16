@@ -17,6 +17,7 @@ import { createActionTimeline } from '@/lib/audit/action-timeline'
 import { logger } from '@/lib/logger'
 import {
   discoverJourneyLinks,
+  observeJourneyControls,
   pageHasClearHeadline,
   pageHasPrimaryCta,
   countVisibleFormFields,
@@ -25,6 +26,7 @@ import {
   pageHasSubstantiveContent,
   pageIsLoading,
 } from './discover'
+import type { JourneyLinkCandidate } from './discover'
 import type {
   JourneyFindingDraft,
   JourneyRunResult,
@@ -40,14 +42,20 @@ import type { JourneyPlan } from './planner-schema'
 import { observeJourneyPage } from './page-observation'
 import { scopedJourneyFinding, type JourneyObservation } from '../checks/journey-evidence'
 
-async function shot(page: Page, auditId: string, key: string): Promise<string | null> {
+async function shot(page: Page, auditId: string, key: string, deadline: number): Promise<string | null> {
   try {
     const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-    return await uploadScreenshot(auditId, 'desktop', buffer, key)
+    return await uploadScreenshot(auditId, 'desktop', buffer, key, { deadline })
   } catch (err) {
     logger.warn('Journey screenshot failed', { err: String(err), key })
     return null
   }
+}
+
+async function journeyClickSelector(page: Page, target: Pick<JourneyLinkCandidate, 'href' | 'text' | 'category' | 'selector'>) {
+  if (target.selector) return target.selector
+  return (await discoverJourneyLinks(page, new URL(page.url()).origin)).find(link => link.href === target.href &&
+    (link.text === target.text || target.category === 'planned'))?.selector ?? null
 }
 
 function finding(
@@ -164,7 +172,7 @@ export async function runJourneyTemplate(
 
   try {
     const a11y1 = await captureAccessibilityTree(page)
-    const before1 = await shot(page, options.auditId, `journey-${options.journeyType}-01-land`)
+    const before1 = await shot(page, options.auditId, `journey-${options.journeyType}-01-land`, deadline)
     timeline.push('navigate', 'Land on start URL', { url: page.url(), screenshot: before1 })
     steps.push({
       stepNumber: 1,
@@ -181,7 +189,8 @@ export async function runJourneyTemplate(
     })
 
     const hasHeadline = await pageHasClearHeadline(page)
-    const cta = await pageHasPrimaryCta(page)
+    const landingControls = await observeJourneyControls(page, origin)
+    const cta = landingControls.primaryAction
     if (!hasHeadline) {
       findings.push(
         finding({
@@ -219,10 +228,10 @@ export async function runJourneyTemplate(
       )
     }
 
-    const links = await discoverJourneyLinks(page, origin)
+    const links = landingControls.links
     const target = pickTargetForJourney(options.journeyType, links)
     const landing = await observeJourneyPage(page, options.journeyType, 'landing', route,
-      { headline: hasHeadline, primaryAction: cta.found, nextPath: Boolean(target), fieldCount: 0 }, refusedFromStep !== null, documentResponse)
+      { headline: hasHeadline, primaryAction: cta.found, nextPath: Boolean(target), fieldCount: 0 }, refusedFromStep !== null, documentResponse, landingControls)
     if (landing) pageObservations.push(landing)
     if (!target) {
       abandonedReason = 'No suitable same-origin navigation target'
@@ -247,28 +256,15 @@ export async function runJourneyTemplate(
       return await finalize('ABANDONED')
     }
     if (options.journeyPageOnly && !options.expectedJourneyRoute?.length) return await finalize('ABANDONED')
+    if (target.opensInNewTab && !options.expectedJourneyRoute?.length) return await finalize('ABANDONED')
 
     if (Date.now() > deadline || steps.length >= maxSteps) {
       return await finalize('ABANDONED')
     }
 
-    const beforeClick = await shot(page, options.auditId, `journey-${options.journeyType}-02-before`)
+    const beforeClick = await shot(page, options.auditId, `journey-${options.journeyType}-02-before`, deadline)
     let navigated = false
-    const clickSelector = options.expectedJourneyRoute?.[0]?.selector ?? await page.evaluate((href) => {
-      const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[]
-      for (let i = 0; i < anchors.length; i++) {
-        const a = anchors[i]
-        try {
-          if (new URL(a.href, location.href).href === href || a.getAttribute('href') === href) {
-            a.setAttribute('data-fixflags-journey-nav', String(i))
-            return `[data-fixflags-journey-nav="${i}"]`
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-      return null
-    }, target.href)
+    const clickSelector = options.expectedJourneyRoute?.[0]?.selector ?? await journeyClickSelector(page, target)
 
     if (clickSelector) {
       const phase = journeyPhase + '_nav'
@@ -326,6 +322,7 @@ export async function runJourneyTemplate(
     }
 
     if (!navigated) {
+      if (options.expectedJourneyRoute?.length || clickSelector) return await finalize('ABANDONED')
       try {
         await page.goto(target.href, { waitUntil: 'domcontentloaded', timeout: 15_000 })
         await settleAuditPage(page)
@@ -351,7 +348,7 @@ export async function runJourneyTemplate(
     }
 
     const a11y2 = await captureAccessibilityTree(page)
-    const afterClick = await shot(page, options.auditId, `journey-${options.journeyType}-02-after`)
+    const afterClick = await shot(page, options.auditId, `journey-${options.journeyType}-02-after`, deadline)
     steps.push({
       stepNumber: 2,
       actionType: 'click',
@@ -371,14 +368,15 @@ export async function runJourneyTemplate(
       reasoning: `Navigate to ${target.category} target for ${options.journeyType}`,
     })
 
+    const destinationControls = await observeJourneyControls(page, origin)
+    const destHeadline = await pageHasClearHeadline(page), destCta = destinationControls.primaryAction
+    const destinationFieldCount = await countVisibleFormFields(page)
     const destination = await observeJourneyPage(page, options.journeyType, 'destination', route,
-      { headline: await pageHasClearHeadline(page), primaryAction: (await pageHasPrimaryCta(page)).found,
-        nextPath: Boolean(pickTargetForJourney(options.journeyType, await discoverJourneyLinks(page, origin))), fieldCount: await countVisibleFormFields(page) }, refusedFromStep !== null, documentResponse)
+      { headline: destHeadline, primaryAction: destCta.found,
+        nextPath: Boolean(pickTargetForJourney(options.journeyType, destinationControls.links)), fieldCount: destinationFieldCount }, refusedFromStep !== null, documentResponse, destinationControls)
     if (destination) pageObservations.push(destination)
 
     if (options.journeyType === 'pricing-evaluation' || options.journeyType === 'first-visit') {
-      const destHeadline = await pageHasClearHeadline(page)
-      const destCta = await pageHasPrimaryCta(page)
       if (!destHeadline) {
         findings.push(
           finding({
@@ -419,7 +417,7 @@ export async function runJourneyTemplate(
     }
 
     if (options.journeyType === 'signup') {
-      const fields = await countVisibleFormFields(page)
+      const fields = destinationFieldCount
       if (fields === 0) {
         findings.push(
           finding({
@@ -508,7 +506,7 @@ export async function runJourneyTemplate(
           actionDetail: { field: 'email', value: probeEmail, submitted: false },
           url: page.url(),
           accessibilityTree: await captureAccessibilityTree(page),
-          screenshotAfterUrl: await shot(page, options.auditId, `journey-signup-03-fill`),
+          screenshotAfterUrl: await shot(page, options.auditId, `journey-signup-03-fill`, deadline),
           reasoning: 'Fill signup email without submitting (safety)',
         })
       }
@@ -584,7 +582,7 @@ export async function runJourneyTemplate(
         break
       }
 
-      let target: { href: string; text: string; category: string } | null = null
+      let target: Pick<JourneyLinkCandidate, 'href' | 'text' | 'category' | 'selector' | 'opensInNewTab'> | null = null
       let stepActionType = 'click'
       let stepActionDetail: Record<string, unknown> = {}
 
@@ -597,7 +595,7 @@ export async function runJourneyTemplate(
           const evalShot = await shot(
             page,
             options.auditId,
-            `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-evaluate`
+            `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-evaluate`, deadline
           )
           steps.push({
             stepNumber: currentStep + 1,
@@ -625,7 +623,7 @@ export async function runJourneyTemplate(
           } else {
             try {
               const resolved = new URL(planStep.target, origin).href
-              if (resolved.startsWith(origin)) {
+              if (new URL(resolved).origin === origin) {
                 target = { href: resolved, text: planStep.target, category: 'planned' }
               }
             } catch {
@@ -679,7 +677,7 @@ export async function runJourneyTemplate(
       const beforeShot = await shot(
         page,
         options.auditId,
-        `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-before`
+        `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-before`, deadline
       )
 
       await captureAccessibilityTree(page)
@@ -691,21 +689,7 @@ export async function runJourneyTemplate(
         ...(stepActionDetail as Record<string, unknown>),
       }
 
-      const clickSelector = await page.evaluate((href) => {
-        const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[]
-        for (let i = 0; i < anchors.length; i++) {
-          const a = anchors[i]
-          try {
-            if (new URL(a.href, location.href).href === href || a.getAttribute('href') === href) {
-              a.setAttribute('data-fixflags-journey-nav', String(i))
-              return `[data-fixflags-journey-nav="${i}"]`
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        return null
-      }, target.href)
+      const clickSelector = await journeyClickSelector(page, target)
 
       if (clickSelector) {
         const phase = journeyPhase + '_nav_' + (currentStep + 1)
@@ -796,7 +780,7 @@ export async function runJourneyTemplate(
       const afterShot = await shot(
         page,
         options.auditId,
-        `journey-funnel-${String(currentStep).padStart(2, '0')}-after`
+        `journey-funnel-${String(currentStep).padStart(2, '0')}-after`, deadline
       )
 
       const hasContent = await pageHasSubstantiveContent(page)

@@ -1,3 +1,4 @@
+import { renderedContentMetadata } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
@@ -8,6 +9,7 @@ export function runContentChecks(
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
   record?: CheckRecorder,
 ): DeterministicFlag[] {
+  meta = renderedContentMetadata(meta)
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
 

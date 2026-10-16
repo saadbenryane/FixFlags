@@ -1,3 +1,4 @@
+import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
 import { prisma } from '@/lib/db'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
@@ -15,6 +16,7 @@ export async function requestScheduledSiteRun(input: {
 }) {
   const project = await prisma.project.findFirst({ where: { id: input.projectId, userId: input.userId, deletedAt: null }, select: { url: true } })
   if (!project) throw new SiteRunRefusal('Site not found', 404)
+  if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId)
   const key = `watch:${input.projectId}:${input.scheduledAt.toISOString()}:${input.interval}:${input.everyMinutes ?? ''}`
   const existing = await prisma.runRequest.findUnique({ where: { projectId_source_idempotencyKey: {
     projectId: input.projectId, source: 'WATCH', idempotencyKey: key,

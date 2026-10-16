@@ -12,13 +12,13 @@ export const markupTargetSchema = z.object({
   properties: z.array(z.string().min(1)).min(1).max(30),
 }).strict()
 export const searchPageScopeSchema = z.object({
-  pageUrl: z.string().url(), reason: z.string().min(1), version: z.union([z.literal(1), z.literal(2)]).optional(),
+  pageUrl: z.string().url(), reason: z.string().min(1), version: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   sources: z.array(searchSourceSchema).min(1).max(7).optional(),
   entityTypes: z.array(z.string()).max(200).optional(), google: googleEvidenceSchema.optional(),
   markupTargets: z.array(markupTargetSchema).max(200).optional(),
 }).strict()
 export const searchAttentionSchema = z.object({
-  policy: z.literal('search'), version: z.union([z.literal(1), z.literal(2)]),
+  policy: z.literal('search'), version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   kind: z.enum(['flag', 'recommendation', 'observation']), reason: z.string().min(1),
   sources: z.array(searchSourceSchema).min(1).max(7).optional(),
   entityTypes: z.array(z.string()).max(200).optional(),
@@ -29,7 +29,7 @@ export const searchAttentionSchema = z.object({
 export type SearchAttention = z.infer<typeof searchAttentionSchema>
 
 export const searchObservationSchema = z.object({
-  id: z.string().min(1), checkId: z.string().min(1), checkVersion: z.union([z.literal(1), z.literal(2)]),
+  id: z.string().min(1), checkId: z.string().min(1), checkVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   responsibility: searchResponsibilitySchema, name: z.string().min(1),
   disposition: z.enum(['passed', 'failed', 'observed', 'unknown', 'not_applicable']),
   reason: z.string().min(1), expected: z.string(), observed: z.string(),

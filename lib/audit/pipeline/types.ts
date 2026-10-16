@@ -31,13 +31,15 @@ export interface ReviewStageResult<TArtifact = unknown> {
   }
 }
 
-/** Result of running the pipeline against a single reviewed page. */
-export interface PageRun {
+/** Collected page facts survive independently of whole-document metadata. */
+export interface PageEvidence {
+  navigation?: import('../checks/public-links').PageLinkInventory | null
+  preview?: import('../checks/page-preview').PagePreviewObservation
   renderedScope?: import('../browser/observation-scope').CaptureObservationScope
   searchReceipt?: import('../search/contracts').SearchReceipt
   pageId: string
   url: string
-  metadata: PageMetadata
+  metadata: PageMetadata | null
   desktop: PageSpeedResult | null
   mobile: PageSpeedResult | null
   desktopError?: string
@@ -59,6 +61,11 @@ export interface PageRun {
   industryGuess: string | null
   /** When false, skip triage. Every reviewed page should run triage. */
   runTriage?: boolean
+}
+
+/** Whole-page review requires parsed metadata. Summary consumers use PageEvidence. */
+export interface PageRun extends PageEvidence {
+  metadata: PageMetadata
 }
 
 /** Shared state threaded through one audit run. */

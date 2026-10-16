@@ -1,5 +1,6 @@
-import { type RenderedSearchSnapshot } from './rendered-snapshot'
+import { searchSectionBody, type RenderedSearchSnapshot } from './rendered-snapshot'
 import * as cheerio from 'cheerio'
+import { canonicalDeclarations } from './canonical-declarations'
 import { XMLParser, XMLValidator } from 'fast-xml-parser'
 import { safeFetchDocument } from '../url'
 import { isBotInterstitialDocument } from '../browser/page-capture'
@@ -105,17 +106,11 @@ export async function collectSearchEvidence(input: {
   const site = await input.cache.get(origin)!
   const canonicalUrls = new Set<string>()
   for (const document of input.collectCanonicalTargets === false ? [] : [original, rendered]) {
-    const section = document.searchSnapshot?.sections.canonical
-    const body = section ? section.complete ? section.html : null : document.complete ? document.body : null
+    const body = searchSectionBody(document, 'canonical')
     if (body == null) continue
     const $ = cheerio.load(body)
-    $('link[rel]').each((_, node) => {
-      if (!($(node).attr('rel') ?? '').toLowerCase().split(/\s+/).includes('canonical')) return
-      try { canonicalUrls.add(new URL($(node).attr('href') ?? '', document.finalUrl).toString()) } catch { /* Evaluator records invalid declarations. */ }
-    })
-    for (const match of (document.headers.link ?? '').matchAll(/<([^>]+)>\s*;[^,]*?rel\s*=\s*"?canonical"?/gi)) {
-      try { canonicalUrls.add(new URL(match[1], document.finalUrl).toString()) } catch { /* Evaluator records invalid declarations. */ }
-    }
+    for (const declaration of canonicalDeclarations($, document.finalUrl, document === original ? document.headers.link : undefined))
+      if (declaration.url) canonicalUrls.add(declaration.url)
   }
   const canonicalTargets: PublicDocument[] = []
   for (const url of [...canonicalUrls].slice(0, 3)) {

@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+import { newPathArtifactNamespace } from '@/lib/integrity/artifact-namespace'
 const mocks = vi.hoisted(() => ({ session: vi.fn(), run: vi.fn(), path: vi.fn(), shop: vi.fn(), read: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { runRequest: { findFirst: mocks.run }, revenuePath: { findFirst: mocks.path } } }))
 vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser: mocks.session }))
@@ -21,6 +22,18 @@ it('denies an anonymous viewer or a different owner without touching storage', a
   mocks.session.mockResolvedValue({ user: { id: 'stranger' } }); mocks.run.mockResolvedValue(null); expect((await get()).status).toBe(403)
   expect(mocks.read).not.toHaveBeenCalled()
 })
+it.each(['checkout-browser-v1', 'checkout-browser-v1-g3'])('authorizes the full admitted UUID with %s evidence', async binding => {
+  const id = 'a733f8db-9104-4c73-bb50-6d654bd5da6e'
+  mocks.run.mockImplementation(async ({ where }) => where.id === id && where.project.userId === 'owner' ? { id } : null)
+  const namespace = 'outcome-' + id + '-' + binding
+  expect((await get(namespace)).status).toBe(200)
+  expect(mocks.run).toHaveBeenCalledWith({ where: { id, project: { userId: 'owner' } }, select: { id: true } })
+  expect(mocks.read).toHaveBeenCalledWith(namespace, 'attempt-2-failure.png')
+  mocks.read.mockClear()
+  mocks.session.mockResolvedValue({ user: { id: 'stranger' } })
+  expect((await get(namespace)).status).toBe(403)
+  expect(mocks.read).not.toHaveBeenCalled()
+})
 it('permits only the exact verified active Shopify shop or linked Site owner', async () => {
   mocks.session.mockResolvedValue(null); mocks.path.mockResolvedValue({ shop: { shopDomain: 'one.myshopify.com', project: { userId: 'owner' } } })
   mocks.shop.mockReturnValue('two.myshopify.com'); expect((await get('path-path1-123')).status).toBe(403)
@@ -28,9 +41,9 @@ it('permits only the exact verified active Shopify shop or linked Site owner', a
   mocks.shop.mockReturnValue('one.myshopify.com'); expect((await get('path-path1-123')).status).toBe(200)
   expect(mocks.path).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'path1', shop: { uninstalledAt: null } } }))
 })
-it('permits a linked Site owner to read historical Shopify evidence', async () => {
+it.each(['path-path1-123', newPathArtifactNamespace('path1')])('permits a linked Site owner to read historical and uniquely named Shopify evidence: %s', async namespace => {
   mocks.path.mockResolvedValue({ shop: { shopDomain: 'one.myshopify.com', project: { userId: 'owner' } } })
-  expect((await get('path-path1-123')).status).toBe(200)
+  expect((await get(namespace)).status).toBe(200)
 })
 it('rejects unbound namespaces and traversal', async () => {
   expect((await get('unbound')).status).toBe(403)

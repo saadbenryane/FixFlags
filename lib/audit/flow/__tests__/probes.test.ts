@@ -7,7 +7,7 @@ vi.mock('@/lib/utils/sleep', () => ({
   sleep: vi.fn(async () => {}),
 }))
 
-import { probePricingNav, restoreDesktopCaptureViewport } from '../nav-probes'
+import { restoreDesktopCaptureViewport } from '../nav-probes'
 import { probeFormValidation } from '../form-probes'
 import { probeGhostSections } from '../scroll-probes'
 import { measurePostClickLoading } from '../post-click-probes'
@@ -87,79 +87,6 @@ function makePage(opts: PageMockOptions = {}): Page {
     $: vi.fn(async () => opts.queryResult ?? null),
   } as unknown as Page
 }
-
-describe('probePricingNav', () => {
-  beforeEach(() => {
-    document.body.innerHTML = ''
-    styleOverrides.clear()
-    stubComputedStyle()
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('skips when there is no pricing nav link', async () => {
-    document.body.innerHTML = '<header><nav><a href="/features">Features</a></nav></header>'
-    const result = await probePricingNav(makePage())
-    assert.equal(result.pricingNav, 'skipped')
-  })
-
-  it('reports a broken anchor when a hash pricing link has no target', async () => {
-    document.body.innerHTML = '<header><nav><a href="#pricing">Pricing</a></nav></header>'
-    const result = await probePricingNav(makePage())
-    assert.equal(result.pricingNav, 'broken')
-    assert.equal(result.pricingNavHref, '#pricing')
-  })
-
-  it('reports ok when a hash pricing link scrolls to an in-view target', async () => {
-    document.body.innerHTML =
-      '<header><nav><a href="#pricing">Pricing</a></nav></header><main><section id="pricing">Pricing section</section></main>'
-    const section = document.querySelector('#pricing') as Element
-    setRect(section, { top: 100, width: 390, height: 200 })
-    const result = await probePricingNav(makePage())
-    assert.equal(result.pricingNav, 'ok')
-  })
-
-  it('reports broken when the hash target stays out of view', async () => {
-    document.body.innerHTML =
-      '<header><nav><a href="#pricing">Pricing</a></nav></header><main><section id="pricing">Pricing section</section></main>'
-    const section = document.querySelector('#pricing') as Element
-    setRect(section, { top: 5000, width: 390, height: 200 })
-    const result = await probePricingNav(makePage())
-    assert.equal(result.pricingNav, 'broken')
-  })
-
-  it('detects an overlay when the hash target click fails', async () => {
-    document.body.innerHTML =
-      '<header><nav><a href="#pricing">Pricing</a></nav></header><main><section id="pricing">Pricing section</section></main>'
-    const section = document.querySelector('#pricing') as Element
-    setRect(section, { top: 100, width: 390, height: 200 })
-    const result = await probePricingNav(makePage({ clickError: new Error('intercepted') }))
-    assert.equal(result.pricingNav, 'broken')
-  })
-
-  it('reports ok when a real pricing page is reached', async () => {
-    document.body.innerHTML = '<header><nav><a href="/pricing">Pricing</a></nav></header>'
-    const result = await probePricingNav(
-      makePage({ url: 'https://example.com/pricing', navigationStatus: 200 })
-    )
-    assert.equal(result.pricingNav, 'ok')
-    assert.equal(result.pricingNavHref, '/pricing')
-  })
-
-  it('reports broken when navigation lands off the pricing page', async () => {
-    document.body.innerHTML = '<header><nav><a href="/pricing">Pricing</a></nav></header>'
-    const result = await probePricingNav(makePage({ url: 'https://example.com/home', navigationStatus: 200 }))
-    assert.equal(result.pricingNav, 'broken')
-  })
-
-  it('reports broken on HTTP error statuses', async () => {
-    document.body.innerHTML = '<header><nav><a href="/pricing">Pricing</a></nav></header>'
-    const result = await probePricingNav(makePage({ url: 'https://example.com/pricing', navigationStatus: 500 }))
-    assert.equal(result.pricingNav, 'broken')
-  })
-})
 
 describe('restoreDesktopCaptureViewport', () => {
   it('restores the desktop viewport size and scroll position', async () => {
@@ -319,7 +246,8 @@ describe('measurePostClickLoading', () => {
 
   it('records content timing when content appears immediately', async () => {
     const page = makePage({
-      evaluateQueue: [{ hasContent: true, stuck: false, label: null }],
+      evaluateQueue: [{ pageUrl: 'https://example.com/', content: true, contentComplete: true },
+        { loadingVisible: false, loadingLabel: null }],
     })
     const metrics = await measurePostClickLoading(page, 100)
     assert.equal(metrics.timeToFirstContentMs, 0)
@@ -330,17 +258,16 @@ describe('measurePostClickLoading', () => {
   it('flags a loading indicator that sticks for over two seconds', async () => {
     const page = makePage({
       evaluateQueue: [
-        { hasContent: false, stuck: true, label: 'Loading spinner' },
-        { hasContent: false, stuck: true, label: 'Loading spinner' },
-        { hasContent: false, stuck: true, label: 'Loading spinner' },
-        { hasContent: false, stuck: true, label: 'Loading spinner' },
+        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
+        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: true, loadingLabel: 'Loading spinner' },
       ],
     })
-    // Each Date.now() call advances 1200ms. With a 5000ms deadline the loop
-    // runs two iterations, and the stuck spinner exceeds the 2000ms threshold.
+    // Advance the sampled clock without depending on the real polling interval.
     let elapsed = 0
     nowSpy.mockImplementation(() => {
-      elapsed += 1200
+      elapsed += 500
       return elapsed
     })
     const metrics = await measurePostClickLoading(page, 5000)
@@ -348,11 +275,10 @@ describe('measurePostClickLoading', () => {
     assert.equal(metrics.stuckLoadingLabel, 'Loading spinner')
   })
 
-  it('returns deadline values when content never appears', async () => {
+  it('keeps content arrival unknown when the observation cannot complete before its deadline', async () => {
     const page = makePage({
       evaluateQueue: [
-        { hasContent: false, stuck: false, label: null },
-        { hasContent: false, stuck: false, label: null },
+        { pageUrl: 'https://example.com/', content: false, contentComplete: true }, { loadingVisible: false, loadingLabel: null },
       ],
     })
     let elapsed = 0
@@ -361,9 +287,9 @@ describe('measurePostClickLoading', () => {
       return elapsed
     })
     const metrics = await measurePostClickLoading(page, 3000)
-    assert.equal(metrics.timeToFirstContentMs, 3000)
-    assert.equal(metrics.blankScreenMs, 3000)
-    assert.equal(metrics.stuckLoading, false)
+    assert.equal(metrics.timeToFirstContentMs, null)
+    assert.equal(metrics.blankScreenMs, null)
+    assert.equal(metrics.stuckLoading, null)
   })
 })
 

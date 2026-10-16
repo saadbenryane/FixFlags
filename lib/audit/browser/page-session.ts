@@ -2,7 +2,9 @@ import type { Browser, ConsoleMessage, Page, Response } from 'playwright'
 import type { PublicDocument } from '../search/contracts'
 import { SEARCH_DOCUMENT_LIMIT, missingDocument } from '../search/collect'
 import { assertPublicAuditUrl } from '../url'
-import { browserCapacity } from '../progressive/capacity'
+import { publicBrowserProxyOptions } from './public-proxy'
+import { openAuditContext } from './context-lifetime'
+import { currentExecutionOwnership } from '../execution-ownership'
 import type { ScanAccessConfig } from '../scan-access'
 import { applyScanAccessCookies, scanAccessToFetchHeaders, scanAccessToPlaywrightContext } from '../scan-access'
 import { installRequestBoundary, type BrowserRequestPolicy } from './request-boundary'
@@ -28,10 +30,12 @@ import { bindAuditPageObservation } from './observation-scope'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
-const LOCALHOST_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
-
 export function isLocalhostAuditUrl(url: string): boolean {
-  return LOCALHOST_PATTERN.test(url)
+  try {
+    const parsed = new URL(url)
+    return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password &&
+      ['localhost', '127.0.0.1'].includes(parsed.hostname)
+  } catch { return false }
 }
 
 export interface AuditPageSession {
@@ -92,7 +96,7 @@ export interface CreateAuditPageOptions {
   scanAccess?: ScanAccessConfig | null
   /** Tenant-scoped, decrypted only inside an isolated account check. */
   storageState?: import('playwright').BrowserContextOptions['storageState']
-  /** Absolute audit deadline. Navigation never receives more than the remaining budget. */
+  /** Absolute deadline includes capacity, allocation, setup and the live context. */
   deadline?: number
   collectSearchEvidence?: boolean
   configurePage?: (page: Page) => Promise<void>
@@ -139,10 +143,7 @@ export async function createAuditPage(
   const consoleErrors = options.consoleErrors ?? []
   const playwrightAccess = scanAccessToPlaywrightContext(options.scanAccess, targetUrl)
 
-  const release = await browserCapacity.acquire(options.deadline ? AbortSignal.timeout(Math.max(1, options.deadline - Date.now())) : undefined,
-    options.resourcePriority === 'availability' ? 1 : 0)
-  let context: Awaited<ReturnType<Browser['newContext']>>
-  try { context = await browser.newContext({
+  return openAuditContext(browser, {
     viewport: { width: options.profile.width, height: options.profile.height },
     userAgent: options.profile.userAgent,
     deviceScaleFactor: options.profile.deviceScaleFactor ?? 1,
@@ -159,19 +160,15 @@ export async function createAuditPage(
       : undefined,
     ...playwrightAccess,
     ...(options.storageState ? { storageState: options.storageState } : {}),
-  }) } catch (error) { release(); throw error }
-  const deadlineTimer = options.deadline ? setTimeout(() => {
-    // Cancel the entire isolated context, including screenshots, injected scans,
-    // nested navigation and locator waits, not only the initial page.goto.
-    void context.close().catch(() => {})
-  }, Math.max(1, options.deadline - Date.now())) : undefined
-  deadlineTimer?.unref?.()
-  context.once('close', () => { clearTimeout(deadlineTimer); release() })
-  try {
-
+    ...(options.allowLocalhost ? { proxy: publicBrowserProxyOptions(browser, true) } : {}),
+  }, { deadline: options.deadline, signal: currentExecutionOwnership()?.signal,
+    priority: options.resourcePriority === 'availability' ? 1 : 0 }, async (context, assertActive) => {
+  assertActive()
   await applyScanAccessCookies(context, targetUrl, options.scanAccess)
 
+  assertActive()
   const page = await context.newPage()
+  assertActive()
 
   let originHost = ''
   try {
@@ -227,17 +224,19 @@ export async function createAuditPage(
     options.onSafetyRefusal?.('protected_action_requires_fixture')
     await dialog.dismiss().catch(() => undefined)
   })
-  if (options.readOnlyInteractions || options.localFormValidationToken) await page.routeWebSocket('**', async socket => {
+  if (options.readOnlyInteractions || options.localFormValidationToken) await context.routeWebSocket('**', async socket => {
     if (!safetyRestrictions.includes('protected_action_requires_fixture')) safetyRestrictions.push('protected_action_requires_fixture')
     options.onSafetyRefusal?.('protected_action_requires_fixture')
     await socket.close().catch(() => undefined)
   })
 
   await options.configurePage?.(page)
+  assertActive()
 
   const guardRequest = async (route: import('playwright').Route) => {
+    assertActive()
     const requestUrl = route.request().url()
-    const fallback = () => route.fallback()
+    const fallback = () => { assertActive(); return route.fallback() }
     // Observe the browser's own attempts without replaying or manufacturing
     // events. These refusals do not make an unrelated customer action fail.
     if (classifyTrackingEndpoint(requestUrl, route.request().resourceType(), targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(route.request().method())) {
@@ -246,11 +245,23 @@ export async function createAuditPage(
       await route.abort('blockedbyclient')
       return
     }
-    const routeGuards = guardOptions ? { ...guardOptions, onRefusal: (reason: 'protected_action_requires_fixture' | 'payment_or_download_blocked') => {
+    const refuse = (reason: 'protected_action_requires_fixture' | 'payment_or_download_blocked') => {
       refusedUrls.add(requestUrl)
       if (!safetyRestrictions.includes(reason) && safetyRestrictions.length < 16) safetyRestrictions.push(reason)
       options.onSafetyRefusal?.(reason)
-    } } : undefined
+    }
+    const routeGuards = guardOptions ? { ...guardOptions, onRefusal: refuse } : undefined
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(route.request().method()) && route.request().isNavigationRequest()) {
+      let ownerDocument = false
+      try { ownerDocument = route.request().frame() === page.mainFrame() } catch { /* Initial auxiliary documents can precede their frame. */ }
+      if (!ownerDocument) {
+        // Navigation mutation authority belongs to the original document. Account walks
+        // already close popups and cannot validate their navigation or cleanup.
+        if (!safetyRestrictions.includes('auxiliary_document_unavailable') && safetyRestrictions.length < 16) safetyRestrictions.push('auxiliary_document_unavailable')
+        refuse('protected_action_requires_fixture')
+        await route.abort('blockedbyclient'); return
+      }
+    }
     const protocol = new URL(requestUrl).protocol
     if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
       await route.fallback()
@@ -275,21 +286,16 @@ export async function createAuditPage(
       await route.abort('blockedbyclient')
     }
   }
-  if (options.localFormValidationToken) await context.route('**', async route => {
-    // The original page already has this guard. Additional pages and worker
-    // requests cannot bypass public-target and mutation checks during load.
-    try { if (route.request().frame().page() === page) return await route.fallback() } catch { /* Requests without a frame still require the guard. */ }
-    await guardRequest(route)
-  })
-  await page.route('**', guardRequest)
   const credentialOrigin = options.scanAccess?.origin ?? targetUrl
   const configuredHeaders = scanAccessToFetchHeaders(options.scanAccess ? { headers: options.scanAccess.headers, origin: options.scanAccess.origin } : null, credentialOrigin)
   await installRequestBoundary(page, credentialOrigin, configuredHeaders, guardRequest, options.requestPolicy
     ? async request => {
+      assertActive()
       // The shared guard suppresses recognized telemetry before it is sent.
       // It cannot consume a caller's one mutation or invalidate read-only inspection.
       if (classifyTrackingEndpoint(request.url, request.resourceType, targetUrl)?.role === 'event' && !['HEAD', 'OPTIONS'].includes(request.method)) return true
       const admitted = await options.requestPolicy!(request)
+      assertActive()
       if (!admitted) refusedUrls.add(request.url)
       return admitted
     } : undefined)
@@ -318,6 +324,7 @@ export async function createAuditPage(
     }
   })
 
+  assertActive()
   const navigationTimeout = options.deadline
     ? Math.max(1, Math.min(PAGE_TIMEOUT_MS, options.deadline - Date.now()))
     : PAGE_TIMEOUT_MS
@@ -419,12 +426,7 @@ export async function createAuditPage(
     safetyRestrictions,
     disposeNetwork: network.dispose,
   }
-  } catch (error) {
-    clearTimeout(deadlineTimer)
-    await context.close().catch(async () => { await browser.close() })
-    release()
-    throw error
-  }
+  })
 }
 
 export async function withAuditPage<T>(

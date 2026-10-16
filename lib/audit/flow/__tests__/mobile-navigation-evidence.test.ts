@@ -49,6 +49,11 @@ describe('independent mobile navigation evidence', () => {
     const combined = { ...flag, evidenceTargets: [...flag.evidenceTargets!, ...mobileNavigationFlags([peer], pageUrl + 'other')[0].evidenceTargets!] }
     const healthy = receipt(observation(true))
     expect(scopedAssertionForTarget({ receipt: healthy, checkId: flag.checkId, flag: combined })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: receipt(observation()), checkId: flag.checkId, flag: combined })?.assertion)
+      .toMatchObject({ passed: false, complete: true })
+    const different = observation()
+    different.links[0].identity = mobileLinkIdentity(pageUrl + 'other', 'Another link')
+    expect(scopedAssertionForTarget({ receipt: receipt(different), checkId: flag.checkId, flag: combined })).toBeUndefined()
     expect(scopedAssertionForTarget({ receipt: healthy, receipts: [receipt(peer)], checkId: flag.checkId, flag: combined })?.assertion.passed).toBe(false)
     const recovered = (data: MobileNavigationObservation) => hasRecordedRecoveryEvidence({ auditId: 'after', flag,
       executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl, environment: 'production',

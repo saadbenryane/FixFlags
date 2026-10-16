@@ -432,9 +432,22 @@ describe('finalizeAudit', () => {
     expect(mocks.auditUpdate).not.toHaveBeenCalled()
   })
 
-  it('throws when the audit is not FINALIZING or JUDGING', async () => {
+  it('rejects incomplete analysis as a prescription completion', async () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'CHECKING' })
     await assert.rejects(() => finalizeAudit(BASE_INPUT), /not ready to finalize prescription/)
+  })
+
+  it('enriches completed triage without reopening the report', async () => {
+    const completedAt = new Date(), triageAt = new Date(completedAt.getTime() - 1000)
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'COMPLETED', completedAt, triageAt })
+    await finalizeAudit(BASE_INPUT)
+    expect(mocks.auditUpdate).toHaveBeenCalledWith({ where: { id: 'audit-1' }, data: expect.objectContaining({
+      status: 'COMPLETED', completedAt, aiReviewAt: expect.any(Date),
+    }) })
+    mocks.auditUpdate.mockClear()
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'COMPLETED', completedAt, triageAt: null })
+    await expect(finalizeAudit(BASE_INPUT)).rejects.toThrow('not ready to finalize prescription')
+    expect(mocks.auditUpdate).not.toHaveBeenCalled()
   })
 
   it('finalizes a JUDGING audit with prescription phase cost', async () => {

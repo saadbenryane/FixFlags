@@ -121,6 +121,15 @@ describe('buildCombinedTriageOutput', () => {
 // ── productScoresFromFlags ───────────────────────────────────────────────
 
 describe('productScoresFromFlags', () => {
+  it('includes a committed response failure even when its page has no rendered metadata', () => {
+    const healthy = pageRun(triageOutput({ rubricScores: { MESSAGE: 100, EXPERIENCE: 100, REACH: 100 } }))
+    const flags = [{ checkId: 'page-http-error', pageUrl: 'https://example.com/pricing', rubric: 'REACH' as const,
+      severity: 'CRITICAL' as const, confidence: 1, source: 'DETERMINISTIC' as const,
+      problem: 'This page returns HTTP 503', evidence: 'Recorded public GET returned 503', fix: 'Restore the page' }]
+    expect(collapsedPageFlags([healthy], flags)).toMatchObject([{ checkId: 'page-http-error', pageUrl: flags[0].pageUrl }])
+    expect(productScoresFromFlags([healthy], flags).REACH).toBeLessThan(productScoresFromFlags([healthy]).REACH!)
+    expect(productScoresFromFlags([], flags)).toEqual({ MESSAGE: null, EXPERIENCE: null, REACH: null })
+  })
   function pageRunWithFlags(...flags: DeterministicFlag[]): PageRun {
     return {
       flags,

@@ -1,3 +1,6 @@
+import { assertAdminDomainActor } from '@/lib/admin/domain-actor'
+import { AdminActionError } from '@/lib/admin/errors'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -16,11 +19,7 @@ import { requestScheduledSiteRun } from '@/lib/sites/application/scheduled-runs'
 import {
   calcWatchNextRun,
   fromStoredWatchInterval,
-  toStoredWatchInterval,
-  type WatchInterval,
 } from '@/lib/audit/watch-interval'
-import { outcomeFreshnessMinutes } from '@/lib/sites/application/care-policy'
-import { watchIntervalMinutes, watchScheduleSchema } from '@/lib/sites/watch-schedule'
 import { ensureDefaultMonitoring, initializeDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
 
@@ -44,89 +43,7 @@ const LEASE_MS = 10 * 60 * 1000
 const NOTIFICATION_LEASE_MS = 10 * 60 * 1000
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
-export function productWatchReadiness(): { available: boolean; error: string | null } {
-  if (!process.env.REDIS_URL) {
-    return { available: false, error: 'WATCH_UNAVAILABLE: Redis is not configured' }
-  }
-  return { available: true, error: null }
-}
-
-export async function setProjectWatch(input: {
-  projectId: string
-  userId: string
-  interval: WatchInterval | null
-  everyMinutes?: number
-}, dependencies: { clock?: Clock; tx?: Prisma.TransactionClient } = {}): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
-  const db = dependencies.tx ?? prisma
-  const clock = dependencies.clock ?? systemClock
-  const parsed = watchScheduleSchema.safeParse({ interval: input.interval, everyMinutes: input.everyMinutes })
-  if (!parsed.success) return { ok: false, error: 'Choose a valid monitoring schedule.', code: 'INVALID_INTERVAL' }
-  const project = await db.project.findFirst({
-    where: { id: input.projectId, userId: input.userId },
-    select: { id: true, user: true, watchInterval: true, watchEveryMinutes: true },
-  })
-  if (!project) return { ok: false, error: 'Site not found' }
-
-  const effective = await loadEffectiveEntitlements(input.userId, db)
-  if (input.interval) {
-    if (!effective?.available) {
-      return {
-        ok: false,
-        error: 'Watching is not available on this account.',
-        code: 'WATCH_UNAVAILABLE',
-      }
-    }
-    const allowed = effective!.watchIntervals
-    if (!allowed.includes(input.interval)) {
-      return {
-        ok: false,
-        error:
-          input.interval === 'daily'
-            ? 'Daily watching is available on Pro and Studio. Free Sites watch weekly.'
-            : 'That watch interval is not available on your plan.',
-        code: 'INTERVAL_NOT_ALLOWED',
-      }
-    }
-    const readiness = productWatchReadiness()
-    if (!readiness.available) {
-      return { ok: false, error: readiness.error!, code: 'WATCH_UNAVAILABLE' }
-    }
-  }
-
-  const now = clock.now()
-  const previous = fromStoredWatchInterval(project.watchInterval)
-  const tightened = Boolean(input.interval && watchIntervalMinutes(input.interval, input.everyMinutes) < (previous ? watchIntervalMinutes(previous, project.watchEveryMinutes) : 10080))
-  const writes = [
-    db.project.update({
-      where: { id: project.id },
-      data: input.interval
-        ? {
-            watchInterval: toStoredWatchInterval(input.interval),
-            watchEveryMinutes: input.interval === 'custom' ? input.everyMinutes : null,
-            // Tightening the promise cannot wait a whole daily cycle before its
-            // first evidence. The scheduler claims this due row normally.
-            watchNextRunAt: tightened ? now : calcWatchNextRun(input.interval, now, input.everyMinutes),
-            watchLeaseUntil: null,
-            watchConsecutiveFailures: 0,
-            watchLastError: null,
-          }
-        : {
-            watchInterval: null,
-            watchEveryMinutes: null,
-            watchNextRunAt: null,
-            watchLeaseUntil: null,
-            watchLastError: 'Paused. This Site is not on a check schedule.',
-          },
-    }),
-    db.siteOutcome.updateMany({
-      where: { projectId: project.id },
-      data: { staleAfterMinutes: outcomeFreshnessMinutes(input.interval, input.everyMinutes) },
-    }),
-  ]
-  if (dependencies.tx) await Promise.all(writes)
-  else await prisma.$transaction(writes)
-  return { ok: true }
-}
+export { setProjectWatch, productWatchReadiness } from '@/lib/sites/application/monitoring-settings'
 
 function retryAt(failures: number, now: Date): Date {
   return new Date(now.getTime() + RETRY_MS[Math.min(Math.max(failures - 1, 0), RETRY_MS.length - 1)])
@@ -153,27 +70,38 @@ export async function processDueProjectWatches(
   enqueued: number
   errors: number
 }> {
-  const now = (dependencies.clock ?? systemClock).now()
-  if(!dependencies.onlyProjectId)await initializeDefaultMonitoring(limit, now)
+  const clock = dependencies.clock ?? systemClock
+  let operatorOwnerId: string | undefined
+  if (dependencies.operator) {
+    if (!dependencies.onlyProjectId)
+      throw new AdminActionError('Choose a Site for operator reconciliation.', 403, 'ADMIN_DOMAIN_SCOPE_DENIED')
+    const project = await prisma.project.findFirst({ where: { id: dependencies.onlyProjectId, deletedAt: null }, select: { userId: true } })
+    if (!project) throw new SiteRunRefusal('Site not found', 404)
+    await assertAdminDomainActor(dependencies.operator, project.userId, dependencies.onlyProjectId)
+    operatorOwnerId = project.userId
+  }
+  if(!dependencies.onlyProjectId)await initializeDefaultMonitoring(limit, clock)
+  const selectedAt = clock.now()
   const due = await prisma.project.findMany({
     where: {
       ...(dependencies.onlyProjectId?{id:dependencies.onlyProjectId}:{}),
+      ...(operatorOwnerId ? { userId: operatorOwnerId } : {}),
       deletedAt: null,
       user: { lifecycleStatus: 'ACTIVE' },
       watchInterval: { not: null },
-      watchNextRunAt: { lte: now },
-      OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }],
+      watchNextRunAt: { lte: selectedAt },
+      OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: selectedAt } }],
     },
     take: limit,
-    orderBy: { watchNextRunAt: 'asc' },
+    orderBy: [{ watchLastAttemptAt: { sort: 'asc', nulls: 'first' } }, { watchNextRunAt: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
       userId: true,
       watchInterval: true,
       watchEveryMinutes: true,
       watchNextRunAt: true,
+      watchLastAttemptAt: true,
       watchConsecutiveFailures: true,
-      user: true,
     },
   })
 
@@ -182,14 +110,24 @@ export async function processDueProjectWatches(
   let errors = 0
 
   for (const project of due) {
+    const attemptedAt = clock.now()
     const interval = fromStoredWatchInterval(project.watchInterval)
     if (!interval) continue
     const unchangedSchedule = { id: project.id, userId: project.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' as const },
       watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null, watchNextRunAt: project.watchNextRunAt }
-    const availableLease = { OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }] }
-    let mutationScope: Prisma.ProjectWhereInput = { ...unchangedSchedule, ...availableLease }
+    const availableLease = { OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: attemptedAt } }] }
+    let mutationScope: Prisma.ProjectWhereInput = { ...unchangedSchedule, ...availableLease,
+      watchLastAttemptAt: project.watchLastAttemptAt ?? null }
     try {
-      const effective = await loadEffectiveEntitlements(project.userId)
+      // Record admission effort before fallible policy reads and retry writes.
+      // An interrupted Site retains its due intent while later Sites get a turn.
+      const attempted = await prisma.project.updateMany({
+        where: mutationScope,
+        data: { watchLastAttemptAt: attemptedAt },
+      })
+      if (attempted.count !== 1) continue
+      mutationScope = { ...mutationScope, watchLastAttemptAt: attemptedAt }
+      const effective = await loadEffectiveEntitlements(project.userId, undefined, clock)
       if (!effective?.available) continue
       if (!effective.watchIntervals.length) {
         await prisma.project.updateMany({
@@ -211,19 +149,19 @@ export async function processDueProjectWatches(
         })
         continue
       }
-      const leaseUntil = new Date(now.getTime() + LEASE_MS)
+      const claimedAt = clock.now()
+      const leaseUntil = new Date(claimedAt.getTime() + LEASE_MS)
       const claimed = await prisma.project.updateMany({
-        where: mutationScope,
+        where: { ...mutationScope, OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: claimedAt } }] },
         data: {
           watchLeaseUntil: leaseUntil,
-          watchLastAttemptAt: now,
         },
       })
       if (claimed.count !== 1) continue
-      mutationScope = { ...unchangedSchedule, watchLeaseUntil: leaseUntil }
+      mutationScope = { ...unchangedSchedule, watchLastAttemptAt: attemptedAt, watchLeaseUntil: leaseUntil }
       processed += 1
 
-      await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, now))
+      await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, clock.now()))
       const active = await prisma.audit.findFirst({
         where: {
           projectId: project.id,
@@ -235,14 +173,17 @@ export async function processDueProjectWatches(
       if (active) {
         await prisma.project.updateMany({
           where: mutationScope,
-          data: { watchLeaseUntil: null, watchNextRunAt: retryAt(1, now) },
+          data: { watchLeaseUntil: null, watchNextRunAt: retryAt(1, clock.now()) },
         })
         continue
       }
 
+      const admissionAt = clock.now()
+      if (admissionAt >= leaseUntil) continue
       await requestScheduledSiteRun({
         projectId: project.id, userId: project.userId, interval,
-        everyMinutes: project.watchEveryMinutes, scheduledAt: project.watchNextRunAt ?? now, now,
+        everyMinutes: project.watchEveryMinutes, scheduledAt: project.watchNextRunAt ?? admissionAt, now: admissionAt,
+        ...(dependencies.operator ? { operator: dependencies.operator } : {}),
       })
       enqueued += 1
       // A saved schedule can change while a check is being queued. Advance
@@ -251,7 +192,7 @@ export async function processDueProjectWatches(
         where: mutationScope,
         data: {
           watchLeaseUntil: null,
-          watchNextRunAt: calcWatchNextRun(interval, now, project.watchEveryMinutes),
+          watchNextRunAt: calcWatchNextRun(interval, admissionAt, project.watchEveryMinutes),
           watchConsecutiveFailures: 0,
           watchLastError: null,
         },
@@ -259,6 +200,7 @@ export async function processDueProjectWatches(
     } catch (error) {
       errors += 1
       try {
+        const failedAt = clock.now()
         const usageLimit = (error && typeof error === 'object' ? error : {}) as {
           code?: string
           renewalAt?: Date
@@ -269,9 +211,9 @@ export async function processDueProjectWatches(
             data: {
               watchLeaseUntil: null,
               watchNextRunAt:
-                usageLimit.renewalAt && usageLimit.renewalAt > now
+                usageLimit.renewalAt && usageLimit.renewalAt > failedAt
                   ? usageLimit.renewalAt
-                  : calcWatchNextRun(interval, now, project.watchEveryMinutes),
+                  : calcWatchNextRun(interval, failedAt, project.watchEveryMinutes),
               watchLastError:
                 'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
             },
@@ -287,7 +229,7 @@ export async function processDueProjectWatches(
           mutationScope,
           project.watchConsecutiveFailures + 1,
           message,
-          now
+          failedAt
         )
       } catch (persistenceError) {
         logger.error('Project watch retry could not be saved', persistenceError instanceof Error ? persistenceError : new Error(String(persistenceError)), {
@@ -300,16 +242,8 @@ export async function processDueProjectWatches(
   return { processed, enqueued, errors }
 }
 
-async function markWatchCompleted(projectId: string, completedAt: Date) {
-  await prisma.project.updateMany({
-    where: { id: projectId, OR: [{ watchLastRunAt: null }, { watchLastRunAt: { lt: completedAt } }] },
-    // Notification retries cannot rewind monitoring or clear a scheduler lease.
-    data: { watchLastRunAt: completedAt },
-  })
-}
-
 /** Read committed comparison facts and persist current alert eligibility. */
-async function prepareWatchNotification(parentAuditId: string | null, childAuditId: string) {
+async function prepareWatchNotification(parentAuditId: string | null, childAuditId: string, delivery = false) {
   const child = await prisma.audit.findUnique({
     where: { id: childAuditId },
     select: {
@@ -317,8 +251,10 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       url: true,
       projectId: true,
       userId: true,
+      status: true,
       recheckTrigger: true,
       completedAt: true,
+      improvementProjectedAt: true,
       watchRegressionCount: true,
       watchRecoveryCount: true,
       watchNotificationStatus: true,
@@ -330,10 +266,28 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       project: { select: { userId: true, deletedAt: true, watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
     },
   })
-  if (child?.user && child.user.lifecycleStatus !== 'ACTIVE') return
-  if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId || !child.project ||
+  if (!child || child.status !== 'COMPLETED' || !child.completedAt || !child.userId ||
+    child.user?.lifecycleStatus !== 'ACTIVE' || delivery && !child.improvementProjectedAt ||
+    child.recheckTrigger !== 'WATCH' || !child.projectId || !child.project ||
     child.project.deletedAt != null || child.project.userId !== child.userId) return
-  await markWatchCompleted(child.projectId, child.completedAt ?? new Date())
+  const completedSource = {
+    id: child.id, userId: child.userId, projectId: child.projectId, status: 'COMPLETED' as const,
+    recheckTrigger: 'WATCH' as const, completedAt: child.completedAt,
+    ...(delivery ? { improvementProjectedAt: { not: null } } : {}),
+  }
+  const currentOwner = { userId: child.userId, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' as const } }
+  const currentEligibility: Prisma.AuditWhereInput = {
+    ...completedSource,
+    user: { lifecycleStatus: 'ACTIVE', email: child.user.email },
+    project: { ...currentOwner, notificationLevel: child.project.notificationLevel, notifyOnRecovery: child.project.notifyOnRecovery },
+  }
+  await prisma.project.updateMany({
+    where: { id: child.projectId, ...currentOwner, audits: { some: completedSource },
+      OR: [{ watchLastRunAt: null }, { watchLastRunAt: { lt: child.completedAt } }] },
+    // Completion belongs to a dated observation of the current owner's Site.
+    // Delivery retries cannot fabricate a check time, rewind it or clear a lease.
+    data: { watchLastRunAt: child.completedAt },
+  })
   // Provider acceptance is already confirmed. Historical rows may not have the newer
   // recovery classification, but rewriting SENT to PENDING while backfilling
   // would make the same alert eligible for delivery again.
@@ -355,7 +309,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
   if (child.watchNotificationStatus !== 'SENDING' &&
       (child.watchRegressionCount === null || child.watchRecoveryCount === null)) {
     await prisma.audit.updateMany({
-      where: { id: childAuditId, watchNotificationStatus: { notIn: ['SENT', 'SENDING'] },
+      where: { ...currentEligibility, watchNotificationStatus: { notIn: ['SENT', 'SENDING'] },
         OR: [{ watchRegressionCount: null }, { watchRecoveryCount: null }] },
       data: {
         watchRegressionCount: regressCount,
@@ -368,7 +322,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
     // A later opt-out can cancel due work, including an expired claim. It
     // cannot cancel a live provider call or rewrite confirmed acceptance.
     await prisma.audit.updateMany({
-      where: { id: childAuditId, OR: [
+      where: { ...currentEligibility, OR: [
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
         { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: new Date() } }] },
       ] },
@@ -377,7 +331,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
     return
   }
 
-  return { child, projectId: child.projectId, regressCount, recoveryCount, alertRegressions, alertRecoveries }
+  return { child, currentEligibility, projectId: child.projectId, regressCount, recoveryCount, alertRegressions, alertRecoveries }
 }
 
 /** Persist alert eligibility before the monitoring completion receipt, without contacting the provider. */
@@ -386,9 +340,9 @@ export async function classifyWatchResult(parentAuditId: string | null, childAud
 }
 
 export async function notifyWatchRegression(parentAuditId: string | null, childAuditId: string): Promise<void> {
-  const prepared = await prepareWatchNotification(parentAuditId, childAuditId)
+  const prepared = await prepareWatchNotification(parentAuditId, childAuditId, true)
   if (!prepared) return
-  const { child, projectId, regressCount, recoveryCount, alertRegressions, alertRecoveries } = prepared
+  const { child, currentEligibility, projectId, regressCount, recoveryCount, alertRegressions, alertRecoveries } = prepared
 
   // Never overwrite a claim another worker still holds. Writing FAILED here
   // would both lose their delivery and mark the alert failed while it is still
@@ -433,16 +387,10 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
   const claimLease = new Date(claimNow.getTime() + NOTIFICATION_LEASE_MS)
   const claimed = await prisma.audit.updateMany({
     where: {
-      id: childAuditId,
+      ...currentEligibility,
       // Eligibility can change after classification. The claim is the last
       // admission boundary before the external provider operation.
-      userId: child.userId,
-      projectId: child.projectId,
       watchNotificationAttemptCeiling: child.watchNotificationAttemptCeiling,
-      user: { lifecycleStatus: 'ACTIVE', email: child.user?.email },
-      project: { deletedAt: null, userId: child.userId ?? undefined,
-        user: { lifecycleStatus: 'ACTIVE' }, notificationLevel: child.project?.notificationLevel,
-        notifyOnRecovery: child.project?.notifyOnRecovery },
       watchNotificationAttempts: { equals: child.watchNotificationAttempts, lt: child.watchNotificationAttemptCeiling },
       OR: [
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },

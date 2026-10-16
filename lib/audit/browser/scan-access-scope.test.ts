@@ -42,6 +42,15 @@ run('native saved credential scope', () => {
       const first = await createAuditPage(await getAuditBrowser(), approved, { profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, scanAccess: config, deadline: Date.now() + 10_000 })
       const beforeAction = primaryPageContext(approved, first.page.url(), first.page.viewportSize(), auditPageObservation(first.page)?.scope)
       const beforeForm = (await probeFormValidation(first.page)).evidence?.context
+      expect(rootBasic && rootHeader && rootCookie).toBe(true)
+      rootBasic = false; rootHeader = false; rootCookie = false
+      const opened = first.page.context().waitForEvent('page')
+      await first.page.evaluate(other => { window.open(other + '/return-approved', 'preview') }, other)
+      const popup = await opened
+      await popup.waitForLoadState('domcontentloaded')
+      expect(popup.url()).toBe(approved + '/')
+      expect(rootBasic && rootHeader && rootCookie).toBe(true)
+      expect(leaked).toBe(false)
       first.disposeNetwork(); await first.page.context().close()
       expect(rootBasic && rootHeader && rootCookie).toBe(true)
       const changed = await createAuditPage(await getAuditBrowser(), approved, { profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true,
@@ -53,7 +62,7 @@ run('native saved credential scope', () => {
       const second = await createAuditPage(await getAuditBrowser(), other, { profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, scanAccess: config, deadline: Date.now() + 15_000 })
       try {
         await fetchAndParseMetadata(other, { headers: scanAccessToFetchHeaders(config, other) })
-        await runDestinationUXProbes(second.page, 'Get started', other, config)
+        expect(await runDestinationUXProbes(second.page, 'Get started', other)).toMatchObject({ contentComplete: true, headline: 'Useful website information' })
         expect(leaked).toBe(false)
       } finally { second.disposeNetwork(); await second.page.context().close() }
       await expect(createAuditPage(await getAuditBrowser(), other + '/challenge', { profile: DESKTOP_CAPTURE_PROFILE,

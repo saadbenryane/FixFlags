@@ -40,7 +40,8 @@ export async function ensureProductProject(
         data: { deletedAt: null },
         select: { id: true, productIntelligence: true },
       })
-      await ensureDefaultMonitoring(tx, project.id, userId)
+      if (existing.deletedAt) await ensureDefaultMonitoring(tx, project.id, userId, undefined, { restored: true })
+      else await ensureDefaultMonitoring(tx, project.id, userId)
       return project
     }
 

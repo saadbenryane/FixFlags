@@ -1,10 +1,25 @@
 import { afterAll, expect, it } from 'vitest'
-import { closeParserWorker, evaluateSearchIsolated } from '../cpu'
+import { closeParserWorker, evaluateSearchIsolated, parseMetadataIsolated } from '../cpu'
 import { document, evidence, PAGE } from '../../search/__tests__/fixtures'
 import { collectSearchEvidence } from '../../search/collect'
 import type { RenderedSearchSnapshot } from '../../search/rendered-snapshot'
 
 afterAll(() => closeParserWorker())
+
+it('keeps rendered and crawler metadata distinct across calls to the real parser worker', async () => {
+  const html = '<main><h1>Useful service</h1></main><noscript><form><input><button>Sign up</button></form></noscript>' +
+    '<template><a href="/checkout">Buy now</a></template>'
+  const rendered = await parseMetadataIsolated(html, PAGE, Date.now() + 10_000, 'rendered')
+  expect(rendered).toMatchObject({ forms: 0, totalFormInputs: 0, links: [], ctaTexts: [] })
+  const crawler = await parseMetadataIsolated(html, PAGE, Date.now() + 10_000)
+  expect(crawler!.forms).toBe(1)
+  expect(crawler!.links).toHaveLength(1)
+}, 25_000)
+
+it('reports a metadata inventory bound without confusing it with a parser crash or losing later observations', async () => {
+  expect(await parseMetadataIsolated('<main><h1>Useful service</h1>' + '<a href="/details">Details</a>'.repeat(10_001) + '</main>', PAGE, Date.now() + 10_000)).toBeNull()
+  expect(await parseMetadataIsolated('<h1>Useful service</h1>', PAGE, Date.now() + 10_000)).toMatchObject({ h1s: ['Useful service'] })
+}, 25_000)
 
 it('passes evaluator selection through the real bounded parser worker', async () => {
   const observations = await evaluateSearchIsolated(evidence(), null, Date.now() + 10_000, ['crawl'])

@@ -1,4 +1,6 @@
 import type { Page } from 'playwright'
+import { collectRenderedActionInventory, flowCtaSelector } from './flow/discover-cta'
+import { createHash } from 'node:crypto'
 import { readLoadingUi, type LoadingObservation } from './browser/loading-ui'
 import { observeViewport } from './browser/viewport-observation'
 import type { CaptureObservationScope } from './browser/observation-scope'
@@ -6,12 +8,16 @@ import { measureCurrentMotion } from './browser/motion-observation'
 import type { MotionObservation } from './checks/motion-evidence'
 export { measureCurrentMotion as measureMotionA11y } from './browser/motion-observation'
 
+export type CtaStyleSample = { label: string; surface: 'filled' | 'outlined' | 'text'; fontSize: number; fontWeight: number; height: number }
+
 export interface CaptureMetrics {
   mobilePrimaryCtaTopPx: number | null
   mobilePrimaryCtaText: string | null
-  /** Distinct high-intent CTAs visible above the mobile fold (focus dilution). */
+  /** Distinct high-intent actions in the strongest comparable mobile style cohort. */
   competingPrimaryCtaCount: number
   competingPrimaryCtaLabels: string[]
+  competingPrimaryCtaSamples?: CtaStyleSample[]
+  competingPrimaryCtaComplete?: boolean
   mobileViewportHeight: number
   /** Absolute document position of the primary CTA (scrollY + rect.top). */
   mobileScrollY: number
@@ -23,6 +29,7 @@ export interface CaptureMetrics {
   uniqueFontFamilies: number
   fontFamilySample: string[]
   buttonBorderRadii: number[]
+  buttonBorderRadiiComplete?: boolean
   /** True when CSS animations still run under prefers-reduced-motion: reduce. */
   motionIgnoresReducedPreference: boolean
   motionSampleLabel: string | null
@@ -30,7 +37,7 @@ export interface CaptureMetrics {
   motionComplete?: boolean
   motionObservation?: MotionObservation
   inputsBelow16px: Array<{ selector: string; fontSize: number }>
-  inputFontSamples?: Array<{ selector: string; fontSize: number }>
+  inputFontSamples?: Array<{ selector: string; fontSize: number; context?: string }>
   inputFontsComplete?: boolean
   loadExperience?: PageLoadExperience | null
   desktopLoadExperience?: PageLoadExperience | null
@@ -55,7 +62,10 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
   const loading = await readLoadingUi(page)
   const content = scope ? await observeViewport(page, { profile: scope.profile, includeActions: false, excludeLoading: true }) : null
 
-  const base = await page.evaluate(() => {
+  const inventory = await collectRenderedActionInventory(page, true, false)
+  const actions = inventory.controls.map(({ idx, tag, role, inputType, text, href, labelComplete, inNavigation }) =>
+    ({ tag, role, inputType, text, href, labelComplete, inNavigation, selector: flowCtaSelector(idx) }))
+  const base = await page.evaluate(({ actions, complete, pageUrl }) => {
     // tsx/esbuild dev runs (npm run worker, scripts/*) inject `__name(...)` wrapper calls into
     // compiled functions; that reference doesn't exist inside Playwright's isolated browser
     // context. No-op under tsc/webpack builds (prod, `next dev`), which never emit `__name`.
@@ -80,31 +90,38 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
       fontSet.add(ff.split(',')[0]?.trim().replace(/['"]/g, '') ?? ff)
     }
 
+    const renderedActions = pageUrl === location.href ? actions.filter(action => action.labelComplete).flatMap(action => {
+      const element = document.querySelector(action.selector)
+      return element && visibleInDocument(element) ? [{ ...action, element }] : []
+    }) : []
+    const actionsComplete = complete && pageUrl === location.href && renderedActions.length === actions.length
     const radii = new Set<number>()
-    for (const btn of document.querySelectorAll('main a[href], main button, [role="button"]')) {
-      if (!visibleInDocument(btn)) continue
-      if (btn.closest('nav, header, [role="navigation"]')) continue
-      const text = (btn.textContent ?? '').trim()
+    for (const action of renderedActions) {
+      const btn = action.element
+      if (!(btn.closest('main') || action.role === 'button') || action.inNavigation) continue
+      const text = action.text, href = action.href ?? ''
       if (!text || text.length > 48) continue
-      const href = btn.tagName.toLowerCase() === 'a'
-        ? (btn as HTMLAnchorElement).getAttribute('href') ?? ''
-        : btn.closest('a')?.getAttribute('href') ?? ''
-      const ctaSignal = `${href} ${text}`
-      if (
-        !/\b(book (?:a )?call|book demo|get started|start free|try free|sign up|register|contact|pricing|subscribe|request demo|schedule|shop now)\b/i.test(
-          ctaSignal
-        )
-      ) {
-        continue
-      }
+      if (!/\b(book (?:a )?call|book demo|get started|start free|try free|sign up|register|contact|pricing|subscribe|request demo|schedule|shop now)\b/i.test(`${href} ${text}`)) continue
       const px = parseFloat(window.getComputedStyle(btn).borderRadius)
       if (!Number.isNaN(px) && px >= 0) radii.add(Math.round(px))
     }
 
     const inputsBelow16px: Array<{ selector: string; fontSize: number }> = []
-    const inputFontSamples: Array<{ selector: string; fontSize: number }> = []
+    const inputFontSamples: Array<{ selector: string; fontSize: number; identity: string; formScope: string | null }> = []
     let inputFontsComplete = true
     let sampledInputs = 0
+    function inputSelector(element: Element) {
+      const parts: string[] = []
+      for (let node: Element | null = element; node && parts.length < 30; node = node.parentElement) {
+        if (node.id && document.querySelectorAll('#' + CSS.escape(node.id)).length === 1) {
+          parts.unshift('#' + CSS.escape(node.id)); break
+        }
+        const siblings = node.parentElement ? [...node.parentElement.children].filter(sibling => sibling.tagName === node!.tagName) : [node]
+        parts.unshift(node.tagName.toLowerCase() + ':nth-of-type(' + (siblings.indexOf(node) + 1) + ')')
+        if (node.tagName === 'BODY') break
+      }
+      return parts.join(' > ')
+    }
     for (const input of document.querySelectorAll(
       'main input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), main textarea, main select'
     )) {
@@ -114,11 +131,18 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
       const style = window.getComputedStyle(el)
       const fontSize = parseFloat(style.fontSize)
       if (!Number.isFinite(fontSize) || fontSize <= 0) { inputFontsComplete = false; continue }
-      const id = el.id
-      const name = el.getAttribute('name')
-      const selector = id ? `#${CSS.escape(id)}` : name ? `[name="${CSS.escape(name)}"]` : el.tagName.toLowerCase()
+      const selector = inputSelector(el)
+      if (selector.length > 2000 || document.querySelectorAll(selector).length !== 1) { inputFontsComplete = false; continue }
       const sample = { selector, fontSize: Math.round(fontSize * 10) / 10 }
-      inputFontSamples.push(sample)
+      const field = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      const namedBy = (el.getAttribute('aria-labelledby') ?? '').trim().split(/\s+/).slice(0, 8)
+        .map(id => document.getElementById(id)?.textContent ?? '').join(' ').trim()
+      const label = (namedBy || el.getAttribute('aria-label') || Array.from(field.labels ?? []).map(label => label.textContent ?? '').join(' ')).trim().replace(/\s+/g, ' ').slice(0, 160)
+      const anchor = selector.startsWith('#') ? selector.split(' > ')[0] : null
+      const formScope = field.form ? inputSelector(field.form) : null
+      inputFontSamples.push({ ...sample, identity: JSON.stringify([anchor, el.tagName, el.getAttribute('type'), el.getAttribute('name'),
+        el.getAttribute('autocomplete'), label, formScope?.startsWith('#') ? formScope : null,
+        field.form?.getAttribute('name') ?? null, field.form?.getAttribute('action') ?? null]), formScope })
       if (fontSize < 16) inputsBelow16px.push(sample)
     }
 
@@ -127,19 +151,9 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
 
     type CtaCandidate = { score: number; top: number; text: string }
 
-    function scoreCtaElement(el: Element): CtaCandidate | null {
-      if (!visibleInDocument(el)) return null
-      const tag = el.tagName.toLowerCase()
-      const href =
-        tag === 'a'
-          ? (el as HTMLAnchorElement).getAttribute('href') ?? ''
-          : el.closest('a')?.getAttribute('href') ?? ''
-      const text =
-        (el.textContent ?? '').trim() ||
-        el.getAttribute('aria-label')?.trim() ||
-        el.getAttribute('title')?.trim() ||
-        ''
-
+    function scoreCtaElement(action: typeof renderedActions[number]): CtaCandidate | null {
+      const el = action.element, tag = action.tag, href = action.href ?? '', text = action.text
+      const buttonLike = tag === 'button' || tag === 'input' && ['button', 'submit'].includes(action.inputType ?? '') || action.role === 'button'
       const combined = `${href} ${text}`.toLowerCase()
       const mediaLabel = `${el.getAttribute('aria-label') ?? ''} ${el.getAttribute('title') ?? ''}`.toLowerCase()
       const opensMedia =
@@ -165,14 +179,14 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
         score = 95
       else if (/signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i.test(combined)) score = 70
       else if (
-        tag === 'button' &&
+        buttonLike &&
         /\b(?:get started|sign up|signup|start(?: now| free| trial)?|try(?: free)?|demo|contact|register|join|learn more|explore|shop|browse|watch|find|claim|reserve|see how|get access)\b/i.test(
           text
         )
       )
         score = 85
       else if (
-        tag === 'button' &&
+        buttonLike &&
         /search|audit|analyze|check.*site|run.*(scan|audit|check|test)|test.*site/i.test(text)
       )
         score = 85
@@ -213,18 +227,60 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
     }
 
     const candidates: CtaCandidate[] = []
-    const competingCtas = new Set<string>()
+    const styleSamples: CtaStyleSample[] = []
+    let stylesComplete = actionsComplete
+    let styleCandidates = 0
+    function color(value: string): number[] | null {
+      const match = /^rgba?\(([\d.,\s]+)\)$/.exec(value)
+      if (!match) return null
+      const channels = match[1].split(',').map(Number)
+      return channels.length === 3 ? [...channels, 1] : channels.length === 4 ? channels : null
+    }
+    function distinct(first: number[], second: number[]) {
+      return Math.max(...first.slice(0, 3).map((channel, index) => Math.abs(channel - second[index]))) >= 32
+    }
+    function actionStyle(element: Element, label: string): CtaStyleSample | null {
+      const style = getComputedStyle(element), fill = color(style.backgroundColor)
+      const fontSize = parseFloat(style.fontSize), fontWeight = parseInt(style.fontWeight, 10)
+      if (!fill || !Number.isFinite(fontSize) || !Number.isFinite(fontWeight) || fill[3] !== 0 && fill[3] !== 1) return null
+      let backdrop = [255, 255, 255, 1], foundBackdrop = false
+      for (let node: Element | null = element; node; node = node.parentElement) {
+        const paint = getComputedStyle(node)
+        if (paint.backgroundImage !== 'none' || paint.filter !== 'none' || paint.backdropFilter !== 'none' ||
+          paint.mixBlendMode !== 'normal' || Number(paint.opacity) !== 1) return null
+        if (node === element || foundBackdrop) continue
+        const background = color(paint.backgroundColor)
+        if (!background || background[3] !== 0 && background[3] !== 1) return null
+        if (background[3] === 1) { backdrop = background; foundBackdrop = true }
+      }
+      // An implicit dark canvas or complex paint cannot supply a solid backdrop.
+      if (!foundBackdrop && getComputedStyle(document.documentElement).colorScheme.includes('dark')) return null
+      const filled = fill[3] === 1 && distinct(fill, backdrop)
+      let outlined = false
+      for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
+        if (parseFloat(style[`border${side}Width`]) <= 0 || ['none', 'hidden'].includes(style[`border${side}Style`])) continue
+        const border = color(style[`border${side}Color`])
+        if (!border) return null
+        outlined ||= border[3] > 0 && distinct(border, filled ? fill : backdrop)
+      }
+      return { label, surface: filled ? 'filled' : outlined ? 'outlined' : 'text', fontSize, fontWeight,
+        height: Math.round(element.getBoundingClientRect().height * 10) / 10 }
+    }
 
     // Top-document only: page.evaluate runs in the main frame, so cross-origin
     // iframe content (YouTube player buttons, etc.) is never collected here.
-    for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
+    for (const action of renderedActions) {
+      const el = action.element
       if (shouldSkipNavHeader(el)) continue
-      const candidate = scoreCtaElement(el)
+      const candidate = scoreCtaElement(action)
       if (!candidate) continue
       candidates.push(candidate)
 
-      if (candidate.score >= 85 && candidate.top >= 0 && candidate.top <= window.innerHeight) {
-        competingCtas.add(candidate.text || 'cta')
+      const rect = el.getBoundingClientRect()
+      if (candidate.score >= 85 && candidate.top >= 0 && candidate.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth && !el.closest('[inert]')) {
+        const sample = ++styleCandidates <= 40 ? actionStyle(el, candidate.text || 'cta') : null
+        if (sample) styleSamples.push(sample)
+        else stylesComplete = false
       }
     }
 
@@ -255,7 +311,7 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
         )
         if (submitBtn && visibleInDocument(submitBtn)) {
           submitBtnText =
-            (submitBtn.textContent || submitBtn.getAttribute('aria-label') || '').trim()
+            renderedActions.find(action => action.element === submitBtn)?.text ?? ''
         }
       }
 
@@ -320,7 +376,7 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
           )
           if (submitBtn && visibleInDocument(submitBtn)) {
             submitBtnText =
-              (submitBtn.textContent || submitBtn.getAttribute('aria-label') || '').trim()
+              renderedActions.find(action => action.element === submitBtn)?.text ?? ''
           }
         }
 
@@ -333,9 +389,15 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
       }
     }
 
-    const bestTop = selected?.top ?? null
-    const bestText = selected?.text ?? null
-    const competingLabels = [...competingCtas]
+    const bestTop = actionsComplete ? selected?.top ?? null : null
+    const bestText = actionsComplete ? selected?.text ?? null : null
+    // Surface treatment establishes the primary tier. Within it, compare type
+    // and control height, avoiding width differences caused by label length.
+    const tier = { filled: 2, outlined: 1, text: 0 }
+    const strongest = [...styleSamples].sort((a, b) => tier[b.surface] - tier[a.surface] || b.fontSize - a.fontSize || b.height - a.height || b.fontWeight - a.fontWeight)[0]
+    const competingLabels = [...new Set(styleSamples.filter(sample => strongest && sample.surface === strongest.surface &&
+      sample.fontSize >= strongest.fontSize * 0.8 && sample.height >= strongest.height * 0.75 && sample.fontWeight >= strongest.fontWeight - 200)
+      .map(sample => sample.label))]
     // The candidate `top` is viewport-relative (used for above-the-fold
     // selection). The persisted metric must be the absolute document scroll
     // depth: a CTA below the fold is reported as its true position on the
@@ -351,20 +413,30 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
       mobilePrimaryCtaText: bestText,
       competingPrimaryCtaCount: competingLabels.length,
       competingPrimaryCtaLabels: competingLabels.slice(0, 6),
+      competingPrimaryCtaSamples: styleSamples,
+      competingPrimaryCtaComplete: stylesComplete,
       mobileViewportHeight: window.innerHeight,
       mobileScrollY: Math.round(scrollY),
       mobileDocumentHeight: Math.round(documentHeight),
       uniqueFontFamilies: fontSet.size,
       fontFamilySample: [...fontSet].slice(0, 6),
       buttonBorderRadii: [...radii].sort((a, b) => a - b),
+      buttonBorderRadiiComplete: actionsComplete,
       inputsBelow16px,
       inputFontSamples,
       inputFontsComplete,
     }
-  })
+  }, { actions, complete: inventory.complete, pageUrl: inventory.pageUrl })
 
+  const identities = new Map<string, number>()
+  for (const sample of base.inputFontSamples) identities.set(sample.identity, (identities.get(sample.identity) ?? 0) + 1)
   return {
     ...base,
+    // Font changes are the repair. Ambiguous controls cannot borrow another
+    // field's recovery, and values and raw identities never enter the snapshot.
+    inputFontSamples: base.inputFontSamples.map(({ selector, fontSize, identity, formScope }) => ({ selector, fontSize,
+      context: identities.get(identity) === 1 ? 'mobile-input:' + createHash('sha256')
+        .update(JSON.stringify(['input-control-v1', selector, identity, formScope])).digest('hex') : 'mobile-input:unknown' })),
     stuckLoadingIndicator: loading.loadingVisible,
     stuckLoadingLabel: loading.loadingLabel,
     ...(scope && content ? { loadingObservation: { version: 1 as const, device: 'mobile' as const,

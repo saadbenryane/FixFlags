@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db'
 import { Worker } from 'bullmq'
 import { createWorkerRedis } from '@/lib/queue/redis'
-import { WORKER_CONCURRENCY } from '@/lib/queue/estimate'
 import { logger } from '@/lib/logger'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { claimExecution, withExecutionOwnership, executionTransaction } from '../execution-ownership'
@@ -17,6 +16,8 @@ import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
 import { closeParserWorker } from './cpu'
+import { ACTIVE_GRAPH_LIMIT } from './capacity'
+import { recoverPendingAiReviews } from '../enqueue-ai-review'
 
 const handlers = registerTaskHandlers([...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers, ...accountHandlers])
 for (const coverage of ADVERTISED_COVERAGE_REGISTRY.values()) for (const evaluator of coverage.evaluators) {
@@ -30,7 +31,7 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
   const audit = await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })
   const spec = readExecutionSpec(audit.executionSpec)
   if (!spec || spec.engine !== 'progressive-v1' || ['COMPLETED', 'FAILED'].includes(audit.status)) return
-  const owner = await claimExecution(auditId, false, false, true)
+  const owner = await claimExecution(auditId, { resume: true })
   if (!owner) return
   await withExecutionOwnership(owner, async () => {
     const allowed = await executionTransaction(async tx => {
@@ -41,7 +42,7 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
         OR: [{ verifierExecutions: { some: { workState: { in: ['READY', 'RUNNING'] } } } },
           { verifierExecutions: { none: { workKind: { not: null } } } }],
       } })
-      if (!audit.startedAt && active >= WORKER_CONCURRENCY && !availabilityOnly(spec)) return false
+      if (!audit.startedAt && active >= ACTIVE_GRAPH_LIMIT && !availabilityOnly(spec)) return false
       if (!audit.startedAt) {
         await tx.audit.update({ where: { id: auditId }, data: { startedAt: new Date(), status: 'CAPTURING', progress: 0 } })
         await recordProgress(tx, auditId, { kind: 'analysis', state: 'started' })
@@ -59,6 +60,7 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
 }
 
 export async function recoverProgressiveAudits(limit = 25) {
+  await recoverPendingAiReviews(limit).catch(error => logger.error('Prescription handoff sweep interrupted; existing tasks remain recoverable', error))
   const now = new Date()
   const pending = await prisma.audit.findMany({ where: {
     status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },

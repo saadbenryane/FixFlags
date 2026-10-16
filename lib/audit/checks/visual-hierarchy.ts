@@ -1,3 +1,4 @@
+import { renderedContentMetadata, type RenderedCopy } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
@@ -5,21 +6,20 @@ import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runVisualHierarchyChecks(
-  meta: PageMetadata,
+  meta: PageMetadata | null,
   captureMetrics: CaptureMetrics | null,
   record?: CheckRecorder,
+  renderedCopy?: RenderedCopy | null,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
-  const h1s = meta.h1s ?? []
-  const h2s = meta.h2s ?? []
+  const count = captureMetrics?.competingPrimaryCtaCount
+  const validCount = count !== undefined && Number.isFinite(count) && count >= 0
   recordObservation(record, 'prominent-action-count', 'Sampled action hierarchy', 'Fewer than two equally prominent actions compete in the sampled mobile viewport',
-    captureMetrics ? `${captureMetrics.competingPrimaryCtaCount} equally prominent actions measured.` : 'Prominent actions were not measured.',
-    captureMetrics && Number.isFinite(captureMetrics.competingPrimaryCtaCount) && captureMetrics.competingPrimaryCtaCount >= 0
-      ? captureMetrics.competingPrimaryCtaCount < 2 : undefined, true)
+    !validCount ? 'Prominent actions were not measured.' : `${count} equally prominent actions measured.${captureMetrics?.competingPrimaryCtaComplete === false ? ' Style coverage is incomplete.' : ''}`,
+    validCount && captureMetrics?.competingPrimaryCtaComplete !== false ? count < 2 : undefined, true)
 
   if (captureMetrics) {
-    if (captureMetrics.competingPrimaryCtaCount >= 2) {
+    if (validCount && captureMetrics.competingPrimaryCtaComplete !== false && count >= 2) {
       findings.push({
         checkId: 'hierarchy-competing-actions',
         rubric: 'MESSAGE',
@@ -35,6 +35,15 @@ export function runVisualHierarchyChecks(
 
   }
 
+  const copy = meta ? meta.renderedCopy : renderedCopy
+  if (!meta && !copy?.complete || copy !== undefined && !copy?.complete) {
+    for (const [key, name] of [['section-headings', 'Captured section hierarchy'], ['headline-presence', 'Captured headline'], ['heading-word-count', 'Sampled heading density']])
+      recordObservation(record, key, name, 'Readable page copy supports this observation', 'Complete page prose is unavailable.', undefined, true)
+    return findings
+  }
+  const prose = renderedContentMetadata(meta ?? { pageText: copy!.pageText, h1s: copy!.h1s, h2s: copy!.h2s, renderedCopy: copy })
+  const bodyText = (prose.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
+  const h1s = prose.h1s ?? [], h2s = prose.h2s ?? []
   const totalHeadings = h1s.length + h2s.length
   recordObservation(record, 'section-headings', 'Captured section hierarchy', 'Captured heading structure includes sections beneath its headline',
     `${h1s.length} H1 and ${h2s.length} H2 headings recorded.`,

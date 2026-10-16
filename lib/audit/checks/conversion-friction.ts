@@ -1,3 +1,4 @@
+import { renderedContentMetadata } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import {
@@ -93,6 +94,7 @@ export function runConversionFrictionChecks(
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
   record?: CheckRecorder,
 ): DeterministicFlag[] {
+  meta = renderedContentMetadata(meta)
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
   const offer = detectOfferType(purpose.purpose)

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ project: vi.fn(), existing: vi.fn(), recent: vi.fn(), outcomes: vi.fn(), request: vi.fn() }))
+const mocks = vi.hoisted(() => ({ project: vi.fn(), existing: vi.fn(), recent: vi.fn(), outcomes: vi.fn(), request: vi.fn(), operator: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: mocks.project }, runRequest: { findUnique: mocks.existing },
   audit: { findFirst: mocks.recent }, siteOutcome: { findMany: mocks.outcomes } } }))
+vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.operator }))
 vi.mock('../run-requests', () => ({ requestSiteRun: mocks.request }))
 import { requestScheduledSiteRun } from '../scheduled-runs'
 import { siteCareIntervalMinutes } from '../care-policy'
@@ -17,6 +18,16 @@ beforeEach(() => {
 })
 
 describe('automatic scheduled Site care', () => {
+  it('validates operator authority before reusing an admitted tick', async () => {
+    const operator = { kind: 'admin' as const, actorId: 'operator', operationId: 'operation' }
+    mocks.existing.mockResolvedValue({ id: 'recorded', auditId: 'recorded-audit', environment: 'production', verificationTarget: null,
+      selections: [], executionSpec: { version: 1, scope: 'SITE', targetUrl: 'https://example.com/',
+        environment: 'production', outcomes: [], checks: {}, verificationTarget: null } })
+    mocks.operator.mockRejectedValue(new Error('Operator revoked'))
+    await expect(requestScheduledSiteRun({ ...input, operator })).rejects.toThrow('Operator revoked')
+    expect(mocks.existing).not.toHaveBeenCalled()
+    expect(mocks.request).not.toHaveBeenCalled()
+  })
   it('requests broad care when its own Site scope needs fresh evidence, preserving the actual configured origin', async () => {
     await requestScheduledSiteRun(input)
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'site', userId: 'owner', source: 'WATCH',

@@ -8,14 +8,43 @@ import { checkReceiptSchema } from './receipt'
 
 const url = 'https://example.test/'
 const scope = { pageUrl: url, finalUrl: url, profile: 'native-desktop', access: 'public' }
-async function inspect(source: string, captured = scope) {
+async function inspect(source: string, captured = scope, module = 'trust') {
   const result = await runAllChecks(url, parseMetadataFromHtml(source, url), null, null, [], undefined, undefined, undefined,
-    undefined, true, ['trust'], { renderedScope: captured })
+    undefined, true, [module], { renderedScope: captured })
   const execution = result.executions[0]
   return { flags: result.flags, receipt: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, ...execution, pageUrl: url,
     execution: { auditId: 'after', taskId: 'task', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-14T02:00:00.000Z' } }) }
 }
 describe('native page observation comparison', () => {
+  it.each([
+    { checkId: 'favicon-missing', declarations: ['<link rel="icon" href="/favicon.ico">', '<link rel="apple-touch-icon" href="/apple.png">'] },
+    { checkId: 'og-image-missing', declarations: ['<meta property="og:image" content="https://example.test/preview.png">'] },
+    { checkId: 'og-title-missing', declarations: ['<meta property="og:title" content="Useful reports">'] },
+    { checkId: 'og-description-missing', declarations: ['<meta property="og:description" content="Prepare useful reports for your team">'] },
+    { checkId: 'viewport-missing', declarations: ['<meta name="viewport" content="width=device-width, initial-scale=1">'] },
+    { checkId: 'lang-missing', declarations: ['lang="en"'] },
+  ])('independently observes $checkId repairs in the original rendered scope', async ({ checkId, declarations }) => {
+    const source = '<!doctype html><html><head><title>Useful reports</title></head><body><main><h1>Useful reports</h1></main></body></html>'
+    const repaired = (declaration: string) => checkId === 'lang-missing' ? source.replace('<html>', '<html ' + declaration + '>') : source.replace('</head>', declaration + '</head>')
+    const before = await inspect(source, scope, 'metadata')
+    const flag = { ...before.flags.find(flag => flag.checkId === checkId)!, pageUrl: url }
+    expect(flag).toMatchObject({ checkId, verificationRule: RENDERED_PAGE_VERIFICATION_RULE })
+    expect(scopedAssertionForTarget({ receipt: before.receipt, checkId, flag })?.assertion).toMatchObject({ passed: false, complete: true })
+    for (const declaration of declarations) {
+      const after = await inspect(repaired(declaration), scope, 'metadata')
+      expect(after.flags.some(flag => flag.checkId === checkId)).toBe(false)
+      expect(scopedAssertionForTarget({ receipt: after.receipt, checkId, flag })?.assertion).toMatchObject({ passed: true, complete: true })
+      expect(hasRecordedRecoveryEvidence({ auditId: 'after', flag,
+        executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: url, environment: 'production', scope: 'SITE', checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null },
+        executions: [{ targetKey: 'module:metadata', status: 'COMPLETED', detail: after.receipt }] })).toBe(true)
+    }
+    const changed = await inspect(repaired(declarations[0]), { ...scope, access: 'credentialed:other' }, 'metadata')
+    expect(scopedAssertionForTarget({ receipt: changed.receipt, checkId, flag })).toBeUndefined()
+    const unavailable = await runAllChecks(url, null, null, null, [], undefined, undefined, undefined, undefined, true, ['metadata'], { renderedScope: scope })
+    expect(unavailable.failedModules).toEqual(['metadata'])
+    expect(unavailable.executions[0].assertions).toEqual([])
+  })
+
   it('shares comparable repair and recurrence proof while refusing different capture conditions and old unscoped history', async () => {
     const before = await inspect('<main><h1>Useful service</h1></main>')
     const flag = { ...before.flags.find(flag => flag.checkId === 'no-privacy-policy')!, pageUrl: url }
@@ -54,10 +83,11 @@ describe('native page observation comparison', () => {
   })
   it('verifies measured input sizing without requiring an unrelated complete desktop document', () => {
     const mobile = { ...scope, profile: 'native-mobile' }
+    const control = 'mobile-input:' + 'a'.repeat(64)
     const flag = { checkId: 'mobile-input-zoom', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Small input font', evidence: '14px', fix: 'Use 16px', confidence: 1, source: 'DETERMINISTIC',
-      evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'mobile' as const, selector: '#email', label: 'Email' }] }
+      evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'mobile' as const, selector: '#email', label: 'Email', context: control }] }
     const assertion = { key: 'mobile-input-fonts', name: 'Input fonts', expected: '16px or more', observed: '14px', passed: false, complete: true,
-      targets: [{ selector: '#email', label: 'Email' }] }
+      context: control, targets: [{ selector: '#email', label: 'Email', context: control }] }
     const before = scopeRenderedPageEvidence({ module: 'mobile-ux-quality', flags: [flag], assertions: [assertion], mobile })
     const make = (passed: boolean, captured = mobile) => {
       const result = scopeRenderedPageEvidence({ module: 'mobile-ux-quality', flags: [], assertions: [{ ...assertion, passed }], mobile: captured })
@@ -89,9 +119,9 @@ describe('native page observation comparison', () => {
     const multiPage = { ...before.flags[0], evidenceTargets: [...before.flags[0].evidenceTargets!, { ...before.flags[0].evidenceTargets![0], context: peerContext }] }
     peer.assertions[0].targets = []
     expect(scopedAssertionForTarget({ receipt: enough, receipts: [peer], checkId: flag.checkId, flag: multiPage })).toBeUndefined()
-    peer.assertions[0].targets = [{ selector: '#email', label: 'Email' }]
+    peer.assertions[0].targets = [{ selector: '#email', label: 'Email', context: peerContext }]
     expect(scopedAssertionForTarget({ receipt: make(true), receipts: [peer], checkId: flag.checkId, flag: multiPage })?.assertion.passed).toBe(true)
-    const missingDesktop = scopeRenderedPageEvidence({ module: 'layout', flags: [], assertions: [assertion], mobile })
+    const missingDesktop = scopeRenderedPageEvidence({ module: 'layout', flags: [], assertions: [{ ...assertion, context: undefined }], mobile })
     expect(missingDesktop.assertions[0].complete).toBe(false)
   })
   it('requires all original pages from the same execution when a finding has several affected paths', async () => {
@@ -107,6 +137,8 @@ describe('native page observation comparison', () => {
     const compare = (receipts: typeof after.receipt[]) => scopedAssertionForTarget({ receipt: after.receipt, receipts,
       checkId: 'no-privacy-policy', flag: original })
     expect(compare([])).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: first.receipt, checkId: 'no-privacy-policy', flag: original })?.assertion)
+      .toMatchObject({ passed: false, complete: true })
     expect(compare([other.receipt])?.assertion.passed).toBe(true)
     expect(compare([{ ...other.receipt, execution: { ...other.receipt.execution!, auditId: 'unrelated' } }])).toBeUndefined()
     expect(compare([{ ...other.receipt, execution: { ...other.receipt.execution!, checkVersion: 2 } }])).toBeUndefined()

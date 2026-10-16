@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import type { Prisma } from '@prisma/client'
-import { checkReceiptSchema } from '../checks/receipt'
+import { checkReceiptSchema, summarizeCheckAssertions } from '../checks/receipt'
 import { CHECK_ASSERTIONS, CHECK_MODULES } from '../check-registry'
 import { recordAssertionVerifiers } from '../checks/verification'
 import { searchAttentionSchema } from '../search/contracts'
@@ -43,19 +43,22 @@ export async function commitFindings(context: TaskContext, artifact: TaskArtifac
   // Receipts and comparable repair proofs commit independently. An empty
   // finding result cannot change the report's accumulated actionable union.
   if (!incoming.length) return
-  // Do not reload HTML, provider datasets or parsed entities to project attention.
-  // Select only the committed findings from the same tenant-scoped physical Audit.
-  const rows = await tx.$queryRaw<Array<{ findings: unknown }>>`
-    SELECT "workResult"->'data'->'flags' AS findings FROM "audit_verifier_executions"
-    WHERE "auditId" = ${context.audit.id} AND "workState" = 'COMPLETED'
-      AND "workKind" IN ('check', 'search', 'google', 'flow', 'overlays', 'journeys', 'slow-replay', 'cross-page', 'discovery', 'automatic-accounts')
-      AND "workResult"->'data'->'flags' <> '[]'::jsonb
-    ORDER BY "createdAt", "id" LIMIT 1200`
-  const flags = [...incoming, ...rows.flatMap(row =>
-    row.findings == null ? [] : z.array(flagSchema).max(500).parse(row.findings))]
+  const flags = [...incoming, ...await recordedTaskFindings(context.audit.id, tx)]
   // Existing overlap policy remains unchanged. Each source receipt retains its findings.
   await persistDeterministicFlags(context.audit.id, flags as import('../flag-types').DeterministicFlag[],
     { MESSAGE: null, EXPERIENCE: null, REACH: null }, tx, { authoritativeProjection: true })
+}
+
+/** Deterministic findings survive independently of rendered page compilation.
+ * Read only the committed observation projection, never collected HTML or traces. */
+export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.TransactionClient, '$queryRaw'>) {
+  const rows = await db.$queryRaw<Array<{ findings: unknown }>>`
+    SELECT "workResult"->'data'->'flags' AS findings FROM "audit_verifier_executions"
+    WHERE "auditId" = ${auditId} AND "workState" = 'COMPLETED'
+      AND "workKind" IN ('check', 'search', 'google', 'flow', 'overlays', 'journeys', 'slow-replay', 'cross-page', 'discovery', 'automatic-accounts')
+      AND "workResult"->'data'->'flags' <> '[]'::jsonb
+    ORDER BY "createdAt", "id" LIMIT 1200`
+  return rows.flatMap(row => row.findings == null ? [] : z.array(flagSchema).max(500).parse(row.findings))
 }
 
 /** Module observations and repair proofs share their originating task's commit. */
@@ -67,6 +70,7 @@ export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<
     return definition && (definition.area === spec!.category!.area || definition.verifies.some(id => allowedCheckIds.includes(id)))
   }) }
   if (allowedCheckIds && !receipt.assertions.length && CHECK_MODULES[receipt.module]?.area !== spec!.category!.area) return
+  receipt = { ...receipt, ...summarizeCheckAssertions(receipt) }
   const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix
   await tx.auditVerifierExecution.upsert({
     where: { auditId_targetKey_scopeKey: { auditId: context.audit.id, targetKey: 'module:' + receipt.module, scopeKey } },

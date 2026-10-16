@@ -48,6 +48,11 @@ describe('source-conditioned overlay evidence', () => {
     const unrelated = observation('mobile', 'passed')
     unrelated.controls[0] = { ...unrelated.controls[0], selector: '#other', label: 'Another action', context: overlayControlContext(unrelated.scope, 'cta', 'other') }
     expect(compare([healthy, receipt(unrelated)])).toBeUndefined()
+    const failed = receipt(observation())
+    expect(scopedAssertionForTarget({ receipt: failed, receipts: [], checkId: flag.checkId, flag })?.assertion)
+      .toMatchObject({ passed: false, complete: true })
+    for (const execution of [{ ...partial.execution!, auditId: 'unrelated' }, { ...partial.execution!, checkVersion: 2 }])
+      expect(compare([{ ...partial, execution }])).toBeUndefined()
   })
   it('does not certify hidden, unavailable, blank or changed scope evidence', () => {
     const flag = runObservedOverlayChecks(observation())[0]

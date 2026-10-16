@@ -42,7 +42,8 @@ export async function readOverlayControls(page: Page, ctaSelectors: string[], on
       }
       if (selector.length > 2000 || document.querySelectorAll(selector).length !== 1) { complete = false; continue }
       const labels = 'labels' in element ? Array.from((element as HTMLInputElement).labels ?? []).map(label => label.textContent ?? '').join(' ') : ''
-      const label = (element.getAttribute('aria-label') || labels || element.textContent || element.getAttribute('name') || element.tagName.toLowerCase()).trim().replace(/\s+/g, ' ').slice(0, 160)
+      const caption = element instanceof HTMLInputElement && ['button', 'submit', 'reset'].includes(element.type) ? element.value : ''
+      const label = (element.getAttribute('aria-label') || labels || caption || element.textContent || element.getAttribute('name') || element.tagName.toLowerCase()).trim().replace(/\s+/g, ' ').slice(0, 160)
       const identity = JSON.stringify([selector, element.tagName, label, element.getAttribute('type'), element.getAttribute('name'),
         element instanceof HTMLAnchorElement ? element.href : null, element.getAttribute('aria-controls'), element.closest('form')?.getAttribute('action') ?? null])
       const top = document.elementFromPoint(x, y), receivesPointer = top === element || Boolean(top && element.contains(top))
@@ -70,8 +71,8 @@ export async function collectOverlayObservation(browser: Browser, pageUrl: strin
     const session = await createAuditPage(browser, pageUrl, { profile, deadline: options.deadline, journeySafe: true, scanAccess: options.scanAccess })
     page = session.page; scope.finalUrl = page.url()
     try {
-      const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
-      const primary = rankCtaCandidate(candidates)
+      const discovered = await discoverFlowCtasWithFallback(page, pageUrl)
+      const primary = rankCtaCandidate(discovered.candidates)
       const ctaSelectors = [...new Set([...(primary ? [flowCtaSelector(primary.flowIdx)] : []),
         ...expected.filter(target => target.kind === 'cta').map(target => target.selector)])]
       const first = await readOverlayControls(page, ctaSelectors)
@@ -101,7 +102,7 @@ export async function collectOverlayObservation(browser: Browser, pageUrl: strin
       })
       for (const target of expected) if (!controls.some(control => control.context === target.context)) controls.push({ ...target, disposition: 'unknown', reason: 'unavailable', blocker: null })
       return { version: 1, device: options.device, scope, controls, restricted: session.safetyRestrictions.length > 0, contentVisible: content.content,
-        complete: first.complete && last.complete && eligible.length <= MAX_CONTROLS && stable }
+        complete: (expected.length > 0 || discovered.complete) && first.complete && last.complete && eligible.length <= MAX_CONTROLS && stable }
     } finally { session.disposeNetwork() }
   } catch (error) { if (error instanceof PageCaptureError) return unknown(); throw error }
   finally { await page?.context().close().catch(() => undefined) }

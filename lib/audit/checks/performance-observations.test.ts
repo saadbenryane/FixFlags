@@ -47,7 +47,7 @@ describe('shared performance measurement conclusions', () => {
     expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'unknown' })
     expect(facts.find(fact => fact.area === 'conversion')).toMatchObject({ state: 'healthy' })
   })
-  it('retains genuine failures and reaches a passing conclusion only after all lab measurements are available', async () => {
+  it('retains genuine failures and independent lab recovery while field responsiveness remains unknown', async () => {
     const failed = await runAllChecks(url, metadata, { ...desktop, lcp: 5000, cls: null }, null, [], undefined,
       null, undefined, undefined, false, ['performance'])
     expect(failed.flags.map(flag => flag.checkId)).toContain('lcp-critical')
@@ -55,6 +55,14 @@ describe('shared performance measurement conclusions', () => {
     const repaired = await runAllChecks(url, metadata, desktop, mobile, [], undefined,
       null, undefined, undefined, false, ['performance', 'mobile'])
     expect(repaired.flags).toEqual([])
-    expect(repaired.executions.every(execution => execution.passed && execution.complete !== false)).toBe(true)
+    const lab = repaired.executions.find(execution => execution.module === 'performance')!
+    expect(lab).toMatchObject({ passed: false, complete: false })
+    for (const key of ['score', 'lcp', 'cls']) expect(lab.assertions?.find(assertion => assertion.key === key)).toMatchObject({ passed: true, complete: true })
+    expect(lab.assertions?.find(assertion => assertion.key === 'inp')).toMatchObject({ passed: false, complete: false, disposition: 'observed' })
+    expect(repaired.executions.find(execution => execution.module === 'mobile')?.passed).toBe(true)
+    const recordedField = { ...mobile, crux: { lcp: 1500, cls: 0.02, fcp: 800, inp: 150, ttfb: 100, formFactor: 'PHONE', effectiveConnectionType: '4G' } }
+    const measured = await runAllChecks(url, metadata, desktop, recordedField, [], undefined,
+      null, undefined, undefined, false, ['performance', 'mobile'])
+    expect(measured.executions.every(execution => execution.passed && execution.complete !== false)).toBe(true)
   })
 })

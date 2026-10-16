@@ -6,6 +6,7 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 /** Client-safe lookup - no server-only audit imports. */
 export const CHECK_ID_TO_RULE: Record<string, string> = {
+  'page-http-error': 'Repeat a public GET to every originally affected page. Each must return a successful response without an access challenge; rendered behavior remains a separate check.',
   'account-signup-failed': 'A test visitor can complete signup and reach a signed-in page.',
   'account-verification-failed': 'The test visitor can complete the required email verification.',
   'account-signed-in-page': 'The same signed-in page opens successfully without a detected browser or automated accessibility problem.',
@@ -267,6 +268,8 @@ export const SECURITY_VERIFICATION_RULES = {
     'Open DevTools Network tab, check for X-Frame-Options header; add DENY or SAMEORIGIN.',
   'security-frame-options-too-permissive':
     'Change X-Frame-Options to DENY (preferred) or SAMEORIGIN.',
+  'security-csp-frame-ancestors-permissive':
+    "Set enforced frame-ancestors to 'none', or to 'self' and the trusted parent origins required by the page. X-Frame-Options cannot override this CSP directive.",
   'security-content-type-options-missing':
     'Open DevTools Network tab, check for X-Content-Type-Options: nosniff.',
   'security-headers-missing':

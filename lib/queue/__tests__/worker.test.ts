@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
     UnrecoverableError,
     capturedListeners: {} as Record<string, Function>,
     runAudit: vi.fn(),
-    runAiReview: vi.fn(),
+    enqueuePendingAiReview: vi.fn(),
     runRepoScan: vi.fn(),
     runFixPr: vi.fn(),
     createWorkerRedis: vi.fn(() => ({})),
@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => {
 const UnrecoverableError = mocks.UnrecoverableError
 
 vi.mock('@/lib/audit/runner', () => ({ runAudit: mocks.runAudit }))
-vi.mock('@/lib/audit/run-ai-review', () => ({ runAiReview: mocks.runAiReview }))
+vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueuePendingAiReview: mocks.enqueuePendingAiReview }))
 vi.mock('@/lib/repo-scan/runner', () => ({ runRepoScan: mocks.runRepoScan }))
 vi.mock('@/lib/repo-scan/fix-pr-runner', () => ({ runFixPr: mocks.runFixPr }))
 vi.mock('@/lib/queue/redis', () => ({ createWorkerRedis: mocks.createWorkerRedis }))
@@ -289,14 +289,14 @@ describe('startWorker', () => {
     expect(mocks.runAudit).toHaveBeenCalledWith('a1')
   })
 
-  it('routes ai-review jobs to runAiReview', async () => {
+  it('routes ai-review jobs to enqueuePendingAiReview', async () => {
     const { startWorker } = await import('@/lib/queue/worker')
     startWorker()
-    mocks.runAiReview.mockResolvedValue(undefined)
+    mocks.enqueuePendingAiReview.mockResolvedValue(undefined)
 
     await capturedProcessor!(makeJob({ name: 'ai-review', data: { auditId: 'a2' } }))
 
-    expect(mocks.runAiReview).toHaveBeenCalledWith('a2')
+    expect(mocks.enqueuePendingAiReview).toHaveBeenCalledWith('a2')
     expect(mocks.runAudit).not.toHaveBeenCalled()
   })
 

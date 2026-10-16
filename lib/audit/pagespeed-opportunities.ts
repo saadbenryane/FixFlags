@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { createHash } from 'node:crypto'
+import { normalizeVerifierUrl } from '../improvements/verifier-scope'
 
 const OPPORTUNITY_DEFINITIONS = [
   { id: 'render-blocking-resources', aliases: ['render-blocking-insight', 'render-blocking-resources'], unit: 'ms' },
@@ -29,6 +31,27 @@ export const resourceAuditsSchema = z.array(resourceAuditSchema).max(8).superRef
 
 export const PERFORMANCE_RESOURCE_THRESHOLDS = { renderBlocking: 500, unusedJavascript: 100_000, unusedCss: 50_000, images: 50_000 } as const
 export const LEGACY_IMAGE_AUDITS = ['uses-optimized-images', 'uses-webp-images', 'uses-responsive-images', 'efficient-animated-content'] as const
+
+export const RESOURCE_REPAIR_RULE = 'PageSpeed resource observation v1: repeat the original provider audits, device, units and thresholds.'
+export const RESOURCE_CHECK_POLICIES = {
+  'render-blocking': { key: 'render-blocking', name: 'Render-blocking resources', ids: ['render-blocking-resources'], threshold: PERFORMANCE_RESOURCE_THRESHOLDS.renderBlocking, unit: 'ms' },
+  'unused-js-large': { key: 'unused-javascript', name: 'Unused JavaScript', ids: ['unused-javascript'], threshold: PERFORMANCE_RESOURCE_THRESHOLDS.unusedJavascript, unit: 'bytes' },
+  'unused-css-large': { key: 'unused-css', name: 'Unused CSS', ids: ['unused-css-rules'], threshold: PERFORMANCE_RESOURCE_THRESHOLDS.unusedCss, unit: 'bytes' },
+  'unoptimized-images': { key: 'image-optimization', name: 'Image delivery', ids: LEGACY_IMAGE_AUDITS, threshold: PERFORMANCE_RESOURCE_THRESHOLDS.images, unit: 'bytes' },
+} as const
+
+export function resourceCheckPolicy(checkId: string) {
+  const id = checkId.replace(/^mobile-/, '')
+  return Object.hasOwn(RESOURCE_CHECK_POLICIES, id) ? RESOURCE_CHECK_POLICIES[id as keyof typeof RESOURCE_CHECK_POLICIES] : undefined
+}
+
+export function resourcePageKey(pageUrl: string) {
+  return createHash('sha256').update(normalizeVerifierUrl(pageUrl)).digest('hex')
+}
+
+export function resourceAuditContext(pageUrl: string, device: 'desktop' | 'mobile', audit: Pick<ResourceAudit, 'providerAuditId' | 'unit'>, threshold: number) {
+  return `pagespeed-resource:v1:${resourcePageKey(pageUrl)}:${device}:${audit.providerAuditId}:${audit.unit}:${threshold}`
+}
 
 function nonnegativeNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null

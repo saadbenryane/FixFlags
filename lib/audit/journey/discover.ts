@@ -1,5 +1,9 @@
+import { observeRenderedCopy } from '../browser/rendered-copy'
 import type { Page } from 'playwright'
 import { scoreCtaLink, classifyLinkCategory } from '@/lib/audit/flow/link-scoring'
+import { collectRenderedActionInventory, flowCtaSelector } from '../flow/discover-cta'
+import { classifyCtaHref } from '../flow/link-scoring'
+import { rankScoredCtaCandidate, scoreCtaCandidates } from '../flow/score-cta-candidates'
 import type { JourneyType } from './types'
 
 export interface JourneyLinkCandidate {
@@ -7,103 +11,61 @@ export interface JourneyLinkCandidate {
   text: string
   score: number
   category: string
+  selector?: string
+  opensInNewTab?: boolean
 }
 
-/** Discover interactive same-origin links for journey navigation. */
-export async function discoverJourneyLinks(
-  page: Page,
-  origin: string
-): Promise<JourneyLinkCandidate[]> {
-  const raw = await page.evaluate(() => {
-    const anchors = Array.from(document.querySelectorAll('a[href]'))
-    return anchors.slice(0, 80).filter(a => {
-      if (!a.getClientRects().length) return false
-      for (let node: Element | null = a; node; node = node.parentElement) {
-        const style = getComputedStyle(node)
-        if (style.display === 'none' || style.visibility !== 'visible' || Number(style.opacity) === 0) return false
-      }
-      return true
-    }).map((a) => {
-      const el = a as HTMLAnchorElement
-      return {
-        href: el.href,
-        text: (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 80),
-      }
-    })
-  })
-
+/** One rendered cohort supplies primary action, ranked routes and exact click targets. */
+export async function observeJourneyControls(page: Page, origin: string) {
+  const inventory = await collectRenderedActionInventory(page, true, false)
+  const raw = inventory.pageUrl === page.url() ? inventory.controls.filter(control => control.enabled && control.labelComplete) : []
   const out: JourneyLinkCandidate[] = []
-  const seen = new Set<string>()
   for (const link of raw) {
-    if (!link.href || link.href.startsWith('mailto:') || link.href.startsWith('tel:')) continue
-    let resolved: string
-    try {
-      resolved = new URL(link.href, origin).toString()
-    } catch {
-      continue
-    }
-    if (new URL(resolved).origin !== origin) continue
-    if (seen.has(resolved)) continue
-    seen.add(resolved)
+    if (link.tag !== 'a' || !link.resolvedHref || classifyCtaHref(link.href, { hashTargetExists: link.hashTargetExists }).isPlaceholder) continue
+    const resolved = link.resolvedHref, target = new URL(resolved)
+    if (!['http:', 'https:'].includes(target.protocol) || target.origin !== origin) continue
     const score = scoreCtaLink(resolved, link.text)
     if (score === 0) continue
     out.push({
       href: resolved,
-      text: link.text,
+      text: link.text.slice(0, 80), selector: flowCtaSelector(link.idx), opensInNewTab: link.opensInNewTab,
       score,
       category: classifyLinkCategory(resolved, link.text),
     })
   }
-  return out.sort((a, b) => b.score - a.score)
+  const seen = new Set<string>()
+  const links = out.sort((a, b) => b.score - a.score).filter(link => {
+    if (seen.has(link.href)) return false
+    seen.add(link.href); return true
+  }).slice(0, 80)
+  const controls = raw.filter(control => control.inViewport && control.text.length >= 2)
+  const primary = rankScoredCtaCandidate(scoreCtaCandidates(page.url(), controls).filter(control => control.score >= 70))
+  const control = controls.find(control => control.idx === primary?.idx) ??
+    controls.find(control => control.tag === 'button' || control.tag === 'input' && ['button', 'submit'].includes(control.inputType ?? '') || control.role === 'button' || control.styledAction)
+  const complete = inventory.complete && inventory.pageUrl === page.url()
+  const viewportComplete = inventory.viewportComplete && inventory.pageUrl === page.url()
+  return { pageUrl: inventory.pageUrl, links, pathComplete: complete || links.length > 0,
+    primaryAction: { found: Boolean(control), text: control?.text.slice(0, 60) ?? null, complete: viewportComplete || Boolean(control) } }
+}
+export type JourneyControlObservation = Awaited<ReturnType<typeof observeJourneyControls>>
+
+export async function discoverJourneyLinks(page: Page, origin: string): Promise<JourneyLinkCandidate[]> {
+  return (await observeJourneyControls(page, origin)).links
 }
 
 export async function pageHasClearHeadline(page: Page): Promise<boolean> {
-  return page.evaluate(() => {
-    const headline = Array.from(document.querySelectorAll('h1')).find(h1 => {
-      if (!h1.getClientRects().length) return false
-      for (let node: Element | null = h1; node; node = node.parentElement) {
-        const style = getComputedStyle(node)
-        if (style.display === 'none' || style.visibility !== 'visible' || Number(style.opacity) === 0) return false
-      }
-      return true
-    })
-    return Boolean(headline && (headline.textContent ?? '').trim().length >= 12)
-  })
+  const copy = await observeRenderedCopy(page)
+  return copy.complete && (copy.h1s[0]?.length ?? 0) >= 12
 }
 
-export async function pageHasPrimaryCta(page: Page): Promise<{ found: boolean; text: string | null }> {
-  return page.evaluate(() => {
-    const selectors = [
-      'a[href*="signup"]',
-      'a[href*="sign-up"]',
-      'a[href*="pricing"]',
-      'a[href*="demo"]',
-      'button',
-      '[role="button"]',
-      'a.btn',
-      'a[class*="cta"]',
-    ]
-    for (const sel of selectors) {
-      for (const el of document.querySelectorAll(sel)) {
-        const rect = el.getBoundingClientRect()
-        if (rect.width <= 0 || rect.height <= 0 || rect.top >= innerHeight || rect.bottom <= 0 || rect.left >= innerWidth || rect.right <= 0 || el.matches(':disabled,[aria-disabled="true"]')) continue
-        let visible = true
-        for (let node: Element | null = el; node; node = node.parentElement) {
-          const style = getComputedStyle(node)
-          if (style.display === 'none' || style.visibility !== 'visible' || Number(style.opacity) === 0) { visible = false; break }
-        }
-        const text = (el.textContent || el.getAttribute('aria-label') || '').trim()
-        if (visible && text.length >= 2) return { found: true, text: text.slice(0, 60) }
-      }
-    }
-    return { found: false, text: null }
-  })
+export async function pageHasPrimaryCta(page: Page) {
+  return (await observeJourneyControls(page, new URL(page.url()).origin)).primaryAction
 }
 
 export async function countVisibleFormFields(page: Page): Promise<number> {
   return page.evaluate(() => {
     return Array.from(
-      document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), textarea, select')
+      document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), textarea, select')
     ).filter((el) => {
       if (!el.getClientRects().length) return false
       for (let node: Element | null = el; node; node = node.parentElement) {

@@ -1,3 +1,4 @@
+import { renderedContentMetadata } from '../browser/rendered-copy'
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
@@ -97,6 +98,7 @@ export function runTrustPsychologyChecks(
   pageUrl?: string | null,
   record?: CheckRecorder,
 ): DeterministicFlag[] {
+  meta = renderedContentMetadata(meta)
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
   const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)

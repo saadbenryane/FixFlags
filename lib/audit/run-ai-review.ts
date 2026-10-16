@@ -1,5 +1,5 @@
 import { executionWrite } from '@/lib/audit/execution-ownership'
-import { claimExecution, withExecutionOwnership } from './execution-ownership'
+import { currentExecutionOwnership } from './execution-ownership'
 import { prisma } from '@/lib/db'
 import { mergePrescriptionResults, flagKeyForRow } from './persist'
 import { finalizeAudit } from './finalize'
@@ -12,9 +12,12 @@ import { remainingAiReportCredits } from './ai-report-entitlement'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
 import { runPrescriptionWithRetry } from './judge-prescription'
 import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-profile'
+import { renderedContentMetadata } from './browser/rendered-copy'
 
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
-export async function runAiReview(auditId: string): Promise<void> {
+export async function runAiReview(auditId: string, deadline?: number): Promise<void> {
+  const owner = currentExecutionOwnership()
+  if (!owner?.taskId || owner.auditId !== auditId) throw new Error('Prescription requires its execution task')
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
     include: {
@@ -44,8 +47,10 @@ export async function runAiReview(auditId: string): Promise<void> {
     throw new Error('AI report limit reached')
   }
 
-  const metadata = audit.htmlMetadata as PageMetadata | null
-  if (!metadata) throw new Error('Audit metadata missing for prescription')
+  const recordedMetadata = audit.htmlMetadata as PageMetadata | null
+  if (!recordedMetadata) throw new Error('Audit metadata missing for prescription')
+  if (recordedMetadata.renderedCopy !== undefined && !recordedMetadata.renderedCopy?.complete) throw new Error('Rendered page copy could not be observed.')
+  const metadata = renderedContentMetadata(recordedMetadata)
   if (!audit.verdict || audit.score == null) {
     throw new Error('Triage verdict missing for prescription')
   }
@@ -68,13 +73,12 @@ export async function runAiReview(auditId: string): Promise<void> {
 
   const { verdict, score } = audit
   if (verdict == null || score == null) throw new Error('A recorded assessment is required before preparing this explanation')
-  const owner = await claimExecution(auditId, false, true)
-  if (!owner) throw new Error('Another worker owns this Audit')
-  return withExecutionOwnership(owner, async () => {
   const startedAt = Date.now()
   await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
-    data: { status: 'JUDGING', progress: PIPELINE_PROGRESS.JUDGING, includeAi: true },
+    // Prescription enriches an already completed report. Its lease and events
+    // track execution without reopening the analysis or its monitoring run.
+    data: { includeAi: true },
   }))
   await logPipelineEvent(auditId, { stage: 'judging', event: 'prescription_started' })
 
@@ -96,7 +100,8 @@ export async function runAiReview(auditId: string): Promise<void> {
         })),
       },
       desktopBase64,
-      mobileBase64
+      mobileBase64,
+      deadline === undefined ? undefined : Math.max(1, deadline - Date.now() - 5000)
     )
   } catch (error) {
     const failureCode =
@@ -152,6 +157,5 @@ export async function runAiReview(auditId: string): Promise<void> {
       mobilePageSpeed: evidence?.mobilePageSpeed === true,
       flowScan: evidence?.flowScan === true,
     },
-  })
   })
 }

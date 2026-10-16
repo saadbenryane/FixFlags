@@ -2,6 +2,7 @@ import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import { openCheckDestination } from '../open-check'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
+import { resolvedPageLinks } from './public-links'
 
 const MAX_LINK_CHECKS = 8
 const FETCH_TIMEOUT_MS = 4000
@@ -39,7 +40,7 @@ export async function runAuthCheckoutChecks(
   const candidates: Array<{ url: string; kind: LinkKind }> = []
   const deadAuth: string[] = [], deadCheckout: string[] = []
   const targets = { auth: [] as NonNullable<DeterministicFlag['evidenceTargets']>, checkout: [] as NonNullable<DeterministicFlag['evidenceTargets']> }
-  for (const link of meta.links) {
+  for (const link of resolvedPageLinks(pageUrl, meta)) {
     if (!link.href || /^(?:#|mailto:|tel:)/i.test(link.href)) continue
     const kind = classifyLink(link)
     if (!kind) continue

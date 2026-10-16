@@ -5,9 +5,14 @@ import { recordObservation, type CheckRecorder } from './assertion'
 
 export function runLayoutChecks(
   metrics: CaptureMetrics | null,
-  purpose: PagePurpose = 'marketing',
+  purpose: PagePurpose | null = 'marketing',
   record?: CheckRecorder,
 ): DeterministicFlag[] {
+  if (purpose === null) {
+    recordObservation(record, 'mobile-cta-position', 'Mobile action position',
+      'The page has an applicable conversion purpose', 'Page purpose is unavailable.', undefined, true)
+    return []
+  }
   // This is a conversion-layout check. A contextual action at the end of an
   // article, documentation page, OSS README, or placeholder is not evidence
   // that the page's primary CTA was hidden. Page-purpose checks already use

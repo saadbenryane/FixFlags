@@ -8,7 +8,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
   const ux = flowScan.destinationUX
 
   if (flowScan.status === 'success' && ux) {
-    if (!ux.hasClearHeadline) {
+    if (ux.contentComplete !== false && !ux.hasClearHeadline) {
       findings.push({
         checkId: 'flow-destination-no-headline',
         rubric: 'MESSAGE',
@@ -22,7 +22,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
       })
     }
 
-    if (!ux.hasPrimaryCTA && ux.frictionSignals.ctaCount === 0) {
+    if (ux.controlsComplete !== false && !ux.hasPrimaryCTA && ux.frictionSignals.ctaCount === 0) {
       findings.push({
         checkId: 'flow-destination-no-cta',
         rubric: 'EXPERIENCE',
@@ -36,7 +36,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
       })
     }
 
-    if (!ux.ctaPromisesMatch && ux.headline && flowScan.ctaText) {
+    if (ux.contentComplete !== false && !ux.ctaPromisesMatch && ux.headline && flowScan.ctaText) {
       findings.push({
         checkId: 'flow-cta-message-mismatch',
         rubric: 'MESSAGE',
@@ -50,7 +50,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
       })
     }
 
-    if (ux.frictionSignals.tooManyCTAs) {
+    if (ux.controlsComplete !== false && ux.frictionSignals.tooManyCTAs) {
       const competing = ux.frictionSignals.distinctCtaCount ?? ux.frictionSignals.ctaCount
       findings.push({
         checkId: 'flow-destination-cta-overload',
@@ -79,7 +79,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
       })
     }
 
-    if (!ux.trustSignals.hasPrivacyPolicy && ux.frictionSignals.formRequiredForValue) {
+    if (ux.trustSignals.hasPrivacyPolicy === false && ux.frictionSignals.formRequiredForValue) {
       findings.push({
         checkId: 'flow-destination-no-privacy',
         rubric: 'REACH',
@@ -93,7 +93,8 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
       })
     }
 
-    if (ux.loadQuality.timeToContentMs > 3000) {
+    if (ux.loadQuality.timeToContentMs !== null && ux.loadQuality.timeToContentMs > 3000 &&
+      (ux.loadQuality.version !== 2 || (ux.loadQuality.contentAbsentThroughMs ?? 0) > 3000)) {
       findings.push({
         checkId: 'flow-destination-slow-load',
         rubric: 'EXPERIENCE',

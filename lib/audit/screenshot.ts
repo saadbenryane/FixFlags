@@ -1,4 +1,5 @@
 import { collectRenderedHtml } from './browser/rendered-html'
+import { observeRenderedCopy, type RenderedCopy } from './browser/rendered-copy'
 import { collectRenderedSearchSnapshot, type RenderedSearchSnapshot } from './search/rendered-snapshot'
 import { chromium, type Browser, type Page } from 'playwright'
 import { AxeBuilder } from '@axe-core/playwright'
@@ -9,17 +10,18 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
 import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
-import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
+import { runFlowScan, type FlowScanResult, type FlowScanStep } from './flow/run-flow-scan'
 import { createAuditPage, settleAuditPage } from './browser/page-session'
 import { readLoadingUi, loadingUiInDocument, type LoadingUiSnapshot } from './browser/loading-ui'
 import { observeViewport } from './browser/viewport-observation'
 import { observeMotionWindow, collectReducedMotionWindow, type MotionWindow } from './browser/motion-observation'
 import { applyMotionObservation } from './checks/motion-evidence'
 import { sharedBrowser } from './browser/shared-browser'
+import { bindPublicBrowserProxy, startPublicBrowserProxy } from './browser/public-proxy'
 import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from './browser/accessibility-evidence'
-import { ACCESSIBILITY_TAGS } from './checks/accessibility-rules'
+import { ACCESSIBILITY_RUN_OPTIONS } from './checks/accessibility-rules'
 import type { ConsoleMessage } from './console-evidence'
 import { randomUUID } from 'node:crypto'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
@@ -30,6 +32,7 @@ import {
   type PageLoadExperience,
 } from './capture-metrics'
 import type { RuntimeHeadMetadata } from './metadata'
+import { NATIVE_HEAD_TEXT_LIMIT } from './checks/head-metadata'
 import {
   pageCaptureFailureFromError,
   type PageCaptureFailure,
@@ -57,6 +60,8 @@ const BROWSER_LAUNCH_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
+  '--disable-quic',
+  '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
 ]
 
 export function getChromePath(): string | undefined {
@@ -84,12 +89,18 @@ async function launchBrowser(): Promise<Browser> {
     )
   }
   try {
-    const launched = await chromium.launch({
-      args: BROWSER_LAUNCH_ARGS,
-      headless: true,
-      executablePath,
-    })
-    return launched
+    const proxy = await startPublicBrowserProxy()
+    try {
+      const launched = await chromium.launch({
+        args: BROWSER_LAUNCH_ARGS,
+        headless: true,
+        executablePath,
+        proxy: { server: proxy.url, bypass: '<-loopback>' },
+      })
+      bindPublicBrowserProxy(launched, proxy.url)
+      launched.once('disconnected', () => { void proxy.close().catch(error => logger.error('Browser proxy cleanup failed', error)) })
+      return launched
+    } catch (error) { await proxy.close(); throw error }
   } catch (err) {
     throw new BrowserLaunchError(
       `Failed to launch Chromium${executablePath ? ` (${executablePath})` : ''}: ` +
@@ -127,6 +138,7 @@ export function dedupeConsoleErrors(
 }
 
 export interface ScreenshotResult {
+  renderedCopy?: RenderedCopy | null
   renderedSearchSnapshot?: RenderedSearchSnapshot
   originalDocument?: import('./search/contracts').PublicDocument
   desktopFinalUrl?: string
@@ -147,6 +159,7 @@ export interface ScreenshotResult {
   motionWindow?: MotionWindow
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
+  runtimeHeadScope?: CaptureObservationScope
   responseHeaders?: Record<string, string> | null
   tracking?: import('./tracking/contracts').TrackingEvidence
   networkFailures?: NetworkFailureRecord[]
@@ -163,6 +176,7 @@ export interface ScreenshotResult {
 }
 
 interface ViewportCapture {
+  renderedCopy?: RenderedCopy | null
   renderedSearchSnapshot?: RenderedSearchSnapshot
   motionWindow?: MotionWindow
   consoleComplete?: boolean
@@ -182,6 +196,7 @@ interface ViewportCapture {
   captureMetrics?: CaptureMetrics | null
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
+  runtimeHeadScope?: CaptureObservationScope
   responseHeaders?: Record<string, string> | null
   tracking?: import('./tracking/contracts').TrackingEvidence
   networkFailures?: NetworkFailureRecord[]
@@ -210,22 +225,29 @@ async function readTechnologyRuntimeMarkers(page: Page): Promise<string[]> {
   , TECHNOLOGY_RUNTIME_MARKERS)
 }
 
-async function readRuntimeHeadMetadata(page: Page): Promise<RuntimeHeadMetadata> {
-  return page.evaluate(() => {
+async function readRuntimeHeadMetadata(page: Page): Promise<{ metadata: RuntimeHeadMetadata; finalUrl: string }> {
+  return page.evaluate((maximum) => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+    const bounded = (value: string | null | undefined) => value && value.length > maximum ? undefined : value?.trim() || null
     const content = (selector: string) =>
-      document.querySelector<HTMLMetaElement>(selector)?.content?.trim() || null
+      bounded(document.querySelector<HTMLMetaElement>(selector)?.content)
     const href = (selector: string) =>
-      document.querySelector<HTMLLinkElement>(selector)?.href?.trim() || null
+      bounded(document.querySelector<HTMLLinkElement>(selector)?.href)
+    const image = content('meta[property="og:image"]')
+    let imageUrl = image
+    if (image) {
+      try { imageUrl = bounded(new URL(image, document.baseURI).href) }
+      catch { /* Keep an observed invalid declaration for the destination check. */ }
+    }
 
-    return {
-      title: document.title.trim() || null,
+    const metadata: RuntimeHeadMetadata = {
+      title: bounded(document.title),
       description: content('meta[name="description"]'),
       ogTitle: content('meta[property="og:title"]'),
       ogDescription: content('meta[property="og:description"]'),
-      ogImage: content('meta[property="og:image"]'),
+      ogImage: imageUrl,
       canonical: href('link[rel="canonical"]'),
-      lang: document.documentElement.getAttribute('lang')?.trim() || null,
+      lang: bounded(document.documentElement.getAttribute('lang')),
       viewport: content('meta[name="viewport"]'),
       robots: content('meta[name="robots"]'),
       hasFavicon: Boolean(
@@ -234,7 +256,9 @@ async function readRuntimeHeadMetadata(page: Page): Promise<RuntimeHeadMetadata>
         )
       ),
     }
-  })
+    return { finalUrl: location.href, metadata: Object.fromEntries(
+      Object.entries(metadata).filter(([, value]) => value !== undefined)) as RuntimeHeadMetadata }
+  }, NATIVE_HEAD_TEXT_LIMIT)
 }
 
 async function waitForFinishedLoadState(
@@ -315,6 +339,17 @@ async function consoleWindowComplete(page: Page | null, truncated: (() => boolea
   } finally { clearTimeout(timer) }
 }
 
+async function settleCaptureUploads(uploads: Promise<void>[]) {
+  const results = await Promise.allSettled(uploads)
+  const failure = results.find(result => result.status === 'rejected')
+  if (failure?.status === 'rejected') throw failure.reason
+}
+
+async function settleProfile<T>(work: () => Promise<T>): Promise<PromiseSettledResult<T>> {
+  try { return { status: 'fulfilled', value: await work() } }
+  catch (reason) { return { status: 'rejected', reason } }
+}
+
 async function captureDesktopWithFlow(
   b: Browser,
   targetUrl: string,
@@ -358,6 +393,8 @@ async function captureDesktopWithFlow(
   let consoleTruncated: (() => boolean) | undefined
   let consoleTiming: (() => { loaded: boolean; observedMs: number; minimumMs: number }) | undefined
   let finishedLoad: Promise<PageLoadExperience> | undefined
+  const uploads: Promise<void>[] = []
+  let landingStep: FlowScanStep | undefined
   try {
     timeline.push('navigate', `Open ${targetUrl}`, { url: targetUrl })
     const session = await createAuditPage(b, targetUrl, {
@@ -395,8 +432,11 @@ async function captureDesktopWithFlow(
     if (captureMedia) {
       const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
       initialCaptureElapsedMs = Date.now() - captureStartedAt
-      result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
-      onInitialScreenshot?.(result.initialUrl)
+      const uploading = uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey), { deadline }).then(url => {
+        result.initialUrl = url
+        onInitialScreenshot?.(url)
+      })
+      uploads.push(uploading); void uploading.catch(() => undefined)
     }
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
@@ -406,7 +446,10 @@ async function captureDesktopWithFlow(
     result.technologyResources = [...session.technologyResources]
     result.technologyResourcesTruncated = session.technologyResourcesTruncated()
     if (!mediaOnly) {
-      result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
+      const head = await readRuntimeHeadMetadata(page)
+      result.runtimeHeadMetadata = head.metadata
+      result.runtimeHeadScope = { pageUrl: targetUrl, finalUrl: head.finalUrl,
+        profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
       result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
       try { result.renderedSearchSnapshot = await collectRenderedSearchSnapshot(page) }
       catch (error) { logger.warn('Rendered Search sections could not be collected', error) }
@@ -415,6 +458,13 @@ async function captureDesktopWithFlow(
       result.htmlTruncated = rendered.truncated
       result.htmlCompacted = rendered.compacted
       result.finalUrl = rendered.finalUrl ?? page.url()
+      try {
+        const copy = await observeRenderedCopy(page)
+        result.renderedCopy = copy.pageUrl === result.finalUrl ? copy : null
+      } catch (error) {
+        result.renderedCopy = null
+        logger.warn('Rendered copy could not be observed', error)
+      }
       if (!rendered.truncated) result.renderedScope = { pageUrl: targetUrl, finalUrl: result.finalUrl,
         profile: captureProfileKey(DESKTOP_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) }
 
@@ -423,7 +473,7 @@ async function captureDesktopWithFlow(
     // which otherwise flags third-party player DOM as the site's own a11y debt.
     try {
       const axeResults = await new AxeBuilder({ page })
-        .withTags(ACCESSIBILITY_TAGS)
+        .options(ACCESSIBILITY_RUN_OPTIONS)
         .setLegacyMode(true)
         .analyze()
       result.axeViolations = recordedAxeViolations(axeResults)
@@ -440,7 +490,8 @@ async function captureDesktopWithFlow(
     if (captureMedia) {
       const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
       result.base64 = buffer.toString('base64')
-      result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
+      const uploading = uploadScreenshot(auditId, 'desktop', buffer, pageKey, { deadline }).then(url => { result.url = url })
+      uploads.push(uploading); void uploading.catch(() => undefined)
     }
     timeline.push('capture', captureMedia ? 'Desktop screenshot captured' : 'Rendered content inspected', {
       screenshot: result.url,
@@ -459,7 +510,7 @@ async function captureDesktopWithFlow(
 
     if (runFlow) {
       try {
-        const landingStep = {
+        landingStep = {
           label: 'Landing',
           screenshotUrl: result.url,
           url: page.url(),
@@ -483,9 +534,7 @@ async function captureDesktopWithFlow(
         logger.error('Flow scan failed', err)
         result.flowResult = {
           status: 'skipped',
-          steps: result.url
-            ? [{ label: 'Landing', screenshotUrl: result.url, url: page.url() }]
-            : [],
+          steps: landingStep ? [landingStep] : [],
           finalUrl: page.url(),
         }
         timeline.push('flow', 'Flow scan skipped after error')
@@ -504,7 +553,13 @@ async function captureDesktopWithFlow(
     result.consoleMinimumMs = consoleTiming?.().minimumMs ?? 0
     result.consoleMessagesTruncated = consoleTruncated?.() ?? false
     result.consoleComplete = result.consoleComplete && !result.consoleMessagesTruncated
-    result.actionTimeline = timeline.snapshot()
+    // Storage cannot retain the browser's physical capacity. Uploads already
+    // run alongside observation, and finish only after the context is closed.
+    await settleCaptureUploads(uploads)
+    if (result.loadExperience) result.loadExperience.initialScreenshotUrl = result.initialUrl
+    if (landingStep) landingStep.screenshotUrl = result.url
+    result.actionTimeline = timeline.snapshot().map(event => event.kind === 'capture' && event.label === 'Desktop screenshot captured'
+      ? { ...event, screenshot: result.url } : event)
     result.formProbe = result.formProbe ?? null
   }
 
@@ -533,6 +588,7 @@ async function captureMobileViewport(
   let finishedLoad: Promise<PageLoadExperience> | undefined
   let initialMotion: Promise<MotionWindow> | undefined
   let restrictions: string[] = []
+  const uploads: Promise<void>[] = []
 
   try {
     const session = await createAuditPage(b, targetUrl, {
@@ -569,7 +625,8 @@ async function captureMobileViewport(
     if (captureMedia) {
       const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
       initialCaptureElapsedMs = Date.now() - captureStartedAt
-      result.initialUrl = await uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey))
+      const uploading = uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey), { deadline }).then(url => { result.initialUrl = url })
+      uploads.push(uploading); void uploading.catch(() => undefined)
     }
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
@@ -577,7 +634,8 @@ async function captureMobileViewport(
     if (captureMedia) {
       const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
       result.base64 = buffer.toString('base64')
-      result.url = await uploadScreenshot(auditId, 'mobile', buffer, pageKey)
+      const uploading = uploadScreenshot(auditId, 'mobile', buffer, pageKey, { deadline }).then(url => { result.url = url })
+      uploads.push(uploading); void uploading.catch(() => undefined)
     }
 
     if (captureMedia && !mediaOnly) try {
@@ -607,6 +665,8 @@ async function captureMobileViewport(
     result.consoleMinimumMs = consoleTiming?.().minimumMs ?? 0
     result.consoleMessagesTruncated = consoleTruncated?.() ?? false
     result.consoleComplete = result.consoleComplete && !result.consoleMessagesTruncated
+    await settleCaptureUploads(uploads)
+    if (result.loadExperience) result.loadExperience.initialScreenshotUrl = result.initialUrl
   }
 
   return result
@@ -643,8 +703,9 @@ export async function captureScreenshots(
   const consoleIdentityKey = randomUUID()
   const scanAccess = options?.scanAccess ?? null
 
-  const [desktopSettled, mobileSettled] = await Promise.allSettled([
-    captureDesktopWithFlow(
+  // A browser task holds one native context at a time. Other page tasks can
+  // progress when one profile is waiting on a document or renderer.
+  const desktopSettled = await settleProfile(() => captureDesktopWithFlow(
       b,
       url,
       auditId,
@@ -660,8 +721,8 @@ export async function captureScreenshots(
       options?.mediaOnly ?? false,
       consoleIdentityKey,
       options?.consoleObservationMs ?? 0,
-    ),
-    captureMobileViewport(
+    ))
+  const mobileSettled = await settleProfile(() => captureMobileViewport(
       b,
       url,
       auditId,
@@ -674,8 +735,7 @@ export async function captureScreenshots(
       consoleIdentityKey,
       options?.consoleObservationMs ?? 0,
       options?.captureMotion ?? true,
-    ),
-  ])
+    ))
 
   let desktop: ViewportCapture & {
     flowResult: FlowScanResult | null
@@ -762,6 +822,8 @@ export async function captureScreenshots(
     ...(mobile.motionWindow ? { motionWindow: mobile.motionWindow } : {}),
     loadExperience,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
+    runtimeHeadScope: desktop.runtimeHeadScope,
+    renderedCopy: desktop.renderedCopy ?? null,
     responseHeaders: desktop.responseHeaders ?? null,
     networkFailures: mergedNetworkFailures,
     tracking: desktop.tracking,

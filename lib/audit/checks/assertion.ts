@@ -7,6 +7,8 @@ export type CheckAssertion = {
   disposition?: 'observed'
   complete?: boolean
   context?: string
+  /** Individually measured scopes within an aggregate assertion. Missing scopes are absent. */
+  measurements?: Array<{ context: string; passed: boolean; observed: string }>
   targets?: Array<{ selector: string; label: string; context?: string }>
 }
 

@@ -330,12 +330,14 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
       parentId: true,
       completedAt: true,
       aiReviewAt: true,
+      triageAt: true,
       failedModules: true,
     },
   })
   if (!audit) throw new Error(`Audit ${input.auditId} not found during finalization`)
   if (audit.status === 'COMPLETED' && audit.completedAt && audit.aiReviewAt) return
-  if (audit.status !== 'FINALIZING' && audit.status !== 'JUDGING') {
+  const completedTriage = audit.status === 'COMPLETED' && audit.completedAt && audit.triageAt
+  if (!completedTriage && audit.status !== 'FINALIZING' && audit.status !== 'JUDGING') {
     throw new Error(`Audit ${input.auditId} is not ready to finalize prescription`)
   }
 
@@ -377,6 +379,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
       failureCode: null,
       failureStage: null,
       failureMetadata: undefined,
+      errorMsg: null,
     },
   }))
 

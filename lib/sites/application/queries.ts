@@ -156,7 +156,9 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   ]) : [undefined, undefined]
 
   const technologyProfile = audit?.id ? await loadTechnologyProfile(audit.id) : null
-  const analytics = technologyProfile?.technologies
+  const trackingAudit = categoryEvidence.get('tracking')
+  const trackingProfile = trackingAudit ? await loadTechnologyProfile(trackingAudit.id) : null
+  const analytics = (trackingProfile && trackingProfile.status !== 'not_captured' ? trackingProfile : technologyProfile)?.technologies
     .filter((tech) => tech.category === 'analytics')
     .map((tech) => tech.name) ?? []
   const { timeline: monitoringHistory, trend: monitoringTrend } = await loadMonitoringHistory(site, selection)

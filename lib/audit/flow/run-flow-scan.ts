@@ -1,4 +1,5 @@
-import { scanAccessToFetchHeaders, type ScanAccessConfig } from '../scan-access'
+import { type ScanAccessConfig } from '../scan-access'
+import { randomUUID } from 'node:crypto'
 import { auditPageObservation } from '../browser/observation-scope'
 import type { Browser, Page, Response as BrowserResponse } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
@@ -15,9 +16,8 @@ import {
   DESKTOP_CAPTURE_PROFILE,
   type CaptureProfile,
 } from '@/lib/audit/browser/capture-profile'
-import { runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
-import { measurePostClickLoading, type PostClickMetrics } from './post-click-probes'
-import { fetchAndParseMetadata } from '@/lib/audit/metadata'
+import { probePricingNav, runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
+import { startPostClickObservation, type PostClickMetrics } from './post-click-probes'
 import { runDestinationUXProbes, type DestinationUXQuality } from './destination-ux-probes'
 import {
   detectObscuringElementAtPoint,
@@ -28,6 +28,7 @@ import {
 } from '@/lib/audit/browser/overlay-probe'
 import { primaryPageContext, type PrimaryActionEvidence } from './primary-action-evidence'
 import { isBotInterstitialPage } from '../browser/page-capture'
+import { observeNavigationResponse } from './navigation-response'
 import { actionPanelOpened, visibleActionPanels, type ActionPanelObservation } from './action-panels'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
@@ -76,8 +77,8 @@ export interface FlowScanResult {
   multiStep?: MultiStepProbeResult
   postClickMetrics?: PostClickMetrics
   destinationTrust?: {
-    hasPrivacyPolicy: boolean
-    hasContactInfo: boolean
+    hasPrivacyPolicy: boolean | null
+    hasContactInfo: boolean | null
     isHttps: boolean
   }
   destinationUX?: DestinationUXQuality
@@ -100,8 +101,10 @@ export interface RunFlowScanOptions {
   overlayOnly?: boolean
   /** A repair checks the original recorded control rather than today's top CTA. */
   expectedActionContexts?: string[]
-  primaryOnly?: boolean
+  expectedPricingContexts?: string[]
+  mode?: 'primary' | 'destination' | 'pricing'
   captureSteps?: boolean
+  /** Optional asset prefix; each captured walk retains a distinct identity. */
   pageKey?: string
   deadlineMs?: number
   /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
@@ -110,6 +113,7 @@ export interface RunFlowScanOptions {
   scanAccess?: ScanAccessConfig | null
   includeFormValidation?: boolean
   includeMobileNavigation?: boolean
+  includePricingNavigation?: boolean
 }
 
 async function captureFlowStep(
@@ -117,12 +121,14 @@ async function captureFlowStep(
   auditId: string,
   stepIndex: number,
   label: string,
-  pageKey?: string,
+  pageKey: string,
+  deadline?: number,
 ): Promise<FlowScanStep> {
   let screenshotUrl: string | null = null
   try {
-    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
-    screenshotUrl = await uploadScreenshot(auditId, 'desktop', buffer, pageKey ? `${pageKey}-flow-${stepIndex}` : `flow-${stepIndex}`)
+    const buffer = (await page.screenshot({ type: 'png', fullPage: false,
+      ...(deadline ? { timeout: Math.max(1, deadline - Date.now()) } : {}) })) as Buffer
+    screenshotUrl = await uploadScreenshot(auditId, 'desktop', buffer, `${pageKey}-flow-${stepIndex}`, { deadline })
   } catch (err) {
     logger.error('Flow step screenshot failed', err)
   }
@@ -139,21 +145,6 @@ function isConversionPathUrl(origin: string, url: string): boolean {
   return /pricing|plan|signup|sign-up|register|login|contact|demo|start/i.test(resolved)
 }
 
-async function fetchDestinationTrust(
-  finalUrl: string,
-  scanAccess?: ScanAccessConfig | null
-): Promise<FlowScanResult['destinationTrust']> {
-  try {
-    const meta = await fetchAndParseMetadata(finalUrl, { headers: scanAccessToFetchHeaders(scanAccess, finalUrl) })
-    return {
-      hasPrivacyPolicy: meta.hasPrivacyPolicy,
-      hasContactInfo: meta.hasContactInfo,
-      isHttps: finalUrl.startsWith('https://'),
-    }
-  } catch {
-    return undefined
-  }
-}
 
 /**
  * Resolve the click target with one waitForSelector retry so a transient DOM
@@ -189,12 +180,11 @@ async function runFlowScanWithinBudget(
   page: Page,
   auditId: string,
   pageUrl: string,
-  options: RunFlowScanOptions = {}
+  options: RunFlowScanOptions & { pageKey: string }
 ): Promise<FlowScanResult> {
   const deadlineMs = options.deadlineMs ?? FLOW_SCAN_TIMEOUT_MS
   const started = Date.now()
   const origin = new URL(pageUrl).origin
-  const scanAccess = options.scanAccess ? { ...options.scanAccess, origin: options.scanAccess.origin ?? origin } : null
   const steps: FlowScanStep[] = []
 
   if (Date.now() - started > deadlineMs) {
@@ -204,13 +194,18 @@ async function runFlowScanWithinBudget(
   if (options.landingStep) {
     steps.push(options.landingStep)
   } else if (options.captureSteps !== false) {
-    steps.push(await captureFlowStep(page, auditId, 0, 'Landing', options.pageKey))
+    steps.push(await captureFlowStep(page, auditId, 0, 'Landing', options.pageKey, started + deadlineMs))
   } else {
     steps.push({ label: 'Landing', screenshotUrl: null, url: page.url() })
   }
 
   const landingUrl = page.url()
-  const multiStep = options.primaryOnly ? undefined : await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation, includeMobileNavigation: options.includeMobileNavigation, overlayRecorder: options.overlayRecorder, overlayOnly: options.overlayOnly })
+  const multiStep: MultiStepProbeResult | undefined = options.mode === 'pricing'
+    ? { ...await probePricingNav(page, options.overlayRecorder, options.expectedPricingContexts), mobileMenu: 'skipped', formValidation: 'skipped' }
+    : options.mode ? undefined : await runMultiStepProbes(page, landingUrl, { includeFormValidation: options.includeFormValidation, includeMobileNavigation: options.includeMobileNavigation,
+      includePricingNavigation: options.includePricingNavigation, overlayRecorder: options.overlayRecorder, overlayOnly: options.overlayOnly })
+  if (options.mode === 'pricing' || page.url() !== landingUrl)
+    return { status: 'skipped', steps, finalUrl: page.url(), multiStep }
   if (options.overlayOnly && !options.expectedOverlayTargets?.some(target => target.kind === 'cta' && target.context.split(':')[3].startsWith('primary_action')))
     return { status: 'skipped', steps, finalUrl: page.url(), multiStep }
   // Form/nav probes can leave auth or result dialogs open (dogfood: GradLoom
@@ -219,10 +214,11 @@ async function runFlowScanWithinBudget(
   await dismissConsentChrome(page)
   await dismissOpenDialogs(page)
 
-  const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
+  const discovered = await discoverFlowCtasWithFallback(page, pageUrl), candidates = discovered.candidates
   const actionEvidence: PrimaryActionEvidence = { version: 1,
     pageContext: primaryPageContext(pageUrl, page.url(), page.viewportSize(), auditPageObservation(page)?.scope), controlContext: null,
-    candidateCount: candidates.length, clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null }
+    candidateCount: candidates.length, candidateComplete: discovered.complete || candidates.length > 0, presenceVersion: 3,
+    clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null }
   const originalActions = options.expectedOverlayTargets?.filter(target => target.kind === 'cta' && target.context.split(':')[3].startsWith('primary_action'))
   const originalIndexes = originalActions?.length ? await page.evaluate(selectors => selectors.flatMap(selector => {
     const element = document.querySelector(selector)
@@ -262,6 +258,13 @@ async function runFlowScanWithinBudget(
   let clickResponse: BrowserResponse | null = null
   let beforeInspection: OverlayInspection | undefined
   let panelsBefore: ActionPanelObservation[] | null = null
+  let postClick: ReturnType<typeof startPostClickObservation> | undefined
+  const recordDocumentResponse = (response: BrowserResponse) => {
+    const request = response.request()
+    if (!request.isNavigationRequest() || response.frame() !== page.mainFrame()) return
+    clickResponse = response
+    clickResponseStatus = response.status()
+  }
 
   try {
     await page.evaluate((sel) => {
@@ -312,11 +315,14 @@ async function runFlowScanWithinBudget(
     const navigationPromise = skipNavigationWait
       ? null
       : page
-          .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
+          .waitForNavigation({ waitUntil: 'commit', timeout: FLOW_CLICK_TIMEOUT_MS })
           .catch(() => null)
 
+    page.on('response', recordDocumentResponse)
     try {
-      await clickTarget.click({ timeout: FLOW_CLICK_TIMEOUT_MS })
+      if (options.mode !== 'primary') postClick = startPostClickObservation(page, { expectNavigation: !skipNavigationWait, deadline: started + deadlineMs })
+      await clickTarget.click({ timeout: FLOW_CLICK_TIMEOUT_MS, noWaitAfter: true })
+      postClick?.afterClick()
       clicked = true
       actionEvidence.clicked = true
       actionEvidence.clickBlocked = false
@@ -338,6 +344,7 @@ async function runFlowScanWithinBudget(
       }
     }
   } catch (err) {
+    postClick?.cancel()
     logger.error('Flow CTA click failed', err)
     const overlayBlocker = !clicked ? await detectOverlayAtPoint(page, selector) : null
     const inspected = !clicked ? await options.overlayRecorder?.inspect(selector, 'cta', 'primary_action_after') : undefined
@@ -359,25 +366,32 @@ async function runFlowScanWithinBudget(
       clickError: clicked ? undefined : clickError || null,
       ...ctaMeta,
     }
+  } finally {
+    page.off('response', recordDocumentResponse)
   }
 
   if (Date.now() - started > deadlineMs) {
+    postClick?.cancel()
     return { status: 'timeout', steps, finalUrl: page.url(), ...ctaMeta }
   }
 
+  if (clickResponse) actionEvidence.responseExpected = true
   actionEvidence.httpStatus = clickResponseStatus ?? null
-  const responseTitle = await page.title().catch(() => '')
-  const responseHeading = await page.locator('h1').first().textContent({ timeout: 250 }).catch(() => '')
-  const challenge = isBotInterstitialPage({ title: responseTitle, cfMitigated: clickResponse?.headers()['cf-mitigated'] }) || isBotInterstitialPage({ title: responseHeading })
-  let responseMatches = false
-  if (clickResponse) {
-    const responseUrl = new URL(clickResponse.url()), observedUrl = new URL(page.url())
-    responseUrl.hash = ''; observedUrl.hash = ''
-    responseMatches = responseUrl.href === observedUrl.href
+  const explicitChallenge = isBotInterstitialPage({ cfMitigated: clickResponse?.headers()['cf-mitigated'] })
+  const postClickMetrics = postClick && (!clickResponseStatus || clickResponseStatus < 400) && !explicitChallenge
+    ? await postClick.finish(Boolean(clickResponse)) : undefined
+  if (options.mode === 'primary' && clickResponse) await page.waitForLoadState('domcontentloaded', {
+    timeout: Math.max(1, Math.min(1500, started + deadlineMs - Date.now())),
+  }).catch(() => undefined)
+  actionEvidence.response = (await observeNavigationResponse(page, clickResponse)).state
+  if (actionEvidence.response === 'error') {
+    postClick?.cancel()
+    actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) ? 'changed' : !skipNavigationWait ? 'same' : 'unknown'
+    // Optional destination work cannot replace the completed failed response.
+    steps.push(options.captureSteps === false ? { label: 'After click', screenshotUrl: null, url: page.url() }
+      : await captureFlowStep(page, auditId, 1, 'After click', options.pageKey, Math.min(started + deadlineMs, Date.now() + 1_000)))
+    return { status: 'error_response', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
   }
-  actionEvidence.response = challenge ? 'challenge' : !responseMatches || !clickResponseStatus ? 'unknown'
-    : [401, 403, 429].includes(clickResponseStatus) ? 'restricted' : clickResponseStatus >= 400 ? 'error'
-      : clickResponseStatus >= 200 && clickResponseStatus < 300 ? 'healthy' : 'unknown'
   const declaredPanelOpened = Boolean(cta.controls && !panelWasVisible && await controlledPanelVisible(page, cta.controls))
   const semanticPanelOpened = !urlsMeaningfullyChanged(landingUrl, page.url())
     ? actionPanelOpened(panelsBefore, await visibleActionPanels(page)) : false
@@ -385,35 +399,19 @@ async function runFlowScanWithinBudget(
   actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) || declaredPanelOpened || semanticPanelOpened ? 'changed'
     : !skipNavigationWait && semanticPanelOpened !== null ? 'same' : 'unknown'
   if (actionEvidence.response === 'restricted' || actionEvidence.response === 'challenge') {
+    postClick?.cancel()
     return { status: 'skipped', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
   }
 
-  const postClickMetrics = options.primaryOnly ? undefined : await measurePostClickLoading(page)
   steps.push(options.captureSteps === false ? { label: 'After click', screenshotUrl: null, url: page.url() }
-    : await captureFlowStep(page, auditId, 1, 'After click', options.pageKey))
+    : await captureFlowStep(page, auditId, 1, 'After click', options.pageKey, started + deadlineMs))
 
   const finalUrl = page.url()
-  const httpStatus = clickResponseStatus
 
-  const destinationTrust =
-    !options.primaryOnly && urlsMeaningfullyChanged(landingUrl, finalUrl)
-      ? await fetchDestinationTrust(finalUrl, scanAccess)
-      : undefined
-
-  const destinationUX = !options.primaryOnly && urlsMeaningfullyChanged(landingUrl, finalUrl)
-    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, scanAccess)
+  const destinationUX = options.mode !== 'primary' && urlsMeaningfullyChanged(landingUrl, finalUrl)
+    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, postClickMetrics)
     : undefined
-
-  if (actionEvidence.response === 'error') {
-      return {
-        status: 'error_response',
-        steps,
-        finalUrl,
-        httpStatus,
-        destinationUX,
-        ...ctaMeta,
-      }
-    }
+  const destinationTrust = destinationUX?.trustSignals
 
   const leftOrigin = !isSameSiteOrigin(finalUrl, origin)
   if (leftOrigin && !isConversionPathUrl(origin, finalUrl)) {
@@ -528,6 +526,7 @@ export async function runFlowScan(
 
     void runFlowScanWithinBudget(page, auditId, pageUrl, {
       ...options,
+      pageKey: `${(options.pageKey ?? 'flow').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 30) || 'flow'}-${randomUUID().replaceAll('-', '')}`,
       overlayRecorder,
       deadlineMs: Math.min(deadlineMs, PRIMARY_CTA_BUDGET_MS),
     }).then(

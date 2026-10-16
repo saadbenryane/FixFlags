@@ -4,8 +4,11 @@ import { safeFetchHtml } from './url'
 import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
 import { normalizeHeadingText } from './checks/utils'
 import { collectResourceTransport, type ResourceTransport } from './resource-transport'
+import { htmlDocumentBase, htmlDocumentIds, isInertHtmlNode } from './html-document'
+import { collectFormInventory } from './metadata-form-inventory'
 
 export interface PageMetadata {
+  renderedCopy?: import('./browser/rendered-copy').RenderedCopy | null
   /** Observed document base used to resolve relative navigation declarations. */
   linkBaseUrl?: string
   title: string | null
@@ -23,6 +26,8 @@ export interface PageMetadata {
   resourceTransport?: ResourceTransport
   imagesWithoutAlt: number
   links: Array<{ href: string; text: string; rel: string | null }>
+  /** Scripting-enabled document links, excluding template and noscript descendants. */
+  documentLinks?: Array<{ href: string; text: string }>
   forms: number
   inputsWithoutLabel: number
   buttonsWithoutText: number
@@ -76,34 +81,45 @@ export type RuntimeHeadMetadata = Partial<
   >
 >
 
-export function mergeRuntimeHeadMetadata(
-  metadata: PageMetadata,
-  runtime: RuntimeHeadMetadata | null | undefined
-): PageMetadata {
-  if (!runtime) return metadata
-
-  return {
-    ...metadata,
-    title: runtime.title?.trim() || metadata.title,
-    description: runtime.description?.trim() || metadata.description,
-    ogTitle: runtime.ogTitle?.trim() || metadata.ogTitle,
-    ogDescription: runtime.ogDescription?.trim() || metadata.ogDescription,
-    ogImage: runtime.ogImage?.trim() || metadata.ogImage,
-    canonical: runtime.canonical?.trim() || metadata.canonical,
-    lang: runtime.lang?.trim() || metadata.lang,
-    viewport: runtime.viewport?.trim() || metadata.viewport,
-    robots: runtime.robots?.trim() || metadata.robots,
-    hasFavicon: metadata.hasFavicon || runtime.hasFavicon === true,
-  }
+function absoluteMetadataUrl(value: string | null | undefined, base?: string): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  try { return new URL(trimmed, base).href }
+  catch { return trimmed }
 }
 
-export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
+export function mergeRuntimeHeadMetadata(
+  metadata: PageMetadata,
+  runtime: RuntimeHeadMetadata | null | undefined,
+  renderedCopy?: import('./browser/rendered-copy').RenderedCopy | null,
+): PageMetadata {
+  const observed = renderedCopy === undefined ? metadata : { ...metadata, renderedCopy }
+  if (!runtime) return observed
+
+  const merged = { ...observed }
+  for (const field of ['title', 'description', 'ogTitle', 'ogDescription', 'ogImage', 'canonical', 'lang', 'viewport', 'robots'] as const) {
+    const value = runtime[field]
+    // Undefined is unavailable. Null is a native observation of absence.
+    if (value !== undefined) merged[field] = field === 'ogImage' || field === 'canonical'
+      ? absoluteMetadataUrl(value, metadata.linkBaseUrl) : value?.trim() || null
+  }
+  if (runtime.hasFavicon !== undefined) merged.hasFavicon = runtime.hasFavicon
+  return merged
+}
+
+export type MetadataMode = 'crawler' | 'rendered'
+
+export function parseMetadataFromHtml(html: string, url: string, mode: MetadataMode = 'crawler'): PageMetadata {
   // Resource declarations use the scripting-enabled parse, so fallback and
   // template contents cannot become claims about live resource requests.
-  const resourceTransport = collectResourceTransport(cheerio.load(html), url)
-  // Public metadata also includes fallback content for crawlers.
-  const unwrapped = html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_, inner: string) => inner)
-  const $ = cheerio.load(unwrapped)
+  const document = cheerio.load(html)
+  const resourceTransport = collectResourceTransport(document, url)
+  const linkBaseUrl = htmlDocumentBase(document, url)
+  // HTTP metadata retains crawler fallbacks. Browser metadata describes the
+  // scripting-enabled document, where these descendants are inactive.
+  const $ = mode === 'rendered' ? document : cheerio.load(html.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (_, inner: string) => inner))
+  if (mode === 'rendered') $('noscript,template').empty()
+  const documentIds = htmlDocumentIds($)
 
   // Extract structured data
   const jsonLd: unknown[] = []
@@ -174,7 +190,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     if (labelledBy) {
       const labelText = labelledBy
         .split(/\s+/)
-        .map((id) => $(`#${id.replace(/"/g, '')}`).text().trim())
+        .map(id => { const label = documentIds.get(id); return label ? $(label).text().trim() : '' })
         .filter(Boolean)
         .join(' ')
       if (labelText) return true
@@ -211,60 +227,21 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   // Note: <input type="file"> is excluded because it is always visually hidden
   // and triggered by an adjacent button that carries the accessible name.
   let inputsWithoutLabel = 0
+  const explicitLabels = new Set($('label[for]').toArray().filter(label => !isInertHtmlNode(label)).map(label => $(label).attr('for')!))
   $('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="file"]), textarea, select').each((_, el) => {
     const $el = $(el)
     if ($el.attr('aria-hidden') === 'true') return
     const id = $el.attr('id')
     const ariaLabel = $el.attr('aria-label')
     const ariaLabelledby = $el.attr('aria-labelledby')
-    if (!ariaLabel && !ariaLabelledby && (!id || !$(`label[for="${id}"]`).length)) {
+    const hasExplicitLabel = Boolean(id && explicitLabels.has(id) && documentIds.get(id) === el)
+    if (!ariaLabel && !ariaLabelledby && !hasExplicitLabel) {
       if ($el.closest('label').length) return
       inputsWithoutLabel++
     }
   })
 
-  // Form field validation attributes
-  let formInputsMissingValidation = 0
-  let totalFormInputs = 0
-  let maxConversionFormInputs = 0
-  const formInputSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]), textarea, select'
-  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([type="email"]):not([type="url"]):not([type="number"]):not([type="tel"]):not([type="date"]):not([type="time"]):not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
-  const CONVERSION_CTA_RE = /\b(sign\s*up|start\s*free|get\s*started|try\s*free|book\s*demo|register|join|subscribe|buy|purchase)\b/i
-  const formElements = $('form')
-  if (formElements.length > 0) {
-    formElements.each((_, form) => {
-      const $form = $(form)
-      // Skip forms where all inputs are disabled - these are SSR placeholders
-      // that JavaScript enables on mount. They are not real user-facing forms
-      // in the static HTML snapshot.
-      const allInputsDisabled = $form.find(formInputSelectors).toArray()
-        .every((el) => $(el).attr('disabled') !== undefined)
-      if (allInputsDisabled) return
-
-      let formFieldCount = 0
-      $form.find(formInputSelectors).each(() => {
-        totalFormInputs++
-        formFieldCount++
-      })
-      // Check if this form contains a conversion CTA (button text, link, or
-      // submit value). Only these forms represent real conversion friction.
-      const formText = $form.text()
-      const hasCta = CONVERSION_CTA_RE.test(formText) ||
-        $form.find('button, [type="submit"], a').toArray().some((el) =>
-          CONVERSION_CTA_RE.test($(el).text())
-        )
-      if (hasCta && formFieldCount > maxConversionFormInputs) {
-        maxConversionFormInputs = formFieldCount
-      }
-      $form.find(formValidationSelectors).each((_, field) => {
-        const el = $(field)
-        const hasPattern = el.attr('pattern') !== undefined
-        const hasMinOrMax = el.attr('min') !== undefined || el.attr('max') !== undefined
-        const hasMinOrMaxLength = el.attr('minlength') !== undefined || el.attr('maxlength') !== undefined
-        if (!hasPattern && !hasMinOrMax && !hasMinOrMaxLength) formInputsMissingValidation++
-      })
-    })
-  }
+  const formInventory = collectFormInventory($, documentIds)
 
   // Buttons without an accessible name
   let buttonsWithoutText = 0
@@ -396,34 +373,22 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   $('h2').each((_, el) => { h2s.push($(el).text().trim()) })
 
   const elementIds: string[] = []
-  $('[id]').each((_, el) => {
-    const id = $(el).attr('id')
+  document('[id]').each((_, el) => {
+    if (isInertHtmlNode(el)) return
+    const id = document(el).attr('id')
     if (id) elementIds.push(id)
   })
   const anchorNames: string[] = []
-  $('a[name]').each((_, el) => {
-    const name = $(el).attr('name')
+  document('a[name]').each((_, el) => {
+    if (isInertHtmlNode(el)) return
+    const name = document(el).attr('name')
     if (name) anchorNames.push(name)
   })
-
-  // Resolve og:image and canonical against the page URL. Social crawlers
-  // (Slack, Twitter, Facebook) require an absolute og:image, so a relative value
-  // like "/og.png" produces a blank preview even though the tag is present.
-  const toAbsolute = (value: string | null | undefined): string | null => {
-    const trimmed = value?.trim()
-    if (!trimmed) return null
-    try {
-      return new URL(trimmed, url).toString()
-    } catch {
-      return trimmed
-    }
-  }
-
-  let linkBaseUrl = url
-  try {
-    const base = $('base[href]').first().attr('href')
-    if (base) linkBaseUrl = new URL(base, url).href
-  } catch { /* An invalid base declaration leaves the document URL as the base. */ }
+  const documentLinks: NonNullable<PageMetadata['documentLinks']> = []
+  document('a[href]').each((_, el) => {
+    if (isInertHtmlNode(el)) return
+    documentLinks.push({ href: document(el).attr('href') ?? '', text: document(el).text().trim() })
+  })
 
   return {
     linkBaseUrl,
@@ -431,8 +396,8 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     description: $('meta[name="description"]').attr('content') || null,
     ogTitle: $('meta[property="og:title"]').attr('content') || null,
     ogDescription: $('meta[property="og:description"]').attr('content') || null,
-    ogImage: toAbsolute($('meta[property="og:image"]').attr('content')),
-    canonical: toAbsolute($('link[rel="canonical"]').attr('href')),
+    ogImage: absoluteMetadataUrl($('meta[property="og:image"]').attr('content'), linkBaseUrl),
+    canonical: absoluteMetadataUrl($('link[rel="canonical"]').attr('href'), linkBaseUrl),
     lang: $('html').attr('lang') || null,
     viewport: $('meta[name="viewport"]').attr('content') || null,
     robots: $('meta[name="robots"]').attr('content') || null,
@@ -442,6 +407,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     resourceTransport,
     imagesWithoutAlt,
     links,
+    documentLinks,
     forms: $('form').length,
     inputsWithoutLabel,
     buttonsWithoutText,
@@ -465,18 +431,18 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     jsonLd,
     elementIds,
     anchorNames,
-    formInputsMissingValidation,
-    totalFormInputs,
-    maxConversionFormInputs,
+    ...formInventory,
   }
 }
 
 /** Persist only summary fields, large arrays are only needed during checks. */
 export function trimMetadataForStorage(metadata: PageMetadata) {
-  const { images, links, jsonLd, pageText, h2s, ...compact } = metadata
-  void images; void links; void jsonLd
+  const { images, links, documentLinks, jsonLd, pageText, h2s, ...compact } = metadata
+  void images; void links; void documentLinks; void jsonLd
   return {
     ...compact,
+    ...(metadata.renderedCopy ? { renderedCopy: { ...metadata.renderedCopy, pageText: metadata.renderedCopy.pageText.slice(0, MAX_STORED_TEXT),
+      textTruncated: metadata.renderedCopy.textTruncated || metadata.renderedCopy.pageText.length > MAX_STORED_TEXT } } : {}),
     h2s: h2s.slice(0, 10),
     pageText: pageText.slice(0, MAX_STORED_TEXT),
   }

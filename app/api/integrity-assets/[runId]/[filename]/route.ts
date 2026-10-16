@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readIntegrityArtifact } from '@/lib/integrity/storage'
+import { pathIdForArtifactNamespace, outcomeRequestIdForArtifactNamespace } from '@/lib/integrity/artifact-namespace'
 import { prisma } from '@/lib/db'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { shopDomainFromRequest } from '@/lib/shopify/session'
@@ -24,20 +25,20 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const session = await resolveSessionUser()
-    const outcomeRun = runId.match(/^outcome-([a-zA-Z0-9]+)-[a-zA-Z0-9_-]+$/)
-    const pathRun = runId.match(/^path-([a-zA-Z0-9]+)-\d+$/)
+    const outcomeRun = outcomeRequestIdForArtifactNamespace(runId)
+    const pathRun = pathIdForArtifactNamespace(runId)
     let allowed = false
     if (outcomeRun && session?.user.id) {
       // The namespace is produced from this durable tenant-owned request, not
       // the target hostname or knowledge of an opaque capture URL.
       allowed = Boolean(await prisma.runRequest.findFirst({
-        where: { id: outcomeRun[1], project: { userId: session.user.id } },
+        where: { id: outcomeRun, project: { userId: session.user.id } },
         select: { id: true },
       }))
     } else if (pathRun) {
       const shopDomain = shopDomainFromRequest(request)
       const path = await prisma.revenuePath.findFirst({
-        where: { id: pathRun[1], shop: { uninstalledAt: null } },
+        where: { id: pathRun, shop: { uninstalledAt: null } },
         select: { shop: { select: { shopDomain: true, project: { select: { userId: true } } } } },
       })
       allowed = Boolean(path && (

@@ -1,6 +1,7 @@
 import type { OutcomeAssessmentState } from '@prisma/client'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 export type CustomerOutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
@@ -203,6 +204,8 @@ export function checkoutCouldNotVerifyRecovery(reason: string | null | undefined
 /** Next step when a page could not be verified. A failed response stays on the Flag. */
 export function availabilityCouldNotVerifyRecovery(reason: string | null | undefined): string {
   switch (reason) {
+    case 'access_restricted':
+      return SITE_ACTION_COPY.execution.availabilityAccess.recovery
     case 'not_public':
       return 'Use a public page address, then verify again.'
     case 'redirect_unfollowed':

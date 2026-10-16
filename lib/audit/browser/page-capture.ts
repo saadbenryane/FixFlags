@@ -61,6 +61,16 @@ export function isBotInterstitialDocument(input: { body: string; headers: Record
   return input.status >= 400 && /^(?:checking your browser|access denied|verify you are human)\b/i.test(text)
 }
 
+/** Public page inspection cannot infer ordinary visitor behavior through an
+ * authentication boundary, a forbidden response, rate limiting or a challenge. */
+export function publicResponseRestriction(input: { body: string; headers: Record<string, string>; status: number }) {
+  if (isBotInterstitialDocument(input)) return 'bot_challenge' as const
+  if (input.status === 401) return 'authentication_required' as const
+  if (input.status === 403) return 'access_denied' as const
+  if (input.status === 429) return 'rate_limited' as const
+  return null
+}
+
 export function pageCaptureFailureFromError(
   device: 'desktop' | 'mobile',
   err: unknown

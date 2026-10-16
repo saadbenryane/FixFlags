@@ -14,7 +14,7 @@ const getConfiguredJudgeProviderChain = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db', () => ({ prisma: { $queryRaw: queryRaw } }))
 vi.mock('@/lib/env', () => ({ isProdStorageConfigured, isAiProviderConfigured }))
 vi.mock('@/lib/billing/config', () => ({ isBillingFullyConfigured }))
-vi.mock('@/lib/audit/project-watch', () => ({ productWatchReadiness }))
+vi.mock('@/lib/sites/application/monitoring-settings', () => ({ productWatchReadiness }))
 vi.mock('@/lib/security/rate-limit', () => ({ getRateLimitRedisHealth }))
 vi.mock('@/lib/audit/llm-keys', () => ({ getOpenAIProviderKey }))
 vi.mock('@/lib/audit/judge-config', () => ({

@@ -5,11 +5,14 @@ import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { MOBILE_CAPTURE_PROFILE, DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import {
   captureVisualEvidence,
+  captureDeviceComparisonEvidence,
+  captureRecordedFlowComparisonEvidence,
   type VisualEvidence,
   type VisualCaptureMetrics,
 } from '@/lib/audit/capture/visual-capture'
 import { getVisualDescriptor } from '@/lib/audit/capture/visual-types'
 import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
+import type { FlowScanResult } from './flow/run-flow-scan'
 
 export type FlagVisualEvidenceMap = Record<
   string,
@@ -18,6 +21,7 @@ export type FlagVisualEvidenceMap = Record<
     overlayUrl?: string | null
     device: 'desktop' | 'mobile'
     type: VisualEvidence['type']
+    sourceFrames?: VisualEvidence['sourceFrames']
   }
 >
 
@@ -65,90 +69,62 @@ export async function tryCaptureVisualEvidenceForAudit(
   auditId: string,
   url: string,
   flags: Array<{ checkId: string; severity: string; rubric: string }>,
-  metrics?: VisualCaptureMetrics
+  metrics?: VisualCaptureMetrics,
+  deadline?: number,
+  flows: readonly FlowScanResult[] = [],
 ): Promise<void> {
-  const candidates = flags.filter((f) => {
+  const captureDeadline = Math.min(deadline ?? Infinity, Date.now() + 60_000)
+  if (Date.now() >= captureDeadline) return
+  const candidates = [...new Map(flags.filter((f) => {
     const d = getVisualDescriptor(f.checkId)
     if (d.type === 'none') return false
     const sev = f.severity.toUpperCase()
     return sev === 'CRITICAL' || sev === 'IMPORTANT'
-  })
+  }).map(flag => [flag.checkId, flag])).values()]
   if (candidates.length === 0) return
 
   try {
-    const browser = await getAuditBrowser()
     const map: FlagVisualEvidenceMap = {}
-    const scanAccess = await resolveAuditScanAccess(auditId)
+    const frames: { desktop?: Buffer; mobile?: Buffer } = {}
+    const needsComparison = candidates.some(flag => getVisualDescriptor(flag.checkId).sideBySideMode === 'desktop-mobile')
+    const retain = (visuals: VisualEvidence[]) => {
+      for (const visual of visuals) map[visual.checkId] = { gifUrl: visual.gifUrl, overlayUrl: visual.overlayUrl,
+        device: visual.device, type: visual.type, ...(visual.sourceFrames ? { sourceFrames: visual.sourceFrames } : {}) }
+    }
+    retain(await captureRecordedFlowComparisonEvidence(auditId, candidates, flows, captureDeadline))
+    const liveCandidates = candidates.filter(flag => getVisualDescriptor(flag.checkId).sideBySideMode !== 'source-destination')
+    const browser = liveCandidates.length ? await getAuditBrowser() : null
+    const scanAccess = browser ? await resolveAuditScanAccess(auditId) : null
 
     // Prefer mobile: most animated/overlay checks target mobile UX.
-    const mobileSession = await createAuditPage(browser, url, {
-      profile: MOBILE_CAPTURE_PROFILE,
-      settle: true,
-      scanAccess,
-    })
-    try {
-      const mobileResult = await captureVisualEvidence(
-        browser,
-        mobileSession.page,
-        auditId,
-        candidates,
-        'mobile',
-        metrics,
-        scanAccess
-      )
-      for (const v of mobileResult.visuals) {
-        map[v.checkId] = {
-          gifUrl: v.gifUrl,
-          overlayUrl: v.overlayUrl,
-          device: v.device,
-          type: v.type,
-        }
-      }
-    } finally {
-      const ctx = mobileSession.page.context()
-      await mobileSession.page.close().catch(() => {})
-      await ctx.close().catch(() => {})
-    }
-
-    const remaining = candidates.filter((f) => !map[f.checkId])
-    const needsDesktop = remaining.some((f) => {
-      const d = getVisualDescriptor(f.checkId)
-      return d.device === 'desktop' || d.device === 'both' || !d.device
-    })
-
-    if (needsDesktop && remaining.length > 0) {
-      const desktopSession = await createAuditPage(browser, url, {
-        profile: DESKTOP_CAPTURE_PROFILE,
-        settle: true,
-        scanAccess,
+    for (const device of ['mobile', 'desktop'] as const) {
+      if (Date.now() >= captureDeadline) break
+      const selected = liveCandidates.filter(flag => {
+        const descriptor = getVisualDescriptor(flag.checkId)
+        return !map[flag.checkId] && (!descriptor.device || descriptor.device === 'both' || descriptor.device === device)
       })
+      if (!browser || !selected.length) continue
       try {
-        const desktopResult = await captureVisualEvidence(
-          browser,
-          desktopSession.page,
-          auditId,
-          remaining,
-          'desktop',
-          metrics,
-          scanAccess
-        )
-        for (const v of desktopResult.visuals) {
-          if (!map[v.checkId]) {
-            map[v.checkId] = {
-              gifUrl: v.gifUrl,
-              overlayUrl: v.overlayUrl,
-              device: v.device,
-              type: v.type,
-            }
+        const session = await createAuditPage(browser, url, {
+          profile: device === 'mobile' ? MOBILE_CAPTURE_PROFILE : DESKTOP_CAPTURE_PROFILE,
+          settle: true, scanAccess, deadline: captureDeadline,
+        })
+        try {
+          if (needsComparison) {
+            try { frames[device] = Buffer.from(await session.page.screenshot({ type: 'png', fullPage: false })) }
+            catch (error) { logger.warn('Device comparison frame unavailable', { auditId, device, error }) }
           }
+          const captured = await captureVisualEvidence(session.page, auditId, selected, device, metrics, captureDeadline)
+          retain(captured.visuals)
+        } finally {
+          const context = session.page.context()
+          await session.page.close().catch(() => {})
+          await context.close().catch(() => {})
         }
-      } finally {
-        const ctx = desktopSession.page.context()
-        await desktopSession.page.close().catch(() => {})
-        await ctx.close().catch(() => {})
-      }
+      } catch (error) { logger.warn('Device visual evidence unavailable', { auditId, device, error }) }
     }
 
+    retain(await captureDeviceComparisonEvidence(auditId, candidates, frames, captureDeadline))
     await persistFlagVisualEvidence(auditId, map)
   } catch (error) {
     logger.warn('Visual evidence capture skipped', { auditId, error })

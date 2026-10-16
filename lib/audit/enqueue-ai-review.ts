@@ -1,16 +1,59 @@
-import { getAuditQueue } from '@/lib/queue/client'
+import { prisma } from '@/lib/db'
+import { executionTransaction } from './execution-ownership'
+import { dispatchTask } from './progressive/engine'
+import { MAX_TASKS_PER_AUDIT } from './progressive/contracts'
+import { recordProgress } from './progressive/events'
+import { logger } from '@/lib/logger'
+
+const prescriptionTarget = { targetKey: 'task:prescription', scopeKey: 'audit:prescription' }
+
+/** The completed report is the durable handoff. Replays never repeat triage. */
+export async function enqueuePendingAiReview(auditId: string): Promise<void> {
+  const audit = await prisma.audit.findUnique({ where: { id: auditId },
+    select: { status: true, userId: true, includeAi: true, triageAt: true, completedAt: true, aiReviewAt: true } })
+  if (audit && ['COMPLETED', 'JUDGING'].includes(audit.status) && audit.userId && audit.includeAi && audit.triageAt && audit.completedAt && !audit.aiReviewAt) {
+    await enqueueAiReview(auditId)
+  }
+}
 
 export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<void> {
-  await getAuditQueue().add(
-    'ai-review',
-    { auditId },
-    {
-      jobId: `ai-review-${auditId}`,
-      attempts: 2,
-      backoff: { type: 'fixed', delay: 30_000 },
-      delay: delayMs,
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    }
-  )
+  const taskId = await executionTransaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
+    const audit = await tx.audit.findUnique({ where: { id: auditId },
+      select: { status: true, userId: true, url: true, triageAt: true, completedAt: true, aiReviewAt: true, executionLeaseUntil: true,
+        user: { select: { lifecycleStatus: true } }, project: { select: { deletedAt: true } } } })
+    if (!audit || !['COMPLETED', 'JUDGING'].includes(audit.status) || !audit.userId || !audit.triageAt || !audit.completedAt || audit.aiReviewAt) return null
+    if (audit.user?.lifecycleStatus !== 'ACTIVE' || audit.project?.deletedAt) return null
+    const existing = await tx.auditVerifierExecution.findUnique({ where: { auditId_targetKey_scopeKey: { auditId, ...prescriptionTarget } } })
+    if (existing) return existing.id
+    const count = await tx.auditVerifierExecution.count({ where: { auditId, targetKey: { startsWith: 'task:' } } })
+    if (count >= MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
+    const task = await tx.auditVerifierExecution.create({ data: { auditId, ...prescriptionTarget,
+      pageUrl: audit.url, source: 'EXECUTION', status: 'PENDING', workKind: 'prescription', workState: 'READY',
+      workInput: { pageUrl: audit.url, primary: true, position: 0, role: 'prescription' }, workDependencies: [],
+      workRetryAt: new Date(Date.now() + Math.max(0, delayMs)), workDispatchState: 'PENDING' } })
+    const expiredLegacy = audit.status === 'JUDGING' && (!audit.executionLeaseUntil || audit.executionLeaseUntil <= new Date())
+    await tx.audit.update({ where: { id: auditId }, data: { includeAi: true, ...(expiredLegacy ? { status: 'COMPLETED', progress: 100 } : {}) } })
+    await recordProgress(tx, auditId, { taskId: task.id, kind: 'prescription', state: 'admitted' })
+    return task.id
+  })
+  // Redis is a delivery adapter. Its outage cannot erase the committed task or
+  // prevent a signed claim; normal task recovery reconstructs delivery.
+  if (taskId) await dispatchTask(taskId).catch(error => logger.warn('Prescription delivery deferred to task recovery', { auditId, message: String(error) }))
+}
+
+/** Backfill interrupted handoffs and legacy jobs through the same admission. */
+export async function recoverPendingAiReviews(limit = 25): Promise<number> {
+  const audits = await prisma.audit.findMany({ where: { includeAi: true, aiReviewAt: null, triageAt: { not: null },
+    completedAt: { not: null }, status: { in: ['COMPLETED', 'JUDGING'] }, user: { lifecycleStatus: 'ACTIVE' },
+    AND: [{ OR: [{ projectId: null }, { project: { deletedAt: null } }] }],
+    OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: new Date() } }],
+    verifierExecutions: { none: { workKind: 'prescription' } } },
+    orderBy: [{ completedAt: 'asc' }, { id: 'asc' }], take: Math.max(1, Math.min(100, limit)), select: { id: true } })
+  let admitted = 0
+  for (const audit of audits) {
+    try { await enqueuePendingAiReview(audit.id); admitted++ }
+    catch (error) { logger.error('Prescription handoff recovery interrupted', error, { auditId: audit.id }) }
+  }
+  return admitted
 }

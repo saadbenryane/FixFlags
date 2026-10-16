@@ -3,6 +3,7 @@ import { CHECK_DEFINITIONS } from './check-registry'
 
 /** How a capability is evaluated in the FixFlags pipeline. */
 export type AuditTool =
+  | 'http-response' // Public HTTP response and access evidence
   | 'html-parse' // Cheerio metadata parse + deterministic checks
   | 'browser-capture' // Playwright screenshots + DOM metrics
   | 'flow-navigation' // CTA click + navigation trace
@@ -47,6 +48,9 @@ export interface AuditCapability {
  * Used by scripts/audit-capability-report.ts and goal planning.
  */
 const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
+  { id: 'public-page-response', dimension: 'REACH', category: 'seo', label: 'Checked page availability and response errors',
+    tool: 'http-response', status: 'live', verify: 'npx vitest run lib/audit/checks/page-response.test.ts',
+    notes: 'Reuses the recorded public GET. Access restrictions and incomplete collection do not prove a failure or repair; rendered behavior is separate.' },
   {
     id: 'automatic-account-checks', dimension: 'EXPERIENCE', category: 'flow',
     label: 'Signup, email verification, signed-in pages and account deletion', tool: 'browser-capture', status: 'live',
@@ -370,7 +374,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     tool: 'browser-capture',
     status: 'live',
 
-    notes: 'Axe-core scan runs during browser capture; results mapped to FixFlags check IDs.',
+    notes: 'Browser capture selects WCAG tags, registered heading and landmark best-practice rules, and the legacy control-identifier diagnostic. Actual rule outcomes retain scoped repair evidence; manual and assistive-technology review remain separate.',
   },
   {
     id: 'experience-keyboard-navigation', dimension: 'EXPERIENCE', category: 'accessibility',

@@ -326,7 +326,7 @@ export async function recoverCompletedImprovementProjections(
   let failed = 0
   for (const audit of audits) {
     try {
-      const owner = await claimExecution(audit.id, true)
+      const owner = await claimExecution(audit.id, { projectionOnly: true })
       if (!owner) continue
       await withExecutionOwnership(owner, async () => {
         if (audit.userId) await incrementUsageOnCompleteForAudit(audit.id, audit.userId)

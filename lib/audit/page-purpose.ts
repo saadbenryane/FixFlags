@@ -1,4 +1,5 @@
 import type { PageMetadata } from './metadata'
+import { renderedContentMetadata } from './browser/rendered-copy'
 
 /**
  * Coarse page-purpose classification used to gate product-conversion checks.
@@ -59,6 +60,7 @@ export function detectPagePurpose(
   meta: PageMetadata,
   url: string
 ): PagePurposeResult {
+  meta = renderedContentMetadata(meta)
   const pageText = meta.pageText ?? ''
   const words = pageText.split(/\s+/).filter(Boolean)
   const wordCount = words.length

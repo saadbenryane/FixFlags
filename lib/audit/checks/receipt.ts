@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { CheckAssertion } from './assertion'
 import { CHECK_ASSERTIONS, CHECK_MODULES } from '../check-registry'
 
 export const checkAssertionSchema = z.object({
@@ -6,6 +7,9 @@ export const checkAssertionSchema = z.object({
   expected: z.string().min(1).max(2000), observed: z.string().min(1).max(2000),
   passed: z.boolean(), disposition: z.literal('observed').optional(),
   complete: z.boolean().optional(), context: z.string().min(1).max(4200).optional(),
+  measurements: z.array(z.object({ context: z.string().min(1).max(4200), passed: z.boolean(),
+    observed: z.string().min(1).max(2000) }).strict()).max(8).refine(items => new Set(items.map(item => item.context)).size === items.length,
+    'Duplicate measured scope').optional(),
   targets: z.array(z.object({ selector: z.string().min(1).max(2000), label: z.string().min(1).max(160), context: z.string().min(1).max(4200).optional() }).strict()).max(200).optional(),
 })
 
@@ -24,10 +28,20 @@ export const checkReceiptSchema = z.object({
   }
 })
 
+/** Advisory evidence cannot verify repair, but unfinished observations still
+ * leave the inspection incomplete. Stored summary bits never override facts. */
+export function summarizeCheckAssertions(input: { passed: boolean; complete?: boolean; failed?: boolean;
+  assertions: ReadonlyArray<Pick<CheckAssertion, 'passed' | 'complete' | 'disposition'>> }) {
+  const incomplete = input.failed === true || input.complete === false || input.assertions.some(assertion => assertion.complete === false)
+  const failed = input.assertions.some(assertion => assertion.complete !== false && !assertion.passed && assertion.disposition !== 'observed')
+  return { passed: input.passed && input.failed !== true && !incomplete && !failed,
+    ...(incomplete ? { complete: false } : input.complete !== undefined ? { complete: input.complete } : {}) }
+}
+
 /** Historical receipts have no version. Only explicitly recorded, valid fields survive. */
 export function readCheckReceipt(detail: unknown) {
   const current = checkReceiptSchema.safeParse(detail)
-  if (current.success) return { ...current.data, legacy: false }
+  if (current.success) return { ...current.data, ...summarizeCheckAssertions(current.data), legacy: false }
   if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return { passed: undefined, assertions: [], legacy: true }
   const old = detail as Record<string, unknown>
   if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true }

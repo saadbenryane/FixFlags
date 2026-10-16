@@ -22,7 +22,7 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   if (modules.has('mobile-navigation')) plans.push(make('flow', [], 'mobile-navigation'))
   for (const [module, definition] of Object.entries(CHECK_MODULES)) {
     if (module === 'automatic-accounts' || module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
-    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' ? 'http'
+    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' || definition.input === 'http' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     plans.push(make('check', [prefix + ':' + inputKind, ...(module === 'interaction' && motionRequested(spec) ? [prefix + ':motion'] : [])], module))
     if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'),
@@ -43,8 +43,11 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   plans.push(make('google', [prefix + ':search-indexing'], 'google-index'))
   plans.push(make('google', [], 'google-performance'))
   if (input.primary || spec.category && ['conversion', 'tracking'].includes(spec.category.area) || spec.scope === 'DIAGNOSTIC' &&
-    (modules.has('overlays') || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action'))))
+    (modules.has('overlays') || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))) {
     plans.push(make('flow', [prefix + ':browser']))
+    if (spec.checks['flow-pricing-nav-broken'] || modules.has('overlays') && spec.scope !== 'DIAGNOSTIC' || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl &&
+      scope.overlayPhases?.some(phase => phase.startsWith('pricing_navigation')))) plans.push(make('flow', [], 'pricing-navigation'))
+  }
   if (input.primary || spec.scope === 'DIAGNOSTIC' && modules.has('slow-replay')) plans.push(make('slow-replay'))
   if (input.primary || spec.scope === 'DIAGNOSTIC' && (modules.has('overlays') || modules.has('journeys'))) {
     plans.push(make('journeys', [prefix + ':browser']))
@@ -128,7 +131,7 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
     }
     const resources = siteResourcePlans(input)
     const available = new Map([...resources, ...pages].map(task => [task.key, task]))
-    const target = checkId === 'inp-critical' || checkId === 'inp-poor' ? 'p0:inp-mobile'
+    const target = checkId === 'flow-pricing-nav-broken' ? 'p0:pricing-navigation' : checkId === 'inp-critical' || checkId === 'inp-poor' ? 'p0:inp-mobile'
       : search ? search.responsibility === 'google' ? checkId === 'low-ctr' ? 'p0:google-performance' : 'p0:google-index'
       : search.evaluator === 'cross-page' ? null : 'p0:search-' + search.evaluator : checkModule && available.has('p0:' + checkModule) ? 'p0:' + checkModule : null
     // Unknown historical targets remain an explicit limitation, not a made-up
@@ -145,16 +148,17 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
       for (const [index, pageUrl] of [input.pageUrl, ...extraPages.map(scope => scope.pageUrl)].entries()) {
         const prefix = 'p' + index, phases = scopes.find(scope => scope.pageUrl === pageUrl)?.overlayPhases
         if (!phases?.length || phases.includes('page_load')) { include(prefix + ':overlays'); include(prefix + ':overlays-mobile') }
-        if (phases?.some(phase => phase.startsWith('primary_action') || phase.startsWith('pricing_navigation') || phase.startsWith('flow_form_validation'))) include(prefix + ':flow')
+        if (phases?.some(phase => phase.startsWith('primary_action') || phase.startsWith('flow_form_validation'))) include(prefix + ':flow')
+        if (phases?.some(phase => phase.startsWith('pricing_navigation'))) include(prefix + ':pricing-navigation')
         if (phases?.some(phase => phase.startsWith('form_validation'))) include(prefix + ':form-validation')
         if (phases?.some(phase => phase.startsWith('journey_'))) include(prefix + ':journeys')
       }
     } else include(target)
     if (scopes.length && checkModule !== 'overlays') {
-      if (scopes.find(scope => scope.pageUrl === input.pageUrl)?.phases.includes('public_action')) include('p0:flow')
+      if (checkId !== 'flow-pricing-nav-broken' && scopes.find(scope => scope.pageUrl === input.pageUrl)?.phases.includes('public_action')) include('p0:flow')
       for (const [index, scope] of extraPages.entries()) {
         include(target.replace(/^p0:/, 'p' + (index + 1) + ':'))
-        if (scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
+        if (checkId !== 'flow-pricing-nav-broken' && scope.phases.includes('public_action')) include('p' + (index + 1) + ':flow')
       }
     }
     const plans: TaskPlan[] = [...selected].map(key => available.get(key)!)

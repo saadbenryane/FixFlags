@@ -1,6 +1,7 @@
 import { PageSpeedResult, CruxMetrics } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
-import { PERFORMANCE_RESOURCE_THRESHOLDS } from '../pagespeed-opportunities'
+import { PERFORMANCE_RESOURCE_THRESHOLDS, RESOURCE_REPAIR_RULE, resourceAuditContext, resourceCheckPolicy } from '../pagespeed-opportunities'
+import { scopePerformanceFlags } from '../performance-measurement'
 
 function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string {
   if (!crux) return ''
@@ -17,7 +18,8 @@ function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string
 
 export function runPerformanceChecks(
   desktop: PageSpeedResult | null,
-  mobile: PageSpeedResult | null
+  mobile: PageSpeedResult | null,
+  pageUrl?: string,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const ps = desktop
@@ -52,13 +54,13 @@ export function runPerformanceChecks(
     })
   }
 
-  findings.push(...runLabVitalsChecks(ps), ...runResourceChecks(ps))
+  findings.push(...runLabVitalsChecks(ps), ...runResourceChecks(ps, pageUrl))
   if (mobile) findings.push(...runInpChecks(mobile))
-  return findings
+  return scopePerformanceFlags(ps, pageUrl, findings)
 }
 
 /** Both devices evaluate the same measured resource policy in their own scope. */
-export function runResourceChecks(ps: PageSpeedResult): DeterministicFlag[] {
+export function runResourceChecks(ps: PageSpeedResult, pageUrl?: string): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
 
   const renderBlocking = ps.opportunities.find((o) => o.id === 'render-blocking-resources')
@@ -119,9 +121,19 @@ export function runResourceChecks(ps: PageSpeedResult): DeterministicFlag[] {
     })
   }
 
-  return ps.strategy === 'mobile' ? findings.map(flag => ({ ...flag,
+  const scoped = findings.map(flag => {
+    const policy = resourceCheckPolicy(flag.checkId)
+    if (!policy || !pageUrl) return flag
+    const measured = ps.resourceAudits?.filter(audit => (policy.ids as readonly string[]).includes(audit.id) && audit.unit === policy.unit &&
+      audit.score !== null && audit.score < 1 && audit.savings !== null && Math.round(audit.savings) > policy.threshold) ?? []
+    return measured.length ? { ...flag, verificationRule: RESOURCE_REPAIR_RULE,
+      evidenceTargets: measured.map(audit => ({ kind: 'page' as const, source: 'measured' as const, device: ps.strategy,
+        label: audit.providerAuditId, context: resourceAuditContext(pageUrl, ps.strategy, audit, policy.threshold) })) } : flag
+  })
+  const result = ps.strategy === 'mobile' ? scoped.map(flag => ({ ...flag,
     checkId: 'mobile-' + flag.checkId, problem: 'Mobile ' + flag.problem, evidence: 'Mobile ' + flag.evidence,
-  })) : findings
+  })) : scoped
+  return scopePerformanceFlags(ps, pageUrl, result)
 }
 
 /** Lab LCP and CLS share thresholds while retaining device-specific finding identities. */

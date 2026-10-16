@@ -16,6 +16,7 @@ import {
   toStoredPageSpeedResult,
 } from '../pagespeed'
 import { runAllChecks, suppressOverlappingFlags } from '../checks'
+import { capturedHeadMetadata } from '../checks/head-metadata'
 import { suppressFlagsForPageRole } from '../suppression'
 import { runFlowChecks } from '../checks/flow'
 import { detectPagePurpose } from '../page-purpose'
@@ -30,7 +31,10 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline } from './context'
 import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
 import { resolveAuditPipelineMode, type AuditPipelineMode } from './mode'
-import { detectTechnologies, inferIndustry } from '../tech-detect'
+import { inferIndustry, type DetectedTech } from '../tech-detect'
+import { observeCapturedTechnologies } from '../technology-capture'
+import { capturedPagePreview } from '../checks/page-preview'
+import { capturedPageLinks } from '../checks/public-links'
 import { persistTechnologyObservations } from '../technology-profile'
 import { inferProductContract } from '../product-contract'
 import { scanAccessToFetchHeaders } from '../scan-access'
@@ -288,13 +292,15 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   desktopBase64 = screenshots.desktopBase64
   mobileBase64 = screenshots.mobileBase64
 
+  const head = capturedHeadMetadata(screenshots)
   const metadataFromHtml = mergeRuntimeHeadMetadata(
     screenshots.desktopHtml
-      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
+      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl, 'rendered')
       : await fetchAndParseMetadata(normalizedUrl, {
           headers: scanAccessToFetchHeaders(ctx.scanAccess, normalizedUrl),
         }),
-    screenshots.runtimeHeadMetadata
+    head?.metadata,
+    screenshots.renderedCopy,
   )
   const storedPerformance = {
     desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
@@ -400,19 +406,14 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   // Technology detection is deterministic and uses only evidence already
   // collected by this capture. It never performs another request.
-  let detectedTech: ReturnType<typeof detectTechnologies> = []
+  let detectedTech: DetectedTech[] = []
   if (input.primary) {
     try {
-      detectedTech = detectTechnologies(
-        screenshots.desktopHtml ?? '',
-        screenshots.responseHeaders ?? {},
-        screenshots.technologyResources ?? [],
-        screenshots.technologyRuntimeMarkers ?? []
-      )
-      const technologyStatus = screenshots.technologyResourcesTruncated
-        ? 'PARTIAL'
-        : 'COMPLETE'
-      await persistTechnologyObservations(ctx.auditId, detectedTech, technologyStatus)
+      const observation = observeCapturedTechnologies(screenshots)
+      detectedTech = observation.detections
+      const technologyStatus = observation.status
+      await persistTechnologyObservations(ctx.auditId, detectedTech, technologyStatus, observation.detectorVersion,
+        undefined, { scope: observation.scope })
       const categoryCounts = detectedTech.reduce<Record<string, number>>((counts, tech) => {
         counts[tech.kind] = (counts[tech.kind] ?? 0) + 1
         return counts
@@ -493,7 +494,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.captureMetrics ?? null,
     screenshots?.responseHeaders ?? null,
     screenshots?.axeViolations,
-    true, undefined, { tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
+    true, undefined, { head, tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
+      publicDocument: screenshots.originalDocument,
       accessibilityEvidence: screenshots.accessibilityEvidence, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
   )
 
@@ -717,6 +719,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   return {
     searchReceipt: search.receipt,
+    navigation: capturedPageLinks(screenshots, screenshots.desktopHtml ? metadata : null) ?? capturedPageLinks({
+      collectionRestrictions: screenshots.collectionRestrictions,
+    }, metadata),
+    preview: capturedPagePreview(screenshots),
     renderedScope: screenshots?.renderedScope,
     pageId: page.id,
     url: normalizedUrl,

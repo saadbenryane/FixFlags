@@ -31,6 +31,7 @@ import { evaluateSearch, searchFindings } from '@/lib/audit/search/registry'
 import { evidence as searchEvidence, document as searchDocument } from '@/lib/audit/search/__tests__/fixtures'
 import { CHECK_REGISTRY, AXE_GENERATED_CHECK_IDS } from '@/lib/audit/check-registry'
 import { deadDestinationFlags } from '@/lib/audit/open-check'
+import { assessPageResponse } from '@/lib/audit/checks/page-response'
 import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { runConsoleChecks } from '@/lib/audit/checks/console'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
@@ -710,7 +711,7 @@ describe('mobile loading evidence', () => {
       initialCaptureElapsedMs: 30_000, finalCaptureElapsedMs: 33_000,
       loadingVisibleAtInitial: false, loadingVisibleAtFinal: false, loadingClearedMs: 30_000,
       loadingLabel: null, finalReadyState: 'complete', finalTitle: 'Instant public content' } })
-    assert(!runMobileUXQualityChecks(healthyMeta({}), metrics).some(flag => flag.checkId === 'mobile-load-delay-content'))
+    assert(!runMobileUXQualityChecks(metrics).some(flag => flag.checkId === 'mobile-load-delay-content'))
   })
 })
 
@@ -1322,6 +1323,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
   }
 
   const triggers: Partial<Record<(typeof ALL_CHECK_IDS)[number], () => Promise<string[]> | string[]>> = {
+    'page-http-error': () => checkIds(assessPageResponse('https://example.com/',
+      searchDocument('<html><body>Service unavailable</body></html>', { status: 503 })).flags),
     'title-missing': () => checkIds(runMetadataChecks(healthyMeta({ title: null }))),
     'title-too-short': () => checkIds(runMetadataChecks(healthyMeta({ title: 'Short' }))),
     'title-too-long': () =>
@@ -1698,6 +1701,10 @@ describe('trigger matrix - one failing signal per checkId', () => {
           'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'",
         }))
       ),
+    'security-csp-frame-ancestors-permissive': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', secHeaders({
+        'content-security-policy': "default-src 'self'; object-src 'none'; frame-ancestors *",
+      }))),
     'security-csp-weak-object-src': () =>
       checkIds(
         runSecurityHeaderChecks('https://example.com', secHeaders({
@@ -2196,28 +2203,24 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'mobile-input-zoom': () =>
       checkIds(
         runMobileUXQualityChecks(
-          healthyMeta({}),
           healthyCaptureMetrics({ inputsBelow16px: [{ selector: '#email', fontSize: 14 }] })
         )
       ),
     'mobile-cta-thumb-zone': () =>
       checkIds(
         runMobileUXQualityChecks(
-          healthyMeta({}),
           healthyCaptureMetrics({ mobilePrimaryCtaTopPx: 100, mobilePrimaryCtaText: 'Get started', mobileViewportHeight: 800 })
         )
       ),
     'mobile-cta-weak-label': () =>
       checkIds(
         runMobileUXQualityChecks(
-          healthyMeta({}),
           healthyCaptureMetrics({ mobilePrimaryCtaText: 'Learn more', mobilePrimaryCtaTopPx: 300 })
         )
       ),
     'mobile-load-delay-content': () =>
       checkIds(
         runMobileUXQualityChecks(
-          healthyMeta({}),
           healthyCaptureMetrics({
             loadExperience: {
               device: 'mobile',

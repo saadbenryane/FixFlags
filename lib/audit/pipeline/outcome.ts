@@ -1,11 +1,11 @@
-import type { PageRun } from './types'
+import type { PageEvidence, PageRun } from './types'
 import type { TriageFailure, TriageFailureReason } from './triage-failure'
 
 export type AuditOutcome =
-  | { kind: 'triage_complete'; pageRuns: PageRun[] }
+  | { kind: 'triage_complete'; pageRuns: PageEvidence[] }
   | {
       kind: 'triage_degraded'
-      pageRuns: PageRun[]
+      pageRuns: PageEvidence[]
       reason: TriageFailureReason
       message: string
     }
@@ -15,16 +15,16 @@ export function primaryPageRun(pageRuns: PageRun[]): PageRun | undefined {
   return pageRuns[0]
 }
 
-export function hasReviewedPageTriage(pageRuns: PageRun[]): boolean {
+export function hasReviewedPageTriage(pageRuns: PageEvidence[]): boolean {
   return pageRuns.some((page) => Boolean(page.triage))
 }
 
-export function primaryTriageFailure(pageRuns: PageRun[]): TriageFailure | undefined {
+export function primaryTriageFailure(pageRuns: PageEvidence[]): TriageFailure | undefined {
   return pageRuns.find((page) => page.triageFailure)?.triageFailure
 }
 
 /** Resolve how the audit run should finalize from collected page results. */
-export function resolveAuditOutcome(pageRuns: PageRun[]): AuditOutcome {
+export function resolveAuditOutcome(pageRuns: PageEvidence[]): AuditOutcome {
   if (hasReviewedPageTriage(pageRuns)) {
     return { kind: 'triage_complete', pageRuns }
   }

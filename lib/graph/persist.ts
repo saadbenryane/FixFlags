@@ -1,4 +1,6 @@
-import { executionWrite } from '@/lib/audit/execution-ownership'
+import { executionTransaction, executionWrite } from '@/lib/audit/execution-ownership'
+import type { Prisma } from '@prisma/client'
+import { includeLegacySiteAnalyses } from '@/lib/sites/application/analysis-scope'
 /**
  * Knowledge-graph persistence layer.
  *
@@ -222,48 +224,33 @@ async function upsertFixPrompts(
  * This populates the graph tables used by Product intelligence and the
  * topFrameworks display on issue pages.
  */
+async function lockSiteTechnologies(tx: Prisma.TransactionClient, siteId: string) {
+  await tx.$queryRaw`SELECT "id" FROM "graph_site" WHERE "id" = ${siteId} FOR UPDATE`
+}
+
 export async function reconcileSiteTechnologies(
   siteId: string,
   detectedTech: SiteSnapshot['detectedTech'],
-  reconcileCurrent: boolean
+  reconcileCurrent: boolean,
+  transaction?: Prisma.TransactionClient,
 ): Promise<void> {
-  if (reconcileCurrent) {
-    await executionWrite(tx => tx.siteTechnology.updateMany({
-      where: { siteId, isCurrent: true },
-      data: { isCurrent: false },
-    }))
-  }
-
-  for (const tech of detectedTech) {
-    const technology = await executionWrite(tx => tx.technology.upsert({
-      where: { name: tech.name },
-      create: { name: tech.name, kind: tech.kind },
-      update: {}, // name is unique, kind is fixed per tech
-    }))
-
-    // Upsert the site-technology link with confidence.
-    // Use upsert with P2002 catch for concurrent-audit safety.
-    try {
-      await executionWrite(tx => tx.siteTechnology.upsert({
+  const persist = async (tx: Prisma.TransactionClient) => {
+    if (reconcileCurrent) await tx.siteTechnology.updateMany({
+      where: { siteId, isCurrent: true }, data: { isCurrent: false },
+    })
+    for (const tech of detectedTech) {
+      const technology = await tx.technology.upsert({
+        where: { name: tech.name }, create: { name: tech.name, kind: tech.kind }, update: {},
+      })
+      await tx.siteTechnology.upsert({
         where: { siteId_technologyId: { siteId, technologyId: technology.id } },
-        create: {
-          siteId,
-          technologyId: technology.id,
-          confidence: tech.confidence,
-          isCurrent: true,
-        },
-        update: {
-          lastSeenAt: new Date(),
-          confidence: { set: tech.confidence },
-          isCurrent: true,
-        },
-      }))
-    } catch (err: unknown) {
-      // P2002 = race condition: another audit created the row between our check and write.
-      const code = (err as { code?: string }).code
-      if (code !== 'P2002') throw err
+        create: { siteId, technologyId: technology.id, confidence: tech.confidence, isCurrent: true },
+        update: { lastSeenAt: new Date(), confidence: { set: tech.confidence }, isCurrent: true },
+      })
     }
   }
+  if (transaction) await persist(transaction)
+  else await executionTransaction(async tx => { await lockSiteTechnologies(tx, siteId); await persist(tx) })
 }
 
 /**
@@ -279,23 +266,22 @@ export async function persistAuditToGraph(
 ): Promise<PersistResult> {
   const { siteId, pageIds } = await upsertSite(auditId, snapshot)
 
-  // Upsert technology detections into the graph tables
-  const latestCompletedAudit = await prisma.audit.findFirst({
-    where: { siteId, status: 'COMPLETED' },
-    orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
-    select: { id: true },
-  })
-  const ownsCurrentSnapshot = latestCompletedAudit?.id === auditId
-
-  if (
-    ownsCurrentSnapshot &&
-    (snapshot.detectedTech.length > 0 || snapshot.technologyDetectionComplete)
-  ) {
-    await reconcileSiteTechnologies(
-      siteId,
-      snapshot.detectedTech,
-      snapshot.technologyDetectionComplete
-    )
+  if (snapshot.detectedTech.length > 0 || snapshot.technologyDetectionComplete) {
+    await executionTransaction(async tx => {
+      // Serialize publication for this host. A retry or a slower older writer
+      // cannot interleave deactivation with another snapshot's positive facts.
+      await lockSiteTechnologies(tx, siteId)
+      const legacy = await tx.$queryRaw<Array<{ primaryAuditId: string }>>`
+        SELECT DISTINCT p."primaryAuditId" FROM "provisional_sites" p
+        JOIN "audits" a ON a."id" = p."primaryAuditId"
+        WHERE a."siteId" = ${siteId} AND a."executionSpec"#>>'{scope}' IS NULL
+      `
+      const latest = await tx.audit.findFirst({
+        where: { siteId, status: 'COMPLETED', AND: [includeLegacySiteAnalyses(legacy.map(site => site.primaryAuditId))] },
+        orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }], select: { id: true },
+      })
+      if (latest?.id === auditId) await reconcileSiteTechnologies(siteId, snapshot.detectedTech, snapshot.technologyDetectionComplete, tx)
+    })
   }
 
   const issueIds: string[] = []

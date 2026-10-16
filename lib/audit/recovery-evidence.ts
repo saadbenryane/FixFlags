@@ -1,4 +1,4 @@
-import { CHECK_REGISTRY } from './check-registry'
+import { CHECK_REGISTRY, CHECK_MODULES } from './check-registry'
 import { baseCheckId, parseAffectedPaths } from './flag-identity'
 import { checkReceiptSchema } from './checks/receipt'
 import { scopedAssertionForTarget, checkVerifierSchema } from './checks/verification'
@@ -7,6 +7,11 @@ import { assessSearchRecovery } from './search/recovery'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 import { RENDERED_PAGE_VERIFICATION_RULE } from './checks/rendered-page-evidence'
+import { RESOURCE_REPAIR_RULE, resourceCheckPolicy } from './pagespeed-opportunities'
+import { SECURITY_HEADER_VERIFICATION_RULE } from './checks/security-headers'
+import { SLOW_REPLAY_VERIFICATION_RULE } from './flow/slow-replay-contract'
+import { PAGESPEED_LAB_RULE, performanceLabKey } from './performance-measurement'
+import { TAP_TARGET_VERIFICATION_RULE } from './pagespeed-tap-targets'
 
 export type RecoveryExecution = { targetKey: string; status: string; detail: unknown }
 export type RecoveryFlag = { checkId?: string | null; pageUrl?: string | null; affectedPaths?: unknown; attentionPolicy?: unknown;
@@ -26,6 +31,12 @@ export function recordedVerificationVerdict(input: {
   if (!spec || !checkId || !CHECK_REGISTRY[checkId] || spec.checks[checkId] !== CHECK_REGISTRY[checkId].version) return null
   // Field responsiveness describes a trailing window. A fresh lab run cannot prove its repair.
   if (checkId === 'inp-critical' || checkId === 'inp-poor') return null
+  if (performanceLabKey(checkId) && input.flag.verificationRule !== PAGESPEED_LAB_RULE) return null
+  if (checkId === 'tap-targets-small' && input.flag.verificationRule !== TAP_TARGET_VERIFICATION_RULE) return null
+  // A historical summary cannot supply the original resource audit criteria.
+  if (resourceCheckPolicy(checkId) && input.flag.verificationRule !== RESOURCE_REPAIR_RULE) return null
+  if (CHECK_REGISTRY[checkId].module === 'security-headers' && input.flag.verificationRule !== SECURITY_HEADER_VERIFICATION_RULE) return null
+  if (CHECK_REGISTRY[checkId].module === 'slow-replay' && input.flag.verificationRule !== SLOW_REPLAY_VERIFICATION_RULE) return null
   const urls = [...new Set([...parseAffectedPaths(input.flag.affectedPaths), ...(input.flag.pageUrl ? [input.flag.pageUrl] : [])].map(recoveryUrl))]
   if (!urls.length) urls.push(recoveryUrl(spec.targetUrl))
   const completed = input.executions.filter(row => row.status === 'COMPLETED')
@@ -60,7 +71,7 @@ export function recordedVerificationVerdict(input: {
     const checkModule = CHECK_REGISTRY[checkId]?.module
     const source = checkModule === 'performance' ? 'pagespeed-desktop' : checkModule === 'mobile' ? 'pagespeed-mobile'
       : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network'
-        : checkId === 'broken-internal-links' || ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
+        : CHECK_MODULES[checkModule ?? '']?.input === 'http' || checkId === 'broken-internal-links' || ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule ?? '') ? 'http'
           : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom'
     const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
       const result = checkReceiptSchema.safeParse(row.detail)
@@ -71,7 +82,7 @@ export function recordedVerificationVerdict(input: {
     // Derived summaries cannot replace the original condition's source observations.
     if (!receipts.length && !input.flag.verificationRule && !Array.isArray(input.flag.evidenceTargets) && exact.length)
       return combinedVerdict(exact.map(proof => proof.comparable ? proof.verdict === 'unknown' ? null : proof.verdict : null))
-    if (input.flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || ['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['overlays', 'flow', 'accessibility', 'console', 'keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
+    if (input.flag.verificationRule === RENDERED_PAGE_VERIFICATION_RULE || ['broken-internal-links', 'broken-page-anchors'].includes(checkId) || ['slow-replay', 'page-response', 'overlays', 'flow', 'accessibility', 'console', 'keyboard', 'measurement', 'auth-checkout', 'og-image', 'form-validation'].includes(checkModule ?? '')) {
       const sources = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
         const result = checkReceiptSchema.safeParse(row.detail)
         return result.success && !result.data.failed ? [result.data] : []

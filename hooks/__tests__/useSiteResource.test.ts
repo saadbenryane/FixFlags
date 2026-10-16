@@ -32,6 +32,85 @@ it('retains the recorded view when a successful HTTP response has malformed stat
 })
 afterEach(() => { vi.unstubAllGlobals() })
 
+it('keeps a captured refresh bound to its original Site after navigation', async () => {
+  const first = siteViewFixture(); first.outcomes = []
+  const next = structuredClone(first)
+  next.site.siteId = 'next-site'; next.site.projectId = 'next-site'; next.presentation.identity.siteId = 'next-site'
+  let failNext = false
+  const fetch = vi.fn(async (url: string) => url.endsWith('/next-site') && failNext
+    ? Response.json({ error: 'Read unavailable' }, { status: 503 }) : Response.json(url.endsWith('/next-site') ? next : first))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, rerender, unmount } = renderHook(({ siteId, initial }) => useSiteResource(siteId, initial),
+    { wrapper, initialProps: { siteId: first.site.siteId, initial: first } })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  const refreshFirst = result.current.refresh
+  rerender({ siteId: next.site.siteId, initial: next })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+  expect(result.current.view.site.siteId).toBe(next.site.siteId)
+  await act(async () => { await refreshFirst() })
+  expect(result.current.view.site.siteId).toBe(next.site.siteId)
+  failNext = true
+  await act(async () => { await expect(result.current.refresh()).rejects.toThrow() })
+  expect(result.current.disconnected).toBe(true)
+  await act(async () => { await refreshFirst() })
+  expect(result.current.view.site.siteId).toBe(next.site.siteId)
+  expect(result.current.disconnected).toBe(true)
+  unmount()
+})
+
+it('retains newest validated facts when an older request later fails', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  const current = { ...initial, inventoryPageCount: 12 }
+  let release!: (response: Response) => void
+  const older = new Promise<Response>(resolve => { release = resolve })
+  const fetch = vi.fn().mockReturnValueOnce(older).mockResolvedValue(Response.json(current))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource(initial.site.siteId, initial), { wrapper })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await act(async () => { await result.current.refresh() })
+  expect(result.current.view.inventoryPageCount).toBe(12)
+  expect(result.current.disconnected).toBe(false)
+  await act(async () => { release(Response.json({ error: 'Earlier read failed' }, { status: 503 })) })
+  expect(result.current.view.inventoryPageCount).toBe(12)
+  expect(result.current.disconnected).toBe(true)
+  unmount()
+})
+
+it('ignores event callbacks from a previous Site after its stream closes', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  const next = structuredClone(initial)
+  next.site.siteId = 'next-site'; next.site.projectId = 'next-site'; next.presentation.identity.siteId = 'next-site'
+  const streams: Array<{ listeners: Map<string, () => void>; closed: boolean }> = []
+  vi.stubGlobal('EventSource', class {
+    listeners = new Map<string, () => void>()
+    closed = false
+    constructor() { streams.push(this) }
+    addEventListener(name: string, listener: () => void) { this.listeners.set(name, listener) }
+    close() { this.closed = true }
+  })
+  const fetch = vi.fn(async (url: string) => Response.json(url.endsWith('/next-site') ? next : initial))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, rerender, unmount } = renderHook(({ siteId, initial }) => useSiteResource(siteId, initial),
+    { wrapper, initialProps: { siteId: initial.site.siteId, initial } })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  rerender({ siteId: next.site.siteId, initial: next })
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+  expect(streams[0].closed).toBe(true)
+  act(() => { streams[1].listeners.get('error')?.() })
+  expect(result.current.disconnected).toBe(true)
+  act(() => { streams[0].listeners.get('error')?.(); streams[0].listeners.get('open')?.() })
+  expect(result.current.disconnected).toBe(true)
+  expect(result.current.view.site.siteId).toBe(next.site.siteId)
+  expect(fetch).toHaveBeenCalledTimes(2)
+  unmount()
+})
+
 it('catches up after SSE reconnect while retaining dated evidence during a disconnect', async () => {
   const initial = siteViewFixture(); initial.outcomes = []
   let current = initial

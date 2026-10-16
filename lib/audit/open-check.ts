@@ -1,5 +1,5 @@
 import { AuditUrlError, safeFetchDocument } from './url'
-import { isBotInterstitialDocument } from './browser/page-capture'
+import { publicResponseRestriction } from './browser/page-capture'
 import { destinationContext, displayDestination, DESTINATION_VERIFICATION_RULE } from './checks/destination-evidence'
 import type { EvidenceTarget } from './evidence-targets'
 import {
@@ -79,7 +79,7 @@ export function detectSoft404(html: string, status: number | null): boolean {
   return SOFT_404_PATTERN.test(text.slice(0, 400)) && headings.length > 0
 }
 
-function outcomeFromGet(input: {
+export function classifyPublicGet(input: {
   status: number
   finalUrl: string
   requestedUrl: string
@@ -90,7 +90,8 @@ function outcomeFromGet(input: {
 }): { outcome: OpenCheckOutcome; shouldFlagDead: boolean; evidence: string } {
   const { status, finalUrl, requestedUrl, wwwAuthenticate, html } = input
 
-  if (isBotInterstitialDocument({ body: html ?? '', status, headers: { 'cf-mitigated': input.cfMitigated ?? '' } }))
+  const restriction = publicResponseRestriction({ body: html ?? '', status, headers: { 'cf-mitigated': input.cfMitigated ?? '' } })
+  if (restriction === 'bot_challenge')
     return { outcome: 'blocked', shouldFlagDead: false, evidence: 'The destination presented an access challenge; its normal response remains unknown.' }
 
   if (looksLikeAuth(finalUrl, status, wwwAuthenticate) || looksLikeAuth(requestedUrl, status, wwwAuthenticate)) {
@@ -119,7 +120,7 @@ function outcomeFromGet(input: {
     }
   }
 
-  if (status === 429) {
+  if (restriction === 'rate_limited') {
     return {
       outcome: 'blocked',
       shouldFlagDead: false,
@@ -127,7 +128,7 @@ function outcomeFromGet(input: {
     }
   }
 
-  if (status === 403 && !AUTH_PATH.test(finalUrl)) {
+  if (restriction === 'access_denied' && !AUTH_PATH.test(finalUrl)) {
     return {
       outcome: 'blocked',
       shouldFlagDead: false,
@@ -237,7 +238,7 @@ function finalizeGet(
     }
   }
 
-  const classified = outcomeFromGet({
+  const classified = classifyPublicGet({
     status: get.response.status,
     finalUrl: get.response.url || requested,
     requestedUrl: requested,

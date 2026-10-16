@@ -1,12 +1,12 @@
 import { AuditUrlError, safeFetchDocument } from '@/lib/audit/url'
-import { isBotInterstitialDocument } from '@/lib/audit/browser/page-capture'
+import { publicResponseRestriction } from '@/lib/audit/browser/page-capture'
 import type { ProbeObservation } from './domain'
 
 type Document = Awaited<ReturnType<typeof safeFetchDocument>>
 
 export function classifyUptimeResponse(document: Document): Pick<ProbeObservation, 'result' | 'reason'> {
   const status = document.statusCode
-  if ([401, 403, 429].includes(status) || isBotInterstitialDocument({ body: document.body, headers: document.headers, status }))
+  if (publicResponseRestriction({ body: document.body, headers: document.headers, status }))
     return { result: 'UNKNOWN', reason: status === 429 ? 'rate_limited' : 'access_blocked' }
   if (status >= 200 && status < 300) return { result: 'ONLINE', reason: 'response_received' }
   if (status >= 400) return { result: 'FAILED', reason: 'response_error' }
@@ -27,12 +27,14 @@ export function classifyUptimeError(error: unknown): Pick<ProbeObservation, 'res
 }
 
 export async function probeUptime(url: string, fetchDocument = safeFetchDocument): Promise<ProbeObservation> {
-  const started = Date.now()
+  let started: number | null = null
+  const duration = () => started === null ? 0 : Date.now() - started
   try {
-    const document = await fetchDocument(url, { timeoutMs: 8000, maxBytes: 64_000, maxRedirects: 5, publicOnly: true })
+    const document = await fetchDocument(url, { timeoutMs: 8000, maxBytes: 64_000, maxRedirects: 5, publicOnly: true,
+      onRequestStart: () => { started = Date.now() } })
     return { ...classifyUptimeResponse(document), statusCode: document.statusCode,
-      durationMs: Date.now() - started, finalUrl: document.finalUrl }
+      durationMs: duration(), finalUrl: document.finalUrl }
   } catch (error) {
-    return { ...classifyUptimeError(error), statusCode: null, durationMs: Date.now() - started, finalUrl: null }
+    return { ...classifyUptimeError(error), statusCode: null, durationMs: duration(), finalUrl: null }
   }
 }

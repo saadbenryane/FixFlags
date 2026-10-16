@@ -25,19 +25,18 @@ async function unlockClaimedAudit(audit: {
   id: string
   status: string
   aiReviewAt: Date | null
+  triageAt: Date | null
 }): Promise<void> {
   if (audit.aiReviewAt) return
 
-  if (audit.status === 'COMPLETED') {
-    // Enqueue first for completed audits. A queue failure leaves includeAi
-    // unchanged, so the claim remains safely retryable.
+  if (audit.status === 'COMPLETED' && audit.triageAt) {
+    // Entitlement and durable task admission commit before best-effort delivery.
     await enqueueAiReview(audit.id)
-    await prisma.audit.update({ where: { id: audit.id }, data: { includeAi: true } })
     return
   }
 
-  // The runner may already have copied includeAi into memory. Persist the
-  // entitlement now, then let finalization re-read it before enqueueing.
+  // Preserve entitlement for in-flight and partial reports. Prescription can
+  // only consume a successful triage, which finalization re-reads before enqueue.
   await prisma.audit.update({ where: { id: audit.id }, data: { includeAi: true } })
 
   // Close the race where this audit completed between the transaction above
@@ -45,9 +44,9 @@ async function unlockClaimedAudit(audit: {
   // idempotent with the finalizer.
   const latest = await prisma.audit.findUnique({
     where: { id: audit.id },
-    select: { status: true, aiReviewAt: true },
+    select: { status: true, aiReviewAt: true, triageAt: true },
   })
-  if (latest?.status === 'COMPLETED' && !latest.aiReviewAt) {
+  if (latest?.status === 'COMPLETED' && latest.triageAt && !latest.aiReviewAt) {
     await enqueueAiReview(audit.id)
   }
 }
@@ -68,6 +67,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
           userId: true,
           status: true,
           aiReviewAt: true,
+          triageAt: true,
           skipUsageCount: true,
           usageCountedAt: true,
           url: true,
@@ -76,7 +76,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         },
       })
 
-      const projects = new Map<string, { id: string; canonicalHost: string; auditIds: string[] }>()
+      const projects = new Map<string, { id: string; canonicalHost: string; auditIds: string[]; restored: boolean }>()
       for (const audit of claimable) {
         const canonicalHost = canonicalProductHost(audit.url)
         if (!canonicalHost) throw new Error(`Cannot attach Product for audit ${audit.id}`)
@@ -94,6 +94,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         if (audit.projectId && project?.userId !== userId) {
           throw new Error('Site is no longer owned by this account')
         }
+        const restored = Boolean(project?.deletedAt)
         if (project?.deletedAt) {
           await assertCanCreateProduct(tx, userId)
           await tx.project.update({ where: { id: project.id }, data: { deletedAt: null } })
@@ -134,7 +135,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
           where: { id: audit.id },
           data: { userId, projectId: project.id },
         })
-        const claimed = projects.get(project.id) ?? { id: project.id, canonicalHost, auditIds: [] }
+        const claimed = projects.get(project.id) ?? { id: project.id, canonicalHost, auditIds: [], restored }
         claimed.auditIds.push(audit.id)
         projects.set(project.id, claimed)
       }
@@ -144,7 +145,8 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         await migrateProvisionalSiteDataToProject(input, tx)
         // Identity, bindings and defaults become visible together. An interrupted
         // migration rolls back the claim rather than publishing an empty Site.
-        await ensureDefaultMonitoring(tx, project.id, userId)
+        if (project.restored) await ensureDefaultMonitoring(tx, project.id, userId, undefined, { restored: true })
+        else await ensureDefaultMonitoring(tx, project.id, userId)
       }
       return { audits: claimable, claimedProjects: [...projects.values()] }
     }
@@ -206,8 +208,8 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     }
   }
 
-  // Delete only after every critical stage succeeds. Ownership, usage, and
-  // enqueue operations are idempotent, so a queue failure can safely retry.
+  // Delete only after every critical stage succeeds. Ownership, usage and
+  // durable task admission are idempotent when an interrupted claim retries.
   await clearAnonymousAuditCookie()
   return audits.length
 }

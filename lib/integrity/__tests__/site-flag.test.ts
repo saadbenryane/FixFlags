@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Prisma } from '@prisma/client'
 import { upsertIntegritySiteFlag } from '../site-flag'
 
 const prisma = vi.hoisted(() => ({
@@ -24,7 +25,7 @@ describe('integrity Site Flag', () => {
       storefrontUrl: 'https://everydaygoods.example/products/mug',
       health: 'RED',
       reason: 'checkout_blocked',
-    })
+    }, prisma as unknown as Prisma.TransactionClient)
     expect(result).toEqual({ projectId: 'proj_1' })
     expect(prisma.improvement.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -57,7 +58,7 @@ describe('integrity Site Flag', () => {
       storefrontUrl: 'https://everydaygoods.example/products/mug',
       health: 'GREEN',
       reason: 'ok',
-    })
+    }, prisma as unknown as Prisma.TransactionClient)
     expect(prisma.improvement.updateMany).not.toHaveBeenCalled()
     expect(prisma.improvement.upsert).not.toHaveBeenCalled()
   })

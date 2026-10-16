@@ -11,18 +11,22 @@ import { readResourceAudits, projectResourceOpportunities } from '../../pagespee
 import { hasRecordedRecoveryEvidence } from '../../recovery-evidence'
 import { CHECK_REGISTRY } from '../../check-registry'
 import { readTapTargetAudits } from '../../pagespeed-tap-targets'
+import { performanceMeasurement } from '../../performance-measurement'
 
 const pageUrl = 'https://example.com/pricing'
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 function measurement(overrides: Partial<PageSpeedResult> = {}): PageSpeedResult {
-  return { strategy: 'mobile', score: 95, lcp: 1000, cls: 0, fcp: 500, tbt: 0, inp: null,
+  const strategy = overrides.strategy ?? 'mobile'
+  return { strategy, score: 95, lcp: 1000, cls: 0, fcp: 500, tbt: 0, inp: null,
     tapTargetAudits: readTapTargetAudits({ 'target-size': { score: 1 } }),
     opportunities: [], resourceAudits: readResourceAudits({
       'render-blocking-insight': { score: 1, metricSavings: { FCP: 0 } },
       'unused-javascript': { score: 1, details: { overallSavingsBytes: 0 } },
       'unused-css-rules': { score: 1, details: { overallSavingsBytes: 0 } },
       'image-delivery-insight': { score: 1, details: { debugData: { wastedBytes: 0 } } },
-    }), failedAccessibilityAudits: [], diagnostics: {}, raw: {}, crux: null, ...overrides }
+    }), failedAccessibilityAudits: [], diagnostics: { measurement: performanceMeasurement({ requestedUrl: pageUrl, finalUrl: pageUrl,
+      lighthouseVersion: '13.0.0', configSettings: { formFactor: strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } } }, strategy) },
+    raw: {}, crux: null, ...overrides }
 }
 function context(data: PageSpeedResult, module = 'performance', device?: 'mobile'): TaskContext {
   const input = { pageUrl, position: 0, primary: true, role: 'primary', module, ...(device ? { device } : {}) }
@@ -38,6 +42,41 @@ function context(data: PageSpeedResult, module = 'performance', device?: 'mobile
 }
 
 describe('progressive Performance evidence', () => {
+  it.each([
+    { module: 'performance', strategy: 'desktop' as const, checkId: 'perf-score-critical', failure: { score: 35 } },
+    { module: 'performance', strategy: 'desktop' as const, checkId: 'unused-js-large', failure: {
+      opportunities: [{ id: 'unused-javascript', title: 'Unused JS', savings: 200_000 }],
+      resourceAudits: readResourceAudits({ 'unused-javascript': { score: 0, details: { overallSavingsBytes: 200_000 } } }),
+    } },
+    { module: 'mobile', strategy: 'mobile' as const, checkId: 'tap-targets-small', failure: { tapTargetAudits: readTapTargetAudits({ 'target-size': { score: 0 } }) } },
+  ])('requires comparable measurement conditions to verify $checkId', async fixture => {
+    const before = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: fixture.strategy, ...fixture.failure }), fixture.module)), 'check').data)
+    const flag = before.flags.find(flag => flag.checkId === fixture.checkId)!
+    expect(flag).toBeDefined()
+    const healthy = measurement({ strategy: fixture.strategy })
+    const comparable = checkArtifactSchema.parse(readArtifact(await evaluate(context(healthy, fixture.module)), 'check').data)
+    expect(scopedAssertionForTarget({ receipt: comparable.receipt, checkId: flag.checkId, flag })?.assertion.passed).toBe(true)
+    const recovery = (receipt: typeof comparable.receipt) => hasRecordedRecoveryEvidence({ auditId: 'audit',
+      executionSpec: context(healthy).audit.executionSpec, flag: { ...flag, pageUrl },
+      executions: [{ targetKey: 'module:' + fixture.module, status: 'COMPLETED', detail: receipt }] })
+    expect(recovery(comparable.receipt)).toBe(true)
+    for (const changed of [
+      { requestedUrl: pageUrl + '?different=1' }, { finalUrl: 'https://example.com/replacement' }, { lighthouseVersion: '14.0.0' },
+      { configSettings: { formFactor: fixture.strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 1 } } },
+      { configSettings: { formFactor: fixture.strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 }, screenEmulation: { width: 400, height: 800, mobile: true } } },
+    ]) {
+      const recorded = performanceMeasurement({ requestedUrl: pageUrl, finalUrl: pageUrl, lighthouseVersion: '13.0.0',
+        configSettings: { formFactor: fixture.strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } }, ...changed }, fixture.strategy)
+      const after = checkArtifactSchema.parse(readArtifact(await evaluate(context({ ...healthy, diagnostics: { measurement: recorded } }, fixture.module)), 'check').data)
+      expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })).toBeUndefined()
+      expect(recovery(after.receipt)).toBe(false)
+    }
+    const missing = checkArtifactSchema.parse(readArtifact(await evaluate(context({ ...healthy, diagnostics: {} }, fixture.module)), 'check').data)
+    expect(scopedAssertionForTarget({ receipt: missing.receipt, checkId: flag.checkId, flag })).toBeUndefined()
+    expect(recovery(missing.receipt)).toBe(false)
+    expect(scopedAssertionForTarget({ receipt: comparable.receipt, checkId: flag.checkId,
+      flag: { ...flag, evidenceTargets: undefined } })).toBeUndefined()
+  })
   it('verifies tap-target repairs only from the original mobile provider criteria', async () => {
     async function artifact(audits: Record<string, Record<string, unknown>>) {
       return checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ tapTargetAudits: readTapTargetAudits(audits) }), 'mobile')), 'check').data)
@@ -62,6 +101,9 @@ describe('progressive Performance evidence', () => {
     expect(hasRecordedRecoveryEvidence({ auditId: 'audit', executionSpec: context(measurement()).audit.executionSpec, flag,
       executions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: repaired.receipt }] })).toBe(true)
     const both = await artifact({ 'target-size': { score: 0 }, 'tap-targets': { score: 0.5 } })
+    const knownFailure = await artifact({ 'target-size': { score: 0 } })
+    expect(scopedAssertionForTarget({ receipt: knownFailure.receipt, checkId: flag.checkId, flag: both.flags[0] })?.assertion)
+      .toMatchObject({ passed: false, complete: true })
     const partialRepair = await artifact({ 'target-size': { score: 1 } })
     expect(scopedAssertionForTarget({ receipt: partialRepair.receipt, checkId: flag.checkId, flag: both.flags[0] })).toBeUndefined()
     const fullRepair = await artifact({ 'target-size': { score: 1 }, 'tap-targets': { score: 1 } })
@@ -90,7 +132,7 @@ describe('progressive Performance evidence', () => {
       expect(assertionForTarget(missing.receipt, checkId)).toBeUndefined()
       const target = { auditId: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
         environment: 'production', scope: 'SITE', checks: { [checkId]: 1 }, outcomes: [], verificationTarget: null },
-        flag: { checkId, pageUrl, verificationRule: 'Fresh mobile resource measurement' } }
+        flag: { ...failed.flags.find(flag => flag.checkId === checkId)!, pageUrl } }
       expect(hasRecordedRecoveryEvidence({ ...target, executions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: desktop.receipt }] })).toBe(false)
       expect(hasRecordedRecoveryEvidence({ ...target, executions: [{ targetKey: 'module:mobile', status: 'COMPLETED', detail: repaired.receipt }] })).toBe(true)
     }

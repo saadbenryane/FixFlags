@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
 const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
@@ -119,18 +122,20 @@ describe('loadSiteSummaries', () => {
   })
   it('batches recovery proof and keeps the two owned Sites independent', async () => {
     const audit = completedAudit()
+    const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture('https://one.example/') } })
     mocks.auditFindMany.mockReset().mockResolvedValueOnce([audit]).mockResolvedValueOnce([audit])
       .mockResolvedValueOnce([{ id: 'recovery', projectId: 'site-1', completedAt: new Date(),
         executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: 'https://one.example/', environment: 'production', scope: 'SITE',
           checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
         verifierExecutions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: {
           kind: 'site-module-check', version: 1, module: 'performance', pageUrl: 'https://one.example/', applicable: true, passed: true,
-          assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true }],
+          assertions: scopePerformanceAssertions(measurement, 'https://one.example/',
+            [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true, complete: true }]),
           execution: { auditId: 'recovery', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: new Date().toISOString() },
         } }],
       }])
     const flag = { id: 'source-flag', auditId: 'source-audit', status: 'FIXED', resolvedInId: 'recovery', severity: 'IMPORTANT', confidence: 1,
-      pageUrl: 'https://one.example/', checkId: 'lcp-poor', rubric: 'PERFORMANCE', impactTag: 'PERFORMANCE' }
+      pageUrl: 'https://one.example/', ...runPerformanceChecks(measurement, null, 'https://one.example/')[0], rubric: 'PERFORMANCE', impactTag: 'PERFORMANCE' }
     mocks.improvementFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, fingerprint: 'title', outcomeId: null,
       occurrences: [{ flag }] })))
     const sites = await loadSiteSummaries('user-1')

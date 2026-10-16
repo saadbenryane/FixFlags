@@ -32,6 +32,7 @@ export interface RunLlmWithRetryOptions<TInput, TOutput> {
   input: TInput
   attemptFn: (provider: string, input: TInput) => Promise<TOutput>
   isRetryable?: (err: unknown) => boolean
+  deadline?: number
 }
 
 function defaultIsRetryable(err: unknown): boolean {
@@ -43,6 +44,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
   input,
   attemptFn,
   isRetryable = defaultIsRetryable,
+  deadline,
 }: RunLlmWithRetryOptions<TInput, TOutput>): Promise<TOutput> {
   const chain = getConfiguredJudgeProviderChain()
   if (chain.length === 0) {
@@ -54,6 +56,9 @@ export async function runLlmWithRetry<TInput, TOutput>({
 
   for (const provider of chain) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      if (deadline !== undefined && Date.now() >= deadline) {
+        throw Object.assign(new Error(`${label} time budget exhausted`), { code: 'ETIMEDOUT' })
+      }
       try {
         const result = await attemptFn(provider, input)
         logger.info(`${label} succeeded`, { provider, attempt })
@@ -64,7 +69,7 @@ export async function runLlmWithRetry<TInput, TOutput>({
         logger.warn(`${label} attempt failed`, { provider, attempt, err: lastError.message })
         if (!isRetryable(err)) break
         if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS * attempt)
+          await sleep(Math.min(RETRY_DELAY_MS * attempt, deadline === undefined ? Infinity : Math.max(0, deadline - Date.now())))
         }
       }
     }

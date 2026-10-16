@@ -9,10 +9,17 @@ export const TASK_QUEUES = {
   availability: { name: 'audit-task-availability', concurrency: 1 },
 } as const
 export type TaskQueue = keyof typeof TASK_QUEUES
+/** Prioritize queued primary-page work over linked documents. Active graphs are
+ * bounded, so linked work retains a finite cohort. */
+export function priorityForTask(kind: TaskKind, input: TaskInput): number {
+  if (kind === 'prescription') return 10
+  if (queueForTask(kind, input) === 'browser') return input.primary ? 1 : 3
+  return kind === 'http' ? 1 : kind === 'check' ? 2 : 3
+}
 export function queueForTask(kind: TaskKind, input: TaskInput): TaskQueue {
   if (kind === 'bindings' && input.module === 'HTTP_AVAILABILITY') return 'availability'
   if (['browser', 'motion', 'overlays', 'keyboard', 'captures', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'automatic-accounts'].includes(kind)) return 'browser'
-  if (['pagespeed', 'google', 'judge'].includes(kind)) return 'provider'
+  if (['pagespeed', 'google', 'judge', 'prescription'].includes(kind)) return 'provider'
   if (kind === 'search' && input.module === 'search-canonical') return 'http'
   if (['http', 'search-resources', 'discovery'].includes(kind)) return 'http'
   return 'evaluate'

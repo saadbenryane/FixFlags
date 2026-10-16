@@ -10,7 +10,7 @@ export const captureObservationScopeSchema = z.object({
 }).strict()
 export type CaptureObservationScope = z.infer<typeof captureObservationScopeSchema>
 export function captureProfileKey(profile: CaptureProfile) {
-  const conditions = ['native-request-boundary-v1', profile.width, profile.height, profile.userAgent, profile.deviceScaleFactor ?? 1, profile.isMobile ?? false, 'en-US']
+  const conditions = ['native-request-boundary-v3', profile.width, profile.height, profile.userAgent, profile.deviceScaleFactor ?? 1, profile.isMobile ?? false, 'en-US']
   if (profile.hasTouch) conditions.push('touch-input')
   return createHash('sha256').update(JSON.stringify(conditions)).digest('hex')
 }

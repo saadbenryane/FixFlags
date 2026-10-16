@@ -30,7 +30,14 @@ export function uptimeJobId(input: UptimeJob) {
 
 export async function enqueueUptimeProbe(input: UptimeJob, dueAt: Date) {
   const job = uptimeJobSchema.parse(input)
-  await getQueue().add('probe', job, { jobId: uptimeJobId(job), delay: Math.max(0, dueAt.getTime() - Date.now()) })
+  const queued = await getQueue().add('probe', job, { jobId: uptimeJobId(job), delay: Math.max(0, dueAt.getTime() - Date.now()) })
+  // A retained terminal job can outlive its worker interruption or abandoned lease.
+  // The scheduler's persisted due state authorizes replay; the worker still owns observation deduplication.
+  if (dueAt.getTime() <= Date.now()) {
+    const state = await queued.getState()
+    if (state === 'failed' || state === 'completed')
+      await queued.retry(state, { resetAttemptsMade: true, resetAttemptsStarted: true })
+  }
 }
 
 export function startUptimeWorker(processProbe: (job: UptimeJob) => Promise<void>) {

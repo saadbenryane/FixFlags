@@ -14,12 +14,22 @@ export const journeyObservationSchema = z.object({
   scope: captureObservationScopeSchema, route: journeyRouteSchema,
   available: z.boolean(), pathComplete: z.boolean(), headline: z.boolean(), primaryAction: z.boolean(),
   nextPath: z.boolean(), fieldCount: z.number().int().nonnegative(),
+  headlineVersion: z.literal(2).optional(), headlineComplete: z.boolean().optional(),
+  actionVersion: z.union([z.literal(3), z.literal(4)]).optional(), actionComplete: z.boolean().optional(), pathVersion: z.literal(2).optional(), fieldVersion: z.literal(2).optional(),
 }).strict()
 export type JourneyObservation = z.infer<typeof journeyObservationSchema>
 
 
-export function journeyContext(observation: JourneyObservation) {
-  return `journey:${observation.journeyType}:${observation.phase}:${capturePageKey(observation.scope.pageUrl)}:${captureObservationKey(observation.scope)}:${JSON.stringify(observation.route)}`
+export function journeyContext(observation: JourneyObservation, condition?: string) {
+  const scope = captureObservationKey(observation.scope)
+  // Detector corrections cannot certify historical findings as repaired.
+  // Unchanged conditions retain their original comparable scope.
+  const detector = condition?.endsWith('-action') ? observation.actionVersion ? 'rendered-action-v' + observation.actionVersion : 'primary-action-v2'
+    : ['destination-form', 'destination-field-count'].includes(condition ?? '') && observation.fieldVersion === 2 ? 'editable-fields-v2'
+    : condition === 'landing-path' && observation.pathVersion === 2 ? 'rendered-path-v2'
+    : condition?.endsWith('-headline') && observation.headlineVersion === 2 ? 'rendered-headline-v2' : null
+  const key = detector ? createHash('sha256').update(scope + ':' + detector).digest('hex') : scope
+  return `journey:${observation.journeyType}:${observation.phase}:${capturePageKey(observation.scope.pageUrl)}:${key}:${JSON.stringify(observation.route)}`
 }
 export function readJourneyContext(context: string) {
   const matched = /^journey:(first-visit|pricing-evaluation|signup):(landing|destination):([a-f0-9]{64}):([a-f0-9]{64}):(.*)$/.exec(context)
@@ -30,7 +40,6 @@ export function readJourneyContext(context: string) {
   } catch { return undefined }
 }
 export function journeyAssertions(observation: JourneyObservation): CheckAssertion[] {
-  const context = journeyContext(observation)
   const measured = observation.phase === 'landing'
     ? { 'landing-headline': observation.headline, 'landing-action': observation.primaryAction, 'landing-path': observation.nextPath }
     : { 'destination-headline': observation.headline, 'destination-action': observation.primaryAction,
@@ -39,8 +48,10 @@ export function journeyAssertions(observation: JourneyObservation): CheckAsserti
     .some(id => id.startsWith('journey-' + observation.journeyType + '-'))).map(([key, passed]) => ({
     key, name: key.replaceAll('-', ' '), expected: 'The recorded page condition is satisfied on the original public journey',
     observed: `${observation.journeyType}, ${observation.phase}: headline ${observation.headline}, action ${observation.primaryAction}, eligible path ${observation.nextPath}, visible fields ${observation.fieldCount}. This does not establish submission success or visitor behaviour.`,
-    passed, complete: observation.available && captureObservationKey(observation.scope) !== 'unknown' && (key !== 'landing-path' || observation.pathComplete),
-    context,
+    passed, complete: observation.available && captureObservationKey(observation.scope) !== 'unknown' &&
+      (!key.endsWith('-headline') || observation.headlineComplete !== false) &&
+      (!key.endsWith('-action') || observation.actionComplete !== false) && (key !== 'landing-path' || observation.pathComplete),
+    context: journeyContext(observation, key),
   }))
 }
 export function scopedJourneyFinding(finding: JourneyFindingDraft, observations: JourneyObservation[]): JourneyFindingDraft | undefined {

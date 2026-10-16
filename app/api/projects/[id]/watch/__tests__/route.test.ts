@@ -17,7 +17,7 @@ vi.mock('@/lib/security/rate-limit', () => ({
   requestClientId: () => 'test-client',
   RateLimitError: class RateLimitError extends Error { retryAfter = 60 },
 }))
-vi.mock('@/lib/audit/project-watch', () => ({
+vi.mock('@/lib/sites/application/monitoring-settings', () => ({
   setProjectWatch,
   fromStoredWatchInterval,
   productWatchReadiness,

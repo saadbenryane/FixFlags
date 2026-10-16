@@ -10,7 +10,7 @@ import { SiteShell } from '@/components/sites/SiteShell'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 
 export function SiteSettingsView({ siteId, view: initial }: { siteId: string; view: SiteHomeView }) {
-  const { view, disconnected } = useSiteResource(siteId, initial)
+  const { view, refresh, disconnected } = useSiteResource(siteId, initial)
   return (
     <SiteShell
       actions={view.actions}
@@ -24,7 +24,7 @@ export function SiteSettingsView({ siteId, view: initial }: { siteId: string; vi
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <SiteSettingsControls target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} />
+      <SiteSettingsControls key={siteId} target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh} />
       {view.site.projectId ? <SiteScanAccessSettings key={view.site.projectId} siteId={siteId} /> : null}
       <SiteResearchConsentSettings key={siteId} siteId={siteId} />
       </div>

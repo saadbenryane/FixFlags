@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { parseMetadataFromHtml } from '../../metadata'
 import { serializeArtifact } from '../contracts'
 import { siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
-import { recordedPages } from '../lifecycle'
+import { recordedPages, recordedPageEvidence } from '../lifecycle'
 import { commitFindings } from '../results'
 import type { TaskContext } from '../registry'
 import { evaluatorHandlers } from '../evaluators'
@@ -142,7 +142,13 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       ) ON COMMIT DROP`
       const input = JSON.stringify({ position: 0, pageUrl: url, primary: true, role: 'primary' })
       const browser = JSON.stringify(serializeArtifact('browser', { pageId: 'page', metadata,
-        snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: 'x'.repeat(1_100_000), networkFailures: [{ unprojected: true }] } }))
+        preview: { version: 1, scope: { pageUrl: url, finalUrl: url, profile: 'fixture', access: 'public' },
+          title: 'Native preview', ogTitle: null, ogDescription: null, titleComplete: true, descriptionComplete: true },
+        snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: 'x'.repeat(1_100_000), networkFailures: [{ unprojected: true }],
+          renderedSearchSnapshot: { documentBaseUrl: url + 'docs/', sections: {
+            links: { html: '<a href="pricing">Pricing</a>', complete: true, reason: null, observed: 1, limit: 2000 },
+            text: { unprojected: 'x'.repeat(1_100_000) },
+          } } } }))
       const http = JSON.stringify(serializeArtifact('http', { metadata, document: { body: 'x'.repeat(1_100_000) } }))
       const flag = { checkId: 'fixture-check', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Recorded problem',
         evidence: 'Observed evidence', fix: 'Resolve the cause', confidence: 1, source: 'DETERMINISTIC', pageUrl: url }
@@ -167,6 +173,15 @@ localDatabase('bounded PostgreSQL completion projection', () => {
       expect(partial).toHaveLength(1)
       expect(partial[0]).toMatchObject({ flags: [flag, journeyFlag], failedModules: ['performance'], metadata: { title: 'Projected page' } })
       expect(await recordedPages('audit', 'https://example.com/other', tx)).toEqual([])
+      await tx.$executeRaw`UPDATE audit_verifier_executions SET "workResult" = jsonb_set("workResult", '{data,metadata}', 'null'::jsonb)
+        WHERE "workKind" IN ('browser', 'http')`
+      const independent = await recordedPageEvidence('audit', url, tx)
+      expect(independent).toHaveLength(1)
+      expect(independent[0]).toMatchObject({ url, primary: true, metadata: null,
+        navigation: { linkBaseUrl: url + 'docs/', links: [{ href: 'pricing', text: 'Pricing' }], complete: true },
+        preview: { title: 'Native preview', titleComplete: true }, flags: [flag, journeyFlag], failedModules: ['performance'] })
+      expect(JSON.stringify(independent)).not.toContain('unprojected')
+      expect(await recordedPages('audit', url, tx)).toEqual([])
     })
   })
   it('excludes setup observations while retaining legacy and current Site history', async () => {

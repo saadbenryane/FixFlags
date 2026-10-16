@@ -1,5 +1,14 @@
 /** Portable inventory of the installed axe WCAG policy. Runtime results retain actual rule outcomes. */
 export const ACCESSIBILITY_TAGS = ['wcag2a', 'wcag2aa', 'wcag22aa']
+// Explicit registered responsibilities outside the WCAG tag selection.
+// duplicate-id-active is retained as a legacy control-identifier diagnostic.
+export const ACCESSIBILITY_ADDITIONAL_RULE_IDS = ['duplicate-id-active', 'heading-order', 'landmark-banner-is-top-level',
+  'landmark-contentinfo-is-top-level', 'landmark-main-is-top-level', 'landmark-no-duplicate-banner',
+  'landmark-one-main', 'page-has-heading-one'] as const
+export const ACCESSIBILITY_RUN_OPTIONS = {
+  runOnly: { type: 'tag' as const, values: ACCESSIBILITY_TAGS },
+  rules: Object.fromEntries(ACCESSIBILITY_ADDITIONAL_RULE_IDS.map(id => [id, { enabled: true }])),
+}
 export const ACCESSIBILITY_DOM_CHECK_IDS = ['images-missing-alt', 'form-inputs-no-label', 'buttons-no-text', 'links-no-text', 'iframe-no-title', 'tabindex-positive', 'skip-link-missing'] as const
 export const AXE_POLICY_RULE_IDS = [
   'area-alt',

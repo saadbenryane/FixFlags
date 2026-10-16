@@ -73,6 +73,17 @@ describe('POST /api/shopify/webhooks', () => {
     expect(redactShop).toHaveBeenCalled()
   })
 
+  it.each(['app/uninstalled', 'shop/redact'])('does not acknowledge failed %s processing and accepts a completed retry', async topic => {
+    const command = topic === 'app/uninstalled' ? uninstallShop : redactShop
+    command.mockRejectedValueOnce(new Error('Private storage unavailable'))
+    const failed = await post(topic, '{}')
+    expect(failed.status).toBe(500)
+    expect(await failed.json()).toEqual({ error: 'Webhook processing incomplete' })
+    const completed = await post(topic, '{}')
+    expect(completed.status).toBe(200)
+    expect(command).toHaveBeenCalledTimes(2)
+  })
+
   it('persists a GDPR request receipt', async () => {
     const response = await post('customers/redact', '{"customer":{"id":1}}')
     expect(response.status).toBe(200)

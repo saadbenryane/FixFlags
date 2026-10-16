@@ -95,6 +95,7 @@ export const VISUAL_DESCRIPTORS: Record<string, VisualDescriptor> = {
   'security-csp-missing': { type: 'none' }, 'security-csp-unsafe-inline': { type: 'none' },
   'security-hsts-missing': { type: 'none' }, 'security-hsts-too-short': { type: 'none' },
   'security-frame-options-missing': { type: 'none' }, 'security-frame-options-too-permissive': { type: 'none' },
+  'security-csp-frame-ancestors-permissive': { type: 'none' },
   'security-content-type-options-missing': { type: 'none' }, 'security-mixed-content': { type: 'none' },
   'unused-js-large': { type: 'none' }, 'unused-css-large': { type: 'none' },
   'tabindex-positive': { type: 'none' },

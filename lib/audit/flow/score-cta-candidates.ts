@@ -4,6 +4,7 @@ import { classifyCtaHref, isNonPageActionHref, resolveSameOrigin, scoreCtaLink }
 export interface RawCtaElement {
   idx: number
   tag: string
+  inputType?: string | null
   role?: string | null
   text: string
   href: string | null
@@ -30,7 +31,7 @@ export function scoreCtaCandidates(
 
   for (const item of elements) {
     const href = item.href ?? ''
-    const buttonLike = item.tag === 'button' || item.role?.toLowerCase() === 'button'
+    const buttonLike = item.tag === 'button' || item.tag === 'input' && ['button', 'submit'].includes(item.inputType ?? '') || item.role?.toLowerCase() === 'button'
     // mailto:/tel:/sms: links are intentional but never navigate the page, so
     // the flow scan must not select them as a page-navigation CTA candidate.
     if ((classifyCtaHref(href, { hashTargetExists: item.hashTargetExists }).isPlaceholder || isNonPageActionHref(href)) && !buttonLike) continue
@@ -72,13 +73,15 @@ export function extractCtaElementsFromHtml(html: string): RawCtaElement[] {
   const elements: RawCtaElement[] = []
   let idx = 0
 
-  $('a[href], button, [role="button"]').each((_, el) => {
+  $('a[href], button, input[type="button"], input[type="submit"], [role="button"]').each((_, el) => {
     const $el = $(el)
     if ($el.closest('nav, header, [role="navigation"]').length > 0) return
 
     const tag = el.tagName.toLowerCase()
     const href = tag === 'a' ? $(el).attr('href') ?? null : $(el).closest('a').attr('href') ?? null
+    const inputType = tag === 'input' ? ($el.attr('type') ?? '').toLowerCase() : null
     const text =
+      (tag === 'input' && ['button', 'submit'].includes(inputType ?? '') ? $el.attr('value')?.trim() : '') ||
       $(el).text().trim() ||
       $(el).attr('aria-label')?.trim() ||
       $(el).attr('title')?.trim() ||
@@ -91,7 +94,7 @@ export function extractCtaElementsFromHtml(html: string): RawCtaElement[] {
         hashTargetExists = Boolean(id && $('[id],a[name]').toArray().some(node => $(node).attr('id') === id || node.tagName === 'a' && $(node).attr('name') === id))
       } catch { /* Invalid fragments cannot establish a destination. */ }
     }
-    elements.push({ idx: idx++, tag, role: $el.attr('role') ?? null, text, href, ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
+    elements.push({ idx: idx++, tag, inputType, role: $el.attr('role') ?? null, text, href, ...(hashTargetExists !== undefined ? { hashTargetExists } : {}) })
   })
 
   return elements

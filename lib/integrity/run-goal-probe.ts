@@ -9,7 +9,6 @@ import { dismissConsentChrome, dismissOpenDialogs } from '@/lib/audit/browser/ov
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
 import { classifyWalk, combineAttempts, goalProbeReason } from './classify'
-import { uploadIntegrityArtifact } from './storage'
 import type {
   PathProbeAttempt,
   PathProbeResult,
@@ -17,7 +16,7 @@ import type {
   PathStepLabel,
   WalkOutcome,
 } from './types'
-import { persistWalkVideo } from './video'
+import { captureWalkStep, persistWalkVideo } from './video'
 
 const CLICK_TIMEOUT_MS = 8_000
 const AFTER_CLICK_MS = 1_200
@@ -58,6 +57,7 @@ interface RunGoalProbeOptions {
   config: BrowserJourneyConfig
   browser?: Browser
   confirmRed?: boolean
+  deadline?: number
 }
 
 async function runGoalAttempt(
@@ -67,7 +67,7 @@ async function runGoalAttempt(
   options: RunGoalProbeOptions
 ): Promise<PathProbeAttempt> {
   const videoDir = await fs.mkdtemp(path.join(os.tmpdir(), `fixflags-goal-${runId}-`))
-  const stepPngs: Buffer[] = []
+  const stepPngs: Array<Buffer | null> = []
   const steps: PathStepEvidence[] = []
   const outcome: WalkOutcome = {
     reachedCheckout: false,
@@ -95,6 +95,7 @@ async function runGoalAttempt(
       journeySafe: true,
       recordVideoDir: videoDir,
       settle: true,
+      deadline: options.deadline,
     })
     page = session.page
     finalUrl = page.url()
@@ -103,12 +104,12 @@ async function runGoalAttempt(
     await dismissConsentChrome(page)
     await dismissOpenDialogs(page)
 
-    await captureStep(page, runId, attempt, 'landing', steps, stepPngs)
+    await captureWalkStep(page, 'landing', steps, stepPngs)
 
     if (session.httpStatus && (session.httpStatus >= 400 && session.httpStatus < 500)) {
       outcome.pageUnavailable = true
       outcome.failedStep = 'landing'
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved: false, stepCount: steps.length })
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved: false, stepCount: steps.length })
     }
 
     const botWall = await page
@@ -120,7 +121,7 @@ async function runGoalAttempt(
     if (botWall) {
       outcome.botWall = true
       outcome.failedStep = 'landing'
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved: false, stepCount: steps.length })
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved: false, stepCount: steps.length })
     }
 
     for (let i = 0; i < options.config.steps.length; i++) {
@@ -128,7 +129,7 @@ async function runGoalAttempt(
       const stepLabel: PathStepLabel = step.action === 'navigate' ? 'landing' : `step_${i + 1}`
       
       try {
-        await executeStep(page, step, steps, stepPngs, runId, attempt, stepLabel)
+        await executeStep(page, step, steps, stepPngs, stepLabel)
         finalUrl = page.url()
         
         const completedSteps = i + 1
@@ -137,14 +138,14 @@ async function runGoalAttempt(
           goalAchieved = true
           outcome.reachedCheckout = true
           outcome.failedStep = null
-          await captureStep(page, runId, attempt, stepLabel, steps, stepPngs)
+          await captureWalkStep(page, stepLabel, steps, stepPngs)
           break
         }
       } catch (stepErr) {
         outcome.failedStep = stepLabel
-        await captureStep(page, runId, attempt, 'failure', steps, stepPngs)
+        await captureWalkStep(page, 'failure', steps, stepPngs)
         logger.warn('Goal probe step failed', { runId, attempt, step: i, error: String(stepErr) })
-        return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved: false, stepCount: steps.length })
+        return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved: false, stepCount: steps.length })
       }
     }
 
@@ -159,7 +160,7 @@ async function runGoalAttempt(
       }
     }
 
-    return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved, stepCount: steps.length })
+    return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url(), goalAchieved, stepCount: steps.length })
   } catch (err) {
     applyCaptureError(outcome, err)
     logger.warn('Goal probe attempt failed', {
@@ -168,8 +169,8 @@ async function runGoalAttempt(
       error: err instanceof Error ? err.message : String(err),
     })
     if (page) {
-      await captureStep(page, runId, attempt, 'failure', steps, stepPngs).catch(() => {})
-      return await finishAttempt({
+      await captureWalkStep(page, 'failure', steps, stepPngs).catch(() => {})
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline,
         runId,
         attempt,
         page,
@@ -181,6 +182,7 @@ async function runGoalAttempt(
         stepCount: steps.length,
       })
     }
+    await fs.rm(videoDir, { recursive: true, force: true }).catch(() => undefined)
     return {
       outcome,
       steps,
@@ -195,9 +197,7 @@ async function executeStep(
   page: Page,
   step: GoalStep,
   steps: PathStepEvidence[],
-  stepPngs: Buffer[],
-  runId: string,
-  attempt: number,
+  stepPngs: Array<Buffer | null>,
   stepLabel: PathStepLabel
 ): Promise<void> {
   switch (step.action) {
@@ -231,7 +231,7 @@ async function executeStep(
       break
     }
   }
-  await captureStep(page, runId, attempt, stepLabel, steps, stepPngs)
+  await captureWalkStep(page, stepLabel, steps, stepPngs)
 }
 
 async function findElement(page: Page, step: GoalStep): Promise<Locator> {
@@ -277,7 +277,9 @@ async function finishAttempt(input: {
   attempt: number
   page: Page
   steps: PathStepEvidence[]
-  stepPngs: Buffer[]
+  stepPngs: Array<Buffer | null>
+  recordingDir: string
+  deadline?: number
   outcome: WalkOutcome
   finalUrl: string
   goalAchieved: boolean
@@ -287,7 +289,10 @@ async function finishAttempt(input: {
     runId: input.runId,
     attempt: input.attempt,
     page: input.page,
+    steps: input.steps,
     stepPngs: input.stepPngs,
+    deadline: input.deadline,
+    recordingDir: input.recordingDir,
   })
   return {
     outcome: input.outcome,
@@ -295,29 +300,6 @@ async function finishAttempt(input: {
     videoUrl: media.videoUrl,
     gifUrl: media.gifUrl,
     finalUrl: input.finalUrl,
-  }
-}
-
-async function captureStep(
-  page: Page,
-  runId: string,
-  attempt: number,
-  label: PathStepLabel,
-  steps: PathStepEvidence[],
-  stepPngs: Buffer[]
-): Promise<void> {
-  try {
-    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
-    stepPngs.push(buffer)
-    const uploaded = await uploadIntegrityArtifact(
-      runId,
-      `attempt-${attempt}-${steps.length}-${label}.png`,
-      buffer,
-      'image/png'
-    )
-    steps.push({ label, url: page.url(), screenshotUrl: uploaded.url })
-  } catch {
-    steps.push({ label, url: page.url(), screenshotUrl: null })
   }
 }
 

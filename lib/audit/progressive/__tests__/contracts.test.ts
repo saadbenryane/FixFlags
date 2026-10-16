@@ -1,12 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import { retryDecision, validateTaskGraph, readArtifact, serializeArtifact, taskInputSchema } from '../contracts'
 import { registerTaskHandlers } from '../registry'
-import { initialTaskPlan, availabilityOnly } from '../graph'
+import { initialTaskPlan, pageTaskPlan, availabilityOnly } from '../graph'
 import { CHECK_REGISTRY } from '../../check-registry'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
+import { pageMetadataSchema } from '../snapshots'
+import { parseMetadataFromHtml } from '../../metadata'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('durable bounded work contracts', () => {
+  it('isolates pricing navigation from the primary action and selects only its original scope for repair', () => {
+    const spec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
+      checks: { 'flow-pricing-nav-broken': 1, 'flow-cta-dead-end': 1 }, outcomes: [] }
+    const graph = pageTaskPlan({ ...input, role: 'primary' }, spec)
+    const pricing = graph.find(task => task.input.module === 'pricing-navigation')!, primary = graph.find(task => task.key === 'p0:flow')!
+    expect(pricing).toMatchObject({ kind: 'flow', dependencies: [] })
+    expect(primary.dependencies).not.toContain(pricing.key)
+    expect(pricing.dependencies).not.toContain(primary.key)
+    expect(pageTaskPlan({ ...input, role: 'primary' }, { ...spec, checks: { 'overlay-blocks-nav': 1 } }).some(task => task.key === 'p0:pricing-navigation')).toBe(true)
+    const repair = initialTaskPlan({ ...spec, scope: 'DIAGNOSTIC', checks: { 'flow-pricing-nav-broken': 1 },
+      verificationScopes: [{ pageUrl: input.pageUrl, phases: ['public_action'] }],
+      verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'flow-pricing-nav-broken', pageUrl: input.pageUrl, parentAuditId: 'source', attemptId: 'repair' } })
+    expect(repair.map(task => task.key).sort()).toEqual(['finalize', 'p0:pricing-navigation'])
+    validateTaskGraph(repair)
+  })
+  it('preserves bounded rendered-copy evidence across the persisted metadata contract', () => {
+    const metadata = parseMetadataFromHtml('<h1 hidden>Retired promise</h1><h1>Useful service for teams</h1>', input.pageUrl)
+    const renderedCopy = { version: 1 as const, pageUrl: input.pageUrl, pageText: 'Useful service for teams', h1s: ['Useful service for teams'], h2s: [], complete: true, textTruncated: false }
+    const stored = pageMetadataSchema.parse({ ...metadata, renderedCopy })
+    expect(stored.renderedCopy).toEqual(renderedCopy)
+    expect(pageMetadataSchema.parse(metadata).renderedCopy).toBeUndefined()
+    expect(pageMetadataSchema.parse({ ...metadata, renderedCopy: null }).renderedCopy).toBeNull()
+    expect(pageMetadataSchema.safeParse({ ...metadata, renderedCopy: { ...renderedCopy, pageText: 'x'.repeat(8001) } }).success).toBe(false)
+  })
   it('starts retained Site pages independently of entry-page discovery and preserves their admitted navigation URLs', () => {
     const monitoringPages = [input.pageUrl, 'https://example.com/pricing?mode=original#step']
     const spec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,

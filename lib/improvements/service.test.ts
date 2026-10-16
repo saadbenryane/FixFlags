@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
@@ -809,12 +812,16 @@ describe('reconcileImprovementVerification', () => {
 
   it.each(['failed-peer', 'missing-peer', 'repaired'] as const)('reconciles the original multi-page Flag instead of its passing representative: %s', async scenario => {
     const pageUrl = 'https://example.com/', peer = 'https://example.com/pricing'
-    const original = { ...flag, checkId: 'lcp-poor', pageUrl, affectedPaths: [pageUrl, peer], verificationRule: 'Comparable desktop LCP' }
+    const scoped = [pageUrl, peer].map(url => runPerformanceChecks(healthyDesktopPs({ lcp: 3000,
+      diagnostics: { measurement: pageSpeedMeasurementFixture(url) } }), null, url)[0])
+    const original = { ...flag, ...scoped[0], pageUrl, affectedPaths: [pageUrl, peer],
+      evidenceTargets: scoped.flatMap(flag => flag.evidenceTargets ?? []) }
     const receipt = (url: string, passed: boolean) => ({ targetKey: 'module:performance', scopeKey: 'page:' + url,
       status: 'COMPLETED', evidenceReference: { taskId: url }, detail: {
         kind: 'site-module-check', version: 1, module: 'performance', pageUrl: url, applicable: true, passed, complete: true,
         execution: { auditId: 'review-2', taskId: url, checkVersion: 1, source: 'pagespeed-desktop', collectedAt: '2026-10-12T12:00:00.000Z' },
-        assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast loading', observed: passed ? '1000ms' : '6000ms', passed, complete: true }],
+        assertions: scopePerformanceAssertions(healthyDesktopPs({ diagnostics: { measurement: pageSpeedMeasurementFixture(url) } }), url,
+          [{ key: 'lcp', name: 'LCP', expected: 'Fast loading', observed: passed ? '1000ms' : '6000ms', passed, complete: true }]),
       } })
     const main = receipt(pageUrl, true)
     const exact = { ...main, targetKey: 'check:lcp-poor', scopeKey: 'page:https://example.com', detail: {

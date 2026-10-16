@@ -1,21 +1,22 @@
-import { trackingPageKey } from '../tracking/identity'
+import { trackingPageKey, TRACKING_VERIFICATION_RULE } from '../tracking/identity'
 import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { TRACKING_PROVIDERS, type TrackingEvidence, type TrackingRequest } from '../tracking/contracts'
 import { runMeasurementChecks } from './measurement'
 
-export function trackingContext(request: TrackingRequest, pageUrl: string): string {
-  return `tracking:${request.phase}:${request.provider}:${request.role}:${request.hostname}${request.endpoint}:page:${trackingPageKey(pageUrl)}`
+export function trackingContext(request: TrackingRequest, pageUrl: string, captureKey?: string): string {
+  const identity = request.requestKey && captureKey ? `:request:v2:${request.requestKey}:capture:${captureKey}` : ''
+  return `tracking:${request.phase}:${request.provider}:${request.role}:${request.hostname}${request.endpoint}${identity}:page:${trackingPageKey(pageUrl)}`
 }
 
 /** HTTP observations establish resource transfer or endpoint responses. They
  * never establish provider ingestion, property routing, or visitor consent. */
-export function runTrackingChecks(meta: PageMetadata, evidence: TrackingEvidence | undefined, pageUrl: string) {
-  const flags: DeterministicFlag[] = evidence?.phase === 'public_action' || evidence?.requests.length ? [] : runMeasurementChecks(meta)
+export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingEvidence | undefined, pageUrl: string) {
+  const flags: DeterministicFlag[] = !meta || evidence?.phase === 'public_action' || evidence?.requests.length ? [] : runMeasurementChecks(meta)
   const assertions: CheckAssertion[] = [{ key: 'analytics-markup', name: 'Analytics configuration in HTML',
-    expected: 'An analytics snippet is present in captured HTML', observed: meta.hasAnalytics ? 'Analytics markup detected; execution and delivery are separate observations.' : 'No snippet detected; runtime, consent-delayed, or proxied analytics may not appear here.',
-    passed: meta.hasAnalytics, complete: true, ...(!meta.hasAnalytics && evidence?.requests.length ? { disposition: 'observed' as const } : {}) }]
+    expected: 'An analytics snippet is present in captured HTML', observed: !meta ? 'Captured HTML markup is unavailable. Snippet presence and absence remain unknown.' : meta.hasAnalytics ? 'Analytics markup detected; execution and delivery are separate observations.' : 'No snippet detected; runtime, consent-delayed, or proxied analytics may not appear here.',
+    passed: meta?.hasAnalytics === true, complete: Boolean(meta), ...(meta && !meta.hasAnalytics && evidence?.requests.length ? { disposition: 'observed' as const } : {}) }]
   const limitation = 'Tracking observations cover recognized endpoints in this browser window. Event requests are suppressed by FixFlags to avoid adding audit traffic. FixFlags does not grant consent to test tracking; an existing action walk may dismiss consent UI. Consent state is not independently established. Service workers are blocked, and embedded-frame traffic is outside the assessed scope. Proxies, other providers, later interactions and provider-recorded events remain unverified.'
   if (!evidence) {
     assertions.push({ key: 'tracking-initiation', name: 'Runtime tracking evidence unavailable', expected: 'Browser request evidence is available',
@@ -25,7 +26,7 @@ export function runTrackingChecks(meta: PageMetadata, evidence: TrackingEvidence
   if (evidence.phase === 'public_action') assertions.length = 0
   const groups = new Map<string, TrackingRequest[]>()
   for (const request of evidence.requests) {
-    const context = trackingContext(request, pageUrl), group = groups.get(context) ?? []
+    const context = trackingContext(request, pageUrl, evidence.captureKey), group = groups.get(context) ?? []
     group.push(request); groups.set(context, group)
   }
   const scope = evidence.phase === 'page_load' ? 'during page loading' : 'during the existing public action walk, including overlay handling'
@@ -60,7 +61,8 @@ export function runTrackingChecks(meta: PageMetadata, evidence: TrackingEvidence
         evidence: `${provider}: ${endpoint} returned HTTP ${[...new Set(errors.map(request => request.status))].join(', ')} ${scope}. This is the observed browser response; consent, bot restrictions and proxy policy may differ for normal visitors.`,
         fix: '1. Check the recorded endpoint URL, deployment and provider configuration.\n2. Inspect the same request for a normal visitor under the intended consent policy.\n3. Resolve the HTTP error without bypassing consent or intentional access restrictions.\n4. Repeat the same browser scope. Separately confirm provider ingestion and the intended property when authorized.',
         confidence: 0.95, source: 'DETERMINISTIC', pageUrl,
-        verificationRule: 'Tracking observation: repeat the same provider, endpoint and browser phase. An unrelated script or request cannot certify this repair.',
+        verificationRule: first.requestKey && evidence.captureKey ? TRACKING_VERIFICATION_RULE
+          : 'Tracking observation: repeat the same provider, endpoint and browser phase. An unrelated script or request cannot certify this repair.',
         evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: `${provider}: ${endpoint}`, context }] })
     }
   }
@@ -80,6 +82,6 @@ export function runTrackingChecks(meta: PageMetadata, evidence: TrackingEvidence
     else { prior.evidence += '\n' + flag.evidence; prior.evidenceTargets = [...(prior.evidenceTargets ?? []), ...(flag.evidenceTargets ?? [])] }
   }
   return { flags: [...grouped.values()], assertions,
-    complete: !evidence.truncated && !evidence.requests.some(request => request.state === 'pending' || request.role === 'library' && request.state === 'response'),
+    complete: (evidence.phase === 'public_action' || Boolean(meta)) && !evidence.truncated && !evidence.requests.some(request => request.state === 'pending' || request.role === 'library' && request.state === 'response'),
     limitation: `${evidence.durationMs}ms browser observation. ${evidence.truncated ? 'The request limit was reached. ' : ''}${limitation}` }
 }

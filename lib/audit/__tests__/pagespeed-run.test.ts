@@ -96,6 +96,16 @@ describe('fetchPageSpeedData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it.each(['requestedUrl', 'formFactor'] as const)('refuses a provider response with a different %s', async changed => {
+    fetchMock.mockResolvedValue(Response.json(lighthouseBody({ lighthouseResult: {
+      ...(lighthouseBody().lighthouseResult as object), requestedUrl: changed === 'requestedUrl' ? 'https://other.example/' : 'https://example.com/',
+      finalUrl: 'https://example.com/', lighthouseVersion: '13.0', configSettings: { formFactor: changed === 'formFactor' ? 'mobile' : 'desktop' },
+    } })))
+    const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    expect(result.desktop).toBeNull()
+    expect(result.desktopFailure).toMatchObject({ code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
+  })
+
   it('includes tap-target opportunities only for mobile', async () => {
     fetchMock.mockImplementation(async () => okApiResponse())
     const result = await fetchPageSpeedData('https://example.com')

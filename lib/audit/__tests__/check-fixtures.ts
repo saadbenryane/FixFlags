@@ -1,5 +1,6 @@
 import type { PageMetadata } from '@/lib/audit/metadata'
 import type { PageSpeedResult } from '@/lib/audit/pagespeed'
+import { performanceMeasurement } from '../performance-measurement'
 
 export { ALL_CHECK_IDS, CHECK_ID_COUNT, type CheckId } from '@/lib/audit/check-ids'
 
@@ -85,4 +86,8 @@ export function healthyMobilePs(overrides: Partial<PageSpeedResult> = {}): PageS
     crux: null,
     ...overrides,
   }
+}
+export function pageSpeedMeasurementFixture(url: string, strategy: 'desktop' | 'mobile' = 'desktop') {
+  return performanceMeasurement({ requestedUrl: url, finalUrl: url, lighthouseVersion: '13.0.0',
+    configSettings: { formFactor: strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } } }, strategy)
 }

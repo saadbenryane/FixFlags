@@ -11,10 +11,11 @@ const COMPETING_CTA_THRESHOLD = 3
  */
 export function runCtaFocusChecks(metrics: CaptureMetrics | null, record?: CheckRecorder): DeterministicFlag[] {
   const count = metrics?.competingPrimaryCtaCount
+  const validCount = count !== undefined && Number.isFinite(count) && count >= 0
   recordObservation(record, 'primary-action-count', 'Prominent action count', 'Fewer than three high-intent actions compete in the sampled mobile viewport',
-    count === undefined ? 'Prominent actions were not measured.' : `${count} equally weighted actions measured.`,
-    count !== undefined && Number.isFinite(count) && count >= 0 ? count < COMPETING_CTA_THRESHOLD : undefined, true)
-  if (metrics == null || metrics.competingPrimaryCtaCount < COMPETING_CTA_THRESHOLD) {
+    !validCount ? 'Prominent actions were not measured.' : `${count} equally weighted actions measured.${metrics?.competingPrimaryCtaComplete === false ? ' Style coverage is incomplete.' : ''}`,
+    validCount && metrics?.competingPrimaryCtaComplete !== false ? count < COMPETING_CTA_THRESHOLD : undefined, true)
+  if (metrics == null || !validCount || metrics.competingPrimaryCtaComplete === false || count < COMPETING_CTA_THRESHOLD) {
     return []
   }
 

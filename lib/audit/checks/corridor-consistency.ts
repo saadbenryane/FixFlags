@@ -40,6 +40,9 @@ export interface CorridorPageMeta {
   ogDescription: string | null
   title: string | null
   scope?: CaptureObservationScope
+  source?: 'native-head-v1'
+  titleComplete?: boolean
+  descriptionComplete?: boolean
 }
 
 function normalizeText(value: string | null | undefined): string {
@@ -70,21 +73,25 @@ export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
     const primaryDesc = normalizeText(primary.ogDescription)
     const pageTitle = normalizeText(page.ogTitle || page.title)
     const pageDesc = normalizeText(page.ogDescription)
-    const pair = [primary, page].map(item => ({ url: item.url, key: item.scope ? captureObservationKey(item.scope) : 'unknown' }))
+    const pair = [primary, page].map(item => ({ url: item.url, key: item.scope ? captureObservationKey(item.scope) : 'unknown',
+      ...(item.source ? { source: item.source } : {}) }))
       .sort((left, right) => left.url.localeCompare(right.url))
     const scoped = pair.every(item => item.key !== 'unknown')
     const hasTitles = Boolean(primaryTitle && pageTitle), hasDescriptions = Boolean(primaryDesc && pageDesc)
-    const absence = scoped ? 'not declared' : 'unavailable'
+    const titlesObserved = primary.titleComplete !== false && page.titleComplete !== false
+    const descriptionsObserved = primary.descriptionComplete !== false && page.descriptionComplete !== false
+    const titleAbsence = scoped && titlesObserved ? 'not declared' : 'unavailable'
+    const descriptionAbsence = scoped && descriptionsObserved ? 'not declared' : 'unavailable'
     const context = 'corridor:' + (scoped ? createHash('sha256').update(JSON.stringify(pair)).digest('hex') : 'unknown')
     const recorded: CheckAssertion[] = [
       { key: 'preview-titles', name: 'Distinct page preview titles', expected: 'The compared pages have distinct non-empty preview titles',
-        observed: `${primary.url}: ${primary.ogTitle || primary.title || absence}; ${page.url}: ${page.ogTitle || page.title || absence}`.slice(0, 2000),
-        passed: hasTitles && primaryTitle !== pageTitle, complete: scoped, context,
-        ...(scoped && !hasTitles ? { disposition: 'observed' as const } : {}) },
+        observed: `${primary.url}: ${primary.ogTitle || primary.title || titleAbsence}; ${page.url}: ${page.ogTitle || page.title || titleAbsence}`.slice(0, 2000),
+        passed: titlesObserved && hasTitles && primaryTitle !== pageTitle, complete: scoped && titlesObserved, context,
+        ...(scoped && titlesObserved && !hasTitles ? { disposition: 'observed' as const } : {}) },
       { key: 'preview-descriptions', name: 'Page-specific preview descriptions', expected: 'The compared pages do not reuse the same long preview description',
-        observed: `${primary.url}: ${primary.ogDescription || absence}; ${page.url}: ${page.ogDescription || absence}`.slice(0, 2000),
-        passed: hasDescriptions && (primaryDesc !== pageDesc || primaryDesc.length <= 20),
-        complete: scoped, context, ...(scoped && !hasDescriptions ? { disposition: 'observed' as const } : {}) },
+        observed: `${primary.url}: ${primary.ogDescription || descriptionAbsence}; ${page.url}: ${page.ogDescription || descriptionAbsence}`.slice(0, 2000),
+        passed: descriptionsObserved && hasDescriptions && (primaryDesc !== pageDesc || primaryDesc.length <= 20),
+        complete: scoped && descriptionsObserved, context, ...(scoped && descriptionsObserved && !hasDescriptions ? { disposition: 'observed' as const } : {}) },
     ]
     assertions.set(page.url, [...assertions.get(page.url) ?? [], ...recorded])
     if (primary !== anchor) continue
@@ -92,7 +99,7 @@ export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
       evidenceTargets: [{ kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const,
         label: 'Compared page previews', context }] }
 
-    if (primaryTitle && pageTitle && primaryTitle === pageTitle) {
+    if (titlesObserved && primaryTitle && pageTitle && primaryTitle === pageTitle) {
       flags.push({
         checkId: 'corridor-og-title-drift',
         rubric: 'REACH',
@@ -108,7 +115,7 @@ export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
       })
     }
 
-    if (primaryDesc && pageDesc && primaryDesc === pageDesc && primaryDesc.length > 20) {
+    if (descriptionsObserved && primaryDesc && pageDesc && primaryDesc === pageDesc && primaryDesc.length > 20) {
       flags.push({
         checkId: 'corridor-og-description-drift',
         rubric: 'REACH',

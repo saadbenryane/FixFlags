@@ -6,8 +6,10 @@ import { prisma } from '@/lib/db'
 import { createQueueRedis, createWorkerRedis } from '@/lib/queue/redis'
 import { dispatchReadyTasks, dispatchTask, executeTask, loadTaskGraph, persistTaskPlan, reconcileTasks, recoverProgressiveTasks } from '../engine'
 import { dispatchPendingAudits } from '@/lib/audit/dispatch'
-import { serializeArtifact, TaskFailure, type TaskKind } from '../contracts'
+import { serializeArtifact, TaskFailure, TASK_CRASH_LIMIT, type TaskKind } from '../contracts'
+import { executionWrite, executionTransaction, withExecutionOwnership, currentExecutionOwnership, ExecutionOwnershipLost } from '@/lib/audit/execution-ownership'
 import type { TaskHandler } from '../registry'
+import { lifecycleHandlers } from '../lifecycle'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -30,7 +32,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Dispatch integration requires a disposable local execution database')
     const suffix = randomUUID()
-    for (const resource of ['http', 'browser', 'audit'] as const) {
+    for (const resource of ['http', 'browser', 'audit', 'evaluate', 'provider'] as const) {
       const connection = createQueueRedis()
       connections.push(connection)
       dispatch.queues.set(resource, new Queue('dispatch-' + resource + '-' + suffix, { connection }))
@@ -80,6 +82,44 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     }, { timeout: 10_000, interval: 25 })
   }
 
+  it('retries prescription delivery from completed triage without repeating observations or losing the report', async () => {
+    const { audit, tasks } = await admission(['finalize'])
+    const userId = 'prescription-delivery-' + randomUUID()
+    await prisma.user.create({ data: { id: userId, email: userId + '@example.test' } })
+    const timestamp = new Date()
+    await prisma.audit.update({ where: { id: audit.id }, data: { userId, status: 'COMPLETED', includeAi: true,
+      triageAt: timestamp, completedAt: timestamp, verdict: 'Recorded triage assessment', score: 72,
+      evidenceCoverage: { metadata: true, aiAssessment: true },
+      executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: audit.url,
+        environment: 'production', checks: {}, outcomes: [], verificationTarget: null } } })
+    const original = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
+    const finalizer = lifecycleHandlers.find(handler => handler.kind === 'finalize')!
+    const selected = new Map<string, TaskHandler>([['finalize', finalizer]])
+    const queue = dispatch.queues.get('provider')!, add = queue.add.bind(queue)
+    const unavailable = vi.spyOn(queue, 'add').mockRejectedValueOnce(Object.assign(new Error('Controlled prescription queue interruption'), { code: 'ECONNRESET' }))
+      .mockImplementation(add)
+    try {
+      await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
+      const pending = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+      expect(pending).toMatchObject({ workState: 'READY', workDispatchState: 'PENDING', workAttempts: 0 })
+      expect(await queue.getJob(pending.id + '-g1')).toBeUndefined()
+      for (let pass = 0; pass < 2; pass++) {
+        await prisma.auditVerifierExecution.update({ where: { id: pending.id }, data: { workRetryAt: new Date(0) } })
+        await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
+        expect(await recoverProgressiveTasks()).toBeGreaterThan(0)
+        const delivery = (await queue.getJob(pending.id + '-g1'))!
+        expect(delivery).toMatchObject({ name: 'audit-task', data: { auditId: audit.id, taskId: pending.id, generation: 1 } })
+        if (pass === 0) await delivery.remove()
+      }
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED',
+        completedAt: original.completedAt, triageAt: original.triageAt, verdict: original.verdict, score: original.score,
+        aiReviewAt: null, evidenceCoverage: original.evidenceCoverage })
+      expect(await prisma.auditVerifierExecution.count({ where: { auditId: audit.id, workKind: 'prescription' } })).toBe(1)
+    } finally { unavailable.mockRestore(); await prisma.user.delete({ where: { id: userId } }) }
+  })
+
   it('executes independent HTTP work while sixteen earlier browser deliveries remain queued', async () => {
     const { audit, tasks } = await admission([...Array<TaskKind>(16).fill('browser'), 'http'])
     for (let pass = 0; pass < 3; pass++) await dispatchReadyTasks(await reconcileTasks(audit.id))
@@ -87,6 +127,152 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(browser.slice(0, 16).every(task => task.workState === 'READY' && task.workDispatchState === 'SENT' && task.workAttempts === 0)).toBe(true)
     const worker = await startHttpWorker()
     try { await completed(tasks[16].id) } finally { await worker.close() }
+  })
+
+  it('releases a worker after a handler exceeds its budget and preserves the incomplete task', async () => {
+    const { audit, tasks } = await admission(['http', 'http'])
+    let release!: () => void
+    const stalled = new Promise<void>(resolve => { release = resolve })
+    let started!: () => void
+    const running = new Promise<void>(resolve => { started = resolve })
+    const denied: unknown[] = []
+    let lateFinished!: () => void
+    const late = new Promise<void>(resolve => { lateFinished = resolve })
+    const selected = new Map<string, TaskHandler>([['http', { kind: 'http', replay: 'read_only', timeoutMs: 100,
+      validateResult: () => {}, evaluate: async context => {
+        if (context.task.id === tasks[0].id) {
+          started()
+          await stalled
+          try { await executionWrite(tx => tx.audit.update({ where: { id: audit.id }, data: { verdict: 'Late write' } })) }
+          catch (error) { denied.push(error) }
+          try {
+            await withExecutionOwnership({ ...currentExecutionOwnership()!, signal: new AbortController().signal }, () =>
+              executionWrite(tx => tx.audit.update({ where: { id: audit.id }, data: { verdict: 'Detached late write' } })))
+          } catch (error) { denied.push(error) }
+          lateFinished()
+        }
+        return serializeArtifact('http', { observed: true })
+      } }]])
+    await dispatchTask(tasks[0].id)
+    const worker = await startHttpWorker(selected)
+    try {
+      await running
+      await dispatchTask(tasks[1].id)
+      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[1].id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1 }), { timeout: 2000, interval: 25 })
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1, workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
+    } finally { release(); await late; await worker.close() }
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      .toMatchObject({ workState: 'RETRY_WAIT', workResult: null })
+    expect(denied).toHaveLength(2)
+    expect(denied.every(error => error instanceof ExecutionOwnershipLost)).toBe(true)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null })
+  })
+
+  it('rolls back a commit that crosses the task deadline before releasing later work', async () => {
+    const { audit, tasks } = await admission(['http'])
+    const selected = new Map<string, TaskHandler>([['http', { kind: 'http', replay: 'read_only', timeoutMs: 150,
+      evaluate: async () => serializeArtifact('http', { observed: true }), validateResult: () => {},
+      commit: async (context, _artifact, tx) => {
+        await tx.audit.update({ where: { id: audit.id }, data: { verdict: 'Uncommitted observation' } })
+        await new Promise<void>(resolve => context.signal!.addEventListener('abort', () => resolve(), { once: true }))
+        await tx.audit.update({ where: { id: audit.id }, data: { score: 99 } })
+      },
+    }]])
+    await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null, score: null })
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'task_observation_committed' } })).toBe(0)
+  })
+
+  it.each(['write', 'transaction'] as const)('rolls back an in-flight %s when its handler is cancelled', async mode => {
+    const { audit, tasks } = await admission(['http'])
+    const write = mode === 'write' ? executionWrite : executionTransaction
+    const selected = new Map<string, TaskHandler>([['http', { kind: 'http', replay: 'read_only', timeoutMs: 150,
+      validateResult: () => {}, evaluate: async context => {
+        await write(async tx => {
+          await tx.audit.update({ where: { id: audit.id }, data: { verdict: 'Uncommitted handler write' } })
+          await new Promise<void>(resolve => context.signal!.addEventListener('abort', () => resolve(), { once: true }))
+          await tx.audit.update({ where: { id: audit.id }, data: { score: 99 } })
+        })
+        return serializeArtifact('http', { observed: true })
+      },
+    }]])
+    await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null, score: null })
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
+  })
+
+  it('bounds repeated task deadline failures with the existing crash limit', async () => {
+    const { audit, tasks } = await admission(['http'])
+    const selected = new Map<string, TaskHandler>([['http', { kind: 'http', replay: 'read_only', timeoutMs: 50,
+      evaluate: async () => new Promise(() => {}), validateResult: () => {},
+    }]])
+    for (let generation = 1; generation <= TASK_CRASH_LIMIT; generation++) {
+      await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation }, selected)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({
+        workAttempts: generation, workState: generation < TASK_CRASH_LIMIT ? 'RETRY_WAIT' : 'EXHAUSTED', workResult: null,
+        workErrorCode: 'TASK_DEADLINE_EXCEEDED',
+      })
+      if (generation < TASK_CRASH_LIMIT) {
+        await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+        expect(await reconcileTasks(audit.id)).toContain(tasks[0].id)
+      }
+    }
+    expect(await reconcileTasks(audit.id)).toEqual([])
+  })
+
+  it.each(['refused', 'late-reconciliation'] as const)('preserves protected-effect reconciliation after timeout: %s', async phase => {
+    const { audit, tasks } = await admission(['fixture-setup'])
+    let effects = 0, release!: () => void, reconcile!: () => void
+    const effect = new Promise<void>(resolve => { release = resolve })
+    const reconciliation = new Promise<void>(resolve => { reconcile = resolve })
+    const selected = new Map<string, TaskHandler>([['fixture-setup', { kind: 'fixture-setup', replay: 'protected', timeoutMs: 75,
+      validateResult: () => {}, reconcile: async () => {
+        if (phase === 'refused') return false
+        await reconciliation
+        return true
+      }, evaluate: async () => { effects++; await effect; return serializeArtifact('fixture-setup', { observed: true }) },
+    }]])
+    try {
+      await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
+      await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+      await reconcileTasks(audit.id)
+      await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 2 }, selected)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({
+        workState: phase === 'refused' ? 'BLOCKED' : 'RETRY_WAIT',
+        workErrorCode: phase === 'refused' ? 'PROTECTED_EFFECT_UNRESOLVED' : 'TASK_DEADLINE_EXCEEDED', workResult: null,
+      })
+      reconcile()
+      await new Promise<void>(resolve => setImmediate(resolve))
+      expect(effects).toBe(1)
+    } finally { release(); reconcile() }
+  })
+
+  it('defers prescription behind a live legacy writer and restores recorded completion only after its lease expires', async () => {
+    const { audit, tasks } = await admission(['prescription'])
+    const completedAt = new Date(), lease = new Date(Date.now() + 60_000)
+    await prisma.audit.update({ where: { id: audit.id }, data: { status: 'JUDGING', progress: 70,
+      completedAt, triageAt: completedAt, executionLeaseUntil: lease, executionToken: 'legacy-writer' } })
+    let calls = 0
+    const handler: TaskHandler = { kind: 'prescription', replay: 'idempotent', timeoutMs: 1000, validateResult: () => {},
+      evaluate: async () => { calls++; return serializeArtifact('prescription', { completed: true }) } }
+    const selected = new Map([['prescription', handler]])
+    await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
+    expect(calls).toBe(0)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'JUDGING', progress: 70 })
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+      .toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 0, workErrorCode: 'EXECUTION_BUSY' })
+    await prisma.audit.update({ where: { id: audit.id }, data: { executionLeaseUntil: new Date(0) } })
+    await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id }, data: { workRetryAt: new Date(0) } })
+    expect(await reconcileTasks(audit.id)).toContain(tasks[0].id)
+    await executeTask({ auditId: audit.id, taskId: tasks[0].id, generation: 1 }, selected)
+    expect(calls).toBe(1)
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED', progress: 100, completedAt })
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } })).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
   })
 
   it('prioritizes unsent work and rotates due delivery checks without graph-order starvation', async () => {
@@ -197,6 +383,29 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       expect(await dispatchPendingAudits(1)).toBe(1)
       expect(await dispatch.queues.get('audit')!.getJob(audits[1].id)).toMatchObject({ data: { auditId: audits[1].id } })
     } finally { failure.mockRestore() }
+  })
+
+  it.each(['expired', 'crashed', 'retryable-crash'] as const)('reconciles %s dependencies before releasing a dependent that precedes them in stored order', async phase => {
+    const { audit, tasks } = await admission(['http', 'finalize'])
+    const source = tasks.find(task => task.workKind === 'http')!, dependent = tasks.find(task => task.workKind === 'finalize')!
+    await prisma.auditVerifierExecution.update({ where: { id: dependent.id }, data: {
+      workState: 'WAITING', workDependencies: [source.targetKey.slice(5)], createdAt: new Date(0),
+    } })
+    await prisma.auditVerifierExecution.update({ where: { id: source.id }, data: phase === 'expired'
+      ? { workRecoveryUntil: new Date(0) }
+      : { workState: 'RUNNING', workToken: 'lost-worker', workGeneration: 1, workAttempts: phase === 'crashed' ? 3 : 1, workLeaseUntil: new Date(0) } })
+    const ready = await reconcileTasks(audit.id)
+    if (phase === 'retryable-crash') {
+      expect(ready).not.toContain(dependent.id)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: source.id } }))
+        .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'WORKER_INTERRUPTED' })
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'WAITING' })
+    } else {
+      expect(ready).toContain(dependent.id)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: source.id } }))
+        .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: phase === 'expired' ? 'RECOVERY_EXHAUSTED' : 'WORKER_INTERRUPTED' })
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: dependent.id } })).toMatchObject({ workState: 'READY' })
+    }
   })
 
   it.each(['acknowledged', 'uncertain'] as const)('preserves a fast worker retry after an %s producer response', async response => {

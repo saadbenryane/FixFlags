@@ -27,6 +27,8 @@ const { prismaMock } = vi.hoisted(() => {
 })
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+const prescriptionDelivery = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueuePendingAiReview: prescriptionDelivery }))
 vi.mock('@/lib/logger/context', () => ({
   runWithContext: (_ctx: unknown, fn: () => unknown) => fn(),
 }))
@@ -135,6 +137,7 @@ function updateStatuses(): string[] {
 describe('runAudit orchestrator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    prescriptionDelivery.mockReset().mockResolvedValue(undefined)
     prismaMock.audit.findUnique.mockResolvedValue(makeAudit())
     prismaMock.audit.update.mockResolvedValue({})
     prismaMock.audit.updateMany.mockResolvedValue({ count: 1 })
@@ -156,6 +159,19 @@ describe('runAudit orchestrator', () => {
     expect(persistImprovementCycle).toHaveBeenCalledWith('audit-1', null)
     expect(prismaMock.audit.update).not.toHaveBeenCalled()
     expect(runPage).not.toHaveBeenCalled()
+  })
+
+  it('retries prescription delivery after completion even when projection has already finished', async () => {
+    prescriptionDelivery.mockRejectedValueOnce(new Error('Queue unavailable'))
+    await expect(runAudit('audit-1')).rejects.toThrow('Queue unavailable')
+    expect(updateStatuses()).not.toContain('FAILED')
+    expect(tryPartialFinalize).not.toHaveBeenCalled()
+    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
+    prismaMock.audit.updateMany.mockResolvedValue({ count: 0 })
+    await runAudit('audit-1')
+    expect(prescriptionDelivery).toHaveBeenCalledTimes(2)
+    expect(runPage).toHaveBeenCalledTimes(1)
+    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
   })
 
   it('runs the happy path: CAPTURING -> finalizeFromOutcome, no FAILED', async () => {

@@ -86,6 +86,8 @@ export const SITE_ACTION_COPY = {
   recovery: { access: 'Review access and visitor-action setup', connections: 'Review connections', support: 'Get help with this check',
     inspect: 'Inspect the recorded limitations', setupBody: 'This scope needs setup or supported evidence before it can be checked again.' },
   execution: {
+    availabilityAccess: { summary: 'Public access was restricted, so availability is unverified.',
+      recovery: 'Verify again when public access is available.' },
     title: 'Checking progress', details: 'Inspect recorded work',
     live: 'Results appear as checks finish.',
     flagsSoFar: 'Flags so far', pagesChecking: 'Checking pages…',
@@ -136,6 +138,7 @@ export const SITE_ACTION_COPY = {
       limitations: { initial_resources_unavailable: 'Some requests were blocked while the page loaded. Only the rendered controls and exercised states were inspected.',
         embedded_frame_uninspected: 'Controls inside embedded frames were not inspected.',
         shadow_controls_uninspected: 'Controls inside shadow roots were not inspected.', candidate_limit: 'The control inventory limit was reached.',
+        document_tree_limit: 'The page exceeded the inspection limit. Controls beyond it remain unverified.',
         protected_action_refused: 'Protected actions require a configured fixture.' },
     },
     modules: { metadata: 'Page metadata', 'og-image': 'Link preview image', seo: 'Links and declarations',

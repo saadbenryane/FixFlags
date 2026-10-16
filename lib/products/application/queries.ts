@@ -1,9 +1,7 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { prisma } from '@/lib/db'
-import {
-  fromStoredWatchInterval,
-  productWatchReadiness,
-} from '@/lib/audit/project-watch'
+import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
+import { productWatchReadiness } from '@/lib/sites/application/monitoring-settings'
 
 export type ProductWatchQueryResult = {
   projectId: string

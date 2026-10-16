@@ -1,6 +1,7 @@
 import { isAdminUser } from '@/lib/auth/permissions'
 import type { EntitlementGrant, Prisma, User } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { systemClock, type Clock } from '@/lib/time/clock'
 import { hasOpenBetaAccess } from './beta-policy'
 import { projectLimitForPlan, scanLimitForPlan, deepReviewLimitForPlan } from './plans'
 
@@ -98,10 +99,11 @@ export function resolveEffectiveEntitlements(
 export async function loadEffectiveEntitlements(
   userId: string,
   db: Prisma.TransactionClient = prisma,
+  clock: Clock = systemClock,
 ) {
   const user = await db.user.findUnique({
     where: { id: userId },
-    include: { entitlementGrants: { where: { revokedAt: null, expiresAt: { gt: new Date() } } } },
+    include: { entitlementGrants: { where: { revokedAt: null, expiresAt: { gt: clock.now() } } } },
   })
-  return user ? resolveEffectiveEntitlements(user, user.entitlementGrants) : null
+  return user ? resolveEffectiveEntitlements(user, user.entitlementGrants, clock.now()) : null
 }

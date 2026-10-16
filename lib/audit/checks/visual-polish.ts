@@ -35,10 +35,10 @@ export function runVisualPolishChecks(metrics: CaptureMetrics | null, record?: C
   const inconsistent = radii.length > 2 && radii[radii.length - 1] - radii[0] >= 6
   recordObservation(record, 'button-radius-range', 'Sampled button radii', 'Sampled non-pill button radii do not trigger the 6px variation rule',
     `${allRadii.length} distinct button radii captured: ${allRadii.join(', ')}px.`,
-    allRadii.length && allRadii.every(radius => Number.isFinite(radius) && radius >= 0) ? !inconsistent : undefined, true)
+    metrics.buttonBorderRadiiComplete !== false && allRadii.length && allRadii.every(radius => Number.isFinite(radius) && radius >= 0) ? !inconsistent : undefined, true)
 
   if (
-    inconsistent
+    metrics.buttonBorderRadiiComplete !== false && inconsistent
   ) {
     findings.push({
       checkId: 'visual-radius-inconsistent',

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { Prisma, SiteConnection, SiteConnectionProvider } from '@prisma/client'
 import { getAuthBaseUrl } from '@/lib/auth/env'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
 import { analyticsReportScope, analyticsWatchedPagePaths, ANALYTICS_PAGE_LIMIT, searchReportScope, searchPageFilter, searchPropertyCoversUrl, type SearchReportScope, type AnalyticsReportScope, type AnalyticsReport } from './report-scope'
 import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
 import { SITE_CONNECTION_COPY as C } from '@/lib/marketing/copy/site-connections'
@@ -39,7 +40,7 @@ export type GoogleConnectionClient = {
   exchangeCode(code: string): Promise<GoogleTokens>
   listSearchSites(accessToken: string): Promise<Array<{ siteUrl: string }>>
   querySearch(accessToken: string, scope: SearchReportScope, period: ReportingPeriod): Promise<Array<{ keys?: string[]; clicks?: number; impressions?: number; position?: number }>>
-  listAnalyticsProperties(accessToken: string): Promise<AnalyticsProperty[]>
+  findAnalyticsProperty(accessToken: string, host: string, propertyId?: string): Promise<AnalyticsProperty | null>
   queryAnalytics(accessToken: string, scope: AnalyticsReportScope, period: ReportingPeriod, watchedPagePaths?: string[]): Promise<AnalyticsReport>
   revoke(token: string): Promise<void>
 }
@@ -176,32 +177,63 @@ export function liveGoogleClient(): GoogleConnectionClient {
       const data = await response.json() as { rows?: Array<{ keys?: string[]; clicks?: number; impressions?: number; position?: number }> }
       return data.rows ?? []
     },
-    async listAnalyticsProperties(accessToken) {
-      const response = await request('https://analyticsadmin.googleapis.com/v1beta/accountSummaries', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      if (!response.ok) throw new Error(`Analytics properties failed (${response.status})`)
-      const data = await response.json() as {
-        accountSummaries?: Array<{ propertySummaries?: Array<{ property?: string; displayName?: string }> }>
+    async findAnalyticsProperty(accessToken, host, propertyId) {
+      let requests = 0
+      const read = async (path: string, token?: string) => {
+        signal.throwIfAborted()
+        if (++requests > 100) throw new Error('Analytics discovery request budget exceeded')
+        const url = new URL('https://analyticsadmin.googleapis.com/v1beta/' + path)
+        if (path.endsWith('accountSummaries') || path.endsWith('/dataStreams')) url.searchParams.set('pageSize', '200')
+        if (token) url.searchParams.set('pageToken', token)
+        const response = await request(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` } })
+        if (!response.ok) throw new Error(`Analytics discovery failed (${response.status})`)
+        return response
       }
-      const properties: AnalyticsProperty[] = []
-      for (const account of data.accountSummaries ?? []) {
-        for (const property of account.propertySummaries ?? []) {
-          if (properties.length >= 20) return properties
-          if (!property.property) continue
-          const streams = await request(`https://analyticsadmin.googleapis.com/v1beta/${property.property}/dataStreams`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          })
-          if (!streams.ok) throw new Error(`Analytics streams failed (${streams.status})`)
-          const streamBody = await streams.json() as { dataStreams?: Array<{ webStreamData?: { defaultUri?: string } }> }
-          properties.push({
-            propertyId: property.property,
-            label: property.displayName ?? property.property,
-            streamUrls: (streamBody.dataStreams ?? []).flatMap((stream) => stream.webStreamData?.defaultUri ? [stream.webStreamData.defaultUri] : []),
-          })
+      const nextPage = (token: unknown, seen: Set<string>) => {
+        if (token == null || token === '') return undefined
+        if (typeof token !== 'string' || token.length > 8192 || seen.has(token)) throw new Error('Analytics discovery pagination is incomplete')
+        seen.add(token)
+        return token
+      }
+      const matchingStreams = async (id: string, label: string): Promise<AnalyticsProperty | null> => {
+        if (!/^properties\/[0-9]+$/.test(id)) throw new Error('Analytics property identity is unavailable')
+        const seen = new Set<string>()
+        let token: string | undefined
+        do {
+          const body = await (await read(id + '/dataStreams', token)).json() as {
+            dataStreams?: Array<{ webStreamData?: { defaultUri?: string } }>; nextPageToken?: string
+          }
+          const candidate = { propertyId: id, label,
+            streamUrls: (body.dataStreams ?? []).flatMap(stream => stream.webStreamData?.defaultUri ? [stream.webStreamData.defaultUri] : []) }
+          const matched = chooseAnalyticsProperty([candidate], host)
+          if (matched) return matched
+          token = nextPage(body.nextPageToken, seen)
+        } while (token)
+        return null
+      }
+      // A retained property has its own authority. Unrelated properties and
+      // account ordering cannot disrupt its next refresh or change its identity.
+      if (propertyId) {
+        if (!/^properties\/[0-9]+$/.test(propertyId)) throw new Error('Analytics property identity is unavailable')
+        const property = await (await read(propertyId)).json() as { displayName?: string }
+        return matchingStreams(propertyId, property.displayName ?? propertyId)
+      }
+      const seen = new Set<string>(), properties = new Set<string>()
+      let token: string | undefined
+      do {
+        const body = await (await read('accountSummaries', token)).json() as {
+          accountSummaries?: Array<{ propertySummaries?: Array<{ property?: string; displayName?: string }> }>; nextPageToken?: string
         }
-      }
-      return properties
+        for (const account of body.accountSummaries ?? []) for (const property of account.propertySummaries ?? []) {
+          if (!property.property) throw new Error('Analytics property identity is unavailable')
+          if (properties.has(property.property)) continue
+          properties.add(property.property)
+          const matched = await matchingStreams(property.property, property.displayName ?? property.property)
+          if (matched) return matched
+        }
+        token = nextPage(body.nextPageToken, seen)
+      } while (token)
+      return null
     },
     async queryAnalytics(accessToken, scope, period, watchedPagePaths = []) {
       const shared = { dateRanges: [period], dimensionFilter: { filter: { fieldName: 'hostName', inListFilter: { values: scope.hostnames, caseSensitive: false } } } }
@@ -255,10 +287,11 @@ export function liveGoogleClient(): GoogleConnectionClient {
 type SyncResult = { status: 'CONNECTED' | 'MISMATCH' | 'NEEDS_REAUTH' | 'UNAVAILABLE'; detail: string; propertyId: string | null; propertyLabel: string | null }
 
 type GoogleCredentials = Pick<SiteConnection, 'id' | 'encryptedAccessToken' | 'encryptedRefreshToken' | 'tokenExpiresAt'>
+const activeConnectionProject = { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } satisfies Prisma.ProjectWhereInput
 
-/** A delayed request cannot adopt credentials from a revoked or replaced grant. */
+/** Credentials require an active owner and the admitted, non-revoked grant. */
 export function googleConnectionGrantScope(connection: GoogleCredentials): Prisma.SiteConnectionWhereInput {
-  return { id: connection.id, status: { not: 'REVOKED' }, project: { deletedAt: null },
+  return { id: connection.id, status: { not: 'REVOKED' }, project: activeConnectionProject,
     ...(connection.encryptedRefreshToken ? { encryptedRefreshToken: connection.encryptedRefreshToken }
       : { encryptedAccessToken: connection.encryptedAccessToken }) }
 }
@@ -274,7 +307,7 @@ async function commitSync(input: { connectionId: string; projectId: string; cred
   await prisma.$transaction(async tx => {
     const admitted = await tx.siteConnection.updateMany({
       where: { ...input.credentialScope, id: input.connectionId, projectId: input.projectId,
-        project: { deletedAt: null, ...(input.siteUrl ? { url: input.siteUrl } : {}) },
+        project: { ...activeConnectionProject, ...(input.siteUrl ? { url: input.siteUrl } : {}) },
         OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: observedAt } }] },
       data: { lastSyncAttemptAt: observedAt, status: result.status, statusDetail: result.detail,
         ...(['CONNECTED', 'MISMATCH'].includes(result.status) ? { propertyId: result.propertyId, propertyLabel: result.propertyLabel } : {}), ...(result.status === 'CONNECTED' ? { lastSyncedAt: observedAt } : {}) },
@@ -300,7 +333,7 @@ export async function syncGoogleConnection(input: {
 }): Promise<SyncResult> {
   const connection = await prisma.siteConnection.findFirst({
     where: { id: input.connectionId, projectId: input.projectId, provider: input.provider, status: { not: 'REVOKED' },
-      project: { deletedAt: null, ...(input.siteUrl ? { url: input.siteUrl } : {}) } },
+      project: { ...activeConnectionProject, ...(input.siteUrl ? { url: input.siteUrl } : {}) } },
     select: { id: true, encryptedAccessToken: true, encryptedRefreshToken: true, tokenExpiresAt: true,
       project: { select: { canonicalHost: true, url: true, ...(input.provider === 'ANALYTICS'
         ? { sitePages: { select: { url: true }, orderBy: [{ updatedAt: 'desc' as const }, { id: 'asc' as const }], take: ANALYTICS_PAGE_LIMIT } } : {}) } } },
@@ -332,9 +365,9 @@ export async function syncGoogleConnection(input: {
         } else result = { status: 'CONNECTED', detail: 'Search Console numbers are available as context.', propertyId: property, propertyLabel: property }
       }
     } else {
-      const properties = await client.listAnalyticsProperties(input.accessToken)
-      const property = input.propertyId ? properties.find(item => item.propertyId === input.propertyId &&
-        chooseAnalyticsProperty([item], input.host)) ?? null : chooseAnalyticsProperty(properties, input.host)
+      const selected = await client.findAnalyticsProperty(input.accessToken, input.host, input.propertyId ?? undefined)
+      const property = selected && (!input.propertyId || selected.propertyId === input.propertyId)
+        ? chooseAnalyticsProperty([selected], input.host) : null
       if (!property) result = { status: 'MISMATCH', detail: 'No Analytics property matches this Site.', propertyId: null, propertyLabel: null }
       else {
         const scope = analyticsReportScope(input.host, property.propertyId)
@@ -432,7 +465,7 @@ export async function refreshDueGoogleContexts(now = new Date(), limit = 20, dep
   if (!googleConnectionConfigured()) return
   if (dependencies.signal?.aborted) return
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-  const monitoredProject = { deletedAt: null, watchInterval: { not: null }, watchNextRunAt: { not: null } }
+  const monitoredProject = { ...activeConnectionProject, watchInterval: { not: null }, watchNextRunAt: { not: null } }
   const rows = await prisma.siteConnection.findMany({
     where: { project: monitoredProject, status: { in: ['CONNECTED', 'UNAVAILABLE'] },
       AND: [{ OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lte: cutoff } }] },
@@ -463,6 +496,11 @@ export async function refreshDueGoogleContexts(now = new Date(), limit = 20, dep
     }
   }
   for (let offset = 0; offset < rows.length && !dependencies.signal?.aborted; offset += 2) {
-    await Promise.all(rows.slice(offset, offset + 2).map(refresh))
+    const batch = rows.slice(offset, offset + 2)
+    // Claims and failure persistence can also fail. Settle both siblings before
+    // admitting the next bounded batch, preserving per-connection recovery.
+    const results = await Promise.allSettled(batch.map(refresh))
+    for (const [index, result] of results.entries()) if (result.status === 'rejected')
+      logger.warn('Google context upkeep interrupted; later connections will continue', { connectionId: batch[index].id })
   }
 }

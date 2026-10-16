@@ -1,3 +1,4 @@
+import { systemClock } from '@/lib/time/clock'
 import { scheduleUptimeProbes } from '@/lib/uptime/service'
 import { reconcileAdminOutcome } from './reconcile'
 import type { AdminOperation, Prisma } from '@prisma/client'
@@ -54,7 +55,7 @@ export async function performAdminExternalAction(
         onlyProjectId: operation.targetId,
         operator,
       })
-      await scheduleUptimeProbes(new Date(), 1, operation.targetId)
+      await scheduleUptimeProbes(systemClock, 1, operation.targetId)
       return {
         siteId: operation.targetId,
         watchProcessed: watch.processed,

@@ -14,8 +14,14 @@ import {
 } from '../discover'
 
 function fakePage(evaluateResult: unknown): Page {
+  const pageUrl = 'https://example.com/'
+  const result = Array.isArray(evaluateResult) ? { pageUrl, complete: true, viewportComplete: true, controls: evaluateResult.map((control, idx) => ({
+    tag: 'a', enabled: true, labelComplete: true, inViewport: true, idx,
+    resolvedHref: control.href ? new URL(control.href, pageUrl).href : null, ...control,
+  })) } : evaluateResult
   return {
-    evaluate: vi.fn(async () => evaluateResult),
+    evaluate: vi.fn(async () => result),
+    url: () => pageUrl,
   } as unknown as Page
 }
 
@@ -58,18 +64,21 @@ describe('discoverJourneyLinks', () => {
 
 describe('page probe helpers', () => {
   it('detects a clear headline from an h1', async () => {
-    assert.equal(await pageHasClearHeadline(fakePage(true)), true)
-    assert.equal(await pageHasClearHeadline(fakePage(false)), false)
+    const copy = { version: 1, pageUrl: 'https://example.com/', pageText: '', h2s: [], complete: true, textTruncated: false }
+    assert.equal(await pageHasClearHeadline(fakePage({ ...copy, h1s: ['Plan useful projects for your team'] })), true)
+    assert.equal(await pageHasClearHeadline(fakePage({ ...copy, h1s: [] })), false)
   })
 
   it('detects a primary CTA and its text', async () => {
-    assert.deepEqual(await pageHasPrimaryCta(fakePage({ found: true, text: 'Get started' })), {
+    assert.deepEqual(await pageHasPrimaryCta(fakePage([{ idx: 0, tag: 'a', text: 'Get started', href: '/start', enabled: true }])), {
       found: true,
       text: 'Get started',
+      complete: true,
     })
-    assert.deepEqual(await pageHasPrimaryCta(fakePage({ found: false, text: null })), {
+    assert.deepEqual(await pageHasPrimaryCta(fakePage([])), {
       found: false,
       text: null,
+      complete: true,
     })
   })
 

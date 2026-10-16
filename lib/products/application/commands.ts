@@ -6,7 +6,7 @@ import {
   recordOwnerFlagFeedbackDecision,
   recordRecommendedImprovements,
 } from '@/lib/improvements/service'
-import { setProjectWatch } from '@/lib/audit/project-watch'
+import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { recordFlagFeedback } from '@/lib/improvements/feedback'
 
 export type ProductCommand =

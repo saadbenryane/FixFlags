@@ -4,7 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export const EXECUTION_LEASE_MS = 90_000
-export type ExecutionOwnership = { auditId: string; token: string; generation: number; taskId?: string }
+export type ExecutionOwnership = { auditId: string; token: string; generation: number; taskId?: string; signal?: AbortSignal }
 const ownership = new AsyncLocalStorage<ExecutionOwnership>()
 
 export class ExecutionOwnershipLost extends Error {
@@ -13,12 +13,25 @@ export class ExecutionOwnershipLost extends Error {
 
 export function currentExecutionOwnership() { return ownership.getStore() }
 
-export async function claimExecution(auditId: string, projectionOnly = false, prescription = false, resume = false): Promise<ExecutionOwnership | null> {
+function assertExecutionActive(owner: ExecutionOwnership | undefined) {
+  if (owner?.signal?.aborted) throw new ExecutionOwnershipLost()
+}
+
+/** Cancellation follows nested execution scopes and their asynchronous callbacks. */
+export function withExecutionSignal<T>(signal: AbortSignal, work: () => Promise<T>): Promise<T> {
+  const owner = ownership.getStore()
+  if (!owner) return work()
+  const combined = owner.signal && owner.signal !== signal ? AbortSignal.any([owner.signal, signal]) : signal
+  return ownership.run({ ...owner, signal: combined }, work)
+}
+
+export async function claimExecution(auditId: string, { projectionOnly = false, resume = false }: { projectionOnly?: boolean; resume?: boolean } = {}): Promise<ExecutionOwnership | null> {
+  assertExecutionActive(ownership.getStore())
   const token = randomUUID()
   const now = new Date()
   const claimed = await prisma.audit.updateMany({
-    where: { id: auditId, status: projectionOnly || prescription ? 'COMPLETED' : resume ? { notIn: ['COMPLETED', 'FAILED'] } : 'QUEUED',
-      ...(prescription ? { aiReviewAt: null, triageAt: { not: null } } : !projectionOnly ? resume ? {} : { startedAt: null } : { improvementProjectedAt: null }),
+    where: { id: auditId, status: projectionOnly ? 'COMPLETED' : resume ? { notIn: ['COMPLETED', 'FAILED'] } : 'QUEUED',
+      ...(!projectionOnly ? resume ? {} : { startedAt: null } : { improvementProjectedAt: null }),
       OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }] },
     data: { executionToken: token, executionGeneration: { increment: 1 },
       executionLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
@@ -29,6 +42,7 @@ export async function claimExecution(auditId: string, projectionOnly = false, pr
 }
 
 export async function renewExecution(owner: ExecutionOwnership): Promise<boolean> {
+  if (owner.signal?.aborted) return false
   const now = new Date()
   if (owner.taskId) {
     const renewed = await prisma.auditVerifierExecution.updateMany({
@@ -48,6 +62,7 @@ export async function renewExecution(owner: ExecutionOwnership): Promise<boolean
 
 /** The guard and the write share a transaction and hold the Audit row lock. */
 async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: ExecutionOwnership): Promise<void> {
+  assertExecutionActive(owner)
   // Commands and workers share Project -> Audit -> task lock order. Removal
   // can fence queued work without deadlocking an account reservation.
   const projects = await tx.$queryRaw<Array<{ id: string; deletedAt: Date | null; lifecycleStatus: string; cleanup: boolean }>>`
@@ -66,8 +81,8 @@ async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: Executi
       WHERE e."id" = ${owner.taskId} AND e."auditId" = ${owner.auditId}
         AND e."workToken" = ${owner.token} AND e."workGeneration" = ${owner.generation}
         AND e."workLeaseUntil" > clock_timestamp() AND e."workState" = 'RUNNING'
-        AND (a."status" != 'COMPLETED' OR e."workKind" = 'finalize')
-        AND (a."recoveryUntil" IS NULL OR a."recoveryUntil" > clock_timestamp() OR e."workKind" = 'finalize')
+        AND (a."status" != 'COMPLETED' OR e."workKind" IN ('finalize', 'prescription'))
+        AND (a."recoveryUntil" IS NULL OR a."recoveryUntil" > clock_timestamp() OR e."workKind" IN ('finalize', 'prescription'))
       FOR UPDATE OF e
     `
     if (task.length !== 1) throw new ExecutionOwnershipLost()
@@ -82,40 +97,55 @@ async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: Executi
   if (rows.length !== 1) throw new ExecutionOwnershipLost()
 }
 
-export function executionWrite<T>(write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+export async function executionWrite<T>(write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   const owner = ownership.getStore()
   // Commands outside worker execution retain their existing transactional boundary.
   if (!owner) return write(prisma)
+  assertExecutionActive(owner)
   return prisma.$transaction(async tx => {
     await assertExecutionOwner(tx, owner)
-    return write(tx)
+    assertExecutionActive(owner)
+    const result = await write(tx)
+    assertExecutionActive(owner)
+    return result
   })
 }
 
-export function executionTransaction<T>(
+export async function executionTransaction<T>(
   write: (tx: Prisma.TransactionClient) => Promise<T>,
   options?: { maxWait?: number; timeout?: number; isolationLevel?: Prisma.TransactionIsolationLevel },
 ): Promise<T> {
   const owner = ownership.getStore()
+  assertExecutionActive(owner)
   return prisma.$transaction(async tx => {
     if (owner) await assertExecutionOwner(tx, owner)
-    return write(tx)
+    assertExecutionActive(owner)
+    const result = await write(tx)
+    assertExecutionActive(owner)
+    return result
   }, options)
 }
 
 export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work: () => Promise<T>): Promise<T> {
+  const inherited = ownership.getStore()?.signal
+  const signal = owner.signal && inherited && owner.signal !== inherited ? AbortSignal.any([owner.signal, inherited]) : owner.signal ?? inherited
+  const activeOwner = signal ? { ...owner, signal } : owner
+  assertExecutionActive(activeOwner)
   let lost = false
   let renewing = false
   const timer = setInterval(() => {
     if (renewing || lost) return
     renewing = true
-    void renewExecution(owner).then(ok => { lost = !ok }).catch(() => { lost = true }).finally(() => { renewing = false })
+    void renewExecution(activeOwner).then(ok => { lost = !ok }).catch(() => { lost = true }).finally(() => { renewing = false })
   }, EXECUTION_LEASE_MS / 3)
   timer.unref?.()
+  const stopRenewing = () => { clearInterval(timer) }
+  signal?.addEventListener('abort', stopRenewing, { once: true })
   try {
-    return await ownership.run(owner, work)
+    return await ownership.run(activeOwner, work)
   } finally {
     clearInterval(timer)
+    signal?.removeEventListener('abort', stopRenewing)
     if (owner.taskId) {
       await prisma.auditVerifierExecution.updateMany({
         where: { id: owner.taskId, workToken: owner.token, workGeneration: owner.generation },

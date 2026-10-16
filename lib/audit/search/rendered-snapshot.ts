@@ -6,6 +6,7 @@ const sectionSchema = z.object({ html: z.string().max(260_000), complete: z.bool
   reason: z.string().nullable(), observed: z.number().int().nonnegative(), limit: z.number().int().positive() }).strict()
 export const renderedSearchSnapshotSchema = z.object({
   version: z.literal(1), contract: z.literal('rendered-search-v1'), finalUrl: z.string().url(),
+  documentBaseUrl: z.string().url().optional(),
   collectedAt: z.string().datetime(), language: z.string().max(128),
   sections: z.object({ metadata: sectionSchema, indexing: sectionSchema, canonical: sectionSchema,
     structured: sectionSchema, links: sectionSchema, text: sectionSchema }).strict(),
@@ -51,7 +52,7 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
       const html = node.matches('article h2') ? `<article>${content}</article>` : node.hasAttribute('aria-label') ? `<nav aria-label="breadcrumb">${Array.from(node.querySelectorAll('a[href]')).slice(0, 100).map(item => `<a href="${escape(item.getAttribute('href') ?? '')}">${escape(item.textContent ?? '')}</a>`).join('')}</nav>` : content
       return { html, complete: text.length <= 8000 && node.querySelectorAll('a[href]').length <= 100 }
     })
-    return { version: 1, contract: 'rendered-search-v1', finalUrl: location.href, collectedAt: new Date().toISOString(),
+    return { version: 1, contract: 'rendered-search-v1', finalUrl: location.href, documentBaseUrl: document.baseURI, collectedAt: new Date().toISOString(),
       language: (document.documentElement.lang ?? '').slice(0, 128), sections }
   }))
 }
@@ -62,8 +63,11 @@ export function searchSectionBody(document: PublicDocument, section: SearchSecti
   if (!document.searchSnapshot) return document.complete ? document.body : null
   const snapshot = document.searchSnapshot, selected = snapshot.sections[section]
   if (!selected.complete) return null
+  // Historical isolated canonical sections did not retain the base required for relative declarations.
+  if (section === 'canonical' && !snapshot.documentBaseUrl) return document.complete ? document.body : null
   const language = snapshot.language.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+  const base = snapshot.documentBaseUrl ? '<base href="' + snapshot.documentBaseUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">' : ''
   return ['metadata', 'indexing', 'canonical'].includes(section)
-    ? `<html lang="${language}"><head>${selected.html}</head></html>`
-    : `<html lang="${language}"><body>${selected.html}</body></html>`
+    ? `<html lang="${language}"><head>${base}${selected.html}</head></html>`
+    : `<html lang="${language}"><head>${base}</head><body>${selected.html}</body></html>`
 }

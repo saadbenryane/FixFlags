@@ -5,7 +5,9 @@ import { createAuditPage } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { resolveAuditScanAccess } from '../scan-access-store'
 import { runFlowScan, type FlowScanResult } from '../flow/run-flow-scan'
+import { postClickMetricsSchema } from '../flow/post-click-probes'
 import { runFlowChecks } from '../checks/flow'
+import { postClickAssertions, POST_CLICK_CHECKS, POST_CLICK_VERIFICATION_RULE, postClickActionContext } from '../checks/flow-post-click'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import { detectPagePurpose, needsFirstStep } from '../page-purpose'
 import { runSlowReplay } from '../flow/slow-replay-probe'
@@ -32,6 +34,7 @@ import { overlayObservationSchema, overlayAssertions, overlayTargetSchema, runOb
 import { createOverlayInteractionRecorder } from '../browser/overlay-interaction'
 import { capturePageKey } from '../browser/observation-scope'
 import { PRIMARY_ACTION_CHECKS, PRIMARY_ACTION_VERIFICATION_RULE, primaryActionAssertions } from '../flow/primary-action-evidence'
+import { PRICING_NAVIGATION_RULE, pricingNavigationTargetSchema, pricingNavigationAssertions } from '../flow/pricing-navigation-evidence'
 import { collectMobileNavigation } from '../flow/mobile-navigation'
 import { MOBILE_NAVIGATION_RULE, readMobileNavigationTarget, mobileNavigationAssertions, mobileNavigationFlags, mobileNavigationObservationSchema } from '../flow/mobile-navigation-evidence'
 
@@ -43,6 +46,7 @@ const flowSchema = z.object({ tracking: trackingEvidenceSchema.optional(), recei
   status: z.enum(['success', 'no_cta', 'unclickable', 'error_response', 'dead_end', 'external_leave', 'skipped', 'timeout']),
   steps: z.array(z.object({ label: z.string(), screenshotUrl: z.string().nullable(), url: z.string() }).strict()).max(30),
   finalUrl: z.string().url(), ctaText: z.string().nullable(), ctaHref: z.string().nullable(),
+  postClickMetrics: postClickMetricsSchema.optional(),
 }).strict() }).strict()
 const slowSchema = z.object({ flags: z.array(flagSchema).max(500), result: slowReplayResultSchema,
   receipt: checkReceiptSchema.optional() }).strict()
@@ -81,9 +85,9 @@ export const actionHandlers: TaskHandler[] = [
     validateResult: artifact => { flowSchema.parse(artifact.data) },
     async commit(context, artifact, tx) {
       const { receipt, formReceipt, flowReceipt, overlayReceipts, navigationReceipt } = flowSchema.parse(artifact.data)
-      if (receipt) await commitCheckReceipt(context, receipt, tx, ':phase:public_action')
+      if (receipt) await commitCheckReceipt(context, receipt, tx, context.input.module === 'pricing-navigation' ? ':phase:pricing_navigation' : ':phase:public_action')
       if (formReceipt) await commitCheckReceipt(context, formReceipt, tx)
-      if (flowReceipt) await commitCheckReceipt(context, flowReceipt, tx)
+      if (flowReceipt) await commitCheckReceipt(context, flowReceipt, tx, context.input.module === 'pricing-navigation' ? ':pricing-navigation' : '')
       if (navigationReceipt) await commitCheckReceipt(context, navigationReceipt, tx)
       for (const observed of overlayReceipts ?? []) await commitCheckReceipt(context, observed, tx, overlayReceiptScope(observed))
       await commitFindings(context, artifact, tx)
@@ -158,14 +162,25 @@ export const actionHandlers: TaskHandler[] = [
         } finally { session.disposeNetwork(); await session.page.context().close() }
       }
       const metadata = browserEvidence(context)?.metadata
-      if (!metadata) throw new TaskFailure('FLOW_PAGE_UNAVAILABLE', false)
       const target = readExecutionSpec(context.audit.executionSpec)?.verificationTarget
       const targetedPrimary = target?.kind === 'DIAGNOSTIC' && PRIMARY_ACTION_CHECKS.some(id => id === target.checkId.split('::page:')[0])
+      const targetedLoading = target?.kind === 'DIAGNOSTIC' && POST_CLICK_CHECKS.includes(target.checkId.split('::page:')[0])
+      const targetedPricing = target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] === 'flow-pricing-nav-broken'
+      const pricingOnly = targetedPricing || context.input.module === 'pricing-navigation'
       let expectedActionContexts: string[] | undefined
-      if (targetedPrimary && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
+      if ((targetedPrimary || targetedLoading || targetedPricing) && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
         const flags = await prisma.flag.findMany({ where: { auditId: target.parentAuditId, audit: { projectId: context.audit.projectId }, checkId: target.checkId },
           take: 100, select: { evidenceTargets: true, verificationRule: true } })
-        const contexts = flags.flatMap(flag => flag.verificationRule !== PRIMARY_ACTION_VERIFICATION_RULE || !Array.isArray(flag.evidenceTargets) ? [] : flag.evidenceTargets.flatMap(value => {
+        const contexts = flags.flatMap(flag => !Array.isArray(flag.evidenceTargets) ? [] : flag.evidenceTargets.flatMap(value => {
+          if (targetedPricing) {
+            const parsed = pricingNavigationTargetSchema.safeParse(value)
+            return flag.verificationRule === PRICING_NAVIGATION_RULE && parsed.success ? [parsed.data.context] : []
+          }
+          if (targetedLoading) {
+            const context = flag.verificationRule === POST_CLICK_VERIFICATION_RULE ? postClickActionContext(value) : undefined
+            return context ? [context] : []
+          }
+          if (flag.verificationRule !== PRIMARY_ACTION_VERIFICATION_RULE) return []
           const parsed = z.object({ context: z.string().regex(/^flow:control:[a-f0-9]{64}$/) }).safeParse(value)
           return parsed.success ? [parsed.data.context] : []
         }))
@@ -183,23 +198,29 @@ export const actionHandlers: TaskHandler[] = [
         const result: FlowScanResult = await runFlowScan(session.page,
           context.audit.id, context.input.pageUrl,
           { pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, deadlineMs: Math.max(1, context.deadline - Date.now()),
-            scanAccess: access, includeFormValidation: false, includeMobileNavigation: false,
+            scanAccess: access, includeFormValidation: false, includeMobileNavigation: false, includePricingNavigation: false,
             ...(overlayDiagnostic ? { captureSteps: false, overlayOnly: true, expectedOverlayTargets: originalOverlays.filter(target => ['primary_action', 'pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))),
               includeFormValidation: originalOverlays.some(target => target.context.split(':')[3].startsWith('flow_form_validation')),
-              primaryOnly: !originalOverlays.some(target => ['pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))) } : {}),
-            ...(targetedPrimary ? { primaryOnly: true, captureSteps: false, expectedActionContexts } : {}) })
+              mode: !originalOverlays.some(target => ['pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))) ? 'primary' : undefined } : {}),
+            ...(targetedPrimary || targetedLoading ? { mode: targetedLoading ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
+            ...(pricingOnly ? { mode: 'pricing', captureSteps: false, expectedPricingContexts: expectedActionContexts } : {}) })
         if (protectedActionRefused) throw new TaskFailure('PROTECTED_ACTION_REQUIRES_FIXTURE', false)
-        if (result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
+        if (result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
         const tracking = session.tracking('public_action')
-        const measured = runTrackingChecks(metadata, tracking, context.input.pageUrl)
-        const purpose = detectPagePurpose(metadata, context.input.pageUrl).purpose
+        const measured = runTrackingChecks(metadata ?? null, tracking, context.input.pageUrl)
+        const purpose = metadata ? detectPagePurpose(metadata, context.input.pageUrl).purpose : null
+        const actionRequired = purpose === null ? null : needsFirstStep(purpose)
         const actionFlags = runFlowChecks(result, purpose)
         const flags = [...measured.flags, ...actionFlags,
           ...runNetworkEngagementChecks(session.networkFailures, session.formProbe)].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
-        if (context.input.primary) await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
-        const applicable = !result.actionEvidence || result.actionEvidence.candidateCount > 0 || needsFirstStep(purpose)
-        const assertions = primaryActionAssertions(result.actionEvidence, needsFirstStep(purpose))
-        const complete = !applicable || assertions.length === 4 && assertions.every(assertion => assertion.complete === true)
+        if (context.input.primary && !pricingOnly) await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
+        const applicable = pricingOnly ? Boolean(result.multiStep?.pricingEvidence) || targetedPricing || result.multiStep?.pricingComplete === false : !result.actionEvidence || result.actionEvidence.candidateCount > 0 || actionRequired !== false
+        const primaryAssertions = primaryActionAssertions(result.actionEvidence, actionRequired)
+        const assertions = [...primaryAssertions, ...postClickAssertions(result.postClickMetrics, result.finalUrl, result.actionEvidence),
+          ...pricingNavigationAssertions(result.multiStep?.pricingEvidence)]
+        const destinationComplete = !result.destinationUX || result.destinationUX.contentComplete !== false && result.destinationUX.controlsComplete !== false
+        const complete = pricingOnly ? !applicable || assertions.length > 0 && assertions.every(assertion => assertion.complete === true)
+          : !applicable || primaryAssertions.length === 4 && destinationComplete && assertions.every(assertion => assertion.complete === true)
         return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking, receipt: {
           kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: context.input.pageUrl, applicable: true,
           passed: measured.flags.length === 0 && measured.complete, complete: measured.complete, limitation: measured.limitation, assertions: measured.assertions,
@@ -231,13 +252,14 @@ export const actionHandlers: TaskHandler[] = [
       }, take: 100, orderBy: { createdAt: 'desc' }, select: { evidenceTargets: true } }) : []
       const expectedActions = [...new Map(prior.flatMap(flag => readSlowActionTargets(flag.evidenceTargets)).filter(action => {
         const identity = slowActionContextSchema.parse(JSON.parse(action.context))
-        return normalizeVerifierUrl(identity.pageUrl) === normalizeVerifierUrl(context.input.pageUrl)
+        return identity.sourcePageKey ? identity.sourcePageKey === capturePageKey(context.input.pageUrl)
+          : normalizeVerifierUrl(identity.pageUrl) === normalizeVerifierUrl(context.input.pageUrl)
       }).map(action => [JSON.stringify([action.label, action.context]), action])).values()].slice(0, 20)
       const result = await runSlowReplay(await getAuditBrowser(), context.audit.id, context.input.pageUrl,
         { deadline: context.deadline, expectedActions, pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, scanAccess: await resolveAuditScanAccess(context.audit.id) })
       if (!result.navigationComplete || result.reason === 'interrupted') throw new TaskFailure(
         result.reason === 'navigation_unavailable' ? 'SLOW_REPLAY_PAGE_UNAVAILABLE' : 'SLOW_REPLAY_INTERRUPTED', result.reason !== 'navigation_unavailable', undefined, result.reason !== 'navigation_unavailable')
-      const assertions = slowReplayAssertions(result), pageUrl = result.pageUrl ?? context.input.pageUrl
+      const assertions = slowReplayAssertions(result), pageUrl = context.input.pageUrl
       const complete = assertions.every(assertion => assertion.complete === true)
       return serializeArtifact('slow-replay', slowSchema.parse({ result, flags: runSlowReplayChecks(result).map(flag => ({ ...flag, pageUrl })),
         receipt: { kind: 'site-module-check', version: 1, module: 'slow-replay', pageUrl, applicable: true, complete,

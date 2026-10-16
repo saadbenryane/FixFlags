@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ pending: vi.fn(), read: vi.fn(), recover: vi.fn(), rotate: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findMany: mocks.pending, findUniqueOrThrow: mocks.read, updateMany: mocks.rotate } } }))
+vi.mock('@/lib/audit/enqueue-ai-review', () => ({ recoverPendingAiReviews: async () => 0 }))
 vi.mock('../engine', () => ({ recoverProgressiveTasks: mocks.recover }))
 vi.mock('../collectors', () => ({ collectionHandlers: [] }))
 vi.mock('../evaluators', () => ({ evaluatorHandlers: [] }))

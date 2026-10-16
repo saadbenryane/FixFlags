@@ -84,19 +84,20 @@ describe('POST /api/sites/[siteId]/watch', () => {
     })
   })
 
-  it('pauses monitoring without forgetting a custom cadence', async () => {
-    vi.mocked(prisma.project.findFirst).mockResolvedValue({ watchInterval: 'CUSTOM', watchEveryMinutes: 180 } as never)
-    const action = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ action: 'pause' }) })
-    expect((await POST(action, context)).status).toBe(200)
-    expect(prisma.project.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
-      watchNextRunAt: null, watchLeaseUntil: null, watchLastError: 'Paused. This Site is not on a check schedule.',
-    } }))
+  it.each(['pause', 'resume'] as const)('delegates %s to the shared owner-checked command', async (action) => {
+    const request = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ action }) })
+    expect((await POST(request, context)).status).toBe(200)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'SET_WATCH', siteId: 'site-1', userId: 'user-1', action })
+    expect(prisma.project.findFirst).not.toHaveBeenCalled()
+    expect(prisma.project.updateMany).not.toHaveBeenCalled()
   })
-  it('resumes the saved cadence through the entitlement-checked command', async () => {
-    vi.mocked(prisma.project.findFirst).mockResolvedValue({ watchInterval: 'CUSTOM', watchEveryMinutes: 180 } as never)
-    const action = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ action: 'resume' }) })
-    expect((await POST(action, context)).status).toBe(200)
-    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({ type: 'SET_WATCH', siteId: 'site-1', userId: 'user-1', interval: 'custom', everyMinutes: 180 })
+
+  it.each(['WATCH_CHANGED', 'SCHEDULE_REQUIRED'])('surfaces %s on resume', async (code) => {
+    mocks.executeSiteCommand.mockResolvedValue({ ok: false, error: 'Monitoring changed.', code })
+    const request = new NextRequest('http://localhost/api/sites/site-1/watch', { method: 'POST', body: JSON.stringify({ action: 'resume' }) })
+    const response = await POST(request, context)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code, message: 'Monitoring changed.' })
   })
   it('pauses Watch when the interval is null', async () => {
     const response = await POST(request(null), context)

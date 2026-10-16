@@ -1,6 +1,6 @@
 import type { FlowScanResult } from '../flow/run-flow-scan'
 import { isAuthUtilityLink } from '../flow/link-scoring'
-import { runPostClickFlowChecks } from './flow-post-click'
+import { runPostClickFlowChecks, scopePostClickFlags } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
 import { runFlowUXChecks } from './flow-ux'
 import { formatOverlayEvidence } from '../browser/overlay-probe'
@@ -12,6 +12,7 @@ import { checkFormValidation } from './form-validation'
 import { scopePrimaryActionFlags } from '../flow/primary-action-evidence'
 import { displayDestination } from './destination-evidence'
 import { mobileNavigationFlags } from '../flow/mobile-navigation-evidence'
+import { PRICING_NAVIGATION_RULE } from '../flow/pricing-navigation-evidence'
 
 const FLOW_CHECK_DESCRIPTORS = [
   { id: 'flow-no-cta-found', severity: 'IMPORTANT', tags: ['requiresBrowser', 'cta-flow'] },
@@ -129,6 +130,9 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
         fix: '1. Add an id="pricing" section on the page or link the nav item to your real /pricing route\n2. Confirm the nav item points to the real pricing destination\n3. Test the header Pricing click on desktop and mobile',
         confidence: 0.9,
         source: 'DETERMINISTIC',
+        ...(probes.pricingEvidence?.complete && !probes.pricingEvidence.passed ? { verificationRule: PRICING_NAVIGATION_RULE,
+          evidenceTargets: [{ kind: 'page' as const, source: 'measured' as const, device: 'desktop' as const,
+            label: probes.pricingNavLabel || 'Pricing navigation', context: probes.pricingEvidence.context }] } : {}),
       })
     }
   }
@@ -214,10 +218,10 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   return findings
 }
 
-export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'marketing'): DeterministicFlag[] {
+export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose | null = 'marketing'): DeterministicFlag[] {
   const findings: DeterministicFlag[] = [
     ...runMultiStepFlowChecks(result),
-    ...runPostClickFlowChecks(result.postClickMetrics),
+    ...runPostClickFlowChecks(result.postClickMetrics, result.finalUrl),
     ...runDestinationTrustChecks(result),
     ...runFlowUXChecks(result),
   ]
@@ -349,11 +353,11 @@ export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'ma
   for (const observation of result.overlayObservations ?? []) for (const flag of runObservedOverlayChecks(observation))
     if (!findings.some(existing => existing.checkId === flag.checkId && flag.evidenceTargets.every(target =>
       existing.evidenceTargets?.some(member => member.context === target.context)))) findings.push(flag)
-  const scoped = needsFirstStep(purpose) ? findings : findings.filter(flag => !['flow-no-cta-found', 'flow-cta-external-leave'].includes(flag.checkId))
+  const scoped = purpose !== null && needsFirstStep(purpose) ? findings : findings.filter(flag => !['flow-no-cta-found', 'flow-cta-external-leave'].includes(flag.checkId))
   const ids = new Set(scoped.map((f) => f.checkId))
   if (ids.has('flow-cta-stuck-loading') && ids.has('flow-destination-stuck-loading')) {
-    return scopePrimaryActionFlags(scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading'), result.actionEvidence)
+    return scopePostClickFlags(scopePrimaryActionFlags(scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading'), result.actionEvidence), result)
   }
 
-  return scopePrimaryActionFlags(scoped, result.actionEvidence)
+  return scopePostClickFlags(scopePrimaryActionFlags(scoped, result.actionEvidence), result)
 }

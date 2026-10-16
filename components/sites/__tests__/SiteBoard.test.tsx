@@ -1,8 +1,9 @@
 import { siteScopeCounts } from '@/lib/sites/scope-counts'
 import { siteViewerActions } from '@/lib/sites/viewer-actions'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render as renderView, screen, waitFor, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cache } from 'swr/_internal'
+import { SWRConfig } from 'swr'
 import { SiteBoard } from '../SiteBoard'
 import { SiteSettingsView } from '../SiteSettingsView'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
@@ -16,7 +17,13 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const SITE_PATH = '/sites/p_example'
-beforeEach(() => { for (const key of cache.keys()) cache.delete(key); window.history.replaceState(null, '', '/sites/p_example') })
+beforeEach(() => { window.history.replaceState(null, '', '/sites/p_example') })
+
+function render(ui: ReactNode) {
+  // Each fixture owns the cache and in-flight request deduplication together.
+  const provider = () => new Map()
+  return renderView(ui, { wrapper: ({ children }) => <SWRConfig value={{ provider }}>{children}</SWRConfig> })
+}
 
 const push = vi.hoisted(() => vi.fn())
 
@@ -1108,14 +1115,17 @@ describe('SiteBoard chrome', () => {
     })
     // A spent allowance answers 402 with the server's own wording. Stale evidence
     // has to stay readable either way, and the reason has to be the limit.
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: false,
-      status: 402,
-      json: async () => ({
-        code: 'UPGRADE_REQUIRED',
-        message: PLAN_LIMIT_NOTICE.copy['check-limit'].body,
-      }),
-    })))
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      if (url === '/api/sites/p_example') return Response.json(ownedView)
+      return {
+        ok: false,
+        status: 402,
+        json: async () => ({
+          code: 'UPGRADE_REQUIRED',
+          message: PLAN_LIMIT_NOTICE.copy['check-limit'].body,
+        }),
+      }
+    }))
     render(
       <MeProvider initialUser={signedInUser}>
         <SiteBoard siteId="p_example" initial={ownedView} />
@@ -1146,14 +1156,17 @@ describe('SiteBoard chrome', () => {
       cards,
       site: { ...boardView().site, projectId: 'project-1', userId: signedInUser.id },
     })
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: false,
-      status: 409,
-      json: async () => ({
-        code: 'SITE_RUN_REFUSED',
-        message: 'Another Site run is already in progress',
-      }),
-    })))
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      if (url === '/api/sites/p_example') return Response.json(ownedView)
+      return {
+        ok: false,
+        status: 409,
+        json: async () => ({
+          code: 'SITE_RUN_REFUSED',
+          message: 'Another Site run is already in progress',
+        }),
+      }
+    }))
     render(
       <MeProvider initialUser={signedInUser}>
         <SiteBoard siteId="p_example" initial={ownedView} />

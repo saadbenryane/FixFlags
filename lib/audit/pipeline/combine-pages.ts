@@ -1,6 +1,6 @@
 import { computeRubricScores } from '../checks'
 import type { TriageOutput } from '../judge-triage-schema'
-import type { PageRun } from './types'
+import type { PageEvidence } from './types'
 import type { PageSpeedResult } from '../pagespeed'
 import { projectDeterministicFlags } from '../flag-projection'
 import type { DeterministicFlag } from '../flag-types'
@@ -19,12 +19,12 @@ function lowestPagespeed(results: Array<PageSpeedResult | null>): PageSpeedResul
  * A severe issue on /checkout is not diluted by healthy marketing pages.
  */
 export function productScoresFromFlags(
-  pageRuns: PageRun[]
+  pageRuns: PageEvidence[], recordedFlags?: DeterministicFlag[]
 ): Partial<Record<RubricName, number | null>> {
   if (pageRuns.length === 0) {
     return { MESSAGE: null, EXPERIENCE: null, REACH: null }
   }
-  const collapsed = collapsedPageFlags(pageRuns)
+  const collapsed = collapsedPageFlags(pageRuns, recordedFlags)
   const failedModules = [...new Set(pageRuns.flatMap((page) => page.failedModules))]
   const desktop = lowestPagespeed(pageRuns.map((page) => page.desktop))
   const mobile = lowestPagespeed(pageRuns.map((page) => page.mobile))
@@ -38,14 +38,14 @@ export function productScoresFromFlags(
 }
 
 /** True when every fully reviewed page has desktop and mobile PageSpeed. */
-export function reviewedPagesHaveFullPageSpeed(pageRuns: PageRun[]): boolean {
+export function reviewedPagesHaveFullPageSpeed(pageRuns: PageEvidence[]): boolean {
   return pageRuns.length > 0 && pageRuns.every((page) => Boolean(page.desktop) && Boolean(page.mobile))
 }
 
 /**
  * Merge triage output from reviewed pages. Rubric numbers come from Flags later.
  */
-export function buildCombinedTriageOutput(pageRuns: PageRun[]): TriageOutput {
+export function buildCombinedTriageOutput(pageRuns: PageEvidence[]): TriageOutput {
   const triagePages = pageRuns.filter((page) => page.triage)
   const primaryTriage = pageRuns.find((page) => page.triage)?.triage
   if (!primaryTriage) {
@@ -71,6 +71,6 @@ export function buildCombinedTriageOutput(pageRuns: PageRun[]): TriageOutput {
   return combined
 }
 
-export function collapsedPageFlags(pageRuns: PageRun[]): DeterministicFlag[] {
-  return projectDeterministicFlags(pageRuns.flatMap((page) => page.flags))
+export function collapsedPageFlags(pageRuns: PageEvidence[], recordedFlags?: DeterministicFlag[]): DeterministicFlag[] {
+  return projectDeterministicFlags(recordedFlags ?? pageRuns.flatMap((page) => page.flags))
 }

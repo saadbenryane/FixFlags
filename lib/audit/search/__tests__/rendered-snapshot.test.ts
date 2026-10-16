@@ -10,6 +10,27 @@ const page = { evaluate: async (fn: () => unknown) => fn() } as unknown as Page
 beforeEach(() => { document.documentElement.innerHTML = '<head></head><body></body>' })
 
 describe('bounded rendered Search sections', () => {
+  it('retains the native base for isolated canonical sections and fences earlier detector evidence', async () => {
+    document.head.innerHTML = '<base href="https://example.com/catalog/"><link rel="canonical" href="item">'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.documentBaseUrl).toBe('https://example.com/catalog/')
+    const observations = await evaluateSearch(evidence('', { collectorVersion: 2, original: recordedDocument('<base href="/catalog/"><link rel="canonical" href="item">'),
+      rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false }),
+      canonicalTargets: [recordedDocument('Ready', { url: PAGE + 'catalog/item', finalUrl: PAGE + 'catalog/item' })] }), undefined, ['canonical'])
+    expect(observations.find(item => item.checkId === 'search-canonical-target')).toMatchObject({ disposition: 'passed', checkVersion: 3,
+      observed: PAGE + 'catalog/item: HTTP 200' })
+    const receipt = { kind: 'search-checks' as const, version: 1 as const, auditId: 'new', pageUrl: PAGE,
+      collectedAt: new Date().toISOString(), complete: true, observations }
+    const policy = { policy: 'search', version: 2, kind: 'flag', reason: 'canonical_signals_conflict', sources: ['http'] }
+    expect(assessSearchRecovery(receipt, 'search-canonical-conflict', policy)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'search-canonical-conflict', { ...policy, version: 3 })).toMatchObject({ comparable: true, verdict: 'passed' })
+    const { documentBaseUrl: omitted, ...historical } = snapshot
+    void omitted
+    const unavailable = await evaluateSearch(evidence('', { original: recordedDocument(null),
+      rendered: recordedDocument(null, { searchSnapshot: historical, complete: false }) }), undefined, ['canonical'])
+    expect(unavailable.find(item => item.checkId === 'search-canonical-conflict')).toMatchObject({ disposition: 'unknown' })
+  })
+
   it('inspects useful Search evidence independently of a large hydration payload', async () => {
     document.head.innerHTML = '<title>Useful title</title><meta name="robots" content="index"><link rel="canonical" href="https://example.com/"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Useful title"}</script>'
     document.body.innerHTML = '<h1>Useful title</h1><a href="/about">About</a><script>' + 'x'.repeat(1_100_000) + '</script>'
@@ -35,6 +56,22 @@ describe('bounded rendered Search sections', () => {
       rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false }) }))
     expect(observations.find(item => item.checkId === 'title-missing')).toMatchObject({ disposition: 'passed' })
     expect(observations.find(item => item.checkId === 'search-discovery-links')).toMatchObject({ disposition: 'unknown' })
+  })
+
+  it.each(['metadata', 'links', 'text'] as const)('retains structured markup results when the independent %s section is incomplete', async section => {
+    document.head.innerHTML = '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","@id":"#product","name":"Useful service","offers":{"@type":"Offer","price":"free"}}</script>' +
+      '<script type="application/ld+json">{"@type":</script>'
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    snapshot.sections[section].complete = false
+    snapshot.sections[section].reason = 'section_limit'
+    const observations = await evaluateSearch(evidence('', { original: recordedDocument(null), collectorVersion: 2,
+      rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false }) }), undefined, ['structured-data'])
+    expect(observations.find(item => item.source === 'rendered-dom' && item.checkId === 'search-structured-invalid'))
+      .toMatchObject({ disposition: 'failed', reason: 'markup_syntax_invalid' })
+    expect(observations.find(item => item.source === 'rendered-dom' && item.checkId === 'search-structured-feature' && item.entityTypes?.includes('Product')))
+      .toMatchObject({ disposition: 'failed', entityTypes: ['Product'], invalidProperties: ['offers.price'] })
+    expect(observations.find(item => item.checkId === 'search-structured-content'))
+      .toMatchObject({ disposition: 'unknown', reason: 'content_context_incomplete' })
   })
 
   it('does not certify historical recovery under the changed collector contract', async () => {

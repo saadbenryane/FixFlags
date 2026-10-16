@@ -4,6 +4,7 @@ import { BoundedSemaphore } from './capacity'
 import { TaskFailure } from './contracts'
 import { pageMetadataSchema } from './snapshots'
 import { searchObservationSchema, type SearchPageEvidence, type SearchReceipt } from '../search/contracts'
+import type { MetadataMode } from '../metadata'
 
 const capacity = new BoundedSemaphore(1)
 const DEV_BOOTSTRAP = 'require("tsx/cjs"); require(workerData.module);'
@@ -67,9 +68,14 @@ async function isolated(input: object, deadline: number): Promise<unknown> {
     try { worker.postMessage(input) } catch { onError() }
   }), AbortSignal.timeout(Math.max(1, deadline - Date.now())))
 }
-export async function parseMetadataIsolated(html: string, url: string, deadline: number) {
+export async function parseMetadataIsolated(html: string, url: string, deadline: number, mode: MetadataMode = 'crawler') {
   if (Buffer.byteLength(html) > 1_000_000) throw new TaskFailure('HTML_BODY_LIMIT', false)
-  return pageMetadataSchema.parse(await isolated({ operation: 'metadata', html, url }, deadline))
+  const result = pageMetadataSchema.safeParse(await isolated({ operation: 'metadata', html, url, mode }, deadline))
+  // A deterministic inventory bound withholds metadata, while independently
+  // collected response, console, network and native action evidence survives.
+  if (!result.success && result.error.issues.every(issue => issue.code === 'too_big')) return null
+  if (!result.success) throw result.error
+  return result.data
 }
 export async function evaluateSearchIsolated(evidence: SearchPageEvidence, previous: SearchReceipt | null | undefined, deadline: number, evaluators?: readonly string[]) {
   const observations = await isolated({ operation: 'search', evidence, previous, evaluators }, deadline)

@@ -27,6 +27,113 @@ runBrowser('keyboard collector in Chromium', () => {
   }
   const collect = () => collectKeyboardEvidence(page, Date.now() + 5000)
 
+  it('inspects actual keyboard focus inside an open web component and retains its native target', async () => {
+    const contents = '<style>button:focus{outline:none;box-shadow:none}</style><button id="action">Component action</button>'
+    await fixture('<x-controls id="component"></x-controls><script>document.getElementById("component").attachShadow({mode:"open"}).innerHTML=' + JSON.stringify(contents) + '</script>')
+    const observed = await collect()
+    expect(observed).toMatchObject({ complete: true, candidateCount: 1, navigationComplete: true,
+      steps: [{ selector: '#component >>> #action', label: 'Component action', indicator: 'missing' }] })
+    expect(await page.locator(observed.steps[0].selector).count()).toBe(1)
+    expect(runKeyboardChecks(observed).flags).toMatchObject([{ checkId: 'focus-visible-missing' }])
+  })
+
+  it('distinguishes same-named controls in separate shadow roots during exact repair', async () => {
+    const markup = (fixed: boolean) => '<style>button:focus{outline:' + (fixed ? '3px solid blue' : 'none') + ';box-shadow:none}</style><button id="action">Action</button>'
+    const render = (first: boolean, second: boolean) => '<x-controls id="first"></x-controls><x-controls id="second"></x-controls><script>' +
+      'document.getElementById("first").attachShadow({mode:"open"}).innerHTML=' + JSON.stringify(markup(first)) + ';' +
+      'document.getElementById("second").attachShadow({mode:"open"}).innerHTML=' + JSON.stringify(markup(second)) + '</script>'
+    await fixture(render(false, false))
+    const original = runKeyboardChecks(await collect()).flags.find(flag => flag.checkId === 'focus-visible-missing')!
+    expect(original?.evidenceTargets?.map(target => target.selector)).toEqual(['#first >>> #action', '#second >>> #action'])
+    for (const [second, expected] of [[false, false], [true, true]] as const) {
+      await context.close(); await fixture(render(true, second))
+      const current = await collect(), checked = runKeyboardChecks(current)
+      expect(scopedAssertionForTarget({ checkId: original.checkId, flag: original, receipt: {
+        kind: 'site-module-check', version: 1, module: 'keyboard', pageUrl: current.pageUrl, applicable: true,
+        complete: current.complete, passed: checked.flags.length === 0, assertions: checked.assertions,
+        execution: { auditId: 'after', taskId: 'keyboard', checkVersion: 1, source: 'keyboard', collectedAt: current.collectedAt },
+      } })?.assertion.passed).toBe(expected)
+    }
+  })
+
+  it('traverses nested roots and rendered slots once, excluding unassigned and inert controls', async () => {
+    const contents = '<button id="first">First</button><slot name="actions"></slot><x-inner id="nested"></x-inner>' +
+      '<section inert><slot name="ignored"></slot></section>'
+    await fixture('<x-controls id="outer"><button slot="actions" id="slotted">Slotted</button>' +
+      '<button slot="ignored">Inert</button><button>Unassigned</button></x-controls><button id="outside">Outside</button><script>' +
+      'const root=document.getElementById("outer").attachShadow({mode:"open"});root.innerHTML=' + JSON.stringify(contents) + ';' +
+      'root.getElementById("nested").attachShadow({mode:"open"}).innerHTML="<button id=inside>Nested</button>"</script>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ complete: true, candidateCount: 4, navigationComplete: true })
+    expect(evidence.steps.map(step => step.selector)).toEqual(['#outer >>> #first', '#slotted', '#outer >>> #nested >>> #inside', '#outside'])
+    for (const step of evidence.steps) expect(await page.locator(step.selector).count()).toBe(1)
+  })
+
+  it('follows delegated focus without inventing a separate host control', async () => {
+    await fixture('<x-controls id="component" tabindex="0"></x-controls><script>' +
+      'document.getElementById("component").attachShadow({mode:"open",delegatesFocus:true}).innerHTML="<button id=action>Action</button>"</script>')
+    expect(await collect()).toMatchObject({ complete: true, candidateCount: 1, steps: [{ selector: '#component >>> #action' }] })
+  })
+
+  it('keeps focus inside a closed root unverified', async () => {
+    await fixture('<x-controls id="component"></x-controls><script>' +
+      'document.getElementById("component").attachShadow({mode:"closed"}).innerHTML="<button>Hidden implementation</button>"</script>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ complete: false, navigationComplete: false, reason: 'focus_scope_changed', steps: [] })
+    expect(runKeyboardChecks(evidence).assertions.some(assertion => assertion.passed)).toBe(false)
+  })
+
+  it('finds an actual trap inside a component through Tab, reverse Tab and Escape', async () => {
+    await fixture('<x-controls id="component"></x-controls><button>Outside</button><script>' +
+      'const root=document.getElementById("component").attachShadow({mode:"open"});root.innerHTML="<button id=trap>Trapped</button>";' +
+      'root.getElementById("trap").onkeydown=e=>{if(e.key==="Tab")e.preventDefault()}</script>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ candidateCount: 2, trap: 'blocked', reason: 'focus_cycle_persisted',
+      steps: [{ selector: '#component >>> #trap' }] })
+    expect(runKeyboardChecks(evidence).flags.some(flag => flag.checkId === 'keyboard-nav-trap')).toBe(true)
+  })
+
+  it('inspects declared component menus in their own roots without confusing repeated IDs', async () => {
+    const contents = '<button id="open" aria-haspopup="menu" aria-controls="menu">Options</button>' +
+      '<div id="menu" role="menu" hidden><button id="one" role="menuitem" tabindex="-1">One</button><button id="two" role="menuitem" tabindex="-1">Two</button></div>'
+    await fixture('<x-controls id="first"></x-controls><x-controls id="second"></x-controls><script>' +
+      'for(const id of ["first","second"]){const root=document.getElementById(id).attachShadow({mode:"open"});root.innerHTML=' + JSON.stringify(contents) + ';' +
+      'const trigger=root.getElementById("open"),menu=root.getElementById("menu"),items=[root.getElementById("one"),root.getElementById("two")];' +
+      'trigger.onclick=()=>{menu.hidden=false;items[0].focus()};menu.onkeydown=e=>{' +
+      'if(["ArrowDown","ArrowUp"].includes(e.key)){e.preventDefault();if(id==="first")items[1-items.indexOf(root.activeElement)].focus()}' +
+      'if(e.key==="Escape"){menu.hidden=true;trigger.focus()}}}</script>')
+    const evidence = await collect()
+    expect(evidence.interactions).toMatchObject([
+      { trigger: { selector: '#first >>> #open' }, popup: { selector: '#first >>> #menu' }, openedBy: 'enter', entry: 'inside', arrows: 'moved', escape: 'closed', restoration: 'trigger' },
+      { trigger: { selector: '#second >>> #open' }, popup: { selector: '#second >>> #menu' }, openedBy: 'enter', entry: 'inside', arrows: 'stuck', escape: 'closed', restoration: 'trigger' },
+    ])
+    const failure = runKeyboardChecks(evidence).flags.find(flag => flag.checkId === 'keyboard-menu-navigation')!
+    expect(failure.evidenceTargets).toMatchObject([{ selector: '#second >>> #open' }])
+  })
+
+  it('activates the recorded component opener when a nested root reuses its ID', async () => {
+    const contents = '<button id="open" aria-haspopup="menu" aria-controls="menu">Options</button><x-inner id="nested"></x-inner>' +
+      '<div id="menu" role="menu" hidden><button id="one" role="menuitem" tabindex="-1">One</button><button id="two" role="menuitem" tabindex="-1">Two</button></div>'
+    await fixture('<x-controls id="outer"></x-controls><script>' +
+      'const root=document.getElementById("outer").attachShadow({mode:"open"});root.innerHTML=' + JSON.stringify(contents) + ';' +
+      'root.getElementById("nested").attachShadow({mode:"open"}).innerHTML="<button id=open>Nested action</button>";' +
+      'const trigger=root.getElementById("open"),menu=root.getElementById("menu"),items=[root.getElementById("one"),root.getElementById("two")];' +
+      'trigger.onclick=()=>{menu.hidden=false;items[0].focus()};menu.onkeydown=e=>{' +
+      'if(["ArrowDown","ArrowUp"].includes(e.key)){e.preventDefault();items[1-items.indexOf(root.activeElement)].focus()}' +
+      'if(e.key==="Escape"){menu.hidden=true;trigger.focus()}}</script>')
+    expect((await collect()).interactions).toMatchObject([
+      { trigger: { selector: '#outer >>> #open' }, popup: { selector: '#outer >>> #menu' }, openedBy: 'enter',
+        entry: 'inside', arrows: 'moved', escape: 'closed', restoration: 'trigger' },
+    ])
+  })
+
+  it('does not certify controls beyond the bounded document inventory', async () => {
+    await fixture('<span></span>'.repeat(20_001) + '<button id="beyond">Uninspected action</button>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ complete: false, limitations: ['document_tree_limit'], candidateCount: 0 })
+    expect(runKeyboardChecks(evidence).assertions.some(assertion => assertion.passed)).toBe(false)
+  })
+
   it('independently compares native keyboard repair under the original browser and access conditions', async () => {
     const controls = '<button id="action">Original action</button>'
     await fixture('<style>button:focus{outline:none;box-shadow:none}</style>' + controls)
@@ -61,6 +168,32 @@ runBrowser('keyboard collector in Chromium', () => {
     expect(JSON.stringify(evidence)).not.toContain('PRIVATE')
     expect(runKeyboardChecks(evidence).assertions).toHaveLength(3)
     expect(runKeyboardChecks(evidence).assertions.every(assertion => assertion.passed)).toBe(true)
+  })
+
+  it.each([
+    ['checked', '<input id="first" type="radio" name="choice" checked><input id="second" type="radio" name="choice">', ['#first', '#done']],
+    ['later checked', '<input id="first" type="radio" name="choice"><input id="second" type="radio" name="choice" checked>', ['#second', '#done']],
+    ['unchecked', '<input id="first" type="radio" name="choice"><input id="second" type="radio" name="choice">', ['#first', '#done']],
+    ['disabled checked', '<input id="first" type="radio" name="choice" checked disabled><input id="second" type="radio" name="choice">', ['#second', '#done']],
+    ['separate forms', '<form><input id="first" type="radio" name="choice" checked><input type="radio" name="choice"></form>' +
+      '<form><input id="second" type="radio" name="choice" checked><input type="radio" name="choice"></form>', ['#first', '#second', '#done']],
+    ['unnamed', '<input id="first" type="radio"><input id="second" type="radio">', ['#first', '#second', '#done']],
+    ['positive tabindex', '<input id="first" type="radio" name="choice" tabindex="2"><input id="second" type="radio" name="choice" tabindex="1">', ['#second', '#done']],
+  ])('uses native radio-group tab stops for %s groups', async (_name, controls, selectors) => {
+    await fixture(controls + '<button id="done">Done</button>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ candidateCount: selectors.length, navigationComplete: true })
+    expect(evidence.steps.map(step => step.selector)).toEqual(selectors)
+    expect(evidence.trap).toBe('not_observed')
+  })
+
+  it('keeps same-named native radio groups separate across component roots', async () => {
+    const contents = '<input id="first" type="radio" name="choice" checked><input id="second" type="radio" name="choice">'
+    await fixture('<x-controls id="first"></x-controls><x-controls id="second"></x-controls><button id="done">Done</button><script>' +
+      'for(const id of ["first","second"])document.getElementById(id).attachShadow({mode:"open"}).innerHTML=' + JSON.stringify(contents) + '</script>')
+    const evidence = await collect()
+    expect(evidence).toMatchObject({ candidateCount: 3, navigationComplete: true })
+    expect(evidence.steps.map(step => step.selector)).toEqual(['#first >>> #first', '#second >>> #first', '#done'])
   })
 
   it('finds stripped focus styles on controls actually reached by Tab', async () => {
@@ -246,6 +379,14 @@ runBrowser('declared popup keyboard behavior in Chromium', () => {
   it('observes a native modal boundary and restores focus after Escape', async () => {
     const evidence = await collect('<button id="open" aria-haspopup="dialog" aria-controls="popup">Details</button><dialog id="popup"><button>First</button><button>Second</button></dialog><script>document.getElementById("open").onclick=()=>document.getElementById("popup").showModal()</script><button>After</button>')
     expect(evidence.interactions).toMatchObject([{ kind: 'dialog', openedBy: 'enter', entry: 'inside', containment: 'contained', escape: 'closed', restoration: 'trigger', complete: true }])
+    expect(runKeyboardChecks(evidence).flags).toEqual([])
+  })
+  it('fully exercises a native modal containing a radio group without expecting every option in the Tab sequence', async () => {
+    const evidence = await collect('<button id="open" aria-haspopup="dialog" aria-controls="popup">Details</button>' +
+      '<dialog id="popup"><input type="radio" name="choice" checked><input type="radio" name="choice"><button>Done</button></dialog>' +
+      '<script>document.getElementById("open").onclick=()=>document.getElementById("popup").showModal()</script><button>After</button>')
+    expect(evidence.interactions).toMatchObject([{ kind: 'dialog', openedBy: 'enter', entry: 'inside', containment: 'contained',
+      escape: 'closed', restoration: 'trigger', complete: true }])
     expect(runKeyboardChecks(evidence).flags).toEqual([])
   })
   it('finds actual arrow-key, Escape, entry and modal-boundary failures', async () => {

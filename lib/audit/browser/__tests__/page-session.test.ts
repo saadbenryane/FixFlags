@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
+import { EventEmitter } from 'node:events'
 import type { Browser, Route } from 'playwright'
 import type { JourneyRouteGuardOptions } from '../journey-safety'
+
+describe('explicit localhost fixture boundary', () => {
+  it.each(['http://localhost:4100/path', 'https://127.0.0.1/path'])('accepts a literal fixture host: %s', url => {
+    expect(isLocalhostAuditUrl(url)).toBe(true)
+  })
+  it.each(['http://localhost.attacker.test/', 'http://127.0.0.1.attacker.test/', 'http://localhost@attacker.test/',
+    'http://localhost:4100@attacker.test/', 'file://localhost/path', 'not a URL'])('refuses a lookalike or non-HTTP target: %s', url => {
+    expect(isLocalhostAuditUrl(url)).toBe(false)
+  })
+})
 
 vi.mock('../../progressive/capacity', () => ({ browserCapacity: { acquire: vi.fn(async () => vi.fn()) } }))
 vi.mock('../request-boundary', () => ({ installRequestBoundary: vi.fn() }))
@@ -19,7 +30,8 @@ vi.mock('../journey-safety', () => ({
 vi.mock('../network-monitor', () => ({
   attachNetworkMonitor: () => ({ failures: [], resources: [], resourcesTruncated: () => false, tracking: vi.fn(), setTrackingPhase: vi.fn(), suppressTracking: vi.fn(), dispose: vi.fn() }),
 }))
-import { createAuditPage } from '../page-session'
+import { createAuditPage, isLocalhostAuditUrl } from '../page-session'
+import { installRequestBoundary } from '../request-boundary'
 import { DESKTOP_CAPTURE_PROFILE } from '../capture-profile'
 import { runNetworkEngagementChecks } from '../../checks/network-engagement'
 
@@ -33,7 +45,7 @@ describe('audit page session form evidence', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     try {
       vi.setSystemTime(100_000)
-      const session = await createAuditPage({ newContext: vi.fn(async () => context) } as unknown as Browser, 'http://localhost:4100/', {
+      const session = await createAuditPage(Object.assign(new EventEmitter(), { newContext: vi.fn(async () => context) }) as unknown as Browser, 'http://localhost:4100/', {
         profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, settle: false, consoleIdentityKey: 'fixture-only-key',
       })
       callbacks.get('load')!()
@@ -50,31 +62,31 @@ describe('audit page session form evidence', () => {
     } finally { vi.useRealTimers() }
   })
   it('exposes a probe performed after navigation to the caller and report checks', async () => {
-    let intercept!: (route: Route) => Promise<void>
     const page = {
-      route: vi.fn(async (_pattern, handler) => { intercept = handler }),
+      route: vi.fn(),
       on: vi.fn(), once: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'),
       url: () => 'http://localhost:4100/',
     }
     const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
-    const browser = { newContext: vi.fn(async () => context) } as unknown as Browser
+    const browser = Object.assign(new EventEmitter(), { newContext: vi.fn(async () => context) }) as unknown as Browser
     const session = await createAuditPage(browser, 'http://localhost:4100/', {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, settle: false,
     })
     expect(session.formProbe).toBeNull()
-    await intercept({ request: () => ({ url: () => 'http://localhost:4100/api/subscribe', resourceType: () => 'fetch', method: () => 'POST' }) } as unknown as Route)
+    await vi.mocked(installRequestBoundary).mock.lastCall![3]({ request: () => ({ url: () => 'http://localhost:4100/api/subscribe', resourceType: () => 'fetch', method: () => 'POST', isNavigationRequest: () => false }) } as unknown as Route)
     expect(session.formProbe?.status).toBe(500)
     expect(runNetworkEngagementChecks([], session.formProbe).map(flag => flag.checkId))
       .toEqual(['form-submit-api-server-error'])
   })
   it('blocks worker and socket bypasses only for sessions activating public UI controls', async () => {
     let socketHandler!: (socket: { close(): Promise<void> }) => Promise<void>
-    const page = { route: vi.fn(), routeWebSocket: vi.fn(async (_pattern, handler) => { socketHandler = handler }),
+    const page = { route: vi.fn(),
       on: vi.fn(), once: vi.fn(), goto: vi.fn(async () => null), title: vi.fn(async () => 'Example'), url: () => 'http://localhost:4100/' }
-    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn() }
+    const context = { newPage: vi.fn(async () => page), addCookies: vi.fn(), once: vi.fn(),
+      routeWebSocket: vi.fn(async (_pattern, handler) => { socketHandler = handler }) }
     const newContext = vi.fn(async () => context)
     const onSafetyRefusal = vi.fn()
-    const session = await createAuditPage({ newContext } as unknown as Browser, 'http://localhost:4100/', {
+    const session = await createAuditPage(Object.assign(new EventEmitter(), { newContext }) as unknown as Browser, 'http://localhost:4100/', {
       profile: DESKTOP_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, readOnlyInteractions: true, settle: false, onSafetyRefusal,
     })
     expect(newContext).toHaveBeenCalledWith(expect.objectContaining({ serviceWorkers: 'block' }))

@@ -8,7 +8,7 @@ import { safeFetchDocument } from '@/lib/audit/url'
 import { getBrowser } from '@/lib/audit/screenshot'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
-import { PageCaptureError, isBotInterstitialDocument } from '@/lib/audit/browser/page-capture'
+import { PageCaptureError, publicResponseRestriction } from '@/lib/audit/browser/page-capture'
 import { TaskFailure } from '@/lib/audit/progressive/contracts'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { runGoalProbe, type BrowserJourneyConfig } from '@/lib/integrity/run-goal-probe'
@@ -192,7 +192,8 @@ async function runCheckoutBinding(input: {
     steps: result.steps.map((step, index) => ({
       stepNumber: index + 1,
       actionType: step.label,
-      actionDetail: { label: step.label, bindingKey: input.bindingKey },
+      actionDetail: { label: step.label, bindingKey: input.bindingKey,
+        ...(step.destinationUrl ? { destinationUrl: step.destinationUrl } : {}) },
       url: step.url,
       screenshotAfterUrl: step.screenshotUrl,
       accessibilityTree: '',
@@ -262,7 +263,7 @@ async function runGenericBrowserJourneyBinding(input: {
   config: BrowserJourneyConfig
 }): Promise<void> {
   const result = await runGoalProbe({
-    runId: `outcome-${input.runId}-${input.bindingKey}`,
+    runId: `outcome-${input.runId}-${input.bindingKey}-g${currentExecutionOwnership()?.generation ?? 0}`,
     config: input.config,
   })
   const isFlag = result.health === 'RED' && result.confirmed
@@ -302,8 +303,11 @@ async function probeAvailabilityOnce(input: {
   if (status >= 300 && status < 400) {
     return { disposition: 'BLOCKED', reason: 'redirect_unfollowed', detail: { status } }
   }
-  if (isBotInterstitialDocument({ body: response.body, headers: response.headers, status })) {
-    return { disposition: 'BLOCKED', reason: 'bot_wall', detail: { status } }
+  const restriction = publicResponseRestriction({ body: response.body, headers: response.headers, status })
+  if (restriction) {
+    return { disposition: 'BLOCKED', reason: restriction === 'bot_challenge' ? 'bot_wall' : 'access_restricted',
+      detail: { status, restriction, url: input.url, finalUrl: response.finalUrl,
+        source: 'public-http', collectedAt: new Date().toISOString() } }
   }
   if (status < 200 || status >= 300) return { disposition: 'FAILED', reason: 'http_unavailable',
     detail: { status, url: input.url, finalUrl: response.finalUrl, source: 'public-http', collectedAt: new Date().toISOString() } }

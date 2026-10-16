@@ -1,3 +1,4 @@
+import { renderedContentMetadata } from '../browser/rendered-copy'
 import { sectionTargetExists, sectionTargetSet } from './section-links'
 import { PageMetadata } from '../metadata'
 import { isDeadHref } from '../flow/link-scoring'
@@ -67,6 +68,7 @@ export function detectSocialProofSlop(text: string): { label: string; matched: s
 }
 
 export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): DeterministicFlag[] {
+  meta = renderedContentMetadata(meta)
   const findings: DeterministicFlag[] = []
   const h1Generic =
     meta.h1s.length > 0 &&
@@ -166,7 +168,7 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
   }
 
   const sectionTargets = sectionTargetSet(meta)
-  const deadCtaLinks = meta.links.filter((link) => {
+  const deadCtaLinks = (meta.documentLinks ?? meta.links).filter((link) => {
     const href = link.href
     // Hash target that exists on the page is not dead
     if (href.startsWith('#')) {
@@ -212,7 +214,7 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
     `Template-heading pattern ${templateMatched} in the captured title and H1 sample.`, headingText.trim() ? !templateMatched : undefined, true)
   recordObservation(record, 'template-tokens', 'Captured template tokens', 'Sampled page copy contains no recognized unreplaced template token',
     tokenMatch ? `Recognized token: ${tokenMatch[0].slice(0, 80)}.` : 'No recognized token in the captured sample.', sampled ? !tokenMatch : undefined, true)
-  const ctaLinks = meta.links.filter(link => CTA_PATTERN.test(`${link.href} ${link.text}`))
+  const ctaLinks = (meta.documentLinks ?? meta.links).filter(link => CTA_PATTERN.test(`${link.href} ${link.text}`))
   recordObservation(record, 'cta-href-values', 'Captured action destinations', 'Captured action links declare non-placeholder destinations',
     `${deadCtaLinks.length} placeholder destinations among ${ctaLinks.length} recognized action links. Destination behavior was not executed here.`,
     ctaLinks.length ? deadCtaLinks.length === 0 : undefined, true)

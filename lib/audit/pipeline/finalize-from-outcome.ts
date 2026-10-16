@@ -7,7 +7,6 @@ import {
   finalizeTriageDegraded,
   persistAuditFailedModules,
 } from '@/lib/audit/finalize'
-import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { runTriageStep } from '@/lib/audit/pipeline/triage-step'
 import { accumulateTriageUsage } from '@/lib/audit/pipeline/context'
 import { productScoresFromFlags, buildCombinedTriageOutput, collapsedPageFlags } from '@/lib/audit/pipeline/combine-pages'
@@ -17,18 +16,20 @@ import {
   type AuditOutcome,
 } from '@/lib/audit/pipeline/outcome'
 import { parseTriageFailure } from '@/lib/audit/pipeline/triage-failure'
-import type { PipelineContext, PageRun } from '@/lib/audit/pipeline/types'
+import type { PipelineContext, PageEvidence, PageRun } from '@/lib/audit/pipeline/types'
+import type { DeterministicFlag } from '@/lib/audit/flag-types'
 
 interface FinalizeFromOutcomeInput {
   ctx: PipelineContext
   auditId: string
   auditUrl: string
-  pageRuns: PageRun[]
+  pageRuns: PageEvidence[]
   startedAt: Date
   captureAdditionalEvidence?: boolean
+  recordedFlags?: DeterministicFlag[]
 }
 
-function buildEvidence(pageRuns: PageRun[], aiAssessment: boolean) {
+function buildEvidence(pageRuns: PageEvidence[], aiAssessment: boolean) {
   return {
     desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
     mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
@@ -43,7 +44,8 @@ function buildEvidence(pageRuns: PageRun[], aiAssessment: boolean) {
 async function persistEvidenceAnchors(
   auditId: string,
   auditUrl: string,
-  pageRuns: PageRun[]
+  pageRuns: PageEvidence[],
+  deadline: number,
 ): Promise<void> {
   const pageFlags = pageRuns.flatMap((page) =>
     page.flags.map((flag) => ({
@@ -94,22 +96,24 @@ async function persistEvidenceAnchors(
       severity: f.severity,
       rubric: f.rubric,
     })),
-    metrics
+    metrics,
+    deadline,
+    pageRuns.flatMap(page => page.flowResult ? [page.flowResult] : []),
   )
 }
 
 async function finalizeTriageComplete(
   input: FinalizeFromOutcomeInput,
-  pageRuns: PageRun[]
+  pageRuns: PageEvidence[]
 ): Promise<void> {
   const { ctx, auditId, auditUrl, startedAt } = input
   const combinedTriage = buildCombinedTriageOutput(pageRuns)
-  const flags = collapsedPageFlags(pageRuns)
-  const rubricScores = productScoresFromFlags(pageRuns)
+  const flags = collapsedPageFlags(pageRuns, input.recordedFlags)
+  const rubricScores = productScoresFromFlags(pageRuns, input.recordedFlags)
 
   await ctx.events.log({ stage: 'finalizing', event: 'persist_started' })
   await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
-  if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, pageRuns)
+  if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, pageRuns, ctx.deadline)
 
   await finalizeTriageAudit({
     auditId,
@@ -127,16 +131,6 @@ async function finalizeTriageComplete(
     evidence: buildEvidence(pageRuns, true),
   })
 
-  // Claiming can happen while this runner is capturing or checking. Re-read
-  // the persisted entitlement so a newly owned report does not miss its
-  // prescription job because the runner's initial context is stale.
-  const prescriptionState = await prisma.audit.findUnique({
-    where: { id: auditId },
-    select: { includeAi: true, aiReviewAt: true },
-  })
-  if (prescriptionState?.includeAi && !prescriptionState.aiReviewAt) {
-    await enqueueAiReview(auditId)
-  }
 }
 
 async function finalizeTriageDegradedOutcome(
@@ -150,7 +144,7 @@ async function finalizeTriageDegradedOutcome(
     detail: outcome.reason,
     error: outcome.message,
   })
-  if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, outcome.pageRuns)
+  if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, outcome.pageRuns, ctx.deadline)
   await finalizeTriageDegraded({
     auditId,
     durationMs: ctx.clock.now().getTime() - startedAt.getTime(),

@@ -13,11 +13,13 @@ export const trackingRequestSchema = z.object({
   phase: z.enum(['page_load', 'public_action']), state: z.enum(['pending', 'response', 'completed', 'failed', 'suppressed']),
   status: z.number().int().min(100).max(599).nullable(), reason: z.enum(['scanner_suppressed', 'browser_blocked', 'transport_failed']).nullable(),
   atMs: z.number().int().nonnegative(),
+  requestKey: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict()
 export type TrackingRequest = z.infer<typeof trackingRequestSchema>
 export const trackingEvidenceSchema = z.object({
   version: z.literal(1), phase: z.enum(['page_load', 'public_action']), requests: z.array(trackingRequestSchema).max(MAX_TRACKING_REQUESTS),
   truncated: z.boolean(), durationMs: z.number().int().nonnegative(),
   consentInteraction: z.enum(['none', 'existing_flow']),
+  captureKey: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict()
 export type TrackingEvidence = z.infer<typeof trackingEvidenceSchema>

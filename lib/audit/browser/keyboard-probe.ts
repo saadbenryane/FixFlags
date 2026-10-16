@@ -50,15 +50,79 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
     const state = await page.evaluateHandle(() => {
       ;(globalThis as unknown as { __name?: (fn: unknown) => unknown }).__name ??= fn => fn
       const focusableSelector = 'a[href],button,input,select,textarea,summary,[tabindex],[contenteditable="true"],iframe'
+      const limitations: string[] = []
+      function parent(el: Element): Element | null {
+        const root = el.getRootNode()
+        return el.assignedSlot ?? el.parentElement ?? (root instanceof ShadowRoot ? root.host : null)
+      }
+      function closest(el: Element | null, selectors: string): Element | null {
+        for (let current = el; current; current = parent(current)) if (current.matches(selectors)) return current
+        return null
+      }
+      function contains(root: Element, el: Element) {
+        for (let current: Element | null = el; current; current = parent(current)) if (current === root) return true
+        return false
+      }
+      function activeElement(): HTMLElement | null {
+        let active = document.activeElement
+        while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement
+        return active as HTMLElement | null
+      }
+      function opaque(el: Element) { return el.tagName === 'IFRAME' || el.tagName.includes('-') && !el.shadowRoot }
+      function byId(el: Element, id: string) {
+        const root = el.getRootNode()
+        return root instanceof Document || root instanceof ShadowRoot ? root.getElementById(id) : null
+      }
+      function elements(root: Element | Document | ShadowRoot = document, limit = 20_000) {
+        const pending: Array<{ children: ArrayLike<Element>; index: number }> = [{ children: root instanceof Element ? [root] : root.children, index: 0 }]
+        const nodes: HTMLElement[] = [], seen = new Set<Element>()
+        while (pending.length && nodes.length < limit) {
+          const branch = pending[pending.length - 1]
+          if (branch.index >= branch.children.length) { pending.pop(); continue }
+          const current = branch.children[branch.index++]
+          if (seen.has(current)) continue
+          seen.add(current); nodes.push(current as HTMLElement)
+          const assigned = current instanceof HTMLSlotElement ? current.assignedElements({ flatten: true }) : []
+          const children = current.shadowRoot ? current.shadowRoot.children : assigned.length ? assigned : current.children
+          if (children.length) pending.push({ children, index: 0 })
+        }
+        return { nodes, truncated: pending.some(branch => branch.index < branch.children.length) }
+      }
+      function sequential(el: HTMLElement) {
+        if (el.tabIndex < 0 || !el.matches(focusableSelector) || el.matches(':disabled,[hidden],input[type="hidden"]') || closest(el, '[inert]')) return false
+        if (el.shadowRoot?.delegatesFocus) return false
+        for (let ancestor = parent(el); ancestor; ancestor = parent(ancestor)) {
+          if ((ancestor.shadowRoot || ancestor instanceof HTMLSlotElement) && ancestor.hasAttribute('tabindex') && (ancestor as HTMLElement).tabIndex < 0) return false
+        }
+        return el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible'
+      }
+      function tabTargets(nodes: HTMLElement[]) {
+        const eligible = nodes.filter(sequential)
+        // Native radio groups contribute one forward Tab stop. Their grouping
+        // follows tree, form owner and name, independently of component labels.
+        const groups = new Map<Node, Map<HTMLFormElement | null, Map<string, HTMLInputElement>>>()
+        const groupFor = (radio: HTMLInputElement) => {
+          const root = radio.getRootNode()
+          if (!groups.has(root)) groups.set(root, new Map())
+          const forms = groups.get(root)!
+          if (!forms.has(radio.form)) forms.set(radio.form, new Map())
+          return forms.get(radio.form)!
+        }
+        for (const el of eligible) {
+          if (!(el instanceof HTMLInputElement) || el.type !== 'radio' || !el.name) continue
+          const group = groupFor(el), previous = group.get(el.name)
+          if (!previous || el.checked || !previous.checked && el.tabIndex > 0 && (previous.tabIndex === 0 || el.tabIndex < previous.tabIndex))
+            group.set(el.name, el)
+        }
+        return eligible.filter(el => !(el instanceof HTMLInputElement) || el.type !== 'radio' || !el.name || groupFor(el).get(el.name) === el)
+      }
       function candidatesNow() {
-        return [...document.querySelectorAll<HTMLElement>(focusableSelector)]
-          .filter(el => el.tabIndex >= 0 && !el.matches(':disabled,[hidden],input[type="hidden"]') && !el.closest('[inert]') &&
-            el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible')
+        const inventory = elements()
+        if (inventory.truncated && !limitations.includes('document_tree_limit')) limitations.push('document_tree_limit')
+        return tabTargets(inventory.nodes)
       }
       const candidates = candidatesNow()
-      const limitations: string[] = []
-      if (document.querySelector('iframe,frame')) limitations.push('embedded_frame_uninspected')
-      if ([...document.querySelectorAll('*')].some(el => el.shadowRoot)) limitations.push('shadow_controls_uninspected')
+      if (elements().nodes.some(el => el.matches('iframe,frame'))) limitations.push('embedded_frame_uninspected')
       if (candidates.length > 200) limitations.push('candidate_limit')
       const inspected = candidates.slice(0, 200)
       const properties = ['outlineStyle', 'outlineWidth', 'outlineColor', 'outlineOffset', 'boxShadow', 'borderColor', 'borderWidth',
@@ -85,7 +149,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       }
       function paintedInDocument(el: Element) {
         if (!el.isConnected || !el.getClientRects().length || getComputedStyle(el).visibility !== 'visible') return false
-        for (let node: Element | null = el; node; node = node.parentElement) {
+        for (let node: Element | null = el; node; node = parent(node)) {
           const style = getComputedStyle(node)
           if (style.display === 'none' || parseFloat(style.opacity) === 0 || style.contentVisibility === 'hidden') return false
         }
@@ -100,7 +164,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
           style.filter !== 'none' || style.mixBlendMode !== 'normal') return null
         const rect = node.getBoundingClientRect(), outset = parseFloat(style.outlineWidth) + Math.max(0, parseFloat(style.outlineOffset))
         let backdrop: number[] | null = null
-        for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        for (let ancestor = parent(node); ancestor; ancestor = parent(ancestor)) {
           const surrounding = getComputedStyle(ancestor)
           if (parseFloat(surrounding.opacity) !== 1 || surrounding.filter !== 'none' || surrounding.backdropFilter !== 'none' ||
             surrounding.mixBlendMode !== 'normal') return null
@@ -126,7 +190,8 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         return true
       }
       function profile(el: Element) {
-        const nodes = [el, ...[...el.querySelectorAll('*')].slice(0, 12)].filter(paintedInDocument)
+        const descendants = elements(el, 13)
+        const nodes = descendants.nodes.filter(paintedInDocument)
         const styles = nodes.flatMap(node => [getComputedStyle(node), ...['::before', '::after'].map(pseudo => getComputedStyle(node, pseudo))
           .filter(style => !['none', 'normal'].includes(style.content) && style.display !== 'none' && style.visibility === 'visible' && parseFloat(style.opacity) !== 0)]
           .map(style => ({ style, node })))
@@ -154,27 +219,29 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         const recorded = styles.map(signature).join(';')
         return { signature: recorded, uncertainPaint,
           unstable: styles.some(({ style }) => style.animationName !== 'none' || style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)),
-          truncated: el.querySelectorAll('*').length > 12 }
+          truncated: descendants.truncated }
       }
-      function selector(el: Element) {
+      function selector(el: Element): string {
         const parts: string[] = []
+        const root = el.getRootNode()
         for (let current: Element | null = el; current && current !== document.documentElement; current = current.parentElement) {
-          if (current.id && document.querySelectorAll('#' + CSS.escape(current.id)).length === 1) {
+          if (current.id && (root as Document | ShadowRoot).querySelectorAll('#' + CSS.escape(current.id)).length === 1) {
             parts.unshift('#' + CSS.escape(current.id)); break
           }
-          const siblings = current.parentElement ? [...current.parentElement.children].filter(sibling => sibling.tagName === current!.tagName) : [current]
+          const siblings = [...(current.parentElement ?? root as ShadowRoot).children].filter(sibling => sibling.tagName === current!.tagName)
           parts.unshift(current.tagName.toLowerCase() + ':nth-of-type(' + (siblings.indexOf(current) + 1) + ')')
         }
-        return parts.join(' > ')
+        const local = parts.join(' > ')
+        return root instanceof ShadowRoot ? selector(root.host) + ' >>> ' + local : local
       }
       function visible(el: Element) {
         const style = getComputedStyle(el)
-        return el.isConnected && el.getClientRects().length > 0 && style.visibility === 'visible' && style.display !== 'none' && style.opacity !== '0' && !el.closest('[hidden],[aria-hidden="true"]')
+        return paintedInDocument(el) && style.display !== 'none' && !closest(el, '[hidden],[aria-hidden="true"]')
       }
       function identity(el: Element) {
         const rect = el.getBoundingClientRect()
         const name = el.getAttribute('aria-label') || (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).slice(0, 8)
-          .map(id => document.getElementById(id)?.textContent ?? '').join(' ').trim() ||
+          .map(id => byId(el, id)?.textContent ?? '').join(' ').trim() ||
           ('labels' in el ? (el as HTMLInputElement).labels?.[0]?.textContent : null) ||
           (el.matches('input,textarea,select,[contenteditable],dialog,[role="dialog"],[role="menu"]') ? el.tagName.toLowerCase() : el.textContent) || el.tagName.toLowerCase()
         return { selector: selector(el), label: name.trim().replace(/\s+/g, ' ').slice(0, 160),
@@ -183,13 +250,13 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
             height: Math.max(0, Math.min(1, (Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)) / innerHeight)) } }
       }
       const baseline = new Map(inspected.map((el, index) => [el, { id: index + 1, domOrder: index,
-        focusedAtRegistration: el === document.activeElement, ...profile(el) }]))
+        focusedAtRegistration: el === activeElement(), ...profile(el) }]))
       let nextId = baseline.size + 1
-      const initialDialog = document.activeElement?.closest('dialog[open],[role="dialog"],[role="alertdialog"]') ?? null
+      const initialDialog = closest(activeElement(), 'dialog[open],[role="dialog"],[role="alertdialog"]')
       function sample() {
-        const active = document.activeElement as HTMLElement | null
+        const active = activeElement()
         if (!active || active === document.body || active === document.documentElement) return null
-        if (active.tagName === 'IFRAME' || active.shadowRoot || active.tagName.includes('-')) return { unknown: true as const }
+        if (opaque(active)) return { unknown: true as const }
         const before = baseline.get(active)
         if (!before) return { unknown: true as const }
         const identity = selector(active)
@@ -199,7 +266,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         const changed = before.signature !== after.signature
         const uncertain = before.unstable || after.unstable || before.truncated || after.truncated ||
           before.uncertainPaint || after.uncertainPaint || !paintedInDocument(active) || !inViewport ||
-          active.tagName === 'IFRAME' || Boolean(active.shadowRoot) || !active.matches(':focus-visible') || parseFloat(style.opacity) === 0 ||
+          opaque(active) || !active.matches(':focus-visible') || parseFloat(style.opacity) === 0 ||
           before.focusedAtRegistration ||
           (!changed && active.matches('textarea,[contenteditable="true"],input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])'))
         return { id: before.id, ...describe(active), domOrder: before.domOrder, tabIndex: active.tabIndex,
@@ -208,28 +275,28 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       }
       const describe = identity
       function dialogState() {
-        const dialog = document.activeElement?.closest('dialog[open],[role="dialog"],[role="alertdialog"]') ??
-          [...document.querySelectorAll('dialog[open],[role="dialog"][aria-modal="true"],[role="alertdialog"][aria-modal="true"]')]
+        const dialog = closest(activeElement(), 'dialog[open],[role="dialog"],[role="alertdialog"]') ??
+          elements().nodes.filter(el => el.matches('dialog[open],[role="dialog"][aria-modal="true"],[role="alertdialog"][aria-modal="true"]'))
             .find(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible')
         // Activation may dismiss a dialog regardless of its label language. A
         // navigation-only probe cannot establish that outcome by clicking it.
-        return dialog ? { selector: selector(dialog), dismissControl: [...dialog.querySelectorAll<HTMLElement>('button,[role="button"]')]
+        return dialog ? { selector: selector(dialog), dismissControl: elements(dialog).nodes.filter(el => el.matches('button,[role="button"]'))
           .some(el => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length > 0) } : null
       }
       function safeTrigger(el: HTMLElement) {
         const ids = (el.getAttribute('aria-controls') || el.getAttribute('popovertarget') || '').trim().split(/\s+/).filter(Boolean)
-        const controlled = ids.length === 1 ? document.getElementById(ids[0]) : null
+        const controlled = ids.length === 1 ? byId(el, ids[0]) : null
         return (el.tagName === 'BUTTON' || el.getAttribute('role') === 'button') && el.tagName !== 'A' &&
           !(el instanceof HTMLButtonElement && (el.form !== null && el.type !== 'button' || el.type === 'reset')) &&
-          !el.closest('[role="menu"],[role="menubar"],[role="toolbar"],[role="dialog"],dialog') && !el.matches(':disabled,[aria-disabled="true"]') &&
+          !closest(el, '[role="menu"],[role="menubar"],[role="toolbar"],[role="dialog"],dialog') && !el.matches(':disabled,[aria-disabled="true"]') &&
           !/\b(delete|remove|purchase|pay|checkout|submit|send|confirm|accept|agree|consent|upload|download|logout)\b|sign\s*out|log\s*out/i.test(describe(el).label) &&
           ids.length <= 1 && !controlled?.matches('form,input,select,textarea,iframe,[role="alertdialog"]')
       }
-      const openers = [...document.querySelectorAll<HTMLElement>('button,[role="button"],[aria-haspopup],[popovertarget],[aria-expanded][aria-controls]')]
+      const openers = elements().nodes.filter(el => el.matches('button,[role="button"],[aria-haspopup],[popovertarget],[aria-expanded][aria-controls]'))
         .filter(visible).slice(0, 200).flatMap(el => {
         const popup = el.getAttribute('aria-haspopup')?.toLowerCase()
         const ids = (el.getAttribute('aria-controls') || el.getAttribute('popovertarget') || '').trim().split(/\s+/).filter(Boolean)
-        const controlled = ids.length === 1 ? document.getElementById(ids[0]) : null
+        const controlled = ids.length === 1 ? byId(el, ids[0]) : null
         const role = controlled?.getAttribute('role')
         const kind = popup === 'dialog' || controlled?.tagName === 'DIALOG' || role === 'dialog' ? 'dialog' as const
           : popup === 'menu' || popup === 'true' || role === 'menu' ? 'menu' as const
@@ -241,43 +308,44 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       function trigger(index: number) { return openers[index]?.el }
       function popupFor(index: number) {
         const opener = openers[index]
-        const related = opener?.controlledId ? document.getElementById(opener.controlledId) : null
+        const related = opener?.controlledId ? byId(opener.el, opener.controlledId) : null
         if (related) return visible(related) ? related : null
-        const candidates = [...document.querySelectorAll(opener.kind === 'dialog' ? 'dialog[open],[role="dialog"]' : '[role="menu"]')].filter(visible)
+        const candidates = elements(opener.el.getRootNode() as Document | ShadowRoot).nodes.filter(el => el.matches(opener.kind === 'dialog' ? 'dialog[open],[role="dialog"]' : '[role="menu"]')).filter(visible)
         return candidates.length === 1 ? candidates[0] : null
       }
       function registerPopup(index: number) {
         const root = popupFor(index)
         if (!root) return
-        for (const [order, el] of [root, ...root.querySelectorAll<HTMLElement>(focusableSelector + ',[role^="menuitem"]')].slice(0, 200).entries()) {
+        for (const [order, el] of elements(root).nodes.filter(el => el === root || el.matches(focusableSelector + ',[role^="menuitem"]')).slice(0, 200).entries()) {
           if (!baseline.has(el as HTMLElement)) baseline.set(el as HTMLElement, { id: nextId++, domOrder: order,
-            focusedAtRegistration: el === document.activeElement, ...profile(el) })
+            focusedAtRegistration: el === activeElement(), ...profile(el) })
         }
       }
       function popupState(index: number) {
         const root = popupFor(index), opener = trigger(index)
-        const active = document.activeElement
+        const active = activeElement()
         const descendantId = active?.getAttribute('aria-activedescendant')
-        const descendant = descendantId ? document.getElementById(descendantId) : null
-        const effective = descendant && active && root?.contains(active) && root.contains(descendant) && visible(descendant) ? descendant : active
-        const items = root ? [...root.querySelectorAll<HTMLElement>('[role="menuitem"],[role="menuitemcheckbox"],[role="menuitemradio"]')]
-          .filter(el => visible(el) && el.closest('[role="menu"]') === root) : []
-        const tabTargets = root ? [...root.querySelectorAll<HTMLElement>(focusableSelector)]
-          .filter(el => visible(el) && el.tabIndex >= 0 && !el.matches(':disabled') && !el.closest('[inert]')) : []
-        return { popup: root ? describe(root) : null,
-          opaqueFocus: Boolean(active && (active.tagName === 'IFRAME' || active.shadowRoot || active.tagName.includes('-'))),
+        const descendant = active && descendantId ? byId(active, descendantId) : null
+        const effective = descendant && active && root && contains(root, active) && contains(root, descendant) && visible(descendant) ? descendant : active
+        const inventory = root ? elements(root) : { nodes: [], truncated: false }
+        const contents = inventory.nodes
+        const items = contents.filter(el => el.matches('[role="menuitem"],[role="menuitemcheckbox"],[role="menuitemradio"]'))
+          .filter(el => visible(el) && closest(el, '[role="menu"]') === root)
+        const tabbable = tabTargets(contents.filter(visible))
+        return { popup: root ? describe(root) : null, truncated: inventory.truncated,
+          opaqueFocus: Boolean(active && opaque(active)),
           supported: Boolean(root && (openers[index].kind === 'disclosure' || openers[index].kind === 'menu' && root.getAttribute('role') === 'menu' ||
             openers[index].kind === 'dialog' && (root.tagName === 'DIALOG' || root.getAttribute('role') === 'dialog'))),
           modal: Boolean(root && (root.getAttribute('aria-modal') === 'true' || root.matches(':modal'))),
-          inside: Boolean(root && effective && root.contains(effective)),
+          inside: Boolean(root && effective && contains(root, effective)),
           item: effective && items.includes(effective as HTMLElement) ? describe(effective).selector : null,
           itemCount: items.length, orientation: root?.getAttribute('aria-orientation') ?? 'vertical',
-          externalOwnership: Boolean(root?.getAttribute('aria-owns')), tabCount: tabTargets.length, tabSelectors: tabTargets.slice(0, 200).map(el => selector(el)),
+          externalOwnership: Boolean(root?.getAttribute('aria-owns')), tabCount: tabbable.length, tabSelectors: tabbable.slice(0, 200).map(el => selector(el)),
           target: sample(), activeSelector: active && active !== document.body ? describe(active).selector : null,
           triggerConnected: Boolean(opener?.isConnected && visible(opener)), restored: active === opener,
           focusLost: !active || active === document.body || active === document.documentElement || !visible(active) }
       }
-      return { count: candidates.length, limitations, sample, dialogState, openers,
+      return { count: candidates.length, limitations, sample, dialogState, openers, trigger,
         opener: (index: number) => ({ ...describe(trigger(index)), kind: openers[index].kind, safe: openers[index].safe && safeTrigger(trigger(index)),
           visible: visible(trigger(index)), open: Boolean(popupFor(index)) }),
         registerPopup, popupState,
@@ -361,12 +429,16 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         result.reason = 'trigger_not_exercised'; continue
       }
       const refusedBefore = refusalCount()
+      let disposeTrigger: (() => Promise<void>) | undefined
       try {
-        const locator = page.locator(opener.selector)
+        const handle = await state.evaluateHandle((value, i) => value.trigger(i), index)
+        disposeTrigger = () => handle.dispose()
+        const locator = handle.asElement()
+        if (!locator) { result.reason = 'trigger_removed'; break }
         const timeout = () => Math.max(1, Math.min(600, deadline - Date.now()))
         const wasReached = steps.some(step => step.selector === opener.selector)
         if (wasReached) {
-          await locator.focus({ timeout: timeout() })
+          await locator.focus()
           await locator.press('Enter', { timeout: timeout() })
           if ((await waitForPopup(index, true)).popup) result.openedBy = 'enter'
           else if (Date.now() < deadline && refusalCount() === refusedBefore) {
@@ -385,7 +457,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         }
         await state.evaluate((value, i) => value.registerPopup(i), index)
         let opened = await observe(index)
-        if (!opened.popup || opened.popup.selector.length > 2000 || !opened.supported || opened.externalOwnership) {
+        if (!opened.popup || opened.popup.selector.length > 2000 || !opened.supported || opened.externalOwnership || opened.truncated) {
           result.reason = 'popup_scope_unresolved'; break
         }
         result.popup = opened.popup
@@ -458,7 +530,7 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
         if (result.kind === 'disclosure' && closed.popup && result.reason !== 'scanner_boundary_refused') {
           // Cleanup uses only the same declared toggle. This happens after the
           // Escape/focus observation and cannot establish focus restoration.
-          await locator.focus({ timeout: timeout() }); await locator.press('Enter', { timeout: timeout() })
+          await locator.focus(); await locator.press('Enter', { timeout: timeout() })
           opened = await waitForPopup(index, false)
           result.reason = opened.popup ? 'popup_remained_open' : 'disclosure_toggled_closed'
         }
@@ -470,6 +542,8 @@ export async function collectKeyboardEvidence(page: Page, deadline: number,
       } catch {
         result.reason = refusalCount() !== refusedBefore ? 'scanner_boundary_refused' : Date.now() >= deadline ? 'deadline_exhausted' : 'interaction_interrupted'
         break
+      } finally {
+        await disposeTrigger?.().catch(() => undefined)
       }
     }
     if (refusalCount() > 0 && interactions.length === 0 && !initiallyRefused) {

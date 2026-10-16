@@ -1,7 +1,7 @@
 import { auditCache } from './cache'
 import { readBoundedJson } from '@/lib/http/read-json'
 import { z } from 'zod'
-import { performanceMeasurement } from './performance-measurement'
+import { performanceMeasurement, performancePageKey } from './performance-measurement'
 import { readResourceAudits, projectResourceOpportunities, type ResourceAudit } from './pagespeed-opportunities'
 import { readTapTargetAudits, type TapTargetAudit } from './pagespeed-tap-targets'
 
@@ -177,6 +177,11 @@ async function runPageSpeed(
     const parsed = providerPayloadSchema.safeParse(await readBoundedJson(res, 8_000_000))
     if (!parsed.success) throw new PageSpeedError('PageSpeed returned an invalid measurement payload', { code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
     const data = parsed.data
+    const measurement = performanceMeasurement(data.lighthouseResult, strategy)
+    const reportedFactor = measurement.formFactor
+    if ((data.lighthouseResult.requestedUrl !== undefined && performancePageKey(String(data.lighthouseResult.requestedUrl)) !== performancePageKey(url)) ||
+      (['desktop', 'mobile'].includes(reportedFactor ?? '') && reportedFactor !== strategy))
+      throw new PageSpeedError('PageSpeed returned a different requested scope', { code: 'PROVIDER_RESPONSE_INVALID', retryable: false })
     const runtimeError = data.lighthouseResult.runtimeError
     if (runtimeError && runtimeError.code !== 'NO_ERROR') throw new PageSpeedError('PageSpeed did not complete its measurement', {
       code: 'MEASUREMENT_INCOMPLETE', retryable: ['PROTOCOL_TIMEOUT', 'READ_FAILED', 'PARSING_PROBLEM', 'UNKNOWN_ERROR'].includes(runtimeError.code),
@@ -225,7 +230,7 @@ async function runPageSpeed(
       resourceAudits,
       tapTargetAudits,
       failedAccessibilityAudits,
-      diagnostics: { measurement: performanceMeasurement(categories, strategy) },
+      diagnostics: { measurement },
       raw: data,
       crux,
     }

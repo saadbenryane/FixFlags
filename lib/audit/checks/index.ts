@@ -12,6 +12,7 @@ import { suppressOverlappingFlags } from '../suppression'
 import { recordCheckObservations } from './observations'
 import { SEARCH_HANDLED_CHECK_IDS } from '../search/inventory'
 import { SECURITY_HEADER_LIMITATION } from './security-headers'
+import { summarizeCheckAssertions } from './receipt'
 import { scopeRenderedPageEvidence } from './rendered-page-evidence'
 
 export type { DeterministicFlag } from '../flag-types'
@@ -24,22 +25,26 @@ export interface RunAllChecksResult {
 
 /** Legacy adapter and progressive tasks invoke the same validated registrations. */
 export async function runAllChecks(
-  url: string, metadata: PageMetadata, desktop: PageSpeedResult | null, mobile: PageSpeedResult | null,
+  url: string, metadata: PageMetadata | null, desktop: PageSpeedResult | null, mobile: PageSpeedResult | null,
   consoleErrors: Array<{ type: string; text: string }>, onAreaComplete?: (index: number) => void,
   captureMetrics?: CaptureMetrics | null, responseHeaders?: Record<string, string> | null,
   axeViolations?: AxeViolation[], searchHandled = false, selectedModules?: readonly string[],
-  runtimeEvidence?: { tracking?: import('../tracking/contracts').TrackingEvidence; consoleCoverage?: import('../console-evidence').ConsoleCoverage;
+  runtimeEvidence?: { renderedCopy?: import('../browser/rendered-copy').RenderedCopy | null; tracking?: import('../tracking/contracts').TrackingEvidence; consoleCoverage?: import('../console-evidence').ConsoleCoverage;
+    head?: import('./head-metadata').HeadMetadataObservation;
+    publicDocument?: import('../search/contracts').PublicDocument;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
     allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
-  const purpose = detectPagePurpose(metadata, url)
+  const purpose: PageCheckContext['purpose'] = metadata ? detectPagePurpose(metadata, url) : { purpose: 'unknown', reasons: ['Page metadata is unavailable'] }
   const results = await Promise.all(selected.map(async (check, index) => {
     const assertions: CheckAssertion[] = []
     const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
+      head: runtimeEvidence?.head,
       scope: {}, deadline: runtimeEvidence?.deadline, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
-      accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, renderedScope: runtimeEvidence?.renderedScope, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => {
+      accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
+      publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => {
         const definition = check.definition.assertions[assertion.key]
         if (!runtimeEvidence?.allowedCheckIds || definition && (definition.area === runtimeEvidence.area ||
           definition.verifies.some(id => runtimeEvidence.allowedCheckIds!.includes(id)))) assertions.push(assertion)
@@ -62,14 +67,16 @@ export async function runAllChecks(
         if (!input.scope.complete) input.scope.limitation = SECURITY_HEADER_LIMITATION
       }
       const scoped = scopeRenderedPageEvidence({ module: check.id, flags, assertions,
-        desktop: runtimeEvidence?.renderedScope, mobile: captureMetrics?.loadingObservation?.scope })
+        desktop: check.id === 'metadata' ? runtimeEvidence?.head?.scope ?? runtimeEvidence?.renderedScope : runtimeEvidence?.renderedScope,
+        mobile: captureMetrics?.loadingObservation?.scope })
       flags = scoped.flags
       assertions.splice(0, assertions.length, ...scoped.assertions)
-      if (assertions.some(assertion => assertion.complete === false && assertion.disposition !== 'observed')) {
+      const summary = summarizeCheckAssertions({ passed: flags.length === 0, complete: input.scope.complete, assertions })
+      if (summary.complete === false) {
         input.scope.complete = false
         input.scope.limitation ??= 'A required observation could not be completed. Missing evidence does not establish a passing result.'
       }
-      return { flags, execution: { module: check.id, passed: flags.length === 0 && input.scope.complete !== false, ...input.scope,
+      return { flags, execution: { module: check.id, ...input.scope, ...summary,
         applicable: pageCheckApplicable(check.definition, input), assertions } }
     } catch (error) {
       logger.error(`Check module "${check.id}" failed`, error)

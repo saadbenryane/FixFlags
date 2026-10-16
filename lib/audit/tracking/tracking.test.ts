@@ -3,13 +3,83 @@ import { classifyTrackingEndpoint } from './endpoints'
 import { trackingEvidenceSchema, type TrackingRequest } from './contracts'
 import { runTrackingChecks, trackingContext } from '../checks/tracking'
 import { parseMetadataFromHtml } from '../metadata'
+import { trackingRequestKey, TRACKING_VERIFICATION_RULE } from './identity'
+import { captureObservationKey } from '../browser/observation-scope'
+import { scopedAssertionForTarget } from '../checks/verification'
+import { checkReceiptSchema } from '../checks/receipt'
 
 const meta = parseMetadataFromHtml('<script src="https://www.googletagmanager.com/gtag/js?id=G-PRIVATE"></script>', 'https://example.com/')
 const request: TrackingRequest = { provider: 'google-analytics', role: 'library', hostname: 'www.googletagmanager.com', endpoint: '/gtag/js',
   method: 'GET', phase: 'page_load', state: 'completed', status: 200, reason: null, atMs: 10 }
 const evidence = (requests: TrackingRequest[], truncated = false) => trackingEvidenceSchema.parse({ version: 1, phase: 'page_load', requests, truncated, durationMs: 100, consentInteraction: 'none' })
+const pageUrl = 'https://example.com/'
+const capture = { pageUrl, finalUrl: pageUrl, profile: 'desktop-fixture', access: 'public' }
+function observed(urls: Array<[string, number]>, captureKey = captureObservationKey(capture), method: TrackingRequest['method'] = 'GET') {
+  const requests = urls.map(([url, status]) => ({ ...request, ...classifyTrackingEndpoint(url, 'script', pageUrl)!,
+    method, requestKey: trackingRequestKey(url, method), status }))
+  const checked = runTrackingChecks(meta, { ...evidence(requests), captureKey }, pageUrl)
+  const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'measurement', pageUrl,
+    applicable: true, passed: checked.flags.length === 0 && checked.complete, complete: checked.complete, assertions: checked.assertions,
+    execution: { auditId: 'after', taskId: 'library', checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() } })
+  return { ...checked, receipt }
+}
 
 describe('runtime Tracking assessment', () => {
+  it('requires every original library request while keeping project keys and query values private', () => {
+    const urls = ['https://cdn.segment.com/analytics.js/v1/PRIVATE_FIRST/analytics.min.js',
+      'https://cdn.segment.com/analytics.js/v1/PRIVATE_SECOND/analytics.min.js']
+    const before = observed(urls.map(url => [url, 404]))
+    expect(before.flags).toHaveLength(1)
+    expect(before.flags[0].evidenceTargets).toHaveLength(2)
+    expect(before.flags[0].verificationRule).toBe(TRACKING_VERIFICATION_RULE)
+    const compare = (after: ReturnType<typeof observed>) => scopedAssertionForTarget({ receipt: after.receipt,
+      checkId: 'tracking-library-http-error', flag: before.flags[0] })
+    expect(compare(observed([[urls[0], 200]]))).toBeUndefined()
+    expect(compare(observed([[urls[0], 200], [urls[1], 404]]))?.assertion.passed).toBe(false)
+    expect(compare(observed(urls.map(url => [url, 200])))?.assertion.passed).toBe(true)
+    expect(JSON.stringify(before)).not.toContain('PRIVATE_')
+  })
+
+  it.each([
+    ['https://www.googletagmanager.com/gtag/js?id=PRIVATE_CHANGED', 'GET'],
+    ['http://www.googletagmanager.com/gtag/js?id=PRIVATE_ORIGINAL', 'GET'],
+    ['https://www.googletagmanager.com:8443/gtag/js?id=PRIVATE_ORIGINAL', 'GET'],
+    ['https://www.googletagmanager.com/gtag/js?id=PRIVATE_ORIGINAL', 'POST'],
+  ] as const)('does not substitute a different URL or method: %s %s', (url, method) => {
+    const before = observed([['https://www.googletagmanager.com/gtag/js?id=PRIVATE_ORIGINAL', 404]])
+    const after = observed([[url, 200]], undefined, method)
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'tracking-library-http-error', flag: before.flags[0] })).toBeUndefined()
+    expect(JSON.stringify([before, after])).not.toContain('PRIVATE_')
+  })
+
+  it.each([{ profile: 'mobile-fixture' }, { access: 'credentialed:changed' }, { finalUrl: pageUrl + 'changed' },
+    { pageUrl: pageUrl + '?variant=other' }])('does not certify repair under changed capture conditions %o', conditions => {
+    const url = 'https://www.googletagmanager.com/gtag/js?id=PRIVATE_ORIGINAL'
+    const before = observed([[url, 404]])
+    const after = observed([[url, 200]], captureObservationKey({ ...capture, ...conditions }))
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'tracking-library-http-error', flag: before.flags[0] })).toBeUndefined()
+  })
+
+  it('retains historical facts without borrowing newly captured request identity', () => {
+    const before = runTrackingChecks(meta, evidence([{ ...request, status: 404 }]), pageUrl)
+    const after = observed([['https://www.googletagmanager.com/gtag/js', 200]])
+    expect(before.flags[0].evidenceTargets?.[0].context).not.toContain(':request:v2:')
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'tracking-library-http-error', flag: before.flags[0] })).toBeUndefined()
+    expect(trackingRequestKey('https://example.com/script.js#ignored', 'get')).toBe(trackingRequestKey('https://example.com/script.js', 'GET'))
+  })
+  it('retains runtime failures when whole-document markup is unavailable without inventing markup absence', () => {
+    const result = runTrackingChecks(null, evidence([{ ...request, status: 503 }]), 'https://example.com/')
+    expect(result.flags.map(flag => flag.checkId)).toEqual(['tracking-library-http-error'])
+    expect(result.assertions.find(assertion => assertion.key === 'analytics-markup')).toMatchObject({ complete: false, passed: false })
+    expect(result.assertions.find(assertion => assertion.key === 'tracking-library')).toMatchObject({ complete: true, passed: false })
+    expect(result.complete).toBe(false)
+    const action = runTrackingChecks(null, { ...evidence([{ ...request, status: 503 }]), phase: 'public_action' }, 'https://example.com/')
+    expect(action.flags.map(flag => flag.checkId)).toEqual(['tracking-library-http-error'])
+    expect(action.complete).toBe(true)
+    expect(action.assertions.some(assertion => assertion.key === 'analytics-markup')).toBe(false)
+    expect(runTrackingChecks(null, evidence([]), 'https://example.com/').flags).toEqual([])
+  })
+
   it('distinguishes library transfer, event initiation, suppressed delivery and unknown provider ingestion', () => {
     const event: TrackingRequest = { ...request, hostname: 'www.google-analytics.com', endpoint: '/g/collect', role: 'event', method: 'POST', status: null, state: 'suppressed', reason: 'scanner_suppressed' }
     const result = runTrackingChecks(meta, evidence([request, event]), 'https://example.com/')

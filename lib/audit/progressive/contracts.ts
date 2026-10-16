@@ -5,8 +5,13 @@ export const TASK_RECOVERY_MS = 30 * 60_000
 export const MAX_TASKS_PER_AUDIT = 1200
 export const TASK_CRASH_LIMIT = 3
 export const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024
-export const taskKindSchema = z.enum(['http', 'search-resources', 'browser', 'motion', 'overlays', 'keyboard', 'captures', 'pagespeed', 'check', 'search', 'google', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'automatic-accounts', 'judge', 'discovery', 'cross-page', 'finalize'])
+export const taskKindSchema = z.enum(['http', 'search-resources', 'browser', 'motion', 'overlays', 'keyboard', 'captures', 'pagespeed', 'check', 'search', 'google', 'flow', 'slow-replay', 'journeys', 'bindings', 'fixture-setup', 'automatic-accounts', 'judge', 'prescription', 'discovery', 'cross-page', 'finalize'])
 export type TaskKind = z.infer<typeof taskKindSchema>
+export const COMPLETION_TASK_KINDS = ['finalize', 'prescription'] as const
+export function runsAfterCompletion(kind: string | null) { return COMPLETION_TASK_KINDS.some(value => value === kind) }
+/** Enrichment execution cannot change a website check's progress or health. */
+export const analysisTaskWhere = { targetKey: { startsWith: 'task:' },
+  OR: [{ workKind: null }, { workKind: { not: 'prescription' } }] }
 export const taskInputSchema = z.object({
   pageUrl: z.string().url(), position: z.number().int().nonnegative().max(23),
   primary: z.boolean(), role: z.string().min(1).max(80), module: z.string().min(1).max(120).optional(),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { publicLinkObservations, publicLinkUrls } from './public-links'
+import { capturedPageLinks, publicLinkObservations, publicLinkUrls } from './public-links'
 import { parseMetadataFromHtml } from '../metadata'
 import type { OpenCheckResult } from '../open-check'
 import { destinationContext } from './destination-evidence'
@@ -39,5 +39,38 @@ describe('public link observations', () => {
   it('respects the published document base for relative navigation', () => {
     const metadata = parseMetadataFromHtml('<base href="/docs/"><a href="next">Details</a>', page)
     expect(publicLinkUrls(page, metadata)).toEqual([page + 'docs/next'])
+  })
+  it('uses the bounded native inventory independently of whole-page metadata', () => {
+    const inventory = capturedPageLinks({ renderedSearchSnapshot: { documentBaseUrl: page + 'docs/', sections: {
+      links: { html: '<a href="next?a=1&amp;b=2">Plans &amp; prices</a>', complete: true, observed: 1, limit: 2000, reason: null },
+    } } }, null)
+    expect(inventory).toMatchObject({ complete: true, links: [{ href: 'next?a=1&b=2', text: 'Plans & prices' }] })
+    expect(publicLinkUrls(page + 'redirected', inventory!)).toEqual([page + 'docs/next?a=1&b=2'])
+  })
+  it('keeps positive links and their GET proofs when the native inventory is incomplete', () => {
+    const inventory = capturedPageLinks({ renderedSearchSnapshot: { documentBaseUrl: page, sections: {
+      links: { html: '<a href="/ready">Details</a>', complete: false, observed: 2001, limit: 2000, reason: 'section_limit' },
+    } } }, null)!
+    const result = publicLinkObservations(page, publicLinkUrls(page, inventory), [response(page + 'ready')], inventory.complete)
+    expect(result).toMatchObject({ complete: false, flags: [], assertions: [{ complete: true, passed: true }] })
+    expect(result.limitation).toContain('inventory is incomplete')
+  })
+  it('retains the complete parsed inventory when the same native capture exhausts its link section', () => {
+    const metadata = parseMetadataFromHtml('<a href="ready">Details</a><a href="more">More</a>', page + 'docs/')
+    const inventory = capturedPageLinks({ renderedSearchSnapshot: { documentBaseUrl: page + 'docs/', sections: {
+      links: { html: '<a href="ready">Details</a>', complete: false, observed: 2, limit: 2000, reason: 'section_limit' },
+    } } }, metadata)!
+    expect(inventory.complete).toBe(true)
+    expect(publicLinkUrls(page, inventory)).toEqual([page + 'docs/ready', page + 'docs/more'])
+  })
+  it('does not invent a base for historical native sections or replace observed absence with fallback links', () => {
+    const links = { html: '', complete: true, observed: 0, limit: 2000, reason: null }
+    const legacy = parseMetadataFromHtml('<a href="next">Details</a>', page + 'docs/')
+    expect(capturedPageLinks({ renderedSearchSnapshot: { sections: { links } } }, null)).toBeNull()
+    expect(capturedPageLinks({ renderedSearchSnapshot: { sections: { links } } }, legacy)).toMatchObject({ links: legacy.links, complete: true })
+    expect(capturedPageLinks({ renderedSearchSnapshot: { documentBaseUrl: page, sections: { links } } }, legacy))
+      .toMatchObject({ links: [], complete: true })
+    expect(capturedPageLinks({ collectionRestrictions: ['request_blocked'], renderedSearchSnapshot: { documentBaseUrl: page, sections: { links } } }, legacy))
+      .toMatchObject({ links: [], complete: false })
   })
 })

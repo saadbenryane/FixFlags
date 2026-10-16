@@ -11,11 +11,12 @@ import {
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { canonicalProductHost } from '@/lib/audit/product-intelligence'
+import { normalizeAuditUrl } from '@/lib/audit/url'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const createSchema = z.object({
-  name: z.string().min(1).max(120),
+  name: z.string().trim().min(1).max(120),
   url: z.string().url(),
 })
 
@@ -28,7 +29,7 @@ export async function GET() {
     await recordRateLimit({ scope: 'api-projects', identifier: clientId, limit: 30, windowSeconds: 60 })
 
   const projects = await prisma.project.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, deletedAt: null },
     orderBy: { updatedAt: 'desc' },
     include: {
       _count: { select: { audits: true } },
@@ -65,8 +66,10 @@ export async function POST(req: NextRequest) {
       return apiError('Enter a project name and valid public URL', 400, { code: 'INVALID_PROJECT' })
   }
 
-  const canonicalHost = canonicalProductHost(parsed.data.url)
-  const canonicalUrl = new URL(parsed.data.url).origin
+  const target = normalizeAuditUrl(parsed.data.url)
+  if (!target.ok) return apiError('Enter a project name and valid public URL', 400, { code: 'INVALID_PROJECT' })
+  const canonicalHost = canonicalProductHost(target.url)
+  const canonicalUrl = new URL(target.url).origin
   const project = await productTransaction(async (tx) => {
     const existing = await tx.project.findUnique({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
@@ -90,8 +93,9 @@ export async function POST(req: NextRequest) {
         deletedAt: null,
       },
     })
-    await ensureDefaultMonitoring(tx, saved.id, user.id)
-    return saved
+    if (existing?.deletedAt) await ensureDefaultMonitoring(tx, saved.id, user.id, undefined, { restored: true })
+    else await ensureDefaultMonitoring(tx, saved.id, user.id)
+    return tx.project.findUniqueOrThrow({ where: { id: saved.id } })
   })
 
     return NextResponse.json(project, { status: 201 })

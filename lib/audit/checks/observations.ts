@@ -2,15 +2,16 @@ import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
 import type { CheckAssertion } from './assertion'
 import { securityObservations } from './security'
-import { LEGACY_IMAGE_AUDITS, PERFORMANCE_RESOURCE_THRESHOLDS, type ResourceAudit } from '../pagespeed-opportunities'
+import { RESOURCE_CHECK_POLICIES, resourceAuditContext, type ResourceAudit } from '../pagespeed-opportunities'
 import { securityHeaderObservations } from './security-headers'
 import { publicTrustObservations } from './trust'
 import { consoleObservations } from './console'
 import type { ConsoleCoverage } from '../console-evidence'
 import { tapTargetObservations } from '../pagespeed-tap-targets'
+import { scopePerformanceAssertions } from '../performance-measurement'
 
 function recordResourceObservation(input: { key: string; name: string; ids: readonly ResourceAudit['id'][];
-  data: PageSpeedResult | null; threshold: number; unit: ResourceAudit['unit'] }): CheckAssertion {
+  url: string; data: PageSpeedResult | null; threshold: number; unit: ResourceAudit['unit'] }): CheckAssertion {
   const audits = input.ids.map(id => input.data?.resourceAudits?.find(audit => audit.id === id))
   const measured = audits.filter((audit): audit is ResourceAudit & { savings: number; score: number } =>
     Boolean(audit && audit.unit === input.unit && audit.score !== null && audit.savings !== null))
@@ -19,25 +20,22 @@ function recordResourceObservation(input: { key: string; name: string; ids: read
   // audit is unavailable; recovery needs every relevant audit to be measured.
   const failed = measured.some(audit => audit.score < 1 && Math.round(audit.savings) > input.threshold)
   const complete = failed || measured.length === input.ids.length
+  const measurements = measured.map(audit => ({ context: resourceAuditContext(input.url, input.data!.strategy, audit, input.threshold),
+    passed: !(audit.score < 1 && Math.round(audit.savings) > input.threshold),
+    observed: `${audit.providerAuditId}: score ${audit.score}, ${Math.round(audit.savings)} ${audit.unit} potential savings` }))
   return { key: input.key, name: input.name,
     expected: `No failed provider audit exceeds ${input.threshold} ${input.unit} of potential savings`,
-    observed: measured.length ? measured.map(audit => `${audit.providerAuditId}: score ${audit.score}, ${Math.round(audit.savings)} ${audit.unit} potential savings`).join('; ') +
+    observed: measured.length ? measurements.map(measurement => measurement.observed).join('; ') +
       (measured.length < input.ids.length ? '. Other required resource audits are unavailable.' : '') : 'Required resource audit measurements are unavailable.',
-    passed: complete && !failed, complete }
+    passed: complete && !failed, complete, measurements,
+    targets: measured.map(audit => ({ selector: 'lighthouse:' + audit.providerAuditId, label: audit.providerAuditId,
+      context: resourceAuditContext(input.url, input.data!.strategy, audit, input.threshold) })) }
 }
 
-function recordResourceObservations(data: PageSpeedResult | null): CheckAssertion[] {
+function recordResourceObservations(data: PageSpeedResult | null, url: string): CheckAssertion[] {
   const currentImages = data?.resourceAudits?.some(audit => audit.providerAuditId === 'image-delivery-insight')
-  return [
-    recordResourceObservation({ key: 'render-blocking', name: 'Render-blocking resources', ids: ['render-blocking-resources'], data,
-      threshold: PERFORMANCE_RESOURCE_THRESHOLDS.renderBlocking, unit: 'ms' }),
-    recordResourceObservation({ key: 'unused-javascript', name: 'Unused JavaScript', ids: ['unused-javascript'], data,
-      threshold: PERFORMANCE_RESOURCE_THRESHOLDS.unusedJavascript, unit: 'bytes' }),
-    recordResourceObservation({ key: 'unused-css', name: 'Unused CSS', ids: ['unused-css-rules'], data,
-      threshold: PERFORMANCE_RESOURCE_THRESHOLDS.unusedCss, unit: 'bytes' }),
-    recordResourceObservation({ key: 'image-optimization', name: 'Image delivery', ids: currentImages ? ['uses-optimized-images'] : LEGACY_IMAGE_AUDITS,
-      data, threshold: PERFORMANCE_RESOURCE_THRESHOLDS.images, unit: 'bytes' }),
-  ]
+  return Object.values(RESOURCE_CHECK_POLICIES).map(policy => recordResourceObservation({ ...policy, data, url,
+    ids: policy.key === 'image-optimization' && currentImages ? ['uses-optimized-images'] : policy.ids }))
 }
 
 export function recordInpObservation(mobile: PageSpeedResult): CheckAssertion {
@@ -50,7 +48,7 @@ export function recordInpObservation(mobile: PageSpeedResult): CheckAssertion {
 
 /** Positive observations come from inspected inputs, never from missing Flags. */
 export function recordCheckObservations(module: string, input: {
-  url: string; metadata: PageMetadata; headers?: Record<string, string> | null;
+  url: string; metadata: PageMetadata | null; headers?: Record<string, string> | null;
   desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
   consoleCoverage?: ConsoleCoverage;
 }): CheckAssertion[] {
@@ -58,10 +56,14 @@ export function recordCheckObservations(module: string, input: {
   const record = (key: string, name: string, expected: string, observed: string, passed: boolean) => {
     result.push({ key, name, expected, observed, passed, complete: true })
   }
-  if (module === 'trust') result.push(...Object.values(publicTrustObservations(input.metadata)))
+  if (module === 'trust') {
+    if (!input.metadata) throw new Error('Public trust metadata is unavailable')
+    result.push(...Object.values(publicTrustObservations(input.metadata)))
+  }
   if (module === 'console') result.push(...consoleObservations(input.consoleCoverage))
   if (module === 'security') result.push(...securityObservations(input.url, input.metadata))
   if (module === 'measurement') {
+    if (!input.metadata) throw new Error('Analytics markup is unavailable')
     record('analytics-markup', 'Analytics configuration in HTML', 'An analytics snippet is present in the captured HTML',
       input.metadata.hasAnalytics ? 'Analytics snippet detected' : 'No snippet detected; consent-delayed or proxied analytics may not appear here', input.metadata.hasAnalytics)
   }
@@ -84,8 +86,9 @@ export function recordCheckObservations(module: string, input: {
         observed: measured ? `${metric.value}${metric.unit} in the recorded PageSpeed run` : `No valid ${metric.key.toUpperCase()} measurement is available.`,
         complete: measured, passed: measured && metric.value! <= metric.threshold })
     }
-    result.push(...recordResourceObservations(data ?? null))
+    result.push(...recordResourceObservations(data ?? null, input.url))
     if (module === 'mobile') result.push(...tapTargetObservations(data?.tapTargetAudits))
+    if (data) return scopePerformanceAssertions(data, input.url, result)
   }
   return result
 }

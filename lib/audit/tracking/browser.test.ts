@@ -8,6 +8,8 @@ import { attachNetworkMonitor } from '../browser/network-monitor'
 import { classifyTrackingEndpoint } from './endpoints'
 import { runTrackingChecks } from '../checks/tracking'
 import { parseMetadataFromHtml } from '../metadata'
+import { scopedAssertionForTarget } from '../checks/verification'
+import { checkReceiptSchema } from '../checks/receipt'
 
 const runBrowser = process.env.TRACKING_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 runBrowser('shared Tracking collector in Chromium', () => {
@@ -62,7 +64,8 @@ runBrowser('shared Tracking collector in Chromium', () => {
     session.disposeNetwork()
   })
   it('reuses the same monitor for a public interaction and keeps it separate from page loading', async () => {
-    const session = await fixture('<button id="action" onclick="navigator.sendBeacon(\'https://www.google-analytics.com/g/collect?cid=PRIVATE\',\'PRIVATE_PAYLOAD\')">Show details</button>')
+    const session = await fixture('<button id="action" onclick="navigator.sendBeacon(\'https://www.google-analytics.com/g/collect?cid=PRIVATE\',\'PRIVATE_PAYLOAD\');location.hash=\'details\'">Show details</button>')
+    const loadingCapture = session.tracking('page_load').captureKey
     session.setTrackingPhase('public_action')
     await page.locator('#action').click()
     await vi.waitFor(() => expect(session.tracking('public_action').requests).toEqual(expect.arrayContaining([
@@ -70,6 +73,8 @@ runBrowser('shared Tracking collector in Chromium', () => {
     ])))
     expect(session.tracking('page_load').requests).toEqual([])
     expect(session.tracking('public_action').requests).toMatchObject([{ phase: 'public_action', role: 'event', state: 'suppressed' }])
+    expect(session.tracking('page_load').captureKey).toBe(loadingCapture)
+    expect(session.tracking('public_action').captureKey).not.toBe(loadingCapture)
     expect(session.safetyRestrictions).toEqual([])
     session.disposeNetwork()
   })
@@ -97,5 +102,25 @@ runBrowser('shared Tracking collector in Chromium', () => {
     expect(result.assertions.find(item => item.key === 'tracking-provider-recording')).toMatchObject({ complete: false })
     expect(JSON.stringify(monitor.tracking())).not.toContain('PRIVATE')
     monitor.dispose()
+  })
+
+  it('keeps a changed library project distinct from repair of the original request', async () => {
+    async function observe(project: string, status: number) {
+      const session = await fixture('<script src="https://cdn.segment.com/analytics.js/v1/' + project + '/analytics.min.js"></script>', status)
+      await vi.waitFor(() => expect(session.tracking().requests.find(request => request.role === 'library' && request.status === status)?.state)
+        .toMatch(/^(completed|failed)$/))
+      const result = runTrackingChecks(parseMetadataFromHtml(await page.content(), page.url()), session.tracking(), page.url())
+      const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: page.url(),
+        applicable: true, passed: result.flags.length === 0 && result.complete, complete: result.complete, assertions: result.assertions,
+        execution: { auditId: 'after', taskId: 'library', checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() } })
+      session.disposeNetwork(); await page.context().close()
+      return { ...result, receipt }
+    }
+    const before = await observe('PRIVATE_ORIGINAL', 404)
+    const changed = await observe('PRIVATE_REPLACEMENT', 200)
+    expect(scopedAssertionForTarget({ receipt: changed.receipt, checkId: 'tracking-library-http-error', flag: before.flags[0] })).toBeUndefined()
+    const repaired = await observe('PRIVATE_ORIGINAL', 200)
+    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: 'tracking-library-http-error', flag: before.flags[0] })?.assertion.passed).toBe(true)
+    expect(JSON.stringify([before.flags, before.receipt, changed.receipt, repaired.receipt])).not.toContain('PRIVATE_')
   })
 })

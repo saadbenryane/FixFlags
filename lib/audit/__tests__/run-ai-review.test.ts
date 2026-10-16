@@ -17,6 +17,11 @@ const mocks = vi.hoisted(() => ({
   runPrescriptionWithRetry: vi.fn(),
   loadTechnologyProfile: vi.fn(),
   technologyNamesForPrompt: vi.fn(),
+  executionOwner: vi.fn(),
+}))
+
+vi.mock('@/lib/audit/execution-ownership', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/audit/execution-ownership')>(), currentExecutionOwnership: mocks.executionOwner,
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -105,6 +110,7 @@ function resetMocks(): void {
     fn.mockReset()
   }
   mocks.auditFindUnique.mockResolvedValue({ ...AUDIT })
+  mocks.executionOwner.mockReturnValue({ auditId: 'a1', taskId: 'prescription-task', token: 'unit-fixture', generation: 1 })
   mocks.auditUpdate.mockResolvedValue({})
   mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
   mocks.userFindUnique.mockResolvedValue({ ...USER })
@@ -128,6 +134,14 @@ describe('runAiReview', () => {
   it('throws when the audit is missing', async () => {
     mocks.auditFindUnique.mockResolvedValue(null)
     await assert.rejects(() => runAiReview('a1'), /not found/)
+  })
+
+  it('refuses execution outside its owning task', async () => {
+    for (const owner of [undefined, { auditId: 'other', taskId: 'foreign-task' }, { auditId: 'a1' }]) {
+      mocks.executionOwner.mockReturnValue(owner)
+      await expect(runAiReview('a1')).rejects.toThrow('requires its execution task')
+    }
+    expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
   })
 
   it('returns early when AI review already ran', async () => {
@@ -173,6 +187,23 @@ describe('runAiReview', () => {
     await assert.rejects(() => runAiReview('a1'), /metadata missing/)
   })
 
+  it('uses observed prose for prescription without replacing stored HTML declarations', async () => {
+    const htmlMetadata = { title: 'Recorded page', pageText: 'Lorem ipsum hidden copy', h1s: ['Your Company Name'], h2s: [],
+      renderedCopy: { version: 1, pageUrl: AUDIT.url, pageText: 'Plan useful projects for your team.', h1s: ['Plan useful team projects'],
+        h2s: [], complete: true, textTruncated: false } }
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata })
+    await runAiReview('a1')
+    expect(mocks.runPrescriptionWithRetry.mock.calls[0][0].metadata).toMatchObject({ pageText: htmlMetadata.renderedCopy.pageText,
+      h1s: htmlMetadata.renderedCopy.h1s })
+    expect(htmlMetadata.pageText).toBe('Lorem ipsum hidden copy')
+  })
+
+  it('does not send unobserved rendered prose to prescription', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata: { title: 'Recorded page', renderedCopy: null } })
+    await expect(runAiReview('a1')).rejects.toThrow('Rendered page copy could not be observed')
+    expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
+  })
+
   it('throws when the verdict is missing', async () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, verdict: null })
     await assert.rejects(() => runAiReview('a1'), /verdict missing/)
@@ -187,7 +218,7 @@ describe('runAiReview', () => {
     await runAiReview('a1')
     expect(mocks.auditUpdate).toHaveBeenCalledWith({
       where: { id: 'a1' },
-      data: { status: 'JUDGING', progress: expect.any(Number), includeAi: true },
+      data: { includeAi: true },
     })
     expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output)
     expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ auditId: 'a1' }))

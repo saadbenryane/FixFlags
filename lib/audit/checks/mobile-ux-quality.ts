@@ -1,5 +1,4 @@
 import type { CaptureMetrics } from '../capture-metrics'
-import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { recordObservation, type CheckRecorder } from './assertion'
@@ -7,12 +6,13 @@ import { loadingDelayObservation, mobileLoadingDelayFlag } from './loading-evide
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 export function runMobileUXQualityChecks(
-  meta: PageMetadata,
   captureMetrics: CaptureMetrics | null,
-  purpose: PagePurpose = 'marketing',
+  purpose: PagePurpose | null = 'marketing',
   record?: CheckRecorder,
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  const conversion = purpose !== null && needsFirstStep(purpose)
+
 
   // Missing viewport meta tag is already covered by metadata-checks.ts's
   // 'viewport-missing' (same condition, same severity), so don't double-flag it here.
@@ -23,12 +23,22 @@ export function runMobileUXQualityChecks(
     return findings
   }
 
+  if (purpose === null) for (const [key, name] of [['mobile-cta-position', 'Mobile action position'], ['mobile-cta-label', 'Mobile action label']])
+    recordObservation(record, key, name, 'The page has an applicable conversion purpose', 'Page purpose is unavailable.', undefined, true)
+
   const fontSamples = captureMetrics.inputFontSamples
   const fontsComplete = Array.isArray(fontSamples) && captureMetrics.inputFontsComplete === true
-  record?.({ key: 'mobile-input-fonts', name: SITE_ACTION_COPY.mobileInputs.name, expected: SITE_ACTION_COPY.mobileInputs.expected,
-    observed: fontsComplete ? SITE_ACTION_COPY.mobileInputs.observed(captureMetrics.inputsBelow16px.length) : SITE_ACTION_COPY.mobileInputs.limited,
-    passed: fontsComplete && captureMetrics.inputsBelow16px.length === 0, complete: fontsComplete,
-    targets: fontSamples?.map(input => ({ selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference })) })
+  const smallInputs = new Set(captureMetrics.inputsBelow16px.map(input => input.selector))
+  const groups = fontSamples?.length ? [true, false].flatMap(small => [true, false].flatMap(identified => {
+    const inputs = fontSamples.filter(input => smallInputs.has(input.selector) === small &&
+      /^mobile-input:[a-f0-9]{64}$/.test(input.context ?? '') === identified)
+    return inputs.length ? [{ inputs, small, context: inputs[0].context ?? 'mobile-input:unknown' }] : []
+  })) : [{ inputs: [], small: captureMetrics.inputsBelow16px.length > 0, context: undefined }]
+  for (const group of groups) record?.({ key: 'mobile-input-fonts', name: SITE_ACTION_COPY.mobileInputs.name,
+    expected: SITE_ACTION_COPY.mobileInputs.expected,
+    observed: fontsComplete ? SITE_ACTION_COPY.mobileInputs.observed(group.small ? group.inputs.length : 0) : SITE_ACTION_COPY.mobileInputs.limited,
+    passed: fontsComplete && !group.small, complete: fontsComplete, context: group.context,
+    targets: group.inputs.map(input => ({ selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference, context: input.context })) })
 
   if (captureMetrics.inputsBelow16px.length > 0) {
     findings.push({
@@ -39,7 +49,8 @@ export function runMobileUXQualityChecks(
       problem: SITE_ACTION_COPY.mobileInputs.problem(captureMetrics.inputsBelow16px.length),
       evidence: SITE_ACTION_COPY.mobileInputs.evidence(captureMetrics.inputsBelow16px.slice(0, 3).map(i => `${i.selector} (${i.fontSize}px)`).join(', ')),
       evidenceTargets: captureMetrics.inputsBelow16px.slice(0, 200).map(input => ({ kind: 'element', source: 'measured', device: 'mobile',
-        selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference })),
+        selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference,
+        context: fontSamples?.find(sample => sample.selector === input.selector)?.context ?? 'mobile-input:unknown' })),
       fix: SITE_ACTION_COPY.mobileInputs.fix(captureMetrics.inputsBelow16px.slice(0, 3).map(i => i.selector).join(', ')),
       confidence: 0.95,
       source: 'DETERMINISTIC',
@@ -50,7 +61,7 @@ export function runMobileUXQualityChecks(
   const viewportHeight = captureMetrics.mobileViewportHeight
   const measuredPosition = primaryCtaTop !== null && Number.isFinite(primaryCtaTop) && viewportHeight > 0 &&
     primaryCtaTop >= 0 && primaryCtaTop <= captureMetrics.mobileDocumentHeight
-  if (needsFirstStep(purpose)) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
+  if (conversion) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
     'The sampled primary action is below the top 20 percent of the initial mobile viewport',
     measuredPosition ? `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.` : 'No usable primary action position was measured.',
     measuredPosition ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight >= 0.2 : undefined, true)
@@ -59,7 +70,7 @@ export function runMobileUXQualityChecks(
   else recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
     'No mobile loading window was recorded.', undefined, true)
 
-  if (needsFirstStep(purpose) && primaryCtaTop !== null && measuredPosition) {
+  if (conversion && primaryCtaTop !== null && measuredPosition) {
     // The metric is an absolute document position; the thumb-zone ratio is
     // about the CTA's position in the initial viewport, so use the
     // viewport-relative top.
@@ -117,7 +128,7 @@ export function runMobileUXQualityChecks(
     }
   }
 
-  if (needsFirstStep(purpose) && (!captureMetrics.mobilePrimaryCtaText || !measuredPosition))
+  if (conversion && (!captureMetrics.mobilePrimaryCtaText || !measuredPosition))
     recordObservation(record, 'mobile-cta-label', 'Mobile action label', 'A measured primary action has a label that can be inspected',
       'A usable primary action label and position were not recorded.', undefined, true)
 

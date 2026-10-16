@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '../types'
 import { currentIncidentFlags, incidentAffectedPaths } from '../flag-resolution'
+import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
+import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
 const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { improvement: { findMany: db.improvements }, flag: { findMany: db.flags },
@@ -10,11 +13,12 @@ import { loadIncidentRecoveryProofs } from '../application/incident-proofs'
 
 const site = { kind: 'project', projectId: 'site-1' } as SiteRecord
 const recoveredAt = new Date('2026-10-12T12:00:00Z')
+const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture('https://site.test/') } })
 function captured(overrides: Record<string, unknown> = {}) {
   return { id: 'flag-1', auditId: 'before', checkId: 'lcp-poor', rubric: 'PERFORMANCE', severity: 'IMPORTANT', confidence: 1,
     problem: 'Page title is missing', evidence: 'The inspected document has no title.', whyItMatters: 'The page cannot be named.',
     fix: 'Add a descriptive title.', pageUrl: 'https://site.test/', status: 'FIXED', resolvedInId: 'recovery', fingerprint: 'title',
-    createdAt: new Date('2026-10-01T12:00:00Z'), ...overrides }
+    createdAt: new Date('2026-10-01T12:00:00Z'), ...runPerformanceChecks(measurement, null, 'https://site.test/')[0], ...overrides }
 }
 function recovery(overrides: Record<string, unknown> = {}) {
   return { id: 'recovery', projectId: site.projectId, completedAt: recoveredAt,
@@ -22,7 +26,8 @@ function recovery(overrides: Record<string, unknown> = {}) {
       checks: { 'lcp-poor': 1 }, outcomes: [], verificationTarget: null },
     verifierExecutions: [{ targetKey: 'module:performance', status: 'COMPLETED', detail: {
       kind: 'site-module-check', version: 1, module: 'performance', pageUrl: 'https://site.test/', applicable: true, passed: true,
-      assertions: [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true }],
+      assertions: scopePerformanceAssertions(measurement, 'https://site.test/',
+        [{ key: 'lcp', name: 'LCP', expected: 'At most 2500ms', observed: '1000ms', passed: true, complete: true }]),
       execution: { auditId: 'recovery', taskId: 'speed', checkVersion: 1, source: 'pagespeed-desktop', collectedAt: recoveredAt.toISOString() },
     } }], ...overrides }
 }

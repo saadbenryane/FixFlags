@@ -1,20 +1,8 @@
 import assert from 'node:assert/strict'
-import { describe, it, vi, beforeEach, expect } from 'vitest'
-
-const { getAuditQueue, addMock } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const addMock = vi.fn(async (...args: unknown[]) => ({ id: 'job-1' }))
-  return {
-    addMock,
-    getAuditQueue: vi.fn(() => ({ add: addMock })),
-  }
-})
-
-vi.mock('@/lib/queue/client', () => ({ getAuditQueue }))
+import { describe, it } from 'vitest'
 
 import { triageDegradedVerdict } from '../triage-verdict'
 import { buildPlaybackSteps } from '../playback-steps'
-import { enqueueAiReview } from '../enqueue-ai-review'
 import type { ActionTimelineEvent } from '../action-timeline'
 
 describe('triageDegradedVerdict', () => {
@@ -36,7 +24,6 @@ describe('triageDegradedVerdict', () => {
     assert.ok(verdict.length > 0)
   })
 })
-
 describe('buildPlaybackSteps', () => {
   function event(overrides: Partial<ActionTimelineEvent> = {}): ActionTimelineEvent {
     return {
@@ -66,28 +53,5 @@ describe('buildPlaybackSteps', () => {
   it('caps playback steps at 12', () => {
     const steps = buildPlaybackSteps(Array.from({ length: 30 }, () => event()))
     assert.equal(steps.length, 12)
-  })
-})
-
-describe('enqueueAiReview', () => {
-  beforeEach(() => {
-    addMock.mockReset()
-    addMock.mockResolvedValue({ id: 'job-1' })
-  })
-
-  it('enqueues an ai-review job for the audit id', async () => {
-    await enqueueAiReview('audit-1')
-    expect(getAuditQueue).toHaveBeenCalled()
-    expect(addMock).toHaveBeenCalledWith(
-      'ai-review',
-      { auditId: 'audit-1' },
-      expect.objectContaining({ jobId: 'ai-review-audit-1', attempts: 2 })
-    )
-  })
-
-  it('passes the delay through to the queue', async () => {
-    await enqueueAiReview('audit-2', 5000)
-    const options = addMock.mock.calls[0]?.[2] as unknown
-    assert.equal((options as { delay: number } | undefined)?.delay, 5000)
   })
 })

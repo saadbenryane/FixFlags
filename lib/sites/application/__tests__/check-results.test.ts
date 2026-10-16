@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '@/lib/sites/types'
-const { findMany, findFirst, transaction } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null), transaction: vi.fn() }))
+const { findMany, findFirst, transaction, queryRaw } = vi.hoisted(() => ({ findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn().mockResolvedValue(null), transaction: vi.fn(), queryRaw: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany, findFirst }, $transaction: transaction } }))
 import { loadSiteCheckResults, loadSiteCheckResultPage, CHECK_RESULT_PAGE_SIZE } from '../check-results'
 
@@ -25,8 +25,8 @@ describe('Site result access and provenance', () => {
     await expect(loadSiteCheckResultPage(site, 'latest', current.nextCursor!, new Map([['security', { id: 'category-2' }]]) as never))
       .rejects.toThrow('Invalid check history cursor')
   })
-  beforeEach(() => { vi.clearAllMocks(); findMany.mockReset().mockResolvedValue([]); findFirst.mockReset().mockResolvedValue(null)
-    transaction.mockImplementation(operation => operation({ auditVerifierExecution: { findMany, findFirst } })) })
+  beforeEach(() => { vi.clearAllMocks(); findMany.mockReset().mockResolvedValue([]); findFirst.mockReset().mockResolvedValue(null); queryRaw.mockReset().mockResolvedValue([])
+    transaction.mockImplementation(operation => operation({ auditVerifierExecution: { findMany, findFirst }, $queryRaw: queryRaw })) })
   it('never reads receipts by host or by a missing provisional identity', async () => {
     await loadSiteCheckResults({ projectId: 'site-1' } as SiteRecord, 'latest')
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -119,6 +119,7 @@ describe('Site result access and provenance', () => {
           name: 'Assertion ' + index, passed: true, expected: 'Present', observed: 'Recorded', context: String(index) })),
       } }
     findMany.mockImplementation(async query => query.where.auditId.in ? [row] : [])
+    queryRaw.mockImplementation(async query => query.sql.includes('NOT IN') || query.values.includes(row.id) ? [] : [row])
     findFirst.mockImplementation(async query => query.where.id === row.id ? { id: row.id } : null)
     const filter = { area: 'search' as const, pageUrl: row.pageUrl }
     const first = await loadSiteCheckResultPage(site, 'latest', undefined, new Map(), filter, true)
@@ -137,6 +138,7 @@ describe('Site result access and provenance', () => {
     const row = { id: 'metadata', auditId: 'latest', targetKey: 'module:metadata', status: 'COMPLETED', detail: {},
       pageUrl: 'https://example.com/', updatedAt: new Date('2026-10-14') }
     findMany.mockResolvedValue([row]); findFirst.mockResolvedValue({ id: row.id })
+    queryRaw.mockImplementation(async query => query.values.includes(row.id) ? [] : [row])
     const page = await loadSiteCheckResultPage({ projectId: 'site' } as SiteRecord, 'latest', undefined,
       new Map([['security', { id: 'category' }]]) as never, {}, true)
     expect(page.results).toHaveLength(1)

@@ -4,6 +4,28 @@ import type { JudgeOutput } from '@/lib/audit/judge-schema'
 import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
 import type { ThemeMatchableFlag } from './flag-types'
 
+type PageScopedFlag = { pageUrl?: string | null; affectedPaths?: string[] }
+
+function normalizedPage(pageUrl: string | null | undefined): string | undefined {
+  if (!pageUrl) return undefined
+  try {
+    const url = new URL(pageUrl)
+    url.hash = ''
+    return url.toString()
+  } catch {
+    return pageUrl
+  }
+}
+
+/** Similar wording is only redundant when it describes the same reviewed page. */
+function sharesPage(left: PageScopedFlag, right: PageScopedFlag, primaryPageUrl?: string): boolean {
+  const leftPages = [left.pageUrl, ...(left.affectedPaths ?? [])].filter((page): page is string => Boolean(page))
+  const rightPages = [right.pageUrl, ...(right.affectedPaths ?? [])].filter((page): page is string => Boolean(page))
+  const scope = (pages: string[]) => (pages.length ? pages : [primaryPageUrl]).map(normalizedPage)
+  const leftScope = new Set(scope(leftPages))
+  return scope(rightPages).some(page => leftScope.has(page))
+}
+
 function normalizedWords(value: string): Set<string> {
   return new Set(
     value
@@ -35,7 +57,7 @@ const DETERMINISTIC_AI_THEMES: Array<{
   {
     checkIds: ['cta-below-fold-mobile', 'no-cta-detected', 'flow-no-cta-found'],
     keywords:
-      /below fold|above fold|hidden below|scroll depth|mobile cta|primary cta|cta not visible|without scrolling|not prominent on mobile|somewhat hidden.*mobile|less accessible.*smaller screens/i,
+      /below fold|above fold|hidden below|scroll depth|cta not visible|without scrolling|not prominent on mobile|somewhat hidden.*mobile|less accessible.*smaller screens|(?:no|missing|absent) (?:mobile |primary )?cta|(?:mobile |primary )?cta (?:is |was )?(?:missing|absent)/i,
     exclusivelyDeterministic: true,
   },
   {
@@ -110,7 +132,8 @@ const DETERMINISTIC_AI_THEMES: Array<{
 
 function matchesDeterministicTheme(
   deterministic: DeterministicFlag[],
-  candidate: ThemeMatchableFlag
+  candidate: ThemeMatchableFlag & PageScopedFlag,
+  primaryPageUrl?: string
 ): boolean {
   const combined = `${candidate.problem} ${candidate.evidence} ${candidate.whyItMatters ?? ''}`
 
@@ -118,7 +141,7 @@ function matchesDeterministicTheme(
     if (!theme.keywords.test(combined)) continue
     if (
       theme.exclusivelyDeterministic ||
-      deterministic.some((flag) => theme.checkIds.includes(flag.checkId))
+      deterministic.some((flag) => theme.checkIds.includes(flag.checkId) && sharesPage(flag, candidate, primaryPageUrl))
     ) {
       return true
     }
@@ -159,19 +182,21 @@ export function flagFingerprint(input: {
 
 export function deduplicateFlags(
   deterministic: DeterministicFlag[],
-  aiFlags: JudgeOutput['newFlags']
+  aiFlags: JudgeOutput['newFlags'],
+  primaryPageUrl?: string
 ): JudgeOutput['newFlags'] {
   const accepted: JudgeOutput['newFlags'] = []
 
   for (const candidate of aiFlags) {
     const duplicatesDeterministic =
-      matchesDeterministicTheme(deterministic, candidate) ||
-      deterministic.some((flag) => isNearDuplicateOfDeterministic(flag, candidate))
+      matchesDeterministicTheme(deterministic, candidate, primaryPageUrl) ||
+      deterministic.some((flag) => sharesPage(flag, candidate, primaryPageUrl) && isNearDuplicateOfDeterministic(flag, candidate))
 
     if (duplicatesDeterministic) continue
 
     const duplicatesAi = accepted.some(
       (flag) =>
+        sharesPage(flag, candidate, primaryPageUrl) &&
         similarity(
           `${flag.problem} ${flag.evidence}`,
           `${candidate.problem} ${candidate.evidence}`
@@ -185,22 +210,29 @@ export function deduplicateFlags(
 
 export function deduplicateTriageFlags(
   deterministic: DeterministicFlag[],
-  aiFlags: TriageOutput['newFlags']
+  aiFlags: TriageOutput['newFlags'],
+  primaryPageUrl?: string
 ): TriageOutput['newFlags'] {
   const accepted: TriageOutput['newFlags'] = []
 
   for (const candidate of aiFlags) {
-    const asJudgeFlag = { ...candidate, fix: '' }
     const duplicatesDeterministic =
-      matchesDeterministicTheme(deterministic, asJudgeFlag) ||
-      deterministic.some((flag) => isNearDuplicateOfDeterministic(flag, asJudgeFlag))
+      matchesDeterministicTheme(deterministic, candidate, primaryPageUrl) ||
+      deterministic.some((flag) => sharesPage(flag, candidate, primaryPageUrl) && isNearDuplicateOfDeterministic(flag, candidate))
 
     if (duplicatesDeterministic) continue
 
-    const duplicatesAi = accepted.some(
-      (flag) => similarity(flag.problem, candidate.problem) >= 0.65
+    const duplicateIndex = accepted.findIndex(
+      (flag) => sharesPage(flag, candidate, primaryPageUrl) && similarity(flag.problem, candidate.problem) >= 0.65
     )
-    if (!duplicatesAi) accepted.push(candidate)
+    if (duplicateIndex < 0) accepted.push(candidate)
+    else {
+      const existing = accepted[duplicateIndex]
+      // Group redundant actions without discarding their supporting observations.
+      accepted[duplicateIndex] = { ...existing,
+        evidence: [...new Set([...existing.evidence.split('\n'), ...candidate.evidence.split('\n')])].join('\n'),
+      }
+    }
   }
 
   return accepted

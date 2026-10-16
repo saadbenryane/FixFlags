@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
-import type { Browser, Page } from 'playwright'
+import type { Browser, Page, Frame, Response } from 'playwright'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { PageCaptureError } from '@/lib/audit/browser/page-capture'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
@@ -18,15 +18,14 @@ import {
   selectFirstAvailableVariant,
 } from './buy-controls'
 import { classifyWalk, combineAttempts } from './classify'
-import { uploadIntegrityArtifact } from './storage'
 import type {
   PathProbeAttempt,
   PathProbeResult,
   PathStepEvidence,
-  PathStepLabel,
   WalkOutcome,
 } from './types'
-import { persistWalkVideo } from './video'
+import { captureWalkStep, persistWalkVideo } from './video'
+import { observeCheckoutFrame, checkoutFrameChanged } from './checkout-frame'
 
 const CLICK_TIMEOUT_MS = 8_000
 const AFTER_CLICK_MS = 1_200
@@ -75,7 +74,7 @@ async function runAttempt(
   options: RunPathProbeOptions
 ): Promise<PathProbeAttempt> {
   const videoDir = await fs.mkdtemp(path.join(os.tmpdir(), `fixflags-integrity-${runId}-`))
-  const stepPngs: Buffer[] = []
+  const stepPngs: Array<Buffer | null> = []
   const steps: PathStepEvidence[] = []
   const outcome: WalkOutcome = {
     reachedCheckout: false,
@@ -91,6 +90,7 @@ async function runAttempt(
     failedStep: 'landing',
   }
 
+  const navigationResponses = new Map<Frame, Response>()
   let page: Page | null = null
   let finalUrl = options.url
 
@@ -111,8 +111,10 @@ async function runAttempt(
     // The landing response cannot certify a later checkout navigation. Keep
     // the final main-frame response, excluding cart APIs and other resources.
     page.on('response', (response) => {
-      if (response.request().isNavigationRequest() && response.frame() === page!.mainFrame()) {
-        outcome.httpStatus = response.status()
+      if (response.request().isNavigationRequest()) {
+        navigationResponses.set(response.frame(), response)
+        if (navigationResponses.size > 100) navigationResponses.delete(navigationResponses.keys().next().value!)
+        if (response.frame() === page!.mainFrame()) outcome.httpStatus = response.status()
       }
     })
 
@@ -121,43 +123,44 @@ async function runAttempt(
 
     if (await pageLooksPasswordGated(page)) {
       outcome.passwordGate = true
-      await captureStep(page, runId, attempt, 'landing', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, 'landing', steps, stepPngs)
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
-    await captureStep(page, runId, attempt, 'landing', steps, stepPngs)
+    await captureWalkStep(page, 'landing', steps, stepPngs)
 
     if (isCheckoutUrl(page.url())) {
       outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
       outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
       outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
-      await captureStep(page, runId, attempt, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
     const variantChanged = await selectFirstAvailableVariant(page)
     if (variantChanged) {
-      await captureStep(page, runId, attempt, 'variant', steps, stepPngs)
+      await captureWalkStep(page, 'variant', steps, stepPngs)
     }
 
     const buy = await discoverBuyControl(page)
     outcome.buyControlFound = Boolean(buy)
     if (!buy) {
       outcome.failedStep = 'add_to_cart'
-      await captureStep(page, runId, attempt, 'failure', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, 'failure', steps, stepPngs)
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
+    const previousCheckoutFrame = await observeCheckoutFrame(page, navigationResponses)
     const clicked = await clickSelector(page, buy.selector)
     outcome.buyControlClicked = clicked
     if (!clicked) {
       outcome.failedStep = 'add_to_cart'
-      await captureStep(page, runId, attempt, 'failure', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, 'failure', steps, stepPngs)
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
     await sleep(AFTER_CLICK_MS)
-    await captureStep(page, runId, attempt, 'add_to_cart', steps, stepPngs)
+    await captureWalkStep(page, 'add_to_cart', steps, stepPngs)
     finalUrl = page.url()
 
     if (isCheckoutUrl(page.url())) {
@@ -165,20 +168,20 @@ async function runAttempt(
       outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
       outcome.cartUpdated = true
       outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
-      await captureStep(page, runId, attempt, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
     outcome.cartUpdated = await cartAppearsUpdated(page)
     if (outcome.cartUpdated) {
-      await captureStep(page, runId, attempt, 'cart', steps, stepPngs)
+      await captureWalkStep(page, 'cart', steps, stepPngs)
     }
 
     if (await pageShowsCheckoutError(page)) {
       outcome.checkoutErrorVisible = true
       outcome.failedStep = 'checkout'
-      await captureStep(page, runId, attempt, 'failure', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, 'failure', steps, stepPngs)
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
     const checkout = await discoverCheckoutControl(page)
@@ -190,13 +193,17 @@ async function runAttempt(
     }
 
     finalUrl = page.url()
-    if (isCheckoutUrl(page.url()) || (await shopPayVisible(page))) {
-      outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
-      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
+    const embedded = isCheckoutUrl(page.url()) ? null : await observeCheckoutFrame(page, navigationResponses)
+    if (isCheckoutUrl(page.url()) || embedded) {
+      if (embedded && !isCheckoutUrl(page.url())) outcome.httpStatus = embedded.status
+      outcome.checkoutErrorVisible = embedded?.error || await pageShowsCheckoutError(page)
+      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400 &&
+        (isCheckoutUrl(page.url()) || Boolean(embedded?.usable && checkoutFrameChanged(previousCheckoutFrame, embedded)))
       outcome.cartUpdated = true
       outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
-      await captureStep(page, runId, attempt, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
-      return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+      await captureWalkStep(page, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
+      if (embedded) steps.at(-1)!.destinationUrl = embedded.url
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
     if (await pageShowsCheckoutError(page)) {
@@ -207,8 +214,8 @@ async function runAttempt(
     } else {
       outcome.failedStep = 'checkout'
     }
-    await captureStep(page, runId, attempt, 'failure', steps, stepPngs)
-    return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
+    await captureWalkStep(page, 'failure', steps, stepPngs)
+    return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
   } catch (err) {
     applyCaptureError(outcome, err)
     logger.warn('Integrity path probe attempt failed', {
@@ -217,8 +224,8 @@ async function runAttempt(
       error: err instanceof Error ? err.message : String(err),
     })
     if (page) {
-      await captureStep(page, runId, attempt, 'failure', steps, stepPngs).catch(() => {})
-      return await finishAttempt({
+      await captureWalkStep(page, 'failure', steps, stepPngs).catch(() => {})
+      return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline,
         runId,
         attempt,
         page,
@@ -228,6 +235,7 @@ async function runAttempt(
         finalUrl: page.url(),
       })
     }
+    await fs.rm(videoDir, { recursive: true, force: true }).catch(() => undefined)
     return {
       outcome,
       steps,
@@ -243,7 +251,9 @@ async function finishAttempt(input: {
   attempt: number
   page: Page
   steps: PathStepEvidence[]
-  stepPngs: Buffer[]
+  stepPngs: Array<Buffer | null>
+  recordingDir: string
+  deadline?: number
   outcome: WalkOutcome
   finalUrl: string
 }): Promise<PathProbeAttempt> {
@@ -251,7 +261,10 @@ async function finishAttempt(input: {
     runId: input.runId,
     attempt: input.attempt,
     page: input.page,
+    steps: input.steps,
     stepPngs: input.stepPngs,
+    deadline: input.deadline,
+    recordingDir: input.recordingDir,
   })
   return {
     outcome: input.outcome,
@@ -259,29 +272,6 @@ async function finishAttempt(input: {
     videoUrl: media.videoUrl,
     gifUrl: media.gifUrl,
     finalUrl: input.finalUrl,
-  }
-}
-
-async function captureStep(
-  page: Page,
-  runId: string,
-  attempt: number,
-  label: PathStepLabel,
-  steps: PathStepEvidence[],
-  stepPngs: Buffer[]
-): Promise<void> {
-  try {
-    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
-    stepPngs.push(buffer)
-    const uploaded = await uploadIntegrityArtifact(
-      runId,
-      `attempt-${attempt}-${steps.length}-${label}.png`,
-      buffer,
-      'image/png'
-    )
-    steps.push({ label, url: page.url(), screenshotUrl: uploaded.url })
-  } catch {
-    steps.push({ label, url: page.url(), screenshotUrl: null })
   }
 }
 
@@ -293,18 +283,6 @@ async function clickSelector(page: Page, selector: string): Promise<boolean> {
   } catch {
     return false
   }
-}
-
-async function shopPayVisible(page: Page): Promise<boolean> {
-  return page
-    .evaluate(() => {
-      const iframe = Array.from(document.querySelectorAll('iframe')).some((frame) =>
-        /shop\.app|shop-pay|shopify/i.test(frame.src)
-      )
-      const text = (document.body?.innerText ?? '').slice(0, 1500)
-      return iframe || /shop pay/i.test(text)
-    })
-    .catch(() => false)
 }
 
 function applyCaptureError(outcome: WalkOutcome, err: unknown): void {

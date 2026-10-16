@@ -414,7 +414,7 @@ describe('runVisualHierarchyChecks', () => {
 describe('runMobileUXQualityChecks', () => {
   it('flags inputs below 16px on mobile', () => {
     assert.ok(
-      checkIds(runMobileUXQualityChecks(healthyMeta(), captureMetrics({
+      checkIds(runMobileUXQualityChecks(captureMetrics({
         inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
       }))).includes('mobile-input-zoom')
     )
@@ -422,7 +422,7 @@ describe('runMobileUXQualityChecks', () => {
 
   it('flags weak mobile CTA labels', () => {
     assert.ok(
-      checkIds(runMobileUXQualityChecks(healthyMeta(), captureMetrics({
+      checkIds(runMobileUXQualityChecks(captureMetrics({
         mobilePrimaryCtaText: 'Click here',
         mobilePrimaryCtaTopPx: 400,
       }))).includes('mobile-cta-weak-label')
@@ -431,7 +431,7 @@ describe('runMobileUXQualityChecks', () => {
 
   it('does not describe a visible bottom CTA as hard to reach', () => {
     assert.ok(
-      !checkIds(runMobileUXQualityChecks(healthyMeta(), captureMetrics({
+      !checkIds(runMobileUXQualityChecks(captureMetrics({
         mobilePrimaryCtaText: 'Book a call',
         mobilePrimaryCtaTopPx: 743,
         mobileViewportHeight: 812,
@@ -441,7 +441,7 @@ describe('runMobileUXQualityChecks', () => {
 
   it('does not double-flag missing viewport meta tag (owned by metadata-checks.ts)', () => {
     assert.ok(
-      !checkIds(runMobileUXQualityChecks(healthyMeta({ viewport: null }), captureMetrics())).includes(
+      !checkIds(runMobileUXQualityChecks(captureMetrics())).includes(
         'mobile-no-viewport'
       )
     )
@@ -449,7 +449,7 @@ describe('runMobileUXQualityChecks', () => {
 
   it('passes a well-optimized mobile page', () => {
     assert.equal(
-      runMobileUXQualityChecks(healthyMeta(), captureMetrics()).length,
+      runMobileUXQualityChecks(captureMetrics()).length,
       0
     )
   })
@@ -458,7 +458,6 @@ describe('runMobileUXQualityChecks', () => {
     assert.ok(
       !checkIds(
         runMobileUXQualityChecks(
-          healthyMeta(),
           captureMetrics({
             loadExperience: {
               device: 'desktop',

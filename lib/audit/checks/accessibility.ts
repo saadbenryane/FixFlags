@@ -117,7 +117,7 @@ function buildAxeFix(violation: AxeViolation): string {
  * Falls back to PageSpeed-based checks for rules axe-core doesn't cover.
  */
 export function runAccessibilityChecks(
-  meta: PageMetadata,
+  meta: PageMetadata | null,
   pagespeed: PageSpeedResult | null,
   axeViolations?: AxeViolation[]
 ): DeterministicFlag[] {
@@ -156,7 +156,7 @@ export function runAccessibilityChecks(
         source: 'DETERMINISTIC',
       })
     }
-  } else if (axeUnavailable) {
+  } else if (axeUnavailable && meta) {
     // --- Metadata-based fallback when axe-core results are unavailable ---
     // These checks provide baseline a11y coverage for offline/environments
     // where a live browser axe-core scan has not been performed.
@@ -293,7 +293,7 @@ export function runAccessibilityChecks(
   const hasAxeBypass = axeViolations?.some(
     (v) => v.id === 'bypass' || v.id === 'region'
   )
-  if (!hasAxeBypass && ((meta.navLandmarkCount > 0 && !meta.hasSkipLink) || bypassFailed)) {
+  if (!hasAxeBypass && ((meta && meta.navLandmarkCount > 0 && !meta.hasSkipLink) || bypassFailed)) {
     findings.push({
       checkId: 'skip-link-missing',
       rubric: 'EXPERIENCE',
@@ -301,8 +301,8 @@ export function runAccessibilityChecks(
       severity: 'POLISH',
       problem: 'No skip-to-content link for keyboard users',
       evidence: bypassFailed
-        ? `Lighthouse bypass audit failed; nav landmarks: ${meta.navLandmarkCount}`
-        : `Page has ${meta.navLandmarkCount} navigation landmark(s) but no skip link`,
+        ? `Lighthouse bypass audit failed; nav landmarks: ${meta?.navLandmarkCount ?? 'unavailable'}`
+        : `Page has ${meta?.navLandmarkCount ?? 'unavailable'} navigation landmark(s) but no skip link`,
       fix: '1. Add a skip link as the first focusable element in the body\n2. Use: <a href="#main-content" class="skip-link">Skip to content</a>\n3. Style it to become visible on focus (not hidden with display:none)',
       confidence: bypassFailed ? 1.0 : 0.85,
       source: 'DETERMINISTIC',

@@ -9,6 +9,9 @@ import { fixedClock } from '@/lib/time/clock'
 import { getAuditQueue } from '@/lib/queue/client'
 import { getFlagDiffSummary, persistFlagDiffSummary } from '../diff-flags'
 import { FLAG_COMPARISON_TARGET } from '../flag-comparison'
+import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { removeSite } from '@/lib/sites/application/settings-commands'
+import { productTransaction } from '@/lib/billing/product-transaction'
 
 const cookies = vi.hoisted(() => ({ get: vi.fn(), delete: vi.fn() }))
 vi.mock('next/headers', () => ({ cookies: async () => cookies }))
@@ -62,6 +65,21 @@ run('anonymous claim with migrated PostgreSQL', () => {
       bindingKey: source.bindings[0].key, bindingVersion: 3, mechanism: 'HTTP_AVAILABILITY', disposition: 'FAILED', reason: 'http_unavailable' } })
     return { owned, source, execution }
   }
+
+  it('restores public default monitoring when a signed claim explicitly restores the owned removed Site', async () => {
+    await productTransaction(tx => ensureDefaultMonitoring(tx, projectId, userId))
+    const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId } })
+    const lastRunAt = new Date(Date.now() - 86_400_000)
+    await prisma.project.update({ where: { id: projectId }, data: { watchLastRunAt: lastRunAt } })
+    await removeSite({ projectId, userId })
+    expect(await claimAnonymousAudits(userId)).toBe(1)
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ deletedAt: null, watchInterval: 'WEEKLY',
+      watchNextRunAt: expect.any(Date), watchLastRunAt: lastRunAt, accountChecksEnabled: false })
+    expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })).toMatchObject({ confirmedAt: outcome.confirmedAt })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId, projectId })
+    expect(await prisma.provisionalSite.findUniqueOrThrow({ where: { id: provisionalId } })).toMatchObject({ claimedProjectId: projectId })
+    expect(cookies.delete).toHaveBeenCalledOnce()
+  })
 
   it('refuses a previously claimed report after its linked Site changes owner', async () => {
     const foreignUserId = 'claim-foreign-' + randomUUID()

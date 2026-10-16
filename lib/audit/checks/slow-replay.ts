@@ -1,9 +1,12 @@
 import type { SlowReplayResult } from '../flow/slow-replay-probe'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { SLOW_REPLAY_PROFILE, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
+import { slowActionContextSchema, slowReplayCaptureKey, SLOW_REPLAY_PROFILE, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
+import { capturePageKey } from '../browser/observation-scope'
 
 export function slowReplayAssertions(result: SlowReplayResult): CheckAssertion[] {
+  const captureKey = slowReplayCaptureKey(result)
+  const context = captureKey ? 'slow-replay:v2:' + captureKey : SLOW_REPLAY_PROFILE
   const measured = result.profile === SLOW_REPLAY_PROFILE && result.navigationComplete === true && result.reason !== 'interrupted' && !result.restricted
   const contentAt = result.timeToContentMs ?? result.timeToFirstTextMs
   const textPassed = measured && contentAt <= 5000
@@ -13,18 +16,26 @@ export function slowReplayAssertions(result: SlowReplayResult): CheckAssertion[]
     { key: 'meaningful-text', name: 'Initial content on slow 3G', expected: 'Visible mobile viewport text or decoded main image within 5000ms',
       observed: contentAt < 30_000 ? `Recognized viewport content first observed at ${contentAt}ms.`
         : `Recognized viewport content was not observed through ${result.observedForMs ?? 0}ms.`,
-      passed: textPassed, complete: textPassed || textFailed, context: SLOW_REPLAY_PROFILE },
+      passed: textPassed, complete: textPassed || textFailed, context },
     ...(result.actions?.length ? result.actions : [{ timeToVisibleMs: result.timeToCtaMs, absentThroughMs: result.ctaAbsentThroughMs ?? 0 }]).map(action => {
       const observed = action.timeToVisibleMs < 30_000
       const passed = measured && action.timeToVisibleMs <= 8000
       const failed = measured && observed && action.absentThroughMs > 8000
       const absent = measured && !observed && action.absentThroughMs > 8000
       const identity = 'selector' in action ? { selector: action.selector, label: action.label, context: action.context } : null
+      if (identity && captureKey && result.scope) {
+        try {
+          const scoped = JSON.stringify({ ...slowActionContextSchema.parse(JSON.parse(identity.context)), captureKey,
+            sourcePageKey: capturePageKey(result.scope.pageUrl) })
+          if (scoped.length <= 4200) identity.context = scoped
+        }
+        catch { /* An unscoped historical control cannot acquire native repair identity. */ }
+      }
       return { key: 'primary-action-visibility', name: 'Primary action on slow 3G', expected: 'A recognized mobile viewport action within 8000ms',
         observed: observed ? `Recognized action${identity ? ' ' + identity.label : ''} first observed at ${action.timeToVisibleMs}ms.`
           : `The recognized action was not observed through ${result.observedForMs ?? 0}ms. Missing-action detection remains separate.`,
         passed: passed || absent, complete: passed || failed || absent, ...(absent ? { disposition: 'observed' as const } : {}),
-        context: SLOW_REPLAY_PROFILE, ...(identity ? { targets: [identity] } : {}) }
+        context, ...(identity ? { targets: [identity] } : {}) }
     }),
   ]
 }
@@ -66,9 +77,9 @@ export function runSlowReplayChecks(result: SlowReplayResult | null): Determinis
     })
   }
 
-  return result.profile ? findings.map(flag => ({ ...flag, verificationRule: SLOW_REPLAY_VERIFICATION_RULE,
+  return result.profile ? findings.map(flag => ({ ...flag, verificationRule: slowReplayCaptureKey(result) ? SLOW_REPLAY_VERIFICATION_RULE : 'Slow connection observation v1',
     evidenceTargets: flag.checkId === 'slow-3g-cta-delayed' && delayed.some(item => item.targets?.length)
       ? delayed.flatMap(item => item.targets ?? []).map(target => ({ ...target, kind: 'element' as const, source: 'measured' as const, device: 'mobile' as const }))
       : [{ kind: 'page' as const, source: 'measured' as const, device: 'mobile' as const,
-        label: flag.checkId === 'slow-3g-blank-screen' ? 'Initial viewport content' : 'Recognized primary action', context: result.profile }] })) : findings
+        label: flag.checkId === 'slow-3g-blank-screen' ? 'Initial viewport content' : 'Recognized primary action', context: observations?.[0].context ?? result.profile }] })) : findings
 }

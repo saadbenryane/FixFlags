@@ -9,6 +9,7 @@ export type CheckDefinition = { version: number; area: SiteCardArea; module: str
 
 /** Explicit identities, independent of customer wording and detection policy. */
 const LEGACY_CHECK_DEFINITIONS = {
+  'page-http-error': { version: 1, area: 'site', module: 'page-response', capabilities: ['public-page-response'] },
   'title-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'title-too-short': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'title-too-long': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
@@ -111,6 +112,7 @@ const LEGACY_CHECK_DEFINITIONS = {
   'auth-page-broken': { version: 1, area: 'conversion', module: 'auth-checkout', capabilities: ["experience-auth-checkout"] },
   'security-mixed-content': { version: 1, area: 'security', module: 'security', capabilities: ["security-basics-scan"] },
   'security-csp-missing': { version: 1, area: 'security', module: 'security-headers', capabilities: ["security-headers-scan"] },
+  'security-csp-frame-ancestors-permissive': { version: 1, area: 'security', module: 'security-headers', capabilities: ["security-headers-scan"] },
   'security-csp-unsafe-inline': { version: 1, area: 'security', module: 'security-headers', capabilities: ["security-headers-scan"] },
   'security-csp-unsafe-eval': { version: 1, area: 'security', module: 'security-headers', capabilities: ["security-headers-scan"] },
   'security-csp-weak-object-src': { version: 1, area: 'security', module: 'security-headers', capabilities: ["security-headers-scan"] },

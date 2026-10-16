@@ -30,9 +30,8 @@ describe('documentation-only notice purpose', () => {
 
 it('does not turn an informational link into conversion guidance while retaining real browser failures', () => {
   const metrics = { mobilePrimaryCtaTopPx: 900, mobilePrimaryCtaText: 'Learn more', mobileViewportHeight: 812, mobileDocumentHeight: 1600, inputsBelow16px: [] } as unknown as CaptureMetrics
-  const meta = parseMetadataFromHtml(html('<a href="https://reference.test/">Learn more</a>'))
-  expect(runMobileUXQualityChecks(meta, metrics, 'placeholder')).toEqual([])
-  expect(runMobileUXQualityChecks(meta, metrics, 'marketing').some(flag => flag.checkId === 'mobile-cta-weak-label')).toBe(true)
+  expect(runMobileUXQualityChecks(metrics, 'placeholder')).toEqual([])
+  expect(runMobileUXQualityChecks(metrics, 'marketing').some(flag => flag.checkId === 'mobile-cta-weak-label')).toBe(true)
   expect(runFlowChecks({ status: 'external_leave' } as FlowScanResult, 'placeholder')).toEqual([])
   expect(runFlowChecks({ status: 'external_leave' } as FlowScanResult, 'marketing').some(flag => flag.checkId === 'flow-cta-external-leave')).toBe(true)
   expect(runFlowChecks({ status: 'error_response', httpStatus: 503 } as unknown as FlowScanResult, 'placeholder').length).toBeGreaterThan(0)
