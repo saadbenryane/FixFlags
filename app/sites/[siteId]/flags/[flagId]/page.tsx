@@ -157,7 +157,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
                   <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior}
-                    supportingObservations={flag.supportingObservations} />
+                    supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
                   {flag.evidenceContext ? <details className="text-sm">
                     <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{SITE_ACTION_COPY.evidence}</summary>
                     <dl className="mt-3 space-y-3 text-xs text-muted-foreground">

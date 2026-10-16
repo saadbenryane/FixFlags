@@ -10,6 +10,7 @@ import {
 } from '@/lib/audit/editor-handoff'
 import { buildPlanModePrompt } from '@/lib/audit/priority-flags'
 import type { RankableFlag } from '@/lib/audit/flag-types'
+import { mergeSupportingObservations, observationsForFlag, publicSupportingObservations } from '../flag-observations'
 
 const FINDING_LEAD =
   'This is a FixFlags finding from the live page, not a guess about your repo.'
@@ -28,6 +29,28 @@ function flag(overrides: Partial<RankableFlag> = {}): RankableFlag {
 }
 
 describe('editor-handoff', () => {
+  it('carries every recorded page and device into individual and bundled handoffs without unrelated scope or private provenance', () => {
+    const supportingObservations = mergeSupportingObservations(['desktop', 'mobile'].map((device, index) => observationsForFlag({
+      source: 'DETERMINISTIC', checkId: 'h1-generic', pageUrl: `https://acme.com/page-${index}`,
+      evidence: `Recorded ${device} headline observation.`, evidenceTargets: [{ kind: 'element', source: 'measured',
+        device: device as 'desktop' | 'mobile', label: `${device} headline`, selector: '#headline-' + index, context: 'private-comparison-context' }],
+    }, { auditId: 'private-audit-id', taskId: 'private-task-' + index, checkVersion: 2, collectedAt: '2026-10-16T12:00:00.000Z' })))
+    const grouped = flag({ pageUrl: 'https://acme.com/page-0', supportingObservations })
+    assert.equal(locateFlagForEditor({ ...grouped, pageUrl: null }, { url: 'https://acme.com/unrelated' }).pageUrl, 'https://acme.com/page-0')
+    const context = { url: 'https://acme.com/', pageUrls: ['https://acme.com/unrelated-capture'] }
+    const prompt = buildEditorHandoffPrompt(grouped, context)
+    for (const value of ['page-0', 'page-1', 'desktop headline', 'mobile headline', '#headline-0', '#headline-1',
+      'Recorded desktop headline observation.', 'Recorded mobile headline observation.', 'Version: 2', '2026-10-16T12:00:00.000Z']) assert.ok(prompt.includes(value), value)
+    assert.match(prompt, /Recheck every recorded supporting observation/)
+    assert.doesNotMatch(prompt, /unrelated-capture|private-audit|private-task|private-comparison-context/)
+    assert.equal(buildEditorHandoffPrompt({ ...grouped, supportingObservations: publicSupportingObservations(supportingObservations) }, context), prompt)
+    const bundle = buildPlanModePrompt([grouped], context)
+    assert.match(bundle, /Recorded desktop headline observation/)
+    assert.match(bundle, /Recorded mobile headline observation/)
+    assert.doesNotMatch(bundle, /private-comparison-context/)
+    assert.equal(buildEditorHandoffPrompt({ ...grouped, supportingObservations: { version: 9, items: [] } }, context), '')
+  })
+
   it('grounds a hero H1 on the live page and asks the agent to search then plan', () => {
     const prompt = buildEditorHandoffPrompt(flag(), {
       url: 'https://acme.com/',

@@ -54,4 +54,34 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(body.handoff).toEqual({ improvementId: 'improvement-1' })
     expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ flagId: 'flag-1', builder: 'copy' }))
   })
+  it('includes every recorded page and device in the actual website copy action', async () => {
+    const detail = await mocks.loadSiteBoardFlag()
+    detail.flag.supportingObservations = ['desktop', 'mobile'].map((device, index) => ({
+      source: 'DETERMINISTIC', checkId: 'hidden-cta', checkVersion: 2,
+      pageUrl: 'https://example.com/product-' + index, evidence: device + ' button is outside the viewport',
+      recordedAt: '2026-10-16T12:00:00.000Z', references: [{ device, label: 'Checkout', selector: '#checkout-' + index }],
+    }))
+    mocks.loadSiteBoardFlag.mockResolvedValue(detail)
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(200)
+    const { prompt } = await response.json()
+    for (const text of ['product-0', 'product-1', 'desktop button', 'mobile button', '#checkout-0', '#checkout-1',
+      'Version: 2', '2026-10-16T12:00:00.000Z', 'Recheck every recorded supporting observation']) expect(prompt).toContain(text)
+  })
+
+  it.each(['projection', 'invalid-view'])('does not record a handoff when supporting evidence is unreadable: %s', async condition => {
+    const detail = await mocks.loadSiteBoardFlag()
+    if (condition === 'projection') detail.flag.supportingEvidenceUnreadable = true
+    else detail.flag.supportingObservations = { version: 9, items: [] }
+    mocks.loadSiteBoardFlag.mockResolvedValue(detail)
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(422)
+    expect((await response.json()).prompt).toBeUndefined()
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
 })

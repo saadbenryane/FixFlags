@@ -4,6 +4,7 @@ import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
 import { requireSiteOwner } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
+import { EDITOR_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
 import { boardFlagPrompt } from '@/lib/sites/board-card'
 
 const schema = z.object({
@@ -25,6 +26,7 @@ export async function POST(
 
     const detail = await loadSiteBoardFlag(access.decision.site.siteId, flagId)
     if (!detail) return apiError('Flag not found', 404)
+    if (detail.flag.supportingEvidenceUnreadable) return apiError(EDITOR_EVIDENCE_COPY.unreadable, 422)
     const prompt = boardFlagPrompt({
       problem: detail.flag.problem,
       whyItMatters: detail.flag.whyItMatters,
@@ -34,8 +36,10 @@ export async function POST(
       affectedPaths: detail.flag.affectedPaths,
       journeyName: detail.flag.relatedOutcome?.name,
       expectedBehavior: detail.flag.expectedBehavior,
+      supportingObservations: detail.flag.supportingObservations,
     })
 
+    if (!prompt) return apiError(EDITOR_EVIDENCE_COPY.unreadable, 422)
     const recorded = await executeSiteCommand({
       type: 'RECORD_FIX_HANDOFF',
       flagId: detail.flag.sourceFlagId ?? detail.flag.id,

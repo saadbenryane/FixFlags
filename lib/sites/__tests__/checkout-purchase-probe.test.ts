@@ -66,8 +66,10 @@ describe('unmocked Checkout purchase probe', () => {
   afterAll(async () => {
     if (previousFixture === undefined) delete process.env.FIXFLAGS_CHECKOUT_FIXTURE
     else process.env.FIXFLAGS_CHECKOUT_FIXTURE = previousFixture
-    try { await closeServer?.() }
-    finally { await closeBrowser() }
+    // Close the client before its server. Chromium may retain speculative TCP
+    // connections that are not yet tracked as active HTTP requests.
+    try { await closeBrowser() }
+    finally { await closeServer?.() }
   })
 
   beforeEach(() => {

@@ -23,4 +23,11 @@ describe('shared Flag evidence presentation', () => {
     expect(screen.getByText(/Evidence for this Flag was not stored/)).toBeInTheDocument()
     expect(screen.queryByText('Supporting observations')).not.toBeInTheDocument()
   })
+  it('keeps the representative evidence and explains why a new check is needed when support is unreadable', () => {
+    render(<FlagEvidenceDetails observed="Two failed checks" expected="Checkout opens" supportingEvidenceUnreadable />)
+    expect(screen.getByText('Two failed checks')).toBeInTheDocument()
+    expect(screen.getByText(/supporting evidence could not be read/)).toBeInTheDocument()
+    expect(screen.getByText(/Recheck the affected page/)).toBeInTheDocument()
+  })
+
 })

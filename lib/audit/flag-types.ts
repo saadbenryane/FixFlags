@@ -169,7 +169,7 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
 export type ExistingFlagForPrescription = Pick<
   FlagData,
   'source' | 'rubric' | 'severity' | 'problem' | 'checkId' | 'evidence' | 'pageUrl'
-> & { flagKey: string }
+> & { flagKey: string; supportingObservations?: import('./flag-observations').SupportingObservationView[] }
 
 /**
  * Minimal subset for theme-based deduplication matching.

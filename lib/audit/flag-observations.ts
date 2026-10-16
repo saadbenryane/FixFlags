@@ -20,6 +20,12 @@ export const supportingObservationsSchema = z.object({
 
 export type SupportingObservations = z.infer<typeof supportingObservationsSchema>
 export type SupportingObservation = SupportingObservations['items'][number]
+export const supportingObservationViewSchema = supportingObservationsSchema.shape.items.element.pick({
+  source: true, checkId: true, checkVersion: true, pageUrl: true, evidence: true,
+}).extend({ recordedAt: z.string().datetime().nullable(),
+  references: z.array(targetSchema.pick({ device: true, label: true, selector: true })),
+}).strict()
+export type SupportingObservationView = z.infer<typeof supportingObservationViewSchema>
 type ObservationInput = {
   source?: string | null; checkId?: string | null; pageUrl?: string | null; evidence?: string;
   verificationRule?: string | null; evidenceTargets?: EvidenceTarget[]; supportingObservations?: unknown;
@@ -56,4 +62,12 @@ export function publicSupportingObservations(value: unknown) {
     evidence: item.evidence, recordedAt: item.provenance?.collectedAt ?? null,
     references: item.evidenceTargets.map(target => ({ device: target.device, label: target.label, selector: target.selector })),
   })) ?? []
+}
+
+/** Handoffs accept the recorded server contract or its validated public view.
+ * Neither view can supply missing private comparison rules or provenance. */
+export function readSupportingObservationView(value: unknown): SupportingObservationView[] | null {
+  if (readSupportingObservations(value)) return publicSupportingObservations(value)
+  const parsed = z.array(supportingObservationViewSchema).max(5000).safeParse(value)
+  return parsed.success ? parsed.data : null
 }

@@ -39,7 +39,7 @@ export interface PrescriptionContext {
   existingFlags: ExistingFlagForPrescription[]
   rubrics: Array<{
     name: string
-    grade: string
+    grade: string | null
     score: number | null
     summary: string
   }>

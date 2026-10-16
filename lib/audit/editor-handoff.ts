@@ -9,6 +9,9 @@ import {
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { visualTargetLabel } from '@/lib/marketing/evidence-regions'
+import { readSupportingObservationView } from './flag-observations'
+import { supportingObservationLines } from './observation-handoff'
+import { EDITOR_EVIDENCE_COPY as E } from '@/lib/marketing/copy/verification-evidence'
 
 export const EDITOR_FINDING_LEAD =
   'This is a FixFlags finding from the live page, not a guess about your repo.'
@@ -50,9 +53,10 @@ export function locateFlagForEditor(
   const checkId = baseCheckId(flag.checkId)
   const targets = parseEvidenceTargets(flag.evidenceTargets)
   const documentHead = Boolean(checkId) && isPageScopeCheck(checkId)
-  const pageUrl = firstUrl(flag.pageUrl) ?? firstUrl(context.url)
+  const observations = readSupportingObservationView(flag.supportingObservations)
+  const pageUrl = firstUrl(flag.pageUrl) ?? observations?.map(item => firstUrl(item.pageUrl)).find(Boolean) ?? firstUrl(context.url)
   const extraPageUrls = uniqueUrls([
-    ...(context.pageUrls ?? []),
+    ...(observations?.length ? observations.flatMap(item => item.pageUrl ? [item.pageUrl] : []) : context.pageUrls ?? []),
     ...(flag.pageUrl ? [flag.pageUrl] : []),
   ]).filter((url) => url !== pageUrl)
 
@@ -95,11 +99,13 @@ export function buildEditorHandoffPrompt(
   context: EditorHandoffContext = {}
 ): string {
   if (!resolvedTask(flag)) return ''
+  if (flag.supportingObservations != null && !readSupportingObservationView(flag.supportingObservations)) return ''
   const location = locateFlagForEditor(flag, context)
   const task = taskBodyForFlag(flag)
   const verify = verificationFor(flag)
   const lines: string[] = [EDITOR_FINDING_LEAD, '']
   lines.push(...groundLines(location))
+  lines.push(...supportingObservationLines(flag.supportingObservations))
   if (lines[lines.length - 1] !== '') lines.push('')
   if (task.includes('\n')) {
     lines.push('Task:', task)
@@ -123,6 +129,7 @@ export function buildEditorHandoffPrompt(
   if (verify) {
     lines.push('', `Verify: ${verify}`)
   }
+  if (readSupportingObservationView(flag.supportingObservations)?.length) lines.push(E.verifyAll)
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -136,15 +143,20 @@ export function formatPlanItem(
   const rubric = flag.rubric.charAt(0).toUpperCase() + flag.rubric.slice(1).toLowerCase()
   const tag = `[${flag.severity} · ${rubric} · ${confidence}]`
   const block = [`${index}. ${tag} ${flag.problem}`]
+  if (flag.supportingObservations != null && !readSupportingObservationView(flag.supportingObservations))
+    return block.concat(`   ${E.unreadable}`).join('\n')
   for (const line of itemGroundLines(location)) {
     block.push(`   ${line}`)
   }
+  block.push(...supportingObservationLines(flag.supportingObservations).map(line => `   ${line}`))
   const task = taskBodyForFlag(flag).replace(/\n/g, '\n   ')
   block.push(`   Task: ${task}`)
   const verify = verificationFor(flag)
   if (verify) block.push(`   Verify: ${verify}`)
+  if (readSupportingObservationView(flag.supportingObservations)?.length) block.push(`   ${E.verifyAll}`)
   return block.join('\n')
 }
+
 
 export function buildPlanBundleHeader(context: EditorHandoffContext): string {
   const lines = [EDITOR_FINDING_LEAD, '']

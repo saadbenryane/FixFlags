@@ -253,6 +253,7 @@ VERIFICATION RULE: For every flag, write one concrete action someone can take on
 RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once.
 - Return rubricPrescriptions as an object with exactly MESSAGE, EXPERIENCE, and REACH as required keys. Each value contains the prescription without repeating name.
 - If a rubric has no admitted findings, state that no change is prescribed from the available evidence. Do not invent an issue or a fix to fill the rubric.
+- A grouped Flag can contain multiple recorded supporting observations. Address every listed page, device, and target, keeping different conditions distinguishable. Do not prescribe only its representative observation or infer that missing evidence passed.
 - Structure the rubric prompt as a numbered list of changes, one per flag
 - Each step: name the element, current text, replacement text
 - Include a "Do NOT change" section listing sections or elements that should be left alone
@@ -287,10 +288,11 @@ export interface PrescriptionContext {
     checkId: string | null
     evidence?: string | null
     pageUrl?: string | null
+    supportingObservations?: import('../audit/flag-observations').SupportingObservationView[]
   }>
   rubrics: Array<{
     name: string
-    grade: string
+    grade: string | null
     score: number | null
     summary: string
   }>
@@ -321,7 +323,7 @@ Metadata:
 ${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
 
 Rubric grades from triage:
-${context.rubrics.map((r) => `- ${r.name}: ${r.grade}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
+${context.rubrics.map((r) => `- ${r.name}: ${r.grade ?? 'Not graded'}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
 
 Existing flags (return flagPrescriptions as an object with every unique exact flagKey below as a required property; each value contains its prescription, without repeating flagKey inside it):
 ${context.existingFlags.map((f) => {
@@ -330,10 +332,16 @@ ${context.existingFlags.map((f) => {
     if (f.evidence?.trim()) lines.push(`  Evidence: ${f.evidence.trim()}`)
     const current = quotedCurrentText(f.evidence)
     if (current) lines.push(`  Current text: "${current}"`)
+    for (const [index, item] of (f.supportingObservations ?? []).entries()) {
+      lines.push(`  Supporting observation ${index + 1}: page=${item.pageUrl ?? 'not recorded'}, source=${item.source ?? 'not recorded'}, check=${item.checkId ?? 'not recorded'}, version=${item.checkVersion ?? 'not recorded'}, recordedAt=${item.recordedAt ?? 'not recorded'}`)
+      lines.push(`    Evidence: ${item.evidence}`)
+      for (const target of item.references)
+        lines.push(`    Target: ${target.device}, ${target.label}${target.selector ? `, selector=${target.selector}` : ''}`)
+    }
     return lines.join('\n')
   }).join('\n') || 'None'}
 
-You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence.`
+You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence. The attached screenshots belong to the URL above. Supporting observations on other pages supply their own recorded evidence; do not treat these screenshots as captures of those pages.`
 }
 
 /**

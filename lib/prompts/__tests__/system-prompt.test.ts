@@ -76,6 +76,20 @@ const basicPrescriptionContext: PrescriptionContext = {
 }
 
 describe('system-prompt triage contract', () => {
+  it('preserves every supporting observation in prescription context and keeps an absent grade unknown', () => {
+    const context: PrescriptionContext = { ...basicPrescriptionContext,
+      rubrics: [{ name: 'REACH', grade: null, score: null, summary: 'No recorded grade' }],
+      existingFlags: [{ ...basicPrescriptionContext.existingFlags[0], supportingObservations: [0, 1].map(index => ({
+        source: 'DETERMINISTIC', checkId: 'check-' + index, checkVersion: index + 1, pageUrl: 'https://example.com/page-' + index,
+        evidence: 'Original supporting evidence ' + index, recordedAt: null,
+        references: [{ device: index ? 'mobile' : 'desktop', label: 'Affected control', selector: '#control-' + index }],
+      })) }] }
+    const prompt = buildPrescriptionUserPrompt(context)
+    for (const value of ['page-0', 'page-1', 'check-0', 'check-1', 'Original supporting evidence 0', 'Original supporting evidence 1',
+      'Target: desktop', 'Target: mobile', '#control-0', '#control-1']) assert.ok(prompt.includes(value), value)
+    assert.match(prompt, /REACH: Not graded/)
+    assert.doesNotMatch(prompt, /REACH: F|\(0\/100\)/)
+  })
   it('asks triage for evidence and whyItMatters without fix prompts', () => {
     const system = buildTriageSystemPrompt()
     assert.match(system, /evidence/i)

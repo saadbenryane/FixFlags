@@ -1,3 +1,6 @@
+import { readSupportingObservationView } from '@/lib/audit/flag-observations'
+import { supportingObservationLines } from '@/lib/audit/observation-handoff'
+import { EDITOR_EVIDENCE_COPY as E } from '@/lib/marketing/copy/verification-evidence'
 import {
   ADDABLE_BOARD_CARDS,
   CARD_CATALOG,
@@ -183,7 +186,10 @@ export function boardFlagPrompt(input: {
   affectedPaths?: string[]
   journeyName?: string | null
   expectedBehavior?: string | null
+  supportingObservations?: unknown
 }): string {
+  const observations = readSupportingObservationView(input.supportingObservations)
+  if (input.supportingObservations != null && !observations) return ''
   const paths = [...new Set(input.affectedPaths ?? [])]
   return [
     `FixFlags Flag: ${input.problem}`,
@@ -192,8 +198,10 @@ export function boardFlagPrompt(input: {
     input.journeyName ? `Outcome: ${input.journeyName}` : null,
     `Why it matters: ${input.whyItMatters}`,
     input.evidence?.trim() ? `Evidence: ${input.evidence.trim()}` : null,
+    supportingObservationLines(input.supportingObservations).join('\n'),
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,
     `Fix: ${input.fix}`,
+    observations?.length ? E.verifyAll : null,
     paths.length > 1 ? 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same affected pages and action.'
       : 'Copying this does not resolve the Flag. Verify with a fresh FixFlags check of the same page and action.',
   ]
@@ -214,7 +222,7 @@ export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string
   return [
     `Fix every open ${areaName} Flag below. Keep unrelated behavior unchanged, preserve the evidence scope for each page, and verify every fix against its stated evidence.`,
     ...prompts,
-  ].join('\n\n---\n\n')
+  ].join('\n\n')
 }
 
 function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip[] {

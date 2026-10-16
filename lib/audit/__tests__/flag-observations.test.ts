@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { collapseFlagsWithAffectedPaths } from '../flag-identity'
-import { mergeSupportingObservations, observationsForFlag, publicSupportingObservations } from '../flag-observations'
+import { mergeSupportingObservations, observationsForFlag, publicSupportingObservations, readSupportingObservationView } from '../flag-observations'
 
 const original = { source: 'DETERMINISTIC', checkId: 'buttons-no-text', pageUrl: 'https://example.com/',
   evidence: 'The header action has no accessible name', verificationRule: 'Repeat the accessible-name assertion',
@@ -39,5 +39,14 @@ describe('supporting observations', () => {
     expect(visible[0].references).toEqual([{ device: 'mobile', label: 'Header action', selector: '#menu' }])
     expect(JSON.stringify(visible)).not.toContain('private-comparison-scope')
     expect(publicSupportingObservations({ version: 2, items: [] })).toEqual([])
+  })
+
+  it('validates either handoff representation without accepting extra private fields or unknown recorded versions', () => {
+    const recorded = observationsForFlag(original, origin), visible = publicSupportingObservations(recorded)
+    expect(readSupportingObservationView(recorded)).toEqual(visible)
+    expect(readSupportingObservationView(visible)).toEqual(visible)
+    expect(readSupportingObservationView([{ ...visible[0], provenance: { auditId: 'private' } }])).toBeNull()
+    expect(readSupportingObservationView({ ...recorded, version: 9 })).toBeNull()
+    expect(readSupportingObservationView([{ ...visible[0], checkVersion: 0 }])).toBeNull()
   })
 })

@@ -90,3 +90,11 @@ it.each(['ready', 'admitted', 'failed', 'later-source'] as const)('projects reco
   expect(detail?.attempts[0]).toMatchObject({ changeSummary: pending.changeSummary, sourceAuditId: pending.sourceAuditId,
     commitReference: pending.commitReference, deploymentReference: pending.deploymentReference, verifying: state === 'admitted' || state === 'later-source' })
 })
+
+it.each([null, { version: 9, items: [] }])('distinguishes absent historical support from unreadable recorded evidence: %j', async supportingObservations => {
+  mocks.flag.mockResolvedValue({ ...await mocks.flag(), supportingObservations })
+  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({
+    supportingObservations: [], supportingEvidenceUnreadable: supportingObservations !== null,
+    evidence: 'Two failed checks', sourceFlagId: 'captured-flag',
+  })
+})

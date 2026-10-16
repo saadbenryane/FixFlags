@@ -1,5 +1,5 @@
 import { flagEvidenceContext, type FlagEvidenceContext } from './flag-evidence'
-import { publicSupportingObservations } from '@/lib/audit/flag-observations'
+import { publicSupportingObservations, readSupportingObservations } from '@/lib/audit/flag-observations'
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { searchAttentionDecision } from '@/lib/audit/search/policy'
@@ -338,6 +338,7 @@ export type SiteFlagAttemptView = {
 
 export type SiteFlagDetail = SiteFlagSeed & {
   supportingObservations?: ReturnType<typeof publicSupportingObservations>
+  supportingEvidenceUnreadable?: boolean
   outcomeId: string | null
   sourceAuditId: string
   evidenceContext?: FlagEvidenceContext
@@ -454,6 +455,7 @@ export async function loadSiteFlagDetail(
     sourceAuditId: flagRow.auditId,
     evidenceContext: flagEvidenceContext(flagRow),
     supportingObservations: publicSupportingObservations(flagRow.supportingObservations),
+    supportingEvidenceUnreadable: flagRow.supportingObservations != null && !readSupportingObservations(flagRow.supportingObservations),
     verificationRule: flagRow.verificationRule,
     confidence: flagRow?.confidence ?? null,
     causeCertainty: flagRow?.causeCertainty ?? null,

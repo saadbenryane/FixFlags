@@ -13,6 +13,7 @@ import { hasUnlimitedScans } from '@/lib/auth/permissions'
 import { runPrescriptionWithRetry } from './judge-prescription'
 import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-profile'
 import { renderedContentMetadata } from './browser/rendered-copy'
+import { publicSupportingObservations } from './flag-observations'
 
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
 export async function runAiReview(auditId: string, deadline?: number): Promise<void> {
@@ -60,16 +61,22 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
 
   const techStack = technologyNamesForPrompt(await loadTechnologyProfile(auditId))
 
-  const existingFlags = audit.flags.map((flag) => ({
-    flagKey: flagKeyForRow(flag),
-    source: flag.source,
-    rubric: flag.rubric,
-    severity: flag.severity,
-    problem: flag.problem,
-    checkId: flag.checkId,
-    evidence: flag.evidence,
-    pageUrl: flag.pageUrl,
-  }))
+  const existingFlags = audit.flags.map((flag) => {
+    const supportingObservations = publicSupportingObservations(flag.supportingObservations)
+    if (flag.supportingObservations != null && !supportingObservations.length)
+      throw new JudgeContractError('Recorded supporting observations could not be read for prescription')
+    return {
+      flagKey: flagKeyForRow(flag),
+      source: flag.source,
+      rubric: flag.rubric,
+      severity: flag.severity,
+      problem: flag.problem,
+      checkId: flag.checkId,
+      evidence: flag.evidence,
+      pageUrl: flag.pageUrl,
+      supportingObservations,
+    }
+  })
 
   const { verdict, score } = audit
   if (verdict == null || score == null) throw new Error('A recorded assessment is required before preparing this explanation')
@@ -94,7 +101,7 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
         existingFlags,
         rubrics: audit.rubrics.map((r) => ({
           name: r.name,
-          grade: r.grade ?? 'F',
+          grade: r.grade,
           score: r.score,
           summary: r.summary ?? '',
         })),

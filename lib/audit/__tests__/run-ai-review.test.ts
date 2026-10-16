@@ -73,6 +73,7 @@ vi.mock('@/lib/audit/technology-profile', () => ({
 
 import { runAiReview } from '../run-ai-review'
 import { JudgeContractError } from '../validate-judge-output'
+import { mergeSupportingObservations, observationsForFlag } from '../flag-observations'
 
 const AUDIT = {
   id: 'a1',
@@ -130,6 +131,29 @@ function resetMocks(): void {
 describe('runAiReview', () => {
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
+
+  it('sends all original supporting scopes to prescription without private comparison fields or invented grades', async () => {
+    const supportingObservations = mergeSupportingObservations([0, 1].map(index => observationsForFlag({
+      source: 'DETERMINISTIC', checkId: 'no-https', pageUrl: `https://example.com/page-${index}`, evidence: `Original observation ${index}`,
+      evidenceTargets: [{ kind: 'element', source: 'measured', device: index ? 'mobile' : 'desktop', label: 'Original target', context: 'private-context' }],
+    }, { auditId: 'private-audit', taskId: 'private-task-' + index, checkVersion: 1 })))
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], supportingObservations }],
+      rubrics: [{ ...AUDIT.rubrics[0], grade: null, score: null }] })
+    await runAiReview('a1')
+    const context = mocks.runPrescriptionWithRetry.mock.calls[0][0]
+    assert.deepEqual(context.existingFlags[0].supportingObservations.map((item: { pageUrl: string }) => item.pageUrl),
+      ['https://example.com/page-0', 'https://example.com/page-1'])
+    assert.equal(context.rubrics[0].grade, null)
+    assert.equal(context.rubrics[0].score, null)
+    assert.doesNotMatch(JSON.stringify(context), /private-context|private-audit|private-task/)
+  })
+
+  it('refuses an unreadable recorded observation contract before provider generation', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], supportingObservations: { version: 9, items: [] } }] })
+    await assert.rejects(() => runAiReview('a1'), /supporting observations could not be read/)
+    assert.equal(mocks.runPrescriptionWithRetry.mock.calls.length, 0)
+    assert.equal(mocks.mergePrescriptionResults.mock.calls.length, 0)
+  })
 
   it('throws when the audit is missing', async () => {
     mocks.auditFindUnique.mockResolvedValue(null)
