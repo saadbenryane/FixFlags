@@ -128,7 +128,9 @@ export function isPageComparableAbsence(input: {
   verifierExecutions?: RecoveryExecution[]
 }): boolean {
   if (input.auditStatus !== 'COMPLETED') return false
-  if (readExecutionSpec(input.executionSpec)?.engine === 'progressive-v1') return Boolean(input.auditId && hasRecordedRecoveryEvidence({
+  const spec = readExecutionSpec(input.executionSpec)
+  if (input.executionSpec != null && !spec) return false
+  if (spec?.engine === 'progressive-v1') return Boolean(input.auditId && hasRecordedRecoveryEvidence({
     auditId: input.auditId, executionSpec: input.executionSpec, flag: input.parentFlag, executions: input.verifierExecutions ?? [],
   }))
 

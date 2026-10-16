@@ -6,6 +6,7 @@ import {
   attestLocalFoundation,
   attestSuccessfulChecks,
   buildDeploymentAttestation,
+  loadRailwayCandidateDeployments,
 } from './release-deployment-attestation.mjs'
 
 const SHA = 'a'.repeat(40)
@@ -19,8 +20,8 @@ const deployment = {
   id: 'deployment-1',
   status: 'SUCCESS',
   createdAt: '2026-08-25T19:59:00.000Z',
-  updatedAt: '2026-08-25T20:02:00.000Z',
-  meta: { commitHash: SHA, imageDigest: 'sha256:image' },
+  statusUpdatedAt: '2026-08-25T20:02:00.000Z',
+  meta: { commitHash: SHA, imageDigest: 'sha256:' + 'd'.repeat(64) },
 }
 
 describe('release deployment attestation', () => {
@@ -44,7 +45,7 @@ describe('release deployment attestation', () => {
     assert.equal(evidence.ci, undefined)
     assert.equal(evidence.verification.source, 'local-foundation')
     assert.throws(() => buildDeploymentAttestation({ gitSha: SHA, repository: 'saadbenryane/FixFlags', localFoundation: foundation,
-      deploymentsByRole: { web: { service: 'web', deployments: [{ ...deployment, updatedAt: foundation.startedAt }] }, worker: { service: 'worker', deployments: [deployment] } } }), /post-verification/)
+      deploymentsByRole: { web: { service: 'web', deployments: [{ ...deployment, statusUpdatedAt: foundation.startedAt }] }, worker: { service: 'worker', deployments: [deployment] } } }), /post-verification/)
   })
   it('requires every GitHub check to complete successfully', () => {
     assert.equal(attestSuccessfulChecks(checks).status, 'SUCCESS')
@@ -63,7 +64,7 @@ describe('release deployment attestation', () => {
       ciCompletedAt: '2026-08-25T20:00:00.000Z',
     }).gitSha, SHA)
     assert.throws(() => attestRailwayDeployment({
-      deployments: [{ ...deployment, updatedAt: '2026-08-25T19:59:30.000Z' }],
+      deployments: [{ ...deployment, statusUpdatedAt: '2026-08-25T19:59:30.000Z', updatedAt: '2026-08-25T20:03:00.000Z' }],
       service: 'QewOS',
       role: 'web',
       gitSha: SHA,
@@ -71,14 +72,42 @@ describe('release deployment attestation', () => {
     }), /post-CI/)
     assert.equal(attestRailwayDeployment({
       deployments: [
-        { ...deployment, id: 'old', status: 'FAILED', updatedAt: '2026-08-25T20:01:00.000Z' },
-        { ...deployment, id: 'new', updatedAt: '2026-08-25T20:03:00.000Z' },
+        { ...deployment, id: 'old', status: 'REMOVED', createdAt: '2026-08-25T19:58:00.000Z', statusUpdatedAt: '2026-08-25T20:04:00.000Z' },
+        { ...deployment, id: 'new', createdAt: '2026-08-25T19:59:00.000Z', statusUpdatedAt: '2026-08-25T20:03:00.000Z' },
       ],
       service: 'QewOS',
       role: 'web',
       gitSha: SHA,
       ciCompletedAt: '2026-08-25T20:00:00.000Z',
     }).deploymentId, 'new')
+  })
+
+  it('never substitutes metadata updates or an unversioned image for transition proof', () => {
+    const input = { service: 'web', role: 'web', gitSha: SHA, ciCompletedAt: checks[0].completed_at }
+    assert.throws(() => attestRailwayDeployment({ ...input, deployments: [{ ...deployment,
+      statusUpdatedAt: undefined, updatedAt: deployment.statusUpdatedAt }] }), /post-CI/)
+    assert.throws(() => attestRailwayDeployment({ ...input, deployments: [deployment, { ...deployment, id: 'unknown', createdAt: undefined }] }), /incomplete deployment creation evidence/)
+    for (const imageDigest of [null, 'latest', 'sha256:image'])
+      assert.throws(() => attestRailwayDeployment({ ...input, deployments: [{ ...deployment,
+        meta: { ...deployment.meta, imageDigest } }] }), /immutable image digest/)
+  })
+
+  it('reads exact candidate transitions through the current authenticated Railway API', () => {
+    const calls = []
+    const read = (executable, args) => {
+      calls.push([executable, args])
+      return args[0] === 'deployment' ? [deployment, { ...deployment, id: 'other', meta: { commitHash: 'b'.repeat(40) } }]
+        : { data: { deployment } }
+    }
+    assert.deepEqual(loadRailwayCandidateDeployments({ service: 'web', environment: 'production', gitSha: SHA }, read), [deployment])
+    assert.equal(calls.length, 2)
+    assert.equal(calls[1][1][0], 'api')
+    assert.ok(calls[1][1].includes('id=deployment-1'))
+    for (const response of [{ errors: [{ message: 'Provider error' }], data: { deployment } },
+      { data: { deployment: { ...deployment, id: 'foreign' } } },
+      { data: { deployment: { ...deployment, meta: { commitHash: 'b'.repeat(40) } } } }])
+      assert.throws(() => loadRailwayCandidateDeployments({ service: 'web', environment: 'production', gitSha: SHA },
+        (_executable, args) => args[0] === 'deployment' ? [deployment] : response), /identity is invalid/)
   })
 
   it('requires exact web and worker evidence', () => {

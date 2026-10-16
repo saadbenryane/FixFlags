@@ -3,6 +3,7 @@ import { assessVerificationCoverage } from './verification-coverage'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { observationsForFlag } from '@/lib/audit/flag-observations'
 
 const complete = {
   status: 'COMPLETED',
@@ -24,6 +25,11 @@ const complete = {
 }
 
 describe('assessVerificationCoverage', () => {
+  it('never treats an unreadable current execution scope as a historical comparison', () => {
+    expect(assessVerificationCoverage({ ...complete, executionSpec: { version: 99 } }))
+      .toMatchObject({ comparable: false, reason: expect.stringMatching(/scope could not be read/),
+        coverage: { evidenceComparable: false, verifierExecuted: false } })
+  })
   it.each(['failed-peer', 'missing-peer', 'repaired'] as const)('requires the original multi-page scope despite a successful representative-page verifier: %s', scenario => {
     const pageUrl = 'https://example.com/', peer = 'https://example.com/pricing'
     const receipt = (url: string, passed: boolean) => ({ targetKey: 'module:performance', scopeKey: 'page:' + url,
@@ -150,13 +156,36 @@ describe('assessVerificationCoverage', () => {
     })).toMatchObject({ comparable: false })
   })
 
-  it('preserves complete stable AI comparisons without borrowing a deterministic module responsibility', () => {
+  it('keeps historical AI comparisons readable without a canonical execution snapshot', () => {
     expect(assessVerificationCoverage({ ...complete, auditId: 'after', source: 'AI', checkId: null, fingerprint: 'stable-ai',
       originalFlag: { checkId: null, pageUrl: complete.pageUrl },
-      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: complete.pageUrl, environment: 'production', scope: 'SITE',
-        checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: null },
       verifierExecutions: [{ ...complete.verifierExecutions[0], targetKey: 'ai:stable-ai' }],
     })).toMatchObject({ comparable: true })
+  })
+
+  it.each(['historical', 'recorded'] as const)('does not certify a qualitative %s AI recommendation from a fresh assessment alone', kind => {
+    const pageUrl = 'https://example.com/'
+    const observation = observationsForFlag({ source: 'AI', pageUrl, evidence: 'Review this action promise.' },
+      { auditId: 'before', taskId: 'judge-before', checkVersion: null, collectedAt: '2026-10-16T10:00:00.000Z' })
+    const originalFlag = { checkId: null, pageUrl, ...(kind === 'recorded' ? { supportingObservations: observation } : {}) }
+    expect(assessVerificationCoverage({ ...complete, auditId: 'after', source: 'AI', checkId: null, pageUrl,
+      fingerprint: 'ai-observation:v1::recorded', originalFlag,
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+        checks: { 'viewport-missing': 1 }, outcomes: [], verificationTarget: null },
+      verifierExecutions: [{ ...complete.verifierExecutions[0], targetKey: 'ai:ai-observation:v1::recorded' }],
+    })).toMatchObject({ comparable: false, reason: expect.stringMatching(/no measurable condition/) })
+  })
+
+  it.each(['method', 'scope', 'origin', 'format'] as const)('explains unavailable original comparison evidence: %s', kind => {
+    const pageUrl = 'https://example.com/', checkId = 'messaging-no-audience'
+    const supportingObservations = observationsForFlag({ checkId, source: 'DETERMINISTIC', pageUrl, evidence: 'The original headline.' },
+      kind === 'origin' ? undefined : { auditId: 'before', taskId: 'check-before', checkVersion: 1, collectedAt: '2026-10-16T10:00:00.000Z' })
+    const reasons = { method: /method changed/, scope: /did not include every check/, origin: /missing its recorded source/, format: /could not be read/ }
+    expect(assessVerificationCoverage({ ...complete, auditId: 'after', checkId, pageUrl,
+      originalFlag: { checkId, pageUrl, supportingObservations: kind === 'format' ? { version: 9 } : supportingObservations },
+      executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+        checks: kind === 'scope' ? {} : { [checkId]: 2 }, outcomes: [], verificationTarget: null },
+    })).toMatchObject({ comparable: false, reason: expect.stringMatching(reasons[kind]) })
   })
 
   it('requires journey evidence for journey observations', () => {

@@ -3,9 +3,10 @@ import type { Prisma, ReportCompleteness } from '@prisma/client'
 import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
-import { recordedVerificationVerdict, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
+import { recordedVerificationVerdict, recordedObservationGap, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
 import { baseCheckId } from '@/lib/audit/flag-identity'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { VERIFICATION_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
 
 type EvidenceCoverage = {
   desktopScreenshot?: boolean
@@ -93,8 +94,10 @@ export function assessVerificationCoverage(input: {
     : undefined
   const completeReview =
     input.status === 'COMPLETED' && input.reportCompleteness === 'FULL'
-  const requiresOriginalScope = Boolean(input.originalFlag && input.checkId && readExecutionSpec(input.executionSpec)?.engine === 'progressive-v1')
-  const recordedVerdict = input.auditId && input.originalFlag && input.checkId &&
+  const executionSpec = readExecutionSpec(input.executionSpec)
+  const unreadableScope = input.executionSpec != null && !executionSpec
+  const requiresOriginalScope = unreadableScope || Boolean(input.originalFlag && executionSpec?.engine === 'progressive-v1')
+  const recordedVerdict = input.auditId && input.originalFlag &&
     baseCheckId(input.originalFlag.checkId) === baseCheckId(input.checkId) &&
     normalizeUrl(input.originalFlag.pageUrl ?? '') === normalizeUrl(input.pageUrl ?? '') && input.status === 'COMPLETED' &&
     recordedVerificationVerdict({ auditId: input.auditId, executionSpec: input.executionSpec,
@@ -145,8 +148,11 @@ export function assessVerificationCoverage(input: {
     pageUrl: input.pageUrl,
   }
 
+  if (unreadableScope) return { comparable: false, reason: VERIFICATION_EVIDENCE_COPY.UNREADABLE_RECHECK, coverage }
   if (requiresOriginalScope && !recordedCondition) {
-    return { comparable: false, reason: 'The update Review did not establish the original finding’s verification scope.', coverage }
+    const gap = recordedObservationGap(input.originalFlag!, input.executionSpec)
+    return { comparable: false, reason: gap ? VERIFICATION_EVIDENCE_COPY[gap]
+      : 'The update Review did not establish the original finding’s verification scope.', coverage }
   }
   if (!completeReview && !recordedCondition && !((isSearch || isExactCheck) && input.status === 'COMPLETED')) {
     return { comparable: false, reason: 'The update Review was partial or incomplete.', coverage }

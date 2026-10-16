@@ -1,8 +1,15 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { classifyArbitraryReportFlagDiff, classifyMatchedFlagDiff } from '@/lib/audit/diff-flags'
+import { classifyArbitraryReportFlagDiff, classifyMatchedFlagDiff, isPageComparableAbsence } from '@/lib/audit/diff-flags'
 
 describe('diff-flags', () => {
+  it('keeps a finding open when the recheck scope is unreadable while preserving historical absence reads', () => {
+    const input = { auditStatus: 'COMPLETED', reportCompleteness: 'FULL' as const,
+      childPages: [{ url: 'https://example.com/', status: 'COMPLETED' }],
+      parentFlag: { checkId: 'title-missing', pageUrl: 'https://example.com/' } }
+    assert.equal(isPageComparableAbsence(input), true)
+    assert.equal(isPageComparableAbsence({ ...input, executionSpec: { version: 99 } }), false)
+  })
   it('classifies a previously fixed issue that reappears as regressed', () => {
     assert.equal(
       classifyMatchedFlagDiff({

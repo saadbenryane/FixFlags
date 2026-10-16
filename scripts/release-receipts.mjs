@@ -612,6 +612,8 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
           !service ||
           service.state !== 'SUCCESS' ||
           service.gitSha !== context.gitSha ||
+          service.transitionSource !== 'railway.statusUpdatedAt' ||
+          !/^sha256:[a-f0-9]{64}$/.test(service.imageDigest ?? '') ||
           !service.transitionedAt ||
           !Number.isFinite(Date.parse(service.transitionedAt)) ||
           Date.parse(service.transitionedAt) <= Date.parse(verification.completedAt)

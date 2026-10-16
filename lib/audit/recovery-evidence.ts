@@ -19,6 +19,20 @@ export type RecoveryFlag = { checkId?: string | null; pageUrl?: string | null; a
   evidenceTargets?: unknown; verificationRule?: string | null; supportingObservations?: unknown }
 const recoveryUrl = normalizeVerifierUrl
 type Verdict = 'passed' | 'failed' | null
+export type RecordedObservationGap = 'UNMEASURED' | 'UNREADABLE' | 'INCOMPLETE_ORIGINAL' | 'MISSING_CHECK' | 'METHOD_CHANGED'
+
+/** Describe why original recorded conditions cannot establish a recovery. */
+export function recordedObservationGap(flag: RecoveryFlag, executionSpec: unknown): RecordedObservationGap | null {
+  if (flag.supportingObservations == null) return flag.checkId ? null : 'UNMEASURED'
+  const observations = readSupportingObservations(flag.supportingObservations)
+  if (!observations) return 'UNREADABLE'
+  if (observations.items.some(item => !item.checkId)) return 'UNMEASURED'
+  if (observations.items.some(item => !item.provenance || !item.pageUrl || !item.checkVersion)) return 'INCOMPLETE_ORIGINAL'
+  const spec = readExecutionSpec(executionSpec)
+  if (observations.items.some(item => spec?.checks[baseCheckId(item.checkId)!] == null)) return 'MISSING_CHECK'
+  if (observations.items.some(item => spec!.checks[baseCheckId(item.checkId)!] !== item.checkVersion)) return 'METHOD_CHANGED'
+  return null
+}
 function combinedVerdict(verdicts: Verdict[]): Verdict {
   if (verdicts.includes('failed')) return 'failed'
   return verdicts.length && verdicts.every(verdict => verdict === 'passed') ? 'passed' : null

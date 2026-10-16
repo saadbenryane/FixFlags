@@ -165,6 +165,8 @@ The database name must include `release` or `test`; the gate refuses to reset th
 The container environment file and fixture manifest must be regular files with mode `0600`.
 GitHub Actions **CI is temporarily disabled at the user's request (2026-10-10)**. Keep `.github/workflows/ci.yml` disabled until the user explicitly asks to enable it again. The workflow and tests are retained; do not re-enable them as part of routine fixes or releases. After explicit authorization, restore it with `gh workflow enable ci.yml`.
 Keep Railway **Wait for CI disabled** for both production web (`FixFlags`) and worker (`FixFlags Worker`). Pushes to `main` start deployment without waiting for GitHub Actions. Run proportional local checks before pushing and confirm successful deployment plus the exact SHA from `/api/health` afterward. Runtime migrations and readiness checks still gate startup.
+
+Release attestation requires a Railway CLI with the [authenticated API command](https://docs.railway.com/cli/api). It selects the newest deployment created for the exact candidate, reads its actual `statusUpdatedAt` through the provider API, and requires a successful status transition after the local foundation passed. Metadata update times cannot prove deployment success. Both web and worker must supply an immutable `sha256` image digest.
 The comprehensive release-proof receipt is a separate verification workflow: it requires every GitHub check to pass, a successful post-CI Railway transition for web and worker on the exact SHA, and `/api/health` to report that same SHA. Do not enable Wait for CI to obtain that receipt or make it a prerequisite for ordinary shipping.
 
 ### Demo / testing

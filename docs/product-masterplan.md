@@ -24,6 +24,8 @@ Owner implementation plan accepted 2026-10-16: finish the complete website beta,
 
 The following statuses track the current implementation pass. They are independent: implemented code does not establish local execution, and local execution does not establish deployed proof. None of these rows is a release acceptance receipt.
 
+These descriptions are frozen implementation notes. Current acceptance status for this completion run lives in `test-results/release/website-beta-20261016-7dbc3562/completion-ledger.json`, with separate implementation, local-proof and deployed-proof fields plus evidence references. That ledger and the exact-candidate release receipts must agree before completion is reported. A missing or incomplete receipt keeps its requirement open.
+
 | Requirement | Implementation complete | Locally proven | Deployed proof complete |
 | --- | --- | --- | --- |
 | Supporting observations and all-scope recovery | In progress. Additive versioned Flag contract, persistence, original-scope verification and public detail projection implemented. Journey grouping retains every source observation; fresh AI identities use exact recorded evidence and scope | Custody, privacy, persistence and recovery tests passed. Fresh migration history and upgrade from `5b8a25ad` passed, preserving subscriptions, Site history and private capture references. A real category worker retained original task and frozen version. Full worker run exceeded the former 20-minute harness deadline and must rerun with its bounded 45-minute deadline | Open. Candidate not deployed |

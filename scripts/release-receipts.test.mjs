@@ -403,8 +403,8 @@ describe('release evidence receipts', () => {
             gitSha: SHA,
             ci: { status: 'SUCCESS', completedAt: '2026-08-25T20:00:00.000Z', checks: [{ name: 'verify', completedAt: '2026-08-25T20:00:00.000Z' }] },
             services: [
-              { role: 'web', state: 'SUCCESS', gitSha: SHA, deploymentId: 'web-1', transitionedAt: '2026-08-25T20:01:00.000Z' },
-              { role: 'worker', state: 'SUCCESS', gitSha: SHA, deploymentId: 'worker-1', transitionedAt: '2026-08-25T20:02:00.000Z' },
+              { role: 'web', state: 'SUCCESS', gitSha: SHA, deploymentId: 'web-1', transitionSource: 'railway.statusUpdatedAt', imageDigest: 'sha256:' + 'd'.repeat(64), transitionedAt: '2026-08-25T20:01:00.000Z' },
+              { role: 'worker', state: 'SUCCESS', gitSha: SHA, deploymentId: 'worker-1', transitionSource: 'railway.statusUpdatedAt', imageDigest: 'sha256:' + 'd'.repeat(64), transitionedAt: '2026-08-25T20:02:00.000Z' },
             ],
           }))
         } else {
@@ -436,8 +436,8 @@ describe('release evidence receipts', () => {
             gitSha: SHA,
             ci: { status: 'SUCCESS', completedAt: '2026-08-25T20:00:00.000Z', checks: [{ name: 'verify', completedAt: '2026-08-25T20:00:00.000Z' }] },
             services: [
-              { role: 'web', state: 'SUCCESS', gitSha: SHA, transitionedAt: '2026-08-25T20:01:00.000Z' },
-              { role: 'worker', state: 'SUCCESS', gitSha: SHA, transitionedAt: '2026-08-25T20:02:00.000Z' },
+              { role: 'web', state: 'SUCCESS', gitSha: SHA, transitionSource: 'railway.statusUpdatedAt', imageDigest: 'sha256:' + 'd'.repeat(64), transitionedAt: '2026-08-25T20:01:00.000Z' },
+              { role: 'worker', state: 'SUCCESS', gitSha: SHA, transitionSource: 'railway.statusUpdatedAt', imageDigest: 'sha256:' + 'd'.repeat(64), transitionedAt: '2026-08-25T20:02:00.000Z' },
             ],
           }))
         } else {

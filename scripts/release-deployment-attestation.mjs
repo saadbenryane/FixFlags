@@ -54,28 +54,49 @@ export function attestLocalFoundation(receipt, gitSha) {
 }
 
 export function attestRailwayDeployment({ deployments, service, role, gitSha, ciCompletedAt, verificationCompletedAt }) {
-  const deployment = deployments
-    .filter((candidate) => candidate?.meta?.commitHash === gitSha)
-    .sort((left, right) => Date.parse(right.updatedAt ?? '') - Date.parse(left.updatedAt ?? ''))[0]
+  const candidates = deployments.filter(candidate => candidate?.meta?.commitHash === gitSha)
+  if (candidates.some(candidate => !Number.isFinite(Date.parse(candidate.createdAt))))
+    throw new Error(`${service} has incomplete deployment creation evidence`)
+  const deployment = candidates
+    .sort((left, right) => Date.parse(right.createdAt ?? '') - Date.parse(left.createdAt ?? ''))[0]
   if (!deployment) throw new Error(`${service} has no deployment for the exact candidate revision`)
   if (deployment.status !== 'SUCCESS') {
     throw new Error(`${service} candidate deployment is not successful`)
   }
-  const transitionedAt = deployment.updatedAt
+  const transitionedAt = deployment.statusUpdatedAt
   const provenAt = verificationCompletedAt ?? ciCompletedAt
   if (!transitionedAt || !Number.isFinite(Date.parse(provenAt)) || !Number.isFinite(Date.parse(transitionedAt)) || Date.parse(transitionedAt) <= Date.parse(provenAt)) {
     throw new Error(`${service} has no successful ${verificationCompletedAt ? 'post-verification' : 'post-CI'} deployment transition`)
   }
+  if (Date.parse(deployment.createdAt) > Date.parse(transitionedAt) || !/^sha256:[a-f0-9]{64}$/.test(deployment.meta.imageDigest ?? ''))
+    throw new Error(`${service} has no valid deployment creation time or immutable image digest`)
   return {
     service,
     deploymentId: deployment.id,
     role,
     state: deployment.status,
     gitSha: deployment.meta.commitHash,
-    imageDigest: deployment.meta.imageDigest ?? null,
+    imageDigest: deployment.meta.imageDigest,
     createdAt: deployment.createdAt ?? null,
     transitionedAt,
+    transitionSource: 'railway.statusUpdatedAt',
   }
+}
+
+/** The list command omits transition timestamps. Read the exact current deployment
+ * through the authenticated provider API instead of substituting metadata updates. */
+export function loadRailwayCandidateDeployments({ service, environment, gitSha }, readJson = runJson) {
+  const listed = readJson('railway', ['deployment', 'list', '--service', service, '--environment', environment, '--json'])
+  if (!Array.isArray(listed)) throw new Error('Railway deployment list is invalid')
+  return listed.filter(item => item?.meta?.commitHash === gitSha).map(item => {
+    const response = readJson('railway', ['api',
+      'query FixFlagsReleaseDeployment($id: String!) { deployment(id: $id) { id status createdAt statusUpdatedAt meta } }',
+      '--raw-var', `id=${item.id}`, '--compact'])
+    const current = response?.data?.deployment
+    if (response?.errors?.length || !current || current.id !== item.id || current.meta?.commitHash !== gitSha)
+      throw new Error('Railway deployment evidence identity is invalid')
+    return current
+  })
 }
 
 export function buildDeploymentAttestation({ gitSha, repository, checkRuns, localFoundation, deploymentsByRole }) {
@@ -128,15 +149,7 @@ function main() {
   const environment = process.env.RELEASE_RAILWAY_ENVIRONMENT || 'production'
   const webService = process.env.RELEASE_RAILWAY_WEB_SERVICE || 'FixFlags'
   const workerService = process.env.RELEASE_RAILWAY_WORKER_SERVICE || 'FixFlags Worker'
-  const loadDeployments = (service) => runJson('railway', [
-    'deployment',
-    'list',
-    '--service',
-    service,
-    '--environment',
-    environment,
-    '--json',
-  ])
+  const loadDeployments = (service) => loadRailwayCandidateDeployments({ service, environment, gitSha })
   const evidence = buildDeploymentAttestation({
     gitSha,
     repository,
