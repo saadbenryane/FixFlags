@@ -68,6 +68,15 @@ describe('page triage source grounding', () => {
       evidence: 'Recorded first H1: "Hi"', rubric: 'MESSAGE', severity: 'POLISH', fix: 'Review Hi', source: 'DETERMINISTIC', confidence: 0.9 } as DeterministicFlag
     expect(deduplicateTriageRecommendations(assessTriageRecommendations([review], twoHeadings).admitted, [native], review.pageUrl!)).toHaveLength(1)
   })
+  it('keeps one actionable review when the provider repeats the same source reference', () => {
+    const original = candidate()
+    const repeated = candidate({ evidenceRefs: [...original.evidenceRefs!, ...original.evidenceRefs!] })
+    const result = assessTriageRecommendations([original, repeated], facts)
+    expect(result.assessment.candidates).toEqual([original, repeated])
+    const grouped = deduplicateTriageRecommendations(result.admitted, [], original.pageUrl!)
+    expect(grouped).toHaveLength(1)
+    expect(grouped[0]!.evidence).toBe('Action wording: "Start free"')
+  })
   it('groups only the same declared scope and retains unrelated native mechanisms, pages and visual devices', () => {
     const review = candidate({ reviewKind: 'copy-clarity', rubric: 'MESSAGE', evidenceRefs: [{ source: 'headline', quote: 'Plan releases together' }] })
     const grounded = assessTriageRecommendations([review], facts).admitted

@@ -45,7 +45,7 @@ export function assessTriageRecommendations(candidates: Candidate[], facts: Fact
     const reason = rejection(candidate, facts)
     if (reason) { rejected.push({ index, reason }); return [] }
     const copy = TRIAGE_REVIEW_COPY[candidate.reviewKind!]
-    const refs = [...candidate.evidenceRefs!].sort((a, b) => a.source.localeCompare(b.source) || a.quote.localeCompare(b.quote))
+    const refs = [...new Map(candidate.evidenceRefs!.map(ref => [JSON.stringify([ref.source, ref.quote]), ref])).values()].sort((a, b) => a.source.localeCompare(b.source) || a.quote.localeCompare(b.quote))
     return [{ ...candidate, evidenceRefs: refs, problem: `${copy.problem}: "${refs[0]!.quote.slice(0, 100)}"`,
       evidence: refs.map(ref => `${TRIAGE_REVIEW_COPY.sources[ref.source]}: "${ref.quote}"`).join('\n') +
         (candidate.device === 'none' ? '' : `\nReview device: ${candidate.device}.`),
