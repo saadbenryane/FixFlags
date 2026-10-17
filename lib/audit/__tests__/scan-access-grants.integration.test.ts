@@ -1,3 +1,4 @@
+import { TASK_QUEUES } from '@/lib/audit/progressive/queues'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
@@ -38,7 +39,7 @@ run('durable scan access grants', () => {
   })
   afterAll(async () => {
     await worker?.close(); await clearWorkerHeartbeat(); await getAuditQueue().close()
-    for (const name of ['http', 'browser', 'provider', 'evaluate', 'availability'] as const) await getAuditTaskQueue(name).close()
+    for (const name of Object.keys(TASK_QUEUES) as Array<keyof typeof TASK_QUEUES>) await getAuditTaskQueue(name).close()
     await closeBrowser(); server.closeAllConnections(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
     await prisma.user.delete({ where: { id: owner } }); await prisma.$disconnect(); vi.unstubAllEnvs()
   })

@@ -1,3 +1,4 @@
+import { TASK_QUEUES } from '../queues'
 import { randomUUID } from 'node:crypto'
 import type { Audit } from '@prisma/client'
 import { Queue, Worker } from 'bullmq'
@@ -35,7 +36,7 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       !/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(database.pathname))
       throw new Error('Dispatch integration requires a disposable local execution database')
     const suffix = randomUUID()
-    for (const resource of ['http', 'browser', 'audit', 'evaluate', 'provider'] as const) {
+    for (const resource of ['audit', ...Object.keys(TASK_QUEUES)]) {
       const connection = createQueueRedis()
       connections.push(connection)
       dispatch.queues.set(resource, new Queue('dispatch-' + resource + '-' + suffix, { connection }))
@@ -84,6 +85,68 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
       })
     }, { timeout: 10_000, interval: 25 })
   }
+
+  it('settles ready AI and HTTP work while independent PageSpeed and Google requests are still active', async () => {
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    const calls: string[] = []
+    const selected = new Map<string, TaskHandler>(['pagespeed', 'google', 'judge', 'http'].map(value => {
+      const kind = value as TaskKind
+      return [kind, { kind, replay: 'read_only', timeoutMs: 15_000, validateResult: () => {},
+        async evaluate() { calls.push(kind); if (kind === 'pagespeed' || kind === 'google') await held
+          return serializeArtifact(kind, { controlledExecution: true }) } }]
+    }))
+    const localWorkers: Worker[] = []
+    try {
+      const { audit, tasks } = await admission(['pagespeed', 'google', 'judge', 'http'])
+      for (const resource of ['pagespeed', 'google', 'provider', 'http']) {
+        const connection = createWorkerRedis(); connections.push(connection)
+        const worker = new Worker(dispatch.queues.get(resource)!.name, job => executeTask(job.data, selected), { connection })
+        workers.push(worker); localWorkers.push(worker); await worker.waitUntilReady()
+      }
+      await dispatchReadyTasks(await reconcileTasks(audit.id))
+      await vi.waitFor(async () => {
+        for (const kind of ['pagespeed', 'google']) expect(await prisma.auditVerifierExecution.findUniqueOrThrow({
+          where: { id: tasks.find(task => task.workKind === kind)!.id } })).toMatchObject({ workState: 'RUNNING', workAttempts: 1 })
+        for (const kind of ['judge', 'http']) expect(await prisma.auditVerifierExecution.findUniqueOrThrow({
+          where: { id: tasks.find(task => task.workKind === kind)!.id } })).toMatchObject({ workState: 'COMPLETED', workAttempts: 1 })
+      }, { timeout: 10_000, interval: 25 })
+      expect(calls.sort()).toEqual(['google', 'http', 'judge', 'pagespeed'])
+      release()
+      for (const task of tasks) await completed(task.id)
+    } finally { release(); await Promise.all(localWorkers.map(worker => worker.close())) }
+  })
+
+  it('executes one task generation once when historical provider and canonical PageSpeed deliveries race', async () => {
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    let evaluations = 0
+    const selected = new Map<string, TaskHandler>([['pagespeed', { kind: 'pagespeed', replay: 'read_only', timeoutMs: 15_000,
+      validateResult: () => {}, async evaluate() { evaluations++; await held; return serializeArtifact('pagespeed', { controlledExecution: true }) } }]])
+    const localWorkers: Worker[] = []
+    try {
+      const { audit, tasks } = await admission(['pagespeed']), task = tasks[0]
+      await dispatchReadyTasks(await reconcileTasks(audit.id))
+      const jobId = task.id + '-g1'
+      const historical = await dispatch.queues.get('provider')!.add('historical-delivery', { auditId: audit.id, taskId: task.id, generation: 1 }, { jobId })
+      const canonical = (await dispatch.queues.get('pagespeed')!.getJob(jobId))!
+      for (const resource of ['provider', 'pagespeed']) {
+        const connection = createWorkerRedis(); connections.push(connection)
+        const worker = new Worker(dispatch.queues.get(resource)!.name, job => executeTask(job.data, selected), { connection })
+        workers.push(worker); localWorkers.push(worker); await worker.waitUntilReady()
+      }
+      await vi.waitFor(async () => {
+        expect(evaluations).toBe(1)
+        const states = await Promise.all([historical.getState(), canonical.getState()])
+        expect(states.sort()).toEqual(['active', 'completed'])
+      }, { timeout: 10_000, interval: 25 })
+      release(); await completed(task.id)
+      await vi.waitFor(async () => expect(await Promise.all([historical.getState(), canonical.getState()])).toEqual(['completed', 'completed']))
+      expect(evaluations).toBe(1)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+        createdAt: task.createdAt, workAttempts: 1, workGeneration: 1, workState: 'COMPLETED' })
+    } finally { release(); await Promise.all(localWorkers.map(worker => worker.close())) }
+  })
 
   it('admits a maximum-sized graph in bulk and preserves completed execution on identical replay', async () => {
     const audit = await prisma.audit.create({ data: { url: 'https://example.com/' } })

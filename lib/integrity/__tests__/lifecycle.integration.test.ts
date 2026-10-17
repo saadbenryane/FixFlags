@@ -1,3 +1,4 @@
+import { TASK_QUEUES } from '@/lib/audit/progressive/queues'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -287,7 +288,7 @@ run('Shopify path publication in disposable PostgreSQL', () => {
       gates.forEach(gate => gate.release())
       boundaries.probe.mockResolvedValue(result(source.storefrontUrl, ''))
       await worker.close()
-      const queues = [queue, ...(['http', 'browser', 'provider', 'evaluate', 'availability'] as const).map(getAuditTaskQueue)]
+      const queues = [queue, ...(Object.keys(TASK_QUEUES) as Array<keyof typeof TASK_QUEUES>).map(getAuditTaskQueue)]
       const clients = await Promise.all(queues.map(queue => queue.client))
       await Promise.all(queues.map(queue => queue.close()))
       new Set(clients).forEach(client => client.disconnect())

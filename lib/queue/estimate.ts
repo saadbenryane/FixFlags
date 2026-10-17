@@ -6,10 +6,10 @@ import { TASK_QUEUES, type TaskQueue } from '@/lib/audit/progressive/queues'
 export async function getWorkerExecutionCounts(): Promise<{ activeJobs: number; waitingJobs: number; delayedJobs: number }> {
   const queues = [getAuditQueue(), ...(Object.keys(TASK_QUEUES) as TaskQueue[]).map(getAuditTaskQueue)]
   const counts = await Promise.all(queues.map(async queue => {
-    const [activeJobs, waitingJobs, delayedJobs] = await Promise.all([
-      queue.getActiveCount(), queue.getWaitingCount(), queue.getDelayedCount(),
+    const [activeJobs, waitingJobs, prioritizedJobs, delayedJobs] = await Promise.all([
+      queue.getActiveCount(), queue.getWaitingCount(), queue.getPrioritizedCount(), queue.getDelayedCount(),
     ])
-    return { activeJobs, waitingJobs, delayedJobs }
+    return { activeJobs, waitingJobs: waitingJobs + prioritizedJobs, delayedJobs }
   }))
   return counts.reduce((total, count) => ({
     activeJobs: total.activeJobs + count.activeJobs,

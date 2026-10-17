@@ -1,3 +1,4 @@
+import { TASK_QUEUES } from '../queues'
 import { randomUUID, createHmac } from 'node:crypto'
 import { createServer } from 'node:https'
 import { execFileSync } from 'node:child_process'
@@ -116,7 +117,7 @@ run('disposable HTTPS automatic account lifecycle', () => {
   })
   afterAll(async () => {
     await worker?.close(); await clearWorkerHeartbeat(); await closeBrowser()
-    for (const queue of [getAuditQueue(), ...(['http', 'browser', 'provider', 'evaluate', 'availability'] as const).map(getAuditTaskQueue)]) {
+    for (const queue of [getAuditQueue(), ...(Object.keys(TASK_QUEUES) as Array<keyof typeof TASK_QUEUES>).map(getAuditTaskQueue)]) {
       const client = await queue.client; await queue.close(); client.disconnect()
     }
     server?.closeAllConnections(); if (server) await new Promise<void>(resolve => server.close(() => resolve()))

@@ -24,7 +24,7 @@ Owner implementation plan accepted 2026-10-16: finish the complete website beta,
 
 The following statuses track the current implementation pass. They are independent: implemented code does not establish local execution, and local execution does not establish deployed proof. None of these rows is a release acceptance receipt.
 
-These descriptions are frozen implementation notes. Current acceptance status for this completion run lives in `test-results/release/website-beta-20261016-7dbc3562/completion-ledger.json`, with separate implementation, local-proof and deployed-proof fields plus evidence references. That ledger and the exact-candidate release receipts must agree before completion is reported. A missing or incomplete receipt keeps its requirement open.
+These descriptions are frozen implementation notes. Current acceptance status for this completion run lives in `test-results/release/<run-id>/completion-ledger.json`, with separate implementation, local-proof and deployed-proof fields plus evidence references. The active namespace is recorded in the private `test-results/release/website-beta-current.json` pointer. Earlier candidate receipts remain preserved. That ledger and the exact-candidate release receipts must agree before completion is reported. A missing or incomplete receipt keeps its requirement open.
 
 | Requirement | Implementation complete | Locally proven | Deployed proof complete |
 | --- | --- | --- | --- |

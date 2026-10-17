@@ -1,3 +1,4 @@
+import { queueForTask, priorityForTask, TASK_QUEUES } from '../queues'
 import { describe, expect, it } from 'vitest'
 import { retryDecision, validateTaskGraph, readArtifact, serializeArtifact, taskInputSchema } from '../contracts'
 import { registerTaskHandlers } from '../registry'
@@ -9,6 +10,17 @@ import { parseMetadataFromHtml } from '../../metadata'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('durable bounded work contracts', () => {
+  it('isolates independent services and prioritizes primary work inside each bounded resource', () => {
+    expect(queueForTask('pagespeed', input)).toBe('pagespeed')
+    expect(queueForTask('google', input)).toBe('google')
+    expect(queueForTask('judge', input)).toBe('provider')
+    expect(queueForTask('prescription', input)).toBe('provider')
+    expect(TASK_QUEUES.provider.name).toBe('audit-task-provider')
+    for (const kind of ['pagespeed', 'google', 'judge'] as const)
+      expect(priorityForTask(kind, input)).toBeLessThan(priorityForTask(kind, { ...input, primary: false }))
+    expect(priorityForTask('prescription', { ...input, primary: false })).toBeLessThan(priorityForTask('judge', { ...input, primary: false }))
+  })
+
   it('isolates pricing navigation from the primary action and selects only its original scope for repair', () => {
     const spec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
       checks: { 'flow-pricing-nav-broken': 1, 'flow-cta-dead-end': 1 }, outcomes: [] }

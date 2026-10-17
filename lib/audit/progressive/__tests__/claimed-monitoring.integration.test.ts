@@ -1,3 +1,4 @@
+import { TASK_QUEUES } from '../queues'
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { createServer } from 'node:http'
@@ -137,7 +138,7 @@ run('URL-first analysis through claim and monitored repair', () => {
     // Pending alerts from this completed fixture cannot enter a later suite's
     // bounded global retry sweep. The database guard above confines cleanup.
     if (ownerCreated) await prisma.user.deleteMany({ where: { id: owner } })
-    for (const queue of [getAuditQueue(), ...(['http', 'browser', 'provider', 'evaluate', 'availability'] as const).map(getAuditTaskQueue)]) {
+    for (const queue of [getAuditQueue(), ...(Object.keys(TASK_QUEUES) as Array<keyof typeof TASK_QUEUES>).map(getAuditTaskQueue)]) {
       const client = await queue.client; await queue.close(); client.disconnect()
     }
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()))

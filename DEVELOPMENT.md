@@ -138,6 +138,13 @@ local `DATABASE_URL` with database-creation permission, Docker with `redis:7-alp
 and Chromium. It drops only the database and container it creates. It does not
 migrate or reset the configured local database, deploy, or run the app E2E suite.
 
+PageSpeed, connected Google checks, and AI explanations use separate bounded queues.
+`AUDIT_PAGESPEED_CONCURRENCY`, `AUDIT_GOOGLE_CONCURRENCY`, and
+`AUDIT_PROVIDER_CONCURRENCY` each default to two slots per worker. A slow service
+cannot occupy another service's slots. Existing provider deliveries still use
+the same task IDs, generations, ownership claims, and recovery deadlines.
+Queue health includes prioritized jobs as waiting work.
+
 ### Quality
 
 Follow the [agent validation policy](AGENTS.md#validation): end-to-end tests require an explicit user request, including the browser journeys bundled into `verify:release`. A routine UI edit does not authorize those commands.

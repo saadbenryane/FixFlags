@@ -26,6 +26,18 @@ describe('finding publication cost', () => {
         provenance: { auditId: 'original-audit', taskId: 'judge-task', collectedAt: artifact.collectedAt } }] } })
     expect(JSON.stringify(artifact)).toBe(original)
   })
+  it.each(['browser', 'http'] as const)('retains a %s parser limitation independently of successful native tasks', async kind => {
+    const pageUrl = 'https://example.com/'
+    const data = kind === 'browser' ? { pageId: 'page', metadata: null,
+      metadataFailure: { code: 'PARSER_CRASH', attempts: 2 }, snapshot: { desktopUrl: null, mobileUrl: null, renderedScope: null } }
+      : { metadata: null, metadataFailure: { code: 'PARSER_CRASH', attempts: 2 } }
+    const query = vi.fn().mockResolvedValueOnce([{ id: kind + '-task', workKind: kind, workState: 'COMPLETED', status: 'COMPLETED',
+      workInput: { position: 0, pageUrl, primary: true }, workResult: serializeArtifact(kind, data) }]).mockResolvedValueOnce([])
+    const pages = await recordedPageEvidence('audit', undefined, { $queryRaw: query } as unknown as Pick<Prisma.TransactionClient, '$queryRaw'>)
+    expect(pages).toHaveLength(1)
+    expect(pages[0]).toMatchObject({ url: pageUrl, metadata: null, failedModules: ['metadata'] })
+  })
+
   it('does not read the finding ledger or rewrite report rows for a task with no new findings', async () => {
     const read = vi.fn().mockRejectedValue(new Error('An empty result must not rebuild the report'))
     const tx = { $queryRaw: read } as unknown as Prisma.TransactionClient

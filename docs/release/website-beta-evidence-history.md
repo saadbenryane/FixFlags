@@ -1,7 +1,7 @@
 ---
 status: historical
 authority: evidence
-reviewed_at: 2026-10-14
+reviewed_at: 2026-10-17
 supersedes: []
 ---
 
@@ -49,3 +49,7 @@ The foundation already deployed at `b09761772f88302546a7b72b0cb29febc4ad0951` is
 
 Performance acceptance remains LCP ≤2.5 seconds, INP ≤200 milliseconds, and CLS ≤0.1. Identify controlled measurements separately from production field data, whose 75th percentile must be evaluated by device category.
 
+
+The October 17 acceptance run for candidate `07140c79` passed the website static, unit, coverage and build gate with 8,763 tests. Its required native integration gate failed, so the candidate remains unaccepted and production remains at `5b8a25ad`. Direct-collection repair fixtures lacked the provenance now required by grouped observations; their new fixture ledger records actual collection custody before grouping, without claiming queue execution or inventing collection times. The same run exposed a production projection defect that lost metadata parser limitations. Preserve the original failed receipt and repeat the full gate on the corrected candidate.
+
+Live isolated observation also found 276 prioritized provider jobs while ordinary waiting counts were zero. PageSpeed, connected Google checks and AI shared two slots, delaying ready explanations behind unrelated requests. Independent bounded service queues and complete queue accounting address that mechanism. Focused real-database tests exercise stalled services and a race between historical and canonical deliveries; these are local engineering proof, not deployed acceptance. The controlled verification-email budget remains closed and unused. Account lifecycle, final-candidate public precision, the published-fix loop and natural production monitoring remain open.

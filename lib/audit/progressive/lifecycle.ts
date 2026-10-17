@@ -78,7 +78,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
     SELECT "id", "workKind", "workState", "status", "workInput",
       CASE WHEN "workKind" = 'browser' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'pageId', "workResult"->'data'->'pageId', 'metadata', "workResult"->'data'->'metadata',
-        'preview', "workResult"->'data'->'preview',
+        'preview', "workResult"->'data'->'preview', 'metadataFailure', "workResult"->'data'->'metadataFailure',
         'snapshot', jsonb_build_object('desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl',
           'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl',
           'collectionRestrictions', "workResult"->'data'->'snapshot'->'collectionRestrictions',
@@ -89,7 +89,8 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       WHEN "workKind" = 'captures' THEN jsonb_set("workResult", '{data}', jsonb_build_object(
         'pageId', "workResult"->'data'->'pageId', 'snapshot', jsonb_build_object(
           'desktopUrl', "workResult"->'data'->'snapshot'->'desktopUrl', 'mobileUrl', "workResult"->'data'->'snapshot'->'mobileUrl')))
-      WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata'))
+      WHEN "workKind" = 'http' THEN jsonb_set("workResult", '{data}', jsonb_build_object('metadata', "workResult"->'data'->'metadata',
+        'metadataFailure', "workResult"->'data'->'metadataFailure'))
       WHEN "workKind" IN ('journeys', 'cross-page') THEN jsonb_set("workResult", '{data}', jsonb_build_object('flags', "workResult"->'data'->'flags'))
       WHEN "workKind" IN ('search-resources', 'keyboard', 'bindings', 'fixture-setup', 'automatic-accounts', 'finalize') THEN NULL
       ELSE "workResult" END AS "workResult"
@@ -119,7 +120,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
     const find = (kind: string) => pageTasks.find(task => task.workKind === kind && task.workState === 'COMPLETED')
     const browserTask = find('browser'), httpTask = find('http'), searchTask = pageTasks.find(task => task.workKind === 'search' && task.workState === 'COMPLETED' &&
       (!((task.workInput as { module?: string })?.module) || (task.workInput as { module?: string })?.module === 'summary')), judgeTask = find('judge')
-    const browser = browserTask?.workResult ? browserArtifactSchema.extend({ preview: pagePreviewSchema.nullish(), snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true, renderedScope: true }).extend({
+    const browser = browserTask?.workResult ? browserArtifactSchema.extend({ metadataFailure: browserArtifactSchema.shape.metadataFailure.nullish(), preview: pagePreviewSchema.nullish(), snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true, renderedScope: true }).extend({
       renderedScope: screenshotSnapshotSchema.shape.renderedScope.nullable(),
       collectionRestrictions: screenshotSnapshotSchema.shape.collectionRestrictions.nullish(),
       renderedSearchSnapshot: renderedSearchSnapshotSchema.pick({ documentBaseUrl: true }).extend({
@@ -129,7 +130,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
     }) }).parse(readArtifact(browserTask.workResult, 'browser').data) : null
     const captureTask = find('captures')
     const captures = captureTask?.workResult ? captureArtifactSchema.extend({ snapshot: screenshotSnapshotSchema.pick({ desktopUrl: true, mobileUrl: true }) }).parse(readArtifact(captureTask.workResult, 'captures').data) : null
-    const response = httpTask?.workResult ? httpArtifactSchema.pick({ metadata: true }).parse(readArtifact(httpTask.workResult, 'http').data) : null
+    const response = httpTask?.workResult ? httpArtifactSchema.pick({ metadata: true }).extend({ metadataFailure: httpArtifactSchema.shape.metadataFailure.nullish() }).parse(readArtifact(httpTask.workResult, 'http').data) : null
     const metadata = browser?.metadata ?? response?.metadata
     const speedResults = pageTasks.filter(task => task.workKind === 'pagespeed' && task.workState === 'COMPLETED' && task.workResult)
       .map(task => speedArtifactSchema.parse(readArtifact(task.workResult, 'pagespeed').data))
@@ -159,6 +160,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
       desktopBase64: '', mobileBase64: null, flowScan: pageTasks.some(task => task.workKind === 'flow' && task.workState === 'COMPLETED' &&
         (task.workInput as { module?: string })?.module !== 'form-validation'),
       flags, failedModules: [...new Set([
+        ...(browser?.metadataFailure || response?.metadataFailure ? ['metadata'] : []),
         ...pageTasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task =>
           (task.workInput as { module?: string })?.module ?? task.workKind ?? 'unknown'),
         ...gaps.filter(gap => gap.pageUrl === url).map(gap => gap.targetKey.slice('module:'.length)),
@@ -409,6 +411,7 @@ export const lifecycleHandlers: TaskHandler[] = [
         return serializeArtifact('finalize', { status: 'COMPLETED', partial: failed.length > 0 })
       }
       const pages = await recordedPageEvidence(latest.id), ctx = await pipelineContext(context)
+      failed.push(...pages.flatMap(page => page.failedModules).filter(module => !failed.includes(module)))
       const accountTask = await prisma.auditVerifierExecution.findFirst({ where: { auditId: latest.id, workKind: 'automatic-accounts', workState: 'COMPLETED' }, select: { workResult: true } })
       if (accountTask?.workResult && pages[0]) {
         const accountFlags = z.array(flagSchema).parse(readArtifact(accountTask.workResult, 'automatic-accounts').data.flags ?? [])

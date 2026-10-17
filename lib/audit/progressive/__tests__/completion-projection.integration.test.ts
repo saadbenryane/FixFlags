@@ -182,6 +182,10 @@ localDatabase('bounded PostgreSQL completion projection', () => {
         preview: { title: 'Native preview', titleComplete: true }, flags: [flag, journeyFlag], failedModules: ['performance'] })
       expect(JSON.stringify(independent)).not.toContain('unprojected')
       expect(await recordedPages('audit', url, tx)).toEqual([])
+      await tx.$executeRaw`UPDATE audit_verifier_executions SET "workResult" = jsonb_set("workResult", '{data,metadataFailure}',
+        '{"code":"PARSER_CRASH","attempts":2}'::jsonb) WHERE "workKind" IN ('browser', 'http')`
+      expect((await recordedPageEvidence('audit', url, tx))[0]).toMatchObject({ metadata: null,
+        flags: [flag, journeyFlag], failedModules: ['metadata', 'performance'] })
     })
   })
   it('excludes setup observations while retaining legacy and current Site history', async () => {
