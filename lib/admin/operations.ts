@@ -1,12 +1,13 @@
 import type { Prisma } from '@prisma/client'
 import { accountsAwaitingAction, requiresAccountCleanup } from './account-operations'
+import { incompleteExecutionHistory } from './task-operations'
 import type { AdminActor } from '@/lib/auth/require-admin'
 import { adminRead } from './workspace-queries'
 import { adminPagination, readAdminListQuery } from './list-query'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 export const OPERATION_QUEUES = [
   { id: 'schedules', label: 'Overdue monitoring schedules' },
-  { id: 'tasks', label: 'Incomplete tasks in 24 hours' },
+  { id: 'tasks', label: 'Incomplete execution history' },
   { id: 'accounts', label: 'Accounts awaiting reconciliation' },
   { id: 'uptime', label: 'Overdue uptime probes' },
   { id: 'uptime-alerts', label: 'Failed uptime notifications' },
@@ -24,11 +25,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       watchInterval: { not: null },
       watchNextRunAt: { lt: overdue },
     }
-    const tasks: Prisma.AuditVerifierExecutionWhereInput = {
-      workState: { in: ['BLOCKED', 'EXHAUSTED'] },
-      audit: { project: active },
-      updatedAt: { gte: new Date(now.getTime() - 86400000) },
-    }
+    const tasks = incompleteExecutionHistory()
     const accounts = accountsAwaitingAction(interrupted)
     const uptime: Prisma.UptimeMonitorWhereInput = {
       enabled: true,
@@ -68,7 +65,9 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
         | 'SITE_ACCOUNT_CLEANUP'
         | 'UPTIME_NOTIFICATION_RETRY'
         | 'WATCH_NOTIFICATION_RETRY'
+        | null
       targetId: string
+      auditId?: string
     }> = []
     if (queue === 'schedules')
       rows = (
@@ -107,8 +106,11 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
         label: t.audit.url,
         state: `${t.workState}${t.workErrorCode ? ' · ' + t.workErrorCode : ''}`,
         at: t.updatedAt,
-        action: 'SITE_RECONCILE',
-        targetId: t.audit.projectId!,
+        // Inspection reaches the original report and its canonical actions.
+        // Site reconciliation cannot retry a terminal task or a partial report.
+        action: null,
+        targetId: t.audit.id,
+        auditId: t.audit.id,
       }))
     if (queue === 'accounts')
       rows = (

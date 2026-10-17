@@ -1,10 +1,18 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 
 // globals is false in vitest.config.ts, so Testing Library's automatic
 // cleanup never registers; do it explicitly.
-afterEach(() => cleanup())
+afterEach(async () => {
+  cleanup()
+  // Radix restores focus on the next timer turn after unmount. Finish that
+  // cleanup while this document's Event constructors still own the globals.
+  await act(async () => {
+    if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(0)
+    else await new Promise(resolve => setTimeout(resolve, 0))
+  })
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({

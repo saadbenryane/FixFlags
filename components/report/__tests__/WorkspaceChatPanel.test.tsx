@@ -284,7 +284,7 @@ describe('WorkspaceChatPanel', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalled())
-    expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Create a free account to continue')).length).toBeGreaterThan(0)
     expect(screen.getByLabelText('URL to review')).toHaveValue('https://other.com')
   })
 

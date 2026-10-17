@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { accountsAwaitingAction } from './account-operations'
+import { incompleteExecutionHistory } from './task-operations'
 
 /** Aggregate operating evidence only. The calling admin page enforces operator access. */
 export async function loadSiteOperations(now = new Date()) {
@@ -17,13 +18,7 @@ export async function loadSiteOperations(now = new Date()) {
     failedWatchAlerts,
   ] = await Promise.all([
     prisma.project.count({ where: { ...activeSite, watchNextRunAt: { lt: thresholds.overdue } } }),
-    prisma.auditVerifierExecution.count({
-      where: {
-        workState: { in: ['BLOCKED', 'EXHAUSTED'] },
-        audit: { project: activeSite },
-        updatedAt: { gte: new Date(now.getTime() - 86400_000) },
-      },
-    }),
+    prisma.auditVerifierExecution.count({ where: incompleteExecutionHistory() }),
     prisma.siteTestAccount.count({
       where: accountsAwaitingAction(thresholds.interrupted),
     }),
@@ -37,7 +32,7 @@ export async function loadSiteOperations(now = new Date()) {
   ])
   return [
     { label: 'Overdue monitoring schedules', value: overdueSchedules },
-    { label: 'Incomplete tasks in 24 hours', value: incompleteTasks },
+    { label: 'Incomplete execution history', value: incompleteTasks },
     { label: 'Accounts awaiting reconciliation', value: pendingAccountReconciliation },
     { label: 'Overdue uptime probes', value: uptimeGaps },
     { label: 'Failed uptime notifications', value: failedUptimeAlerts },

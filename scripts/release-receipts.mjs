@@ -235,6 +235,7 @@ export function releaseStageCommands(stage) {
         'lib/audit/__tests__/create-audit-postgres.integration.test.ts',
         'lib/audit/__tests__/admission-contention.integration.test.ts',
         'lib/admin/__tests__/account-operations.integration.test.ts',
+        'lib/admin/__tests__/task-operations.integration.test.ts',
         'lib/audit/__tests__/claim-anonymous.integration.test.ts',
         'lib/audit/__tests__/recover-audit-app-queue.integration.test.ts',
         'lib/audit/capture/__tests__/diagnostic-browser.integration.test.ts']],

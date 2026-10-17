@@ -53,7 +53,13 @@ export default async function OperationsPage({
               <p className="text-sm">{row.state}</p>
               <p className="text-sm text-muted-foreground">{adminDate(row.at)}</p>
             </div>
-            <AdminActionButton action={row.action} targetId={row.targetId} />
+            {row.auditId ? (
+              <Link href={`/admin/audits/${row.auditId}`} className="inline-flex min-h-11 items-center rounded-control px-3 text-sm underline">
+                Inspect check
+              </Link>
+            ) : row.action ? (
+              <AdminActionButton action={row.action} targetId={row.targetId} />
+            ) : null}
           </div>
         </AdminSurface>
       ))}
