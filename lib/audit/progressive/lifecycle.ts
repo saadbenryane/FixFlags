@@ -1,3 +1,4 @@
+import { journeyAssessmentSchema, hasIncompleteJourneyAssessment, type JourneyAssessment } from '../journey/evaluation-grounding'
 import { Prisma, type AuditVerifierExecution } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
@@ -51,7 +52,7 @@ const discoverySchema = z.object({ flags: z.array(flagSchema).max(500),
   pages: z.array(z.string().url()).max(24), openCheckCount: z.number().int().nonnegative().max(120), truncated: z.boolean(),
   receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), bindingKey: z.string() }).strict()
-const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional() }).strict()
+const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), assessments: z.array(journeyAssessmentSchema).max(6).optional(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional() }).strict()
 const usageSchema = z.object({ inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), model: z.string(),
   cacheReadTokens: z.number().nonnegative().optional(), cacheWriteTokens: z.number().nonnegative().optional() }).strict()
 const judgeSchema = z.object({ triage: z.object({ output: triageOutputSchema, usage: usageSchema }).strict().optional(),
@@ -340,6 +341,7 @@ export const lifecycleHandlers: TaskHandler[] = [
           return condition?.pageKey === capturePageKey(context.input.pageUrl) ? [condition] : []
         }) : [])
       const observations: OverlayObservation[] = []
+      const assessments: JourneyAssessment[] = []
       const pages: JourneyObservation[] = [], findings: JourneyFindingDraft[] = []
       const findingCount = await runJourneyReviewsForAudit(context.audit.id, context.input.pageUrl,
         { included: true, deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id),
@@ -347,9 +349,10 @@ export const lifecycleHandlers: TaskHandler[] = [
           ...(phases?.length ? { overlayPhases: phases, overlayExpectedTargets: expected, allowedCheckIds: Object.keys(spec!.checks) } : {}),
           ...(journeyTarget ? { expectedJourneyConditions: conditions, allowedCheckIds: Object.keys(spec!.checks) } : {}),
           ...(!journeyTarget && conditions.length ? { recordedJourneyConditions: conditions } : {}),
+          onAssessment: assessment => assessments.push(assessment),
           onOverlayObservations: found => observations.push(...found),
           onPageObservations: found => pages.push(...found), onJourneyFindings: found => findings.push(...found) })
-      return serializeArtifact('journeys', journeySchema.parse({ findingCount,
+      return serializeArtifact('journeys', journeySchema.parse({ findingCount, assessments,
         flags: [...observations.flatMap(runObservedOverlayChecks), ...nativeJourneyFlags(findings)],
         pageReceipts: journeyReceipts(pages, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
         overlayReceipts: overlayCheckReceipts(observations, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }) }))
@@ -386,6 +389,9 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
       const tasks = await loadTaskGraph(latest.id)
       const failed = tasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task => task.workKind ?? 'unknown')
+      const journeyAssessments = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id, workKind: 'journeys', workState: 'COMPLETED' },
+        take: MAX_TASKS_PER_AUDIT, select: { workResult: true } })
+      if (journeyAssessments.some(task => hasIncompleteJourneyAssessment(task.workResult))) failed.push('journey-evaluation')
       const incomplete = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id,
         targetKey: { startsWith: 'module:' }, OR: [
           { detail: { path: ['complete'], equals: false } },

@@ -16,14 +16,20 @@ export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: st
   const [selected, setSelected] = useState<SampleFlagId>('availability')
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'manual'>('idle')
   const manualPrompt = useRef<HTMLTextAreaElement>(null)
+  const copyGeneration = useRef(0)
   useEffect(() => {
     if (copyState === 'manual') { manualPrompt.current?.focus(); manualPrompt.current?.select() }
   }, [copyState])
   const example = SAMPLE_FLAGS[selected]
-  const chooseExample = (id: SampleFlagId) => { setSelected(id); setCopyState('idle') }
+  const chooseExample = (id: SampleFlagId) => { copyGeneration.current++; setSelected(id); setCopyState('idle') }
   const copyPrompt = async () => {
-    try { await navigator.clipboard.writeText(example.prompt); setCopyState('copied') }
-    catch { setCopyState('manual') }
+    const generation = ++copyGeneration.current
+    try {
+      await navigator.clipboard.writeText(example.prompt)
+      if (generation === copyGeneration.current) setCopyState('copied')
+    } catch {
+      if (generation === copyGeneration.current) setCopyState('manual')
+    }
   }
 
   return <ol className={s.loop} aria-label={C.title}>

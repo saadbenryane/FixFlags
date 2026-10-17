@@ -464,7 +464,6 @@ describe('mergePrescriptionResults', () => {
       cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null,
       verificationRule: 'Look at a fresh screenshot.' }], rubricPrescriptions: [] })
     expect(mockTx.flag.update).toHaveBeenCalledWith({ where: { id: 'native-flag' }, data: expect.objectContaining({
-      evidence: 'The original measured control remains covered after hover.', verificationRule: 'Control overlay observation v2',
       fix: 'Remove the covering advertisement.',
     }) })
   })
@@ -503,8 +502,7 @@ describe('mergePrescriptionResults', () => {
     expect(mockTx.flag.update).toHaveBeenCalledWith({
       where: { id: 'flag-1' },
       data: expect.objectContaining({
-        evidence: 'Updated evidence',
-        whyItMatters: 'Updated impact',
+        fix: 'Updated fix',
       }),
     })
   })
@@ -521,6 +519,23 @@ describe('mergePrescriptionResults', () => {
     expect(mockTx.flag.update).toHaveBeenCalledTimes(1)
     expect(mockTx.flag.update).toHaveBeenCalledWith({ where: { id: 'second' }, data: expect.objectContaining({ fix: prescription.fix }) })
     expect(mockTx.flag.update.mock.calls[0][0].data).not.toHaveProperty('fingerprint')
+  })
+
+  it.each(['AI', 'JOURNEY', 'DETERMINISTIC'])('preserves the complete recorded assessment for %s findings', async source => {
+    const original = { id: 'original', source, checkId: 'recorded', evidence: 'The original control has no accessible name.',
+      whyItMatters: 'The name is unavailable to assistive technology.', verificationRule: 'Inspect the original desktop and mobile controls.',
+      supportingObservations: { version: 1, observations: [{ pageUrl: 'https://example.com/original' }] } }
+    mockTx.flag.findMany.mockResolvedValue([original])
+    const snapshot = structuredClone(original)
+    await mergePrescriptionResults('audit-1', { flagPrescriptions: [{ flagKey: 'recorded', evidence: 'A different screenshot proves a different issue.',
+      whyItMatters: 'This loses thousands of customers and reduces conversion.', verificationRule: 'Any page passes an unrelated score.',
+      fix: 'Add the original control name.', agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null,
+      lovablePrompt: null, boltPrompt: null }], rubricPrescriptions: [] })
+    const update = mockTx.flag.update.mock.calls[0][0].data
+    for (const key of ['evidence', 'whyItMatters', 'verificationRule', 'supportingObservations', 'severity', 'problem'])
+      expect(update).not.toHaveProperty(key)
+    expect(update.fix).toBe('Add the original control name.')
+    expect(original).toEqual(snapshot)
   })
 
   it('applies rubric prescriptions to matching rubrics', async () => {
@@ -608,11 +623,11 @@ describe('mergePrescriptionResults', () => {
     expect(mockTx.flag.update).toHaveBeenCalledTimes(1)
     expect(mockTx.flag.update).toHaveBeenCalledWith({
       where: { id: 'flag-2' },
-      data: expect.objectContaining({ evidence: 'Real evidence' }),
+      data: expect.objectContaining({ fix: 'Real fix' }),
     })
   })
 
-  it('flows tool-specific fix prompts and verification rule through to the flag row', async () => {
+  it('flows tool-specific repair prompts without changing verification obligations', async () => {
     await mergePrescriptionResults('audit-1', {
       flagPrescriptions: [
         {
@@ -640,7 +655,6 @@ describe('mergePrescriptionResults', () => {
         claudePrompt: 'claude: set the title',
         lovablePrompt: 'lovable: set the title',
         boltPrompt: 'bolt: set the title',
-        verificationRule: 'Confirm the tab shows a real title',
       }),
     })
   })

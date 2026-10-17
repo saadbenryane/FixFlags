@@ -10,7 +10,7 @@ import type { JudgeOutput } from './judge-schema'
 import type { TriageOutput } from './judge-triage-schema'
 import type { PrescriptionOutput } from './judge-prescription-schema'
 import { verificationRuleForCheckId } from './verify-flags'
-import { whyItMattersForCheckId, isGenericWhyItMatters } from './flag-copy'
+import { whyItMattersForCheckId } from './flag-copy'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { SEARCH_CHECK_REGISTRY } from '@/lib/audit/search/definitions'
 import {
@@ -54,8 +54,6 @@ export function buildDeterministicFlagRow(
     whyItMatters:
       flag.attentionPolicy?.policy === 'search'
         ? SEARCH_COPY.consequences[SEARCH_CHECK_REGISTRY[flag.checkId.split('::page:')[0] as keyof typeof SEARCH_CHECK_REGISTRY]?.responsibility ?? 'presentation']
-        : enrichment?.whyItMatters && !isGenericWhyItMatters(enrichment.whyItMatters)
-        ? enrichment.whyItMatters
         : whyItMattersForCheckId(flag.checkId),
     fix: flag.fix,
     confidence: flag.confidence,
@@ -67,7 +65,6 @@ export function buildDeterministicFlagRow(
     boltPrompt: enrichment?.boltPrompt ?? null,
     verificationRule:
       flag.verificationRule ??
-      enrichment?.verificationRule ??
       verificationRuleForCheckId(flag.checkId) ??
       null,
     checkId: flag.checkId,
@@ -500,15 +497,12 @@ export async function mergePrescriptionResults(
       // schema's `.min(1)` accepts whitespace-only evidence, which would
       // otherwise overwrite real triage content with an empty string.
       if (isBlankText(item.evidence)) continue
-      const measuredSource = flag.source !== 'AI' && Array.isArray(flag.evidenceTargets) && flag.evidenceTargets.some(target =>
-        target && typeof target === 'object' && !Array.isArray(target) && target.source === 'measured' &&
-        typeof target.context === 'string' && target.context.length > 0)
+      // Prescription owns repair guidance only. Recorded diagnosis, evidence and
+      // verification obligations belong to their original assessment for every source.
 
       await tx.flag.update({
         where: { id: flag.id },
         data: {
-          evidence: measuredSource ? flag.evidence : item.evidence,
-          whyItMatters: item.whyItMatters,
           fix: item.fix,
           agentPrompt: item.agentPrompt ?? null,
           cursorPrompt: item.cursorPrompt ?? null,
@@ -516,7 +510,6 @@ export async function mergePrescriptionResults(
           windsurfPrompt: item.windsurfPrompt ?? null,
           lovablePrompt: item.lovablePrompt ?? null,
           boltPrompt: item.boltPrompt ?? null,
-          verificationRule: measuredSource ? flag.verificationRule : item.verificationRule,
         },
       })
     }

@@ -161,7 +161,7 @@ describe('buildDeterministicFlagRow', () => {
     assert.equal(row.whyItMatters, whyItMattersForCheckId('title-missing'))
   })
 
-  it('prefers enrichment whyItMatters when present', () => {
+  it('keeps measured diagnosis and verification outside enrichment authority', () => {
     const flag = makeDet({ checkId: 'title-missing', problem: 'Title is missing' })
     const enrichment = {
       checkId: 'title-missing',
@@ -170,9 +170,9 @@ describe('buildDeterministicFlagRow', () => {
       verificationRule: 'Custom verification rule',
     }
     const row = buildDeterministicFlagRow(flag, 0, new Map(), new Map(), enrichment)
-    assert.equal(row.whyItMatters, 'Custom business impact explanation')
+    assert.equal(row.whyItMatters, whyItMattersForCheckId('title-missing'))
     assert.equal(row.agentPrompt, 'Custom fix prompt')
-    assert.equal(row.verificationRule, 'Custom verification rule')
+    assert.notEqual(row.verificationRule, 'Custom verification rule')
   })
 
   it('falls back to lookup when enrichment has generic whyItMatters', () => {

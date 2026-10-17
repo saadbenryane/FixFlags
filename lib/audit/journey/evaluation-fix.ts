@@ -33,13 +33,13 @@ export function frictionFix(fp: FrictionPoint): string {
       ].join('\n')
     case 'hesitation':
       return [
-        `1. Resolve the hesitation signal: ${evidence}`,
+        `1. Review the next-action wording: ${evidence}`,
         '2. Make the primary next action unmistakable at this step',
-        '3. Remove or demote competing choices that stall the visitor',
+        '3. Keep the existing offer and supporting context when clarifying the choice',
       ].join('\n')
     case 'confusion':
       return [
-        `1. Clarify the confusing moment: ${evidence}`,
+        `1. Review the next-action context: ${evidence}`,
         '2. Align the step headline and controls with the visitor’s next decision',
         '3. Add a short helper that states what to do and what happens next',
       ].join('\n')

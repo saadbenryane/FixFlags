@@ -84,7 +84,7 @@ CONTENT EVIDENCE RULES:
 - A named testimonial with a numerical result already contains attribution and a measurable claim. Do not describe those details as absent. Visible claims alone do not prove authenticity either; do not invent a verification result.
 - Do not require credibility indicators in a meta description. Judge its accuracy and usefulness as a search snippet.
 
-For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (1-2 sentences of impact). Do NOT write fixes, verification steps, or editor prompts in this phase.
+For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (the observed mechanism or a conditional review reason). Qualitative copy and CRO judgments are Recommendations. Do not invent measured comprehension, revenue, traffic, abandonment, conversion, search ranking, legal compliance, or user behavior from page content. Do NOT write fixes, verification steps, or editor prompts in this phase.
 
 Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }
@@ -196,23 +196,11 @@ export function buildTriagePrompt(context: TriageContext): string {
  * per-request flags, metadata, and page text in the USER block only.
  */
 export function buildPrescriptionSystemPrompt(): string {
-  return `You are FixFlags. Phase 1 triage is complete - the founder already sees their score, verdict, flag titles, evidence, and why it matters. Your job now is the PRESCRIPTION: sharpened evidence when needed, concrete fixes, and copy-paste agent prompts that are specific enough to hand to any AI coding tool.
+  return `You are FixFlags. Phase 1 triage is complete. The founder already sees their score, verdict, flag titles, evidence, and why it matters. Your job now is the PRESCRIPTION: concrete fixes and copy-paste agent prompts grounded in those recorded observations.
 
-Do NOT change scores, verdicts, or flag titles. Key every flagPrescription by the exact flagKey provided in the request.
+Do NOT change scores, verdicts, flag titles, evidence, whyItMatters, or verification obligations. Key every flagPrescription by the exact flagKey provided in the request. The compatibility fields evidence, whyItMatters, and verificationRule repeat their recorded values; they do not authorize a new diagnosis and are not persisted from this phase.
 
-EVIDENCE QUALITY: Write evidence the way you would describe it to someone looking at the same page. Be specific: what element, where on the page, what it currently says, why it is wrong.
-- GOOD: "The H1 reads 'Welcome to our platform' - it does not mention the product name, the target customer, or the outcome they will achieve. The subheading repeats the same idea in different words without adding clarity."
-- GOOD: "The meta description is empty, so Google will auto-generate a snippet from page content that says 'Click here to learn more' - a generic phrase that gives no reason to click."
-- GOOD: "The primary CTA button says 'Submit' and is positioned below a form with 7 required fields. The button is gray which makes it look disabled."
-- BAD: "The heading could be more specific."
-- BAD: "The meta tags need improvement."
-- BAD: "There are accessibility issues."
-- CRITICAL RULE: Name the element type (H1, button, meta tag, image, section), its current text/value, and what makes it wrong. Include the exact text or attribute value you see.
-
-BUSINESS IMPACT (whyItMatters): Every impact must state a concrete real-world consequence and quantify it if possible.
-- GOOD: "Without an og:image, sharing this URL on Twitter/LinkedIn shows a blank card. On a site getting 10K+ social shares/month, this misses thousands of link clicks because people scroll past blank previews."
-- BAD: "This affects your social sharing quality."
-- BETTER: "No og:image means every shared link on LinkedIn, Slack, and iMessage shows a blank preview card. For a product relying on word-of-mouth, this kills the social sharing loop - people skip past blank cards without clicking."
+EVIDENCE BOUNDARY: Use the recorded element, text, attribute, page, device, and target. A screenshot of one page is not evidence about another page. Do not infer absence from truncated content. If a field or observation is unavailable, say that it is not recorded. Keep Recommendations conditional. Do not invent traffic, revenue, abandonment, conversion, ranking, legal compliance, user behavior, or measured business outcomes. An observed technical condition does not measure those outcomes.
 
 FIX PRECISION: The "fix" field and agentPrompt are a TASK BODY, not a complete editor prompt and not a code patch. FixFlags did not open the repository. Name the live element, its current text or value, and the desired outcome.
 - GOOD: "Replace the H1 that currently reads 'Welcome to our platform' with a concise audience-and-outcome statement. Leave the subheading and CTA unchanged."
@@ -241,14 +229,9 @@ Change the hero H1 from "Welcome to our platform" to an audience-and-outcome sta
 
 RULE: Before writing, identify the current state from the evidence. Then state the target state. Be specific about WHAT to change and WHAT to change it to.
 
-VERIFICATION RULE: For every flag, write one concrete action someone can take on the live page to confirm the fix worked. Start with an action verb.
-- GOOD: "Reload the page and check that the headline now reads 'Build internal tools 10x faster - for engineering teams'"
-- GOOD: "Open the page on a 375px wide viewport and confirm the CTA is visible without scrolling"
-- GOOD: "View the page source and confirm <meta property='og:image'> points to a valid image URL that loads in a browser tab"
-- GOOD: "Run Lighthouse audit and confirm the Accessibility score is now 90+"
-- BAD: "Check that the issue is fixed."
-- BAD: "Verify the page looks good."
-- RULE: The verification must be something a non-technical person can do (reload, resize, view source) or a specific tool command (Lighthouse, curl). Never write "verify" without specifying HOW.
+VERIFICATION RULE: Repeat the recorded verification rule without narrowing any original page, device, target, or failure mechanism. If unavailable, state "Independent verification conditions are not recorded." Repair instructions may explain how to inspect the same condition, but cannot substitute a score or unrelated successful action for that condition.
+- GOOD: "Reload the page at the recorded viewport and inspect the original button's accessible name."
+- BAD: "Run an audit and reach an Accessibility score of 90."
 
 RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once.
 - Return rubricPrescriptions as an object with exactly MESSAGE, EXPERIENCE, and REACH as required keys. Each value contains the prescription without repeating name.
@@ -262,7 +245,7 @@ RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comp
 
 SCOPE GUARD: Every agentPrompt and every rubric prompt MUST include a "Do NOT change" or scope sentence. Name the sections or elements that should be left untouched, not files you have not seen. This is as important as the fix itself.
 
-If a flag already has deterministic fix text, enrich it with page-specific details and suggested copy - never just repeat the deterministic fix. Add the whyItMatters that the deterministic check could not provide. The deterministic fix is a starting point; your job is to make it specific to this URL, this page structure, and these screenshots.`
+Use existing fix text as the starting point. Add only details supported by the recorded observations. Do not invent replacement product promises or quantified claims. Keep the original diagnosis and every verification obligation intact.`
 }
 
 export interface PrescriptionContext {
@@ -287,6 +270,8 @@ export interface PrescriptionContext {
     problem: string
     checkId: string | null
     evidence?: string | null
+    whyItMatters?: string | null
+    verificationRule?: string | null
     pageUrl?: string | null
     supportingObservations?: import('../audit/flag-observations').SupportingObservationView[]
   }>
@@ -330,6 +315,8 @@ ${context.existingFlags.map((f) => {
     const lines = [`[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`]
     if (f.pageUrl) lines.push(`  Page: ${f.pageUrl}`)
     if (f.evidence?.trim()) lines.push(`  Evidence: ${f.evidence.trim()}`)
+    lines.push(`  Recorded whyItMatters: ${f.whyItMatters ?? 'Not recorded'}`)
+    lines.push(`  Recorded verificationRule: ${f.verificationRule ?? 'Independent verification conditions are not recorded.'}`)
     const current = quotedCurrentText(f.evidence)
     if (current) lines.push(`  Current text: "${current}"`)
     for (const [index, item] of (f.supportingObservations ?? []).entries()) {

@@ -55,9 +55,9 @@ export interface JourneyStepDraft {
   elementRef?: string | null
   /** Human-readable description of the element acted on. */
   elementDescription?: string | null
-  /** Whether the outcome matched the planned expectation. */
+  /** Recorded native page-loading state. This does not establish business-action acceptance. */
   outcomeMatch?: boolean | null
-  /** Why the outcome matched or didn't. */
+  /** Observed page-state detail, separate from the planner intent. */
   outcomeDetail?: string | null
 }
 

@@ -190,7 +190,7 @@ function validateFixQuality(
   const why = rx.whyItMatters.trim()
   if (why.length < 15) {
     throw new JudgeContractError(
-      `whyItMatters for ${rx.flagKey} is too brief (${why.length} chars), must explain real-world impact`
+      `whyItMatters for ${rx.flagKey} is too brief (${why.length} chars), must repeat the recorded explanation`
     )
   }
 

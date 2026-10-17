@@ -27,7 +27,8 @@ Collect website facts, evaluate registered checks, retain evidence and supportin
 | `journey/review-scope.ts` | Pure selection of discovered and original recorded journey routes |
 | `journey/plan-observation.ts` | Actual planner-page collection and private-context cleanup |
 | `journey/run-template.ts` | Browser execution of the selected journey |
-| `journey/review-findings.ts` | Pure interpretation of recorded findings, including allowed check scope |
+| `journey/evaluation-grounding.ts` | Exact recorded references, claim-specific admission and versioned incomplete assessment receipts |
+| `journey/review-findings.ts` | Conditional customer Recommendations and recorded findings within allowed check scope |
 | `journey/review-persistence.ts` | Locked evidence, supporting-observation and Flag persistence |
 
 ## Related Site owners
@@ -36,7 +37,7 @@ Collect website facts, evaluate registered checks, retain evidence and supportin
 
 ## Compatibility and supporting paths
 
-`runner.ts`, `pipeline/run-page.ts`, `persist.ts` and `finalize.ts` retain their established adapter responsibilities. Their presence does not authorize a second admission path. `deterministic-audit.ts` supports controlled offline evaluation, which does not establish live provider accuracy. AI triage and prescription use the recorded findings and validated output contracts; unavailable or omitted evidence remains explicit.
+`runner.ts`, `pipeline/run-page.ts`, `persist.ts` and `finalize.ts` retain their established adapter responsibilities. Their presence does not authorize a second admission path. `deterministic-audit.ts` supports controlled offline evaluation, which does not establish live provider accuracy. AI triage uses recorded findings and validated output contracts. Prescription owns repair guidance, never diagnosis, evidence or verification conditions. Journey assessment receipts retain unsupported candidates privately and expose incomplete coverage independently of completed native checks; unavailable or omitted evidence remains explicit.
 
 ## Invariants
 

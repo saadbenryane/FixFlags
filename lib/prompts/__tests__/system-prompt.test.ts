@@ -150,6 +150,8 @@ describe('system-prompt triage contract', () => {
     const system = buildPrescriptionSystemPrompt()
     assert.match(system, /VERIFICATION RULE/i)
     assert.match(system, /Reload the page/i)
+    assert.match(system, /Do not invent traffic, revenue, abandonment, conversion/)
+    assert.doesNotMatch(system, /10K|thousands of link clicks|kills the social sharing loop|10x faster/)
   })
 
   it('accepts agentPrompt without a URL', () => {

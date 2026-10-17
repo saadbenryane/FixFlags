@@ -372,11 +372,12 @@ export const REPORT_COPY = {
   failedChecks: {
     title: "Some checks could not run",
     body: (modules: string[]) => {
+      const labels = modules.map(module => module === "journey-evaluation" ? "AI journey assessment" : module);
       const label =
-        modules.length === 1
-          ? `The ${modules[0]} check`
-          : `${modules.join(", ")} checks`;
-      return `${label} could not run, so some fixes may be missing from this report.`;
+        labels.length === 1
+          ? `The ${labels[0]} check`
+          : `${labels.join(", ")} checks`;
+      return `${label} could not be fully assessed, so some fixes may be missing from this report.`;
     },
   },
   captureLimited: {

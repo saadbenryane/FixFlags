@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import CoveragePage, { metadata as coverageMetadata } from '@/app/(marketing)/coverage/page'
 import SecurityPage from '@/app/(marketing)/security/page'
@@ -84,11 +84,26 @@ describe('public supporting pages', () => {
       expect(prompt.tagName).toBe('BLOCKQUOTE')
       fireEvent.click(screen.getByRole('button', { name: C.howItWorks.walkthrough.copy }))
       await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(SAMPLE_FLAGS[example.id].prompt))
-      expect(screen.getByRole('status')).toHaveTextContent(C.howItWorks.walkthrough.copied)
+      expect(await screen.findByRole('status')).toHaveTextContent(C.howItWorks.walkthrough.copied)
     }
     const comparison = screen.getByText(C.howItWorks.walkthrough.recoveryDetail).closest('details')!
     fireEvent.click(within(comparison).getByText(C.howItWorks.walkthrough.recoveryDetail))
     expect(within(comparison).getByRole('img', { name: C.howItWorks.example.recoveryAlt })).toBeVisible()
+  })
+
+  it.each(['success', 'failure'])('keeps a delayed clipboard %s attached to its original example', async outcome => {
+    let resolve!: () => void, reject!: (reason: Error) => void
+    const pending = new Promise<void>((yes, no) => { resolve = yes; reject = no })
+    const writeText = vi.fn().mockReturnValue(pending)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    render(<MeProvider initialUser={null}><HowItWorksPage /></MeProvider>)
+    fireEvent.click(screen.getByRole('button', { name: C.howItWorks.walkthrough.copy }))
+    fireEvent.click(screen.getByRole('button', { name: C.howItWorks.walkthrough.examples[1].label }))
+    await act(async () => { if (outcome === 'success') resolve(); else reject(new Error('Unavailable')); await Promise.resolve() })
+    expect(writeText).toHaveBeenCalledWith(SAMPLE_FLAGS.availability.prompt)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: C.howItWorks.walkthrough.promptLabel })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: SAMPLE_FLAGS[C.howItWorks.walkthrough.examples[1].id].title })).toBeVisible()
   })
 
   it('offers the selected prompt for manual copying when the clipboard fails', async () => {

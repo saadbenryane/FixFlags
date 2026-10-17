@@ -12,7 +12,8 @@ import {
   type EvaluatorUserPromptInput,
 } from './evaluator-prompt'
 import {
-  journeyEvaluationSchema,
+  journeyEvaluationProviderSchema,
+  JOURNEY_EVALUATION_PARAMETERS,
   JOURNEY_EVALUATION_TOOL_OPENAI,
   type JourneyEvaluation,
 } from './evaluator-schema'
@@ -29,7 +30,7 @@ export function isEvaluatorProviderConfigured(): boolean {
 }
 
 function parseEvaluationOutput(raw: unknown): JourneyEvaluation {
-  const parsed = journeyEvaluationSchema.safeParse(raw)
+  const parsed = journeyEvaluationProviderSchema.safeParse(raw)
   if (!parsed.success) {
     throw new Error(`Invalid evaluator output: ${parsed.error.message}`)
   }
@@ -106,57 +107,7 @@ async function runAnthropicEvaluator(
           {
             name: 'evaluate_journey',
             description: 'Evaluate a completed user journey for UX issues',
-            input_schema: {
-              type: 'object',
-              properties: {
-                frictionPoints: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      stepNumber: { type: 'number' },
-                      type: { type: 'string', enum: ['hesitation', 'confusion', 'too-many-steps', 'unclear-progress', 'missing-feedback'] },
-                      description: { type: 'string' },
-                      evidence: { type: 'string' },
-                      severity: { type: 'string', enum: ['CRITICAL', 'IMPORTANT', 'POLISH'] },
-                      rubric: { type: 'string', enum: ['MESSAGE', 'EXPERIENCE', 'REACH'] },
-                      impactTag: { type: 'string', enum: ['CONVERSION', 'REVENUE', 'TRUST', 'MEASUREMENT', 'SHARING', 'SEO', 'ACCESSIBILITY', 'CLARITY', 'AUTHORITY', 'FRICTION', 'EMOTION'] },
-                    },
-                    required: ['stepNumber', 'type', 'description', 'evidence', 'severity', 'rubric', 'impactTag'],
-                  },
-                },
-                brokenPromises: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      stepNumber: { type: 'number' },
-                      expected: { type: 'string' },
-                      actual: { type: 'string' },
-                      evidence: { type: 'string' },
-                      severity: { type: 'string', enum: ['CRITICAL', 'IMPORTANT'] },
-                    },
-                    required: ['stepNumber', 'expected', 'actual', 'evidence', 'severity'],
-                  },
-                },
-                accessibilityBarriers: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      stepNumber: { type: 'number' },
-                      barrier: { type: 'string' },
-                      element: { type: 'string' },
-                      evidence: { type: 'string' },
-                    },
-                    required: ['stepNumber', 'barrier', 'element', 'evidence'],
-                  },
-                },
-                confidence: { type: 'number' },
-                summary: { type: 'string' },
-              },
-              required: ['frictionPoints', 'brokenPromises', 'accessibilityBarriers', 'confidence', 'summary'],
-            },
+            input_schema: JOURNEY_EVALUATION_PARAMETERS as import('@anthropic-ai/sdk/resources/messages').Tool.InputSchema,
           },
         ],
         tool_choice: { type: 'tool', name: 'evaluate_journey' },

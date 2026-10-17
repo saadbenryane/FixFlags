@@ -73,6 +73,8 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
       problem: flag.problem,
       checkId: flag.checkId,
       evidence: flag.evidence,
+      whyItMatters: flag.whyItMatters,
+      verificationRule: flag.verificationRule,
       pageUrl: flag.pageUrl,
       supportingObservations,
     }

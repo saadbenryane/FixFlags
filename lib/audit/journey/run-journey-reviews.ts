@@ -9,6 +9,7 @@ import type { PageMetadata } from '@/lib/audit/metadata'
 import { detectPagePurpose } from '@/lib/audit/page-purpose'
 import { planJourney, isPlannerProviderConfigured } from './planner'
 import { evaluateJourney } from './evaluator'
+import { assessJourneyEvaluation, type JourneyAssessment } from './evaluation-grounding'
 import { createJourneyAIGuard } from './ai-guard'
 import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft } from './types'
@@ -37,6 +38,7 @@ export async function runJourneyReviewsForAudit(
     overlayExpectedTargets?: OverlayTarget[]; overlayPhases?: string[]; allowedCheckIds?: readonly string[];
     expectedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
     recordedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
+    onAssessment?: (assessment: JourneyAssessment) => void;
     onPageObservations?: (observations: JourneyObservation[]) => void;
     onJourneyFindings?: (findings: JourneyFindingDraft[]) => void;
     onOverlayObservations?: (observations: OverlayObservation[]) => void }
@@ -124,6 +126,8 @@ export async function runJourneyReviewsForAudit(
       if (journeyType === 'multi-step-funnel' && result.steps.length >= 3 && !result.blockedReason) {
         const evalGuard = aiGuard.canCall(4_000)
         if (!evalGuard.allowed) {
+          options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'budget_unavailable', rejections: [] })
+          await logPipelineEvent(auditId, { stage: 'JOURNEY_REVIEW', event: 'assessment_partial', status: 'partial', detail: `${journeyType}: evaluator budget unavailable` })
           logger.info('Skipping journey evaluator', { reason: evalGuard.reason, journeyType })
         } else {
         try {
@@ -138,8 +142,14 @@ export async function runJourneyReviewsForAudit(
             },
             Math.min(JOURNEY_BUDGET_MS, remaining())
           )
+          const assessed = assessJourneyEvaluation(evalResult.evaluation, result.steps, journeyType)
+          options.onAssessment?.(assessed.assessment)
+          if (assessed.assessment.state === 'INCOMPLETE') await logPipelineEvent(auditId, {
+            stage: 'JOURNEY_REVIEW', event: 'assessment_partial', status: 'partial',
+            detail: `${journeyType}: ${assessed.assessment.rejections.length} unsupported candidates; ${assessed.assessment.rejections.map(item => item.reason).join(', ')}`,
+          })
           const evalFindings = convertEvaluationToFindings(
-            evalResult.evaluation,
+            assessed.evaluation,
             result.steps,
             startUrl,
             purpose
@@ -162,6 +172,8 @@ export async function runJourneyReviewsForAudit(
           }))
           aiGuard.recordOutcome(evalResult.usage.inputTokens, evalResult.usage.outputTokens)
         } catch (err) {
+          options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'provider_failed', rejections: [] })
+          await logPipelineEvent(auditId, { stage: 'JOURNEY_REVIEW', event: 'assessment_partial', status: 'partial', detail: `${journeyType}: evaluator failed; native observations retained` })
           logger.warn('Journey evaluator failed', { journeyType, err: String(err) })
           aiGuard.recordOutcome(0, 0, err)
         }

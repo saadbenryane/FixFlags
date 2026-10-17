@@ -63,7 +63,8 @@ describe('journey evaluation fix templates', () => {
           stepNumber: 1,
           type: 'too-many-steps',
           description: 'Funnel requires too many steps',
-          evidence: 'Three wizard steps on contact',
+          evidence: 'Step 1 of 3 Contact',
+          evidenceRefs: [{ stepNumber: 1, source: 'accessibilityTree', quote: 'Step 1 of 3 Contact' }],
           severity: 'IMPORTANT',
           rubric: 'EXPERIENCE',
           impactTag: 'FRICTION',
@@ -82,14 +83,18 @@ describe('journey evaluation fix templates', () => {
         {
           stepNumber: 3,
           barrier: 'Heading structure is not correctly defined',
-          element: 'article',
+          element: 'heading \"Case study\"',
           evidence: 'Skipped heading levels on case study',
+          evidenceRefs: [{ stepNumber: 3, source: 'accessibilityTree', quote: '- heading \"Case study\" [level=3]' }],
         },
       ],
       confidence: 0.8,
       summary: 'test',
     }
-    const personal = convertEvaluationToFindings(evaluation, [], 'https://example.com/', 'article')
+    const personal = convertEvaluationToFindings(evaluation, [
+      { stepNumber: 1, actionType: 'navigate', actionDetail: {}, url: 'https://example.com/', accessibilityTree: '- text: Step 1 of 3 Contact' },
+      { stepNumber: 3, actionType: 'navigate', actionDetail: {}, url: 'https://example.com/work', accessibilityTree: '- article:\n  - heading \"Work\" [level=1]\n  - heading \"Case study\" [level=3]' },
+    ], 'https://example.com/', 'article')
     expect(personal.some((f) => f.checkId === 'journey-funnel-broken-promise')).toBe(false)
     const a11y = personal.find((f) => f.checkId === 'journey-funnel-accessibility-barrier')
     expect(a11y?.fix).toMatch(/heading/i)

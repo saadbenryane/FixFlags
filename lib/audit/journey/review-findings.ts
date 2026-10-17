@@ -1,6 +1,7 @@
 import type { PagePurpose } from '@/lib/audit/page-purpose'
 import { isProductPage } from '@/lib/audit/page-purpose'
 import type { JourneyEvaluation } from './evaluator-schema'
+import { assessJourneyEvaluation, recordedJourneyEvidence } from './evaluation-grounding'
 import type { JourneyFindingDraft, JourneyStepDraft } from './types'
 import type { runJourneyTemplate } from './run-template'
 import { accessibilityBarrierFix, frictionFix } from './evaluation-fix'
@@ -44,12 +45,22 @@ function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
   }
 }
 
+/** The model chooses a review scope, not unmeasured customer outcomes. */
+function copyReviewProblem(fp: JourneyEvaluation['frictionPoints'][number]): string {
+  const quote = fp.evidenceRefs?.find(ref => ref.stepNumber === fp.stepNumber && ref.source === 'accessibilityTree')?.quote ?? ''
+  const label = quote.match(/"([^"\n]+)"/)?.[1]?.slice(0, 100)
+  if (fp.type === 'unclear-progress') return 'Review the explanation of the recorded progress indicator'
+  if (fp.type === 'too-many-steps') return 'Review whether each recorded step is necessary'
+  return label ? `Review whether "${label}" explains the next action` : 'Review the clarity of the recorded next action'
+}
+
 export function convertEvaluationToFindings(
-  evaluation: JourneyEvaluation,
+  ungroundedEvaluation: JourneyEvaluation,
   steps: JourneyStepDraft[],
-  startUrl: string,
+  _startUrl: string,
   purpose: PagePurpose | null = null
 ): JourneyFindingDraft[] {
+  const evaluation = assessJourneyEvaluation(ungroundedEvaluation, steps).evaluation
   const findings: JourneyFindingDraft[] = []
 
   for (const fp of evaluation.frictionPoints) {
@@ -57,12 +68,12 @@ export function convertEvaluationToFindings(
     findings.push({
       checkId: `journey-funnel-${fp.type}`,
       stepNumber: fp.stepNumber,
-      url: step?.url ?? startUrl,
+      url: step!.url,
       rubric: fp.rubric,
       severity: fp.severity,
       impactTag: fp.impactTag,
-      problem: fp.description,
-      evidence: fp.evidence,
+      problem: copyReviewProblem(fp),
+      evidence: recordedJourneyEvidence(fp),
       whyItMatters:
         fp.type === 'hesitation'
           ? 'Review the recorded step for unclear choices or missing context.'
@@ -72,8 +83,8 @@ export function convertEvaluationToFindings(
               ? 'Review whether each observed step is needed to complete this task.'
               : fp.type === 'unclear-progress'
                 ? 'A visible progress indicator can help explain the remaining steps.'
-                : 'Missing feedback after actions makes visitors uncertain whether anything happened.',
-      fix: frictionFix(fp),
+                : 'Review the recorded action and its corresponding feedback before prescribing a change.',
+      fix: frictionFix({ ...fp, description: copyReviewProblem(fp), evidence: recordedJourneyEvidence(fp) }),
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
@@ -87,14 +98,14 @@ export function convertEvaluationToFindings(
     findings.push({
       checkId: 'journey-funnel-broken-promise',
       stepNumber: bp.stepNumber,
-      url: step?.url ?? startUrl,
+      url: step!.url,
       rubric: 'MESSAGE',
       severity: bp.severity,
       impactTag: 'TRUST',
-      problem: `Broken promise: expected "${bp.expected}" but got "${bp.actual}"`,
-      evidence: bp.evidence,
+      problem: `Review whether "${bp.expected}" matches destination "${bp.actual}"`,
+      evidence: recordedJourneyEvidence(bp),
       whyItMatters: 'Review the observed difference between the action promise and its destination.',
-      fix: '1. Align page content with what was promised in the previous step\n2. Ensure headlines, CTAs, and page content tell a consistent story\n3. Remove misleading claims',
+      fix: '1. Review the recorded action label and destination together\n2. Align their description with the same intended task\n3. Recheck the original route and both recorded strings',
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
@@ -107,14 +118,15 @@ export function convertEvaluationToFindings(
     findings.push({
       checkId: 'journey-funnel-accessibility-barrier',
       stepNumber: ab.stepNumber,
-      url: step?.url ?? startUrl,
+      url: step!.url,
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
       impactTag: 'ACCESSIBILITY',
-      problem: ab.barrier,
-      evidence: ab.evidence,
-      whyItMatters: 'Accessibility barriers stop some people from using this page.',
-      fix: accessibilityBarrierFix(ab),
+      problem: /\b(accessible name|label|unnamed|alt text)\b/i.test(`${ab.barrier} ${ab.evidence}`)
+        ? `Review the unnamed control: ${ab.element}` : 'Review the recorded skipped heading level',
+      evidence: recordedJourneyEvidence(ab),
+      whyItMatters: 'Review this recorded accessibility-tree condition with the corresponding native accessibility check.',
+      fix: accessibilityBarrierFix({ ...ab, barrier: /\b(accessible name|label|unnamed|alt text)\b/i.test(`${ab.barrier} ${ab.evidence}`) ? 'Unnamed control' : 'Skipped heading level', evidence: recordedJourneyEvidence(ab) }),
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,

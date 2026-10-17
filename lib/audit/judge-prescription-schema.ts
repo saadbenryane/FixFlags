@@ -15,11 +15,11 @@ export const flagPrescriptionSchema = z.object({
     .describe(
       'Stable key for the existing flag: use checkId for deterministic flags, or the flagFingerprint provided in context for AI flags'
     ),
-  evidence: z.string().min(1).describe('What you see on the page that proves this issue'),
+  evidence: z.string().min(1).describe('Compatibility field: repeat the recorded evidence, without reinterpretation'),
   whyItMatters: z
     .string()
     .min(1)
-    .describe('1-2 sentences on real-world business impact'),
+    .describe('Compatibility field: repeat the recorded explanation; no inferred business outcomes'),
   fix: z.string().min(1).describe('1-3 numbered steps for fixing the issue, each starting with an action verb'),
   // Nullable+required (not optional) so OpenAI strict mode can list every
   // property in `required`. Empty string or null means "use fix as the Task".
@@ -37,7 +37,7 @@ export const flagPrescriptionSchema = z.object({
   verificationRule: z
     .string()
     .min(1)
-    .describe('How to verify this is fixed on the live page'),
+    .describe('Compatibility field: repeat every original verification condition, or state it is not recorded'),
 })
 
 export const rubricPrescriptionSchema = z.object({
