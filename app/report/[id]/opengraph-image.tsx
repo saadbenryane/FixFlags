@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
+import { REPORT_FINDING_POLICY_SELECT, recordedPrioritySummary } from '@/lib/report/finding-presentation'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { ReportOgImage } from '@/lib/design/og-templates'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -17,7 +18,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     select: {
       url: true,
       score: true,
-      verdict: true,
       status: true,
       isPublic: true,
       userId: true,
@@ -27,9 +27,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           grade: true,
           score: true,
           flags: {
-            select: { severity: true, problem: true },
+            select: REPORT_FINDING_POLICY_SELECT,
             orderBy: { position: 'asc' },
-            take: 3,
           },
         },
       },
@@ -44,12 +43,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const hostname = audit.url ? displayHostname(audit.url) : 'yoursite.com'
 
   const score = audit.score ?? null
-  const topIssue =
-    audit.rubrics
-      ?.flatMap((r) => r.flags)
-      .find((f) => f.severity === 'IMPORTANT' || f.severity === 'CRITICAL')?.problem ??
-    audit.verdict?.slice(0, 80) ??
-    'Automated QA report'
+  const topIssue = recordedPrioritySummary(audit.rubrics.flatMap(r => r.flags))
 
   const rubrics = computeRubricsFromRows(
     audit.rubrics.map((r) => ({

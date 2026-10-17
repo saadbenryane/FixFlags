@@ -17,6 +17,12 @@ export const EDITOR_EVIDENCE_COPY = {
 } as const
 
 export const JOURNEY_ROUTE_COPY = {
+  destinationAction: {
+    problem: "Review the destination's primary action",
+    evidence: (target: string) => `Recorded at step 2. After opening "${target}", no recognized primary CTA was detected. Other navigation or controls may still be available.`,
+    whyItMatters: 'Review the existing controls in the context of the page purpose and intended audience before deciding whether another action is needed.',
+    fix: '1. Review the destination and its existing controls against the page purpose.\n2. If a primary action is needed, make the appropriate existing or new control clear and accessible.\n3. Recheck the recorded destination and review its context.',
+  },
   continuationRouteNotSelected: 'No eligible continuation link was selected from the recorded page. This route check did not activate unlinked controls or establish whether another action can continue.',
   contactRouteNotSelected: 'No matching contact or help route was selected from the recorded links. This route check does not establish whether a contact method is available on the page.',
 } as const

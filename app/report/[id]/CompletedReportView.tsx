@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { savedFindingLabel } from '@/lib/report/finding-presentation'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { Button } from '@/components/ui/button'
@@ -53,7 +54,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
               <Card key={flag.id} variant="subtle">
                 <CardHeader className="pb-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {flag.severity.toLowerCase()} Flag
+                    {savedFindingLabel(flag)}
                   </p>
                   <Heading as="h3" className="text-base">{flag.problem}</Heading>
                 </CardHeader>

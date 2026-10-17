@@ -49,6 +49,17 @@ describe('customer Flag projector', () => {
   it.each(['h1-generic', 'no-cta-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
     expect(isCustomerFlag({ checkId, severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
   })
+  it.each(['journey-first-visit-destination-no-next-action', 'journey-pricing-evaluation-destination-no-next-action'])(
+    'keeps primary-action recognizer judgment %s advisory even at historical critical severity', checkId => {
+      for (const severity of ['IMPORTANT', 'CRITICAL']) {
+        const observation = { checkId, severity, confidence: 1, impactTag: 'CONVERSION', fix: 'Review the existing controls and page purpose.' }
+        expect(isCustomerFlag(observation)).toBe(false)
+        expect(isAttentionCandidate(observation)).toBe(false)
+        expect(isWorthwhileAttentionFlag(observation)).toBe(false)
+      }
+    },
+  )
+
   it('retains historical missing-attribute findings as Recommendations without certifying behavioral failure', () => {
     expect(isCustomerFlag({ checkId: 'form-missing-validation', severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
   })

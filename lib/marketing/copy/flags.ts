@@ -117,3 +117,10 @@ export const FLOW_SCAN_STATUS = {
     description: 'The CTA flow test exceeded the time limit before completing the click-through.',
   },
 } as const
+
+export const SAVED_FINDING_COPY = {
+  recommendation: 'Recommendation',
+  observation: 'Observation',
+  flag: (severity?: string | null) => severity ? `${severity.toLowerCase()} Flag` : 'Flag',
+  summary: 'Recorded website observations',
+} as const

@@ -387,7 +387,7 @@ export async function runJourneyTemplate(
           })
         )
       }
-      if (!destCta.found) {
+      if (!destCta.found && destCta.complete && destination?.available) {
         findings.push(
           finding({
             checkId: `journey-${options.journeyType}-destination-no-next-action`,
@@ -396,14 +396,14 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'IMPORTANT',
             impactTag: 'CONVERSION',
-            problem: 'Destination offers no clear next action',
-            evidence: `Reproduced at step 2. After opening "${target.text}", no primary CTA was detected.`,
-            whyItMatters: 'Dead-end destinations waste the click that got the visitor there.',
-            fix: '1. Add a primary CTA matching the page intent\n2. For pricing: highlight a recommended plan CTA\n3. For features: link to signup or demo',
+            problem: JOURNEY_ROUTE_COPY.destinationAction.problem,
+            evidence: JOURNEY_ROUTE_COPY.destinationAction.evidence(target.text),
+            whyItMatters: JOURNEY_ROUTE_COPY.destinationAction.whyItMatters,
+            fix: JOURNEY_ROUTE_COPY.destinationAction.fix,
             screenshotUrl: afterClick,
           })
         )
-      } else {
+      } else if (destCta.found) {
         goalAchieved = true
         if (options.journeyPageOnly) return await finalize('ABANDONED')
       }
