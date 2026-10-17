@@ -3,9 +3,14 @@ import { executionTransaction } from './execution-ownership'
 import { dispatchTask } from './progressive/engine'
 import { MAX_TASKS_PER_AUDIT } from './progressive/contracts'
 import { recordProgress } from './progressive/events'
+import { flagKeyForRow } from './persist'
+import { prescriptionTaskPlans } from './prescription-plan'
 import { logger } from '@/lib/logger'
 
-const prescriptionTarget = { targetKey: 'task:prescription', scopeKey: 'audit:prescription' }
+function prescriptionIdentity(index: number | null) {
+  const suffix = index === null ? '' : `:${index}`
+  return { targetKey: `task:prescription${suffix}`, scopeKey: `audit:prescription${suffix}` }
+}
 
 /** The completed report is the durable handoff. Replays never repeat triage. */
 export async function enqueuePendingAiReview(auditId: string): Promise<void> {
@@ -17,29 +22,40 @@ export async function enqueuePendingAiReview(auditId: string): Promise<void> {
 }
 
 export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<void> {
-  const taskId = await executionTransaction(async tx => {
+  const taskIds = await executionTransaction(async tx => {
     await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${auditId} FOR UPDATE`
     const audit = await tx.audit.findUnique({ where: { id: auditId },
       select: { status: true, userId: true, url: true, triageAt: true, completedAt: true, aiReviewAt: true, executionLeaseUntil: true,
         user: { select: { lifecycleStatus: true } }, project: { select: { deletedAt: true } } } })
-    if (!audit || !['COMPLETED', 'JUDGING'].includes(audit.status) || !audit.userId || !audit.triageAt || !audit.completedAt || audit.aiReviewAt) return null
-    if (audit.user?.lifecycleStatus !== 'ACTIVE' || audit.project?.deletedAt) return null
-    const existing = await tx.auditVerifierExecution.findUnique({ where: { auditId_targetKey_scopeKey: { auditId, ...prescriptionTarget } } })
-    if (existing) return existing.id
+    if (!audit || !['COMPLETED', 'JUDGING'].includes(audit.status) || !audit.userId || !audit.triageAt || !audit.completedAt || audit.aiReviewAt) return []
+    if (audit.user?.lifecycleStatus !== 'ACTIVE' || audit.project?.deletedAt) return []
+    const existing = await tx.auditVerifierExecution.findMany({ where: { auditId, workKind: 'prescription' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true } })
+    if (existing.length > 0) return existing.map(task => task.id)
+    const flags = await tx.flag.findMany({ where: { auditId }, orderBy: [{ position: 'asc' }, { id: 'asc' }],
+      select: { checkId: true, fingerprint: true } })
+    const plans = prescriptionTaskPlans(flags.map(flag => ({ flagKey: flagKeyForRow(flag) })))
     const count = await tx.auditVerifierExecution.count({ where: { auditId, targetKey: { startsWith: 'task:' } } })
-    if (count >= MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
-    const task = await tx.auditVerifierExecution.create({ data: { auditId, ...prescriptionTarget,
-      pageUrl: audit.url, source: 'EXECUTION', status: 'PENDING', workKind: 'prescription', workState: 'READY',
-      workInput: { pageUrl: audit.url, primary: true, position: 0, role: 'prescription' }, workDependencies: [],
-      workRetryAt: new Date(Date.now() + Math.max(0, delayMs)), workDispatchState: 'PENDING' } })
+    if (count + plans.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
+    const created: string[] = []
+    for (const plan of plans) {
+      const task = await tx.auditVerifierExecution.create({ data: { auditId, ...prescriptionIdentity(plan.index),
+        pageUrl: audit.url, source: 'EXECUTION', status: 'PENDING', workKind: 'prescription', workState: 'READY',
+        workInput: { pageUrl: audit.url, primary: true, position: 0, role: 'prescription',
+          ...(plan.flagKeys ? { prescriptionFlagKeys: plan.flagKeys } : {}) }, workDependencies: [],
+        workRetryAt: new Date(Date.now() + Math.max(0, delayMs)), workDispatchState: 'PENDING' } })
+      created.push(task.id)
+      await recordProgress(tx, auditId, { taskId: task.id, kind: 'prescription', state: 'admitted' })
+    }
     const expiredLegacy = audit.status === 'JUDGING' && (!audit.executionLeaseUntil || audit.executionLeaseUntil <= new Date())
     await tx.audit.update({ where: { id: auditId }, data: { includeAi: true, ...(expiredLegacy ? { status: 'COMPLETED', progress: 100 } : {}) } })
-    await recordProgress(tx, auditId, { taskId: task.id, kind: 'prescription', state: 'admitted' })
-    return task.id
+    return created
   })
   // Redis is a delivery adapter. Its outage cannot erase the committed task or
   // prevent a signed claim; normal task recovery reconstructs delivery.
-  if (taskId) await dispatchTask(taskId).catch(error => logger.warn('Prescription delivery deferred to task recovery', { auditId, message: String(error) }))
+  for (const taskId of taskIds) {
+    await dispatchTask(taskId).catch(error => logger.warn('Prescription delivery deferred to task recovery', { auditId, taskId, message: String(error) }))
+  }
 }
 
 /** Backfill interrupted handoffs and legacy jobs through the same admission. */

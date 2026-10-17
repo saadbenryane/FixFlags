@@ -142,6 +142,7 @@ describe('board card contract', () => {
     expect(conversion?.flagChips).toEqual([
       { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1', repairGuidanceReady: true },
     ])
+    expect(boardAreaPrompt('Conversion', [{ ...conversionFlag, fix: ' ' }])).toBe('')
     expect(conversion?.sources).toEqual([SITE_BOARD_COPY.browserSource])
     const tracking = cards.find((card) => card.id === 'tracking')
     expect(tracking?.sources).toEqual([SITE_BOARD_COPY.browserSource])

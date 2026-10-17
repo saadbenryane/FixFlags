@@ -31,6 +31,7 @@ export type BoardCardProblem = {
 
 export type BoardCardFlagChip = {
   repairGuidanceReady?: boolean
+  repairGuidance?: SiteFlagSeed['repairGuidance']
   id: string
   sourceFlagId?: string | null
   title: string
@@ -234,6 +235,7 @@ function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip
     sourceFlagId: flag.sourceFlagId,
     title: flag.problem,
     repairGuidanceReady: hasRepairGuidance(flag.fix),
+    ...(flag.repairGuidance ? { repairGuidance: flag.repairGuidance } : {}),
     href: `/sites/${siteId}/flags/${flag.id}`,
   }))
 }

@@ -36,6 +36,7 @@ import { loadMonitoringHistory } from './monitoring-history'
 import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
 import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
+import { repairGuidanceState } from '@/lib/improvements/repair-guidance'
 
 export type { BoardCardView }
 
@@ -97,7 +98,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const selection = await loadSiteAnalysisSelection(site)
   const audit = await resolveLatestAudit(site, selection)
 
-  const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings, resolvedFlags] = await Promise.all([
+  const [{ flags: loadedFlags, recommendations: loadedRecommendations }, outcomes, pageCount, checkedPages, projectSettings, loadedResolvedFlags] = await Promise.all([
     loadSiteFindings(site),
     listSiteOutcomes(site),
     countSitePages(site),
@@ -112,6 +113,14 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     }) : null,
     loadSiteResolvedFlags(site),
   ])
+  const guidanceAudit = audit ? { includeAi: audit.includeAi, triageAt: audit.triageAt, aiReviewAt: audit.aiReviewAt, failureCode: audit.failureCode } : null
+  const withGuidance = (flag: SiteFlagSeed): SiteFlagSeed => ({
+    ...flag,
+    repairGuidance: repairGuidanceState({ fix: flag.fix, checkId: flag.checkId, attentionPolicy: flag.attentionPolicy, audit: guidanceAudit ?? undefined }),
+  })
+  const flags = loadedFlags.map(withGuidance)
+  const recommendations = loadedRecommendations.map(withGuidance)
+  const resolvedFlags = loadedResolvedFlags.map(withGuidance)
 
   const inFlight = isAuditInFlight(audit?.status)
   const prior =

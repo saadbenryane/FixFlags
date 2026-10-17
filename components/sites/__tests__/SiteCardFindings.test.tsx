@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SiteCardFindings } from '../SiteCardFindings'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 function flag(id: string, severity = 'IMPORTANT'): SiteFlagSeed {
   return { id, severity, problem: `Finding ${id}`, pageUrl: `https://example.com/page-${id}?private=not-shown`,
@@ -46,6 +48,16 @@ describe('structured card findings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }))
     expect(screen.getByText('Finding 0')).toBeVisible()
   })
+  it('shows guidance that is not ready and keeps the copy action for a usable fix', () => {
+    render(<SiteCardFindings siteId="s1" flags={[
+      { ...flag('pending'), fix: '', repairGuidance: 'pending' },
+      flag('ready'),
+    ]} recommendations={[]} />)
+    expect(screen.getByText(SITE_ACTION_COPY.repairGuidance.label.pending)).toBeVisible()
+    expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toHaveLength(1)
+    expect(screen.getAllByRole('link', { name: 'View Flag' })).toHaveLength(2)
+  })
+
   it('keeps suggestions distinct from evidence-backed Flags', () => {
     render(<SiteCardFindings siteId="s1" flags={[flag('f')]} recommendations={[flag('r', 'MINOR')]} />)
     expect(screen.getByText('Finding r')).toBeVisible()

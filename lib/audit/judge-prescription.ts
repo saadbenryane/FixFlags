@@ -20,6 +20,9 @@ import {
   runLlmWithRetry,
   type LlmUsage,
 } from './judge-runner'
+import { PRESCRIPTION_BATCH_SIZE, prescriptionFlagBatches } from './prescription-plan'
+
+export { prescriptionFlagBatches, prescriptionTaskPlans } from './prescription-plan'
 
 export type PrescriptionUsage = LlmUsage
 
@@ -409,23 +412,14 @@ function isPrescriptionAttemptRetryable(err: unknown): boolean {
   )
 }
 
-const PRESCRIPTION_BATCH_SIZE = 12
-
-export function prescriptionFlagBatches<T extends { flagKey: string }>(items: T[], size: number): T[][] {
-  if (!Number.isInteger(size) || size < 1) throw new Error('Prescription batch size must be positive')
-  if (items.length === 0) return [[]]
-  const occurrences = new Map<string, T[]>()
-  for (const item of items) {
-    const group = occurrences.get(item.flagKey) ?? []
-    group.push(item)
-    occurrences.set(item.flagKey, group)
+export class PartialPrescriptionError extends Error {
+  readonly partial: PrescriptionResult
+  constructor(partial: PrescriptionResult, cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'Prescription batch failed')
+    this.name = 'PartialPrescriptionError'
+    this.partial = partial
+    this.cause = cause
   }
-  const groups = [...occurrences.values()]
-  const batches: T[][] = []
-  for (let i = 0; i < groups.length; i += size) {
-    batches.push(groups.slice(i, i + size).flat())
-  }
-  return batches
 }
 
 async function runPrescriptionBatch(
@@ -470,12 +464,21 @@ export async function runPrescriptionWithRetry(
       ...context,
       existingFlags: batch,
     }
-    const result = await runPrescriptionBatch(
-      batchContext,
-      desktopBase64,
-      mobileBase64,
-      deadline === undefined ? undefined : Math.max(0, deadline - Date.now())
-    )
+    let result: PrescriptionResult
+    try {
+      result = await runPrescriptionBatch(
+        batchContext,
+        desktopBase64,
+        mobileBase64,
+        deadline === undefined ? undefined : Math.max(1, deadline - Date.now())
+      )
+    } catch (error) {
+      if (flagPrescriptions.length === 0) throw error
+      throw new PartialPrescriptionError({
+        output: { flagPrescriptions, rubricPrescriptions },
+        usage: { inputTokens, outputTokens, model },
+      }, error)
+    }
     flagPrescriptions.push(...result.output.flagPrescriptions)
     if (rubricPrescriptions.length === 0) {
       rubricPrescriptions = result.output.rubricPrescriptions

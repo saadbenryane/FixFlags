@@ -25,6 +25,7 @@ export const siteEvidenceAuditSelect = {
   reviewDepth: true,
   triageAt: true,
   aiReviewAt: true,
+  includeAi: true,
   failedModules: true,
   reportCompleteness: true,
   completedAt: true,

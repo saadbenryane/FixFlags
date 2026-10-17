@@ -246,7 +246,7 @@ One foreground writer may use the main checkout. Concurrent writers use separate
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | `Error: NEXT_PUBLIC_APP_URL is required` | Running CLI script without `.env.local` | Use `DOTENV_CONFIG_PATH=.env.local` prefix |
-| "scanner temporarily unavailable" | Missing R2 config in production | Set all `R2_*` env vars |
+| "FixFlags could not finish this check" | Missing R2 config in production | Set all `R2_*` env vars |
 | Scan completes but no AI score/verdict | Missing `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Set on Railway web service, redeploy. Check `/api/health` `aiConfigured` |
 | PageSpeed partial / 429 | No `PAGESPEED_API_KEY` | Set key in Railway; retries added in pipeline |
 | Audits stuck in QUEUED | Redis not running | `docker compose up -d` |

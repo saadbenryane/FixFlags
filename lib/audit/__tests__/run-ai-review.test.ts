@@ -62,9 +62,10 @@ vi.mock('@/lib/auth/permissions', () => ({
   hasUnlimitedScans: mocks.hasUnlimitedScans,
 }))
 
-vi.mock('@/lib/audit/judge-prescription', () => ({
-  runPrescriptionWithRetry: mocks.runPrescriptionWithRetry,
-}))
+vi.mock('@/lib/audit/judge-prescription', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/audit/judge-prescription')>()
+  return { ...actual, runPrescriptionWithRetry: mocks.runPrescriptionWithRetry }
+})
 
 vi.mock('@/lib/audit/technology-profile', () => ({
   loadTechnologyProfile: mocks.loadTechnologyProfile,
@@ -72,6 +73,7 @@ vi.mock('@/lib/audit/technology-profile', () => ({
 }))
 
 import { runAiReview } from '../run-ai-review'
+import { PartialPrescriptionError } from '../judge-prescription'
 import { JudgeContractError } from '../validate-judge-output'
 import { mergeSupportingObservations, observationsForFlag } from '../flag-observations'
 
@@ -261,8 +263,37 @@ describe('runAiReview', () => {
   it.each([new Error('provider exploded'), new JudgeContractError('bad schema')])('retains the completed report until the durable task owner settles failure: %s', async error => {
     mocks.runPrescriptionWithRetry.mockRejectedValue(error)
     await expect(runAiReview('a1')).rejects.toBe(error)
+    expect(mocks.mergePrescriptionResults).not.toHaveBeenCalled()
     expect(mocks.auditUpdate.mock.calls).toEqual([[{ where: { id: 'a1' }, data: { includeAi: true } }]])
     expect(mocks.logPipelineEvent).toHaveBeenCalledWith('a1', expect.objectContaining({ event: 'prescription_failed' }))
+  })
+
+  it('saves a completed batch when a later batch fails and still reports the contract failure', async () => {
+    const cause = new JudgeContractError('expected 2 flag prescriptions, got 1')
+    mocks.runPrescriptionWithRetry.mockRejectedValue(new PartialPrescriptionError(PRESCRIPTION, cause))
+    await expect(runAiReview('a1')).rejects.toBe(cause)
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, { rubrics: false })
+    expect(mocks.finalizeAudit).not.toHaveBeenCalled()
+  })
+
+  it('prescribes only the requested Flags and leaves review completion to the task set', async () => {
+    mocks.flagKeyForRow.mockImplementation((flag: { checkId?: string | null }) => flag.checkId ?? '')
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [
+      { ...AUDIT.flags[0], checkId: 'key-1' },
+      { ...AUDIT.flags[0], id: 'f2', checkId: 'key-2', problem: 'Second finding' },
+    ] })
+    const usage = await runAiReview('a1', undefined, ['key-1'])
+    expect(mocks.runPrescriptionWithRetry.mock.calls[0][0].existingFlags.map((flag: { flagKey: string }) => flag.flagKey)).toEqual(['key-1'])
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, { rubrics: false })
+    expect(mocks.finalizeAudit).not.toHaveBeenCalled()
+    expect(usage).toMatchObject({ inputTokens: 10, outputTokens: 5, model: 'gpt-4o-mini' })
+  })
+
+  it('refuses a prescription task aimed at a Flag that was not recorded', async () => {
+    mocks.flagKeyForRow.mockReturnValue('key-1')
+    await expect(runAiReview('a1', undefined, ['missing'])).rejects.toThrow('PRESCRIPTION_FLAGS_MISSING')
+    expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
+    expect(mocks.mergePrescriptionResults).not.toHaveBeenCalled()
   })
 
 })

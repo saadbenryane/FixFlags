@@ -63,7 +63,7 @@ export const SITE_BOARD_COPY = {
   findingEvidence: 'Evidence and scope',
   findingPageScope: (count: number) => `Findings on ${count} ${count === 1 ? 'page' : 'pages'}`,
   settingsActionsBody: 'Choose the visitor actions FixFlags should verify. Each card records what happened and whether it still works.',
-  partialReview: 'Results saved. Review incomplete.',
+  partialReview: 'Results saved. Some fix guidance is still missing.',
   activityTitle: 'Run details',
   activityDescription: 'Technical details from this analysis.',
   viewDetails: 'View details',

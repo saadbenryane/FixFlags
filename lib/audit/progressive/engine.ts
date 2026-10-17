@@ -6,7 +6,7 @@ import { ScanAccessUnavailable } from '../scan-access-grants'
 import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask, priorityForTask } from './queues'
-import { publishUnfinishedCoverage, settleFailedFinalization } from './incomplete'
+import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettledPrescriptionCost, settleFailedFinalization, settlePrescriptionAudit } from './incomplete'
 import { executionTransaction, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
@@ -186,7 +186,10 @@ export async function reconcileTasks(auditId: string) {
         }
         return updated.count
       })
-      if (settled) task.workState = 'EXHAUSTED'
+      if (settled) {
+        task.workState = 'EXHAUSTED'
+        if (task.workKind === 'prescription') await recordSettledPrescriptionCost(auditId).catch(error => logUnrecordedPrescriptionCost(auditId, error))
+      }
       continue
     }
     if (task.workState === 'RUNNING' && task.workLeaseUntil && task.workLeaseUntil <= now) {
@@ -213,6 +216,7 @@ export async function reconcileTasks(auditId: string) {
       if (settled) {
         task.workState = decision.retry ? 'RETRY_WAIT' : 'EXHAUSTED'
         task.workRetryAt = new Date(decision.nextAt)
+        if (!decision.retry && task.workKind === 'prescription') await recordSettledPrescriptionCost(auditId).catch(error => logUnrecordedPrescriptionCost(auditId, error))
       }
       continue
     }
@@ -352,6 +356,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
             workResult: result as Prisma.InputJsonValue, workState: 'COMPLETED', status: 'COMPLETED',
             workErrorCode: null, workLeaseUntil: null,
           } })
+          if (handler.kind === 'prescription') await settlePrescriptionAudit(tx, job.auditId)
           await recordProgress(tx, job.auditId, { taskId: task.id, kind: handler.kind, state: 'COMPLETED', observationReference: task.id })
           check()
         })
@@ -370,14 +375,14 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
             detail: { version: 1, taskId: task.id, generation: job.generation, kind: handler.kind,
               code: error.code, httpStatus: error.httpStatus, contentType: error.contentType, finalUrl: error.finalUrl },
           } })
-          if (!decision.retry && !failure.code.endsWith('_NOT_APPLICABLE')) await publishUnfinishedCoverage(tx, task, failure.code)
-          if (!decision.retry) await settleFailedFinalization(tx, task)
           await tx.auditVerifierExecution.update({ where: { id: task.id }, data: {
             workState: decision.retry ? 'RETRY_WAIT' : failure.retryable ? 'EXHAUSTED' : 'BLOCKED',
             status: failure.code.endsWith('_NOT_APPLICABLE') ? 'NOT_APPLICABLE' : 'FAILED',
             workRetryAt: new Date(decision.nextAt), workRecoveryUntil: new Date(decision.until), workLeaseUntil: null,
             workErrorCode: failure.code, workDispatchState: 'PENDING',
           } })
+          if (!decision.retry && !failure.code.endsWith('_NOT_APPLICABLE')) await publishUnfinishedCoverage(tx, task, failure.code)
+          if (!decision.retry) await settleFailedFinalization(tx, task)
           await recordProgress(tx, job.auditId, { taskId: task.id, kind: handler.kind,
             state: decision.retry ? 'RETRY_WAIT' : failure.retryable ? 'EXHAUSTED' : 'BLOCKED' })
         })
@@ -386,6 +391,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       }
     }
   })
+  if (original.workKind === 'prescription') await recordSettledPrescriptionCost(job.auditId).catch(error => logUnrecordedPrescriptionCost(job.auditId, error))
   const ready = await reconcileTasks(job.auditId)
   await dispatchReadyTasks(ready)
 }

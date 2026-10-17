@@ -2,7 +2,7 @@ import { describe, it } from 'vitest'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import assert from 'node:assert/strict'
 import { isRetryableJudgeError } from '@/lib/audit/judge'
-import { validatePrescriptionOutput, prescriptionFlagBatches } from '@/lib/audit/judge-prescription'
+import { validatePrescriptionOutput, prescriptionFlagBatches, prescriptionTaskPlans } from '@/lib/audit/judge-prescription'
 
 describe('prescription occurrence batching', () => {
   it('keeps every occurrence of one Flag key in the same batch and preserves all page evidence', () => {
@@ -19,6 +19,22 @@ describe('prescription occurrence batching', () => {
   it('does not create missing observations and rejects an invalid batch allocation', () => {
     assert.deepEqual(prescriptionFlagBatches([], 12), [[]])
     assert.throws(() => prescriptionFlagBatches([{ flagKey: 'flag-1' }], 0), /positive/)
+  })
+
+  it('keeps one unscoped task for a single batch, including repeated Flag keys', () => {
+    assert.deepEqual(prescriptionTaskPlans([]), [{ index: null }])
+    assert.deepEqual(prescriptionTaskPlans([{ flagKey: '' }, { flagKey: 'flag-1' }]), [{ index: null }])
+    const repeated = Array.from({ length: 12 }, (_, index) => ({ flagKey: `flag-${index}` }))
+    repeated.push({ flagKey: 'flag-0' })
+    assert.deepEqual(prescriptionTaskPlans(repeated), [{ index: null }])
+  })
+
+  it('assigns one task to each batch once a review no longer fits one task', () => {
+    const plans = prescriptionTaskPlans(Array.from({ length: 13 }, (_, index) => ({ flagKey: `flag-${index}` })))
+    assert.equal(plans.length, 2)
+    assert.equal(plans[0]?.index, 0)
+    assert.equal(plans[0]?.flagKeys?.length, 12)
+    assert.deepEqual(plans[1], { index: 1, flagKeys: ['flag-12'] })
   })
 })
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'

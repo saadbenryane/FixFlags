@@ -2,8 +2,9 @@ import { SITE_BOARD_COPY } from './terminology'
 
 export const SITE_ACTION_COPY = {
   repairGuidance: {
-    pending: 'Fix guidance is being prepared. You can inspect the recorded evidence.',
-    unavailable: 'Fix guidance is unavailable for this finding. Run a new website check from Overview to collect fresh evidence.',
+    pending: 'Fix guidance is still being written. The evidence on this page is ready to read.',
+    unavailable: 'This finding has recorded evidence, and fix guidance is not available yet. Check again from Overview.',
+    label: { pending: 'Writing guidance', unavailable: 'Guidance unavailable' },
     refresh: 'Refresh guidance', overview: 'Open Overview',
   },
   mobileInputs: {

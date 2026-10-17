@@ -484,7 +484,8 @@ export async function persistTriageResults(
 
 export async function mergePrescriptionResults(
   auditId: string,
-  prescription: PrescriptionOutput
+  prescription: PrescriptionOutput,
+  options?: { rubrics?: boolean }
 ): Promise<void> {
   await executionTransaction(async (tx) => {
     const flags = await tx.flag.findMany({ where: { auditId } })
@@ -516,6 +517,8 @@ export async function mergePrescriptionResults(
         },
       })
     }
+
+    if (options?.rubrics === false) return
 
     for (const rubricRx of prescription.rubricPrescriptions) {
       await tx.reportRubric.updateMany({

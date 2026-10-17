@@ -20,6 +20,7 @@ const flag = z.object({
   resolvedInId: nullableText, area, affectedPaths: z.array(text), affectedPageCount: count,
   priorityBand: z.enum(['fix_first', 'other']), priorityScore: z.number(), relatedOutcome: z.object({ id: text, name: text }).nullable(),
   verificationState: z.enum(['unverified', 'verifying', 'verified', 'still_open', 'could_not_verify', 'regressed']), latestOccurrenceAt: nullableTime,
+  repairGuidance: z.enum(['ready', 'pending', 'unavailable']).optional(),
 })
 
 const recovery = z.object({ action: z.enum(['retry', 'access', 'connections', 'inspect', 'support']), reasons: z.array(text).max(1200) })
@@ -84,7 +85,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   audit: z.object({ id: nullableText, status: nullableText, progress: z.number().min(0).max(100), walkFinished: z.boolean(), failureCode: nullableText }),
   cards: z.array(z.object({ id: area, name: text, question: text, state: health, status: text, answer: text, detail: nullableText,
     facts: z.array(text), coverage: nullableText, evidenced: z.boolean(), openFlagCount: count, checkedAt: nullableTime,
-    flagIds: z.array(text), flagChips: z.array(z.object({ id: text, sourceFlagId: nullableText.optional(), title: text, href: text, repairGuidanceReady: z.boolean().optional() })), sources: z.array(text),
+    flagIds: z.array(text), flagChips: z.array(z.object({ id: text, sourceFlagId: nullableText.optional(), title: text, href: text, repairGuidanceReady: z.boolean().optional(), repairGuidance: z.enum(['ready', 'pending', 'unavailable']).optional() })), sources: z.array(text),
     activity: z.literal('checking').nullable(), wide: z.boolean(), captureUrl: nullableText, captureAlt: nullableText,
     cropUrl: nullableText, cropAlt: nullableText, problem: z.object({ title: text, body: nullableText, outcomeName: nullableText, href: text, actionLabel: text }).nullable(),
     incompleteReason: nullableText.optional(),

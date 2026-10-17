@@ -9,7 +9,7 @@ describe('authoritative Site refresh contract', () => {
     fixture.cards = buildBoardCards({ siteId: 'fixture-site', inFlight: false, hasLastKnown: false,
       health: { state: 'unknown', answer: 'Not verified', statusLabel: 'Not verified' }, coverageByArea: new Map(),
       flags: [], outcomes: [], pageCount: 0, captureUrl: null, checkedAt: null })
-    fixture.cards[0].flagChips = [{ id: 'incident', sourceFlagId: 'captured-flag', title: 'Recorded problem', href: '/sites/fixture-site/flags/incident', repairGuidanceReady: false }]
+    fixture.cards[0].flagChips = [{ id: 'incident', sourceFlagId: 'captured-flag', title: 'Recorded problem', href: '/sites/fixture-site/flags/incident', repairGuidanceReady: false, repairGuidance: 'pending' }]
     expect(readSiteHomeView(fixture, 'fixture-site').cards[0].flagChips).toEqual(fixture.cards[0].flagChips)
     expect(() => readSiteHomeView({ ...fixture, cards: [{ ...fixture.cards[0], flagChips: [{ ...fixture.cards[0].flagChips[0], repairGuidanceReady: 'yes' }] }] }, 'fixture-site')).toThrow()
   })

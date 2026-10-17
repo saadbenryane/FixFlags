@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BoardCard, ProductBoardCard } from '../BoardCard'
 import type { BoardCardView } from '@/lib/sites/board-card'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
@@ -16,6 +17,16 @@ describe('BoardCard chrome', () => {
     expect(action.parentElement?.closest('button, a')).toBeNull()
     fireEvent.click(action)
     expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it('names guidance that is still being written without offering it for copy', () => {
+    render(<BoardCard name="Search" status="2 Flags" state="problem" answer="Page title is missing" icon="search" layout="row" flags={[
+      { id: 'pending', title: 'Page title is missing', href: '#pending', repairGuidance: 'pending' },
+      { id: 'ready', title: 'Ready finding', href: '#ready', repairGuidance: 'ready', copyAction: <button type="button">Copy fix prompt</button> },
+    ]} />)
+    expect(screen.getByText(SITE_ACTION_COPY.repairGuidance.label.pending)).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Ready finding' })).toBeVisible()
+    expect(screen.getAllByRole('button', { name: 'Copy fix prompt' })).toHaveLength(1)
   })
 
   it('keeps healthy status accessible without repeating freshness on the board', () => {

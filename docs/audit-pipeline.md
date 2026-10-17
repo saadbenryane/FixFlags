@@ -2315,9 +2315,9 @@ Internal codes map to user copy via `lib/audit/user-facing-errors.ts` and `AUDIT
 
 | Code                         | User message theme              |
 | ---------------------------- | ------------------------------- |
-| `AI_PROVIDER_NOT_CONFIGURED` | Scanner temporarily unavailable |
+| `AI_PROVIDER_NOT_CONFIGURED` | Check could not finish          |
 | `AUDIT_TIMEOUT`              | Took longer than expected       |
-| `AI_REVIEW_FAILED`           | Partial AI review               |
+| `AI_REVIEW_FAILED`           | Some fix guidance was not written |
 | `DESKTOP_CAPTURE_FAILED`     | Could not capture screenshot    |
 
 ## Recovery

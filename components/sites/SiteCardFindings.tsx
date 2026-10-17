@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import { boardFindingTitle } from '@/lib/sites/board-card'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
 
@@ -54,6 +55,7 @@ export function SiteCardFindings({ siteId, flags, recommendations, copyAvailabil
           <Icon className="h-5 w-5 shrink-0 text-brand" aria-hidden />
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold leading-snug">{boardFindingTitle(flag.problem)}</h3>
+            {flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? <p className="mt-1 text-xs text-muted-foreground">{SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance]}</p> : null}
             {showPage ? <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="truncate" title={flag.pageUrl ?? undefined}>{flag.affectedPageCount > 1 ? `${flag.affectedPageCount} affected pages` : pageLabel(flag.pageUrl)}</span></p> : null}
           </div>
           <div className="flex shrink-0 gap-2">{hasRepairGuidance(flag.fix) ? <SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /> : null}<Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>View Flag</Link></Button></div>

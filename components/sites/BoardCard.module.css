@@ -66,6 +66,8 @@
 .rowFlagOpen { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 8px; color: hsl(var(--brand)); }
 .rowFlagOpen:hover { background: hsl(var(--muted)); }
 .rowFlagList strong { overflow-wrap: anywhere; font-size: 15px; font-weight: 600; line-height: 1.35; letter-spacing: -.014em; }
+.rowFlagName strong { flex: 1 1 auto; min-width: 0; }
+.rowFlagGuidance { flex: 0 0 auto; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 500; line-height: 1.3; }
 .outcomeRow { grid-template-columns: minmax(0, 1fr) auto; cursor: default; }
 .outcomeRowTitle { grid-column: 1; grid-row: 1; }
 .outcomeRowTitle > div { display: flex; flex-direction: column; min-width: 0; }

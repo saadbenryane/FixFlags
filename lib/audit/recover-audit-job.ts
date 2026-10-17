@@ -10,6 +10,7 @@ import { resolveStuckAuditRecovery, stuckAuditCutoff } from '@/lib/audit/stuck-a
 import { persistImprovementCycle } from '@/lib/audit/finalize'
 import { logger } from '@/lib/logger'
 import { asReviewDepth, auditDeadlineMsForDepth } from '@/lib/audit/review-depth'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy/errors'
 
 /** Re-enqueue when worker heartbeat is dead and job has waited this long. */
 export const WORKER_DEAD_RECOVERY_SECONDS = 90
@@ -31,8 +32,7 @@ export const WORKER_DOWN_GIVEUP_SECONDS = 180
 export const POLL_FORCE_FAIL_GRACE_MS = 15_000
 export const IMPROVEMENT_PROJECTION_RECOVERY_LIMIT = 25
 
-const WORKER_DOWN_MESSAGE =
-  'The scanner is temporarily unavailable. Try again in a few minutes.'
+const WORKER_DOWN_MESSAGE = AUDIT_ERRORS.scannerUnavailable
 
 export type RecoverAuditJobResult = 'requeued' | 'force_failed' | 'noop'
 

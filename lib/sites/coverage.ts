@@ -1,3 +1,4 @@
+import type { RepairGuidanceState } from '@/lib/improvements/repair-guidance'
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -46,6 +47,7 @@ export type SiteFlagSeed = {
   evidence: string
   whyItMatters: string
   fix: string
+  repairGuidance?: RepairGuidanceState
   pageUrl: string | null
   status: string
   resolvedInId: string | null

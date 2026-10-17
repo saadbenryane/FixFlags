@@ -1,9 +1,112 @@
 import { getUserFacingAuditError } from '../user-facing-errors'
-import type { Prisma, AuditVerifierExecution } from '@prisma/client'
+import { Prisma, type AuditVerifierExecution } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { persistAuditRunCost } from '@/lib/billing/costs'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
-import { taskInputSchema } from './contracts'
+import { logger } from '@/lib/logger'
+import { MAX_TASKS_PER_AUDIT, prescriptionResultSchema, taskArtifactSchema, taskInputSchema, taskIsSettled } from './contracts'
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
+
+const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
+
+export function prescriptionSettlement(tasks: readonly { workState: string | null; workErrorCode: string | null }[]) {
+  if (tasks.length === 0 || tasks.some(task => !PRESCRIPTION_TERMINAL.has(task.workState ?? ''))) return { kind: 'open' as const }
+  const failed = tasks.filter(task => task.workState !== 'COMPLETED')
+  if (failed.length === 0) return { kind: 'complete' as const }
+  const reasons = failed.map(task => task.workErrorCode).filter((code): code is string => Boolean(code))
+  const reason = reasons.includes('AI_CONTRACT_INVALID') ? 'AI_CONTRACT_INVALID' : reasons[0] ?? 'AI_REVIEW_FAILED'
+  return {
+    kind: 'failed' as const,
+    failureCode: reason === 'AI_CONTRACT_INVALID' ? 'AI_CONTRACT_INVALID' as const : 'AI_REVIEW_FAILED' as const,
+    reason,
+  }
+}
+
+/** Publish review completion only after every prescription task has finished. */
+export async function settlePrescriptionAudit(tx: Prisma.TransactionClient, auditId: string) {
+  const tasks = await tx.auditVerifierExecution.findMany({
+    where: { auditId, workKind: 'prescription' },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { workState: true, workErrorCode: true },
+    take: MAX_TASKS_PER_AUDIT + 1,
+  })
+  if (tasks.length > MAX_TASKS_PER_AUDIT) return { kind: 'open' as const }
+  const decision = prescriptionSettlement(tasks)
+  if (decision.kind === 'open') return decision
+  const where = { id: auditId, status: 'COMPLETED' as const, triageAt: { not: null }, aiReviewAt: null }
+  if (decision.kind === 'complete') {
+    await tx.audit.updateMany({ where, data: {
+      aiReviewAt: new Date(), failureCode: null, failureStage: null, errorMsg: null, failureMetadata: Prisma.DbNull,
+    } })
+    return decision
+  }
+  await tx.audit.updateMany({ where, data: {
+    failureCode: decision.failureCode, failureStage: 'judging', errorMsg: getUserFacingAuditError(decision.failureCode),
+    failureMetadata: { version: 1, phase: 'prescription', reason: decision.reason },
+  } })
+  return decision
+}
+
+export type SettledPrescriptionUsage = {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  model: string
+}
+
+/** Sum measured prescription usage once the whole set is terminal. Legacy artifacts contribute nothing. */
+export function summedPrescriptionUsage(tasks: readonly { workState: string | null; workResult: unknown }[]): SettledPrescriptionUsage | null {
+  if (tasks.length === 0 || tasks.length > MAX_TASKS_PER_AUDIT || tasks.some(task => !taskIsSettled(task.workState))) return null
+  let inputTokens = 0
+  let outputTokens = 0
+  let cacheReadTokens = 0
+  let cacheWriteTokens = 0
+  const models: string[] = []
+  let counted = 0
+  for (const task of tasks) {
+    if (task.workState !== 'COMPLETED') continue
+    const artifact = taskArtifactSchema.safeParse(task.workResult)
+    if (!artifact.success) continue
+    const usage = prescriptionResultSchema.safeParse(artifact.data.data)
+    if (!usage.success || typeof usage.data.inputTokens !== 'number') continue
+    counted += 1
+    inputTokens += usage.data.inputTokens
+    outputTokens += usage.data.outputTokens ?? 0
+    cacheReadTokens += usage.data.cacheReadTokens ?? 0
+    cacheWriteTokens += usage.data.cacheWriteTokens ?? 0
+    if (usage.data.model && !models.includes(usage.data.model)) models.push(usage.data.model)
+  }
+  if (counted === 0 || inputTokens + outputTokens === 0) return null
+  return { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, model: models.join(',') }
+}
+
+/** Record the summed prescription cost after the task transaction commits. A zero or legacy result leaves the existing cost alone. */
+export async function recordSettledPrescriptionCost(auditId: string) {
+  const tasks = await prisma.auditVerifierExecution.findMany({
+    where: { auditId, workKind: 'prescription' },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { workState: true, workResult: true },
+    take: MAX_TASKS_PER_AUDIT + 1,
+  })
+  const usage = summedPrescriptionUsage(tasks)
+  if (!usage) return
+  await persistAuditRunCost(auditId, {
+    durationMs: 0,
+    llmInputTokens: usage.inputTokens,
+    llmOutputTokens: usage.outputTokens,
+    llmModel: usage.model,
+    pagespeedCalls: 0,
+    llmCacheReadTokens: usage.cacheReadTokens,
+    llmCacheWriteTokens: usage.cacheWriteTokens,
+    phase: 'prescription',
+  })
+}
+
+export function logUnrecordedPrescriptionCost(auditId: string, error: unknown) {
+  logger.error('Prescription cost was not recorded', error, { auditId })
+}
 
 type CoverageTask = Pick<AuditVerifierExecution, 'id' | 'auditId' | 'workKind' | 'workInput'>
 export async function settleFailedFinalization(tx: Prisma.TransactionClient, task: CoverageTask) {
@@ -18,10 +121,7 @@ export async function settleFailedFinalization(tx: Prisma.TransactionClient, tas
 export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, task: CoverageTask, reason: string) {
   const input = taskInputSchema.parse(task.workInput)
   if (task.workKind === 'prescription') {
-    const failureCode = reason === 'AI_CONTRACT_INVALID' ? 'AI_CONTRACT_INVALID' : 'AI_REVIEW_FAILED'
-    await tx.audit.updateMany({ where: { id: task.auditId, status: 'COMPLETED', triageAt: { not: null }, aiReviewAt: null },
-      data: { failureCode, failureStage: 'judging', errorMsg: getUserFacingAuditError(failureCode),
-        failureMetadata: { version: 1, phase: 'prescription', taskId: task.id, reason } } })
+    await settlePrescriptionAudit(tx, task.auditId)
     return
   }
 

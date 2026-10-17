@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { executionWrite } from '../execution-ownership'
 import { loadTaskGraph, persistTaskPlan } from './engine'
-import { serializeArtifact, readArtifact, TaskFailure, type TaskPlan, type TaskArtifact, MAX_TASKS_PER_AUDIT } from './contracts'
+import { serializeArtifact, readArtifact, TaskFailure, prescriptionResultSchema, type TaskPlan, type TaskArtifact, MAX_TASKS_PER_AUDIT } from './contracts'
 import { pageTaskPlan } from './graph'
 import { browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, screenshotSnapshotSchema } from './snapshots'
 import { browserEvidence, captureEvidence, searchArtifactSchema } from './evaluators'
@@ -43,7 +43,7 @@ import type { PageEvidence, PageRun, PipelineContext } from '../pipeline/types'
 import type { TaskContext, TaskHandler } from './registry'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { enqueuePendingAiReview } from '../enqueue-ai-review'
-import { runAiReview } from '../run-ai-review'
+import { runAiReview, type PrescriptionRunUsage } from '../run-ai-review'
 import { JudgeContractError } from '../validate-judge-output'
 import { admitAiObservation } from '../ai-observation-identity'
 
@@ -181,16 +181,30 @@ export async function recordedPages(auditId: string, pageUrl?: string, db: Pick<
 }
 
 
+function prescriptionArtifact(usage: PrescriptionRunUsage) {
+  const measured = usage.inputTokens > 0 || usage.outputTokens > 0 || usage.cacheReadTokens > 0 || usage.cacheWriteTokens > 0 || usage.model.length > 0
+  if (!measured) return { completed: true as const }
+  return prescriptionResultSchema.parse({
+    completed: true,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    cacheReadTokens: usage.cacheReadTokens,
+    cacheWriteTokens: usage.cacheWriteTokens,
+    ...(usage.model ? { model: usage.model.slice(0, 200) } : {}),
+  })
+}
+
 export const lifecycleHandlers: TaskHandler[] = [
   { kind: 'prescription', replay: 'idempotent', timeoutMs: 90_000,
-    validateResult: artifact => { z.object({ completed: z.literal(true) }).strict().parse(artifact.data) },
+    validateResult: artifact => { prescriptionResultSchema.parse(artifact.data) },
     async evaluate(context) {
-      try { await runAiReview(context.audit.id, context.deadline) }
+      let usage: PrescriptionRunUsage = { inputTokens: 0, outputTokens: 0, model: '', cacheReadTokens: 0, cacheWriteTokens: 0 }
+      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys) }
       catch (error) {
         if (error instanceof JudgeContractError) throw new TaskFailure('AI_CONTRACT_INVALID', false)
         throw error
       }
-      return serializeArtifact('prescription', { completed: true })
+      return serializeArtifact('prescription', prescriptionArtifact(usage))
     },
   },
   { kind: 'fixture-setup', replay: 'protected', timeoutMs: 70_000,

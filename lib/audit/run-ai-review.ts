@@ -10,13 +10,35 @@ import type { PageMetadata } from './metadata'
 import { logPipelineEvent } from './pipeline-log'
 import { remainingAiReportCredits } from './ai-report-entitlement'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
-import { runPrescriptionWithRetry } from './judge-prescription'
+import { PartialPrescriptionError, runPrescriptionWithRetry } from './judge-prescription'
 import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-profile'
 import { renderedContentMetadata } from './browser/rendered-copy'
 import { publicSupportingObservations } from './flag-observations'
 
+export type PrescriptionRunUsage = {
+  inputTokens: number
+  outputTokens: number
+  model: string
+  cacheReadTokens: number
+  cacheWriteTokens: number
+}
+
+const NO_PRESCRIPTION_USAGE: PrescriptionRunUsage = {
+  inputTokens: 0, outputTokens: 0, model: '', cacheReadTokens: 0, cacheWriteTokens: 0,
+}
+
+function prescriptionUsage(usage: { inputTokens: number; outputTokens: number; model: string; cacheReadTokens?: number; cacheWriteTokens?: number }): PrescriptionRunUsage {
+  return {
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    model: usage.model,
+    cacheReadTokens: usage.cacheReadTokens ?? 0,
+    cacheWriteTokens: usage.cacheWriteTokens ?? 0,
+  }
+}
+
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
-export async function runAiReview(auditId: string, deadline?: number): Promise<void> {
+export async function runAiReview(auditId: string, deadline?: number, flagKeys?: readonly string[]): Promise<PrescriptionRunUsage> {
   const owner = currentExecutionOwnership()
   if (!owner?.taskId || owner.auditId !== auditId) throw new Error('Prescription requires its execution task')
   const audit = await prisma.audit.findUnique({
@@ -28,7 +50,7 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
   })
 
   if (!audit) throw new Error(`Audit ${auditId} not found`)
-  if (audit.aiReviewAt) return
+  if (audit.aiReviewAt) return NO_PRESCRIPTION_USAGE
   if (!audit.triageAt) {
     throw new Error(`Audit ${auditId} has not completed triage`)
   }
@@ -61,7 +83,17 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
 
   const techStack = technologyNamesForPrompt(await loadTechnologyProfile(auditId))
 
-  const existingFlags = audit.flags.map((flag) => {
+  const requested = flagKeys ? [...new Set(flagKeys)] : null
+  if (requested?.some(key => !audit.flags.some(flag => flagKeyForRow(flag) === key))) {
+    throw new TaskFailure('PRESCRIPTION_FLAGS_MISSING', false)
+  }
+  const selectedRows = requested ? audit.flags.filter(flag => requested.includes(flagKeyForRow(flag))) : audit.flags
+  const selectedKeys = new Set(selectedRows.map(flag => flagKeyForRow(flag)).filter(Boolean))
+  const coversAll = !requested || audit.flags.every(flag => {
+    const key = flagKeyForRow(flag)
+    return !key || selectedKeys.has(key)
+  })
+  const existingFlags = selectedRows.map((flag) => {
     const supportingObservations = publicSupportingObservations(flag.supportingObservations)
     if (flag.supportingObservations != null && !supportingObservations.length)
       throw new JudgeContractError('Recorded supporting observations could not be read for prescription')
@@ -113,17 +145,21 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
       deadline === undefined ? undefined : Math.max(1, deadline - Date.now() - 5000)
     )
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Prescription failed'
+    const cause = error instanceof PartialPrescriptionError ? error.cause : error
+    const errorMsg = cause instanceof Error ? cause.message : 'Prescription failed'
 
     await logPipelineEvent(auditId, {
       stage: 'judging',
       event: 'prescription_failed',
       error: errorMsg,
     })
+    if (error instanceof PartialPrescriptionError) {
+      await mergePrescriptionResults(auditId, error.partial.output, { rubrics: false })
+    }
 
     // The durable task owner decides recovery or terminal failure. A failed
     // provider attempt cannot publish a terminal customer state while retrying.
-    throw error
+    throw cause
   }
 
   const evidence = audit.evidenceCoverage as {
@@ -137,9 +173,11 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
   } | null
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'prescription_persist' })
-  await mergePrescriptionResults(auditId, prescription.output)
+  if (coversAll) await mergePrescriptionResults(auditId, prescription.output)
+  else await mergePrescriptionResults(auditId, prescription.output, { rubrics: false })
 
-  await finalizeAudit({
+  // A partial batch must not stamp aiReviewAt. That stamp would stop every sibling batch.
+  if (coversAll) await finalizeAudit({
     auditId,
     durationMs: Date.now() - startedAt,
     pagespeedCalls: 0,
@@ -160,4 +198,5 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
       flowScan: evidence?.flowScan === true,
     },
   })
+  return prescriptionUsage(prescription.usage)
 }

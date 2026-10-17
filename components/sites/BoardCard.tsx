@@ -22,6 +22,7 @@ import {
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { flagCountLabel } from '@/lib/sites/presentation'
 import styles from './BoardCard.module.css'
@@ -202,14 +203,16 @@ export function BoardCard({
           : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
         {rowMeta}
         <ul className={styles.rowFlagList}>
-          {previewFlags.map(flag => <li key={flag.id}>
-            {flag.onOpen ? <button type="button" className={styles.rowFlagName} onClick={flag.onOpen}><strong>{flag.title}</strong></button>
-              : <Link className={styles.rowFlagName} href={flag.href as Route}><strong>{flag.title}</strong></Link>}
+          {previewFlags.map(flag => {
+            const guidance = flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance] : null
+            return <li key={flag.id}>
+            {flag.onOpen ? <button type="button" className={styles.rowFlagName} onClick={flag.onOpen}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</button>
+              : <Link className={styles.rowFlagName} href={flag.href as Route}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</Link>}
             <span className={styles.rowFlagActions}>{flag.copyAction ? <span className={styles.rowCopyAction}>{flag.copyAction}</span> : null}
               {flag.onOpen ? <button type="button" className={styles.rowFlagOpen} onClick={flag.onOpen} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></button>
                 : <Link className={styles.rowFlagOpen} href={flag.href as Route} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></Link>}
             </span>
-          </li>)}
+          </li> })}
         </ul>
         {recovery}
       </article>

@@ -18,6 +18,7 @@ export const taskInputSchema = z.object({
   outcomeId: z.string().min(1).max(120).optional(), bindingKey: z.string().min(1).max(120).optional(),
   fixtureId: z.string().min(1).max(120).optional(),
   device: z.enum(['desktop', 'mobile']).optional(),
+  prescriptionFlagKeys: z.array(z.string().min(1).max(2000)).max(12).optional(),
 }).strict()
 export type TaskInput = z.infer<typeof taskInputSchema>
 export const taskPlanSchema = z.object({
@@ -34,6 +35,15 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
   z.string(), z.number().finite(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema),
 ]))
+/** `{ completed: true }` remains valid. Token fields are present only after a measured run. */
+export const prescriptionResultSchema = z.object({
+  completed: z.literal(true),
+  inputTokens: z.number().nonnegative().optional(),
+  outputTokens: z.number().nonnegative().optional(),
+  cacheReadTokens: z.number().nonnegative().optional(),
+  cacheWriteTokens: z.number().nonnegative().optional(),
+  model: z.string().min(1).max(200).optional(),
+}).strict()
 export const taskArtifactSchema = z.object({
   kind: taskKindSchema, version: z.literal(1), collectedAt: z.string().datetime(),
   data: z.record(z.string(), jsonValueSchema),
