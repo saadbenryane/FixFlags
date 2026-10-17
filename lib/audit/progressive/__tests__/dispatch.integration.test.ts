@@ -1,5 +1,6 @@
 import { TASK_QUEUES } from '../queues'
 import { randomUUID } from 'node:crypto'
+import { createServer } from 'node:http'
 import type { Audit } from '@prisma/client'
 import { Queue, Worker } from 'bullmq'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -14,6 +15,7 @@ import { lifecycleHandlers } from '../lifecycle'
 import * as openChecks from '@/lib/audit/open-check'
 import { initialTaskPlan } from '../graph'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
+import { collectionHandlers } from '../collectors'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -147,6 +149,100 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
         createdAt: task.createdAt, workAttempts: 1, workGeneration: 1, workState: 'COMPLETED' })
     } finally { release(); await Promise.all(localWorkers.map(worker => worker.close())) }
   })
+
+  it('commits a real delayed PageSpeed response after renewing the initial ownership lease', async () => {
+    const { audit, tasks } = await admission(['pagespeed']), task = tasks[0]
+    const observed = { lighthouseResult: { requestedUrl: audit.url, finalUrl: audit.url, lighthouseVersion: '13.5.0',
+      configSettings: { formFactor: 'desktop' }, categories: { performance: { score: 0.85 } },
+      audits: { 'largest-contentful-paint': { numericValue: 2500 }, 'cumulative-layout-shift': { numericValue: 0.01 } } } }
+    let requests = 0
+    const server = createServer((_request, response) => {
+      requests++
+      const timer = setTimeout(() => {
+        response.writeHead(200, { 'content-type': 'application/json' })
+        response.end(JSON.stringify(observed))
+      }, 95_000)
+      response.on('close', () => clearTimeout(timer))
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    if (!address || typeof address === 'string') throw new Error('Controlled provider failed to bind')
+    const realFetch = globalThis.fetch
+    const transport = vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) => {
+      if (new URL(String(url)).origin !== 'https://www.googleapis.com') throw new Error('Unexpected provider transport')
+      return realFetch('http://127.0.0.1:' + address.port, options)
+    })
+    const selected = new Map([['pagespeed', collectionHandlers.find(handler => handler.kind === 'pagespeed')!]])
+    let execution: Promise<unknown> | undefined
+    try {
+      const startedAt = Date.now()
+      execution = executeTask({ auditId: audit.id, taskId: task.id, generation: 1 }, selected)
+      await vi.waitFor(async () => {
+        const running = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+        expect(running.workState).toBe('RUNNING')
+        expect(running.workLeaseUntil!.getTime()).toBeGreaterThan(startedAt + 110_000)
+      }, { timeout: 45_000, interval: 1000 })
+      await execution
+      expect(Date.now() - startedAt).toBeGreaterThanOrEqual(95_000)
+      expect(requests).toBe(1)
+      const settled = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })
+      expect(settled).toMatchObject({ createdAt: task.createdAt, workAttempts: 1, workGeneration: 1, workState: 'COMPLETED',
+        workResult: { data: { desktop: { score: 85, lcp: 2500, cls: 0.01 } } } })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({
+        performanceData: { desktop: { score: 85, lcp: 2500, cls: 0.01 } } })
+      expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'task_observation_committed' } })).toBe(1)
+    } finally {
+      transport.mockRestore()
+      server.closeAllConnections()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      await execution
+    }
+  }, 160_000)
+
+  it('dispatches and executes untried linked PageSpeed work before an earlier primary retry', async () => {
+    const { audit, tasks } = await admission(['pagespeed'])
+    const primary = tasks[0]
+    const sequence: string[] = []
+    const selected = new Map<string, TaskHandler>([['pagespeed', { kind: 'pagespeed', replay: 'read_only', timeoutMs: 1000,
+      validateResult: () => {}, async evaluate(context) {
+        sequence.push(context.task.id)
+        if (context.task.id === primary.id && context.task.workAttempts === 1) throw new TaskFailure('PROVIDER_UNAVAILABLE', true)
+        return serializeArtifact('pagespeed', { controlledExecution: true })
+      } }]])
+    await executeTask({ auditId: audit.id, taskId: primary.id, generation: 1 }, selected)
+    const retry = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: primary.id } })
+    expect(retry).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 })
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, retry.workRetryAt!.getTime() - Date.now()) + 10))
+    await persistTaskPlan(audit.id, [
+      { kind: 'pagespeed', key: 'p0:pagespeed', scope: 'page:0', input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies: [] },
+      { kind: 'http', key: 'independent', scope: 'independent', input: { pageUrl: audit.url, position: 0, primary: true, role: 'primary' }, dependencies: [] },
+      { kind: 'pagespeed', key: 'linked', scope: 'linked', input: { pageUrl: 'https://example.com/linked', position: 1, primary: false, role: 'linked' }, dependencies: [] },
+    ])
+    const graph = await loadTaskGraph(audit.id)
+    const independent = graph.find(task => task.workKind === 'http')!, linked = graph.find(task => task.targetKey === 'task:linked')!
+    const ready = await reconcileTasks(audit.id)
+    expect(ready).toEqual([linked.id, independent.id, primary.id])
+    const queue = dispatch.queues.get('pagespeed')!
+    await queue.pause()
+    let worker: Worker | undefined
+    try {
+      // Queue publication order must not defeat the persisted attempt priority.
+      await dispatchTask(primary.id)
+      await dispatchTask(linked.id)
+      const first = await queue.getJob(primary.id + '-g2'), fresh = await queue.getJob(linked.id + '-g1')
+      expect(fresh!.opts.priority!).toBeLessThan(first!.opts.priority!)
+      const connection = createWorkerRedis(); connections.push(connection)
+      worker = new Worker(queue.name, job => executeTask(job.data, selected), { connection })
+      workers.push(worker); await worker.waitUntilReady(); await queue.resume()
+      await vi.waitFor(async () => {
+        for (const id of [primary.id, linked.id]) expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id } }))
+          .toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 10_000, interval: 25 })
+      expect(sequence).toEqual([primary.id, linked.id, primary.id])
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: primary.id } })).toMatchObject({ workAttempts: 2, workGeneration: 2 })
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: linked.id } })).toMatchObject({ workAttempts: 1, workGeneration: 1 })
+    } finally { await queue.resume(); await worker?.close() }
+  }, 25_000)
 
   it('admits a maximum-sized graph in bulk and preserves completed execution on identical replay', async () => {
     const audit = await prisma.audit.create({ data: { url: 'https://example.com/' } })

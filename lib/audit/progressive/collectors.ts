@@ -5,7 +5,7 @@ import { captureScreenshots } from '../screenshot'
 import { mergeRuntimeHeadMetadata, trimMetadataForStorage } from '../metadata'
 import { collectDocument, collectSiteResources, missingDocument } from '../search/collect'
 import { resolveAuditScanAccess } from '../scan-access-store'
-import { fetchPageSpeedData, toStoredPageSpeedResult } from '../pagespeed'
+import { fetchPageSpeedData, toStoredPageSpeedResult, PAGESPEED_TASK_TIMEOUT_MS } from '../pagespeed'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
 import type { MetadataFailure } from './snapshots'
@@ -179,7 +179,7 @@ export const collectionHandlers: TaskHandler[] = [
         snapshot: { ...snapshot, desktopBase64: null, mobileBase64: null, desktopHtml: null } }))
     },
   },
-  { kind: 'pagespeed', replay: 'read_only', timeoutMs: 45_000,
+  { kind: 'pagespeed', replay: 'read_only', timeoutMs: PAGESPEED_TASK_TIMEOUT_MS,
     validateResult: artifact => { speedArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), Math.max(1, context.deadline - Date.now()))

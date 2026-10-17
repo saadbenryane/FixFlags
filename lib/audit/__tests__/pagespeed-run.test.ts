@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it, beforeEach, vi, afterEach, expect } from 'vitest'
 import { auditCache } from '../cache'
-import { fetchPageSpeedData, toStoredPageSpeedResult } from '../pagespeed'
+import { fetchPageSpeedData, toStoredPageSpeedResult, PAGESPEED_REQUEST_TIMEOUT_MS } from '../pagespeed'
 
 const fetchMock = vi.fn()
 
@@ -56,6 +56,7 @@ describe('fetchPageSpeedData', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -65,6 +66,51 @@ describe('fetchPageSpeedData', () => {
       headers: { 'content-type': 'application/json' },
     })
   }
+
+  function delayedProvider(delay: number) {
+    fetchMock.mockImplementation((_url, init: RequestInit) => new Promise<Response>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(okApiResponse()), delay)
+      init.signal!.addEventListener('abort', () => {
+        clearTimeout(timer)
+        reject(new DOMException('Provider request aborted', 'AbortError'))
+      }, { once: true })
+    }))
+  }
+
+  it('retains a valid 61-second measurement with one progressive request', async () => {
+    vi.useFakeTimers()
+    delayedProvider(61_000)
+    const result = fetchPageSpeedData('https://slow.example/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    await vi.advanceTimersByTimeAsync(61_000)
+    expect((await result).desktop).toMatchObject({ score: 85, lcp: 2500 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('aborts an unfinished measurement at the bounded provider deadline', async () => {
+    vi.useFakeTimers()
+    delayedProvider(PAGESPEED_REQUEST_TIMEOUT_MS + 1)
+    const result = fetchPageSpeedData('https://timeout.example/', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    await vi.advanceTimersByTimeAsync(PAGESPEED_REQUEST_TIMEOUT_MS - 1)
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await result).toMatchObject({ mobile: null, mobileFailure: { code: 'PROVIDER_UNAVAILABLE', retryable: true } })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('honors earlier caller cancellation without waiting for the provider deadline', async () => {
+    vi.useFakeTimers()
+    delayedProvider(61_000)
+    const controller = new AbortController()
+    const result = fetchPageSpeedData('https://cancel.example/', controller.signal, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+    await vi.advanceTimersByTimeAsync(1_000)
+    controller.abort()
+    expect((await result).desktop).toBeNull()
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
 
   it('returns parsed desktop and mobile results from the API', async () => {
     fetchMock.mockImplementation(async () => okApiResponse())

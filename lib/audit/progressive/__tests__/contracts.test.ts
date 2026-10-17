@@ -7,9 +7,21 @@ import { CHECK_REGISTRY } from '../../check-registry'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { pageMetadataSchema } from '../snapshots'
 import { parseMetadataFromHtml } from '../../metadata'
+import { PAGESPEED_REQUEST_TIMEOUT_MS, PAGESPEED_TASK_TIMEOUT_MS } from '../../pagespeed'
+import { collectionHandlers } from '../collectors'
 
 const input = { pageUrl: 'https://example.com/', position: 0, primary: true, role: 'primary' }
 describe('durable bounded work contracts', () => {
+  it('keeps first PageSpeed attempts ahead of retries within the provider task budget', () => {
+    expect(PAGESPEED_REQUEST_TIMEOUT_MS).toBe(130_000)
+    expect(PAGESPEED_TASK_TIMEOUT_MS).toBe(PAGESPEED_REQUEST_TIMEOUT_MS + 15_000)
+    expect(collectionHandlers.find(handler => handler.kind === 'pagespeed')!.timeoutMs).toBe(PAGESPEED_TASK_TIMEOUT_MS)
+    const linked = { ...input, primary: false }
+    expect(priorityForTask('pagespeed', linked, 0)).toBeLessThan(priorityForTask('pagespeed', input, 1))
+    expect(priorityForTask('pagespeed', linked, 1)).toBeLessThan(priorityForTask('pagespeed', input, 2))
+    expect(priorityForTask('pagespeed', input, 2)).toBeLessThan(priorityForTask('pagespeed', linked, 2))
+    expect(priorityForTask('pagespeed', linked, Number.MAX_SAFE_INTEGER)).toBeLessThan(2 ** 21)
+  })
   it('isolates independent services and prioritizes primary work inside each bounded resource', () => {
     expect(queueForTask('pagespeed', input)).toBe('pagespeed')
     expect(queueForTask('google', input)).toBe('google')

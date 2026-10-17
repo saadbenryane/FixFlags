@@ -145,6 +145,14 @@ cannot occupy another service's slots. Existing provider deliveries still use
 the same task IDs, generations, ownership claims, and recovery deadlines.
 Queue health includes prioritized jobs as waiting work.
 
+PageSpeed requests allow 130 seconds, covering the provider's documented
+120-second measurement window and transport. Their task budget adds 15 seconds
+for normalization and persistence. Earlier cancellation and Audit recovery
+deadlines still apply. Existing ownership leases renew during long requests.
+Untried PageSpeed work precedes retries, with primary pages first within each
+attempt group. This ordering applies to new deliveries and cannot preempt
+active requests or rewrite priorities already stored in Redis.
+
 ### Quality
 
 Follow the [agent validation policy](AGENTS.md#validation): end-to-end tests require an explicit user request, including the browser journeys bundled into `verify:release`. A routine UI edit does not authorize those commands.

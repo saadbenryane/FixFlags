@@ -14,8 +14,11 @@ export const TASK_QUEUES = {
 export type TaskQueue = keyof typeof TASK_QUEUES
 /** Prioritize queued primary-page work over linked documents. Active graphs are
  * bounded, so linked work retains a finite cohort. */
-export function priorityForTask(kind: TaskKind, input: TaskInput): number {
+export function priorityForTask(kind: TaskKind, input: TaskInput, attempts = 0): number {
   if (kind === 'prescription') return 1
+  // A slow provider retry must not overtake untried linked-page measurements.
+  // Bound the persisted attempt count to BullMQ's supported priority range.
+  if (kind === 'pagespeed') return Math.min(500_000, Math.max(0, Math.floor(attempts))) * 4 + (input.primary ? 1 : 3)
   if (['pagespeed', 'google', 'judge'].includes(kind)) return input.primary ? 1 : 3
   if (queueForTask(kind, input) === 'browser') return input.primary ? 1 : 3
   return kind === 'http' ? 1 : kind === 'check' ? 2 : 3

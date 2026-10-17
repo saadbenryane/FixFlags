@@ -147,7 +147,7 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
     if (existingJob && (existingState === 'failed' || existingState === 'completed')) await existingJob.retry(existingState)
     else if (!existingJob) await queue.add('audit-task', { auditId: task.auditId, taskId, generation: task.workGeneration + 1 },
       { jobId, attempts: 1, removeOnComplete: 100, removeOnFail: 500,
-        priority: priorityForTask(task.workKind as TaskKind, input) })
+        priority: priorityForTask(task.workKind as TaskKind, input, task.workAttempts) })
     // A delivered job can wait in a busy queue without occupying every recovery
     // batch. Recheck later so a lost Redis delivery still gets reconstructed.
     await prisma.auditVerifierExecution.updateMany({ where: dispatchOwner,
@@ -239,17 +239,22 @@ export async function reconcileTasks(auditId: string) {
   // Graph insertion order must not let a blocked resource starve other queues.
   const dueAt = new Map(tasks.map(task => [task.id, task.workRetryAt?.getTime() ?? 0]))
   const ordered = ready.sort((left, right) => dueAt.get(left)! - dueAt.get(right)!)
-  // Reorder only browser slots, preserving dispatch opportunities for every
-  // other resource even when the browser queue is unavailable.
+  // Reorder within resource slots, preserving other resources' opportunities
+  // when either browser or PageSpeed dispatch is unavailable.
   const readyIds = new Set(ordered)
-  const browser = tasks.filter(task => readyIds.has(task.id)).flatMap(task => {
-    const input = taskInputSchema.safeParse(task.workInput)
-    return input.success && queueForTask(task.workKind as TaskKind, input.data) === 'browser'
-      ? [{ id: task.id, priority: priorityForTask(task.workKind as TaskKind, input.data) }] : []
-  }).sort((left, right) => left.priority - right.priority || dueAt.get(left.id)! - dueAt.get(right.id)!)
-  const browserIds = new Set(browser.map(task => task.id))
-  let browserIndex = 0
-  return ordered.map(id => browserIds.has(id) ? browser[browserIndex++].id : id)
+  const replacements = new Map<string, string>()
+  for (const resource of ['browser', 'pagespeed'] as const) {
+    const members = tasks.filter(task => readyIds.has(task.id)).flatMap(task => {
+      const input = taskInputSchema.safeParse(task.workInput)
+      return input.success && queueForTask(task.workKind as TaskKind, input.data) === resource
+        ? [{ id: task.id, priority: priorityForTask(task.workKind as TaskKind, input.data, task.workAttempts) }] : []
+    })
+    const ids = new Set(members.map(task => task.id))
+    members.sort((left, right) => left.priority - right.priority || dueAt.get(left.id)! - dueAt.get(right.id)!)
+    let index = 0
+    for (const id of ordered) if (ids.has(id)) replacements.set(id, members[index++].id)
+  }
+  return ordered.map(id => replacements.get(id) ?? id)
 }
 
 export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>) {

@@ -89,7 +89,10 @@ function extractCruxMetrics(data: Record<string, unknown>): CruxMetrics | null {
   }
 }
 
-const PAGESPEED_TIMEOUT_MS = 25_000
+// PSI allows 120 seconds for measurement. Retain transport and parsing time
+// inside a separate task budget, while earlier caller deadlines still win.
+export const PAGESPEED_REQUEST_TIMEOUT_MS = 130_000
+export const PAGESPEED_TASK_TIMEOUT_MS = PAGESPEED_REQUEST_TIMEOUT_MS + 15_000
 const FAILURE_CACHE_TTL_MS = 5 * 60 * 1000
 const FAILED_SENTINEL = '__FAILED__' as const
 
@@ -151,7 +154,7 @@ async function runPageSpeed(
   if (apiKey) apiUrl.searchParams.set('key', apiKey)
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), PAGESPEED_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), PAGESPEED_REQUEST_TIMEOUT_MS)
   const onAbort = () => controller.abort()
 
   if (externalSignal) {
