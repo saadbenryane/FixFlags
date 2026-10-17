@@ -95,6 +95,17 @@ export function currentImprovementFlags<T extends { id: string; auditId: string;
     attempts.some(attempt => attemptProvesFlagRecovery(attempt, projectId, flag.auditId, flag.id))))
 }
 
+/** An unbound legacy finding must not replace a newer recorded occurrence.
+ * Missing timestamps cannot establish that a candidate is newer. */
+export function newestRecordedFlag<T extends { id: string; createdAt?: Date }>(flags: T[]): T | undefined {
+  return flags.reduce<T | undefined>((current, candidate) => {
+    if (!current) return candidate
+    if (!current.createdAt || !candidate.createdAt) return current
+    const difference = candidate.createdAt.getTime() - current.createdAt.getTime()
+    return difference > 0 || difference === 0 && candidate.id.localeCompare(current.id) > 0 ? candidate : current
+  }, undefined)
+}
+
 export function incidentAffectedPaths(flags: Array<{ pageUrl?: string | null; affectedPaths?: unknown }>): string[] {
   return [...new Set(flags.flatMap(flag => Array.isArray(flag.affectedPaths) && flag.affectedPaths.some(path => typeof path === 'string' && path.length > 0)
     ? flag.affectedPaths.filter((path): path is string => typeof path === 'string' && path.length > 0) : flag.pageUrl ? [flag.pageUrl] : []))]

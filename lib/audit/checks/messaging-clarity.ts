@@ -17,6 +17,8 @@ const JARGON_PATTERNS = [
 ]
 
 const AUDIENCE_REGEX = /\b(for\s+(?:[\w-]+\s+){0,3}(teams?|developers?|designers?|founders?|startups?|companies?|enterprises?|creators?|marketers?|operators?|agencies?)|built\s+for|designed\s+for|made\s+for)\b/i
+// Audience nouns in the headline or its introduction are also explicit context.
+const AUDIENCE_NOUN = /\b(teams?|developers?|designers?|founders?|startups?|companies|enterprises?|creators?|marketers?|operators?|agencies|students?|teachers?|patients?|clinicians?|researchers?)\b/i
 const OUTCOME_REGEX = /\b(build|builder|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support|schedule|plan|organi[sz]e|collaborate|deploy|monitor|analy[sz]e|design|write|send|email|pay|scale|streamline|simplify|accelerate|generate|discover|learn|hire|invoice|onboard|search|browse|explore|read|watch|listen|download|install|run|use|access|open|store|share|connect|communicate|message|chat|call|meet|present|report|visualize|process|handle|deliver|publish|post|upload|import|export|sync|backup|secure|protect|filter|sort|list|view|show|display|compose|draft|edit|review|approve|submit|transfer|migrate)\b|\b\d+(?:x|%)\b/i
 
 export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckRecorder): DeterministicFlag[] {
@@ -29,7 +31,7 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
 
   const combinedTopText = [h1, meta.headlineSupport, ...h2s.slice(0, 3)].filter(Boolean).join(' ')
 
-  const hasAudience = AUDIENCE_REGEX.test(combinedTopText)
+  const hasAudience = AUDIENCE_REGEX.test(combinedTopText) || AUDIENCE_NOUN.test([h1, meta.headlineSupport].filter(Boolean).join(' '))
   const hasOutcome = OUTCOME_REGEX.test(combinedTopText)
   recordObservation(record, 'headline-outcome', 'Headline positioning signals', 'Captured headline avoids the generic-category-only pattern',
     `Headline: ${h1}. Supporting introduction: ${meta.headlineSupport ?? 'not recorded'}. Audience pattern ${hasAudience}, outcome pattern ${hasOutcome}.`,
@@ -43,7 +45,7 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
       severity: 'IMPORTANT',
       problem: 'Headline uses vague product-category words instead of naming the specific outcome',
       evidence: `H1: "${h1}" uses generic category words like "platform" or "solution" without clearly naming both the customer and the outcome.`,
-      fix: '1. Replace the generic category word with the specific outcome: "Build internal tools 10x faster" instead of "The platform for building"\n2. Name the audience in the headline: "for developers", "for product teams"\n3. Lead with the result the customer gets, not what the product is',
+      fix: '1. Replace the generic category word with the specific outcome: "Plan releases for engineering teams" instead of "The platform for building"\n2. Name the audience in the headline: "for developers", "for product teams"\n3. Lead with the result the customer gets, not what the product is',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })
@@ -108,7 +110,7 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
       impactTag: 'CONVERSION',
       severity: 'POLISH',
       problem: 'Headline does not specify who this is for',
-      evidence: `H1: "${h1}" - no audience signal found (e.g. "for teams", "for developers"). Without an audience, visitors may not self-identify.`,
+      evidence: `Headline: "${h1}". Supporting introduction: "${meta.headlineSupport ?? 'not recorded'}". No recognized audience, outcome, or product-category pattern matched this sample. Audience understanding was not measured.`,
       fix: '1. Add the target audience to the headline or subhead: "The analytics platform for product teams"\n2. Use the subheadline to clarify who should care\n3. If the audience is broad, frame it by their goal: "for teams that need to..."',
       confidence: 0.8,
       source: 'DETERMINISTIC',
@@ -162,9 +164,9 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
-      problem: `Headline is too short (${h1WordCount} words) to communicate value`,
-      evidence: `H1: "${h1}" - at ${h1WordCount} words, it does not give the visitor enough context to understand the product.`,
-      fix: '1. Expand the headline to 5-10 words that name the product, audience, and outcome\n2. Example: "Build internal tools 10x faster - for engineering teams"\n3. Use the subhead to add the "how" if the headline covers the "what"',
+      problem: `Review context for the ${h1WordCount}-word headline`,
+      evidence: `Headline: "${h1}" (${h1WordCount} words). Supporting introduction: "${meta.headlineSupport ?? 'not recorded'}". Visitor understanding was not measured.`,
+      fix: '1. Review the headline together with its nearby explanation and intended audience. Keep a concise headline when the supporting context is clear\n2. Example: "Plan releases with a shared team calendar"\n3. Use the subhead to add the "how" if the headline covers the "what"',
       confidence: 0.8,
       source: 'DETERMINISTIC',
     })

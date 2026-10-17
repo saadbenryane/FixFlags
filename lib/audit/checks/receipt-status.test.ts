@@ -1,3 +1,4 @@
+import { CHECK_REGISTRY } from '../check-registry'
 import { describe, expect, it } from 'vitest'
 import { readCheckReceipt } from './receipt'
 import { runAllChecks } from './index'
@@ -49,7 +50,7 @@ describe('check receipt summaries', () => {
     const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
     async function observed(role: string) {
       const context = { audit: { id: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
-        environment: 'production', scope: 'SITE', checks: { 'messaging-no-audience': 2 }, outcomes: [], verificationTarget: null } },
+        environment: 'production', scope: 'SITE', checks: { 'messaging-no-audience': CHECK_REGISTRY['messaging-no-audience'].version }, outcomes: [], verificationTarget: null } },
         task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role, module: 'messaging-clarity' }, deadline: Date.now() + 5000,
         dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
           pageId: 'page', metadata, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopFinalUrl: pageUrl,
@@ -63,6 +64,7 @@ describe('check receipt summaries', () => {
     const trust = await observed('trust')
     expect(trust.flags).toEqual([])
     expect(trust.receipt.passed).toBe(true)
+    expect(trust.receipt.execution).toMatchObject({ checkVersion: 3, checkVersions: { 'messaging-no-audience': CHECK_REGISTRY['messaging-no-audience'].version } })
     expect(trust.receipt.assertions.find(item => item.key === 'audience-or-outcome')).toMatchObject({ passed: false, complete: true, disposition: 'observed' })
   })
 })

@@ -1,6 +1,6 @@
 import { CHECK_REGISTRY, CHECK_MODULES } from './check-registry'
 import { baseCheckId, parseAffectedPaths } from './flag-identity'
-import { checkReceiptSchema } from './checks/receipt'
+import { checkReceiptSchema, recordedCheckVersion } from './checks/receipt'
 import { scopedAssertionForTarget, checkVerifierSchema } from './checks/verification'
 import { searchReceiptSchema, searchVerifierSchema } from './search/contracts'
 import { assessSearchRecovery } from './search/recovery'
@@ -59,7 +59,10 @@ function recordedConditionVerdict(input: {
   auditId: string; executionSpec: unknown; flag: RecoveryFlag; executions: RecoveryExecution[];
 }): Verdict {
   const spec = readExecutionSpec(input.executionSpec), checkId = baseCheckId(input.flag.checkId)
-  if (!spec || !checkId || !CHECK_REGISTRY[checkId] || spec.checks[checkId] !== CHECK_REGISTRY[checkId].version) return null
+  if (!spec || !checkId || !CHECK_REGISTRY[checkId] || !spec.checks[checkId] || spec.checks[checkId] > CHECK_REGISTRY[checkId].version) return null
+  // Assess historical conclusions against their recorded admitted version.
+  // Fresh runs still require exact original versions above, and canonical
+  // evaluation rejects unavailable versions before collecting a new verdict.
   // Field responsiveness describes a trailing window. A fresh lab run cannot prove its repair.
   if (checkId === 'inp-critical' || checkId === 'inp-poor') return null
   if (performanceLabKey(checkId) && input.flag.verificationRule !== PAGESPEED_LAB_RULE) return null
@@ -75,7 +78,7 @@ function recordedConditionVerdict(input: {
     const checkModule = CHECK_REGISTRY[checkId].module
     const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
       const parsed = checkReceiptSchema.safeParse(row.detail)
-      return parsed.success && parsed.data.applicable && !parsed.data.failed && parsed.data.execution?.auditId === input.auditId && parsed.data.execution.checkVersion === spec.checks[checkId] &&
+      return parsed.success && parsed.data.applicable && !parsed.data.failed && parsed.data.execution?.auditId === input.auditId && recordedCheckVersion(parsed.data, checkId) === spec.checks[checkId] &&
         parsed.data.execution.source === (checkModule === 'keyboard' ? 'keyboard' : 'rendered-dom') ? [parsed.data] : []
     })
     return combinedVerdict(receipts.map(receipt => {
@@ -107,7 +110,7 @@ function recordedConditionVerdict(input: {
     const receipts = completed.filter(row => row.targetKey === 'module:' + checkModule).flatMap(row => {
       const result = checkReceiptSchema.safeParse(row.detail)
       return result.success && result.data.module === checkModule && result.data.execution?.auditId === input.auditId &&
-        result.data.execution.checkVersion === spec.checks[checkId] && recoveryUrl(result.data.pageUrl) === url &&
+        recordedCheckVersion(result.data, checkId) === spec.checks[checkId] && recoveryUrl(result.data.pageUrl) === url &&
         (result.data.execution.source === source || checkModule === 'security' && result.data.execution.source === 'original-html') ? [result.data] : []
     })
     // Derived summaries cannot replace the original condition's source observations.

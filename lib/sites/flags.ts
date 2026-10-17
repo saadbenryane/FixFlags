@@ -7,7 +7,7 @@ import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { selectResolvedFlags, siteFlagDetailStatus, currentIncidentFlags, currentImprovementFlags, incidentAffectedPaths, hasIncidentRecoveryProof, currentUnboundFindings } from '@/lib/sites/flag-resolution'
+import { selectResolvedFlags, newestRecordedFlag, siteFlagDetailStatus, currentIncidentFlags, currentImprovementFlags, incidentAffectedPaths, hasIncidentRecoveryProof, currentUnboundFindings } from '@/lib/sites/flag-resolution'
 import { currentImprovementWhere, loadIncidentRecoveryProofs, unboundSiteFindingWhere } from './application/incident-proofs'
 import { compareFlagPriority, flagPriority, type FlagVerificationState } from '@/lib/sites/presentation'
 import type { SiteRecord } from '@/lib/sites/types'
@@ -155,7 +155,7 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
         const auditFlag = currentImprovementFlags(auditFlags.filter(candidate => candidate.fingerprint === imp.fingerprint), proofIds,
           imp.status, imp.attempts ?? [], site.projectId!)[0]
         if (imp.occurrences?.length > 0 && currentOccurrenceFlags.length === 0 && !auditFlag) return []
-        const flag = auditFlag ?? currentOccurrenceFlags[0] ?? imp.occurrences?.[0]?.flag
+        const flag = newestRecordedFlag([...currentOccurrenceFlags, ...(auditFlag ? [auditFlag] : [])]) ?? imp.occurrences?.[0]?.flag
         if (!flag) return []
         const paths = incidentAffectedPaths(currentOccurrenceFlags)
         if (auditFlag?.pageUrl) paths.push(auditFlag.pageUrl)
@@ -167,7 +167,7 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
           relatedOutcome: imp.outcome ?? null,
           verificationState: verificationState(flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
             attemptHasActiveVerification(imp.attempts?.[0], site.projectId!, flag?.auditId)),
-          latestOccurrenceAt: imp.occurrences?.[0]?.createdAt ?? null,
+          latestOccurrenceAt: imp.occurrences?.find(occurrence => occurrence.flag.id === flag.id)?.createdAt ?? flag.createdAt ?? null,
         })]
       })
       const representedFingerprints = new Set(improvements.filter(improvement => improvement.occurrences?.length)

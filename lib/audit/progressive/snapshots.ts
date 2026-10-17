@@ -35,7 +35,7 @@ export const pageMetadataSchema = z.object({
   hasAnalytics: z.boolean(), hasCookieBasedAnalytics: z.boolean(), hasCookieConsent: z.boolean(),
   hasPrivacyPolicy: z.boolean(), hasContactInfo: z.boolean(), hasFavicon: z.boolean(), hasSkipLink: z.boolean(),
   navLandmarkCount: count, pageText: text, jsonLd: z.array(jsonValueSchema).max(50), elementIds: strings,
-  anchorNames: strings.optional(),
+  anchorNames: strings.optional(), testimonialBlocks: z.array(z.object({ quote: text, attribution: z.string().max(1200).nullable() }).strict()).max(1000).optional(),
   formInputsMissingValidation: count, totalFormInputs: count, maxConversionFormInputs: count,
 }).strict() satisfies z.ZodType<PageMetadata>
 export const pageSpeedSchema = z.object({

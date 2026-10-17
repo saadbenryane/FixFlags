@@ -4,6 +4,7 @@ import { publicTrustObservations, runTrustChecks } from './trust'
 import { runAllChecks } from './index'
 import { checkReceiptSchema } from './receipt'
 import { assertionForTarget } from './verification'
+import { CHECK_REGISTRY } from '../check-registry'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 
 const url = 'https://example.com/'
@@ -30,8 +31,10 @@ describe('public trust observations and independent repair', () => {
       checks: { 'no-privacy-policy': 1, 'no-contact-info': 1, 'cookie-consent-absent': 1 }, outcomes: [], verificationTarget: null }
     for (const checkId of ['no-privacy-policy', 'no-contact-info', 'cookie-consent-absent']) {
       expect(assertionForTarget(receipt, checkId)?.passed).toBe(true)
-      const input = { auditId: 'after', executionSpec: spec, flag: { ...original.flags.find(flag => flag.checkId === checkId)!, pageUrl: url },
-        executions: [{ targetKey: 'module:trust', status: 'COMPLETED', detail: receipt }] }
+      const currentSpec = { ...spec, checks: { ...spec.checks, [checkId]: CHECK_REGISTRY[checkId].version } }
+      const currentReceipt = { ...receipt, execution: { ...receipt.execution, checkVersion: 2, checkVersions: { [checkId]: CHECK_REGISTRY[checkId].version } } }
+      const input = { auditId: 'after', executionSpec: currentSpec, flag: { ...original.flags.find(flag => flag.checkId === checkId)!, pageUrl: url },
+        executions: [{ targetKey: 'module:trust', status: 'COMPLETED', detail: currentReceipt }] }
       expect(hasRecordedRecoveryEvidence(input)).toBe(true)
       expect(hasRecordedRecoveryEvidence({ ...input, flag: { checkId, pageUrl: url + 'other' } })).toBe(false)
       expect(hasRecordedRecoveryEvidence({ ...input, executions: [{ ...input.executions[0], detail: { ...receipt, assertions: [] } }] })).toBe(false)

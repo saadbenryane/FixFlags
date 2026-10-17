@@ -203,7 +203,7 @@ export const evaluatorHandlers: TaskHandler[] = [
       return serializeArtifact('check', checkArtifactSchema.parse({ flags, receipt: {
         kind: 'site-module-check', version: 1, module: checkModule, passed: summary.passed, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version,
+        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version, checkVersions: Object.fromEntries(selected),
           source: publicLinks || definition.input === 'http' ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom',
           collectedAt: collectedAt ?? source.collectedAt },

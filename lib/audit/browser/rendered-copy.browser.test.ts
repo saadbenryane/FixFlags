@@ -2,6 +2,8 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { getAuditBrowser, closeBrowser } from '../screenshot'
 import { parseMetadataFromHtml } from '../metadata'
 import { runSlopChecks } from '../checks/slop'
+import { isConsentControl } from '../consent-controls'
+import { publicTrustObservations } from '../checks/trust'
 import { observeRenderedCopy } from './rendered-copy'
 import { runAllChecks } from '../checks'
 import { MAX_RAW_TEXT } from '../page-text-limits'
@@ -20,6 +22,37 @@ run('rendered copy evidence', () => {
       expect(copy.proseBlocks).toContain('Plan releases for engineering teams.')
       expect(copy.proseBlocks).not.toContain('Navigation text')
       expect(copy.proseBlocks).not.toContain('Hidden audience')
+    } finally { await context.close() }
+  })
+  it('separates the headline introduction, visible consent controls, and scoped customer quotes', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      await page.setContent('<style>.retired{display:none}</style><main><h1>Beautiful digital experiences</h1>' +
+        '<p>Developers and code come together on one platform.</p><a href="/work">View case studies</a>' +
+        '<figure><blockquote>Great product.</blockquote><figcaption>Alex Smith, CTO at Acme</figcaption></figure>' +
+        '<blockquote class="retired">Hidden customer quote.</blockquote><button class="retired">Cookie preferences</button></main>' +
+        '<footer>Unrelated biography, CEO at Another Company.</footer><div role="dialog"><p>Cookies and analytics</p><button>Reject analytics cookies</button><button aria-label="Accept analytics cookies">Accept</button></div>')
+      const copy = await observeRenderedCopy(page)
+      expect(copy.headlineSupport).toBe('Developers and code come together on one platform.')
+      expect(copy.testimonialBlocks).toEqual([{ quote: 'Great product.', attribution: 'Alex Smith, CTO at Acme' }])
+      expect(copy.consentControlsComplete).toBe(true)
+      expect(copy.consentControls?.filter(isConsentControl)).toHaveLength(2)
+      expect(copy.consentControls?.filter(isConsentControl).every(control => control.name.includes('analytics cookies'))).toBe(true)
+      const metadata = { ...parseMetadataFromHtml(await page.content(), 'https://example.com/'), renderedCopy: copy }
+      const checked = await runAllChecks('https://example.com/', metadata, null, null, [], undefined, undefined, undefined, undefined, true, ['messaging-clarity', 'trust-psychology', 'trust'])
+      for (const id of ['messaging-no-audience', 'trust-testimonial-quality', 'cookie-consent-absent']) expect(checked.flags.map(flag => flag.checkId)).not.toContain(id)
+      await page.locator('[role="dialog"]').evaluate(element => element.remove())
+      const withoutControls = await observeRenderedCopy(page)
+      expect(withoutControls.consentControls?.filter(isConsentControl)).toEqual([])
+      await page.locator('body').evaluate(body => body.insertAdjacentHTML('beforeend', '<div class="cookie-consent"><p>We use cookies.</p><button>Accept all</button><button>Reject all</button></div>'))
+      const localContext = await observeRenderedCopy(page)
+      expect(localContext.consentControls?.filter(isConsentControl)).toHaveLength(2)
+      expect(publicTrustObservations({ ...metadata, hasCookieBasedAnalytics: true, renderedCopy: localContext })['cookie-consent-signals']).toMatchObject({ complete: true, passed: true })
+      await page.setContent('<main><blockquote>Great product.</blockquote><section>Other content</section><footer>Alex Smith, CTO at Acme, leads our team.</footer></main>')
+      expect((await observeRenderedCopy(page)).testimonialBlocks).toEqual([{ quote: 'Great product.', attribution: null }])
+      await page.setContent('<main><div><blockquote>Great product.</blockquote><footer>Alex Smith, CTO at Acme</footer></div></main>')
+      expect((await observeRenderedCopy(page)).testimonialBlocks).toEqual([{ quote: 'Great product.', attribution: 'Alex Smith, CTO at Acme' }])
     } finally { await context.close() }
   })
   it('does not report retired CSS-hidden placeholder content as visible page copy', async () => {

@@ -8,6 +8,7 @@ import {
   resolveWhyItMatters,
   whyItMattersForCheckId,
 } from '@/lib/audit/flag-copy'
+import { FLAG_EXPLANATIONS } from '@/lib/marketing/copy/flag-explanations'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
 
 const NEW_UX_IDS = [
@@ -66,6 +67,17 @@ describe('flag-copy', () => {
       assert.doesNotMatch(why, /quality of your page/i, id)
       assert.ok(why.length > 40, id)
     }
+  })
+
+  it('keeps explanations within recorded mechanisms and preserves specific historical observations', () => {
+    for (const explanation of [...Object.values(FLAG_EXPLANATIONS), whyItMattersForCheckId('unknown-check')]) {
+      assert.doesNotMatch(explanation, /every click.*lost revenue|costs conversions|most traffic is mobile|most visitors never|convert better|causing.*abandon|creates compliance risk|split ranking signals/i)
+    }
+    assert.match(whyItMattersForCheckId('perf-score-poor'), /lab performance/)
+    assert.match(whyItMattersForCheckId('mobile-perf-critical'), /does not establish.*traffic mix/)
+    assert.match(whyItMattersForCheckId('cookie-consent-absent'), /legal compliance were not evaluated/)
+    assert.equal(resolveWhyItMatters({ id: 'historic', checkId: 'perf-score-poor', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'Recorded problem',
+      whyItMatters: 'Specific original explanation from this observation.' }), 'Specific original explanation from this observation.')
   })
 
   it('builds plan-style expert fix prompts with Goal/Constraint/Context/Plan/Verify', () => {

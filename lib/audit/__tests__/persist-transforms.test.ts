@@ -9,6 +9,7 @@ import {
   flagKeyForRow,
   isBlankText,
 } from '@/lib/audit/persist'
+import { whyItMattersForCheckId } from '@/lib/audit/flag-copy'
 import { flagFingerprint } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'
@@ -157,7 +158,7 @@ describe('buildDeterministicFlagRow', () => {
     const flag = makeDet({ checkId: 'title-missing', problem: 'Title is missing' })
     const row = buildDeterministicFlagRow(flag, 0, new Map(), new Map())
     assert.ok(row.whyItMatters.length > 10)
-    assert.ok(row.whyItMatters.includes('Search results'))
+    assert.equal(row.whyItMatters, whyItMattersForCheckId('title-missing'))
   })
 
   it('prefers enrichment whyItMatters when present', () => {
@@ -183,7 +184,7 @@ describe('buildDeterministicFlagRow', () => {
     }
     const row = buildDeterministicFlagRow(flag, 0, new Map(), new Map(), enrichment)
     assert.notEqual(row.whyItMatters, enrichment.whyItMatters, 'should not use generic enrichment text')
-    assert.ok(row.whyItMatters.includes('Search results'))
+    assert.equal(row.whyItMatters, whyItMattersForCheckId('title-missing'))
   })
 
   it('resolves pageId from pageUrl map', () => {

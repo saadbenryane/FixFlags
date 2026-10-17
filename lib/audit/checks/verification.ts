@@ -5,7 +5,7 @@ import { readSlowActionTargets, sameSlowActionIdentity, slowActionContextSchema,
 import type { Prisma } from '@prisma/client'
 import { baseCheckId } from '../flag-identity'
 import { verifierScopeKey, verifierTargetKey } from '@/lib/improvements/verifier-provenance'
-import { checkAssertionSchema, checkReceiptSchema } from './receipt'
+import { checkAssertionSchema, checkReceiptSchema, recordedCheckVersion } from './receipt'
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
 import { DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { FORM_VERIFICATION_RULE } from '../flow/form-evidence'
@@ -403,8 +403,12 @@ export async function recordAssertionVerifiers(input: {
     const scoped = scopedAssertionForTarget({ receipt, checkId, flag, receipts: contextualReceipts })
     if (!scoped) continue
     const { assertion, supportingTasks } = scoped
+    const checkVersion = recordedCheckVersion(receipt, checkId)
+    if (!checkVersion) continue
+    const { checkVersions: admittedVersions, ...execution } = receipt.execution
+    void admittedVersions
     const detail = checkVerifierSchema.parse({ kind: 'check-verifier', version: 1,
-      ...receipt.execution, checkId, pageUrl: resource ? receipt.pageUrl : contextual ? flag.pageUrl ?? receipt.pageUrl : receipt.pageUrl, comparable: true,
+      ...execution, checkVersion, checkId, pageUrl: resource ? receipt.pageUrl : contextual ? flag.pageUrl ?? receipt.pageUrl : receipt.pageUrl, comparable: true,
       verdict: assertion.passed ? 'passed' : 'failed', assertion })
     const targetKey = verifierTargetKey(flag)!
     const scopeKey = verifierScopeKey(resource ? receipt.pageUrl : flag.pageUrl)

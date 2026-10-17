@@ -5,7 +5,7 @@ import { JOURNEY_ASSERTIONS } from './journey-definitions'
 
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
-  version: 1 | 2; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
+  version: 1 | 2 | 3; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
   input: 'metadata' | 'headers' | 'http' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard' | 'console';
   evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
   assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only' | 'protected';
@@ -58,11 +58,11 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'popup-escape': assertion('accessibility', ['keyboard-popup-escape']),
     'focus-restoration': assertion('accessibility', ['keyboard-focus-restoration']),
   }),
-  trust: define('trust', 'security', 'Public trust checks', 'metadata', {
+  trust: { ...define('trust', 'security', 'Public trust checks', 'metadata', {
     'privacy-link': assertion('security', ['no-privacy-policy']),
     'contact-information': assertion('security', ['no-contact-info']),
     'cookie-consent-signals': assertion('security', ['cookie-consent-absent']),
-  }),
+  }), version: 2 },
   console: define('console', 'uptime', 'Browser console', 'console', {
     'console-errors': assertion('uptime', ['console-errors-critical', 'console-errors-some']),
   }),
@@ -142,21 +142,21 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'audience-or-outcome': assertion('conversion', ['messaging-no-audience']),
     'prose-sentence-length': assertion('conversion', ['messaging-long-sentences']),
     'headline-length': assertion('conversion', ['messaging-headline-too-short']),
-  }), version: 2 },
-  'conversion-friction': define('conversion-friction', 'conversion', 'Action friction', 'metadata', {
+  }), version: 3 },
+  'conversion-friction': { ...define('conversion-friction', 'conversion', 'Action friction', 'metadata', {
     'first-step-signals': assertion('conversion', ['friction-no-commitment-path']),
     'trial-payment-wording': assertion('conversion', ['friction-trial-commitment-unclear']),
     'conversion-field-count': assertion('conversion', ['friction-form-too-many-fields']),
     'commitment-signals': assertion('conversion', ['friction-no-risk-reversal']),
     'social-proof-signals': assertion('conversion', ['friction-no-social-proof']),
-  }),
-  'trust-psychology': define('trust-psychology', 'conversion', 'Trust context', 'metadata', {
+  }), version: 2 },
+  'trust-psychology': { ...define('trust-psychology', 'conversion', 'Trust context', 'metadata', {
     'authority-signals': assertion('conversion', ['trust-no-authority-signals']),
     'testimonial-detail': assertion('conversion', ['trust-testimonial-quality']),
     'claim-support-signals': assertion('conversion', ['trust-unsupported-claims']),
     'direct-contact-signals': assertion('conversion', ['trust-no-direct-contact']),
     'internal-navigation-count': assertion('conversion', ['trust-no-internal-links']),
-  }),
+  }), version: 2 },
   layout: define('layout', 'conversion', 'Layout', 'browser', {
     'mobile-cta-position': assertion('conversion', ['cta-below-fold-mobile']),
   }),

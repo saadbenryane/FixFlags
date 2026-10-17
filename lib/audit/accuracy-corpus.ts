@@ -29,6 +29,10 @@ export interface AccuracyHtmlFixture {
 export const ACCURACY_FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 
 export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
+  { file: 'precision-trust-repaired.html', url: 'https://studio.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
+    expectedTop3: [], expectedPresent: [], knownFalsePositives: ['cookie-consent-absent', 'messaging-no-audience', 'trust-testimonial-quality'] },
+  { file: 'precision-trust-broken.html', url: 'https://studio.example.com/', tier: 'broken', maxImportantFalseBlockers: 99,
+    expectedTop3: [], expectedPresent: ['cookie-consent-absent', 'trust-testimonial-quality'], knownFalsePositives: ['messaging-no-audience'] },
   // Reviewed synthetic pairs supplement recorded websites. HTML fixtures cannot prove runtime form submission.
   { file: 'precision-form-repaired.html', url: 'https://forms.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
     expectedTop3: [], expectedPresent: [], knownFalsePositives: ['form-inputs-no-label', 'buttons-no-text', 'form-missing-validation'] },
@@ -201,12 +205,13 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://minimalgear.co',
     tier: 'structural',
     maxImportantFalseBlockers: 99,
+    // Recorded customer reviews include substantial quotes and local cite attribution.
+    // Independently reviewed: the prior authority-absence expectation was false.
     expectedTop3: [
       'messaging-no-audience',
-      'trust-no-authority-signals',
       'measurement-ga-gtm-posthog-missing',
     ],
-    knownFalsePositives: ['og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
+    knownFalsePositives: ['trust-no-authority-signals', 'trust-testimonial-quality', 'og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
     expectedPresent: ['measurement-ga-gtm-posthog-missing'],
     brokenLinks: true,
   },

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { CheckAssertion } from './assertion'
-import { CHECK_ASSERTIONS, CHECK_MODULES } from '../check-registry'
+import { CHECK_ASSERTIONS, CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 
 export const checkAssertionSchema = z.object({
   key: z.string().min(1).max(160), name: z.string().min(1).max(300),
@@ -19,14 +19,28 @@ export const checkReceiptSchema = z.object({
   complete: z.boolean().optional(), limitation: z.string().max(2000).optional(),
   pageUrl: z.string().url(), assertions: z.array(checkAssertionSchema).max(300).default([]),
   execution: z.object({ auditId: z.string().min(1), taskId: z.string().min(1), checkVersion: z.number().int().positive(),
+    /** Individual check identities admitted in the frozen execution scope. */
+    checkVersions: z.record(z.string().min(1).max(200), z.number().int().positive()).refine(value => Object.keys(value).length <= 1000, 'Too many check versions').optional(),
     source: z.enum(['http', 'original-html', 'rendered-dom', 'pagespeed-desktop', 'pagespeed-mobile', 'axe', 'keyboard', 'browser-network', 'browser-console', 'browser-accessibility']),
     collectedAt: z.string().datetime() }).strict().optional(),
 }).superRefine((receipt, context) => {
   if (!CHECK_MODULES[receipt.module]) context.addIssue({ code: 'custom', message: 'Unregistered execution module' })
+  for (const id of Object.keys(receipt.execution?.checkVersions ?? {})) {
+    if (CHECK_REGISTRY[id]?.module !== receipt.module) context.addIssue({ code: 'custom', message: 'Check version outside execution module' })
+  }
   for (const assertion of receipt.assertions) {
     if (!CHECK_ASSERTIONS[receipt.module]?.[assertion.key]) context.addIssue({ code: 'custom', message: 'Unregistered assertion identity' })
   }
 })
+
+/** New receipts distinguish module implementation from admitted check identities.
+ * Historical receipts retain only their recorded module version. An explicit
+ * map missing the requested identity never falls back to another version. */
+export function recordedCheckVersion(receipt: z.infer<typeof checkReceiptSchema>, checkId: string): number | undefined {
+  if (!receipt.execution) return undefined
+  return receipt.execution.checkVersions !== undefined
+    ? receipt.execution.checkVersions[checkId] : receipt.execution.checkVersion
+}
 
 /** Advisory evidence cannot verify repair, but unfinished observations still
  * leave the inspection incomplete. Stored summary bits never override facts. */

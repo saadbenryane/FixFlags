@@ -1,3 +1,4 @@
+import { CONSENT_CONTEXT_SELECTOR, isConsentControl } from './consent-controls'
 import { analyticsMarkupSignals } from './metadata-markup-signals'
 import * as cheerio from 'cheerio'
 import { safeFetchHtml } from './url'
@@ -11,6 +12,8 @@ export interface PageMetadata {
   renderedCopy?: import('./browser/rendered-copy').RenderedCopy | null
   /** Visible introductory prose following the primary headline, before another heading. */
   headlineSupport?: string | null
+  /** Published quotation blocks, with attribution from the same figure when present. */
+  testimonialBlocks?: Array<{ quote: string; attribution: string | null }>
   /** Observed document base used to resolve relative navigation declarations. */
   linkBaseUrl?: string
   title: string | null
@@ -296,15 +299,36 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
   const htmlStr = html.toLowerCase()
   const { hasAnalytics, hasCookieBasedAnalytics } = analyticsMarkupSignals(htmlStr)
 
-  // Cookie consent
-  const hasCookieConsent = !!(
-    htmlStr.includes('cookie') &&
-    (htmlStr.includes('cookiebot') ||
-      htmlStr.includes('cookieconsent') ||
-      htmlStr.includes('onetrust') ||
-      htmlStr.includes('cookie banner') ||
-      $('[id*="cookie"], [class*="cookie"], [id*="consent"], [class*="consent"]').length > 0)
-  )
+  // Consent evidence must describe a published surface or control, not a
+  // mention inside implementation code, examples, or inactive markup.
+  const publishedBody = document('body').clone()
+  publishedBody.find('script,style,template,noscript,pre,code,kbd,samp,[hidden],[inert],[aria-hidden="true"]').remove()
+  const hasCookieConsent = publishedBody.find('button,a[href],[role="button"],input[type="button"],input[type="submit"]').toArray().some(element => {
+    const control = document(element)
+    const name = [control.attr('aria-label'), control.attr('title'), control.text(), control.attr('value')].filter(Boolean).join(' ').replace(/\s+/g, ' ')
+    const surface = control.closest(CONSENT_CONTEXT_SELECTOR)
+    const context = [surface.attr('aria-label'), surface.text()].filter(Boolean).join(' ').replace(/\s+/g, ' ').slice(0, 2000)
+    return isConsentControl({ name, context })
+  }) || publishedBody.find('[id*="cookie" i],[class*="cookie" i],[id*="consent" i],[class*="consent" i]').toArray().some(element => {
+    // A declared consent surface is evidence of presence, not enforcement.
+    const text = document(element).text().replace(/\s+/g, ' ')
+    return /\bcookies?\b/i.test(text) && /\b(settings|preferences|consent|accept|reject|allow|decline)\b/i.test(text)
+  })
+  const testimonialBlocks = publishedBody.find('blockquote,[itemprop="review"]').toArray().slice(0, 1000).map(element => {
+    const block = document(element)
+    const figure = block.closest('figure')
+    const parent = block.parent()
+    const citation = block.find('cite').first()
+    const siblingCaption = !parent.is('body,main,article,[role="main"]') ? block.next('footer') : null
+    // Only the same figure or immediate quotation container can supply attribution.
+    const attribution = citation.length ? citation.text()
+      : figure.length && figure.find('blockquote,[itemprop="review"]').length === 1 ? figure.find('figcaption').first().text()
+        : siblingCaption?.length ? siblingCaption.text() : ''
+    const quotation = block.clone()
+    quotation.find('cite,figcaption,footer').remove()
+    return { quote: quotation.text().replace(/\s+/g, ' ').trim().slice(0, MAX_RAW_TEXT),
+      attribution: attribution.replace(/\s+/g, ' ').trim().slice(0, 1200) || null }
+  }).filter(block => block.quote)
 
   // Privacy policy detection
   const hasPrivacyPolicy = !!(
@@ -316,10 +340,11 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
   )
 
   // Contact info detection - check body text, visible links, and JSON-LD structured data
-  const publishedBody = $('body').clone()
-  publishedBody.find('script, style, template, [hidden]').remove()
-  const publishedText = publishedBody.text().toLowerCase()
-  const publishedLinks = publishedBody.find('a[href]').toArray().map(element => ($(element).attr('href') ?? '').toLowerCase())
+
+  const contactBody = $('body').clone()
+  contactBody.find('script,style,template,[hidden]').remove()
+  const publishedText = contactBody.text().toLowerCase()
+  const publishedLinks = contactBody.find('a[href]').toArray().map(element => ($(element).attr('href') ?? '').toLowerCase())
   const hasContactInfoFromText = !!(
     publishedText.includes('contact') ||
     publishedText.includes('@') ||
@@ -424,6 +449,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
     hasAnalytics,
     hasCookieBasedAnalytics,
     hasCookieConsent,
+    testimonialBlocks,
     hasPrivacyPolicy,
     hasContactInfo,
     hasFavicon,

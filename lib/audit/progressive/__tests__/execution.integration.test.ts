@@ -1,3 +1,4 @@
+import { CHECK_REGISTRY } from '../../check-registry'
 import { TASK_QUEUES } from '../queues'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -373,7 +374,7 @@ run('migrated progressive execution', () => {
         '</script>' + (trustHydration === 'data' ? '<script type="application/json" id="__NEXT_DATA__">' + JSON.stringify({ content: 'x'.repeat(1_100_000), analytics: 'googletagmanager', consent: 'cookie' }) + '</script>' : '') + '</head><body><main><h1>Useful website information</h1><p>Read useful information about our services.</p>' +
         (trustHydration === 'dom' ? '<p>' + 'x'.repeat(1_100_000) + '</p>' : '') +
         (trustPrivacy ? '<a href="/privacy">Privacy policy</a>' : '') + (trustContact ? '<a href="mailto:help@example.com">Email support</a>' : '') +
-        (trustConsent ? '<aside id="cookie-settings">Cookie settings</aside>' : '') + '</main></body></html>')
+        (trustConsent ? '<aside id="cookie-settings"><button>Cookie settings</button></aside>' : '') + '</main></body></html>')
     } else if (req.url === '/overlay-observation') {
       res.setHeader('content-type', 'text/html')
       if (overlayMode === 'challenge') {
@@ -3298,7 +3299,7 @@ run('migrated progressive execution', () => {
       } finally { session.disposeNetwork(); await session.page.context().close() }
       const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', startedAt: new Date(), completedAt: new Date() } })
       await persistControlledNativeSource(source.id, checked.flags.filter(flag => flag.checkId === 'friction-form-too-many-fields')
-        .map(flag => ({ ...flag, pageUrl })), { MESSAGE: null, EXPERIENCE: null, REACH: null }, { 'friction-form-too-many-fields': 1 })
+        .map(flag => ({ ...flag, pageUrl })), { MESSAGE: null, EXPERIENCE: null, REACH: null }, { 'friction-form-too-many-fields': CHECK_REGISTRY['friction-form-too-many-fields'].version })
       await materializeAttentionForAudit(source.id)
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'friction-form-too-many-fields' } })
       for (const phase of ['unchanged', 'healthy'] as const) {
@@ -5193,7 +5194,7 @@ run('migrated progressive execution', () => {
         ['trust'], { renderedScope: captured.renderedScope })).flags.map(flag => ({ ...flag, pageUrl }))
       const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', startedAt: new Date(), completedAt: new Date(),
         reportCompleteness: 'PARTIAL', htmlMetadata: metadata as never, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
-          environment: 'production', scope: 'SITE', checks: { 'cookie-consent-absent': 1 }, outcomes: [], verificationTarget: null } } })
+          environment: 'production', scope: 'SITE', checks: { 'cookie-consent-absent': CHECK_REGISTRY['cookie-consent-absent'].version }, outcomes: [], verificationTarget: null } } })
       await persistControlledNativeSource(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null })
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'cookie-consent-absent' } })
       trustConsent = true
@@ -5236,7 +5237,7 @@ run('migrated progressive execution', () => {
       // and detector. Every subsequent fix uses application admission and workers.
       const source = await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', startedAt: new Date(), completedAt: new Date(),
         reportCompleteness: 'PARTIAL', htmlMetadata: metadata as never, executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
-          environment: 'production', scope: 'SITE', checks: { 'no-privacy-policy': 1, 'no-contact-info': 1, 'cookie-consent-absent': 1 }, outcomes: [], verificationTarget: null } } })
+          environment: 'production', scope: 'SITE', checks: { 'no-privacy-policy': 1, 'no-contact-info': 1, 'cookie-consent-absent': CHECK_REGISTRY['cookie-consent-absent'].version }, outcomes: [], verificationTarget: null } } })
       await persistControlledNativeSource(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null })
       const findings = await prisma.flag.findMany({ where: { auditId: source.id } })
       const attempts = new Map<string, string>()

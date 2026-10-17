@@ -110,7 +110,7 @@ tree changes mid-gate.
 
 ```bash
 npm run doctor
-npm run verify                 # full local manifest
+npm run verify:website         # website foundation; parked transports verify separately
 npm run verify:release         # free-launch: foundation -> fixture-binding
                                # -> credentialed-core -> billing-closed -> external -> deployed
 RELEASE_PROFILE=paid-opening npm run verify:release
@@ -136,7 +136,7 @@ commit, or the release run fails in one direction or the other.
 
 | Stage | Journeys |
 | --- | --- |
-| `credentialed-core` | `outcome-loop`, `watch-truth`, `tenant-isolation`, `site-surfaces`, `mcp-full-loop`, `anonymous-claim`, `passkey-2fa-recovery` |
+| `credentialed-core` | `outcome-loop`, `watch-truth`, `tenant-isolation`, `site-surfaces`, `category-recheck`, `automatic-account-lifecycle`, `uptime-lifecycle`, `site-removal`, `anonymous-claim`, `passkey-2fa-recovery` |
 | `billing-open` | `billing-webhook-active` |
 | `billing-closed` | `billing-revoked` |
 | `external` | `watch-child-notification` |

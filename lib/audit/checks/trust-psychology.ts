@@ -21,7 +21,7 @@ const MEDIA_NAMES = [
 
 const TESTIMONIAL_QUALITY_MARKERS = [
   /\b(CEO|CTO|founder|VP|head of|director|engineer)\s+(at|of|@)\b/i,
-  /\b"[^"]{40,}"/i,
+  /"[^"]{40,}"/i,
 ]
 
 const TESTIMONIAL_PRESENCE_MARKERS = [
@@ -109,15 +109,25 @@ export function runTrustPsychologyChecks(
   const hasAuthorityRef = AUTHORITY_MARKERS.some((p) => p.test(htmlText))
   const hasMediaName = MEDIA_NAMES.some((p) => p.test(htmlText))
   const hasTestimonialLikeContent = TESTIMONIAL_PRESENCE_MARKERS.some((p) => p.test(bodyText))
-  const hasSpecificTestimonial = TESTIMONIAL_QUALITY_MARKERS.some((p) => p.test(bodyText))
+  // New observations carry scoped quotation facts. The text-only reader remains
+  // isolated for historical snapshots that did not record quotation blocks.
+  const testimonialBlocks = meta.testimonialBlocks ?? (
+    /<blockquote|\b(customer|user|client)\s+(quote|review|feedback)\b|\b(said|says|told us|shared|wrote|commented)\b[^.]{0,30}"/i.test(bodyText)
+      ? [{ quote: bodyText, attribution: null }] : []
+  )
+  const hasTestimonialContent = testimonialBlocks.length > 0
+  const hasSpecificTestimonial = hasTestimonialContent && testimonialBlocks.every(block => meta.testimonialBlocks
+    ? block.quote.length >= 40 || TESTIMONIAL_QUALITY_MARKERS[0].test(block.attribution ?? '')
+    : TESTIMONIAL_QUALITY_MARKERS.some(pattern => pattern.test(block.quote)))
+  const hasProofReference = hasTestimonialLikeContent || hasTestimonialContent || links.some(link => /\bcase stud(?:y|ies)\b/i.test(link.text))
   const hasDataClaim = DATA_SPECIFICITY.some((p) => p.test(bodyText))
   const hasCustomerLogos = hasLogoWall(meta.images ?? [])
   if (productPage && ctaTexts.length > 0) recordObservation(record, 'authority-signals', 'Captured authority signals',
     'Sampled product content includes a recognized authority, testimonial, media, or logo signal',
-    `Authority ${hasAuthorityRef}, media ${hasMediaName}, testimonial ${hasTestimonialLikeContent}, customer-logo pattern ${hasCustomerLogos}. Authenticity was not established.`,
-    bodyText.length >= 100 || hasAuthorityRef || hasMediaName || hasTestimonialLikeContent || hasCustomerLogos
-      ? hasAuthorityRef || hasMediaName || hasTestimonialLikeContent || hasCustomerLogos : undefined, true)
-  if (hasTestimonialLikeContent && ctaTexts.length > 0) recordObservation(record, 'testimonial-detail', 'Captured testimonial detail',
+    `Authority ${hasAuthorityRef}, media ${hasMediaName}, proof reference ${hasProofReference}, customer-logo pattern ${hasCustomerLogos}. Authenticity was not established.`,
+    bodyText.length >= 100 || hasAuthorityRef || hasMediaName || hasProofReference || hasCustomerLogos
+      ? hasAuthorityRef || hasMediaName || hasProofReference || hasCustomerLogos : undefined, true)
+  if (hasTestimonialContent && ctaTexts.length > 0) recordObservation(record, 'testimonial-detail', 'Captured testimonial detail',
     'Sampled testimonial content contains a recognized attribution or substantial-quote pattern',
     `Attribution or substantial-quote pattern ${hasSpecificTestimonial ? 'detected' : 'not detected'}. Customer identity and permission were not verified.`, hasSpecificTestimonial, true)
 
@@ -129,7 +139,7 @@ export function runTrustPsychologyChecks(
   // placeholder pages do not need press badges. Suppress when the page text is
   // too sparse to evaluate (SPAs, redirects, JS-rendered shells), the check
   // would otherwise fire on every SPA that renders authority signals client-side.
-  if (productPage && bodyText.length >= 100 && !hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
+  if (productPage && bodyText.length >= 100 && !hasAuthorityRef && !hasMediaName && !hasProofReference && !hasCustomerLogos && ctaTexts.length > 0) {
     findings.push({
       checkId: 'trust-no-authority-signals',
       rubric: 'MESSAGE',
@@ -143,14 +153,14 @@ export function runTrustPsychologyChecks(
     })
   }
 
-  if (hasTestimonialLikeContent && !hasSpecificTestimonial && ctaTexts.length > 0) {
+  if (hasTestimonialContent && !hasSpecificTestimonial && ctaTexts.length > 0) {
     findings.push({
       checkId: 'trust-testimonial-quality',
       rubric: 'MESSAGE',
       impactTag: 'TRUST',
       severity: 'POLISH',
       problem: 'Testimonials lack specificity or named attribution',
-      evidence: 'Testimonial-like proof is present, but no testimonials with named roles (e.g. "CTO at Company") or substantive quotes (40+ characters) were found. Generic praise without specifics is less convincing.',
+      evidence: `${testimonialBlocks.length} quotation blocks sampled. At least one lacks a recognized role attribution or substantial quoted detail in its own recorded scope. Customer identity, permission, and persuasive impact were not verified.`,
       fix: '1. Use testimonials only from real customers or users who gave permission\n2. Prefer real name, title, company, and a specific result or workflow detail\n3. If you cannot use names yet, replace generic praise with a concrete case study, product evidence, or transparent beta feedback summary\n4. Place the strongest substantiated proof closest to the primary CTA',
       confidence: 0.8,
       source: 'DETERMINISTIC',
