@@ -4,7 +4,6 @@ import { currentExecutionOwnership } from './execution-ownership'
 import { prisma } from '@/lib/db'
 import { mergePrescriptionResults, flagKeyForRow } from './persist'
 import { finalizeAudit } from './finalize'
-import { PIPELINE_PROGRESS } from './progress'
 import { JudgeContractError } from './validate-judge-output'
 import { loadAuditScreenshotBase64 } from './load-screenshot-base64'
 import type { PageMetadata } from './metadata'
@@ -114,8 +113,6 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
       deadline === undefined ? undefined : Math.max(1, deadline - Date.now() - 5000)
     )
   } catch (error) {
-    const failureCode =
-      error instanceof JudgeContractError ? 'AI_CONTRACT_INVALID' : 'AI_REVIEW_FAILED'
     const errorMsg = error instanceof Error ? error.message : 'Prescription failed'
 
     await logPipelineEvent(auditId, {
@@ -124,17 +121,8 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
       error: errorMsg,
     })
 
-    await executionWrite(tx => tx.audit.update({
-      where: { id: auditId },
-      data: {
-        status: 'COMPLETED',
-        progress: PIPELINE_PROGRESS.COMPLETED,
-        errorMsg,
-        failureCode,
-        failureStage: 'judging',
-      },
-    }))
-
+    // The durable task owner decides recovery or terminal failure. A failed
+    // provider attempt cannot publish a terminal customer state while retrying.
     throw error
   }
 

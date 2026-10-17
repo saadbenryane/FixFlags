@@ -1,3 +1,4 @@
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { SiteRecord } from '../types'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
@@ -97,4 +98,24 @@ it.each([null, { version: 9, items: [] }])('distinguishes absent historical supp
     supportingObservations: [], supportingEvidenceUnreadable: supportingObservations !== null,
     evidence: 'Two failed checks', sourceFlagId: 'captured-flag',
   })
+})
+
+it.each([
+  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_REVIEW_FAILED' }, expected: 'unavailable' },
+  { fix: ' ', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: null }, expected: 'pending' },
+  { fix: '', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: new Date(), failureCode: null }, expected: 'unavailable' },
+  { fix: 'Restore the measured action.', audit: { includeAi: true, triageAt: new Date(), aiReviewAt: null, failureCode: 'AI_CONTRACT_INVALID' }, expected: 'ready' },
+])('projects per-finding guidance without borrowing broader prescription success: $expected', async ({ fix, audit, expected }) => {
+  const recorded = await mocks.flag()
+  mocks.flag.mockResolvedValue({ ...recorded, fix, audit })
+  const detail = await loadSiteFlagDetail(site, 'captured-flag')
+  expect(detail).toMatchObject({ repairGuidance: expected, fix, sourceAuditId: recorded.auditId, evidence: recorded.evidence })
+})
+
+it('keeps established historical indexing guidance and its action availability consistent without changing the stored finding', async () => {
+  const recorded = { ...(await mocks.flag()), checkId: 'noindex-meta', fix: '', audit: { failureCode: 'AI_REVIEW_FAILED' } }
+  const snapshot = structuredClone(recorded)
+  mocks.flag.mockResolvedValue(recorded)
+  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: SEARCH_COPY.rules.indexing.guidance, repairGuidance: 'ready' })
+  expect(recorded).toEqual(snapshot)
 })

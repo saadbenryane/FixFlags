@@ -21,7 +21,7 @@ function panel(status: string, proof: { id: string; status: string; completedAt:
     proof,
   })
   return render(
-    <FlagResolutionPanel
+    <FlagResolutionPanel repairGuidance="ready"
       initial={siteViewFixture()}
       resolution={resolution}
       siteId="p_example"
@@ -94,7 +94,7 @@ describe('Flag resolution panel', () => {
       },
     })
     const view = render(
-      <FlagResolutionPanel
+      <FlagResolutionPanel repairGuidance="ready"
         initial={siteViewFixture()}
         resolution={resolution}
         siteId="p_example"
@@ -121,7 +121,7 @@ describe('Flag resolution panel', () => {
       proof: null,
     })
     render(
-      <FlagResolutionPanel
+      <FlagResolutionPanel repairGuidance="ready"
         initial={siteViewFixture()}
         resolution={resolution}
         siteId="p_example"

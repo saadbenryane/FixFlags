@@ -1,3 +1,4 @@
+import { hasRepairGuidance, repairGuidanceText } from './repair-guidance'
 import {
 ensureProductProject,
 mutateProjectIntelligence,
@@ -182,6 +183,7 @@ export async function recordFlagImprovementAttempt(input: {
     },
   })
   if (!flag?.audit.projectId) throw new Error('Flag is not attached to an owned Product')
+  if (input.action === 'HANDOFF_COPIED' && !hasRepairGuidance(repairGuidanceText(flag))) throw new Error('Repair guidance is unavailable for this Flag')
   const projectId = flag.audit.projectId
 
   let improvementId = flag.improvementOccurrence?.improvementId
@@ -195,7 +197,7 @@ export async function recordFlagImprovementAttempt(input: {
       // Empty-update ORM upserts can race through read-then-create. Native
       // conflict-safe inserts converge without rewriting existing history.
       await tx.improvement.createMany({ data: [{ projectId, fingerprint, title: flag.problem,
-        judgment: flag.whyItMatters, expectedBenefit: flag.whyItMatters, recommendedChange: flag.fix,
+        judgment: flag.whyItMatters, expectedBenefit: flag.whyItMatters, recommendedChange: repairGuidanceText(flag),
         protectedScope: contract?.criticalOutcomes.length ? 'Keep these Product outcomes unchanged: ' + contract.criticalOutcomes.join('; ') : null,
         successCondition: flag.verificationRule || 'A fresh Product Review no longer observes: ' + flag.problem,
         priority: 50, status: 'PROPOSED' }], skipDuplicates: true })

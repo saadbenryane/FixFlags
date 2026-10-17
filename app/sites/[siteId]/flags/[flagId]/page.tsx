@@ -1,3 +1,4 @@
+import { repairGuidanceState } from '@/lib/improvements/repair-guidance'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -47,6 +48,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   const { site, flag, capture } = detail
   const actionFlagId = flag.sourceFlagId ?? flag.id
+  const repairGuidance = flag.repairGuidance ?? repairGuidanceState(flag)
   const affectedPaths = flag.affectedPaths ?? (flag.pageUrl ? [flag.pageUrl] : [])
   if (access.decision.role === 'owner') {
     await recordSiteLifecycleEvent({
@@ -131,7 +133,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             {CARD_CATALOG[flag.area].name} · {flag.affectedPageCount} affected {flag.affectedPageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
-        <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={actionFlagId} initial={home}>
+        <FlagResolutionPanel repairGuidance={repairGuidance} resolution={resolution} siteId={resolvedId} flagId={actionFlagId} initial={home}>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}
@@ -225,9 +227,9 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
                   {SITE_BOARD_COPY.fixAndVerify}
                 </h2>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flag.fix}</p>
+                {repairGuidance === 'ready' ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flag.fix}</p> : null}
                 <div className="mt-6">
-                  <SiteFlagActions siteId={resolvedId} flagId={actionFlagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
+                  <SiteFlagActions repairGuidance={repairGuidance} siteId={resolvedId} flagId={actionFlagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
                 </div>
               </aside>
             ) : null}

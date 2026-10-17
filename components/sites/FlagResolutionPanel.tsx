@@ -1,3 +1,4 @@
+import type { RepairGuidanceState } from '@/lib/improvements/repair-guidance'
 import type { ReactNode } from 'react'
 import { CheckCircle2, CircleAlert, CircleDashed, LoaderCircle } from 'lucide-react'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
@@ -23,7 +24,7 @@ function ProofNote({ heading, proof, note, current = false }: { heading: string;
 }
 
 /** Status, dated proof, or the honest missing-proof next step for one Flag. */
-export function FlagResolutionPanel({ resolution, siteId, flagId, initial, children }: { resolution: FlagResolution; siteId: string; flagId: string; initial: SiteHomeView; children?: ReactNode }) {
+export function FlagResolutionPanel({ resolution, siteId, flagId, initial, children, repairGuidance }: { resolution: FlagResolution; siteId: string; flagId: string; initial: SiteHomeView; children?: ReactNode; repairGuidance: RepairGuidanceState }) {
   return (
     <>
       <p role="status" className={cn('inline-flex min-h-8 items-center gap-2 rounded-full border bg-background px-3 text-sm font-medium', resolution.kind === 'proven' ? 'border-success text-success' : resolution.kind === 'unproven' ? 'border-border text-muted-foreground' : 'border-brand text-foreground')}>
@@ -40,7 +41,7 @@ export function FlagResolutionPanel({ resolution, siteId, flagId, initial, child
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">{resolution.body}</p>
           <div className="mt-5">
-            <SiteFlagActions siteId={siteId} flagId={flagId} initial={initial} />
+            <SiteFlagActions repairGuidance={repairGuidance} siteId={siteId} flagId={flagId} initial={initial} />
           </div>
         </section>
       ) : null}

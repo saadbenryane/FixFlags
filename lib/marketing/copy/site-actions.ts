@@ -1,6 +1,11 @@
 import { SITE_BOARD_COPY } from './terminology'
 
 export const SITE_ACTION_COPY = {
+  repairGuidance: {
+    pending: 'Fix guidance is being prepared. You can inspect the recorded evidence.',
+    unavailable: 'Fix guidance is unavailable for this finding. Run a new website check from Overview to collect fresh evidence.',
+    refresh: 'Refresh guidance', overview: 'Open Overview',
+  },
   mobileInputs: {
     name: 'Mobile input sizing', expected: 'Sampled visible inputs use at least 16px text',
     reference: 'Mobile text input',

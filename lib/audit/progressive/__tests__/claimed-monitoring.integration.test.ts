@@ -1,3 +1,4 @@
+import { recordFlagImprovementAttempt } from '@/lib/improvements/service'
 import * as finalization from '@/lib/audit/finalize'
 import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
 import type { PageEvidence, PipelineContext } from '@/lib/audit/pipeline/types'
@@ -22,7 +23,7 @@ import * as pageSessions from '@/lib/audit/browser/page-session'
 import { dispatchReadyTasks, reconcileTasks, recoverProgressiveTasks } from '../engine'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteHome } from '@/lib/sites/application/queries'
-import { loadSiteFlags } from '@/lib/sites/flags'
+import { loadSiteFlags, loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { getOwnedRun } from '@/lib/sites/application/run-queries'
@@ -412,6 +413,19 @@ run('URL-first analysis through claim and monitored repair', () => {
           expect(after[index]!.fix.length > 0).toBe(!failedPrescriptions)
         }
         expect(provider).toHaveBeenCalledTimes(primaryMissing || captureMissing ? 0 : interrupted ? 2 : 1)
+        const site = (await loadSiteRecord(project.id))!
+        expect(await loadSiteFlagDetail(site, findings[0]!.id)).toMatchObject({ repairGuidance: failedPrescriptions ? 'unavailable' : 'ready' })
+        if (failedPrescriptions) {
+          const before = { improvements: await prisma.improvement.count({ where: { projectId: project.id } }),
+            events: await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: project.id } } }),
+            attempts: await prisma.improvementAttempt.count({ where: { improvement: { projectId: project.id } } }) }
+          await expect(recordFlagImprovementAttempt({ flagId: findings[0]!.id, userId: owner, builder: 'copy', action: 'HANDOFF_COPIED' }))
+            .rejects.toThrow('Repair guidance is unavailable')
+          expect({ improvements: await prisma.improvement.count({ where: { projectId: project.id } }),
+            events: await prisma.improvementCycleEvent.count({ where: { cycle: { projectId: project.id } } }),
+            attempts: await prisma.improvementAttempt.count({ where: { improvement: { projectId: project.id } } }) }).toEqual(before)
+        }
+
       } finally {
         completion?.mockRestore()
         provider.mockRestore()
@@ -470,7 +484,7 @@ run('URL-first analysis through claim and monitored repair', () => {
       await vi.waitFor(async () => {
         expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 })
         expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } }))
-          .toMatchObject({ ...preserved, failureCode: 'AI_REVIEW_FAILED' })
+          .toMatchObject({ ...preserved, failureCode: null })
         expect(await loadExecutionProgress(site, audit.id)).toBeNull()
       }, { timeout: 10_000, interval: 25 })
       await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workRetryAt: new Date(0) } })

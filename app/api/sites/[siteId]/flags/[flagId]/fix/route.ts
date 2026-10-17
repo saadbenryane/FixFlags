@@ -1,3 +1,5 @@
+import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
@@ -27,6 +29,7 @@ export async function POST(
     const detail = await loadSiteBoardFlag(access.decision.site.siteId, flagId)
     if (!detail) return apiError('Flag not found', 404)
     if (detail.flag.supportingEvidenceUnreadable) return apiError(EDITOR_EVIDENCE_COPY.unreadable, 422)
+    if (!hasRepairGuidance(detail.flag.fix)) return apiError(SITE_ACTION_COPY.repairGuidance[detail.flag.repairGuidance === 'pending' ? 'pending' : 'unavailable'], 422)
     const prompt = boardFlagPrompt({
       problem: detail.flag.problem,
       whyItMatters: detail.flag.whyItMatters,

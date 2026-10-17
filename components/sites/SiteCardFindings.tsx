@@ -1,5 +1,7 @@
 'use client'
 
+import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
+
 import Link from 'next/link'
 import { useId, useRef, useState } from 'react'
 import { CircleAlert, Flag, Globe2, Lightbulb } from 'lucide-react'
@@ -54,7 +56,7 @@ export function SiteCardFindings({ siteId, flags, recommendations, copyAvailabil
             <h3 className="text-sm font-semibold leading-snug">{boardFindingTitle(flag.problem)}</h3>
             {showPage ? <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="truncate" title={flag.pageUrl ?? undefined}>{flag.affectedPageCount > 1 ? `${flag.affectedPageCount} affected pages` : pageLabel(flag.pageUrl)}</span></p> : null}
           </div>
-          <div className="flex shrink-0 gap-2"><SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /><Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>View Flag</Link></Button></div>
+          <div className="flex shrink-0 gap-2">{hasRepairGuidance(flag.fix) ? <SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /> : null}<Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>View Flag</Link></Button></div>
         </div>
     </li>)}</ul>
     </div>

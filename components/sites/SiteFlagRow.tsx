@@ -1,3 +1,4 @@
+import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
 import Link from 'next/link'
 import { CircleAlert } from 'lucide-react'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -28,7 +29,7 @@ export function SiteFlagRow({ siteId, flag }: { siteId: string; flag: SiteFlagSe
         <h3 className="mt-1 text-sm font-medium sm:text-base">{flag.problem}</h3>
       </div>
       <div className="flex shrink-0 items-center gap-2 pl-8 sm:pl-0">
-        <SitePromptCopyButton compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} />
+        {hasRepairGuidance(flag.fix) ? <SitePromptCopyButton compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /> : null}
         <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>View Flag</Link></Button>
       </div>
     </article>

@@ -258,21 +258,13 @@ describe('runAiReview', () => {
     }) }))
   })
 
-  it('records AI_REVIEW_FAILED and rethrows on prescription errors', async () => {
-    mocks.runPrescriptionWithRetry.mockRejectedValue(new Error('provider exploded'))
-    await assert.rejects(() => runAiReview('a1'), /provider exploded/)
-    const update = mocks.auditUpdate.mock.calls[1][0]
-    expect(update.data.failureCode).toBe('AI_REVIEW_FAILED')
-    expect(update.data.status).toBe('COMPLETED')
-    expect(update.data.progress).toBe(100)
+  it.each([new Error('provider exploded'), new JudgeContractError('bad schema')])('retains the completed report until the durable task owner settles failure: %s', async error => {
+    mocks.runPrescriptionWithRetry.mockRejectedValue(error)
+    await expect(runAiReview('a1')).rejects.toBe(error)
+    expect(mocks.auditUpdate.mock.calls).toEqual([[{ where: { id: 'a1' }, data: { includeAi: true } }]])
+    expect(mocks.logPipelineEvent).toHaveBeenCalledWith('a1', expect.objectContaining({ event: 'prescription_failed' }))
   })
 
-  it('records AI_CONTRACT_INVALID for contract errors', async () => {
-    mocks.runPrescriptionWithRetry.mockRejectedValue(new JudgeContractError('bad schema'))
-    await assert.rejects(() => runAiReview('a1'), /bad schema/)
-    const update = mocks.auditUpdate.mock.calls[1][0]
-    expect(update.data.failureCode).toBe('AI_CONTRACT_INVALID')
-  })
 })
 
 import { expect } from 'vitest'

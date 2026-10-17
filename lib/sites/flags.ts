@@ -1,3 +1,4 @@
+import { repairGuidanceState, repairGuidanceText, type RepairGuidanceState } from '@/lib/improvements/repair-guidance'
 import { flagEvidenceContext, type FlagEvidenceContext } from './flag-evidence'
 import { publicSupportingObservations, readSupportingObservations } from '@/lib/audit/flag-observations'
 import { prisma } from '@/lib/db'
@@ -64,7 +65,7 @@ function toSiteFlagSeed(flag: {
     problem: searchAttentionDecision(flag)?.reason === 'historical_intent_not_established' ? SEARCH_COPY.historicalPolicy : flag.problem,
     evidence: flag.evidence,
     whyItMatters: flag.whyItMatters,
-    fix: searchAttentionDecision(flag)?.reason === 'historical_intent_not_established' ? SEARCH_COPY.rules.indexing.guidance : flag.fix,
+    fix: repairGuidanceText(flag),
     pageUrl: flag.pageUrl,
     status: flag.status,
     resolvedInId: flag.resolvedInId,
@@ -337,6 +338,7 @@ export type SiteFlagAttemptView = {
 }
 
 export type SiteFlagDetail = SiteFlagSeed & {
+  repairGuidance?: RepairGuidanceState
   supportingObservations?: ReturnType<typeof publicSupportingObservations>
   supportingEvidenceUnreadable?: boolean
   outcomeId: string | null
@@ -375,7 +377,8 @@ export async function loadSiteFlagDetail(
       OR: [{ id: flagId }, { improvementOccurrence: { improvementId: flagId } }],
     },
     orderBy: { createdAt: 'desc' },
-    include: { improvementOccurrence: { include: { improvement: true } } },
+    include: { improvementOccurrence: { include: { improvement: true } },
+      audit: { select: { includeAi: true, triageAt: true, aiReviewAt: true, failureCode: true } } },
   })
   if (!flagRow) return null
   const incidentId = flagRow.improvementOccurrence?.improvement.id
@@ -393,7 +396,8 @@ export async function loadSiteFlagDetail(
   if (flagRow.id !== flagId && activeScope[0] && activeScope[0].id !== flagRow.id) {
     flagRow = await prisma.flag.findFirst({ where: { id: activeScope[0].id,
       audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
-      include: { improvementOccurrence: { include: { improvement: true } } } })
+      include: { improvementOccurrence: { include: { improvement: true } },
+      audit: { select: { includeAi: true, triageAt: true, aiReviewAt: true, failureCode: true } } } })
     if (!flagRow) return null
   }
   const improvement = flagRow.improvementOccurrence?.improvement
@@ -453,6 +457,7 @@ export async function loadSiteFlagDetail(
     relatedOutcome: linkedOutcome ? { id: linkedOutcome.id, name: linkedOutcome.name } : scopedSeed.relatedOutcome,
     outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
+    repairGuidance: repairGuidanceState(flagRow),
     evidenceContext: flagEvidenceContext(flagRow),
     supportingObservations: publicSupportingObservations(flagRow.supportingObservations),
     supportingEvidenceUnreadable: flagRow.supportingObservations != null && !readSupportingObservations(flagRow.supportingObservations),

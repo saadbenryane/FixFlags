@@ -1,3 +1,4 @@
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tests__/check-fixtures'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
@@ -484,6 +485,16 @@ describe('createImprovementAttempt', () => {
 })
 
 describe('recordFlagImprovementAttempt', () => {
+  it('does not materialize or record a copied handoff without repair guidance', async () => {
+    mocks.flagFindFirst.mockResolvedValue({ ...flag, fix: '', improvementOccurrence: null,
+      audit: { id: 'audit-1', projectId: 'project-1', productContract: null } })
+    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
+      .rejects.toThrow('Repair guidance is unavailable')
+    expect(mocks.improvementCreateMany).not.toHaveBeenCalled()
+    expect(mocks.cycleEventUpsert).not.toHaveBeenCalled()
+    expect(mocks.attemptCreate).not.toHaveBeenCalled()
+  })
+
   const ownedFlag = {
     ...flag,
     improvementOccurrence: { id: 'occurrence-1', improvementId: 'improvement-1' },
@@ -549,6 +560,20 @@ describe('recordFlagImprovementAttempt', () => {
       where: { id: 'improvement-1', acceptedAt: null },
       data: { acceptedAt: expect.any(Date), acceptedByChannel: 'web' },
     })
+  })
+
+  it('preserves established historical indexing guidance when recording a handoff', async () => {
+    const recorded = { ...ownedFlag, checkId: 'noindex-meta', fix: '', improvementOccurrence: null }
+    mocks.flagFindFirst.mockResolvedValue(recorded)
+    mocks.improvementCreateMany.mockResolvedValue({ count: 1 })
+    mocks.improvementFindUniqueOrThrow.mockResolvedValue({ id: 'improvement-1' })
+    mocks.occurrenceCreateMany.mockResolvedValue({ count: 1 })
+    mocks.occurrenceFindUniqueOrThrow.mockResolvedValue({ id: 'occurrence-1', improvementId: 'improvement-1' })
+    const result = await recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' })
+    expect(result).toMatchObject({ action: 'HANDOFF_COPIED', attemptId: null })
+    expect(recorded.fix).toBe('')
+    expect(mocks.attemptCreate).not.toHaveBeenCalled()
+    expect(mocks.improvementCreateMany).toHaveBeenCalledWith(expect.objectContaining({ data: [expect.objectContaining({ recommendedChange: SEARCH_COPY.rules.indexing.guidance })] }))
   })
 
   it('records prompt handoff without accepting or creating an attempt', async () => {

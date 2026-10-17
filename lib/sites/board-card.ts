@@ -1,3 +1,4 @@
+import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
 import { readSupportingObservationView } from '@/lib/audit/flag-observations'
 import { supportingObservationLines } from '@/lib/audit/observation-handoff'
 import { EDITOR_EVIDENCE_COPY as E } from '@/lib/marketing/copy/verification-evidence'
@@ -29,6 +30,7 @@ export type BoardCardProblem = {
 }
 
 export type BoardCardFlagChip = {
+  repairGuidanceReady?: boolean
   id: string
   sourceFlagId?: string | null
   title: string
@@ -188,6 +190,7 @@ export function boardFlagPrompt(input: {
   expectedBehavior?: string | null
   supportingObservations?: unknown
 }): string {
+  if (!hasRepairGuidance(input.fix)) return ''
   const observations = readSupportingObservationView(input.supportingObservations)
   if (input.supportingObservations != null && !observations) return ''
   const paths = [...new Set(input.affectedPaths ?? [])]
@@ -210,7 +213,7 @@ export function boardFlagPrompt(input: {
 }
 
 export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string {
-  if (flags.length === 0) return ''
+  if (flags.length === 0 || flags.some(flag => !hasRepairGuidance(flag.fix))) return ''
   const prompts = flags.map((flag, index) => boardFlagPrompt({
     problem: flag.problem,
     pageUrl: flag.pageUrl,
@@ -230,6 +233,7 @@ function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip
     id: flag.id,
     sourceFlagId: flag.sourceFlagId,
     title: flag.problem,
+    repairGuidanceReady: hasRepairGuidance(flag.fix),
     href: `/sites/${siteId}/flags/${flag.id}`,
   }))
 }

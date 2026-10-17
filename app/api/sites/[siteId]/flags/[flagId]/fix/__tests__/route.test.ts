@@ -29,6 +29,17 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     mocks.executeSiteCommand.mockResolvedValue({ ok: true, handoff: { improvementId: 'improvement-1' } })
   })
 
+  it.each(['', '   '])('rejects missing guidance without recording a handoff: %j', async fix => {
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, flag: { ...detail.flag, fix, repairGuidance: 'unavailable' } })
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(422)
+    expect((await response.json()).prompt).toBeUndefined()
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
   it.each([403, 404])('never loads or returns private prompt data when ownership is refused (%s)', async status => {
     mocks.requireSiteOwner.mockResolvedValue({ ok: false, status, message: 'Site access refused' })
     const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {

@@ -1,5 +1,8 @@
 'use client'
 
+import Link from 'next/link'
+import type { RepairGuidanceState } from '@/lib/improvements/repair-guidance'
+
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
@@ -15,7 +18,7 @@ import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 
-export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAuditId = null, verifying = false }: { siteId: string; flagId: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean }) {
+export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAuditId = null, verifying = false, repairGuidance }: { siteId: string; flagId: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState }) {
   const router = useRouter()
   const { busy, message, error, submit, clearFeedback, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
   const { view, refresh, disconnected } = useSiteResource(siteId, initial)
@@ -24,6 +27,15 @@ export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAu
   const [changeSummary, setChangeSummary] = useState('')
   const [verifyOpen, setVerifyOpen] = useState(false)
   const intent = useRef<{ flagId: string; key: string } | null>(null)
+  const guidanceActions = useRef<HTMLDivElement | null>(null)
+  const guidanceRefreshRequested = useRef(false)
+  useEffect(() => { guidanceRefreshRequested.current = false }, [siteId, flagId])
+  useEffect(() => {
+    if (!guidanceRefreshRequested.current || repairGuidance === 'pending') return
+    guidanceRefreshRequested.current = false
+    if (document.activeElement === document.body) guidanceActions.current?.querySelector<HTMLElement>('button:not(:disabled), a[href]')?.focus()
+  }, [repairGuidance])
+
 
   useEffect(() => {
     setVerificationRunning(verifying)
@@ -58,10 +70,16 @@ export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAu
 
   return (
     <div className="space-y-6">
-      <div>
+      <div ref={guidanceActions}>
         <h3 className="mb-3 text-sm font-semibold">{SITE_BOARD_COPY.fixStep}</h3>
-        <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={flagId} /></div>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.fixStepBody}</p>
+        {repairGuidance === 'ready' ? <>
+          <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={flagId} /></div>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.fixStepBody}</p>
+        </> : <div className="space-y-3">
+          <p role="status" className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.repairGuidance[repairGuidance]}</p>
+          {repairGuidance === 'pending' ? <Button type="button" variant="outline" onClick={() => { guidanceRefreshRequested.current = true; router.refresh() }}>{SITE_ACTION_COPY.repairGuidance.refresh}</Button>
+            : <Button variant="outline" asChild><Link href={`/sites/${siteId}`}>{SITE_ACTION_COPY.repairGuidance.overview}</Link></Button>}
+        </div>}
       </div>
 
       <div className="pt-5">

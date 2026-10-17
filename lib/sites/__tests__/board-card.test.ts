@@ -140,7 +140,7 @@ describe('board card contract', () => {
     expect(conversion?.problem?.outcomeName).toBeNull()
     expect(conversion?.problem?.href).toBe('/sites/p_example/flags/flag-1')
     expect(conversion?.flagChips).toEqual([
-      { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1' },
+      { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1', repairGuidanceReady: true },
     ])
     expect(conversion?.sources).toEqual([SITE_BOARD_COPY.browserSource])
     const tracking = cards.find((card) => card.id === 'tracking')
@@ -208,4 +208,9 @@ describe('board card contract', () => {
     expect(withOutcome).not.toMatch(/Journey:/)
     expect(withOutcome).toContain('Copying this does not resolve the Flag.')
   })
+})
+
+it('refuses an empty individual or incomplete category fix handoff', () => {
+  expect(boardFlagPrompt({ ...conversionFlag, fix: '   ' })).toBe('')
+  expect(boardAreaPrompt('Conversion', [conversionFlag, { ...conversionFlag, id: 'missing-guidance', fix: '' }])).toBe('')
 })
