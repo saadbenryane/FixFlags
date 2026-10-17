@@ -1,3 +1,5 @@
+import { hasUnreadableSupportingObservations } from '@/lib/audit/flag-observations'
+import { presentationAttentionPolicy } from '@/lib/audit/search/policy'
 import { formatDisplayEvidence, resolveWhyItMatters } from '@/lib/audit/flag-copy'
 import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
@@ -31,7 +33,7 @@ import type {
 } from '@/lib/marketing/sample-report-display'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
-import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
+import { buildFixArtifacts, type FixList } from '@/lib/audit/finish-plan'
 import { parseReviewCoverage } from '@/lib/audit/review-coverage'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
@@ -62,6 +64,8 @@ export function deriveTruthLabel(
 }
 
 export interface ExplorerFlag {
+  supportingEvidenceUnreadable?: boolean
+  attentionPolicy?: unknown
   id: string
   checkId: string | null
   title: string
@@ -173,6 +177,8 @@ function mapLiveFlag(
   return {
     id: flag.id,
     checkId: flag.checkId ?? null,
+    attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy),
+    supportingEvidenceUnreadable: hasUnreadableSupportingObservations(flag.supportingObservations),
     title: flag.problem,
     rubric: flag.rubric,
     rubricLabel: rubricLabel(flag.rubric),
@@ -185,7 +191,7 @@ function mapLiveFlag(
       : '',
     fixPrompt,
     copyFixPrompt,
-    toolPrompts: mayShowPrompt
+    toolPrompts: mayShowPrompt && fixPrompt
       ? {
           universal: flag.agentPrompt,
           cursor: flag.cursorPrompt,
@@ -199,7 +205,7 @@ function mapLiveFlag(
     affectedDevices: flag.checkId
       ? devicesForCheck(flag.checkId)
       : [flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'],
-    hasFixPrompt: mayShowPrompt && Boolean(sourceFix),
+    hasFixPrompt: mayShowPrompt && Boolean(sourceFix) && Boolean(fixPrompt),
     pageUrl: flag.pageUrl ?? null,
     pageUrls: occurrences.pageUrls ?? [],
     occurrenceCount: occurrences.count,
@@ -231,40 +237,17 @@ export function buildLiveExplorerModel(input: {
   reviewCoverage?: unknown
   reportCompleteness?: string | null
 }): ReportExplorerModel {
-  const fixList =
-    input.fixList ??
-    buildFixList({
-      flags: input.flags,
-      rubricRows: input.rubricRows.map((row) => ({
-        name: row.name,
-        grade: row.grade ?? null,
-      })),
-      url: input.url,
-      pageType: input.pageType,
-      contract: input.productContract ?? null,
-      promptAccess: input.promptAccess ?? 'all',
-      demonstratedFlag: input.demonstratedFlag,
-    })
-  const flagsById = new Map(input.flags.map((flag) => [flag.id, flag]))
-  const sorted = fixList.items.flatMap((item) => {
-    const flag =
-      item.id === input.demonstratedFlag?.id
-        ? input.demonstratedFlag
-        : flagsById.get(item.id)
-    return flag
-      ? [
-          {
-            flag: {
-              ...flag,
-              checkId: item.checkId,
-              problem: item.problem,
-              evidence: item.evidence,
-              pageUrl: item.pageUrl,
-            },
-            item,
-          },
-        ]
-      : []
+  const artifacts = buildFixArtifacts({
+    flags: input.flags,
+    rubricRows: input.rubricRows.map(row => ({ name: row.name, grade: row.grade ?? null })),
+    url: input.url, pageType: input.pageType, contract: input.productContract ?? null,
+    promptAccess: input.promptAccess ?? 'all', demonstratedFlag: input.demonstratedFlag,
+  })
+  const fixList = input.fixList ?? artifacts.fixList
+  const canonicalById = new Map(artifacts.rankedFlags.map(flag => [flag.id, flag]))
+  const sorted = fixList.items.flatMap(item => {
+    const flag = canonicalById.get(item.id)
+    return flag ? [{ flag, item }] : []
   })
   const promptVisibleById = new Map(
     fixList.items.map((item) => [item.id, item.prompt !== null])
@@ -313,6 +296,8 @@ export function buildLiveExplorerModel(input: {
 }
 
 export interface PartialExplorerFlag {
+  fingerprint?: string | null
+  attentionPolicy?: unknown
   id: string
   severity: string
   problem: string
@@ -337,8 +322,10 @@ export function buildPartialExplorerModel(input: {
   promptAccess?: 'all' | 'one' | 'none'
 }): ReportExplorerModel {
   const rankableFlags: RankableFlag[] = input.flags.map((flag) => ({
+    fingerprint: flag.fingerprint,
     id: flag.id,
     checkId: flag.checkId ?? null,
+    attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy),
     rubric: flag.rubric,
     severity: flag.severity,
     problem: flag.problem,
@@ -388,6 +375,7 @@ function mapSampleFlag(
   return {
     id: flag.id,
     checkId: flag.checkId ?? null,
+    attentionPolicy: 'attentionPolicy' in flag ? flag.attentionPolicy : undefined,
     title: flag.title,
     rubric: flag.rubric,
     rubricLabel: flag.rubricLabel,
@@ -418,6 +406,7 @@ export function buildSampleExplorerModel(
   const rankedOpenFlags: RankableFlag[] = report.flags.map((flag) => ({
     id: flag.id,
     checkId: flag.checkId ?? null,
+    attentionPolicy: 'attentionPolicy' in flag ? flag.attentionPolicy : undefined,
     rubric: flag.rubric as RankableFlag['rubric'],
     severity: flag.severity as RankableFlag['severity'],
     problem: flag.title,

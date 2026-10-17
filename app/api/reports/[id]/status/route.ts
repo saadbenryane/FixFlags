@@ -14,6 +14,7 @@ import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseProductContract } from '@/lib/audit/product-contract'
+import { presentationAttentionPolicy } from '@/lib/audit/search/policy'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { customerSiteIdForAudit } from '@/lib/sites/site-id-for-audit'
@@ -117,12 +118,13 @@ export async function GET(
       : 'private'
 
     const {
-      flags: partialFlags,
+      flags: recordedFlags,
       performanceData,
       productContract,
       pages,
       ...rest
     } = audit
+    const partialFlags = recordedFlags.map(flag => ({ ...flag, attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy) }))
     const canUsePrivateReportData = access === 'owner'
     void performanceData
     const contract = canUsePrivateReportData

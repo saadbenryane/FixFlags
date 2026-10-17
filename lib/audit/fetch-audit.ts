@@ -28,6 +28,7 @@ import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
+import { presentationAttentionPolicy } from '@/lib/audit/search/policy'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
@@ -276,6 +277,7 @@ export async function getProgressiveAuditForRequest(id: string) {
     storedCapture
   )
   const { performanceData, productContract, ...publicAudit } = audit
+  const publicFlags = audit.flags.map(flag => ({ ...flag, attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy) }))
 
   return {
     kind: 'progressive' as const,
@@ -284,6 +286,7 @@ export async function getProgressiveAuditForRequest(id: string) {
     session,
     audit: {
       ...publicAudit,
+      flags: publicFlags,
       screenshotCapture,
       actionTimeline:
         capabilities.canViewPrivateProductContext

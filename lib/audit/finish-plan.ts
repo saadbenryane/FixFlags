@@ -55,6 +55,8 @@ export interface FixList extends FinishPlan {
 export const MAX_FINISH_PLAN_ITEMS = MAX_ATTENTION_ITEMS
 
 export interface FixArtifacts {
+  /** Internal canonical rows. Public wrappers return only their established DTOs. */
+  rankedFlags: RankableFlag[]
   fixList: FixList
   finishPlan: FinishPlan
 }
@@ -106,7 +108,7 @@ function buildRankedFixes(input: PlanInput): {
   let demonstratedPromptUsed = false
 
   const items = ranked.map(({ flag, rubricName }) => {
-    const source = flag.id === demonstratedId ? input.demonstratedFlag ?? flag : flag
+    const source = flag
     const mayShowPrompt =
       input.promptAccess === 'all' ||
       (input.promptAccess === 'one' && !demonstratedPromptUsed && flag.id === demonstratedId)
@@ -122,7 +124,7 @@ function buildRankedFixes(input: PlanInput): {
             url: input.url,
             pageType: input.pageType,
             pageUrls: occurrenceUrls,
-          })
+          }) || null
         : null
     if (prompt && input.promptAccess === 'one') demonstratedPromptUsed = true
 
@@ -192,6 +194,7 @@ export function buildFixArtifacts(input: PlanInput): FixArtifacts {
     if (!flag) return []
     if (
       !isWorthwhileAttentionFlag({
+        ...flag,
         severity: item.severity,
         confidence: flag.confidence,
         status: flag.status,
@@ -207,6 +210,7 @@ export function buildFixArtifacts(input: PlanInput): FixArtifacts {
   const finishVisiblePromptCount = finishItems.filter((item) => item.prompt).length
 
   return {
+    rankedFlags: ranked.rankedFlags,
     fixList: {
       items: ranked.items,
       copyPrompt: copyPromptFor(input, ranked.rankedFlags),

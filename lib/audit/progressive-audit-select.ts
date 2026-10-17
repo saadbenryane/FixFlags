@@ -42,6 +42,8 @@ export const progressiveAuditSelect = {
       problem: true,
       rubric: true,
       checkId: true,
+      attentionPolicy: true,
+      fingerprint: true,
       source: true,
       pageUrl: true,
     },

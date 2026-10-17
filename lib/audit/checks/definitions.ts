@@ -156,7 +156,7 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'claim-support-signals': assertion('conversion', ['trust-unsupported-claims']),
     'direct-contact-signals': assertion('conversion', ['trust-no-direct-contact']),
     'internal-navigation-count': assertion('conversion', ['trust-no-internal-links']),
-  }), version: 2 },
+  }), version: 3 },
   layout: define('layout', 'conversion', 'Layout', 'browser', {
     'mobile-cta-position': assertion('conversion', ['cta-below-fold-mobile']),
   }),

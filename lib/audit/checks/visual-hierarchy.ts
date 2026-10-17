@@ -54,8 +54,8 @@ export function runVisualHierarchyChecks(
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
-      problem: 'Page has a headline but no visible section headings',
-      evidence: `${h1s.length} H1 found but no H2 section headings. Content below the hero may not be scannable.`,
+      problem: 'Review the captured section-heading structure',
+      evidence: `${h1s.length} H1 found but no H2 section headings. Visual section boundaries and reader comprehension were not measured.`,
       fix: '1. Add H2 section headings to break content into scannable sections\n2. Use descriptive H2s that tell the user what each section is about\n3. Maintain hierarchy: H1 → H2 → H3 → body text\n4. Each section heading should promise a specific benefit or answer a question',
       confidence: 0.85,
       source: 'DETERMINISTIC',
@@ -73,32 +73,31 @@ export function runVisualHierarchyChecks(
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
         severity: 'IMPORTANT',
-        problem: 'No visible H1 headline found on the page',
-        evidence: 'No H1 element detected in the page HTML. Without a clear headline, visitors cannot immediately understand the page purpose.',
-        fix: '1. Add an H1 element as the primary page heading\n2. Make the H1 visible (not display:none or off-screen)\n3. Place the H1 at the top of the main content, above the hero\n4. The H1 should name the product AND the outcome for the visitor',
+        problem: 'No H1 found in the captured content',
+        evidence: 'No H1 element was recorded. Other heading-like text and visitor understanding were not evaluated by this check.',
+        fix: '1. Add an H1 element as the primary page heading\n2. Make the H1 visible (not display:none or off-screen)\n3. Place the H1 at the top of the main content, above the hero\n4. Review the heading alongside supporting copy, the audience, and the page purpose',
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
     }
   }
 
-  // Approximate above-fold content: H1 is always visible; only the first 2 H2s
-  // are likely above the fold on a typical page layout. Counting all H2s
-  // over-counts on pages with many content sections below the fold.
-  const aboveFoldHeadings = [h1s[0] ?? '', ...(h2s.slice(0, 2))]
-  const aboveFoldTextLength = aboveFoldHeadings.join(' ').split(/\s+/).filter(Boolean).length
+  // Sample the opening heading sequence without assuming physical viewport placement.
+  // Only the H1 and first two H2 headings contribute to this word-count check.
+  const sampledHeadings = [h1s[0] ?? '', ...(h2s.slice(0, 2))]
+  const headingWordCount = sampledHeadings.join(' ').split(/\s+/).filter(Boolean).length
   recordObservation(record, 'heading-word-count', 'Sampled heading density', 'The H1 and first two H2 headings contain at most 80 words',
-    `${aboveFoldTextLength} words in the sampled headings. Physical above-fold density was not measured.`,
-    totalHeadings > 0 ? aboveFoldTextLength <= 80 : undefined, true)
-  if (aboveFoldTextLength > 80) {
+    `${headingWordCount} words in the sampled headings. Physical above-fold density was not measured.`,
+    totalHeadings > 0 ? headingWordCount <= 80 : undefined, true)
+  if (headingWordCount > 80) {
     findings.push({
       checkId: 'hierarchy-information-density',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
-      problem: 'Above-the-fold content has high information density',
-      evidence: `Headings above the fold total ~${aboveFoldTextLength} words. Users scanning the page may miss the key message.`,
-      fix: '1. Lead with ONE clear headline and ONE supporting subhead\n2. Move secondary messages below the fold or into visual cards\n3. Use whitespace to separate key value propositions\n4. Apply the 3-second test: can a visitor understand the value in 3 seconds?',
+      problem: 'Review the length of the sampled opening headings',
+      evidence: `The H1 and first two H2 headings total ${headingWordCount} words (review threshold 80). Physical first-screen density and comprehension were not measured.`,
+      fix: '1. Review the H1 and first two H2 headings together\n2. Shorten repetition where useful while preserving the audience and page purpose\n3. Inspect their actual rendered placement before moving or removing content',
       confidence: 0.7,
       source: 'DETERMINISTIC',
     })

@@ -29,6 +29,11 @@ export interface AccuracyHtmlFixture {
 export const ACCURACY_FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 
 export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
+  // Reviewed synthetic proof-reference pair. A story link is not a testimonial or a verified customer outcome.
+  { file: 'precision-story-reference-present.html', url: 'https://studio.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
+    expectedTop3: [], expectedPresent: [], knownFalsePositives: ['trust-no-authority-signals', 'trust-testimonial-quality'] },
+  { file: 'precision-story-reference-absent.html', url: 'https://studio.example.com/', tier: 'control', maxImportantFalseBlockers: 0,
+    expectedTop3: [], expectedPresent: ['trust-no-authority-signals'], knownFalsePositives: ['trust-testimonial-quality'] },
   { file: 'precision-trust-repaired.html', url: 'https://studio.example.com/', tier: 'gold', maxImportantFalseBlockers: 0,
     expectedTop3: [], expectedPresent: [], knownFalsePositives: ['cookie-consent-absent', 'messaging-no-audience', 'trust-testimonial-quality'] },
   { file: 'precision-trust-broken.html', url: 'https://studio.example.com/', tier: 'broken', maxImportantFalseBlockers: 99,

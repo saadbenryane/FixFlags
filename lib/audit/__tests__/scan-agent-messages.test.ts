@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import { buildFixFlagsScanMessages, selectAnnouncedFlags } from '@/lib/audit/scan-agent-messages'
 
 const base = {
   id: 'audit-1',
@@ -15,6 +15,14 @@ const base = {
 }
 
 describe('buildFixFlagsScanMessages', () => {
+  it('announces current proven search regressions while retaining the historical intent boundary', () => {
+    const flag = { id: 'search-regression', checkId: 'robots-blocks-indexing', rubric: 'REACH', severity: 'IMPORTANT',
+      problem: 'Previously indexable page is blocked', fix: 'Restore the intended crawl rule',
+      attentionPolicy: { policy: 'search', version: 3, kind: 'flag', reason: 'recorded_indexing_regression' } }
+    expect(selectAnnouncedFlags([flag], { requireChange: true })).toEqual([flag])
+    expect(selectAnnouncedFlags([{ ...flag, attentionPolicy: undefined }])).toEqual([])
+  })
+
   it('builds stable cumulative scan messages and linked Flags', () => {
     const first = buildFixFlagsScanMessages(base)
     const second = buildFixFlagsScanMessages(base)
@@ -72,7 +80,7 @@ describe('buildFixFlagsScanMessages', () => {
     expect(messages.filter((item) => item.kind === 'flag')[0]).toMatchObject({ flagId: 'headline' })
   })
 
-  it('announces a Critical Experience Flag ahead of discovery-order SEO Flags', () => {
+  it('announces a consequential Experience Flag while optional sharing and description guidance remain Recommendations', () => {
     const messages = buildFixFlagsScanMessages({
       ...base,
       flags: [
@@ -112,12 +120,8 @@ describe('buildFixFlagsScanMessages', () => {
     })
 
     const announced = messages.filter((item) => item.kind === 'flag')
-    expect(announced).toHaveLength(3)
-    expect(announced[0]).toMatchObject({ flagId: 'cta-fold' })
-    expect(announced.map((item) => item.flagId)).not.toContain('seo-og-title')
-    expect(messages.find((item) => item.id.endsWith(':additional-flags'))?.content).toContain(
-      '1 more Flag',
-    )
+    expect(announced.map(item => item.flagId)).toEqual(['cta-fold'])
+    expect(messages.find((item) => item.id.endsWith(':additional-flags'))).toBeUndefined()
   })
 
   it('curates large Flag sets instead of flooding the Agent transcript', () => {

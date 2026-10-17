@@ -1,11 +1,33 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
+import { isAttentionCandidate } from '@/lib/audit/attention'
 import {
   buildLiveExplorerModel,
   buildPartialExplorerModel,
 } from '@/lib/report/explorer-model'
 
 describe('explorer-model', () => {
+  it('preserves current search policy through complete and partial projections', () => {
+    const current = { id: 'search-regression', checkId: 'robots-blocks-indexing', rubric: 'REACH', severity: 'IMPORTANT',
+      problem: 'Previously indexable page is blocked', fix: 'Restore the intended crawl rule',
+      attentionPolicy: { policy: 'search', version: 3, kind: 'flag', reason: 'recorded_indexing_regression' } }
+    const partial = buildPartialExplorerModel({ url: 'https://example.com', flags: [current] })
+    const full = buildLiveExplorerModel({ url: 'https://example.com', pageType: null, score: null, flags: [current], rubricRows: [] })
+    for (const projected of [partial.flags[0], full.flags[0]]) {
+      assert.deepEqual(projected.attentionPolicy, current.attentionPolicy)
+      assert.equal(isAttentionCandidate(projected), true)
+      assert.equal(isAttentionCandidate({ ...projected, attentionPolicy: undefined }), false)
+    }
+  })
+
+  it('keeps distinct freshly recorded funnel conditions separate during progressive display', () => {
+    const base = { id: 'content', checkId: 'journey-funnel-dead-end', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      problem: 'Recorded condition', source: 'JOURNEY', fingerprint: 'journey-observation:v1::content' }
+    const model = buildPartialExplorerModel({ url: 'https://example.com', flags: [base,
+      { ...base, id: 'path', fingerprint: 'journey-observation:v1::path' }] })
+    assert.equal(model.flags.length, 2)
+  })
+
   it('builds live explorer model with sorted flags and highlights', () => {
     const model = buildLiveExplorerModel({
       url: 'https://example.com',

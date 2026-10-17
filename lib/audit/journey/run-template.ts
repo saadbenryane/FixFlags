@@ -1,3 +1,4 @@
+import { assessFunnelDestination } from './funnel-findings'
 import { assessFormProbeResponse, assessFormProbeConfirmation } from './form-probe-assessment'
 import type { Browser, Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
@@ -62,7 +63,8 @@ async function journeyClickSelector(page: Page, target: Pick<JourneyLinkCandidat
 function finding(
   partial: Omit<JourneyFindingDraft, 'confidence'> & { confidence?: number }
 ): JourneyFindingDraft {
-  return { confidence: 0.85, ...partial }
+  return { confidence: 0.85, ...partial, source: 'JOURNEY',
+    conditionId: partial.conditionId ?? (partial.checkId.startsWith('journey-funnel-') ? partial.checkId : undefined) }
 }
 
 /** Customer evidence when the page has no link to another page on the same site. */
@@ -201,10 +203,10 @@ export async function runJourneyTemplate(
           rubric: 'MESSAGE',
           severity: 'IMPORTANT',
           impactTag: 'CLARITY',
-          problem: 'First-visit page lacks a clear primary headline',
+          problem: 'Review the missing or short entry-page H1',
           evidence: 'Reproduced at step 1. No H1 of at least 12 characters found on landing.',
-          whyItMatters: 'Visitors decide in seconds whether they understand the product.',
-          fix: '1. Add one clear H1 that states the product outcome\n2. Keep it under 12 words\n3. Match the H1 to your primary CTA promise',
+          whyItMatters: 'The sampled H1 did not meet the headline-length check. Review its supporting context; visitor understanding was not measured.',
+          fix: '1. Review the recorded H1 and nearby supporting copy together\n2. Add or clarify the page heading where useful for its purpose and audience\n3. Keep verified product claims and the intended next action consistent',
           screenshotUrl: before1,
           accessibilityEvidence: a11y1.slice(0, 2000),
         })
@@ -247,7 +249,7 @@ export async function runJourneyTemplate(
             severity: 'IMPORTANT',
             impactTag: 'FRICTION',
             problem: 'This page has no way to continue',
-            evidence: pageHasNoNextStepEvidence(),
+            evidence: 'No unvisited eligible same-origin navigation target remained at this step. This does not establish that the intended customer task failed.',
             whyItMatters: 'People who want to continue have nowhere to go.',
             fix: deadEndFix(options.journeyType),
             screenshotUrl: before1,
@@ -657,15 +659,16 @@ export async function runJourneyTemplate(
         findings.push(
           finding({
             checkId: 'journey-funnel-dead-end',
+            conditionId: 'missing-continuation',
             stepNumber: currentStep,
             url: page.url(),
             rubric: 'EXPERIENCE',
             severity: 'CRITICAL',
             impactTag: 'FRICTION',
-            problem: 'Funnel reaches a dead end with no way forward',
-            evidence: pageHasNoNextStepEvidence(),
+            problem: 'Review the recorded continuation of this path',
+            evidence: 'No unvisited eligible same-origin navigation target remained at this step. This does not establish that the intended customer task failed.',
             whyItMatters: 'Dead-end funnels lose visitors who intended to convert.',
-            fix: '1. Add clear next-step CTAs on every funnel page\n2. Ensure navigation includes conversion paths\n3. Add contextual links within page content',
+            fix: '1. Review the recorded eligible routes and the pages already visited\n2. Confirm whether the intended task was already complete\n3. Add or correct a continuation only where the intended task requires one',
             screenshotUrl: steps[steps.length - 1]?.screenshotAfterUrl,
           })
         )
@@ -814,87 +817,11 @@ export async function runJourneyTemplate(
           : `Funnel step ${currentStep}: ${stepActionType} toward ${target.category}`,
       })
 
-      if (isLoading) {
-        findings.push(
-          finding({
-            checkId: 'journey-funnel-timeout',
-            stepNumber: currentStep,
-            url: currentUrl,
-            rubric: 'EXPERIENCE',
-            severity: 'IMPORTANT',
-            impactTag: 'FRICTION',
-            problem: 'Funnel page is stuck in a loading state',
-            evidence: `Reproduced at step ${currentStep}. Page at ${currentUrl} shows only loading content.`,
-            whyItMatters: 'Loading states that never resolve cause visitors to abandon the funnel.',
-            fix: '1. Add loading timeouts with fallback content\n2. Show a skeleton or progress indicator\n3. Ensure the server responds within 3 seconds',
-            screenshotUrl: afterShot,
-            accessibilityEvidence: a11yAfter.slice(0, 2000),
-            findingType: 'friction',
-          })
-        )
-      }
-
-      if (!hasContent && !isLoading) {
-        findings.push(
-          finding({
-            checkId: 'journey-funnel-dead-end',
-            stepNumber: currentStep,
-            url: currentUrl,
-            rubric: 'EXPERIENCE',
-            severity: 'IMPORTANT',
-            impactTag: 'FRICTION',
-            problem: 'Funnel page appears empty or broken',
-            evidence: `Reproduced at step ${currentStep}. Page at ${currentUrl} lacks substantive content.`,
-            whyItMatters: 'Empty pages in the funnel break the conversion path.',
-            fix: '1. Ensure the page renders content on load\n2. Check for JavaScript errors preventing render\n3. Add a fallback message if content fails to load',
-            screenshotUrl: afterShot,
-            accessibilityEvidence: a11yAfter.slice(0, 2000),
-            findingType: 'dead-end',
-          })
-        )
-      }
-
       const destHeadline = await pageHasClearHeadline(page)
-      if (!destHeadline && currentStep >= 2) {
-        findings.push(
-          finding({
-            checkId: 'journey-funnel-unclear-progress',
-            stepNumber: currentStep,
-            url: currentUrl,
-            rubric: 'MESSAGE',
-            severity: 'POLISH',
-            impactTag: 'CLARITY',
-            problem: 'Funnel page lacks a clear headline to orient the visitor',
-            evidence: `Reproduced at step ${currentStep}. No H1 found on ${currentUrl}.`,
-            whyItMatters: 'Visitors lose context when funnel pages do not restate the value proposition.',
-            fix: '1. Add a clear H1 that continues the narrative from the previous step\n2. Match the headline to the funnel goal\n3. Keep it under 12 words',
-            screenshotUrl: afterShot,
-            accessibilityEvidence: a11yAfter.slice(0, 2000),
-            findingType: 'confusion',
-          })
-        )
-      }
-
       const destCta = await pageHasPrimaryCta(page)
-      if (!destCta.found && currentStep >= 2 && currentStep < maxSteps) {
-        findings.push(
-          finding({
-            checkId: 'journey-funnel-missing-feedback',
-            stepNumber: currentStep,
-            url: currentUrl,
-            rubric: 'EXPERIENCE',
-            severity: 'IMPORTANT',
-            impactTag: 'CONVERSION',
-            problem: 'Funnel page has no clear next action',
-            evidence: `Reproduced at step ${currentStep}. After navigating to ${currentUrl}, no primary CTA was detected.`,
-            whyItMatters: 'Funnel pages without a next step cause drop-off.',
-            fix: '1. Add a primary CTA matching the funnel stage\n2. For signup flows: show the form or a "Continue" button\n3. For pricing: highlight the recommended plan CTA',
-            screenshotUrl: afterShot,
-            accessibilityEvidence: a11yAfter.slice(0, 2000),
-            findingType: 'friction',
-          })
-        )
-      }
+      findings.push(...assessFunnelDestination({ currentStep, currentUrl, maxSteps,
+        isLoading, hasContent, headlinePassed: destHeadline, primaryActionFound: destCta.found,
+        screenshotUrl: afterShot, accessibilityEvidence: a11yAfter.slice(0, 2000) }))
 
       if (destCta.found && currentStep >= 2) {
         funnelGoalAchieved = true
@@ -909,10 +836,10 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'IMPORTANT',
             impactTag: 'FRICTION',
-            problem: 'Funnel requires too many steps to complete',
+            problem: 'Review the path at the recorded walk step limit',
             evidence: pathTookTooManyStepsEvidence(maxSteps),
             whyItMatters: 'Long funnels have compounding drop-off at each step.',
-            fix: '1. Reduce the number of steps in the funnel\n2. Combine steps where possible\n3. Show a progress indicator to set expectations',
+            fix: '1. Inspect the recorded route and the walk step limit\n2. Review which steps are required for the intended task\n3. Simplify only steps shown to be unnecessary',
             screenshotUrl: afterShot,
             accessibilityEvidence: a11yAfter.slice(0, 2000),
             findingType: 'friction',

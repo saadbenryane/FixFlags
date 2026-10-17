@@ -1,5 +1,8 @@
 import type { RankableFlag } from './flag-types'
-import { baseCheckId, durableCheckId, parseAffectedPaths } from './flag-identity'
+import { baseCheckId, observationIdentity, parseAffectedPaths } from './flag-identity'
+import { parseEvidenceTargets } from './evidence-targets'
+import { mergeSupportingObservations, observationsForFlag, readSupportingObservationView, publicSupportingObservations } from './flag-observations'
+import { mergeSearchAttentionPolicies } from './search/attention-scope'
 import { severityRank } from '@/lib/utils'
 
 export { baseCheckId, durableCheckId } from './flag-identity'
@@ -74,8 +77,9 @@ export function consolidateFlagsByCheck(
   const groups = new Map<string, RankableFlag[]>()
 
   for (const flag of flags) {
-    const checkId = durableCheckId(flag.checkId)
-    const key = checkId ? `check:${checkId}` : `flag:${flag.id}`
+    const unreadable = flag.supportingObservations != null && !readSupportingObservationView(flag.supportingObservations)
+    // An unreadable member stays visible and cannot lend or borrow another finding's evidence.
+    const key = unreadable ? `unreadable:${flag.id}` : flag.checkId || flag.fingerprint ? observationIdentity(flag) : `flag:${flag.id}`
     const group = groups.get(key)
     if (group) group.push(flag)
     else groups.set(key, [flag])
@@ -95,9 +99,24 @@ export function consolidateFlagsByCheck(
       ...representative,
       checkId: baseCheckId(representative.checkId),
       evidence: consolidateEvidence(group, occurrencePageUrls),
+      supportingObservations: consolidatedObservations(group),
+      attentionPolicy: mergeSearchAttentionPolicies(group.map(flag => flag.attentionPolicy), representative.attentionPolicy),
       occurrenceCount:
         occurrencePageUrls.length > 0 ? occurrencePageUrls.length : group.length,
       occurrencePageUrls,
     }
   })
+}
+
+/** Presentation preserves unreadable originals and supports already-redacted observation views. */
+function consolidatedObservations(flags: RankableFlag[]): unknown {
+  const unreadable = flags.find(flag => flag.supportingObservations != null && !readSupportingObservationView(flag.supportingObservations))
+  if (unreadable) return unreadable.supportingObservations
+  if (flags.some(flag => Array.isArray(flag.supportingObservations))) {
+    const views = flags.flatMap(flag => flag.supportingObservations != null
+      ? readSupportingObservationView(flag.supportingObservations)!
+      : publicSupportingObservations(observationsForFlag({ ...flag, evidenceTargets: parseEvidenceTargets(flag.evidenceTargets) })))
+    return [...new Map(views.map(item => [JSON.stringify(item), item])).values()]
+  }
+  return mergeSupportingObservations(flags.map(flag => observationsForFlag({ ...flag, evidenceTargets: parseEvidenceTargets(flag.evidenceTargets) })))
 }

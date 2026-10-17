@@ -1,3 +1,4 @@
+import { whyItMattersForCheckId } from '../flag-copy'
 import type { PagePurpose } from '@/lib/audit/page-purpose'
 import { isProductPage } from '@/lib/audit/page-purpose'
 import type { JourneyEvaluation } from './evaluator-schema'
@@ -41,7 +42,7 @@ function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
   if (/reproduced at step/i.test(f.evidence)) return f
   return {
     ...f,
-    evidence: `${f.findingType ? 'Reviewed' : 'Reproduced'} at step ${f.stepNumber}. ${f.evidence}`,
+    evidence: `${f.source === 'AI' ? 'Reviewed' : 'Reproduced'} at step ${f.stepNumber}. ${f.evidence}`,
   }
 }
 
@@ -88,6 +89,7 @@ export function convertEvaluationToFindings(
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
+      source: 'AI',
       findingType: 'friction',
     })
   }
@@ -109,6 +111,7 @@ export function convertEvaluationToFindings(
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
+      source: 'AI',
       findingType: 'broken-promise',
     })
   }
@@ -130,6 +133,7 @@ export function convertEvaluationToFindings(
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
+      source: 'AI',
       findingType: 'accessibility-barrier',
     })
   }
@@ -138,8 +142,8 @@ export function convertEvaluationToFindings(
 }
 
 /** Equivalent measured checks can share an action while their observations remain recorded. */
-export function omitRepeatedCustomerFindings<T extends { checkId?: string | null; problem: string; evidence?: string; url: string }>(
-  existing: Array<{ checkId?: string | null; problem: string; evidence?: string; pageUrl: string | null }>,
+export function omitRepeatedCustomerFindings<T extends { source?: string | null; conditionId?: string; fingerprint?: string | null; checkId?: string | null; problem: string; evidence?: string; url: string }>(
+  existing: Array<{ source?: string | null; conditionId?: string; fingerprint?: string | null; checkId?: string | null; problem: string; evidence?: string; pageUrl: string | null }>,
   incoming: T[],
 ): T[] {
   const seen = new Set(existing.map(journeyFindingIdentity))
@@ -153,7 +157,7 @@ export function omitRepeatedCustomerFindings<T extends { checkId?: string | null
 
 /** Interpret recorded walk facts before the persistence command records them. */
 export function prepareJourneyFindings(result: JourneyFindingFacts, allowedCheckIds?: readonly string[]): JourneyFindingDraft[] {
-  const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence)).filter(finding => !allowedCheckIds || allowedCheckIds.includes(baseCheckId(finding.checkId)!) || projectedJourneyFinding(finding) && allowedCheckIds.includes(durableCheckId(finding.checkId)!))
+  const filteredFindings = filterToolingPathFlags(result.findings.map(finding => withStepEvidence(finding.source === 'AI' ? finding : { ...finding, whyItMatters: whyItMattersForCheckId(baseCheckId(finding.checkId)!) }))).filter(finding => !allowedCheckIds || allowedCheckIds.includes(baseCheckId(finding.checkId)!) || projectedJourneyFinding(finding) && allowedCheckIds.includes(durableCheckId(finding.checkId)!))
   const networkFlags = runNetworkEngagementChecks([], result.formProbe)
   for (const nf of networkFlags) {
     if (allowedCheckIds && !allowedCheckIds.includes(nf.checkId)) continue
@@ -167,7 +171,8 @@ export function prepareJourneyFindings(result: JourneyFindingFacts, allowedCheck
         impactTag: (nf.impactTag ?? 'CONVERSION') as JourneyFindingDraft['impactTag'],
         problem: nf.problem,
         evidence: nf.evidence,
-        whyItMatters: 'The recorded response did not complete the requested action.',
+        whyItMatters: whyItMattersForCheckId(nf.checkId),
+        source: 'JOURNEY',
         fix: nf.fix,
         confidence: nf.confidence,
       })

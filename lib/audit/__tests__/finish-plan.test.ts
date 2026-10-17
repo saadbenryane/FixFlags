@@ -55,6 +55,25 @@ describe('buildFixList', () => {
     expect(finishPlan.copyPrompt).not.toContain('Problem polish')
   })
 
+  it('retains qualitative recommendations in the complete list without making them priority actions', () => {
+    const result = buildFixArtifacts({ flags: [
+      { ...flag('copy-review', 'IMPORTANT'), checkId: 'messaging-weak-value-prop' },
+      { ...flag('progress-review', 'IMPORTANT'), checkId: 'journey-funnel-confusion' },
+      { ...flag('broken-link', 'IMPORTANT'), checkId: 'broken-internal-links', rubric: 'EXPERIENCE' },
+    ], promptAccess: 'all' })
+    expect(result.fixList.items).toHaveLength(3)
+    expect(result.finishPlan.items.map(item => item.id)).toEqual(['broken-link'])
+  })
+
+  it('keeps unreadable original support visible while blocking both copied fixes and priority selection', () => {
+    const result = buildFixArtifacts({ flags: [{ ...flag('unreadable', 'CRITICAL'),
+      supportingObservations: { version: 9, items: [] } }], promptAccess: 'all' })
+    expect(result.fixList.items).toHaveLength(1)
+    expect(result.fixList.items[0]!.problem).toBe('Problem unreadable')
+    expect(result.fixList.items[0]!.prompt).toBeNull()
+    expect(result.finishPlan.items).toEqual([])
+  })
+
   it('caps explicit Finish Plan limits at three and keeps at least one item', () => {
     expect(buildFinishPlan({ flags, promptAccess: 'all', limit: 99 }).items).toHaveLength(3)
     expect(buildFinishPlan({ flags, promptAccess: 'all', limit: 0 }).items).toHaveLength(1)

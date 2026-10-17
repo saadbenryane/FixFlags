@@ -45,6 +45,14 @@ describe('flag-copy', () => {
     assert.doesNotMatch(why, /reach quality/i)
   })
 
+  it('distinguishes a delayed observation from permanent absence and a loading sample from a timeout', () => {
+    assert.match(whyItMattersForCheckId('slow-3g-blank-screen'), /threshold/)
+    assert.doesNotMatch(whyItMattersForCheckId('slow-3g-blank-screen'), /no content.*during|remained blank/)
+    assert.match(whyItMattersForCheckId('journey-funnel-timeout'), /Loading UI was recorded/)
+    assert.doesNotMatch(whyItMattersForCheckId('journey-funnel-timeout'), /execution budget|never resolve|stuck/)
+    assert.doesNotMatch(whyItMattersForCheckId('hierarchy-no-headline'), /cannot.*understand|no visible headline/)
+  })
+
   it('rejects generic persisted whyItMatters', () => {
     const flag = {
       id: '1',

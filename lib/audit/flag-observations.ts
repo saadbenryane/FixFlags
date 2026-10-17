@@ -71,3 +71,8 @@ export function readSupportingObservationView(value: unknown): SupportingObserva
   const parsed = z.array(supportingObservationViewSchema).max(5000).safeParse(value)
   return parsed.success ? parsed.data : null
 }
+
+/** Safe presentation state; it cannot grant comparison evidence or provenance. */
+export function hasUnreadableSupportingObservations(value: unknown): boolean {
+  return value != null && readSupportingObservationView(value) === null
+}

@@ -16,3 +16,11 @@ export function searchAttentionDecision(flag: { checkId?: string | null; attenti
   if (HISTORICAL_DECLARATIONS.has(id)) return { policy: 'search', version: 1, kind: 'observation', reason: 'historical_intent_not_established' }
   return null
 }
+
+/** Only classification belongs in client projections, never connected-provider context. */
+export function presentationAttentionPolicy(value: unknown): SearchAttention | undefined {
+  const parsed = searchAttentionSchema.safeParse(value)
+  if (!parsed.success) return undefined
+  const { policy, version, kind, reason } = parsed.data
+  return { policy, version, kind, reason }
+}

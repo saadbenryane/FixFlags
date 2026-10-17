@@ -128,6 +128,23 @@ describe('GET /api/reports/[id]/status', () => {
     expect(await res.json()).toMatchObject({ code: 'HTTP_404', message: 'Report not found' })
   })
 
+  it('retains current search priority and distinct native identities without exposing connected search context', async () => {
+    const attentionPolicy = { policy: 'search', version: 3, kind: 'flag', reason: 'recorded_indexing_regression',
+      google: { property: 'private-property', dateRange: 'private-range' } }
+    const flags = [{ ...baseAudit.flags[0], id: 'current-search', checkId: 'robots-blocks-indexing', rubric: 'REACH', attentionPolicy,
+      fingerprint: 'check:robots-blocks-indexing' }]
+    prismaMock.audit.findUnique.mockResolvedValue({ ...baseAudit, flags })
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
+    const body = await res.json()
+    expect(body.partialFlags[0].fingerprint).toBe(flags[0]!.fingerprint)
+    expect(body.partialFlags[0].attentionPolicy).toEqual({ policy: 'search', version: 3, kind: 'flag', reason: 'recorded_indexing_regression' })
+    expect(JSON.stringify(body)).not.toMatch(/private-property|private-range/)
+    expect(body.agentMessages.some((item: { flagId?: string }) => item.flagId === 'current-search')).toBe(true)
+    expect(prismaMock.audit.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({ flags: expect.objectContaining({ select: expect.objectContaining({ fingerprint: true, attentionPolicy: true }) }) }),
+    }))
+  })
+
   it('streams report content without the parked Timeline payload while checking', async () => {
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
     expect(res.status).toBe(200)
@@ -145,6 +162,8 @@ describe('GET /api/reports/[id]/status', () => {
       }),
     ])
     expect(body.flagCount).toBe(1)
+    // The qualitative headline recommendation remains in the report, without an Attention announcement.
+    expect(body.agentMessages.some((item: { flagId?: string }) => item.flagId === 'f1')).toBe(false)
     expect(body.agentMessages).toEqual([
       expect.objectContaining({
         id: 'scan:a1:preparing',
@@ -157,10 +176,6 @@ describe('GET /api/reports/[id]/status', () => {
         content: 'I’m reviewing this page.',
       }),
       expect.objectContaining({ id: 'scan:a1:checking' }),
-      expect.objectContaining({
-        id: 'scan:a1:flag:f1',
-        evidenceRef: { auditId: 'a1', flagId: 'f1' },
-      }),
     ])
     expect(
       body.agentMessages.some(

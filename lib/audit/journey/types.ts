@@ -34,6 +34,10 @@ export interface JourneyFindingDraft {
   screenshotUrl?: string | null
   accessibilityEvidence?: string | null
   confidence?: number
+  /** Collection origin is independent of the diagnosis classification. */
+  source?: 'AI' | 'JOURNEY'
+  /** Declared native condition, independent of the customer-facing wording. */
+  conditionId?: string
   /** Classification of the finding for multi-step funnel analysis. */
   findingType?: 'friction' | 'broken-promise' | 'accessibility-barrier' | 'dead-end' | 'confusion' | null
 }

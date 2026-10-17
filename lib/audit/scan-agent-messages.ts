@@ -17,6 +17,8 @@ import { AGENT_SCAN_COPY } from '@/lib/marketing/copy'
 import { reviewPathLabel, canonicalizeDestination } from '@/lib/audit/url-identity'
 
 export type ScanAgentFlag = {
+  attentionPolicy?: unknown
+  supportingEvidenceUnreadable?: boolean
   id: string
   problem: string
   rubric: string

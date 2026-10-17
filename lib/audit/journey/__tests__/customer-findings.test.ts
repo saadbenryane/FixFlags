@@ -36,6 +36,9 @@ import {
   omitRepeatedCustomerFindings,
   persistJourneyResult,
 } from '@/lib/audit/journey/run-journey-reviews'
+import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
+import { collapseFlagsWithAffectedPaths, observationIdentity } from '@/lib/audit/flag-identity'
+import { projectedJourneyFinding } from '@/lib/audit/checks/journey-evidence'
 import { observationsForFlag } from '@/lib/audit/flag-observations'
 import { deriveTruthLabel } from '@/lib/report/explorer-model'
 
@@ -133,7 +136,7 @@ describe('customer Flags from a page walk', () => {
   })
 
   it('keeps different evaluator diagnoses distinct even when their title and class match', async () => {
-    const ai = { ...missingStep, checkId: 'journey-funnel-broken-promise', findingType: 'broken-promise' as const }
+    const ai = { ...missingStep, checkId: 'journey-funnel-broken-promise', source: 'AI' as const, findingType: 'broken-promise' as const }
     await persistJourneyResult('audit-1', { findings: [ai, { ...ai, evidence: 'The trial destination is a contact form.' }],
       steps: [], journeyType: 'first-visit', startUrl: page, status: 'COMPLETED', goalAchieved: true,
       blockedReason: null, abandonedReason: null, durationMs: 10, formProbe: null, actionTimeline: [] })
@@ -143,6 +146,52 @@ describe('customer Flags from a page walk', () => {
     expect(saved[0].evidence).toMatch(/^Reviewed at step/)
     expect(saved[0].source).toBe('AI')
     expect(deriveTruthLabel(saved[0].source, saved[0].checkId)).toBe('Observed')
+  })
+
+  it('keeps native diagnosis classification independent of AI origin and admitted check version', async () => {
+    mocks.owner = { taskId: 'native-walk' }
+    mocks.auditFindUnique.mockResolvedValue({ executionSpec: { version: 1, scope: 'SITE', targetUrl: page,
+      environment: 'production', checks: { 'journey-funnel-timeout': 1 }, outcomes: [], verificationTarget: null } })
+    const native = { ...missingStep, checkId: 'journey-funnel-timeout', source: 'JOURNEY' as const, findingType: 'friction' as const,
+      problem: 'Loading UI observed', evidence: 'A loading indicator was present at the checked destination.' }
+    await persistJourneyResult('audit-1', { findings: [native], steps: [], journeyType: 'first-visit', startUrl: page,
+      status: 'COMPLETED', goalAchieved: false, blockedReason: null, abandonedReason: null,
+      durationMs: 10, formProbe: null, actionTimeline: [] })
+    const saved = mocks.flagCreate.mock.calls[0][0].data
+    expect(saved.source).toBe('JOURNEY')
+    expect(saved.evidence).toMatch(/^Reproduced at step/)
+    expect(saved.whyItMatters).toContain('Loading UI was recorded')
+    expect(saved.supportingObservations.items[0]).toMatchObject({ source: 'JOURNEY', checkVersion: 1 })
+  })
+
+  it('does not group an AI interpretation with the same native recorded narrative', () => {
+    const native = { ...missingStep, checkId: 'journey-funnel-dead-end', source: 'JOURNEY' as const }
+    expect(omitRepeatedCustomerFindings([{ ...native, pageUrl: page }], [{ ...native, source: 'AI' as const }])).toHaveLength(1)
+  })
+
+  it('preserves declared funnel mechanisms and every observation through persistence, Improvement identity, and display', async () => {
+    mocks.owner = { taskId: 'native-walk' }
+    mocks.auditFindUnique.mockResolvedValue({ executionSpec: { version: 1, scope: 'SITE', targetUrl: page,
+      environment: 'production', checks: { 'journey-funnel-dead-end': 1 }, outcomes: [], verificationTarget: null } })
+    const base = { ...missingStep, checkId: 'journey-funnel-dead-end', source: 'JOURNEY' as const }
+    const empty = { ...base, conditionId: 'missing-content', problem: 'No recognized substantive content', evidence: 'No substantive content was recorded.' }
+    const noPath = { ...base, conditionId: 'missing-continuation', problem: 'No eligible continuation', evidence: 'No eligible same-origin link was recorded.' }
+    expect(projectedJourneyFinding(empty)).toBe(false)
+    expect(omitRepeatedCustomerFindings([], [empty, { ...empty, stepNumber: 2 }, noPath])).toHaveLength(2)
+    await persistJourneyResult('audit-1', { findings: [empty, { ...empty, stepNumber: 2 }, noPath], steps: [], journeyType: 'first-visit',
+      startUrl: page, status: 'COMPLETED', goalAchieved: false, blockedReason: null, abandonedReason: null,
+      durationMs: 10, formProbe: null, actionTimeline: [] }, undefined, undefined, true)
+    const rows = mocks.flagCreate.mock.calls.map((call, index) => ({ ...call[0].data, id: `saved-${index}` }))
+    expect(rows).toHaveLength(2)
+    expect(rows[0].fingerprint).not.toBe(rows[1].fingerprint)
+    expect(rows[0].supportingObservations.items).toHaveLength(2)
+    expect(rows[0].supportingObservations.items[0]).toMatchObject({ source: 'JOURNEY', checkId: 'journey-funnel-dead-end', checkVersion: 1 })
+    expect(new Set(rows.map(observationIdentity)).size).toBe(2)
+    expect(collapseFlagsWithAffectedPaths(rows)).toHaveLength(2)
+    const displayed = consolidateFlagsByCheck(rows)
+    expect(displayed).toHaveLength(2)
+    expect(displayed[0].supportingObservations).toEqual(rows[0].supportingObservations)
+    expect(displayed.map(row => row.fix)).toEqual(rows.map(row => row.fix))
   })
 
   it('appends a later equivalent observation without replacing the first task evidence', async () => {

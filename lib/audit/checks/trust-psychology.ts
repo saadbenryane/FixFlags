@@ -24,7 +24,10 @@ const TESTIMONIAL_QUALITY_MARKERS = [
   /"[^"]{40,}"/i,
 ]
 
-const TESTIMONIAL_PRESENCE_MARKERS = [
+const PROOF_REFERENCE = /\b(?:case\s+stud(?:y|ies)|(?:customer|client|user)\s+stor(?:y|ies))\b/i
+
+const PROOF_CONTENT_MARKERS = [
+  PROOF_REFERENCE,
   /\b(testimonial|what\s+customers\s+say|customer\s+story|case\s+stud(y|ies)|reviewed\s+by)\b/i,
   /\b(customer|user|client)\s+(quote|review|feedback)\b/i,
   /<blockquote/i,
@@ -108,7 +111,7 @@ export function runTrustPsychologyChecks(
 
   const hasAuthorityRef = AUTHORITY_MARKERS.some((p) => p.test(htmlText))
   const hasMediaName = MEDIA_NAMES.some((p) => p.test(htmlText))
-  const hasTestimonialLikeContent = TESTIMONIAL_PRESENCE_MARKERS.some((p) => p.test(bodyText))
+  const hasTestimonialLikeContent = PROOF_CONTENT_MARKERS.some((p) => p.test(bodyText))
   // New observations carry scoped quotation facts. The text-only reader remains
   // isolated for historical snapshots that did not record quotation blocks.
   const testimonialBlocks = meta.testimonialBlocks ?? (
@@ -119,7 +122,7 @@ export function runTrustPsychologyChecks(
   const hasSpecificTestimonial = hasTestimonialContent && testimonialBlocks.every(block => meta.testimonialBlocks
     ? block.quote.length >= 40 || TESTIMONIAL_QUALITY_MARKERS[0].test(block.attribution ?? '')
     : TESTIMONIAL_QUALITY_MARKERS.some(pattern => pattern.test(block.quote)))
-  const hasProofReference = hasTestimonialLikeContent || hasTestimonialContent || links.some(link => /\bcase stud(?:y|ies)\b/i.test(link.text))
+  const hasProofReference = hasTestimonialLikeContent || hasTestimonialContent || links.some(link => PROOF_REFERENCE.test(link.text))
   const hasDataClaim = DATA_SPECIFICITY.some((p) => p.test(bodyText))
   const hasCustomerLogos = hasLogoWall(meta.images ?? [])
   if (productPage && ctaTexts.length > 0) recordObservation(record, 'authority-signals', 'Captured authority signals',

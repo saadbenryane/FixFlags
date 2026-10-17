@@ -67,6 +67,14 @@ describe('reviewed live precision regressions', () => {
     expect(ids(runTrustPsychologyChecks(meta))).not.toContain('trust-no-authority-signals')
   })
 
+  it.each(['Customer stories', 'Explore customer stories', 'Client stories', 'User stories', 'Case studies'])(
+    'recognizes published proof references without inventing a quote: %s', label => {
+      const meta = page(`<p>Build and ship software with your team.</p><a href="/customers">${label}</a><a href="/start">Get started</a>`)
+      expect(ids(runTrustPsychologyChecks(meta))).not.toContain('trust-no-authority-signals')
+      expect(ids(runTrustPsychologyChecks(meta))).not.toContain('trust-testimonial-quality')
+      expect(meta.testimonialBlocks).toEqual([])
+    })
+
   it('reviews a real anonymous quote and accepts separately recorded attributed proof', () => {
     const broken = page('<figure><blockquote>Great product.</blockquote><figcaption>Customer feedback</figcaption></figure><a href="/start">Get started</a>')
     const repaired = page('<figure><blockquote>Great product.</blockquote><figcaption>Alex Smith, CTO at Acme</figcaption></figure><a href="/start">Get started</a>')

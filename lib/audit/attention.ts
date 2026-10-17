@@ -6,6 +6,7 @@
  * not POLISH = Recommendation.
  */
 
+import { hasUnreadableSupportingObservations } from './flag-observations'
 import { searchAttentionDecision } from './search/policy'
 
 export const MIN_ATTENTION_CONFIDENCE = 0.65
@@ -27,6 +28,8 @@ export type CustomerFlagInput = {
   impactTag?: string | null
   checkId?: string | null
   attentionPolicy?: unknown
+  supportingObservations?: unknown
+  supportingEvidenceUnreadable?: boolean
 }
 
 function checkBaseId(checkId?: string | null): string {
@@ -47,6 +50,7 @@ export function isJourneyCritical(flag: CustomerFlagInput): boolean {
  */
 export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   if (isResolvedFlagStatus(flag.status)) return false
+  if (flag.supportingEvidenceUnreadable || hasUnreadableSupportingObservations(flag.supportingObservations)) return false
   if (typeof flag.confidence === 'number' && flag.confidence < MIN_ATTENTION_CONFIDENCE) {
     return false
   }
@@ -54,8 +58,10 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   if (search) return search.kind === 'flag'
   // These identities record attributes or phrase matches. They do not prove
   // behavioral failure, even when a historical collector gave higher severity.
-  if (['form-missing-validation', 'h1-generic', 'no-cta-detected'].includes(checkBaseId(flag.checkId)) ||
-    /^(messaging-|friction-|trust-|hierarchy-|journey-funnel-(hesitation|confusion|too-many-steps|unclear-progress|missing-feedback|broken-promise|accessibility-barrier)$)/.test(checkBaseId(flag.checkId)) ||
+  if (['form-missing-validation', 'h1-generic', 'no-cta-detected', 'journey-signup-too-many-fields', 'journey-funnel-timeout', 'journey-funnel-dead-end',
+    'flow-destination-no-headline', 'flow-destination-cta-overload', 'journey-first-visit-destination-no-headline',
+    'journey-pricing-evaluation-destination-no-headline'].includes(checkBaseId(flag.checkId)) ||
+    /^(messaging-|friction-|trust-|hierarchy-|journey-(?:first-visit|pricing-evaluation|signup)-unclear-value-prop$|journey-funnel-(hesitation|confusion|too-many-steps|unclear-progress|missing-feedback|broken-promise|accessibility-barrier)$)/.test(checkBaseId(flag.checkId)) ||
     !flag.checkId && ['MESSAGE', 'EXPERIENCE', 'REACH'].includes(flag.rubric ?? '')) return false
   if (isJourneyCritical(flag)) return true
   if (flag.severity === 'CRITICAL') return true
@@ -69,13 +75,11 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
  * observations stay in the Report. Agent uses this during a Review so it does
  * not wait for a recommended change that may still be streaming.
  */
-export function isAttentionCandidate(flag: {
-  severity?: string | null
-  confidence?: number | null
-  status?: string | null
-}): boolean {
+export function isAttentionCandidate(flag: CustomerFlagInput): boolean {
   if (isResolvedFlagStatus(flag.status)) return false
+  if (flag.supportingEvidenceUnreadable || hasUnreadableSupportingObservations(flag.supportingObservations)) return false
   if (isPolishSeverity(flag.severity)) return false
+  if ((flag.checkId || flag.attentionPolicy) && !isCustomerFlag(flag)) return false
   if (typeof flag.confidence === 'number' && flag.confidence < MIN_ATTENTION_CONFIDENCE) {
     return false
   }
@@ -86,10 +90,7 @@ export function isAttentionCandidate(flag: {
  * Finish Plan / Improvement materialization. Same candidate rule, plus a
  * recommended change. A confirmed problem without a fix stays on the Fix list.
  */
-export function isWorthwhileAttentionFlag(flag: {
-  severity?: string | null
-  confidence?: number | null
-  status?: string | null
+export function isWorthwhileAttentionFlag(flag: CustomerFlagInput & {
   recommendedChange?: string | null
   fix?: string | null
 }): boolean {

@@ -11,8 +11,9 @@ import { isAtCheckLimit } from '@/lib/audit/usage'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { toRankableFlag } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
-import { buildFixList } from '@/lib/audit/finish-plan'
+import { buildFixArtifacts } from '@/lib/audit/finish-plan'
 import { loadVerificationReceiptsForReview } from '@/lib/products/workspace'
+import { hasUnreadableSupportingObservations } from '@/lib/audit/flag-observations'
 import type { ReportWorkspaceAuditDTO } from '@/lib/report/workspace'
 import { buildLiveExplorerModel, buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-projection'
@@ -367,6 +368,9 @@ export async function loadReportRouteState(
     }))
 
     const flags = audit.flags.map((f) => ({
+      fingerprint: f.fingerprint,
+      supportingObservations: f.supportingObservations,
+      attentionPolicy: f.attentionPolicy,
       id: f.id,
       checkId: f.checkId,
       rubric: f.rubric,
@@ -392,7 +396,7 @@ export async function loadReportRouteState(
     }))
 
     const allFlags = flags.map(toRankableFlag)
-    const fixList = buildFixList({
+    const { fixList, rankedFlags: canonicalFlags } = buildFixArtifacts({
       flags: allFlags,
       rubricRows,
       url: audit.url,
@@ -400,24 +404,6 @@ export async function loadReportRouteState(
       contract: audit.productContract,
       promptAccess: showDeterministicFixes ? 'all' : sampleFixFlag ? 'one' : 'none',
       demonstratedFlag: sampleFixFlag,
-    })
-    const flagsById = new Map(allFlags.map((flag) => [flag.id, flag]))
-    const canonicalFlags = fixList.items.flatMap((item) => {
-      const source = flagsById.get(item.id)
-      return source
-        ? [{
-            ...source,
-            checkId: item.checkId,
-            rubric: item.rubricName,
-            severity: item.severity,
-            impactTag: item.impactTag,
-            problem: item.problem,
-            evidence: item.evidence,
-            whyItMatters: item.whyItMatters ?? undefined,
-            verificationRule: item.verificationRule ?? undefined,
-            pageUrl: item.pageUrl ?? undefined,
-          }]
-        : []
     })
     const reportAudit: ReportWorkspaceAuditDTO = {
       accessContext,
@@ -477,6 +463,8 @@ export async function loadReportRouteState(
         rubric: flag.rubric,
         severity: flag.severity,
         checkId: flag.checkId,
+        attentionPolicy: flag.attentionPolicy,
+        supportingEvidenceUnreadable: hasUnreadableSupportingObservations(flag.supportingObservations),
         impactTag: flag.impactTag,
         pageUrl: flag.pageUrl,
         confidence: flag.confidence,

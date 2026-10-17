@@ -67,6 +67,8 @@ describe('page probe helpers', () => {
     const copy = { version: 1, pageUrl: 'https://example.com/', pageText: '', h2s: [], complete: true, textTruncated: false }
     assert.equal(await pageHasClearHeadline(fakePage({ ...copy, h1s: ['Plan useful projects for your team'] })), true)
     assert.equal(await pageHasClearHeadline(fakePage({ ...copy, h1s: [] })), false)
+    // A failed length predicate does not establish an absent heading.
+    assert.equal(await pageHasClearHeadline(fakePage({ ...copy, h1s: ['Pricing'] })), false)
   })
 
   it('detects a primary CTA and its text', async () => {

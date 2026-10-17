@@ -10,6 +10,9 @@ import {
 } from '@/lib/audit/finish-plan'
 
 type LiveFlag = {
+  fingerprint?: string | null
+  supportingObservations?: unknown
+  attentionPolicy?: unknown
   id: string
   checkId: string | null
   rubric: string
@@ -37,6 +40,9 @@ type LiveFlag = {
 export function toRankableFlag(flag: LiveFlag): RankableFlag {
   return {
     id: flag.id,
+    fingerprint: flag.fingerprint,
+    supportingObservations: flag.supportingObservations,
+    attentionPolicy: flag.attentionPolicy,
     checkId: flag.checkId,
     rubric: flag.rubric,
     severity: flag.severity,
@@ -92,7 +98,8 @@ export async function buildUnifiedPlanBundle(input: UnifiedPlanInput): Promise<{
   finishPlan: FinishPlan
 }> {
   const planInput = await buildPlanInput(input)
-  return buildFixArtifacts(planInput)
+  const { fixList, finishPlan } = buildFixArtifacts(planInput)
+  return { fixList, finishPlan }
 }
 
 /** Shared complete Fix List ranking for URL Review findings. */

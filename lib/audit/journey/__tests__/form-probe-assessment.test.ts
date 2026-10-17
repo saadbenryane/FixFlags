@@ -6,12 +6,15 @@ function input(status: number, existingCheckIds = new Set<string>()) {
 }
 
 describe('recorded form response assessment', () => {
-  it.each([401, 403, 422, 500])('preserves the existing response classification for %s', status => {
+  it.each([401, 403, 500])('uses the canonical response classification for %s', status => {
     const result = assessFormProbeResponse(input(status))
     expect(result.findings).toHaveLength(1)
     expect(result.findings[0]).toMatchObject({ checkId: status >= 500 ? 'form-submit-api-server-error' : 'form-submit-api-unauthorized', stepNumber: 3, url: 'https://example.com/signup', confidence: 0.85 })
     expect(result.findings[0].evidence).toContain(`POST ${status} https://example.com/submit`)
     expect(result.events).toEqual([{ kind: 'network', label: `Form probe ${status}`, url: 'https://example.com/submit', status }])
+  })
+  it.each([400, 404, 409, 422, 429])('does not invent authorization failure from a %s response', status => {
+    expect(assessFormProbeResponse(input(status))).toEqual({ findings: [], events: [{ kind: 'network', label: `Form probe ${status} (not classified as authorization or server failure)`, url: 'https://example.com/submit', status }] })
   })
   it('ignores unavailable responses and repeated findings', () => {
     expect(assessFormProbeResponse(input(0)).findings).toEqual([])

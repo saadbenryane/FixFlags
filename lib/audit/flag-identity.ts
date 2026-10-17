@@ -42,7 +42,7 @@ function isStableStoredIdentity(value: string): boolean {
  * identity when one exists; otherwise they key on rubric plus normalized title.
  */
 export function observationIdentity(input: ObservationIdentityInput): string {
-  if (input.fingerprint?.startsWith('ai-observation:v1::')) return input.fingerprint
+  if (input.fingerprint?.startsWith('ai-observation:v1::') || input.fingerprint?.startsWith('journey-observation:v1::')) return input.fingerprint
   if (input.fingerprint?.startsWith('outcome:v1:')) return input.fingerprint
   const checkId = durableCheckId(input.checkId)
   if (checkId) return `check:${checkId}`
@@ -55,7 +55,7 @@ export function observationIdentity(input: ObservationIdentityInput): string {
 
 /** Every key that should match this observation, including legacy stored hashes. */
 export function observationMatchKeys(input: ObservationIdentityInput): string[] {
-  if (input.fingerprint?.startsWith('ai-observation:v1::')) return [input.fingerprint]
+  if (input.fingerprint?.startsWith('ai-observation:v1::') || input.fingerprint?.startsWith('journey-observation:v1::')) return [input.fingerprint]
   if (input.fingerprint?.startsWith('outcome:v1:')) return [input.fingerprint]
   const keys = new Set<string>()
   keys.add(observationIdentity({ ...input, fingerprint: undefined }))

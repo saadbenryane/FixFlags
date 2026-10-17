@@ -87,5 +87,7 @@ export function nativeJourneyFlags(findings: JourneyFindingDraft[]) {
 
 /** A shared Flag must retain unsupported walkthrough failures alongside native observations. */
 export function projectedJourneyFinding(finding: JourneyFindingDraft) {
+  // Fresh funnel conditions have their own identity and cannot acquire a different landing-path assertion.
+  if (finding.source === 'JOURNEY' && finding.conditionId && finding.checkId.startsWith('journey-funnel-')) return false
   return finding.verificationRule === JOURNEY_VERIFICATION_RULE || ['journey-hidden-cta', 'journey-dead-end'].includes(durableCheckId(finding.checkId) ?? '')
 }

@@ -73,7 +73,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           </Card>
         )}
 
-        <div className="flex flex-wrap gap-3 border-t border-border/60 pt-6">
+        <div className="flex flex-wrap gap-3 pt-6">
           <Button asChild><Link href="/new">Analyze a website</Link></Button>
           <Button asChild variant="outline"><Link href="/docs/site-care">How Site care works</Link></Button>
         </div>

@@ -70,11 +70,11 @@ export async function recordJourneyResult(
     where: { id: auditId }, select: { executionSpec: true },
   }))?.executionSpec) : null
   const collectedAt = new Date().toISOString()
-  const observations = (finding: JourneyFindingDraft) => observationsForFlag({ ...finding, source: finding.findingType ? 'AI' : 'JOURNEY',
-    checkId: durableCheckId(finding.checkId) ?? finding.checkId,
+  const observations = (finding: JourneyFindingDraft) => observationsForFlag({ ...finding, source: finding.source === 'AI' ? 'AI' : 'JOURNEY',
+    checkId: finding.conditionId ? baseCheckId(finding.checkId) ?? finding.checkId : durableCheckId(finding.checkId) ?? finding.checkId,
     pageUrl: finding.verificationRule === JOURNEY_VERIFICATION_RULE ? finding.affectedPaths?.[0] ?? finding.url : finding.url,
   }, owner?.taskId ? { auditId, taskId: owner.taskId, collectedAt,
-    checkVersion: finding.findingType ? null : admitted?.checks[baseCheckId(finding.checkId)!] ?? admitted?.checks[durableCheckId(finding.checkId)!] ?? null } : undefined)
+    checkVersion: finding.source === 'AI' ? null : admitted?.checks[baseCheckId(finding.checkId)!] ?? admitted?.checks[durableCheckId(finding.checkId)!] ?? null } : undefined)
   const members = (finding: JourneyFindingDraft) => findingsToRecord.filter(item => journeyFindingIdentity(item) === journeyFindingIdentity(finding))
 
   const review = await executionWrite(tx => tx.journeyReview.create({
@@ -144,7 +144,7 @@ export async function recordJourneyResult(
     const saved = await executionWrite(async tx => {
       const candidates = await tx.flag.findMany({
         where: { auditId, ...(boundOutcome ? { fingerprint: outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey) } : {}) },
-        select: { id: true, checkId: true, problem: true, evidence: true, pageUrl: true },
+        select: { id: true, source: true, fingerprint: true, checkId: true, problem: true, evidence: true, pageUrl: true },
       })
       const existing = candidates.find(candidate => journeyFindingIdentity(candidate) === journeyFindingIdentity(f))
       if (existing) {
@@ -164,14 +164,15 @@ export async function recordJourneyResult(
         auditId, checkId: f.checkId, rubric: f.rubric, severity: f.severity as Severity,
         impactTag: f.impactTag as ImpactTag, problem: f.problem, evidence: f.evidence,
         whyItMatters: f.whyItMatters, fix: f.fix, confidence: f.confidence ?? 0.85,
-        source: f.findingType ? 'AI' : 'JOURNEY',
+        source: f.source === 'AI' ? 'AI' : 'JOURNEY',
         supportingObservations: owner?.taskId ? mergeSupportingObservations(grouped.map(observations)) as Prisma.InputJsonValue : undefined,
         verificationRule: f.verificationRule, evidenceTargets: f.evidenceTargets as Prisma.InputJsonValue | undefined,
         affectedPaths: f.affectedPaths,
         pageUrl: f.verificationRule === JOURNEY_VERIFICATION_RULE ? f.affectedPaths?.[0] ?? f.url : f.url,
         fingerprint: boundOutcome && f.checkId.startsWith('journey-checkout-failed-')
           ? outcomeFlagFingerprint(boundOutcome.outcomeId, boundOutcome.bindingKey)
-          : f.findingType ? newAiObservationFingerprint({ ...f, pageUrl: f.url }) : `journey:${f.checkId}:${f.url}`,
+          : f.source === 'AI' ? newAiObservationFingerprint({ ...f, pageUrl: f.url })
+          : f.conditionId && f.checkId.startsWith('journey-funnel-') ? journeyFindingIdentity(f) : `journey:${f.checkId}:${f.url}`,
         position: f.stepNumber,
       } })
     })

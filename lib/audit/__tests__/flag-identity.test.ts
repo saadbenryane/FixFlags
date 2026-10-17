@@ -1,3 +1,5 @@
+import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
+import { observationsForFlag, publicSupportingObservations } from '@/lib/audit/flag-observations'
 import { describe, expect, it } from 'vitest'
 import {
   baseCheckId,
@@ -9,6 +11,39 @@ import {
 } from '@/lib/audit/flag-identity'
 
 describe('Flag identity', () => {
+  it('retains independent AI diagnoses in report consolidation and merges support for declared equivalent native checks', () => {
+    const base = { id: 'native', checkId: 'buttons-no-text', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      problem: 'Unnamed control', evidence: 'Button has no accessible name', source: 'DETERMINISTIC', pageUrl: 'https://example.com/' }
+    const first = { ...base, supportingObservations: observationsForFlag(base,
+      { auditId: 'a1', taskId: 't1', collectedAt: '2026-10-17T03:00:00.000Z', checkVersion: 1 }) }
+    const second = { ...base, id: 'native-2', pageUrl: 'https://example.com/pricing', supportingObservations: observationsForFlag({ ...base, pageUrl: 'https://example.com/pricing' },
+      { auditId: 'a1', taskId: 't2', collectedAt: '2026-10-17T03:01:00.000Z', checkVersion: 1 }) }
+    const native = consolidateFlagsByCheck([first, second])
+    expect(native).toHaveLength(1)
+    expect(native[0].supportingObservations).toMatchObject({ items: expect.arrayContaining([
+      expect.objectContaining({ provenance: expect.objectContaining({ taskId: 't1' }) }),
+      expect.objectContaining({ provenance: expect.objectContaining({ taskId: 't2' }) }),
+    ]) })
+    const ai = [
+      { ...base, source: 'AI', fingerprint: 'ai-observation:v1::first' },
+      { ...base, id: 'ai-2', source: 'AI', fingerprint: 'ai-observation:v1::second' },
+    ]
+    expect(consolidateFlagsByCheck(ai)).toHaveLength(2)
+  })
+
+  it('preserves public observation views without reintroducing comparison context or provenance', () => {
+    const original = { source: 'DETERMINISTIC', checkId: 'buttons-no-text', pageUrl: 'https://example.com/',
+      evidence: 'Recorded control has no name', verificationRule: 'private-rule',
+      evidenceTargets: [{ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const,
+        label: 'Control', context: 'private-context' }] }
+    const visible = publicSupportingObservations(observationsForFlag(original,
+      { auditId: 'private-audit', taskId: 'private-task', collectedAt: '2026-10-17T03:00:00.000Z', checkVersion: 1 }))
+    const result = consolidateFlagsByCheck([{ ...original, id: 'public', rubric: 'EXPERIENCE', severity: 'IMPORTANT',
+      problem: 'Unnamed control', supportingObservations: visible }])
+    expect(result[0]!.supportingObservations).toEqual(visible)
+    expect(JSON.stringify(result[0]!.supportingObservations)).not.toMatch(/private-context|private-audit|private-task|private-rule/)
+  })
+
   it('removes page occurrence suffixes without losing the durable check', () => {
     expect(baseCheckId('cta-dead-link::page:2')).toBe('cta-dead-link')
     expect(flagFingerprint({
