@@ -10,10 +10,11 @@ import type { TaskContext } from '../registry'
 import { recordedPageEvidence } from '../lifecycle'
 
 describe('finding publication cost', () => {
-  it('attaches committed judge provenance after strict provider parsing without rewriting its artifact', async () => {
+  it.each([false, true])('attaches committed judge provenance after artifact parsing without rewriting grouped evidence: %s', async grouped => {
     const flag = { rubric: 'EXPERIENCE', impactTag: 'FRICTION', severity: 'IMPORTANT', problem: 'Action needs review',
       evidence: 'The captured button promises a trial but opens a contact form.', whyItMatters: 'Review the promise and destination.',
-      confidence: 0.8, pageUrl: 'https://example.com/' }
+      confidence: 0.8, pageUrl: 'https://example.com/',
+      ...(grouped ? { supportingReviews: [{ evidence: 'Description sentence one.' }, { evidence: 'Description sentence two.' }] } : {}) }
     const artifact = serializeArtifact('judge', { triage: { output: { pageJob: 'Explain a product', pageType: 'homepage',
       verdict: 'Review the action.', score: 80, launchReadiness: 'fix_first', launchChecklist: [], rubrics: [], newFlags: [flag] },
       usage: { inputTokens: 10, outputTokens: 10, model: 'recorded-provider' } } })
@@ -21,9 +22,13 @@ describe('finding publication cost', () => {
     const query = vi.fn().mockResolvedValueOnce([{ id: 'judge-task', workKind: 'judge', workState: 'COMPLETED', status: 'COMPLETED',
       workInput: { position: 0, pageUrl: flag.pageUrl, primary: true }, workResult: artifact }]).mockResolvedValueOnce([])
     const pages = await recordedPageEvidence('original-audit', undefined, { $queryRaw: query } as unknown as Pick<Prisma.TransactionClient, '$queryRaw'>)
-    expect(pages[0].triage?.output.newFlags[0]).toMatchObject({ fingerprint: expect.stringMatching(/^ai-observation:v1::/),
-      supportingObservations: { version: 1, items: [{ source: 'AI', checkVersion: null,
-        provenance: { auditId: 'original-audit', taskId: 'judge-task', collectedAt: artifact.collectedAt } }] } })
+    const admitted = pages[0].triage?.output.newFlags[0]
+    expect(admitted).toMatchObject({ fingerprint: expect.stringMatching(/^ai-observation:v1::/) })
+    const observations = (admitted as unknown as { supportingObservations: { items: Array<{ evidence: string; provenance: unknown }> } }).supportingObservations.items
+    expect(observations).toHaveLength(grouped ? 2 : 1)
+    for (const item of observations) expect(item).toMatchObject({ source: 'AI', checkVersion: null,
+      provenance: { auditId: 'original-audit', taskId: 'judge-task', collectedAt: artifact.collectedAt } })
+    expect(observations.map(item => item.evidence)).toEqual(grouped ? ['Description sentence one.', 'Description sentence two.'] : [flag.evidence])
     expect(JSON.stringify(artifact)).toBe(original)
   })
   it.each(['browser', 'http'] as const)('retains a %s parser limitation independently of successful native tasks', async kind => {

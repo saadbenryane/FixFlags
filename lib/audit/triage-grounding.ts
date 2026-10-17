@@ -38,18 +38,25 @@ function rejection(candidate: Candidate, facts: Facts): string | undefined {
   return undefined
 }
 
+function normalizeReferences(refs: NonNullable<Candidate['evidenceRefs']>) {
+  return [...new Map(refs.map(ref => [JSON.stringify([ref.source, ref.quote]), ref])).values()]
+    .sort((a, b) => a.source.localeCompare(b.source) || a.quote.localeCompare(b.quote))
+}
+
+function groundedRecommendation(candidate: Candidate, refs: NonNullable<Candidate['evidenceRefs']>): Candidate {
+  const copy = TRIAGE_REVIEW_COPY[candidate.reviewKind!]
+  return { ...candidate, evidenceRefs: refs, problem: `${copy.problem}: "${refs[0]!.quote.slice(0, 100)}"`,
+    evidence: refs.map(ref => `${TRIAGE_REVIEW_COPY.sources[ref.source]}: "${ref.quote}"`).join('\n') +
+      (candidate.device === 'none' ? '' : `\nReview device: ${candidate.device}.`), whyItMatters: copy.why }
+}
+
 /** Quotes anchor a review scope. They cannot establish an unrelated failure or business outcome. */
 export function assessTriageRecommendations(candidates: Candidate[], facts: Facts): { admitted: Candidate[]; assessment: TriageAssessment } {
   const rejected: TriageAssessment['rejected'] = []
   const admitted = candidates.flatMap((candidate, index) => {
     const reason = rejection(candidate, facts)
     if (reason) { rejected.push({ index, reason }); return [] }
-    const copy = TRIAGE_REVIEW_COPY[candidate.reviewKind!]
-    const refs = [...new Map(candidate.evidenceRefs!.map(ref => [JSON.stringify([ref.source, ref.quote]), ref])).values()].sort((a, b) => a.source.localeCompare(b.source) || a.quote.localeCompare(b.quote))
-    return [{ ...candidate, evidenceRefs: refs, problem: `${copy.problem}: "${refs[0]!.quote.slice(0, 100)}"`,
-      evidence: refs.map(ref => `${TRIAGE_REVIEW_COPY.sources[ref.source]}: "${ref.quote}"`).join('\n') +
-        (candidate.device === 'none' ? '' : `\nReview device: ${candidate.device}.`),
-      whyItMatters: copy.why }]
+    return [groundedRecommendation(candidate, normalizeReferences(candidate.evidenceRefs!))]
   })
   return { admitted, assessment: { kind: 'page-triage-assessment', version: 1, status: rejected.length ? 'PARTIAL' : 'COMPLETE',
     candidates, rejected, admittedCount: admitted.length } }
@@ -57,8 +64,8 @@ export function assessTriageRecommendations(candidates: Candidate[], facts: Fact
 
 /** Declared review scopes, never similar wording, determine redundant advisory actions. */
 export function deduplicateTriageRecommendations(candidates: Candidate[], native: DeterministicFlag[], pageUrl?: string): Candidate[] {
-  const seen = new Set<string>()
-  return candidates.filter(candidate => {
+  const grouped = new Map<string, Candidate>()
+  for (const candidate of candidates) {
     const page = canonicalizeDestination(candidate.pageUrl ?? pageUrl ?? '')?.key
     const refs = candidate.evidenceRefs ?? []
     const covered = native.some(flag => {
@@ -74,10 +81,22 @@ export function deduplicateTriageRecommendations(candidates: Candidate[], native
         ref.source === 'description' && ['description-too-short', 'description-too-long'].includes(id ?? ''))
       return false
     })
-    if (covered) return false
-    const identity = JSON.stringify([page, candidate.reviewKind, candidate.device, refs])
-    if (seen.has(identity)) return false
-    seen.add(identity)
-    return true
-  })
+    if (covered) continue
+    // Captured title and description are scalar fields. Quote fragments are evidence,
+    // not distinct targets, when the declared review concerns only those scalar fields.
+    const scalarMetadata = Boolean(page) && candidate.reviewKind === 'search-snippet' && refs.length > 0 &&
+      refs.every(ref => ref.source === 'title' || ref.source === 'description')
+    const targets = scalarMetadata ? [...new Set(refs.map(ref => ref.source))].sort() : refs
+    const identity = JSON.stringify([page, candidate.reviewKind, candidate.device, targets])
+    const prior = grouped.get(identity)
+    if (!prior) { grouped.set(identity, candidate); continue }
+    if (!scalarMetadata) continue
+    const supportingReviews = [...new Map([
+      ...(prior.supportingReviews ?? [{ evidence: prior.evidence }]),
+      ...(candidate.supportingReviews ?? [{ evidence: candidate.evidence }]),
+    ].map(review => [review.evidence, review])).values()].sort((a, b) => a.evidence.localeCompare(b.evidence))
+    const combined = groundedRecommendation(prior, normalizeReferences([...(prior.evidenceRefs ?? []), ...refs]))
+    grouped.set(identity, { ...combined, supportingReviews })
+  }
+  return [...grouped.values()]
 }

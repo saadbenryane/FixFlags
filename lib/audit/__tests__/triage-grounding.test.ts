@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { assessTriageRecommendations, deduplicateTriageRecommendations } from '../triage-grounding'
 import type { TriageOutput } from '../judge-triage-schema'
+import { admitAiObservation } from '../ai-observation-identity'
+import { buildTriageAiFlagRow } from '../persist'
+import { triageProviderOutputSchema, triageOutputSchema } from '../judge-triage-schema'
 import type { DeterministicFlag } from '../flag-types'
 
 type Candidate = TriageOutput['newFlags'][number]
@@ -76,6 +79,40 @@ describe('page triage source grounding', () => {
     const grouped = deduplicateTriageRecommendations(result.admitted, [], original.pageUrl!)
     expect(grouped).toHaveLength(1)
     expect(grouped[0]!.evidence).toBe('Action wording: "Start free"')
+  })
+  it('groups scalar metadata reviews across quote fragments while preserving each source observation through persistence', () => {
+    const metadata = { ...facts.metadata, description: 'Discover verified doctors. Search by location.' }
+    const reviews = ['Discover verified doctors.', 'Search by location.'].map(quote => candidate({
+      reviewKind: 'search-snippet', rubric: 'REACH', severity: 'POLISH', impactTag: 'SEO',
+      evidenceRefs: [{ source: 'title', quote: metadata.title }, { source: 'description', quote }],
+    }))
+    const result = assessTriageRecommendations(reviews, { ...facts, metadata })
+    const original = structuredClone(result)
+    const grouped = deduplicateTriageRecommendations(result.admitted, [], 'https://example.com/')
+    expect(grouped).toHaveLength(1)
+    expect(result).toEqual(original)
+    expect(grouped[0]!.evidence).toContain('Discover verified doctors.')
+    expect(grouped[0]!.evidence).toContain('Search by location.')
+    const parsed = triageOutputSchema.shape.newFlags.element.parse(grouped[0])
+    const origin = { auditId: 'original', taskId: 'judge-original', collectedAt: '2026-10-17T05:49:07.627Z' }
+    const admitted = admitAiObservation(parsed, origin)
+    const row = buildTriageAiFlagRow(admitted, 0, new Map(), new Map(), 0)
+    const supporting = row.supportingObservations as unknown as { items: Array<{ evidence: string; provenance: unknown }> }
+    expect(supporting.items).toHaveLength(2)
+    expect(supporting.items.map(item => item.evidence).sort()).toEqual(result.admitted.map(item => item.evidence).sort())
+    expect(supporting.items.every(item => JSON.stringify(item.provenance) === JSON.stringify(origin))).toBe(true)
+    const reversed = deduplicateTriageRecommendations([...result.admitted].reverse(), [], 'https://example.com/')[0]!
+    expect(admitAiObservation(reversed, origin).fingerprint).toBe(admitted.fingerprint)
+    expect(admitAiObservation(admitted, { ...origin, taskId: 'later' })).toEqual(admitted)
+    expect(triageProviderOutputSchema.shape.newFlags.element.safeParse(grouped[0]).success).toBe(false)
+  })
+  it('keeps distinct scalar targets, pages and review mechanisms separate despite shared wording', () => {
+    const title = candidate({ reviewKind: 'search-snippet', rubric: 'REACH', evidenceRefs: [{ source: 'title', quote: facts.metadata.title }] })
+    const description = { ...title, evidenceRefs: [{ source: 'description' as const, quote: facts.metadata.description }] }
+    const otherPage = { ...title, pageUrl: 'https://example.com/pricing' }
+    const copy = candidate({ reviewKind: 'copy-clarity', rubric: 'MESSAGE', evidenceRefs: [{ source: 'pageText', quote: facts.pageText }] })
+    const admitted = assessTriageRecommendations([title, description, otherPage, copy], facts).admitted
+    expect(deduplicateTriageRecommendations(admitted, [], title.pageUrl!)).toHaveLength(4)
   })
   it('groups only the same declared scope and retains unrelated native mechanisms, pages and visual devices', () => {
     const review = candidate({ reviewKind: 'copy-clarity', rubric: 'MESSAGE', evidenceRefs: [{ source: 'headline', quote: 'Plan releases together' }] })

@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto'
 import type { EvidenceTarget } from './evidence-targets'
-import { observationsForFlag } from './flag-observations'
+import { mergeSupportingObservations, observationsForFlag } from './flag-observations'
 
 type AiObservation = {
   rubric: string; problem: string; evidence: string; pageUrl?: string | null;
   evidenceTargets?: EvidenceTarget[]; fingerprint?: string | null;
   supportingObservations?: unknown; verificationRule?: string | null;
+  supportingReviews?: Array<{ evidence: string }>;
 }
 
 /** Fresh admissions use recorded scope and evidence. Historical identities stay intact. */
@@ -24,6 +25,11 @@ export function newAiObservationFingerprint(flag: AiObservation): string {
 export function admitAiObservation<T extends AiObservation>(flag: T, origin?: {
   auditId: string; taskId: string; collectedAt: string;
 }) {
-  return { ...flag, fingerprint: newAiObservationFingerprint(flag),
-    supportingObservations: observationsForFlag({ ...flag, source: 'AI' }, origin ? { ...origin, checkVersion: null } : undefined) }
+  const custody = origin ? { ...origin, checkVersion: null } : undefined
+  const supportingObservations = flag.supportingObservations != null || !flag.supportingReviews?.length
+    ? observationsForFlag({ ...flag, source: 'AI' }, custody)
+    : mergeSupportingObservations(flag.supportingReviews.map(review => observationsForFlag({
+      ...flag, source: 'AI', evidence: review.evidence,
+    }, custody)))
+  return { ...flag, fingerprint: newAiObservationFingerprint(flag), supportingObservations }
 }
