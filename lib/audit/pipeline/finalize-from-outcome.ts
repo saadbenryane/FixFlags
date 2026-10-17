@@ -112,11 +112,12 @@ async function finalizeTriageComplete(
   const rubricScores = productScoresFromFlags(pageRuns, input.recordedFlags)
 
   await ctx.events.log({ stage: 'finalizing', event: 'persist_started' })
-  await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
+  const recordedTriage = await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
   if (input.captureAdditionalEvidence !== false) await persistEvidenceAnchors(auditId, auditUrl, pageRuns, ctx.deadline)
 
   await finalizeTriageAudit({
     auditId,
+    recordedTriage,
     durationMs: ctx.clock.now().getTime() - startedAt.getTime(),
     pagespeedCalls: ctx.pagespeedCalls,
     pagesReviewed: pageRuns.length,

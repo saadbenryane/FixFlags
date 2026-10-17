@@ -327,7 +327,7 @@ export function flagKeyForRow(flag: {
   checkId: string | null
   fingerprint: string | null
 }): string {
-  if (flag.fingerprint?.startsWith('ai-observation:v1::')) return flag.fingerprint
+  if (flag.fingerprint?.startsWith('ai-observation:v1::') || flag.fingerprint?.startsWith('ai-observation:v2::')) return flag.fingerprint
   return flag.checkId ?? flag.fingerprint ?? ''
 }
 
@@ -336,12 +336,14 @@ export function isBlankText(value: string | null | undefined): boolean {
   return !value || value.trim().length === 0
 }
 
+export type RecordedTriage = Readonly<{ kind: 'recorded-triage'; version: 1; auditId: string }>
+
 export async function persistTriageResults(
   auditId: string,
   triageOutput: TriageOutput,
   deterministicFlags: DeterministicFlag[],
   rubricScores: Partial<Record<RubricName, number | null>>
-): Promise<void> {
+): Promise<RecordedTriage> {
 
   await executionTransaction(async (tx) => {
     const pages = await tx.auditPage.findMany({
@@ -477,6 +479,7 @@ export async function persistTriageResults(
       },
     })
   })
+  return { kind: 'recorded-triage', version: 1, auditId }
 }
 
 export async function mergePrescriptionResults(
@@ -528,9 +531,7 @@ export async function mergePrescriptionResults(
       })
     }
 
-    await tx.audit.update({
-      where: { id: auditId },
-      data: { status: 'FINALIZING', progress: PIPELINE_PROGRESS.FINALIZING_PERSIST },
-    })
+    // Enrichment does not reopen the completed analysis. The durable prescription
+    // task owns its progress and can retry after this transaction commits.
   })
 }

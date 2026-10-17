@@ -8,17 +8,27 @@ export async function loadAuditScreenshotBase64(
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
     select: {
+      url: true,
       screenshots: {
         where: { OR: [{ page: { position: 0 } }, { pageId: null }] },
         orderBy: [{ recordedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
-        select: { device: true, url: true },
+        select: { device: true, url: true, page: { select: { url: true, position: true } } },
       },
     },
   })
   if (!audit) return { desktopBase64: null, mobileBase64: null }
 
-  const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
-  const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
+  const primaryCaptures = audit.screenshots.filter(capture => {
+    try {
+      if (capture.page) return capture.page.position === 0 && new URL(capture.page.url).toString() === new URL(audit.url).toString()
+      // Historical root captures lack a page relation. Only their root names
+      // establish primary scope; a linked or journey capture cannot substitute.
+      const key = new URL(capture.url).searchParams.get('page')
+      return key === null || /^(?:capture-)?p0(?:-g[0-9]+)?$/.test(key)
+    } catch { return false }
+  })
+  const desktop = primaryCaptures.find((s) => s.device === 'DESKTOP')
+  const mobile = primaryCaptures.find((s) => s.device === 'MOBILE')
   let matchingMobile = false
   try {
     matchingMobile = Boolean(desktop && mobile && new URL(desktop.url).searchParams.get('page') === new URL(mobile.url).searchParams.get('page'))

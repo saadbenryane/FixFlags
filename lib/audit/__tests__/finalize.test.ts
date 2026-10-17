@@ -327,6 +327,20 @@ describe('finalizeTriageAudit', () => {
     expect(mocks.auditUpdate).not.toHaveBeenCalled()
   })
 
+  it('publishes committed triage while retaining missing coverage and rejected observations', async () => {
+    const evidence = { ...BASE_INPUT.evidence, metadata: false, aiAssessment: false }
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, failedModules: ['page-triage-evaluation'] })
+    await finalizeTriageAudit({ ...BASE_INPUT, evidence,
+      recordedTriage: { kind: 'recorded-triage', version: 1, auditId: BASE_INPUT.auditId } })
+    expect(mocks.auditUpdate.mock.calls[0][0].data).toMatchObject({ status: 'COMPLETED',
+      triageAt: expect.any(Date), reportCompleteness: 'PARTIAL', evidenceCoverage: evidence })
+  })
+
+  it('rejects a commit receipt for a different audit', async () => {
+    await expect(finalizeTriageAudit({ ...BASE_INPUT, evidence: { ...BASE_INPUT.evidence, aiAssessment: false },
+      recordedTriage: { kind: 'recorded-triage', version: 1, auditId: 'another-audit' } })).rejects.toThrow('Required audit evidence is incomplete')
+  })
+
   it('survives lead and graph snapshot failures', async () => {
     mocks.upsertLeadFromAudit.mockRejectedValue(new Error('lead failed'))
     mocks.persistAuditGraphSnapshot.mockRejectedValue(new Error('graph failed'))
@@ -413,6 +427,19 @@ describe('finalizeTriageDegraded', () => {
 })
 
 describe('finalizeAudit', () => {
+  it.each(['COMPLETED', 'FINALIZING'])('retains immutable partial triage coverage after prescription in %s', async status => {
+    resetMocks()
+    const evidence = { ...BASE_INPUT.evidence, aiAssessment: false, metadata: false }
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status, triageAt: new Date(), completedAt: new Date(),
+      reportCompleteness: 'PARTIAL', evidenceCoverage: evidence, failedModules: ['page-triage-evaluation'] })
+    await finalizeAudit({ ...BASE_INPUT, evidence })
+    const data = mocks.auditUpdate.mock.calls[0][0].data
+    expect(data).toMatchObject({ aiReviewAt: expect.any(Date), status: 'COMPLETED' })
+    expect(data).not.toHaveProperty('reportCompleteness')
+    expect(data).not.toHaveProperty('evidenceCoverage')
+    expect(data).not.toHaveProperty('failedModules')
+  })
+
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
 

@@ -1,3 +1,4 @@
+import { TaskFailure } from './progressive/contracts'
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { currentExecutionOwnership } from './execution-ownership'
 import { prisma } from '@/lib/db'
@@ -49,15 +50,15 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
   }
 
   const recordedMetadata = audit.htmlMetadata as PageMetadata | null
-  if (!recordedMetadata) throw new Error('Audit metadata missing for prescription')
-  if (recordedMetadata.renderedCopy !== undefined && !recordedMetadata.renderedCopy?.complete) throw new Error('Rendered page copy could not be observed.')
+  if (!recordedMetadata) throw new TaskFailure('PRESCRIPTION_PRIMARY_METADATA_MISSING', false)
+  if (recordedMetadata.renderedCopy !== undefined && !recordedMetadata.renderedCopy?.complete) throw new TaskFailure('PRESCRIPTION_PRIMARY_COPY_INCOMPLETE', false)
   const metadata = renderedContentMetadata(recordedMetadata)
   if (!audit.verdict || audit.score == null) {
-    throw new Error('Triage verdict missing for prescription')
+    throw new TaskFailure('PRESCRIPTION_ASSESSMENT_MISSING', false)
   }
 
   const { desktopBase64, mobileBase64 } = await loadAuditScreenshotBase64(auditId)
-  if (!desktopBase64) throw new Error('Desktop screenshot missing for prescription')
+  if (!desktopBase64) throw new TaskFailure('PRESCRIPTION_PRIMARY_CAPTURE_MISSING', true)
 
   const techStack = technologyNamesForPrompt(await loadTechnologyProfile(auditId))
 
@@ -138,6 +139,10 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
   }
 
   const evidence = audit.evidenceCoverage as {
+    desktopScreenshot?: boolean
+    mobileScreenshot?: boolean
+    metadata?: boolean
+    aiAssessment?: boolean
     desktopPageSpeed?: boolean
     mobilePageSpeed?: boolean
     flowScan?: boolean
@@ -158,10 +163,10 @@ export async function runAiReview(auditId: string, deadline?: number): Promise<v
       cacheWriteTokens: prescription.usage.cacheWriteTokens,
     },
     evidence: {
-      desktopScreenshot: true,
-      mobileScreenshot: Boolean(mobileBase64),
-      metadata: true,
-      aiAssessment: true,
+      desktopScreenshot: evidence?.desktopScreenshot === true,
+      mobileScreenshot: evidence?.mobileScreenshot === true,
+      metadata: evidence?.metadata === true,
+      aiAssessment: evidence?.aiAssessment === true,
       desktopPageSpeed: evidence?.desktopPageSpeed === true,
       mobilePageSpeed: evidence?.mobilePageSpeed === true,
       flowScan: evidence?.flowScan === true,

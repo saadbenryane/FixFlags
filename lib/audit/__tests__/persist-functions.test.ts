@@ -38,7 +38,6 @@ import {
   persistTriageResults,
   mergePrescriptionResults,
 } from '@/lib/audit/persist'
-import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 import type { RubricName } from '@prisma/client'
 
 function makeDet(overrides: Partial<DeterministicFlag> & Pick<DeterministicFlag, 'checkId'>): DeterministicFlag {
@@ -588,19 +587,12 @@ describe('mergePrescriptionResults', () => {
     })
 
     expect(mockTx.flag.update).not.toHaveBeenCalled()
-    expect(mockTx.audit.update).toHaveBeenCalledTimes(1)
+    expect(mockTx.audit.update).not.toHaveBeenCalled()
   })
 
-  it('updates audit status to FINALIZING', async () => {
-    await mergePrescriptionResults('audit-1', {
-      flagPrescriptions: [],
-      rubricPrescriptions: [],
-    })
-
-    expect(mockTx.audit.update).toHaveBeenCalledWith({
-      where: { id: 'audit-1' },
-      data: { status: 'FINALIZING', progress: PIPELINE_PROGRESS.FINALIZING_PERSIST },
-    })
+  it('retains the completed analysis while its independent prescription task enriches guidance', async () => {
+    await mergePrescriptionResults('audit-1', { flagPrescriptions: [], rubricPrescriptions: [] })
+    expect(mockTx.audit.update).not.toHaveBeenCalled()
   })
 
   it('discards a prescription with blank evidence instead of overwriting the flag', async () => {

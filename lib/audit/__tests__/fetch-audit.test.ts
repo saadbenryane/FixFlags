@@ -307,6 +307,24 @@ describe('getGatedAuditForRequest', () => {
     assert.deepEqual(await getGatedAuditForRequest('a1'), { kind: 'forbidden' })
   })
 
+  it.each(['AI_REVIEW_FAILED', 'AI_CONTRACT_INVALID'])('shows a terminal prescription failure instead of indefinite pending: %s', async failureCode => {
+    mocks.findUnique.mockResolvedValue({ ...fullRow, aiReviewAt: null, failureCode, reportCompleteness: 'PARTIAL',
+      evidenceCoverage: { metadata: false, aiAssessment: false } })
+    const result = await getGatedAuditForRequest('a1')
+    expect(result.kind).toBe('ok')
+    if (result.kind === 'ok') {
+      expect(result).toMatchObject({ aiReviewPending: false, prescriptionFailed: true, showPrescription: false })
+      expect(result.audit).toMatchObject({ reportCompleteness: 'PARTIAL', evidenceCoverage: { metadata: false, aiAssessment: false } })
+    }
+  })
+
+  it('keeps a prescription awaiting bounded input recovery pending', async () => {
+    mocks.findUnique.mockResolvedValue({ ...fullRow, aiReviewAt: null, failureCode: null, reportCompleteness: 'PARTIAL' })
+    const result = await getGatedAuditForRequest('a1')
+    expect(result.kind).toBe('ok')
+    if (result.kind === 'ok') expect(result).toMatchObject({ aiReviewPending: true, prescriptionFailed: false })
+  })
+
   it('returns a full gated report for the owner', async () => {
     mocks.findUnique.mockResolvedValue(fullRow)
     const result = await getGatedAuditForRequest('a1')

@@ -1,3 +1,6 @@
+import { assessTriageRecommendations } from '@/lib/audit/triage-grounding'
+import { admitAiObservation } from '@/lib/audit/ai-observation-identity'
+import { buildTriageAiFlagRow } from '@/lib/audit/persist'
 import { describe, expect, it, vi } from 'vitest'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { loadSiteFlags, loadSiteRecommendations } from '../flags'
@@ -14,6 +17,28 @@ vi.mock('@/lib/db', () => ({ prisma: { flag: prisma.flag, improvement: { findMan
 const site = { kind: 'provisional', primaryAuditId: 'audit-1' } as SiteRecord
 
 describe('customer Flag projector on Site load', () => {
+  it('shows one current scalar review across audits without rewriting either original observation', async () => {
+    const facts = { url: 'https://example.com/', pageText: 'Release planning for teams.',
+      metadata: { title: 'Plan releases together. Coordinate your team.', description: '', h1s: [], ctaTexts: [], hasStructuredData: false } }
+    const rows = ['Plan releases together.', 'Coordinate your team.'].map((quote, index) => {
+      const review = assessTriageRecommendations([{ reviewKind: 'search-snippet', rubric: 'REACH', device: 'none',
+        impactTag: 'SEO', severity: 'POLISH', confidence: 0.5, problem: 'Review title', evidence: quote,
+        whyItMatters: 'Check the wording against the page purpose.', pageUrl: facts.url, evidenceRefs: [{ source: 'title', quote }] }], facts).admitted[0]!
+      return { ...buildTriageAiFlagRow(admitAiObservation(review, { auditId: 'audit-' + index, taskId: 'judge-' + index,
+        collectedAt: '2026-10-17T07:00:00.000Z' }), 0, new Map(), new Map(), 0), id: 'review-' + index,
+        auditId: 'audit-' + index, status: 'OPEN', resolvedInId: null }
+    }).reverse()
+    const recorded = structuredClone(rows)
+    prisma.flag.findMany.mockResolvedValue(rows)
+    const owned = { kind: 'project', projectId: 'owned-site', primaryAuditId: 'audit-1' } as SiteRecord
+    expect((await loadSiteRecommendations(owned)).map(flag => flag.id)).toEqual(['review-1'])
+    expect(rows).toEqual(recorded)
+    expect(rows[0]!.fingerprint).toBe(rows[1]!.fingerprint)
+    expect(rows[0]!.evidence).not.toBe(rows[1]!.evidence)
+    expect(JSON.stringify(rows[0]!.supportingObservations)).toContain('judge-1')
+    expect(JSON.stringify(rows[1]!.supportingObservations)).toContain('judge-0')
+  })
+
   it('retains an unresolved claimed finding after a later partial check and scopes the query to its Site', async () => {
     prisma.flag.findMany.mockResolvedValue([{ id: 'claimed-contact', fingerprint: 'contact-failure', auditId: 'claimed-analysis',
       checkId: 'form-contact-submit-failed', rubric: 'EXPERIENCE', severity: 'IMPORTANT', impactTag: 'CONVERSION',

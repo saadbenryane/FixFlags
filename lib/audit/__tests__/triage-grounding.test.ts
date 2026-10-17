@@ -106,6 +106,23 @@ describe('page triage source grounding', () => {
     expect(admitAiObservation(admitted, { ...origin, taskId: 'later' })).toEqual(admitted)
     expect(triageProviderOutputSchema.shape.newFlags.element.safeParse(grouped[0]).success).toBe(false)
   })
+  it('keeps one declared scalar review identity across different valid fragments of identical captured metadata', () => {
+    const metadata = { ...facts.metadata, title: 'Plan releases together. Coordinate your team.' }
+    const observations = ['Plan releases together.', 'Coordinate your team.'].map((quote, index) => {
+      const grounded = assessTriageRecommendations([candidate({ reviewKind: 'search-snippet', rubric: 'REACH',
+        evidenceRefs: [{ source: 'title', quote }] })], { ...facts, metadata }).admitted[0]!
+      const parsed = triageOutputSchema.shape.newFlags.element.parse(grounded)
+      return admitAiObservation(parsed, { auditId: 'audit-' + index, taskId: 'judge-' + index, collectedAt: '2026-10-17T07:00:00.000Z' })
+    })
+    expect(observations[0]!.fingerprint).toBe(observations[1]!.fingerprint)
+    expect(observations[0]!.supportingObservations.items[0]!.evidence).not.toBe(observations[1]!.supportingObservations.items[0]!.evidence)
+    expect(observations.map(item => item.supportingObservations.items[0]!.provenance?.auditId)).toEqual(['audit-0', 'audit-1'])
+    expect(triageProviderOutputSchema.shape.newFlags.element.safeParse(observations[0]).success).toBe(false)
+    const changed = assessTriageRecommendations([candidate({ reviewKind: 'search-snippet', rubric: 'REACH',
+      evidenceRefs: [{ source: 'title', quote: 'Plan releases together.' }] })],
+      { ...facts, metadata: { ...metadata, title: 'Plan releases together. A changed recorded proposition.' } }).admitted[0]!
+    expect(admitAiObservation(changed).fingerprint).not.toBe(observations[0]!.fingerprint)
+  })
   it('keeps distinct scalar targets, pages and review mechanisms separate despite shared wording', () => {
     const title = candidate({ reviewKind: 'search-snippet', rubric: 'REACH', evidenceRefs: [{ source: 'title', quote: facts.metadata.title }] })
     const description = { ...title, evidenceRefs: [{ source: 'description' as const, quote: facts.metadata.description }] }

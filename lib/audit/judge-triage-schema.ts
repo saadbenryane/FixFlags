@@ -108,6 +108,7 @@ export const triageOutputSchema = z
             reviewKind: triageReviewKindSchema.optional(),
             evidenceRefs: z.array(triageEvidenceRefSchema).min(1).max(30).optional(),
             // Internal grouping retains each grounded review until committed task custody is attached.
+            fingerprint: z.string().regex(/^ai-observation:v2::[a-f0-9]{64}$/).optional(),
             supportingReviews: z.array(z.object({ evidence: z.string().min(1) }).strict()).min(1).max(5).optional(),
             device: z.enum(['desktop', 'mobile', 'none']).optional(),
             rubric: rubricNameSchema,
@@ -150,7 +151,7 @@ export type TriageOutput = z.infer<typeof triageOutputSchema>
 
 /** New provider admissions use one strict contract on both providers. */
 export const triageProviderOutputSchema = triageOutputSchema.extend({
-  newFlags: z.array(triageOutputSchema.shape.newFlags.element.omit({ supportingReviews: true }).extend({
+  newFlags: z.array(triageOutputSchema.shape.newFlags.element.omit({ supportingReviews: true, fingerprint: true }).extend({
     reviewKind: triageReviewKindSchema,
     evidenceRefs: z.array(triageEvidenceRefSchema).min(1).max(6),
     device: z.enum(['desktop', 'mobile', 'none']),

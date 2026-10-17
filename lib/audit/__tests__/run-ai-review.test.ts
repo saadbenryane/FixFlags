@@ -208,7 +208,7 @@ describe('runAiReview', () => {
 
   it('throws when metadata is missing', async () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata: null })
-    await assert.rejects(() => runAiReview('a1'), /metadata missing/)
+    await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_PRIMARY_METADATA_MISSING/)
   })
 
   it('uses observed prose for prescription without replacing stored HTML declarations', async () => {
@@ -224,18 +224,18 @@ describe('runAiReview', () => {
 
   it('does not send unobserved rendered prose to prescription', async () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, htmlMetadata: { title: 'Recorded page', renderedCopy: null } })
-    await expect(runAiReview('a1')).rejects.toThrow('Rendered page copy could not be observed')
+    await expect(runAiReview('a1')).rejects.toThrow('PRESCRIPTION_PRIMARY_COPY_INCOMPLETE')
     expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
   })
 
   it('throws when the verdict is missing', async () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, verdict: null })
-    await assert.rejects(() => runAiReview('a1'), /verdict missing/)
+    await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_ASSESSMENT_MISSING/)
   })
 
   it('throws when the desktop screenshot is missing', async () => {
     mocks.loadAuditScreenshotBase64.mockResolvedValue({ desktopBase64: null, mobileBase64: null })
-    await assert.rejects(() => runAiReview('a1'), /Desktop screenshot missing/)
+    await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_PRIMARY_CAPTURE_MISSING/)
   })
 
   it('runs prescription and finalizes on success', async () => {

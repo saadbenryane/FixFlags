@@ -1,3 +1,4 @@
+import { getUserFacingAuditError } from '../user-facing-errors'
 import type { Prisma, AuditVerifierExecution } from '@prisma/client'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { taskInputSchema } from './contracts'
@@ -16,6 +17,14 @@ export async function settleFailedFinalization(tx: Prisma.TransactionClient, tas
 /** Exhaustion is a recorded coverage gap, not disappearance of a failed check. */
 export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, task: CoverageTask, reason: string) {
   const input = taskInputSchema.parse(task.workInput)
+  if (task.workKind === 'prescription') {
+    const failureCode = reason === 'AI_CONTRACT_INVALID' ? 'AI_CONTRACT_INVALID' : 'AI_REVIEW_FAILED'
+    await tx.audit.updateMany({ where: { id: task.auditId, status: 'COMPLETED', triageAt: { not: null }, aiReviewAt: null },
+      data: { failureCode, failureStage: 'judging', errorMsg: getUserFacingAuditError(failureCode),
+        failureMetadata: { version: 1, phase: 'prescription', taskId: task.id, reason } } })
+    return
+  }
+
   if (task.workKind === 'fixture-setup') {
     const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { projectId: true, executionSpec: true } })
     const setup = readExecutionSpec(audit?.executionSpec)?.fixtureSetup

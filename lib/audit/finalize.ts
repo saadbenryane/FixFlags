@@ -1,3 +1,4 @@
+import type { RecordedTriage } from './persist'
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -30,6 +31,7 @@ type FinalizeBaseInput = {
     cacheReadTokens?: number
     cacheWriteTokens?: number
   }
+  recordedTriage?: RecordedTriage
   evidence: {
     desktopScreenshot: boolean
     mobileScreenshot: boolean
@@ -42,13 +44,14 @@ type FinalizeBaseInput = {
 }
 
 function completenessFromEvidence(evidence: {
+  aiAssessment?: boolean
   desktopScreenshot: boolean
   metadata: boolean
   desktopPageSpeed: boolean
   mobilePageSpeed: boolean
 }, unfinishedModules?: unknown): 'FULL' | 'PARTIAL' {
   if (Array.isArray(unfinishedModules) && unfinishedModules.some(module => typeof module === 'string' && module.length > 0)) return 'PARTIAL'
-  return evidence.desktopScreenshot &&
+  return evidence.aiAssessment !== false && evidence.desktopScreenshot &&
     evidence.metadata &&
     evidence.desktopPageSpeed &&
     evidence.mobilePageSpeed
@@ -173,7 +176,9 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     input.evidence.desktopScreenshot &&
     input.evidence.metadata &&
     input.evidence.aiAssessment
-  if (!requiredComplete) {
+  const recordedTriage = input.recordedTriage
+  const triageCommitted = recordedTriage?.kind === 'recorded-triage' && recordedTriage.version === 1 && recordedTriage.auditId === input.auditId
+  if (!requiredComplete && !triageCommitted) {
     throw new Error('Required audit evidence is incomplete')
   }
 
@@ -336,7 +341,9 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
   })
   if (!audit) throw new Error(`Audit ${input.auditId} not found during finalization`)
   if (audit.status === 'COMPLETED' && audit.completedAt && audit.aiReviewAt) return
-  const completedTriage = audit.status === 'COMPLETED' && audit.completedAt && audit.triageAt
+  // Prescription persistence may already have entered FINALIZING. Phase receipts
+  // retain the completed assessment independently of the current write stage.
+  const completedTriage = Boolean(audit.completedAt && audit.triageAt)
   if (!completedTriage && audit.status !== 'FINALIZING' && audit.status !== 'JUDGING') {
     throw new Error(`Audit ${input.auditId} is not ready to finalize prescription`)
   }
@@ -358,7 +365,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     input.evidence.desktopScreenshot &&
     input.evidence.metadata &&
     input.evidence.aiAssessment
-  if (!requiredComplete) {
+  if (!requiredComplete && !completedTriage) {
     throw new Error('Required audit evidence is incomplete')
   }
 
@@ -371,8 +378,8 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     data: {
       status: 'COMPLETED',
       progress: 100,
-      reportCompleteness: completeness,
-      evidenceCoverage: input.evidence,
+      // Repair guidance cannot fill missing observations or rewrite triage coverage.
+      ...(!completedTriage ? { reportCompleteness: completeness, evidenceCoverage: input.evidence } : {}),
       aiReviewAt: new Date(),
       completedAt: audit.completedAt ?? new Date(),
       finalizedAt: new Date(),

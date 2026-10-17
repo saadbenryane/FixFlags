@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { createHash } from 'node:crypto'
 import type { TriageOutput } from './judge-triage-schema'
 import type { TriageContext } from '../prompts/system-prompt'
 import { TRIAGE_TEXT } from './page-text-limits'
@@ -8,7 +9,7 @@ import { canonicalizeDestination } from './url-identity'
 import { TRIAGE_REVIEW_COPY } from '../marketing/copy/triage-review'
 
 type Candidate = TriageOutput['newFlags'][number]
-type Facts = Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'screenshotHint'>>
+type Facts = Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'screenshotHint' | 'url'>>
 export const triageAssessmentSchema = z.object({
   kind: z.literal('page-triage-assessment'), version: z.literal(1), status: z.enum(['COMPLETE', 'PARTIAL']),
   candidates: z.array(z.unknown()).max(5), rejected: z.array(z.object({ index: z.number().int().nonnegative(), reason: z.string() }).strict()).max(5),
@@ -50,13 +51,27 @@ function groundedRecommendation(candidate: Candidate, refs: NonNullable<Candidat
       (candidate.device === 'none' ? '' : `\nReview device: ${candidate.device}.`), whyItMatters: copy.why }
 }
 
+/** A quote names supporting evidence, not a new scalar metadata responsibility. */
+function recordedScalarReviewIdentity(candidate: Candidate, facts: Facts): string | undefined {
+  const refs = candidate.evidenceRefs ?? []
+  const page = canonicalizeDestination(candidate.pageUrl ?? facts.url ?? '')?.key
+  if (!page || candidate.reviewKind !== 'search-snippet' || !refs.length ||
+    refs.some(ref => ref.source !== 'title' && ref.source !== 'description')) return undefined
+  const sources = [...new Set(refs.map(ref => ref.source as 'title' | 'description'))].sort()
+  const scope = { page, kind: candidate.reviewKind, device: candidate.device,
+    values: sources.map(source => [source, facts.metadata[source] ?? null]) }
+  return `ai-observation:v2::${createHash('sha256').update(JSON.stringify(scope)).digest('hex')}`
+}
+
 /** Quotes anchor a review scope. They cannot establish an unrelated failure or business outcome. */
 export function assessTriageRecommendations(candidates: Candidate[], facts: Facts): { admitted: Candidate[]; assessment: TriageAssessment } {
   const rejected: TriageAssessment['rejected'] = []
   const admitted = candidates.flatMap((candidate, index) => {
     const reason = rejection(candidate, facts)
     if (reason) { rejected.push({ index, reason }); return [] }
-    return [groundedRecommendation(candidate, normalizeReferences(candidate.evidenceRefs!))]
+    const grounded = groundedRecommendation(candidate, normalizeReferences(candidate.evidenceRefs!))
+    const fingerprint = recordedScalarReviewIdentity(grounded, facts)
+    return [{ ...grounded, ...(fingerprint ? { fingerprint } : {}) }]
   })
   return { admitted, assessment: { kind: 'page-triage-assessment', version: 1, status: rejected.length ? 'PARTIAL' : 'COMPLETE',
     candidates, rejected, admittedCount: admitted.length } }

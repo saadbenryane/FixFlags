@@ -1,3 +1,10 @@
+import * as finalization from '@/lib/audit/finalize'
+import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
+import type { PageEvidence, PipelineContext } from '@/lib/audit/pipeline/types'
+import { parseMetadataFromHtml } from '@/lib/audit/metadata'
+import { assessTriageRecommendations } from '@/lib/audit/triage-grounding'
+import { triageOutputSchema } from '@/lib/audit/judge-triage-schema'
+import { flagKeyForRow } from '@/lib/audit/persist'
 import { TASK_QUEUES } from '../queues'
 import { randomUUID } from 'node:crypto'
 import { Prisma } from '@prisma/client'
@@ -293,6 +300,124 @@ run('URL-first analysis through claim and monitored repair', () => {
       await prisma.user.delete({ where: { id: actorId } })
     }
   }, 240_000)
+
+  it.each(['missing-linked-page', 'rejected-advisory', 'missing-primary-metadata', 'missing-primary-capture', 'interrupted-after-guidance', 'incomplete-prescriptions'] as const)(
+    'settles committed partial triage and its independent prescription obligation: %s', async condition => {
+      // Controlled triage/provider fixtures exercise real persistence, finalization,
+      // private storage and the durable worker. They do not prove live AI quality.
+      const project = await prisma.project.upsert({ where: { userId_canonicalHost: { userId: owner, canonicalHost: 'example.com' } },
+        create: { userId: owner, canonicalHost: 'example.com', url: origin, name: 'Partial triage lifecycle' }, update: {} })
+      const primaryMissing = condition === 'missing-primary-metadata', captureMissing = condition === 'missing-primary-capture'
+      const incompletePrescriptions = condition === 'incomplete-prescriptions'
+      const failedPrescriptions = primaryMissing || captureMissing || incompletePrescriptions
+      const interrupted = condition === 'interrupted-after-guidance'
+      const completion = interrupted ? vi.spyOn(finalization, 'finalizeAudit').mockRejectedValueOnce(new Error('Controlled interruption after guidance commit')) : null
+      const linkedUrl = origin + '/linked', reviewUrl = primaryMissing ? linkedUrl : pageUrl
+      const metadata = parseMetadataFromHtml('<title>Plan releases together. Coordinate your team.</title><h1>Release planning for teams</h1>', reviewUrl)
+      metadata.renderedCopy = { version: 1, pageUrl: reviewUrl, complete: true, textTruncated: false,
+        pageText: 'Release planning for teams', h1s: ['Release planning for teams'], h2s: [] }
+      const candidate = { reviewKind: 'search-snippet' as const, rubric: 'REACH' as const, device: 'none' as const,
+        impactTag: 'SEO' as const, severity: 'POLISH' as const, confidence: 0.5, problem: 'Review title',
+        evidence: 'Plan releases together.', whyItMatters: 'Review the wording in context.', pageUrl: reviewUrl,
+        evidenceRefs: [{ source: 'title' as const, quote: 'Plan releases together.' }] }
+      const grounded = assessTriageRecommendations([candidate,
+        ...(condition === 'rejected-advisory' ? [{ ...candidate, evidenceRefs: [{ source: 'title' as const, quote: 'An invented reference' }] }] : [])],
+        { url: reviewUrl, metadata, pageText: metadata.pageText })
+      const output = triageOutputSchema.parse({ pageJob: 'Explain release planning', pageType: 'homepage', verdict: 'Controlled review',
+        score: 75, launchReadiness: 'fix_first', launchChecklist: [],
+        rubrics: ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, score: 75, grade: 'C', status: 'NEEDS_WORK',
+          assessmentState: 'ASSESSED', confidence: 0.5, summary: 'Controlled observed scope.' })), newFlags: grounded.admitted })
+      const audit = await prisma.audit.create({ data: { userId: owner, projectId: project.id, url: pageUrl, status: 'FINALIZING',
+        startedAt: new Date(), includeAi: true, skipUsageCount: true,
+        htmlMetadata: primaryMissing ? Prisma.DbNull : metadata as unknown as Prisma.InputJsonValue,
+        executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl,
+          environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
+        pages: { create: [pageUrl, linkedUrl].map((url, position) => ({ url, normalizedUrl: url,
+          position, role: position ? 'linked' : 'primary', status: 'COMPLETED' })) } }, include: { pages: { orderBy: { position: 'asc' } } } })
+      capturedAudits.push(audit.id)
+      const review: PageEvidence = { pageId: audit.pages[primaryMissing ? 1 : 0]!.id, url: reviewUrl, metadata,
+        desktop: null, mobile: null, desktopScreenshot: true, mobileScreenshot: false, desktopBase64: '', mobileBase64: null,
+        flowScan: false, flags: [], failedModules: [], detectedTech: [], industryGuess: null,
+        triage: { output, assessment: grounded.assessment, usage: { inputTokens: 1, outputTokens: 1, model: 'controlled-triage' } } }
+      const absent: PageEvidence = { ...review, pageId: audit.pages[primaryMissing ? 0 : 1]!.id, url: primaryMissing ? pageUrl : linkedUrl,
+        metadata: null, desktopScreenshot: false, triage: undefined, failedModules: ['metadata'] }
+      const pages = condition === 'rejected-advisory' ? [review] : primaryMissing ? [absent, review] : [review, absent]
+      let expectedKeys: string[] = []
+      const provider = vi.spyOn(prescription, 'runPrescriptionWithRetry').mockImplementation(async input => {
+        const keys = [...new Set(input.existingFlags.map(flag => flag.flagKey))]
+        expect(keys).toEqual(expectedKeys)
+        const parsed = prescriptionOutputSchema.parse({ flagPrescriptions: (incompletePrescriptions ? [] : keys).map(flagKey => ({ flagKey,
+          evidence: 'Compatibility evidence never replaces the original.', whyItMatters: 'Review original evidence.',
+          fix: '1. Review the recorded title against the page purpose.', verificationRule: 'Retain every original condition.',
+          agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })),
+          rubricPrescriptions: input.rubrics.map(rubric => ({ name: rubric.name, rubricPrompt: 'Review the recorded scope.',
+            cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })) })
+        return { output: prescription.validatePrescriptionOutput(parsed, input.existingFlags),
+          usage: { inputTokens: 1, outputTokens: 1, model: 'controlled-prescription' } }
+      })
+      try {
+        const capturedPage = primaryMissing || captureMissing ? audit.pages[1]! : audit.pages[0]!
+        const key = 'capture-p' + capturedPage.position + '-g1'
+        const url = await uploadScreenshot(audit.id, 'desktop', Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a56sAAAAASUVORK5CYII=', 'base64'), key)
+        await prisma.screenshot.create({ data: { auditId: audit.id, pageId: capturedPage.id, device: 'DESKTOP', url, width: 1, height: 1 } })
+        const startedAt = new Date(), ctx: PipelineContext = { auditId: audit.id, deadline: Date.now() + 30_000,
+          startedAt, clock: systemClock, includeAi: true, pagespeedCalls: 0, usage: { inputTokens: 1, outputTokens: 1, models: ['controlled-triage'] },
+          trace: { executionId: audit.id, traceId: audit.id, attempt: 1 }, events: { log: async () => {} } }
+        await finalizeFromOutcome({ ctx, auditId: audit.id, auditUrl: pageUrl, pageRuns: pages, startedAt, captureAdditionalEvidence: false })
+        const committed = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
+        expect(committed).toMatchObject({ status: 'COMPLETED', triageAt: expect.any(Date), aiReviewAt: null, reportCompleteness: 'PARTIAL' })
+        expect(committed.evidenceCoverage).toMatchObject({ aiAssessment: false })
+        const findings = await prisma.flag.findMany({ where: { auditId: audit.id }, orderBy: { position: 'asc' } })
+        expect(findings).toHaveLength(1)
+        expectedKeys = [...new Set(findings.map(flagKeyForRow))]
+        await enqueuePendingAiReview(audit.id)
+        if (interrupted) {
+          await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } }))
+            .toMatchObject({ workState: 'RETRY_WAIT', workAttempts: 1 }), { timeout: 10_000, interval: 50 })
+          expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ status: 'COMPLETED',
+            aiReviewAt: null, completedAt: committed.completedAt, reportCompleteness: 'PARTIAL', evidenceCoverage: committed.evidenceCoverage })
+          expect((await prisma.flag.findFirstOrThrow({ where: { auditId: audit.id } })).fix.length).toBeGreaterThan(0)
+          completion!.mockRestore()
+          await prisma.auditVerifierExecution.updateMany({ where: { auditId: audit.id, workKind: 'prescription' }, data: { workRetryAt: new Date(0) } })
+          await prisma.audit.update({ where: { id: audit.id }, data: { dispatchNextAt: new Date(0) } })
+          await recoverProgressiveTasks()
+        }
+        await vi.waitFor(async () => {
+          const task = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+          expect(task).toMatchObject(primaryMissing ? { workState: 'BLOCKED', workErrorCode: 'PRESCRIPTION_PRIMARY_METADATA_MISSING' }
+            : captureMissing ? { workState: 'RETRY_WAIT', workErrorCode: 'PRESCRIPTION_PRIMARY_CAPTURE_MISSING' }
+            : incompletePrescriptions ? { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } : { workState: 'COMPLETED' })
+        }, { timeout: 15_000, interval: 50 })
+        if (captureMissing) {
+          expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ failureCode: null, aiReviewAt: null })
+          const pending = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: audit.id, workKind: 'prescription' } })
+          // Expire this disposable fixture's recovery window, never production time.
+          await prisma.auditVerifierExecution.update({ where: { id: pending.id }, data: { workRecoveryUntil: new Date(0) } })
+          await reconcileTasks(audit.id)
+          expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: pending.id } }))
+            .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: 'RECOVERY_EXHAUSTED' })
+        }
+        const settled = await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })
+        expect(settled).toMatchObject({ status: 'COMPLETED', reportCompleteness: committed.reportCompleteness,
+          evidenceCoverage: committed.evidenceCoverage, failedModules: committed.failedModules, triageAt: committed.triageAt,
+          completedAt: committed.completedAt, verdict: committed.verdict, score: committed.score,
+          aiReviewAt: failedPrescriptions ? null : expect.any(Date),
+          failureCode: incompletePrescriptions ? 'AI_CONTRACT_INVALID' : failedPrescriptions ? 'AI_REVIEW_FAILED' : null })
+        if (primaryMissing || captureMissing) expect(settled.failureMetadata).toMatchObject({ version: 1, phase: 'prescription',
+          reason: primaryMissing ? 'PRESCRIPTION_PRIMARY_METADATA_MISSING' : 'RECOVERY_EXHAUSTED' })
+        const after = await prisma.flag.findMany({ where: { auditId: audit.id }, orderBy: { position: 'asc' } })
+        for (let index = 0; index < findings.length; index++) {
+          expect(after[index]).toMatchObject({ id: findings[index]!.id, evidence: findings[index]!.evidence,
+            supportingObservations: findings[index]!.supportingObservations, verificationRule: findings[index]!.verificationRule })
+          expect(after[index]!.fix.length > 0).toBe(!failedPrescriptions)
+        }
+        expect(provider).toHaveBeenCalledTimes(primaryMissing || captureMissing ? 0 : interrupted ? 2 : 1)
+      } finally {
+        completion?.mockRestore()
+        provider.mockRestore()
+        await prisma.audit.delete({ where: { id: audit.id } })
+      }
+    }, 30_000)
 
   it('keeps completed triage available during optional prescription, provider failure and queue retry', async () => {
     const project = await prisma.project.upsert({ where: { userId_canonicalHost: { userId: owner, canonicalHost: 'example.com' } },

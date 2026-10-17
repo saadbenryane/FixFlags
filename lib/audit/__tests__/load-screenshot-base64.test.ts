@@ -49,11 +49,34 @@ describe('loadAuditScreenshotBase64', () => {
     expect(readScreenshot).toHaveBeenCalledWith('audit-1', 'mobile', 'p0-g2')
     expect(fetchMock).not.toHaveBeenCalled()
     expect(prismaMock.audit.findUnique).toHaveBeenCalledWith(expect.objectContaining({
-      select: { screenshots: expect.objectContaining({
+      select: { url: true, screenshots: expect.objectContaining({
         where: { OR: [{ page: { position: 0 } }, { pageId: null }] },
         orderBy: [{ recordedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
       }) },
     }))
+  })
+
+  it.each([
+    { page: { position: 1, url: 'https://example.com/linked' }, key: 'capture-p1-g1' },
+    { page: { position: 0, url: 'https://example.com/linked' }, key: 'capture-p0-g1' },
+    { page: null, key: 'capture-p1-g1' },
+    { page: null, key: 'p0-g1-flow-2' },
+  ])('does not borrow a linked or unrelated capture as primary: $key', async ({ page, key }) => {
+    prismaMock.audit.findUnique.mockResolvedValue({ url: 'https://example.com/', screenshots: [
+      { device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop?page=' + key, page },
+    ] })
+    readScreenshot.mockResolvedValue(Buffer.from('unrelated'))
+    expect(await loadAuditScreenshotBase64('audit-1')).toEqual({ desktopBase64: null, mobileBase64: null })
+    expect(readScreenshot).not.toHaveBeenCalled()
+  })
+
+  it('loads a capture bound to the actual primary page', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ url: 'https://example.com/', screenshots: [
+      { device: 'DESKTOP', url: 'https://fixflags.test/api/screenshots/audit-1/desktop?page=capture-p0-g2',
+        page: { position: 0, url: 'https://example.com/' } },
+    ] })
+    readScreenshot.mockResolvedValue(Buffer.from('primary'))
+    expect((await loadAuditScreenshotBase64('audit-1')).desktopBase64).toBe(Buffer.from('primary').toString('base64'))
   })
 
   it('returns null for missing devices and absent stored captures', async () => {
