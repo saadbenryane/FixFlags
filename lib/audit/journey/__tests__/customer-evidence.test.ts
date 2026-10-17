@@ -31,9 +31,10 @@ describe('customer walk evidence', () => {
     expect(deadEndFix('pricing-evaluation')).toContain('visible link to pricing or plans')
   })
 
-  it('uses those sentences on the walk that stores the Flag', () => {
+  it('keeps an unselected route incomplete and retains measured path notes', () => {
     const source = readFileSync(resolve(__dirname, '../run-template.ts'), 'utf8')
-    expect(source).toContain('evidence: pageHasNoNextStepEvidence()')
+    expect(source).toContain('abandonedReason = JOURNEY_ROUTE_COPY.continuationRouteNotSelected')
+    expect(source).not.toContain('This page has no way to continue')
     expect(source).toContain('evidence: pathTookTooManyStepsEvidence(maxSteps)')
     expect(source).not.toMatch(/evidence:.*abandonedReason/)
     expect(source).not.toContain('Journey reached')

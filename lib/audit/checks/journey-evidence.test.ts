@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { JOURNEY_VERIFICATION_RULE, journeyContext, journeyAssertions, journeyReceipts, nativeJourneyFlags, scopedJourneyFinding, type JourneyObservation } from './journey-evidence'
+import { JOURNEY_VERIFICATION_RULE, journeyObservationSchema, journeyContext, journeyAssertions, journeyReceipts, nativeJourneyFlags, scopedJourneyFinding, type JourneyObservation } from './journey-evidence'
 import { CHECK_REGISTRY } from '../check-registry'
 import { collapseFlagsWithAffectedPaths } from '../flag-identity'
 import { scopedAssertionForTarget } from './verification'
@@ -35,6 +35,17 @@ describe('independent public journey conditions', () => {
     }
     expect(scopedJourneyFinding({ ...draft, checkId: 'journey-signup-hidden-cta' }, [{ ...corrected, actionComplete: false }])).toBeUndefined()
     expect(scopedJourneyFinding({ ...draft, checkId: 'journey-signup-dead-end' }, [{ ...corrected, pathComplete: false }])).toBeUndefined()
+  })
+  it('keeps v3 unactivated-route assessment separate from historical v2 recovery', () => {
+    const original = { ...observation(), phase: 'landing' as const, route: [], nextPath: false, pathVersion: 2 as const }
+    const current = { ...original, nextPath: true, pathVersion: 3 as const }
+    expect(journeyObservationSchema.parse(original).pathVersion).toBe(2)
+    expect(journeyObservationSchema.parse(current).pathVersion).toBe(3)
+    expect(journeyContext(original, 'landing-path')).not.toBe(journeyContext(current, 'landing-path'))
+    for (const condition of ['landing-action', 'landing-headline', 'destination-form'])
+      expect(journeyContext(original, condition)).toBe(journeyContext(current, condition))
+    const historical = scopedJourneyFinding({ ...draft, checkId: 'journey-signup-dead-end' }, [original])!
+    expect(scopedAssertionForTarget({ receipt: receipt(current), checkId: historical.checkId, flag: historical })).toBeUndefined()
   })
   it('cannot use added native-input discovery to certify previous action findings as repaired', () => {
     const older = { ...observation(), actionVersion: 3 as const, actionComplete: true, primaryAction: false }
@@ -95,6 +106,12 @@ describe('independent public journey conditions', () => {
     const data = { ...observation(), phase: 'landing' as const, route: [], headline: false, nextPath: false, pathComplete: false }
     expect(journeyAssertions(data).find(assertion => assertion.key === 'landing-path')).toMatchObject({ complete: false })
     expect(journeyAssertions(data).find(assertion => assertion.key === 'landing-headline')).toMatchObject({ complete: true, passed: false })
+  })
+  it('does not promote a fresh specialty-route miss into a generic landing-path failure', () => {
+    const contact = { ...draft, checkId: 'journey-contact-support-dead-end', source: 'JOURNEY' as const }
+    expect(nativeJourneyFlags([contact])).toEqual([])
+    // Historical identity readers retain their original meaning and records.
+    expect(nativeJourneyFlags([{ ...contact, source: undefined }])[0]?.checkId).toBe('journey-dead-end')
   })
   it('verifies the shared missing-action identity across the original journey types', () => {
     const original = { ...observation(), phase: 'landing' as const, route: [], primaryAction: false }

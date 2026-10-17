@@ -1,3 +1,4 @@
+import { JOURNEY_ROUTE_COPY } from '@/lib/marketing/copy/verification-evidence'
 import { assessFunnelDestination } from './funnel-findings'
 import { assessFormProbeResponse, assessFormProbeConfirmation } from './form-probe-assessment'
 import type { Browser, Page } from 'playwright'
@@ -147,6 +148,7 @@ export async function runJourneyTemplate(
   const pageObservations: JourneyObservation[] = [], route: JourneyObservation['route'] = []
   let goalAchieved = false
   let abandonedReason: string | null = null
+  let blockedReason: string | null = null
   const timeline = createActionTimeline(started)
   const probeEmail = probeEmailForAudit(options.auditId)
   let refusedFromStep: number | null = null
@@ -236,26 +238,14 @@ export async function runJourneyTemplate(
     const landing = await observeJourneyPage(page, options.journeyType, 'landing', route,
       { headline: hasHeadline, primaryAction: cta.found, nextPath: Boolean(target), fieldCount: 0 }, refusedFromStep !== null, documentResponse, landingControls)
     if (landing) pageObservations.push(landing)
+    if (!target && options.journeyType === 'contact-support') {
+      blockedReason = 'contact_route_not_selected'
+      abandonedReason = JOURNEY_ROUTE_COPY.contactRouteNotSelected
+      return await finalize('ABANDONED')
+    }
     if (!target) {
-      abandonedReason = 'No suitable same-origin navigation target'
-      // A missing action already says there is no next step. Do not add a second Flag.
-      if (cta.found) {
-        findings.push(
-          finding({
-            checkId: `journey-${options.journeyType}-dead-end`,
-            stepNumber: 1,
-            url: page.url(),
-            rubric: 'EXPERIENCE',
-            severity: 'IMPORTANT',
-            impactTag: 'FRICTION',
-            problem: 'This page has no way to continue',
-            evidence: pageHasNoNextStepEvidence(),
-            whyItMatters: 'People who want to continue have nowhere to go.',
-            fix: deadEndFix(options.journeyType),
-            screenshotUrl: before1,
-          })
-        )
-      }
+      blockedReason = 'continuation_route_not_selected'
+      abandonedReason = JOURNEY_ROUTE_COPY.continuationRouteNotSelected
       return await finalize('ABANDONED')
     }
     if (options.journeyPageOnly && !options.expectedJourneyRoute?.length) return await finalize('ABANDONED')
@@ -889,7 +879,7 @@ export async function runJourneyTemplate(
       startUrl: options.startUrl,
       status: refusedFromStep === null ? status : 'ABANDONED',
       goalAchieved: refusedFromStep === null && goalAchieved,
-      ...(refusedFromStep === null ? {} : { blockedReason: 'protected_action_requires_fixture' }),
+      ...(refusedFromStep !== null ? { blockedReason: 'protected_action_requires_fixture' } : blockedReason ? { blockedReason } : {}),
       abandonedReason,
       steps,
       findings: (refusedFromStep === null ? findings : findings.filter(item => item.stepNumber < refusedFromStep!)).flatMap(item => {

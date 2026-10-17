@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { createHash } from 'node:crypto'
 import { captureObservationScopeSchema, captureObservationKey, capturePageKey } from '../browser/observation-scope'
-import { durableCheckId } from '../flag-identity'
+import { baseCheckId, durableCheckId } from '../flag-identity'
 import type { JourneyFindingDraft } from '../journey/types'
 import type { CheckAssertion } from './assertion'
 import { checkReceiptSchema } from './receipt'
@@ -15,7 +15,7 @@ export const journeyObservationSchema = z.object({
   available: z.boolean(), pathComplete: z.boolean(), headline: z.boolean(), primaryAction: z.boolean(),
   nextPath: z.boolean(), fieldCount: z.number().int().nonnegative(),
   headlineVersion: z.literal(2).optional(), headlineComplete: z.boolean().optional(),
-  actionVersion: z.union([z.literal(3), z.literal(4)]).optional(), actionComplete: z.boolean().optional(), pathVersion: z.literal(2).optional(), fieldVersion: z.literal(2).optional(),
+  actionVersion: z.union([z.literal(3), z.literal(4)]).optional(), actionComplete: z.boolean().optional(), pathVersion: z.union([z.literal(2), z.literal(3)]).optional(), fieldVersion: z.literal(2).optional(),
 }).strict()
 export type JourneyObservation = z.infer<typeof journeyObservationSchema>
 
@@ -26,6 +26,7 @@ export function journeyContext(observation: JourneyObservation, condition?: stri
   // Unchanged conditions retain their original comparable scope.
   const detector = condition?.endsWith('-action') ? observation.actionVersion ? 'rendered-action-v' + observation.actionVersion : 'primary-action-v2'
     : ['destination-form', 'destination-field-count'].includes(condition ?? '') && observation.fieldVersion === 2 ? 'editable-fields-v2'
+    : condition === 'landing-path' && observation.pathVersion === 3 ? 'rendered-path-v3'
     : condition === 'landing-path' && observation.pathVersion === 2 ? 'rendered-path-v2'
     : condition?.endsWith('-headline') && observation.headlineVersion === 2 ? 'rendered-headline-v2' : null
   const key = detector ? createHash('sha256').update(scope + ':' + detector).digest('hex') : scope
@@ -87,6 +88,8 @@ export function nativeJourneyFlags(findings: JourneyFindingDraft[]) {
 
 /** A shared Flag must retain unsupported walkthrough failures alongside native observations. */
 export function projectedJourneyFinding(finding: JourneyFindingDraft) {
+  // A specialty selector that found no matching route did not measure landing-path absence.
+  if (finding.source === 'JOURNEY' && baseCheckId(finding.checkId) === 'journey-contact-support-dead-end') return false
   // Fresh funnel conditions have their own identity and cannot acquire a different landing-path assertion.
   if (finding.source === 'JOURNEY' && finding.conditionId && finding.checkId.startsWith('journey-funnel-')) return false
   return finding.verificationRule === JOURNEY_VERIFICATION_RULE || ['journey-hidden-cta', 'journey-dead-end'].includes(durableCheckId(finding.checkId) ?? '')

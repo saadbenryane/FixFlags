@@ -45,7 +45,8 @@ try {
   const only = arguments_[0] === '--only'
   const suites = only ? arguments_.slice(1) : [
     'lib/audit/progressive/__tests__/execution.integration.test.ts',
-    'lib/audit/progressive/__tests__/dispatch.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts', ...arguments_,
+    'lib/audit/progressive/__tests__/dispatch.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts',
+    'lib/audit/journey/__tests__/page-observation.browser.test.ts', 'lib/audit/journey/__tests__/entry-route.browser.test.ts', ...arguments_,
   ]
   if (!suites.some(argument => !argument.startsWith('-'))) throw new Error('Choose at least one focused verification suite')
   // Global scheduler and recovery suites share this disposable database.

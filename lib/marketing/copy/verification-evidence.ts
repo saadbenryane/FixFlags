@@ -15,3 +15,8 @@ export const EDITOR_EVIDENCE_COPY = {
   verifyAll: 'Recheck every recorded supporting observation on its original page and device. Missing or unavailable evidence does not establish a passed check.',
   unreadable: 'The recorded supporting evidence could not be read. Recheck the affected page before preparing a fix.',
 } as const
+
+export const JOURNEY_ROUTE_COPY = {
+  continuationRouteNotSelected: 'No eligible continuation link was selected from the recorded page. This route check did not activate unlinked controls or establish whether another action can continue.',
+  contactRouteNotSelected: 'No matching contact or help route was selected from the recorded links. This route check does not establish whether a contact method is available on the page.',
+} as const

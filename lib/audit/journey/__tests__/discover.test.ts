@@ -126,6 +126,16 @@ describe('pickTargetForJourney', () => {
     assert.equal(target, links[0])
   })
 
+  it('keeps a missing specialty match distinct from an empty navigation inventory', () => {
+    const recorded = links.filter(item => item.category !== 'resources')
+    recorded.push(link({ href: 'https://example.com/login', text: 'Log in', category: 'secondary-cta' }))
+    recorded.push(link({ href: 'https://example.com/privacy', text: 'Privacy', category: 'secondary-cta' }))
+    expect(recorded).toHaveLength(4)
+    expect(pickTargetForJourney('contact-support', recorded)).toBeNull()
+    for (const type of ['first-visit', 'pricing-evaluation', 'signup', 'multi-step-funnel'] as const)
+      expect(pickTargetForJourney(type, recorded)).not.toBeNull()
+  })
+
   it('finds a contact link when present', () => {
     const withContact = [link({ href: 'https://example.com/contact', text: 'Contact us', score: 70, category: 'secondary-cta' })]
     const target = pickTargetForJourney('contact-support', withContact)
