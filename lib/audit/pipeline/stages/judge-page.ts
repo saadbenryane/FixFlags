@@ -110,13 +110,13 @@ export async function judgePageStage(
 
   return {
     status: artifact.triage
-      ? 'complete'
+      ? artifact.triage.assessment?.status === 'PARTIAL' ? 'partial' : 'complete'
       : artifact.triageFailure?.reason === 'no_provider_keys' ||
           artifact.triageFailure?.reason === 'deadline_exhausted'
         ? 'skipped'
         : 'partial',
     artifact,
-    evidenceGaps: artifact.triageFailure
+    evidenceGaps: artifact.triage?.assessment?.status === 'PARTIAL' ? ['judge:ungrounded_candidates'] : artifact.triageFailure
       ? [`judge:${artifact.triageFailure.reason}`]
       : [],
     durationMs: ctx.clock.now().getTime() - startedAt,

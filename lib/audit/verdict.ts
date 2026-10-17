@@ -1,3 +1,4 @@
+import { isCustomerFlag } from './attention'
 import type { ProductContract } from './product-contract'
 import { rankFlagsByPriority, type RankableFlag } from './priority-flags'
 
@@ -45,7 +46,7 @@ export function groundedReportVerdict(
   contract?: ProductContract | null
 ): string {
   const topFlag = rankFlagsByPriority(
-    flags.map((flag, index) => ({ ...flag, id: flag.id ?? `verdict-${index}` })),
+    flags.filter(isCustomerFlag).map((flag, index) => ({ ...flag, id: flag.id ?? `verdict-${index}` })),
     rubrics,
     1,
     contract

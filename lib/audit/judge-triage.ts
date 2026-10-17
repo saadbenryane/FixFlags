@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import {
-  triageOutputSchema,
+  triageProviderOutputSchema,
   QUALITY_TRIAGE_SCHEMA_OPENAI,
   QUALITY_TRIAGE_TOOL,
   type TriageOutput,
@@ -11,6 +11,7 @@ import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
 import { getTriageProviderConfig } from './judge-config'
+import { assessTriageRecommendations, type TriageAssessment } from './triage-grounding'
 import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
@@ -29,6 +30,7 @@ export type TriageUsage = LlmUsage
 export interface TriageResult {
   output: TriageOutput
   usage: TriageUsage
+  assessment?: TriageAssessment
 }
 
 export function isTriageProviderConfigured(): boolean {
@@ -128,13 +130,17 @@ function parseTriageOutput(
   raw: unknown,
   flags: DeterministicFlag[],
   pagePurpose: ReturnType<typeof detectPagePurpose>['purpose'],
-  context: ReturnType<typeof buildTriageContext>
-): TriageOutput {
-  const parsed = triageOutputSchema.safeParse(normalizeTriageRawOutput(raw))
+  context: TriageContext
+): Pick<TriageResult, 'output' | 'assessment'> {
+  const parsed = triageProviderOutputSchema.safeParse(normalizeTriageRawOutput(raw))
   if (!parsed.success) {
     throw new Error(`Invalid triage output: ${parsed.error.message}`)
   }
-  return validateTriageOutput(parsed.data, flags, pagePurpose, context)
+  const { assessment } = assessTriageRecommendations(parsed.data.newFlags, context)
+  const scoped = { ...parsed.data, newFlags: parsed.data.newFlags.map(flag => ({ ...flag, pageUrl: context.url })) }
+  const output = validateTriageOutput(scoped, flags, pagePurpose, context)
+  return { output,
+    assessment: { ...assessment, admittedCount: output.newFlags.length, rubrics: parsed.data.rubrics, verdict: parsed.data.verdict } }
 }
 
 async function runAnthropicTriage(
@@ -203,7 +209,7 @@ async function runAnthropicTriage(
     }
 
     return {
-      output: parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown', context),
+      ...parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown', { ...context, screenshotHint: getScreenshotHint(desktopBase64, mobileBase64) }),
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -285,7 +291,7 @@ async function runOpenAITriage(
 
     const raw = JSON.parse(rawContent)
     return {
-      output: parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown', context),
+      ...parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown', { ...context, screenshotHint: getScreenshotHint(desktopBase64, mobileBase64) }),
       usage: {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,

@@ -232,6 +232,9 @@ describe('flow-cta-unclickable probe reliability', () => {
 })
 
 describe('AI triage confidence gate (CRITICAL needs corroboration-grade confidence)', () => {
+  const context = { pageText: 'Welcome to the future', metadata: { title: null, description: null,
+    h1s: ['Welcome to the future'], ctaTexts: [], hasStructuredData: false } }
+
   const deterministic: DeterministicFlag[] = []
 
   function triageWithFlag(severity: 'CRITICAL' | 'IMPORTANT', confidence: number): TriageOutput {
@@ -282,6 +285,7 @@ describe('AI triage confidence gate (CRITICAL needs corroboration-grade confiden
           rubric: 'MESSAGE',
           impactTag: 'CLARITY',
           severity,
+          reviewKind: 'copy-clarity', evidenceRefs: [{ source: 'headline', quote: 'Welcome to the future' }], device: 'none',
           problem: 'Hero headline reads like a generic template phrase',
           evidence: 'H1: "Welcome to the future" appears generic.',
           whyItMatters: 'Visitors do not know what the product does.',
@@ -293,13 +297,13 @@ describe('AI triage confidence gate (CRITICAL needs corroboration-grade confiden
   }
 
   it('downgrades low-confidence CRITICAL AI flags to IMPORTANT', () => {
-    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.85), deterministic)
+    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.85), deterministic, 'unknown', context)
     expect(out.newFlags[0]?.severity).toBe('IMPORTANT')
     expect(out.newFlags[0]?.confidence).toBe(0.85)
   })
 
   it('keeps CRITICAL when confidence clears the gate', () => {
-    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.95), deterministic)
+    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.95), deterministic, 'unknown', context)
     expect(out.newFlags[0]?.severity).toBe('CRITICAL')
   })
 
@@ -319,14 +323,14 @@ describe('AI triage confidence gate (CRITICAL needs corroboration-grade confiden
         confidence: 1,
         source: 'DETERMINISTIC',
       },
-    ])
+    ], 'unknown', context)
 
     expect(out.verdict).toBe('Highest priority: Mobile LCP is critically slow (5.5s).')
     expect(out.verdict).not.toContain('call-to-action')
   })
 
   it('rejects model-invented priorities for a positively identified placeholder', () => {
-    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.99), deterministic, 'placeholder')
+    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.99), deterministic, 'placeholder', context)
     expect(out.newFlags).toEqual([])
     expect(out.verdict).not.toContain('generic template phrase')
   })

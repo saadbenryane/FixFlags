@@ -259,6 +259,7 @@ type TriageFlag = TriageOutput['newFlags'][number]
 
 function ai(partial: Partial<TriageFlag> = {}): TriageFlag {
   return {
+    reviewKind: 'copy-clarity', evidenceRefs: [{ source: 'headline', quote: 'Build something better' }], device: 'none',
     rubric: 'MESSAGE', impactTag: 'CLARITY', severity: 'IMPORTANT',
     problem: 'Headline lacks audience specificity',
     evidence: 'The headline "Build something better" does not identify its intended audience.',
@@ -278,7 +279,7 @@ const deduplicators = [
 for (const [name, deduplicate] of deduplicators) {
   describe(`${name} deduplication scope`, () => {
     it('keeps a headline finding when its deterministic counterpart is on another page', () => {
-      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', evidence: 'Recorded H1: Build something better', pageUrl: root })]
       assert.equal(deduplicate(deterministic, [ai({ pageUrl: pricing })]).length, 1)
       assert.equal(deduplicate(deterministic, [ai({ pageUrl: root })]).length, 0)
     })
@@ -295,7 +296,7 @@ for (const [name, deduplicate] of deduplicators) {
     })
 
     it('resolves null page URLs to the supplied primary page without hiding other pages', () => {
-      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', evidence: 'Recorded H1: Build something better', pageUrl: root })]
       assert.equal(deduplicate(deterministic, [ai()], root).length, 0)
       assert.equal(deduplicate(deterministic, [ai()], pricing).length, 1)
       assert.equal(deduplicate([], [ai(), ai({ pageUrl: root })], root).length, 1)
@@ -308,7 +309,7 @@ for (const [name, deduplicate] of deduplicators) {
     })
 
     it('normalizes page fragments but preserves distinct query variants', () => {
-      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+      const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', evidence: 'Recorded H1: Build something better', pageUrl: root })]
       assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '#hero' })]).length, 0)
       assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '?variant=b' })]).length, 1)
     })
@@ -342,16 +343,20 @@ const context = { url: root, pageText: 'Build something better',
 
 it('passes the reviewed page from triage validation into deduplication', () => {
   const output = triageOutput([ai()])
-  const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', pageUrl: root })]
+  const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', evidence: 'Recorded H1: Build something better', pageUrl: root })]
   assert.equal(validateTriageOutput(output, deterministic, 'unknown', context).newFlags.length, 0)
   assert.equal(validateTriageOutput(output, deterministic, 'unknown', { ...context, url: pricing }).newFlags.length, 1)
 })
 
 it('does not let an unsupported AI observation suppress a later source-backed finding', () => {
   const supported = ai()
-  const unsupported = ai({ evidence: 'The headline says "Guaranteed results for everybody".' })
+  const unsupported = ai({ evidenceRefs: [{ source: 'headline', quote: 'Guaranteed results for everybody' }], evidence: 'The headline says "Guaranteed results for everybody".' })
   for (const newFlags of [[unsupported, supported], [supported, unsupported]]) {
-    assert.deepEqual(validateTriageOutput(triageOutput(newFlags), [], 'unknown', context).newFlags, [supported])
+    const result = validateTriageOutput(triageOutput(newFlags), [], 'unknown', context).newFlags
+    assert.equal(result.length, 1)
+    assert.match(result[0]!.problem, /^Review/)
+    assert.match(result[0]!.evidence, /Build something better/)
+    assert.doesNotMatch(result[0]!.evidence, /Guaranteed results/)
   }
 })
 

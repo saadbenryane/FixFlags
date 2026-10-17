@@ -1,6 +1,5 @@
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
-import { deduplicateTriageFlags } from '@/lib/audit/deduplicate'
 import {
   assertValidRubrics,
   assertRubricConsistency,
@@ -9,7 +8,8 @@ import {
 import { groundedReportVerdict } from './verdict'
 import type { PagePurpose } from './page-purpose'
 import type { TriageContext } from '@/lib/prompts/system-prompt'
-import { TRIAGE_TEXT } from './page-text-limits'
+import { triageCategorySummary } from '../marketing/copy/triage-review'
+import { assessTriageRecommendations, deduplicateTriageRecommendations } from './triage-grounding'
 
 /**
  * AI triage flags are a single LLM read over screenshots + page text, so a
@@ -63,35 +63,19 @@ function enforceAiConfidenceGates(
   })
 }
 
-function normalizedEvidenceText(value: string): string {
-  return value.toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim()
-}
-
-/** Content judgments need a real excerpt, not the model's paraphrase of a supposed absence. */
+/** All fresh recommendations require their declared source references before deduplication. */
 export function groundTriageTextFlags(
   flags: TriageOutput['newFlags'],
-  context: Pick<TriageContext, 'pageText' | 'metadata'>
+  context: Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'screenshotHint'>>
 ): TriageOutput['newFlags'] {
-  const captured = normalizedEvidenceText([
-    context.pageText.slice(0, TRIAGE_TEXT), context.metadata.title,
-    context.metadata.description, ...context.metadata.h1s, ...context.metadata.ctaTexts,
-  ].filter(Boolean).join('\n'))
-  return flags.filter(flag => {
-    // Layout observations can be grounded in screenshots without quoted copy.
-    if (flag.rubric === 'EXPERIENCE') return Boolean(flag.evidence.trim())
-    const excerpts = [...flag.evidence.matchAll(/["“]([^"”]+)["”]|'([^'\n]+)'/g)]
-    return excerpts.some(match => {
-      const excerpt = normalizedEvidenceText(match[1] ?? match[2])
-      return excerpt.length >= 6 && captured.includes(excerpt)
-    })
-  })
+  return assessTriageRecommendations(flags, context).admitted
 }
 
 export function validateTriageOutput(
   output: TriageOutput,
   deterministicFlags: DeterministicFlag[],
-  pagePurpose: PagePurpose = 'unknown',
-  context?: Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'url'>>
+  pagePurpose: PagePurpose,
+  context: Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'url' | 'screenshotHint'>>
 ): TriageOutput {
   assertValidRubrics(output.rubrics)
   assertRubricConsistency(output.rubrics)
@@ -101,9 +85,11 @@ export function validateTriageOutput(
   // Keep captured deterministic facts, but reject model-invented conversion,
   // navigation, or trust priorities for a page whose job is to be minimal.
   const purposeGroundedFlags = pagePurpose === 'placeholder' ? [] : output.newFlags
-  const groundedFlags = context ? groundTriageTextFlags(purposeGroundedFlags, context) : purposeGroundedFlags
+  const assessment = assessTriageRecommendations(purposeGroundedFlags, context)
+  const groundedFlags = assessment.admitted
+  const incompleteRubrics = new Set(assessment.assessment.rejected.map(item => purposeGroundedFlags[item.index]?.rubric))
   // An unsupported observation must not discard a later source-backed finding.
-  const deduplicatedFlags = deduplicateTriageFlags(deterministicFlags, groundedFlags, context?.url)
+  const deduplicatedFlags = deduplicateTriageRecommendations(groundedFlags, deterministicFlags, context.url)
   const newFlags = enforceAiConfidenceGates(deduplicatedFlags)
   return {
     ...output,
@@ -115,6 +101,11 @@ export function validateTriageOutput(
       output.rubrics.map((rubric) => ({ name: rubric.name, grade: rubric.grade }))
     ),
     newFlags,
+    rubrics: output.rubrics.map(rubric => ({ ...rubric,
+      ...(incompleteRubrics.has(rubric.name) ? { score: null, assessmentState: 'PARTIAL' as const } : {}),
+      summary: triageCategorySummary(deterministicFlags.filter(flag => flag.rubric === rubric.name).length,
+        newFlags.filter(flag => flag.rubric === rubric.name).length, incompleteRubrics.has(rubric.name)),
+    })),
     launchChecklist: reconcileLaunchChecklist(output.launchChecklist, deterministicFlags),
   }
 }

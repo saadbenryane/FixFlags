@@ -67,19 +67,28 @@ describe('groundTriageTextFlags', () => {
     ], context)).toEqual([])
   })
 
-  it('retains source-backed content judgments and screenshot observations', () => {
-    const flags = [
-      candidate('Trial commitment is unclear', 'The CTA "Start free" does not explain when payment begins.'),
-      candidate('Description repeats the category', 'Description: “Release planning for product teams”.', 'REACH'),
-      candidate('Hero overlaps the form', 'The hero image covers the email field in the mobile screenshot.', 'EXPERIENCE'),
+  it('derives bounded Recommendations from declared references instead of adopting their raw diagnosis', () => {
+    const flags: TriageOutput['newFlags'] = [
+      { ...candidate('Visitors abandon the trial', 'Unsupported behavioral claim'), reviewKind: 'action-clarity',
+        evidenceRefs: [{ source: 'ctaText', quote: 'Start free' }], device: 'none' },
+      { ...candidate('Description harms rankings', 'Unmeasured ranking claim', 'REACH'), reviewKind: 'search-snippet',
+        evidenceRefs: [{ source: 'description', quote: 'Release planning for product teams' }], device: 'none' },
     ]
-    expect(groundTriageTextFlags(flags, context)).toEqual(flags)
+    const admitted = groundTriageTextFlags(flags, context)
+    expect(admitted).toHaveLength(2)
+    expect(admitted.every(flag => flag.problem.startsWith('Review'))).toBe(true)
+    expect(admitted[0]!.evidence).toContain('"Start free"')
+    expect(admitted[0]!.whyItMatters).toContain('were not measured')
+    expect(admitted[1]!.whyItMatters).toContain('were not measured')
+    expect(admitted.map(flag => flag.problem).join(' ')).not.toMatch(/abandon|harms rankings/)
   })
 
-  it('matches whitespace and straight or curly apostrophes while rejecting blank visual evidence', () => {
-    expect(groundTriageTextFlags([
-      candidate('Copy repeats', 'The text says "Product teams   use DemoSite".'),
-      candidate('Layout is unclear', '  ', 'EXPERIENCE'),
-    ], context)).toHaveLength(1)
+  it('requires exact matching quotes in their declared source and rejects unreferenced visual claims', () => {
+    const valid = { ...candidate('Copy review', 'Model interpretation'), reviewKind: 'copy-clarity' as const,
+      evidenceRefs: [{ source: 'pageText' as const, quote: 'Product teams use DemoSite' }], device: 'none' as const }
+    expect(groundTriageTextFlags([valid], context)).toHaveLength(1)
+    expect(groundTriageTextFlags([{ ...valid, evidenceRefs: [{ source: 'pageText', quote: 'Product teams   use DemoSite' }] },
+      { ...valid, evidenceRefs: [{ source: 'title', quote: 'Product teams use DemoSite' }] },
+      candidate('Hero overlaps form', 'A mobile screenshot proves a blocked field', 'EXPERIENCE')], context)).toEqual([])
   })
 })

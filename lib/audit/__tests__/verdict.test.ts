@@ -67,6 +67,14 @@ describe('verdict helpers', () => {
     )
   })
 
+  it('does not promote qualitative Recommendations above a consequential finding', () => {
+    assert.equal(groundedReportVerdict([
+      { rubric: 'MESSAGE', severity: 'CRITICAL', confidence: 1, problem: 'Review this headline' },
+      { rubric: 'EXPERIENCE', severity: 'IMPORTANT', checkId: 'flow-cta-unclickable',
+        problem: 'Signup action cannot be clicked' },
+    ]), 'Highest priority: Signup action cannot be clicked.')
+  })
+
   it('does not preserve unsupported prose even when the verdict names the top Flag', () => {
     assert.equal(
       resolveReportVerdict(

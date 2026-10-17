@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, lstatSync, statSync } from 'node:fs'
+import { existsSync, lstatSync, statSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 export const RELEASE_STAGES = [
@@ -159,10 +159,40 @@ function validateFoundation(env, issues, checkFile) {
     return
   }
   const stat = statSync(env.RELEASE_CONTAINER_ENV_FILE)
-  if (!stat.isFile()) issues.push('RELEASE_CONTAINER_ENV_FILE must be a regular file')
+  if (!stat.isFile()) { issues.push('RELEASE_CONTAINER_ENV_FILE must be a regular file'); return }
   if ((stat.mode & 0o077) !== 0) {
     issues.push('RELEASE_CONTAINER_ENV_FILE must not be accessible by group/others (chmod 600)')
   }
+  issues.push(...validateDockerEnvironment(readFileSync(env.RELEASE_CONTAINER_ENV_FILE, 'utf8')))
+}
+
+/** Docker passes env-file values literally. Shell quoting must not alter typed runtime configuration. */
+export function validateDockerEnvironment(text) {
+  const issues = []
+  const values = new Map()
+  for (const [index, line] of text.split(/\r?\n/).entries()) {
+    if (!line.trim() || line.trimStart().startsWith('#')) continue
+    const separator = line.indexOf('=')
+    const key = line.slice(0, separator)
+    if (separator < 1 || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      issues.push(`Container environment line ${index + 1} must be a literal KEY=value assignment`)
+      continue
+    }
+    values.set(key, line.slice(separator + 1))
+  }
+  for (const key of ['NEXT_PUBLIC_APP_URL', 'BETTER_AUTH_URL', 'R2_PUBLIC_URL', 'R2_S3_ENDPOINT', 'ACCOUNT_CHECKS_VALIDATION_ORIGIN']) {
+    const value = values.get(key)
+    if (!value) continue
+    try {
+      const url = new URL(value)
+      if (value.trim() !== value || !['http:', 'https:'].includes(url.protocol)) throw new Error('invalid protocol')
+    } catch { issues.push(`${key} must be a literal HTTP(S) URL in the Docker environment file; Docker does not remove shell quotes`) }
+  }
+  for (const key of ['R2_FORCE_PATH_STYLE', 'ACCOUNT_CHECKS_ENABLED', 'ACCOUNT_CHECKS_LIFECYCLE_VERIFIED', 'STRIPE_PAID_OPEN']) {
+    const value = values.get(key)
+    if (value && !['true', 'false'].includes(value)) issues.push(`${key} must be literal true or false in the Docker environment file`)
+  }
+  return issues
 }
 
 function validateReleaseOrigin(env, issues) {

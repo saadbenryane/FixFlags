@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { canonicalDatabaseIdentity, CREDENTIALED_CORE_INPUTS, FOUNDATION_INPUTS, REQUIRED_RELEASE_INPUTS, validateReleasePreflight } from './release-preflight.mjs'
+import { validateDockerEnvironment, canonicalDatabaseIdentity, CREDENTIALED_CORE_INPUTS, FOUNDATION_INPUTS, REQUIRED_RELEASE_INPUTS, validateReleasePreflight } from './release-preflight.mjs'
 
 function validEnv(overrides = {}) {
   return {
@@ -124,5 +124,22 @@ describe('release preflight contract', () => {
     })
     assert.deepEqual(validateReleasePreflight(closed, { checkFile: false, stage: 'billing-closed' }), [])
     assert.ok(validateReleasePreflight(validEnv(), { checkFile: false, stage: 'billing-closed' }).some((issue) => issue.includes('must equal false')))
+  })
+})
+
+
+describe('Docker release environment syntax', () => {
+  it('accepts literal URLs, spaces in values, and secrets containing equals without shell interpretation', () => {
+    assert.deepEqual(validateDockerEnvironment('NEXT_PUBLIC_APP_URL=https://release.fixflags.test\nRESEND_FROM_EMAIL=FixFlags <alerts@fixflags.com>\nTOKEN_ENCRYPTION_KEY=abc==\nACCOUNT_CHECKS_ENABLED=false\n'), [])
+  })
+  it('rejects shell-quoted URLs and booleans before starting Docker, without exposing their values', () => {
+    const issues = validateDockerEnvironment('NEXT_PUBLIC_APP_URL="https://private.fixflags.test"\nR2_S3_ENDPOINT="https://secret-storage.test"\nACCOUNT_CHECKS_ENABLED="true"\nTOKEN_ENCRYPTION_KEY=private-secret-value\n')
+    assert.equal(issues.length, 3)
+    assert.match(issues.join(' '), /Docker does not remove shell quotes/)
+    assert.doesNotMatch(issues.join(' '), /private.fixflags.test|secret-storage.test|private-secret-value/)
+  })
+  it('rejects shell export syntax and malformed assignments while allowing literal quoted credential characters', () => {
+    assert.equal(validateDockerEnvironment('export TOKEN=secret\ninvalid-line\n').length, 2)
+    assert.deepEqual(validateDockerEnvironment('TOKEN_ENCRYPTION_KEY="actual-literal-credential"\n'), [])
   })
 })

@@ -25,53 +25,26 @@ Rubric scoring contract:
 - Use score: null for every PARTIAL or UNKNOWN rubric. Do not estimate a numeric score for incomplete evidence.
 - If you are unsure whether a dimension is fully assessable, choose PARTIAL with score: null and explain what is missing in the summary.
 
-MESSAGE - Does the page make the visitor feel understood and compelled to act?
-  - Does the hero answer "what is this?" AND "why should I care?" in under 3 seconds?
-  - Does the headline + subhead pair name a specific audience, a concrete outcome, and a believable mechanism?
-  - Are CTAs outcome-specific ("Start free trial", "Get my audit") or generic ("Learn more", "Get started")?
-  - Is social proof specific (named people, verifiable numbers, attributed quotes) or templated?
-  - Does the page explicitly state who this is NOT for, or is it trying to appeal to everyone?
-  - Does the copy use concrete, sensory language or abstract marketing abstractions?
-  - Is there a clear hierarchy of value: one core promise, then supporting proof, then the ask?
-
-EXPERIENCE - Does the page feel professional, trustworthy, and easy to use?
-  - Does the page pass the 5-second glance test: is the purpose and primary action immediately obvious?
-  - Is the mobile layout built for one-handed use, or does it require stretching and zooming?
-  - Are there obvious alignment, spacing, or density issues that look builder-generated?
-  - Does the page feel fast from the screenshots, or is there blank space, loading states, or layout shift visible?
-  - Is the visual hierarchy clear: one focal point, supporting elements visually subordinate, good whitespace?
-  - Would a first-time visitor from a cold link know what to do within 3 seconds?
-  - Are there any visual elements that look broken, misaligned, or inconsistent with the brand?
-
-REACH - Can the right people find, share, and trust this page?
-  - Does the social preview (title + description + og:image) accurately sell the page's value to someone who has never heard of the product?
-  - Is there a clear path to learn more, contact, or convert at every stage of awareness?
-  - Are SEO fundamentals present and competently implemented?
-  - Does the page look complete: favicon, brand identity, consistent typography, no unfinished elements?
-  - Would a first-time visitor who found this through a search result or social share trust it enough to engage?
+MESSAGE: Review the recorded headline, nearby support, audience, purpose, action wording and substantiated proof together. Do not infer what visitors understand or how quickly they decide.
+EXPERIENCE: Review the supplied layouts and recorded action wording. A screenshot does not establish timing, successful interaction, accessibility failure, or visitor behavior.
+REACH: Review supplied titles and descriptions against the page purpose. Recorded native checks own indexing, metadata presence and search-visibility failures. Do not infer ranking or click-through effects.
 
 Rubric criteria (use explicitly when grading):
 ${formatRubricForJudgePrompt()}
 
-VERDICT STYLE: Write the verdict the way you would say it to a founder over coffee. Short, specific, no hedging. Name what you actually see. First sentence: overall judgment. Second sentence: the single most important thing to fix right now.
+VERDICT STYLE: Describe only supplied facts and conditional review needs. Do not declare the website ready or unready from appearance alone.
 
-newFlags: 0-5 net-new issues that a real UX expert would catch but rule-based checks miss. Prioritize by business impact:
-Return an empty newFlags array when no supported net-new issue exists. There is no minimum finding quota. Never invent an issue to fill the list.
-- 🥇 Conversion killers: anything that blocks or confuses the primary action (signup, purchase, trial)
-- 🥈 Trust destroyers: anything that makes the page feel unfinished, dishonest, or risky
-- 🥉 Polish gaps: visual inconsistencies, scannability issues, friction points
-
-Evaluate these un-pattern-checkable dimensions:
-- Emotional UX: does the page feel trustworthy, exciting, or confusing on first impression?
-- Visual quality: spacing, alignment, visual weight, font pairing, color harmony
-- Behavioral UX: will users hesitate? Is the path to value obvious?
-- Content quality: is the copy persuasive at each stage of awareness?
-- Trust psychology: risk reversal, authority signals, social proof genuineness
-- Conversion friction: barriers between "interested" and "acting"
-- Mobile emotional UX: does the mobile layout feel equally considered, not just squished?
+newFlags: 0-5 source-backed Recommendations. An empty array is valid; there is no minimum finding quota.
+Use one declared reviewKind: copy-clarity, action-clarity, visual-hierarchy, search-snippet.
+Every candidate must contain evidenceRefs with exact quotes from their named supplied source: pageText, title, description, headline, or ctaText. Do not quote a different source under that name. Use the complete captured value for headline and ctaText references; prose quotes must contain at least six characters. Text-only reviews must declare device none. Only visual-hierarchy may declare desktop or mobile when that screenshot was supplied.
+- copy-clarity needs a headline or pageText reference. Review its supporting context and page purpose.
+- action-clarity needs a ctaText reference. Review the wording, without inventing a click, submission, destination or failure.
+- visual-hierarchy needs two distinct ctaText references and an actually supplied screenshot on the declared device. This is a review of prominence, not proof of competing actions, hidden controls, confusion or conversion loss.
+- search-snippet needs a title or description reference and rubric REACH. Review wording, not ranking, authenticity or observed search results.
+Quotes only anchor review scope. A valid quote cannot support an unrelated absence claim, behavioral conclusion, or invented measurement.
 
 TITLE CRAFTING RULES:
-- Start with a verb naming what is wrong: "Hero CTA sends users to a dead page" not "Dead page issue"
+- Use conditional review wording. Do not assert a failure that native checks have not established.
 - Include the specific element name: "Headline uses no audience signal" not "Messaging problem"
 - Omit markdown, quotes, punctuation at end
 - Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again

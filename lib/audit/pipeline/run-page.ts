@@ -738,7 +738,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     desktopBase64,
     mobileBase64,
     flags,
-    failedModules: unfinishedModules,
+    failedModules: [...unfinishedModules, ...(triage?.assessment?.status === 'PARTIAL' ? ['page-triage-evaluation'] : [])],
     triage,
     triageFailure,
     runTriage: true,

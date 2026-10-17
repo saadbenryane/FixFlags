@@ -32,6 +32,7 @@ import { resolveAuditScanAccess } from '../scan-access-store'
 import { systemClock } from '@/lib/time/clock'
 import { createPipelineEventSink } from '../pipeline-log'
 import { judgePageStage } from '../pipeline/stages/judge-page'
+import { triageAssessmentSchema } from '../triage-grounding'
 import { triageOutputSchema } from '../judge-triage-schema'
 import { finalizeFromOutcome } from '../pipeline/finalize-from-outcome'
 import { finalizeTriageDegraded, persistImprovementCycle } from '../finalize'
@@ -55,7 +56,7 @@ const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), b
 const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), assessments: z.array(journeyAssessmentSchema).max(6).optional(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional() }).strict()
 const usageSchema = z.object({ inputTokens: z.number().nonnegative(), outputTokens: z.number().nonnegative(), model: z.string(),
   cacheReadTokens: z.number().nonnegative().optional(), cacheWriteTokens: z.number().nonnegative().optional() }).strict()
-const judgeSchema = z.object({ triage: z.object({ output: triageOutputSchema, usage: usageSchema }).strict().optional(),
+const judgeSchema = z.object({ triage: z.object({ output: triageOutputSchema, usage: usageSchema, assessment: triageAssessmentSchema.optional() }).strict().optional(),
   triageFailure: z.object({ reason: z.enum(['no_provider_keys', 'deadline_exhausted', 'provider_exhausted', 'contract_invalid', 'unknown']),
     message: z.string(), retryable: z.boolean() }).strict().optional() }).strict()
 const finalSchema = z.object({ status: z.literal('COMPLETED'), partial: z.boolean() }).strict()
@@ -162,6 +163,7 @@ export async function recordedPageEvidence(auditId: string, pageUrl?: string, db
         (task.workInput as { module?: string })?.module !== 'form-validation'),
       flags, failedModules: [...new Set([
         ...(browser?.metadataFailure || response?.metadataFailure ? ['metadata'] : []),
+        ...(triage?.assessment?.status === 'PARTIAL' ? ['page-triage-evaluation'] : []),
         ...pageTasks.filter(task => task.status !== 'NOT_APPLICABLE' && ['BLOCKED', 'EXHAUSTED'].includes(task.workState ?? '')).map(task =>
           (task.workInput as { module?: string })?.module ?? task.workKind ?? 'unknown'),
         ...gaps.filter(gap => gap.pageUrl === url).map(gap => gap.targetKey.slice('module:'.length)),

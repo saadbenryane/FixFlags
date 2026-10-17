@@ -173,6 +173,27 @@ describe('finalizeFromOutcome', () => {
     }))
   })
 
+  it('retains native evidence and incomplete AI assessment after a successful runner retry', async () => {
+    const native = { checkId: 'buttons-no-text', evidence: 'The recorded button has no accessible name' } as PageRun['flags'][number]
+    const rawCandidate = { problem: 'Unsupported visual claim' }
+    runTriageStep.mockResolvedValue({ output: { newFlags: [] }, usage: { inputTokens: 1, outputTokens: 1, model: 'provider' },
+      assessment: { kind: 'page-triage-assessment', version: 1, status: 'PARTIAL', candidates: [rawCandidate],
+        rejected: [{ index: 0, reason: 'Missing references' }], admittedCount: 0 } })
+    primaryPageRun.mockImplementation((runs: PageRun[]) => runs[0])
+    const original = pageRun({ flags: [native], triageFailure: { reason: 'provider_exhausted', message: 'Previous timeout', retryable: true } })
+    const retried = await retryPrimaryTriage(ctx(), [original])
+    resolveAuditOutcome.mockImplementation((runs: PageEvidence[]) => ({ kind: 'triage_complete', pageRuns: runs }))
+    persistTriageResults.mockResolvedValue(undefined)
+    await finalizeFromOutcome({ ctx: ctx(), auditId: 'audit-1', auditUrl: original.url,
+      pageRuns: retried, startedAt: new Date(), captureAdditionalEvidence: false })
+    expect(persistAuditFailedModules).toHaveBeenCalledWith('audit-1', [expect.objectContaining({
+      flags: [native], failedModules: ['page-triage-evaluation'], triage: expect.objectContaining({ assessment: expect.objectContaining({ candidates: [rawCandidate] }) }),
+    })])
+    expect(finalizeTriageAudit).toHaveBeenCalledWith(expect.objectContaining({ evidence: expect.objectContaining({ aiAssessment: false, desktopScreenshot: true }) }))
+    expect(original.flags).toEqual([native])
+    expect(original.failedModules).toEqual([])
+  })
+
   it('persists a complete triage independently of its later prescription delivery', async () => {
     resolveAuditOutcome.mockReturnValue({
       kind: 'triage_complete',

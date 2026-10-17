@@ -79,6 +79,7 @@ const VALID_OUTPUT = {
       rubric: 'MESSAGE',
       impactTag: 'CLARITY',
       severity: 'IMPORTANT',
+      reviewKind: 'copy-clarity', evidenceRefs: [{ source: 'headline', quote: 'Example' }], device: 'none',
       problem: 'Value proposition buried',
       evidence: 'The hero says "Example" without describing a benefit.',
       whyItMatters: 'Users decide in the first seconds whether to stay.',
@@ -254,6 +255,9 @@ describe('runTriageWithRetry provider paths', () => {
     )
     assert.equal(result.output.score, 72)
     assert.equal(result.output.newFlags.length, 1)
+    assert.match(result.output.newFlags[0]!.problem, /^Review/)
+    assert.doesNotMatch(result.output.newFlags[0]!.whyItMatters, /Users decide|conversion|revenue/)
+    assert.equal(result.assessment?.candidates.length, 1)
     assert.equal(result.usage.inputTokens, 10)
     assert.equal(result.usage.outputTokens, 5)
     const createArgs = mocks.openaiCreate.mock.calls[0][0]
@@ -265,13 +269,17 @@ describe('runTriageWithRetry provider paths', () => {
     runAttempt('openai')
     mocks.openaiCreate.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify({ ...VALID_OUTPUT, newFlags: [
-        { ...VALID_OUTPUT.newFlags[0], evidence: 'The testimonial is generic and lacks quantifiable results.' },
-        { ...VALID_OUTPUT.newFlags[0], evidence: 'The page says "Guaranteed to double your revenue".' },
+        { ...VALID_OUTPUT.newFlags[0], evidenceRefs: [{ source: 'pageText', quote: 'The invented testimonial' }], evidence: 'The testimonial is generic and lacks quantifiable results.' },
+        { ...VALID_OUTPUT.newFlags[0], evidenceRefs: [{ source: 'pageText', quote: 'Guaranteed to double your revenue' }], evidence: 'The page says "Guaranteed to double your revenue".' },
       ] }) } }],
       usage: { prompt_tokens: 10, completion_tokens: 5 },
     })
     const result = await runTriageWithRetry('https://example.com', METADATA, null, null, FLAGS, null, null)
     assert.deepEqual(result.output.newFlags, [])
+    assert.equal(result.assessment?.status, 'PARTIAL')
+    assert.equal(result.assessment?.rejected.length, 2)
+    assert.equal(result.output.rubrics.find(rubric => rubric.name === 'MESSAGE')?.assessmentState, 'PARTIAL')
+    assert.equal(result.output.rubrics.find(rubric => rubric.name === 'MESSAGE')?.score, null)
   })
 
   it('throws when the OpenAI response has no content', async () => {

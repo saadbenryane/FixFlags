@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync } from 'node:fs'
+import { validateDockerEnvironment } from './release-preflight.mjs'
+import { existsSync, readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import process from 'node:process'
 
@@ -10,6 +11,9 @@ if (!envFile || !existsSync(envFile)) {
     'RELEASE_CONTAINER_ENV_FILE must point to the designated production-like release environment'
   )
 }
+
+const environmentIssues = validateDockerEnvironment(readFileSync(envFile, 'utf8'))
+if (environmentIssues.length) throw new Error(environmentIssues.join('\n'))
 
 const suffix = String(process.pid)
 const network = `fixflags-release-net-${suffix}`
@@ -31,7 +35,7 @@ function docker(args, allowFailure = false) {
       (result.stderr || result.stdout || `docker ${args[0]} failed`).trim()
     )
   }
-  return result.stdout.trim()
+  return (allowFailure ? [result.stdout, result.stderr].filter(Boolean).join('\n') : result.stdout).trim()
 }
 
 async function waitFor(label, timeoutMs, check) {
@@ -191,9 +195,10 @@ try {
 } catch (error) {
   const webLogs = docker(['logs', '--tail', '100', web], true)
   const workerLogs = docker(['logs', '--tail', '100', worker], true)
+  const states = [web, worker].map(name => `${name}: ${docker(['inspect', '--format', '{{json .State}}', name], true)}`).join('\n')
   const detail = error instanceof Error ? error.message : String(error)
   throw new Error(
-    `${detail}\n--- web logs ---\n${webLogs}\n--- worker logs ---\n${workerLogs}`
+    `${detail}\n${states}\n--- web logs ---\n${webLogs}\n--- worker logs ---\n${workerLogs}`
   )
 } finally {
   for (const name of [web, worker, redis, postgres]) {

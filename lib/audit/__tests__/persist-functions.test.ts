@@ -304,6 +304,24 @@ describe('persistTriageResults', () => {
     )
   })
 
+  it('keeps critical Recommendations out of persisted priority verdicts and rubric summaries', async () => {
+    await persistTriageResults('audit-1', makeTriageOutput({ newFlags: [{
+      rubric: 'MESSAGE', impactTag: 'CLARITY', severity: 'CRITICAL',
+      problem: 'Review the headline and supporting copy together', evidence: 'Headline: Welcome',
+      whyItMatters: 'Consider whether this wording explains the page purpose.',
+      confidence: 1, pageUrl: 'https://example.com/',
+    }] }), [], baseRubricScores())
+
+    expect(mockTx.flag.createMany.mock.calls[0][0].data).toHaveLength(1)
+    expect(mockTx.audit.update.mock.calls[0][0].data.verdict).toBe(
+      'No supported priority issue was found in the captured evidence.'
+    )
+    const message = mockTx.reportRubric.upsert.mock.calls
+      .map(call => call[0] as { create: { name: string; summary: string } })
+      .find(call => call.create.name === 'MESSAGE')
+    expect(message?.create.summary).toBe('No supported priority issue was found in the captured evidence.')
+  })
+
   it('grounds the stored verdict in a critical secondary-page Flag', async () => {
     await persistTriageResults(
       'audit-1',

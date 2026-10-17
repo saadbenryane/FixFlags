@@ -28,6 +28,12 @@ const impactTagSchema = z.enum([
   'EMOTION',
 ])
 
+export const triageEvidenceRefSchema = z.object({
+  source: z.enum(['pageText', 'title', 'description', 'headline', 'ctaText']),
+  quote: z.string().min(2).max(600),
+}).strict()
+export const triageReviewKindSchema = z.enum(['copy-clarity', 'action-clarity', 'visual-hierarchy', 'search-snippet'])
+
 export const triageOutputSchema = z
   .object({
     pageJob: z
@@ -90,7 +96,7 @@ export const triageOutputSchema = z
               'ASSESSED means score is required; PARTIAL or UNKNOWN means score must be null'
             ),
           confidence: z.number().min(0).max(1),
-          summary: z.string().min(1).describe('2-3 sentences describing issues and impact'),
+          summary: z.string().min(1).describe('Recorded facts, missing evidence, and conditional review reasons. Do not invent visitor behavior or impact.'),
         })
         .strict()
     ),
@@ -98,6 +104,10 @@ export const triageOutputSchema = z
       .array(
         z
           .object({
+            // Optional only for reading historical artifacts. Fresh provider output requires these below.
+            reviewKind: triageReviewKindSchema.optional(),
+            evidenceRefs: z.array(triageEvidenceRefSchema).min(1).max(6).optional(),
+            device: z.enum(['desktop', 'mobile', 'none']).optional(),
             rubric: rubricNameSchema,
             impactTag: impactTagSchema,
             severity: z.enum(['CRITICAL', 'IMPORTANT', 'POLISH']),
@@ -115,7 +125,7 @@ export const triageOutputSchema = z
               .string()
               .min(1)
               .describe(
-                '1-2 sentences on user or business impact. No fix steps and no editor prompts.'
+                'A conditional review reason supported by the recorded scope. Do not infer visitor behavior, conversion, revenue or ranking. No fix steps or editor prompts.'
               ),
             confidence: z.number().min(0).max(1),
             // Nullable+required (not optional) so this schema can be generated in
@@ -136,7 +146,16 @@ export const triageOutputSchema = z
 
 export type TriageOutput = z.infer<typeof triageOutputSchema>
 
-const baseJsonSchema = toJsonSchema(triageOutputSchema)
+/** New provider admissions use one strict contract on both providers. */
+export const triageProviderOutputSchema = triageOutputSchema.extend({
+  newFlags: z.array(triageOutputSchema.shape.newFlags.element.extend({
+    reviewKind: triageReviewKindSchema,
+    evidenceRefs: z.array(triageEvidenceRefSchema).min(1).max(6),
+    device: z.enum(['desktop', 'mobile', 'none']),
+  })).max(5),
+}).strict()
+
+const baseJsonSchema = toJsonSchema(triageProviderOutputSchema)
 
 /** Anthropic tool schema: OpenAPI-style `nullable: true` for null unions. */
 export const QUALITY_TRIAGE_SCHEMA = toOpenApiNullableSchema(baseJsonSchema) as Record<

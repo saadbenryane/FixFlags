@@ -128,7 +128,7 @@ async function finalizeTriageComplete(
       cacheReadTokens: ctx.usage.cacheReadTokens,
       cacheWriteTokens: ctx.usage.cacheWriteTokens,
     },
-    evidence: buildEvidence(pageRuns, true),
+    evidence: buildEvidence(pageRuns, pageRuns.every(page => Boolean(page.triage) && page.triage?.assessment?.status !== 'PARTIAL')),
   })
 
 }
@@ -214,6 +214,9 @@ export async function retryPrimaryTriage(
  * Returns true when finalize succeeded; false when persist failed mid-triage-complete.
  */
 export async function finalizeFromOutcome(input: FinalizeFromOutcomeInput): Promise<boolean> {
+  // Every caller, including a successful runner retry, retains incomplete AI assessment independently of native checks.
+  input = { ...input, pageRuns: input.pageRuns.map(page => page.triage?.assessment?.status === 'PARTIAL' && !page.failedModules.includes('page-triage-evaluation')
+    ? { ...page, failedModules: [...page.failedModules, 'page-triage-evaluation'] } : page) }
   const outcome = resolveAuditOutcome(input.pageRuns)
 
   // Surface failed and incomplete check modules before the report completes, so
