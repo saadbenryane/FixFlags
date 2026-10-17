@@ -65,7 +65,7 @@ describe('customer Flag projector on Site load', () => {
     expect(recommendations.map((flag) => flag.id)).toEqual(['flag-title'])
   })
 
-  it('drops a stored slow-action Flag when the same page has no primary action', async () => {
+  it('retains a missing-recognizer Recommendation while suppressing an unsupported stored slow-action Flag', async () => {
     prisma.flag.findMany.mockResolvedValue([
       {
         id: 'flag-missing',
@@ -96,8 +96,11 @@ describe('customer Flag projector on Site load', () => {
     ])
 
     const flags = await loadSiteFlags(site)
-    expect(flags.map((flag) => flag.checkId)).toEqual(['journey-first-visit-hidden-cta'])
-    expect((await loadSiteRecommendations(site)).map(flag => flag.checkId)).not.toContain('journey-first-visit-hidden-cta')
+    expect(flags).toEqual([])
+    const recommendations = await loadSiteRecommendations(site)
+    expect(recommendations.map(flag => flag.checkId)).toEqual(['journey-first-visit-hidden-cta'])
+    expect(recommendations[0]?.severity).toBe('CRITICAL')
+    expect(recommendations.map(flag => flag.checkId)).not.toContain('slow-3g-cta-delayed')
   })
 
   it('keeps a slow-action Flag when a primary action was found', async () => {

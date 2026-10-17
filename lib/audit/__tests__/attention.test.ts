@@ -60,6 +60,24 @@ describe('customer Flag projector', () => {
     },
   )
 
+  it.each(['journey-signup-no-form', 'journey-hidden-cta', 'journey-first-visit-hidden-cta',
+    'journey-pricing-evaluation-hidden-cta', 'journey-signup-hidden-cta', 'journey-checkout-hidden-cta',
+    'journey-contact-support-hidden-cta', 'journey-multi-step-funnel-hidden-cta', 'journey-contact-not-found', 'journey-funnel-loop-detected'])(
+    'keeps recognizer-only observation %s advisory without rewriting its original severity', checkId => {
+      const observation = Object.freeze({ checkId, severity: 'CRITICAL', confidence: 1, impactTag: 'CONVERSION', fix: 'Review the original scope.' })
+      for (const scoped of [observation, { ...observation, checkId: checkId + '::page:original' }]) {
+        expect(isCustomerFlag(scoped)).toBe(false)
+        expect(isAttentionCandidate(scoped)).toBe(false)
+        expect(isWorthwhileAttentionFlag(scoped)).toBe(false)
+      }
+      expect(observation.severity).toBe('CRITICAL')
+    },
+  )
+  it.each(['journey-signup-nav-broken', 'journey-funnel-step-failed', 'form-contact-submit-failed'])(
+    'retains measured navigation or submission failures as customer Flags: %s', checkId => {
+      expect(isCustomerFlag({ checkId, severity: 'CRITICAL', confidence: 1, impactTag: 'CONVERSION' })).toBe(true)
+    },
+  )
   it('retains historical missing-attribute findings as Recommendations without certifying behavioral failure', () => {
     expect(isCustomerFlag({ checkId: 'form-missing-validation', severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
   })

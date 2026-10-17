@@ -214,7 +214,7 @@ export async function runJourneyTemplate(
         })
       )
     }
-    if (!cta.found) {
+    if (!cta.found && cta.complete) {
       findings.push(
         finding({
           checkId: `journey-${options.journeyType}-hidden-cta`,
@@ -223,11 +223,10 @@ export async function runJourneyTemplate(
           rubric: 'EXPERIENCE',
           severity: 'CRITICAL',
           impactTag: 'CONVERSION',
-          problem: 'No obvious primary CTA on first visit',
-          evidence:
-            'Reproduced at step 1. No button or conversion link matched common CTA patterns above the fold.',
-          whyItMatters: 'Without a clear next step, first-time visitors bounce.',
-          fix: '1. Add one primary CTA above the fold\n2. Use action-oriented label (Start free, See pricing, Book demo)\n3. Remove competing equal-weight CTAs',
+          problem: JOURNEY_ROUTE_COPY.entryAction.problem,
+          evidence: JOURNEY_ROUTE_COPY.entryAction.evidence,
+          whyItMatters: JOURNEY_ROUTE_COPY.entryAction.whyItMatters,
+          fix: JOURNEY_ROUTE_COPY.entryAction.fix,
           screenshotUrl: before1,
         })
       )
@@ -420,10 +419,10 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'CRITICAL',
             impactTag: 'CONVERSION',
-            problem: 'Signup path has no visible form fields',
-            evidence: `Reproduced at step 2. Navigated to ${page.url()} expecting a registration form.`,
-            whyItMatters: 'Visitors who intend to sign up abandon when the form is missing or hidden.',
-            fix: '1. Surface email/password or OAuth signup on this route\n2. Avoid multi-step gates without a visible first field\n3. Keep at least one clear signup control above the fold',
+            problem: JOURNEY_ROUTE_COPY.signupMechanism.problem,
+            evidence: JOURNEY_ROUTE_COPY.signupMechanism.evidence,
+            whyItMatters: JOURNEY_ROUTE_COPY.signupMechanism.whyItMatters,
+            fix: JOURNEY_ROUTE_COPY.signupMechanism.fix,
             screenshotUrl: afterClick,
           })
         )
@@ -520,10 +519,10 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'IMPORTANT',
             impactTag: 'TRUST',
-            problem: 'Contact or support did not reach a usable help page',
-            evidence: 'Reproduced at step 2. No contact copy or form fields detected on destination.',
-            whyItMatters: 'Buyers who cannot find help stall before purchasing.',
-            fix: '1. Add a Contact or Support link in primary nav\n2. Include email or form on the destination\n3. State expected response time',
+            problem: JOURNEY_ROUTE_COPY.contactMechanism.problem,
+            evidence: JOURNEY_ROUTE_COPY.contactMechanism.evidence,
+            whyItMatters: JOURNEY_ROUTE_COPY.contactMechanism.whyItMatters,
+            fix: JOURNEY_ROUTE_COPY.contactMechanism.fix,
             screenshotUrl: afterClick,
           })
         )
@@ -565,10 +564,10 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'IMPORTANT',
             impactTag: 'FRICTION',
-            problem: 'Visitor gets stuck in a navigation loop',
-            evidence: `Reproduced at step ${currentStep}. URL ${page.url()} visited ${loopCount} times.`,
-            whyItMatters: 'Navigation loops indicate confusing IA or broken routing that traps visitors.',
-            fix: '1. Review navigation structure for circular references\n2. Ensure each page has a clear forward path\n3. Add breadcrumbs or progress indicators for multi-step flows',
+            problem: JOURNEY_ROUTE_COPY.repeatedNavigation.problem,
+            evidence: JOURNEY_ROUTE_COPY.repeatedNavigation.evidence(currentStep, page.url(), loopCount),
+            whyItMatters: JOURNEY_ROUTE_COPY.repeatedNavigation.whyItMatters,
+            fix: JOURNEY_ROUTE_COPY.repeatedNavigation.fix,
             screenshotUrl: steps[steps.length - 1]?.screenshotAfterUrl,
           })
         )

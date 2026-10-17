@@ -61,7 +61,10 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   if (['form-missing-validation', 'h1-generic', 'no-cta-detected', 'journey-signup-too-many-fields', 'journey-funnel-timeout', 'journey-funnel-dead-end',
     'flow-destination-no-headline', 'flow-destination-cta-overload', 'journey-first-visit-destination-no-headline',
     'journey-pricing-evaluation-destination-no-headline', 'journey-first-visit-destination-no-next-action',
-    'journey-pricing-evaluation-destination-no-next-action'].includes(checkBaseId(flag.checkId)) ||
+    'journey-pricing-evaluation-destination-no-next-action', 'journey-signup-no-form', 'journey-hidden-cta',
+    'journey-first-visit-hidden-cta', 'journey-pricing-evaluation-hidden-cta', 'journey-signup-hidden-cta',
+    'journey-checkout-hidden-cta', 'journey-contact-support-hidden-cta', 'journey-multi-step-funnel-hidden-cta',
+    'journey-contact-not-found', 'journey-funnel-loop-detected'].includes(checkBaseId(flag.checkId)) ||
     /^(messaging-|friction-|trust-|hierarchy-|journey-(?:first-visit|pricing-evaluation|signup)-unclear-value-prop$|journey-funnel-(hesitation|confusion|too-many-steps|unclear-progress|missing-feedback|broken-promise|accessibility-barrier)$)/.test(checkBaseId(flag.checkId)) ||
     !flag.checkId && ['MESSAGE', 'EXPERIENCE', 'REACH'].includes(flag.rubric ?? '')) return false
   if (isJourneyCritical(flag)) return true
