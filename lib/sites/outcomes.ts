@@ -1,3 +1,5 @@
+import { discoverOutcomePages, discoverJourneyOutcomes } from '@/lib/sites/domain/outcome-discovery'
+import { projectOutcomeDetail, type SiteOutcomeDetailView } from '@/lib/sites/presentation/outcome-detail-view'
 import { projectOutcomeView, type OutcomeViewSource, type SiteOutcomeView } from '@/lib/sites/presentation/outcome-view'
 export type { SiteOutcomeView } from '@/lib/sites/presentation/outcome-view'
 import { executionTransaction, executionWrite } from '@/lib/audit/execution-ownership'
@@ -8,10 +10,7 @@ import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { observedPurchaseStart } from '@/lib/sites/checkout-inference'
-import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
-import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, currentOutcomeState, customerBindingResult, outcomeStatusLabel, staleOutcomeRecovery } from '@/lib/sites/outcome-state'
-import { bindingEvidenceIsComparable, type CurrentBindingRevision } from '@/lib/sites/domain/assessment-comparability'
-import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { type CurrentBindingRevision } from '@/lib/sites/domain/assessment-comparability'
 import { loadOutcomeBindingRevisions } from '@/lib/sites/application/outcome-binding-revisions'
 import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import type { BrowserJourneyConfig } from '@/lib/sites/application/binding-config'
@@ -100,17 +99,6 @@ export function outcomeKindWatchable(
   return validateBindingForOutcome(kind, binding.mechanism, binding.config).success
 }
 
-/** The kinds a customer may be offered right now, in the order they are offered. */
-function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 64) || 'outcome'
-  )
-}
-
 async function pageUrlsForIds(pageIds: string[]): Promise<string[]> {
   if (pageIds.length === 0) return []
   const pages = await prisma.sitePage.findMany({
@@ -125,16 +113,6 @@ async function toOutcomeView(row: OutcomeViewSource, bindingRevisions?: CurrentB
   const revisions = bindingRevisions ?? (row.assessments[0] ? (await loadOutcomeBindingRevisions([row]))[0] : [])
   const pageUrls = await pageUrlsForIds(row.pages.map(page => page.pageId))
   return projectOutcomeView(row, { bindingRevisions: revisions, pageUrls, now: new Date() })
-}
-
-/** Classify a journey type into a confirmable outcome kind, or return null if not verifiable. */
-function classifyJourneyType(journeyType: string): ConfirmableOutcomeKind | null {
-  const type = journeyType.toLowerCase()
-  if (type === 'checkout' || type === 'purchase' || type === 'buy_flow') return 'CHECKOUT'
-  if (type === 'login' || type === 'signin' || type === 'sign_in') return 'LOGIN'
-  if (type === 'signup' || type === 'register' || type === 'sign_up' || type === 'registration') return 'SIGNUP'
-  if (type === 'password_reset' || type === 'forgot_password' || type === 'reset_password' || type === 'recover_account') return 'PASSWORD_RESET'
-  return null
 }
 
 /** Worker projection: only observed pages and browser-planned journeys become Site facts. */
@@ -165,19 +143,8 @@ export async function syncOutcomesFromAudit(input: {
     const owner = input.site.projectId
       ? { projectId: input.site.projectId }
       : { provisionalSiteId: input.site.provisionalSiteId! }
-    const observed = new Map(audit.pages.map((page) => [page.url, page.title]))
-    for (const journey of audit.journeyReviews) {
-      observed.set(journey.startUrl, observed.get(journey.startUrl) ?? null)
-      for (const step of journey.steps) observed.set(step.url, observed.get(step.url) ?? null)
-    }
     const pages = new Map<string, string>()
-    for (const [rawUrl, title] of observed) {
-      const url = new URL(rawUrl)
-      if (!['http:', 'https:'].includes(url.protocol)) continue
-      // External steps remain in their original execution; they are not owned Site pages.
-      if (url.hostname !== new URL(input.site.url).hostname) continue
-      url.hash = ''
-      const pageUrl = url.toString()
+    for (const { rawUrl, url: pageUrl, path, title } of discoverOutcomePages(input.site.url, audit)) {
       const where: Prisma.SitePageWhereUniqueInput = input.site.projectId
         ? { projectId_url: { projectId: input.site.projectId, url: pageUrl } }
         : {
@@ -188,28 +155,12 @@ export async function syncOutcomesFromAudit(input: {
           }
       const page = await tx.sitePage.upsert({
         where,
-        create: { ...owner, url: pageUrl, path: url.pathname, title },
+        create: { ...owner, url: pageUrl, path, title },
         update: { title },
       })
       pages.set(rawUrl, page.id)
     }
-    // First pass: classify each journey to a confirmable kind
-    const classifiedJourneys = new Map<string, ConfirmableOutcomeKind>()
-    for (const journey of audit.journeyReviews) {
-      const kind = classifyJourneyType(journey.journeyType)
-      if (kind) {
-        classifiedJourneys.set(journey.journeyType, kind)
-      }
-    }
-    // Second pass: upsert outcomes for classified journeys only (no GENERIC ghosts)
-    for (const [journeyType, kind] of classifiedJourneys) {
-      // A journey named checkout is not a purchase. Checkout is created below, only from a buyable start.
-      if (kind === 'CHECKOUT') continue
-      const journey = audit.journeyReviews.find((j) => j.journeyType === journeyType)
-      if (!journey) continue
-      const name = journeyType.trim().replaceAll('_', ' ')
-      if (!name) continue
-      const slug = slugify(journeyType)
+    for (const { kind, name, slug, urls } of discoverJourneyOutcomes(audit.journeyReviews)) {
       const where: Prisma.SiteOutcomeWhereUniqueInput = input.site.projectId
         ? { projectId_slug: { projectId: input.site.projectId, slug } }
         : {
@@ -226,7 +177,7 @@ export async function syncOutcomesFromAudit(input: {
       })
       if (outcome.inferenceSource === 'user') continue
       const pageIds = new Set(
-        [journey.startUrl, ...journey.steps.map((step) => step.url)]
+        urls
           .map((url) => pages.get(url))
           .filter((id): id is string => Boolean(id)),
       )
@@ -583,30 +534,7 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
   return Promise.all(rows.map((row, index) => toOutcomeView(row, revisions[index])))
 }
 
-export type SiteOutcomeDetailView = Omit<SiteOutcomeView, 'bindings'> & {
-  bindings: Array<SiteOutcomeView['bindings'][number] & {
-    latestEvidence: {
-      disposition: string
-      reason: string
-      detail: Prisma.JsonValue | null
-      createdAt: string
-      auditId: string
-    } | null
-    /** Evidence-card sentence for this method. A method with no execution uses the empty-evidence sentence. */
-    customerSentence: string
-  }>
-  limitation: string | null
-  recoveryAction: string | null
-  lastSuccessfulVerificationAt: string | null
-  timeline: Array<{
-    id: string
-    type: 'run' | 'assessment' | 'attempt' | 'flag' | 'fix' | 'verify'
-    at: string
-    title: string
-    detail: string
-    auditId: string | null
-  }>
-}
+export type { SiteOutcomeDetailView } from '@/lib/sites/presentation/outcome-detail-view'
 
 export async function loadSiteOutcomeDetail(
   site: SiteRecord,
@@ -666,137 +594,7 @@ export async function loadSiteOutcomeDetail(
       },
     }) : Promise.resolve([]),
   ])
-  // A method needs its own recorded revision and environment. A newer execution
-  // of an obsolete configuration cannot replace comparable current evidence.
-  const latestByKey = new Map<string, (typeof executions)[number]>()
-  for (const execution of executions) {
-    const current = revisions.find(binding => binding.key === execution.bindingKey)
-    if (!current || execution.bindingVersion != null && execution.bindingVersion !== current.version ||
-      execution.mechanism && execution.mechanism !== current.mechanism) continue
-    if (current.required && row.assessments[0] && execution.auditId !== row.assessments[0].auditId) continue
-    const spec = readExecutionSpec(execution.audit?.executionSpec)
-    if (spec && spec.environment !== row.environment) continue
-    const bindings = spec?.outcomes.find(outcome => outcome.id === row.id)?.bindings
-    const coverage = bindings?.some(binding => binding.key === current.key) ? { environment: spec!.environment, requiredBindings: [], bindings }
-      : row.assessments.find(assessment => assessment.auditId === execution.auditId)?.coverage
-    if (bindingEvidenceIsComparable(coverage, current, row.environment) && !latestByKey.has(execution.bindingKey))
-      latestByKey.set(execution.bindingKey, execution)
-  }
-  const timeline = [
-    ...row.runSelections.map(({ runRequest }) => ({
-      id: `run:${runRequest.id}`,
-      type: 'run' as const,
-      at: runRequest.requestedAt.toISOString(),
-      title: runRequest.status === 'COMPLETED' ? 'Verification completed' : runRequest.status === 'FAILED' ? 'Verification failed' : 'Verification started',
-      detail: runRequest.errorMessage ?? `Run ${runRequest.status.toLowerCase()}`,
-      auditId: runRequest.auditId,
-    })),
-    ...row.assessments.map((assessment) => ({
-      id: `assessment:${assessment.id}`,
-      type: 'assessment' as const,
-      at: assessment.assessedAt.toISOString(),
-      title: outcomeStatusLabel(currentOutcomeState(assessment)),
-      detail: assessment.summary,
-      auditId: assessment.auditId,
-    })),
-    ...row.bindingAttempts.map((attempt) => {
-      const sentence = customerBindingResult({
-        key: attempt.bindingKey,
-        disposition: attempt.disposition,
-        reason: attempt.reason,
-      })
-      return {
-        id: `attempt:${attempt.id}`,
-        type: 'attempt' as const,
-        at: attempt.createdAt.toISOString(),
-        title: sentence.headline,
-        detail: sentence.detail ?? '',
-        auditId: attempt.auditId,
-      }
-    }),
-    ...executions.filter(execution => !row.bindingAttempts.some(attempt =>
-      attempt.auditId === execution.auditId && attempt.bindingKey === execution.bindingKey)).map(execution => {
-      const sentence = customerBindingResult({ key: execution.bindingKey, disposition: execution.disposition, reason: execution.reason })
-      return { id: `execution:${execution.id}`, type: 'attempt' as const, at: execution.createdAt.toISOString(),
-        title: sentence.headline, detail: sentence.detail ?? '', auditId: execution.auditId }
-    }),
-    ...improvements.flatMap((improvement) => improvement.occurrences.map((occurrence) => ({
-      id: `flag:${occurrence.id}`,
-      type: 'flag' as const,
-      at: occurrence.createdAt.toISOString(),
-      title: occurrence.kind === 'REGRESSED'
-        ? 'Flag recurred'
-        : occurrence.kind === 'CLEARED'
-          ? 'Flag recovered'
-          : 'Flag recorded',
-      detail: improvement.title,
-      auditId: occurrence.auditId,
-    }))),
-    ...improvements.flatMap((improvement) => improvement.attempts.map((attempt) => ({
-      id: `fix:${attempt.id}`,
-      type: attempt.outcome ? 'verify' as const : 'fix' as const,
-      at: attempt.createdAt.toISOString(),
-      title: attempt.outcome
-        ? attempt.outcome === 'IMPROVED' ? 'Recovery verified' : `Verification ${attempt.outcome.toLowerCase()}`
-        : 'Fix recorded',
-      detail: attempt.changeSummary ?? attempt.verificationReason ?? improvement.title,
-      auditId: attempt.verificationAuditId ?? attempt.sourceAuditId,
-    }))),
-  ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
-
-  const requiredBindings = view.bindings.filter((binding) => binding.required)
-  const checkoutBinding = requiredBindings.find((binding) => binding.key.includes('checkout'))
-  const availabilityBinding = requiredBindings.find((binding) => binding.mechanism === 'HTTP_AVAILABILITY')
-  const limitation = !view.enabled
-    ? 'This Outcome is paused. Its last evidence is preserved, but FixFlags will not schedule or start another verification.'
-    : requiredBindings.length === 0
-      ? 'No independent verification method is configured.'
-      : view.state === 'COULD_NOT_VERIFY'
-        ? view.summary
-        : null
-  const recoveryAction = !view.enabled
-    ? 'Enable this Outcome to verify it again.'
-    : requiredBindings.length === 0
-      ? 'Configure a supported verification method in Site settings.'
-      : view.state === 'STALE'
-        ? staleOutcomeRecovery()
-        : view.state === 'COULD_NOT_VERIFY'
-          ? view.kind === 'CHECKOUT'
-            ? checkoutCouldNotVerifyRecovery(checkoutBinding ? latestByKey.get(checkoutBinding.key)?.reason : null)
-            : view.kind === 'AVAILABILITY'
-              ? availabilityCouldNotVerifyRecovery(availabilityBinding ? latestByKey.get(availabilityBinding.key)?.reason : null)
-              : 'Review the method or fixture, then verify again.'
-          : null
-
-  return {
-    ...view,
-    bindings: view.bindings.map((binding) => {
-      const evidence = latestByKey.get(binding.key)
-      const sentence = evidence
-        ? customerBindingResult({
-            key: binding.key,
-            disposition: evidence.disposition,
-            reason: evidence.reason,
-          })
-        : null
-      return {
-        ...binding,
-        latestEvidence: evidence ? {
-          disposition: evidence.disposition,
-          reason: evidence.reason,
-          detail: evidence.detail,
-          createdAt: evidence.createdAt.toISOString(),
-          auditId: evidence.auditId,
-        } : null,
-        customerSentence: sentence?.headline ?? (executions.some(execution => execution.bindingKey === binding.key)
-          ? OUTCOME_DETAIL_COPY.currentEvidenceMissing : OUTCOME_DETAIL_COPY.noEvidence),
-      }
-    }),
-    limitation,
-    recoveryAction,
-    lastSuccessfulVerificationAt: lastSuccessful?.assessedAt.toISOString() ?? null,
-    timeline,
-  }
+  return projectOutcomeDetail({ row, view, revisions, executions, lastSuccessful, improvements }, new Date())
 }
 
 export async function setSiteOutcomeEnabled(input: {

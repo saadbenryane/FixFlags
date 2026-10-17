@@ -11,6 +11,12 @@ const alias = {
 // development, which would silently pass the tests that verify those gates.
 const env = { NODE_ENV: 'test' as const }
 const websiteOnly = process.env.FIXFLAGS_TEST_PROFILE === 'website'
+// Real Chromium and recording processes have a dedicated resource phase.
+// Keep these suites included once, without competing with unit/import workers.
+const nativeBrowserSuites = [
+  'lib/sites/__tests__/checkout-purchase-probe.test.ts',
+  'lib/integrity/__tests__/run-path-probe.test.ts',
+]
 const projectExcludes = ['node_modules', '.next', ...(websiteOnly ? [
   'lib/mcp/**', 'lib/repo-scan/**', 'app/api/mcp/**', 'app/api/api-keys/**',
   'app/api/integrations/github/repos/**', 'app/api/integrations/github/select/**',
@@ -54,7 +60,22 @@ export default defineConfig({
             'app/report/**/*.test.ts',
             'worker/**/*.test.ts',
           ],
+          exclude: [...projectExcludes, ...nativeBrowserSuites],
+          testTimeout: 30_000,
+        },
+      },
+      {
+        resolve: { alias },
+        test: {
+          name: 'native-browser',
+          globals: false,
+          environment: 'node',
+          env,
+          include: nativeBrowserSuites,
           exclude: projectExcludes,
+          sequence: { groupOrder: 1 },
+          maxWorkers: 1,
+          fileParallelism: false,
           testTimeout: 30_000,
         },
       },

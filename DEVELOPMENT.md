@@ -157,6 +157,14 @@ active requests or rewrite priorities already stored in Redis.
 
 Follow the [agent validation policy](AGENTS.md#validation): end-to-end tests require an explicit user request, including the browser journeys bundled into `verify:release`. A routine UI edit does not authorize those commands.
 
+Vitest keeps the real Checkout and integrity browser probes in the
+`native-browser` project. They run once, with one worker, after the parallel
+server, hooks and component phase, including website coverage runs. Their
+assertions, isolation and deadlines stay unchanged. This resource ownership
+prevents browser shutdown and recording from competing with unit compilation.
+Use `npx vitest run --project native-browser` for these two probes; database
+worker journeys retain their disposable verifier and serialized file execution.
+
 | Command | Purpose |
 |---------|---------|
 | `npm run typecheck` | TypeScript type checking |

@@ -1,69 +1,49 @@
-# lib/audit/ - Audit Engine
+# lib/audit/ - Audit engine
 
 ## Responsibility
-Core audit pipeline: browser capture, registered check modules, AI triage/prescription, scoring, flag persistence, report data shaping.
 
-## Entry Points
-| File | Purpose |
-|------|---------|
-| `runner.ts` | Main audit orchestrator (capture → checks → journey → finalize) |
-| `pipeline/run-page.ts` | Per-page capture, slow replay, checks, triage |
-| `deterministic-audit.ts` | Offline/demo probe runner (not production) |
-| `checks/index.ts` | Barrel that registers check modules (`runAllChecks`) |
-| `persist.ts` | Saves audit results to DB (flags, scores, metadata) |
-| `finalize.ts` | Post-check finalization (diff against parent, journey flags, visual evidence) |
-| `create-audit.ts` | Creates audit record + enqueues job |
-| `fetch-audit.ts` | Loads audit from DB with all relations |
+Collect website facts, evaluate registered checks, retain evidence and supporting observations, assess repairs, and project recorded results. New website admissions use the canonical progressive execution path. Historical adapters remain available for their existing callers and stored evidence.
 
-## Key Subsystems
+## Canonical execution
 
-### Browser Capture (`browser/`)
-- `page-session.ts` - Playwright page lifecycle (launch, navigate, collect)
-- `screenshot.ts` - Screenshot capture + storage (R2 or local)
-- `journey-safety.ts` - Form probe safety (payment/download blocking)
+| Owner | Responsibility |
+| --- | --- |
+| `lib/sites/application/commands.ts` | Website application commands behind route adapters |
+| `lib/sites/application/run-requests.ts` | Admission of a run with its frozen execution scope |
+| `progressive/graph.ts` | Dependency graph for admitted work |
+| `progressive/engine.ts` | Delivery, execution ownership, bounded retries, settlement and recovery |
+| `progressive/collectors.ts` | Collection of recorded facts |
+| `progressive/evaluators.ts` | Evaluation of collected task evidence |
+| `progressive/results.ts` | Validated task artifacts |
+| `checks/catalog.ts` and `checks/index.ts` | Shared registered page checks and their assertions |
+| `execution-ownership.ts` | Write fencing for active execution |
+| `flag-observations.ts` and `flag-identity.ts` | Supporting scope, custody and explicit finding identity |
 
-### Check Modules (`checks/`)
-Each module exports a `run*Checks()` function and registers through `checks/index.ts`.
-Key modules: metadata, performance, accessibility, SEO, trust, mobile, content, security, visual-polish, messaging-clarity, conversion-friction.
+## Journey responsibilities
 
-### AI Judge (`judge*.ts`, `prompts/`)
-- `judge-triage.ts` - Inline triage (2500 chars pageText, all scans)
-- `judge-prescription.ts` - Async prescription (5000 chars, post-signup, gated by credits)
-- `judge-config.ts` - Model resolution (OpenAI primary, Anthropic fallback)
-- `validate-triage-output.ts` / `validate-judge-output.ts` - Zod schema validation
+| Owner | Responsibility |
+| --- | --- |
+| `journey/run-journey-reviews.ts` | Existing orchestration and compatibility entry points |
+| `journey/review-scope.ts` | Pure selection of discovered and original recorded journey routes |
+| `journey/plan-observation.ts` | Actual planner-page collection and private-context cleanup |
+| `journey/run-template.ts` | Browser execution of the selected journey |
+| `journey/review-findings.ts` | Pure interpretation of recorded findings, including allowed check scope |
+| `journey/review-persistence.ts` | Locked evidence, supporting-observation and Flag persistence |
 
-### Scoring & Flags
-- `scoring.ts` - Rubric score calculation (Message, Experience, Reach)
-- `rubric.ts` - Rubric definitions
-- `check-ids.ts` - 158 fine-grained check IDs
-- `priority-flags.ts` - Flag prioritization for Top Priorities section
-- `deduplicate.ts` - `suppressOverlappingFlags()` (drops broader flag when specific sibling exists)
+## Related Site owners
 
-### Report Data
-- `build-report-shape.ts` - Shapes audit data for report UI
-- `flow-data.ts` - Flow/journey data for report
-- `product-contract.ts` - Inferred product intent
-- `preview-meta.ts` - Screenshot preview metadata
-- `launch-readiness.ts` - Launch gate evaluation
+`lib/sites/domain/outcome-discovery.ts` derives page and journey candidates without database access. `lib/sites/outcomes.ts` retains tenant-scoped queries and transactional commands. `lib/sites/presentation/outcome-view.ts` and `outcome-detail-view.ts` project recorded facts without querying or mutating them. Website routes and UI consume the existing application and presentation contracts.
 
-### Pipeline Support
-- `pipeline-config.ts` - Pipeline version + stage definitions
-- `pipeline-errors.ts` - Error classification
-- `pipeline-log.ts` - Structured logging
-- `stuck-audit-recovery.ts` - Recovery for stalled audits
-- `recover-audit-job.ts` - Re-enqueue unstarted jobs or terminally fail lost active jobs
+## Compatibility and supporting paths
 
-## Integration Points
-- **Queue:** Enqueued by the web role through `lib/queue/client.ts`, processed only by `worker/index.ts`
-- **DB:** Persists via Prisma (`prisma/schema.prisma` models: Audit, AuditFlag, AuditPage, etc.)
-- **AI:** Calls OpenAI/Anthropic via `lib/audit/judge-config.ts`
-- **Storage:** Screenshots to Cloudflare R2 (`lib/storage/`) or local `.data/screenshots/`
-- **Report UI:** Data consumed by `app/report/[id]/page.tsx` → `components/audit/` + `components/report/`
+`runner.ts`, `pipeline/run-page.ts`, `persist.ts` and `finalize.ts` retain their established adapter responsibilities. Their presence does not authorize a second admission path. `deterministic-audit.ts` supports controlled offline evaluation, which does not establish live provider accuracy. AI triage and prescription use the recorded findings and validated output contracts; unavailable or omitted evidence remains explicit.
 
 ## Invariants
-- Pipeline stages: QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
-- `includeAi` does NOT gate triage (only prescription)
-- Journey flags created with `source: JOURNEY`; `clearAuditResults` preserves them
-- Visual evidence capture failures must not fail the audit
-- Flag dedup runs via `suppressOverlappingFlags()` in `checks/index.ts`
-- `impactTag` set on all deterministic checks
+
+- Collectors record facts, evaluators interpret them, persistence retains their custody, and presentation describes the recorded result.
+- New admissions preserve the frozen scope and registered check versions. A later observation cannot silently replace an original verification obligation.
+- Explicit equivalence may group an actionable Flag while retaining every original supporting observation. Similar wording alone is insufficient.
+- A failed or unavailable independent task does not certify a healthy result or discard previously open Flags.
+- Execution writes retain ownership and tenant fences. Historical readers do not invent missing provenance.
+- Browser and storage limitations remain visible; unrelated captures cannot substitute for missing evidence.
+- Unit fixtures, migrated-worker proof, provider acceptance and deployed customer outcomes are distinct evidence.
