@@ -70,7 +70,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   if (input.operator) await assertAdminDomainActor(input.operator, input.userId, input.projectId)
   const selection = validateRunSelection(input)
   const { scope, environment } = selection
-  const { selectedIds, first, fixture, auditUrl, executionSpec, requestHash } = await resolveRunExecution(input, selection)
+  const { selectedIds, first, fixture, auditUrl, executionSpec, requestHash, outcomeAuthorization } = await resolveRunExecution(input, selection)
   if (input.expectedResponsibilityHash) {
     const { admittedResponsibilityHash } = await import('./run-retry')
     if (admittedResponsibilityHash(executionSpec) !== input.expectedResponsibilityHash)
@@ -165,7 +165,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
         requestedByUserId: input.operator?.actorId ?? input.userId,
         source: input.source,
         idempotencyKey: requestedKey,
-        context: safeContext(input.context),
+        context: { ...safeContext(input.context), outcomeAuthorization },
         executionSpec: executionSpec as Prisma.InputJsonValue,
         requestHash,
         verificationTarget: input.verificationTarget as Prisma.InputJsonValue | undefined,

@@ -68,6 +68,7 @@ import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 
 const ownedOutcome = {
   id: 'outcome-1',
+  authorizationRevision: 1,
   kind: 'CHECKOUT',
   environment: 'production',
   projectId: 'project-1',
@@ -76,6 +77,14 @@ const ownedOutcome = {
 }
 
 describe('RunRequest tenant boundary and idempotency', () => {
+  it('admits server-owned authorization without changing the executable definition or trusting caller context', async () => {
+    await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: ['outcome-1'], source: 'WEB',
+      context: { outcomeAuthorization: 'caller-supplied' } })
+    const admitted = mocks.createAudit.mock.calls[0]![0]
+    expect(admitted.runRequestAdmission.context.outcomeAuthorization)
+      .toEqual({ version: 1, outcomes: [{ id: 'outcome-1', revision: 1 }] })
+    expect(admitted.executionSpec.outcomes[0]).not.toHaveProperty('authorizationRevision')
+  })
   it.each(['SUSPENDED', 'DELETING'])('refuses work for a %s customer before run admission', async (lifecycleStatus) => {
     mocks.userFindUnique.mockResolvedValue({ id: 'user-1', lifecycleStatus })
     await expect(requestSiteRun({ projectId: 'project-1', userId: 'user-1', scope: 'SITE', outcomeIds: [], source: 'WEB' })).rejects.toMatchObject({ status: 403, code: 'ACCOUNT_UNAVAILABLE' })
@@ -212,7 +221,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
         legacyOutcomeId: null,
         source: 'WEB',
         selections: undefined,
-        context: { action: 'run_site_care' },
+        context: { action: 'run_site_care', outcomeAuthorization: { version: 1, outcomes: [] } },
         requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
         executionSpec: expect.objectContaining({ version: 1, targetUrl: 'https://shop.example/', scope: 'SITE', outcomes: [] }),
       }),

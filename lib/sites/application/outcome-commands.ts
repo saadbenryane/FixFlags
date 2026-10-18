@@ -10,6 +10,7 @@ import { expectationForKind, nameForConfirmedOutcomeKind, type ConfirmableOutcom
 import { bindingForConfirmedKind } from './outcome-bindings'
 import { toOutcomeView, loadSiteOutcomeDetail } from './outcome-queries'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
+import { fenceOutcomeBindingTasks, lockOutcomeAuthority } from './outcome-authorization'
 
 /** Confirm that the walked page should stay available. Does not invent a purchase path. */
 export async function confirmPageAvailability(site: SiteRecord): Promise<SiteOutcomeView | null> {
@@ -70,6 +71,7 @@ export async function confirmSiteOutcome(input: {
   }
 
   const updated = await executionTransaction(async (tx) => {
+    if (!await lockOutcomeAuthority(tx, input.site)) return null
     // Every confirmation, reconfirmation and withdrawal for one Outcome must
     // observe the previous mutation after it commits. Without this row lock, a
     // withdrawal can scan bindings before a concurrent confirmation inserts
@@ -106,7 +108,7 @@ export async function confirmSiteOutcome(input: {
         input.targetUrl === undefined && input.kind !== 'SIGNUP'
       const config = preserve ? previous.config : binding.config
       const scope = preserve ? previous.scope : binding.scope ?? null
-      const changed = previous && (!previous.enabled || previous.required !== binding.required ||
+      const changed = previous && (previous.required !== binding.required ||
         previous.mechanism !== binding.mechanism || canonicalIntent(previous.config) !== canonicalIntent(config) ||
         canonicalIntent(previous.scope) !== canonicalIntent(scope))
       // One Outcome has one active semantic identity. Legacy or interrupted
@@ -128,6 +130,7 @@ export async function confirmSiteOutcome(input: {
           ...(changed ? { version: { increment: 1 } } : {}),
         },
       })
+      if (changed) await fenceOutcomeBindingTasks(tx, input.site, outcome.id, 'BINDING_CHANGED')
     } else if (!input.confirmed) {
       // Withdrawing the agreement also stops its execution. Leaving an enabled
       // binding behind would let unattended Watch keep exercising an Outcome
@@ -136,6 +139,7 @@ export async function confirmSiteOutcome(input: {
         where: { outcomeId: outcome.id, enabled: true },
         data: { enabled: false },
       })
+      await fenceOutcomeBindingTasks(tx, input.site, outcome.id, 'OUTCOME_AUTHORIZATION_CHANGED')
     }
 
     const semanticWhere: Prisma.SiteOutcomeWhereInput = input.confirmed && input.kind
@@ -154,6 +158,7 @@ export async function confirmSiteOutcome(input: {
             : {}),
         inferenceSource: 'user',
         confirmedAt: input.confirmed ? outcome.confirmedAt ?? new Date() : null,
+        ...(!input.confirmed && outcome.confirmedAt ? { authorizationRevision: { increment: 1 } } : {}),
         ...(input.confirmed && input.kind
           ? {
               kind: input.kind,
@@ -260,10 +265,18 @@ export async function setSiteOutcomeEnabled(input: {
   enabled: boolean
 }): Promise<SiteOutcomeDetailView | null> {
   if (!input.site.projectId) return null
-  const changed = await executionWrite(tx => tx.siteOutcome.updateMany({
-    where: { id: input.outcomeId, projectId: input.site.projectId },
-    data: { enabled: input.enabled },
-  }))
-  if (changed.count !== 1) return null
+  const found = await executionTransaction(async tx => {
+    if (!await lockOutcomeAuthority(tx, input.site)) return false
+    const outcome = await tx.siteOutcome.findFirst({ where: { id: input.outcomeId, projectId: input.site.projectId },
+      select: { enabled: true } })
+    if (!outcome) return false
+    if (outcome.enabled !== input.enabled) {
+      await tx.siteOutcome.updateMany({ where: { id: input.outcomeId, projectId: input.site.projectId },
+        data: { enabled: input.enabled, ...(!input.enabled ? { authorizationRevision: { increment: 1 } } : {}) } })
+      if (!input.enabled) await fenceOutcomeBindingTasks(tx, input.site, input.outcomeId, 'OUTCOME_AUTHORIZATION_CHANGED')
+    }
+    return true
+  })
+  if (!found) return null
   return loadSiteOutcomeDetail(input.site, input.outcomeId)
 }

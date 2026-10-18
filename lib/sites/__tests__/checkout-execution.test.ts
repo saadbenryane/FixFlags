@@ -63,6 +63,7 @@ describe('bound Checkout execution', () => {
       selections: [{ outcome: {
         id: 'outcome-1',
         kind: 'CHECKOUT',
+        authorizationRevision: 1,
         bindings: [{
           key: 'checkout-browser-v1',
           mechanism: 'BROWSER_JOURNEY',
@@ -95,15 +96,41 @@ describe('bound Checkout execution', () => {
     const request = await mocks.runFindFirst()
     const outcome = request.selections[0].outcome
     const binding = outcome.bindings[0]
+    binding.enabled = true
     binding.version = 2
     request.executionSpec = { version: 1, targetUrl: request.audit.url, environment: 'production',
       scope: 'OUTCOMES', checks: {}, verificationTarget: null,
       outcomes: [{ id: outcome.id, kind: outcome.kind, expectation: null, bindingPolicy: 'all-required',
-        bindings: [{ ...binding, version: 1 }] }],
+        bindings: [{ key: binding.key, version: 1, mechanism: binding.mechanism, required: binding.required, config: binding.config }] }],
     }
     await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
     expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       disposition: 'BLOCKED', reason: 'binding_changed', bindingVersion: 1,
+    }) }))
+    expect(mocks.runPathProbe).not.toHaveBeenCalled()
+    expect(mocks.runGoalProbe).not.toHaveBeenCalled()
+    expect(mocks.safeForm).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, { outcomeAuthorization: { version: 1, outcomes: [{ id: 'outcome-1', revision: 1 }] } }])(
+    'fences an older authorization revision without relying on clock order or changing the check definition: %j', async context => {
+    const request = await mocks.runFindFirst()
+    const outcome = request.selections[0].outcome
+    const binding = outcome.bindings[0]
+    binding.version = 1
+    binding.enabled = true
+    outcome.authorizationRevision = 2
+    request.requestedAt = new Date('2099-10-18T10:00:00Z')
+    outcome.confirmedAt = new Date('2000-10-18T10:01:00Z')
+    request.context = context
+    request.executionSpec = { version: 1, targetUrl: request.audit.url, environment: 'production',
+      scope: 'OUTCOMES', checks: {}, verificationTarget: null,
+      outcomes: [{ id: outcome.id, kind: outcome.kind, expectation: null, bindingPolicy: 'all-required',
+        bindings: [{ key: binding.key, version: 1, mechanism: binding.mechanism, required: binding.required, config: binding.config }] }],
+    }
+    await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      disposition: 'BLOCKED', reason: 'outcome_reauthorized', bindingVersion: 1,
     }) }))
     expect(mocks.runPathProbe).not.toHaveBeenCalled()
     expect(mocks.runGoalProbe).not.toHaveBeenCalled()
@@ -241,6 +268,7 @@ describe('bound Checkout execution', () => {
       selections: [{ outcome: {
         id: 'outcome-signup',
         kind: 'SIGNUP',
+        authorizationRevision: 1,
         bindings: [{
           key: 'signup-browser-v1',
           mechanism: 'BROWSER_JOURNEY',
@@ -275,7 +303,7 @@ describe('bound Checkout execution', () => {
 
   it('publishes a confirmed authorized signup failure with its exact execution reference', async () => {
     mocks.runFindFirst.mockResolvedValue({ id: 'run-1', projectId: 'site-1', audit: { url: 'https://shop.example' }, selections: [{ outcome: {
-      id: 'signup-1', kind: 'SIGNUP', bindings: [{ key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
+      id: 'signup-1', kind: 'SIGNUP', authorizationRevision: 1, bindings: [{ key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
         config: { startUrl: 'https://shop.example/signup', safety: 'reversible', authorized: true, fixtureId: 'fixture-1' } }],
     } }] })
     mocks.safeForm.mockResolvedValue({ disposition: 'FAILED', reason: 'success_text_missing', detail: { fieldCount: 1, cleanupStatus: 'succeeded' } })
@@ -296,7 +324,7 @@ describe('bound Checkout execution', () => {
 
   it('records cleanup uncertainty without creating a signup Flag', async () => {
     mocks.runFindFirst.mockResolvedValue({ id: 'run-1', projectId: 'site-1', audit: { url: 'https://shop.example' }, selections: [{ outcome: {
-      id: 'signup-1', kind: 'SIGNUP', bindings: [{ key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
+      id: 'signup-1', kind: 'SIGNUP', authorizationRevision: 1, bindings: [{ key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
         config: { startUrl: 'https://shop.example/signup', safety: 'reversible', authorized: true, fixtureId: 'fixture-1' } }],
     } }] })
     mocks.safeForm.mockResolvedValue({ disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: { fieldCount: 1, cleanupStatus: 'failed' } })
@@ -311,6 +339,7 @@ describe('bound Checkout execution', () => {
       selections: [{ outcome: {
         id: 'outcome-reset',
         kind: 'PASSWORD_RESET',
+        authorizationRevision: 1,
         bindings: [{
           key: 'password-reset-browser-v1',
           mechanism: 'BROWSER_JOURNEY',

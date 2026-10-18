@@ -10,6 +10,7 @@ import { runCheckoutBinding } from './checkout-binding'
 import { runGenericBrowserJourneyBinding } from './browser-journey-binding'
 import { runAvailabilityBinding } from './availability-binding'
 import { runSignupBinding } from './signup-binding'
+import { admittedOutcomeAuthorization } from '../domain/outcome-authorization'
 
 type BoundSelection = {
   outcome: {
@@ -90,10 +91,20 @@ export async function runBoundOutcomeExecutions(auditId: string, only?: { outcom
         select: { id: true },
       })
       if (existing) continue
-      const currentBinding = request.selections.find(candidate => candidate.outcome.id === selection.outcome.id)?.outcome.bindings.find(current => current.key === binding.key)
+      const currentOutcome = request.selections.find(candidate => candidate.outcome.id === selection.outcome.id)?.outcome
+      const currentBinding = currentOutcome?.bindings.find(current => current.key === binding.key)
       if (spec && (!currentBinding || !currentBinding.enabled || currentBinding.version !== binding.version)) {
         await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key,
           bindingVersion: binding.version, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_changed' })
+        continue
+      }
+      const admittedAuthorization = admittedOutcomeAuthorization(request.context, selection.outcome.id)
+      // Authorization is a durable revision, independent of clocks and the
+      // check definition against which recovery evidence is compared.
+      if (currentOutcome?.enabled === false || currentOutcome?.authorizationRevision !== admittedAuthorization) {
+        await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key,
+          bindingVersion: binding.version, mechanism: binding.mechanism, disposition: 'BLOCKED',
+          reason: admittedAuthorization === null ? 'outcome_authorization_unavailable' : 'outcome_reauthorized' })
         continue
       }
       if (binding.configurationError) {

@@ -2079,6 +2079,8 @@ model SiteOutcome {
   environment       String             @default("production")
   /// Clear requires every required binding. There is no partial Clear.
   bindingPolicy     OutcomeBindingPolicy @default(ALL_REQUIRED)
+  /// Permission changes fence work independently of the executable definition.
+  authorizationRevision Int           @default(1)
   enabled           Boolean          @default(true)
   staleAfterMinutes Int              @default(11520)
   /// heuristic | user
