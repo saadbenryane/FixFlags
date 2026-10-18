@@ -20,6 +20,7 @@ export const taskInputSchema = z.object({
   fixtureId: z.string().min(1).max(120).optional(),
   device: z.enum(['desktop', 'mobile']).optional(),
   prescriptionScope: prescriptionScopeSchema.optional(),
+  prescriptionContractVersion: z.literal(2).optional(),
   prescriptionFlagKeys: z.array(z.string().min(1).max(2000)).max(12).optional(),
 }).strict()
 export type TaskInput = z.infer<typeof taskInputSchema>

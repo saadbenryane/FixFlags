@@ -112,8 +112,9 @@ describe('system-prompt triage contract', () => {
 
   it('prescription system prompt requires scope guards', () => {
     const system = buildPrescriptionSystemPrompt()
-    assert.match(system, /Do NOT change/i)
-    assert.match(system, /SCOPE/i)
+    assert.match(system, /cannot change its classification, diagnosis, certainty, observations, evidence membership or verification obligations/i)
+    assert.match(system, /Preserve unrelated working behavior/)
+    assert.match(system, /Address every original supporting scope/)
   })
 
   it('prescription system prompt asks for a task body, not six tool dialects or invented files', () => {
@@ -122,7 +123,9 @@ describe('system-prompt triage contract', () => {
     assert.match(system, /Do not invent file paths/)
     assert.doesNotMatch(system, /@app\/page\.tsx/)
     assert.doesNotMatch(system, /cursorPrompt \(REQUIRED\)/)
-    assert.match(system, /Omit cursorPrompt/)
+    assert.match(system, /Do not return cursorPrompt/)
+    assert.match(system, /INSPECTION PLAN/)
+    assert.match(system, /keeps the existing implementation when a change is not justified/)
   })
 
   it('prescription user prompt includes page URL, evidence, and quoted current text', () => {
@@ -149,7 +152,7 @@ describe('system-prompt triage contract', () => {
   it('prescription system prompt requires verification steps', () => {
     const system = buildPrescriptionSystemPrompt()
     assert.match(system, /VERIFICATION RULE/i)
-    assert.match(system, /Reload the page/i)
+    assert.match(system, /preserves the original recorded verification conditions/i)
     assert.match(system, /Do not invent traffic, revenue, abandonment, conversion/)
     assert.doesNotMatch(system, /10K|thousands of link clicks|kills the social sharing loop|10x faster/)
   })
@@ -260,12 +263,13 @@ describe('buildTriageUserPrompt', () => {
 })
 
 describe('buildPrescriptionUserPrompt', () => {
-  it('supplies the recorded native guidance, certainty and Recommendation policy before enrichment', () => {
+  it('supplies recorded certainty and Recommendation policy without recycling prior task instructions', () => {
     const prompt = buildPrescriptionUserPrompt({ ...basicPrescriptionContext, existingFlags: [{
       ...basicPrescriptionContext.existingFlags[0], attention: 'recommendation', causeCertainty: 'OBSERVED', fixConfidence: 'LOW',
       fix: 'Review the intended visitor action before changing the existing Checkout label.',
     }] } as PrescriptionContext)
-    assert.match(prompt, /Recorded fix: Review the intended visitor action before changing the existing Checkout label/)
+    assert.doesNotMatch(prompt, /Recorded fix:/)
+    assert.doesNotMatch(prompt, /Review the intended visitor action before changing the existing Checkout label/)
     assert.match(prompt, /Attention: recommendation/)
     assert.match(prompt, /Recorded cause certainty: OBSERVED/)
     assert.match(prompt, /Recorded fix confidence: LOW/)

@@ -5,6 +5,7 @@ import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
 import { hasLogoWall } from './utils'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { NAVIGATION_OBSERVATION_COPY } from '@/lib/marketing/copy/navigation-observations'
 
 const AUTHORITY_MARKERS = [
   /\b(as seen in|featured in|mentioned in|press|media)\b/i,
@@ -261,11 +262,8 @@ export function runTrustPsychologyChecks(
       impactTag: 'TRUST',
       severity: 'POLISH',
       problem: 'Page has very few internal navigation links',
-      evidence:
-        links.length === 0
-          ? `No navigable internal links were found in the captured DOM sample (${links.length} total anchors). Visitors may have no path to explore further.`
-          : `Only ${internalLinks.length} internal link${internalLinks.length === 1 ? '' : 's'} found among ${links.length} anchors. Visitors may have no path to explore further.`,
-      fix: '1. Add navigation links to key pages (features, pricing, docs, blog)\n2. Ensure the header nav has at least 3-4 internal links\n3. Add contextual CTAs in the body that link to related pages\n4. Include a footer with site map links for discoverability',
+      evidence: NAVIGATION_OBSERVATION_COPY.navigationEvidence(internalLinks.length, links.length),
+      fix: NAVIGATION_OBSERVATION_COPY.navigationGuidance,
       confidence: links.length === 0 ? 0.6 : 0.75,
       source: 'DETERMINISTIC',
     })

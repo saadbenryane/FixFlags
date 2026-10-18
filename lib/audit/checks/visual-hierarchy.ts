@@ -4,6 +4,7 @@ import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { NAVIGATION_OBSERVATION_COPY as C } from '@/lib/marketing/copy/navigation-observations'
 
 export function runVisualHierarchyChecks(
   meta: PageMetadata | null,
@@ -25,9 +26,9 @@ export function runVisualHierarchyChecks(
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
         severity: 'IMPORTANT',
-        problem: `${captureMetrics.competingPrimaryCtaCount} equally prominent CTAs compete above the fold`,
-        evidence: `Multiple high-intent CTAs with similar visual weight: ${captureMetrics.competingPrimaryCtaLabels.slice(0, 4).map((l) => `"${l}"`).join(', ')}. Users may experience choice paralysis.`,
-        fix: '1. Designate one primary CTA as the dominant action (filled button, larger size)\n2. Make secondary actions visually distinct (outline/ghost styling, smaller)\n3. Remove CTAs that serve non-primary goals from above the fold\n4. Use visual hierarchy: primary > secondary > text link for descending prominence',
+        problem: C.competingProblem(count),
+        evidence: C.competingEvidence(captureMetrics.competingPrimaryCtaLabels),
+        fix: C.competingGuidance,
         confidence: 0.85,
         source: 'DETERMINISTIC',
       })

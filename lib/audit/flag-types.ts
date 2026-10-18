@@ -176,7 +176,10 @@ export type PrescriptionGuidanceContext = {
 export type ExistingFlagForPrescription = Pick<
   FlagData,
   'source' | 'rubric' | 'severity' | 'problem' | 'checkId' | 'evidence' | 'pageUrl'
-> & PrescriptionGuidanceContext & { flagKey: string; supportingObservations?: import('./flag-observations').SupportingObservationView[] }
+> & PrescriptionGuidanceContext & Partial<Pick<FlagData, 'whyItMatters' | 'verificationRule'>> & {
+  flagKey: string
+  supportingObservations?: import('./flag-observations').SupportingObservationView[]
+}
 
 /**
  * Minimal subset for theme-based deduplication matching.

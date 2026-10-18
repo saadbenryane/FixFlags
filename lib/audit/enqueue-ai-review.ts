@@ -42,7 +42,7 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<voi
       const task = await tx.auditVerifierExecution.create({ data: { auditId, ...prescriptionIdentity(plan.index),
         pageUrl: audit.url, source: 'EXECUTION', status: 'PENDING', workKind: 'prescription', workState: 'READY',
         workInput: { pageUrl: audit.url, primary: true, position: 0, role: 'prescription',
-          prescriptionScope: freezePrescriptionScope(flags, plan.flagKeys),
+          prescriptionScope: freezePrescriptionScope(flags, plan.flagKeys), prescriptionContractVersion: 2,
           ...(plan.flagKeys ? { prescriptionFlagKeys: plan.flagKeys } : {}) }, workDependencies: [],
         workRetryAt: new Date(Date.now() + Math.max(0, delayMs)), workDispatchState: 'PENDING' } })
       created.push(task.id)

@@ -141,7 +141,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     // track execution without reopening the analysis or its monitoring run.
     data: { includeAi: true },
   }))
-  await logPipelineEvent(auditId, { stage: 'judging', event: 'prescription_started' })
+  await logPipelineEvent(auditId, { stage: 'judging', event: 'prescription_started', detail: 'guidance_contract=2' })
 
   let prescription
   try {

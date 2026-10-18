@@ -1,10 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
-import {
-  prescriptionProviderJsonSchema,
-  parsePrescriptionProviderOutput,
-  type PrescriptionOutput,
-} from './judge-prescription-schema'
+import type { PrescriptionOutput } from './judge-prescription-schema'
+import { prescriptionGuidanceJsonSchema, parsePrescriptionGuidance, composePrescriptionRubrics } from './prescription-guidance-schema'
 import {
   buildPrescriptionSystemPrompt,
   buildPrescriptionUserPrompt,
@@ -21,6 +18,7 @@ import {
   type LlmUsage,
 } from './judge-runner'
 import { PRESCRIPTION_BATCH_SIZE, prescriptionFlagBatches } from './prescription-plan'
+import { isConditionalInspection } from './prescription-policy'
 
 export { prescriptionFlagBatches, prescriptionTaskPlans } from './prescription-plan'
 
@@ -34,6 +32,7 @@ export interface PrescriptionResult {
 export type { ExistingFlagForPrescription } from './flag-types'
 
 export interface PrescriptionContext {
+  validationFeedback?: string
   onAttempt?: (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
   url: string
   verdict: string
@@ -53,8 +52,14 @@ function parsePrescriptionOutput(
   raw: unknown,
   existingFlags: ExistingFlagForPrescription[]
 ): PrescriptionOutput {
-  const parsed = parsePrescriptionProviderOutput(raw, existingFlags.map(flag => flag.flagKey))
-  return validatePrescriptionOutput(parsed, existingFlags)
+  try {
+    const parsed = parsePrescriptionGuidance(raw, existingFlags)
+    return validatePrescriptionOutput(parsed, existingFlags)
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Invalid prescription output:'))
+      throw new JudgeContractError(error.message)
+    throw error
+  }
 }
 
 export function validatePrescriptionOutput(
@@ -144,11 +149,9 @@ function validateFixQuality(
   const fix = rx.fix.trim()
 
   if (existing?.attention === 'recommendation') {
-    const inspection = /^\s*(?:(?:\d+[.)]|[-*])\s+)?(?:\*\*|__)?(?:review|inspect|confirm|check|assess|evaluate|compare)\b/i
-    const condition = /\b(?:if|when|before|unless)\b/i
-    for (const guidance of [fix, rx.agentPrompt?.trim()].filter((value): value is string => Boolean(value))) {
-      if (!inspection.test(guidance) || !condition.test(guidance)) {
-        throw new JudgeContractError(`Recommendation ${rx.flagKey} requires conditional inspection before prescribing a change`)
+    for (const [field, guidance] of [['fix', fix], ['agentPrompt', rx.agentPrompt?.trim()]] as const) {
+      if (guidance && !isConditionalInspection(guidance)) {
+        throw new JudgeContractError(`Recommendation ${rx.flagKey} requires conditional inspection before prescribing a change (${field})`)
       }
     }
   }
@@ -255,9 +258,9 @@ async function runAnthropicPrescription(
             cache_control: { type: 'ephemeral' },
           },
         ],
-        tools: [{ name: 'quality_prescription', description: 'Generate fix prompts and evidence for an already-diagnosed audit',
-          input_schema: prescriptionProviderJsonSchema(context.existingFlags.map(flag => flag.flagKey), 'anthropic') as Anthropic.Tool.InputSchema }],
-        tool_choice: { type: 'tool', name: 'quality_prescription' },
+        tools: [{ name: 'quality_prescription_v2', description: 'Return bounded guidance plans for the exact recorded findings',
+          input_schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'anthropic') as Anthropic.Tool.InputSchema }],
+        tool_choice: { type: 'tool', name: 'quality_prescription_v2' },
         messages: [
           {
             role: 'user',
@@ -279,6 +282,7 @@ async function runAnthropicPrescription(
                   },
                   techStack: context.techStack,
                   existingFlags: context.existingFlags,
+                  validationFeedback: context.validationFeedback,
                   rubrics: context.rubrics,
                   screenshotHint:
                     desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only',
@@ -353,6 +357,7 @@ async function runOpenAIPrescription(
       },
       techStack: context.techStack,
       existingFlags: context.existingFlags,
+      validationFeedback: context.validationFeedback,
       rubrics: context.rubrics,
       screenshotHint,
     }),
@@ -371,9 +376,9 @@ async function runOpenAIPrescription(
         response_format: {
           type: 'json_schema',
           json_schema: {
-            name: 'quality_prescription',
+            name: 'quality_prescription_v2',
             strict: true,
-            schema: prescriptionProviderJsonSchema(context.existingFlags.map(flag => flag.flagKey), 'openai'),
+            schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'openai'),
           },
         },
         messages: [
@@ -451,12 +456,20 @@ async function runPrescriptionBatch(
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
   const deadline = maxTimeoutMs === undefined ? undefined : Date.now() + maxTimeoutMs
+  let validationFeedback: string | undefined
   return runLlmWithRetry({
     label: 'prescription',
     input: { context, desktopBase64, mobileBase64, maxTimeoutMs },
-    attemptFn: (provider, { context, desktopBase64, mobileBase64, maxTimeoutMs }) =>
-      runPrescriptionWithProvider(provider, context, desktopBase64, mobileBase64,
-        deadline === undefined ? maxTimeoutMs : Math.max(1, deadline - Date.now())),
+    attemptFn: async (provider, { context, desktopBase64, mobileBase64, maxTimeoutMs }) => {
+      try {
+        return await runPrescriptionWithProvider(provider, validationFeedback ? { ...context, validationFeedback } : context,
+          desktopBase64, mobileBase64, deadline === undefined ? maxTimeoutMs : Math.max(1, deadline - Date.now()))
+      } catch (error) {
+        if (error instanceof JudgeContractError || (error instanceof Error && error.message.startsWith('Invalid prescription output:')))
+          validationFeedback = error.message.slice(0, 4000)
+        throw error
+      }
+    },
     isRetryable: isPrescriptionAttemptRetryable,
     deadline,
   })
@@ -502,9 +515,7 @@ export async function runPrescriptionWithRetry(
       }, error)
     }
     flagPrescriptions.push(...result.output.flagPrescriptions)
-    if (rubricPrescriptions.length === 0) {
-      rubricPrescriptions = result.output.rubricPrescriptions
-    }
+    rubricPrescriptions = composePrescriptionRubrics(flags, flagPrescriptions)
     inputTokens += result.usage.inputTokens
     outputTokens += result.usage.outputTokens
     model = result.usage.model
