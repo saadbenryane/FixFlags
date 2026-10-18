@@ -75,10 +75,11 @@ function validateTaskText(texts: readonly string[], source: ExistingFlagForPresc
 export function composePrescriptionRubrics(flags: readonly ExistingFlagForPrescription[], prescriptions: PrescriptionOutput['flagPrescriptions']): PrescriptionOutput['rubricPrescriptions'] {
   return (['MESSAGE', 'EXPERIENCE', 'REACH'] as const).map(name => ({ name,
     rubricPrompt: formatCombinedRepairGuidance(prescriptions.flatMap(prescription => {
-      const source = flags.find(flag => flag.flagKey === prescription.flagKey)
-      if (!source || source.rubric !== name) return []
-      return [{ problem: source.problem, evidence: source.evidence, fix: prescription.fix, verificationRule: source.verificationRule,
-        supportingEvidence: source.supportingObservations?.map(observation => JSON.stringify(observation)) }]
+      const members = flags.filter(flag => flag.flagKey === prescription.flagKey && flag.rubric === name)
+      if (!members.length) return []
+      return [{ problem: members[0].problem, fix: prescription.fix,
+        scopes: members.map(source => ({ problem: source.problem, evidence: source.evidence, pageUrl: source.pageUrl,
+          verificationRule: source.verificationRule, supportingEvidence: source.supportingObservations?.map(observation => JSON.stringify(observation)) })) }]
     })), cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null }))
 }
 

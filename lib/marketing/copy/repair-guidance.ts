@@ -7,7 +7,9 @@ export const REPAIR_GUIDANCE_COPY = {
   noChange: 'If that condition is not established, keep the existing implementation.',
   noFindings: 'No change is prescribed from the recorded evidence.',
   observed: (evidence: string) => `Recorded evidence: ${evidence}`,
+  page: (url: string) => `Affected page: ${url}`,
+  problem: (problem: string) => `Recorded finding: ${problem}`,
   supporting: (evidence: string) => `Supporting observation: ${evidence}`,
-  verify: (rule: string) => `Independent verification: ${rule}`,
+  verify: (rule: string, page?: string | null) => `Independent verification${page ? ` for ${page}` : ''}: ${rule}`,
   verificationUnavailable: 'Independent verification conditions are not recorded.',
 } as const

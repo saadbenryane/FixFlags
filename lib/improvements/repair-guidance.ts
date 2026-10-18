@@ -19,12 +19,17 @@ export function formatInspectionGuidance(plan: InspectionGuidancePlan): string {
 }
 
 export function formatCombinedRepairGuidance(rows: readonly {
-  problem: string; evidence: string; fix: string; verificationRule?: string | null; supportingEvidence?: readonly string[]
+  problem: string
+  fix: string
+  scopes: readonly { problem: string; evidence: string; pageUrl?: string | null; verificationRule?: string | null; supportingEvidence?: readonly string[] }[]
 }[]): string {
   if (!rows.length) return C.noFindings
-  return rows.map((row, index) => [`${index + 1}. ${row.problem}`, C.observed(row.evidence),
-    ...(row.supportingEvidence || []).map(C.supporting), row.fix,
-    C.verify(row.verificationRule || C.verificationUnavailable)].join('\n')).join('\n\n')
+  return rows.map((row, index) => [`${index + 1}. ${row.problem}`,
+    ...row.scopes.flatMap(scope => [scope.pageUrl ? C.page(scope.pageUrl) : '',
+      scope.problem !== row.problem ? C.problem(scope.problem) : '', C.observed(scope.evidence),
+      ...(scope.supportingEvidence || []).map(C.supporting)]).filter(Boolean), row.fix,
+    ...row.scopes.map(scope => C.verify(scope.verificationRule || C.verificationUnavailable, scope.pageUrl)),
+  ].join('\n')).join('\n\n')
 }
 
 export type RepairGuidanceState = 'ready' | 'pending' | 'unavailable'

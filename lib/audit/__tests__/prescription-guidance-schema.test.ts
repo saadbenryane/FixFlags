@@ -108,4 +108,20 @@ describe('version 2 source-bound guidance plans', () => {
       ...plan(), changeIfConfirmed: 'set the product title with <meta property="og:title" content="Invented product promise">',
     } } }, [source])).toThrow(/invents an attribute value/)
   })
+
+  it('keeps every legacy member of one prescription key in the combined task without repeating its action', () => {
+    const members = [{ ...recommendation, pageUrl: 'https://example.com/a' }, {
+      ...recommendation, pageUrl: 'https://example.com/b', problem: 'Review the repeated product title on the second document',
+      evidence: 'The second product document has the same title text.', verificationRule: 'Compare the second document title in its original access conditions.',
+    }]
+    const output = parsePrescriptionGuidance({ flagPrescriptions: { 'title-review': plan() } }, members)
+    const combined = output.rubricPrescriptions.find(row => row.name === 'REACH')!.rubricPrompt
+    for (const member of members) {
+      expect(combined).toContain(member.pageUrl)
+      expect(combined).toContain(member.problem)
+      expect(combined).toContain(member.evidence)
+      expect(combined).toContain(member.verificationRule)
+    }
+    expect(combined.split(output.flagPrescriptions[0].fix)).toHaveLength(2)
+  })
 })
