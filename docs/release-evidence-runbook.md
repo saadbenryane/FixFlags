@@ -26,6 +26,24 @@ route existing, a unit test passing, or "implemented locally" never satisfies a
 launch criterion. The criteria are proven in a release environment and in
 production, on a frozen SHA, and recorded as receipts.
 
+## Rollback readiness
+
+Before promotion, retain a private snapshot of the previous production web and worker deployment IDs, immutable image digests, custom variables and migration ledger. Recheck that the images remain restorable. Railway rollback restores the selected deployment's image and custom variables, so explicitly verify current authorization and automatic-account gates after restoration. A restart and a source rebuild establish different evidence. See [Railway rollback behavior](https://docs.railway.com/guides/roll-back-bad-deploy) and the [deployment API](https://docs.railway.com/integrations/api/manage-deployments).
+
+The schema rehearsal generates the previous production client and exercises its actual reads and writes against the migrated candidate schema. Synthetic writes remain inside an intentionally rolled-back transaction, with absence verified afterward. Retain failed rehearsals and their corrected source separately. This proves schema compatibility, not an image restoration or a customer journey.
+
+If rollback is required, retain the failed deployment and logs, stop admitting privileged work and let its current ownership settle before changing worker versions. Restore both recorded service deployments, preserve additive database changes and customer history, verify the exact prior SHA and image on each service, and inspect readiness and pending work before resuming execution. Keep automatic-account execution disabled until the restored implementation and retained lifecycle evidence justify it. Do not force-push, reverse additive migrations, delete queued history or label a rebuilt image as the previous immutable image.
+
+The final production receipt must link the actual retained-image observation and schema rehearsal. A prepared command or a healthy endpoint alone cannot close rollback readiness.
+
+## Historical migration custody
+
+Production retains `20260723081407_scan_access` with a historical `manual-resolve` marker. That marker does not prove which SQL executed. Preserve it unchanged. The archived Git source contains drop/add statements and must not be restored to the active migration directory or replayed. The current migration history explicitly retains a no-op successor and creates the modern `scanAccessEncrypted` columns for fresh installs.
+
+A read-only production inventory found the two additional `scan_access_encrypted` columns, with no populated values. The forward retirement migration locks both affected tables, checks both columns, and refuses the entire operation if either contains data. It preserves the modern encrypted-access columns. Required PostgreSQL acceptance covers empty retirement, rejection without a partial drop, idempotence and a writer that commits a legacy value while retirement waits for its lock.
+
+Before production upgrade, compare the actual schema with the previous released schema plus this precisely described legacy variant, and retain the population observation. After the normal forward migrations, require an exact comparison with the candidate schema. Keep the historical execution limitation explicit; never replace its marker with an invented checksum or erase its receipt.
+
 ## Proven locally, still needs a receipt
 
 These have a real test in this repository. They are wired into a release stage, so

@@ -6,15 +6,15 @@ import { formatCombinedRepairGuidance, formatInspectionGuidance } from '@/lib/im
 import { REPAIR_GUIDANCE_COPY as C } from '@/lib/marketing/copy/repair-guidance'
 
 const inspectionPlan = z.object({
-  inspection: z.string().min(15).max(240).describe('A concise plain-language subject to inspect, naming the recorded target. Noun phrase only. No opening command, diagnosis, code markup or angle brackets.'),
-  changeCondition: z.string().min(20).max(240).describe('An unconfirmed, evidence-based condition that would justify a change. Subject and predicate, without an opening if/when. Do not predict business outcomes.'),
-  changeIfConfirmed: z.string().min(15).max(320).nullable().describe('A plain-language action only if the condition is confirmed. No code markup, angle brackets, example URLs, placeholder values, guessed assets, file paths or product claims. Name attributes in plain text. Null when no specific change is supported.'),
-  preserve: z.string().min(10).max(200).describe('The named existing behavior or surrounding elements that must remain unchanged. Plain noun phrase only. No code markup or angle brackets.'),
+  inspection: z.string().trim().min(15).max(240).describe('A concise plain-language subject to inspect, naming the recorded target. Noun phrase only. No opening command, diagnosis, code markup or angle brackets.'),
+  changeCondition: z.string().trim().min(20).max(240).describe('An unconfirmed, evidence-based condition that would justify a change. Subject and predicate, without an opening if/when. Do not predict business outcomes.'),
+  changeIfConfirmed: z.string().trim().min(15).max(320).nullable().describe('A plain-language action only if the condition is confirmed. No code markup, angle brackets, example URLs, placeholder values, guessed assets, file paths or product claims. Name attributes in plain text. Null when no specific change is supported.'),
+  preserve: z.string().trim().min(10).max(200).describe('The named existing behavior or surrounding elements that must remain unchanged. Plain noun phrase only. No code markup or angle brackets.'),
 }).strict()
 
 const repairTask = z.object({
-  fix: z.string().min(20).max(1200).describe('Concise procedural repair steps for the established recorded failure. Name its target. Preserve working behavior. No business predictions, invented file paths or unrelated work.'),
-  agentPrompt: z.string().min(20).max(1200).nullable().describe('The same bounded repair task, or null when fix is complete. No new diagnosis or additional scope.'),
+  fix: z.string().trim().min(20).max(1200).describe('Concise procedural repair steps for the established recorded failure. Name its target. Preserve working behavior. No business predictions, invented file paths or unrelated work.'),
+  agentPrompt: z.string().trim().min(20).max(1200).nullable().describe('The same bounded repair task, or null when fix is complete. No new diagnosis or additional scope.'),
 }).strict()
 
 function providerSchema(flags: readonly ExistingFlagForPrescription[]) {
@@ -37,7 +37,8 @@ export function prescriptionGuidanceJsonSchema(flags: readonly ExistingFlagForPr
 }
 
 const unsupportedImpact = /\b(?:increas\w*|improv\w*|boost\w*|enhanc\w*|driv\w*|maximi\w*|grow\w*|reduc\w*|decreas\w*)\b[^.!?\n]{0,80}\b(?:revenue|conversions?|retention|traffic|ranking|search visibility|engagement|abandonment|customer satisfaction)\b/i
-const inventedPath = /\b(?:src|app|pages|components)\/[a-z0-9_./-]+\.(?:tsx?|jsx?|vue|svelte)\b/i
+const repositoryPath = /\b(?:src|app|pages|components)\/[a-z0-9_./-]+\.(?:tsx?|jsx?|vue|svelte)\b/gi
+const urlTokens = (text: string) => (text.match(/https?:\/\/[^\s<>"']+/g) || []).map(url => url.replace(/[.,;:!?]+$/, ''))
 const tokens = (text: string) => new Set(text.toLowerCase().match(/[a-z0-9]{3,}/g) || [])
 const common = new Set(['the', 'and', 'for', 'with', 'from', 'this', 'that', 'have', 'are', 'before', 'after', 'when', 'where', 'should', 'would', 'without', 'into', 'any', 'not', 'page', 'website', 'site', 'issue', 'problem', 'current', 'currently', 'user', 'users', 'visitor', 'visitors', 'customer', 'customers', 'make', 'more', 'ensure'])
 
@@ -45,8 +46,10 @@ function validateTaskText(texts: readonly string[], source: ExistingFlagForPresc
   const text = texts.join(' ')
   if (text.includes('\u2014')) throw new Error(`Invalid prescription output: ${source.flagKey} must use plain punctuation`)
   if (unsupportedImpact.test(text)) throw new Error(`Invalid prescription output: ${source.flagKey} predicts an unmeasured business outcome`)
-  if (inventedPath.test(text)) throw new Error(`Invalid prescription output: ${source.flagKey} invents a repository path`)
-  const recordedText = [source.problem, source.evidence, ...source.supportingObservations?.map(observation => observation.evidence) || []].join(' ')
+  const recordedText = [source.problem, source.evidence, source.pageUrl,
+    ...source.supportingObservations?.flatMap(observation => [observation.evidence, observation.pageUrl]) || []].filter(Boolean).join(' ')
+  if ((text.match(repositoryPath) || []).some(path => !recordedText.includes(path)))
+    throw new Error(`Invalid prescription output: ${source.flagKey} invents a repository path`)
   for (const markup of text.match(/<[a-z][^>]*>/gi) || []) {
     for (const match of markup.matchAll(/\b(?:content|href|src|id|class|action|value)\s*=\s*["']([^"']*)["']/gi)) {
       if (!match[1] || !recordedText.includes(match[1]))
@@ -57,8 +60,8 @@ function validateTaskText(texts: readonly string[], source: ExistingFlagForPresc
     if (match[1].trim() && !recordedText.includes(match[1].trim()))
       throw new Error(`Invalid prescription output: ${source.flagKey} invents replacement content`)
   }
-  const urls = text.match(/https?:\/\/[^\s<>"']+/g) || []
-  if (urls.some(url => !recordedText.includes(url)))
+  const recordedUrls = new Set(urlTokens(recordedText))
+  if (urlTokens(text).some(url => !recordedUrls.has(url)))
     throw new Error(`Invalid prescription output: ${source.flagKey} introduces an unrecorded URL or asset`)
   const assets = text.match(/(?:\/|\b)[a-z0-9_-]+(?:\/[a-z0-9_.-]+)*\.(?:png|jpe?g|webp|gif|svg|ico)\b/gi) || []
   if (assets.some(asset => !recordedText.includes(asset)))

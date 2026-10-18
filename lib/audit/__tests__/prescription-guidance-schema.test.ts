@@ -124,4 +124,41 @@ describe('version 2 source-bound guidance plans', () => {
     }
     expect(combined.split(output.flagPrescriptions[0].fix)).toHaveLength(2)
   })
+
+  it.each(['inspection', 'changeCondition', 'changeIfConfirmed', 'preserve'])('refuses whitespace-only %s in a required inspection plan', field => {
+    expect(() => parsePrescriptionGuidance({ flagPrescriptions: { 'title-review': { ...plan(), [field]: ' '.repeat(30) } } }, [recommendation]))
+      .toThrow(/Invalid prescription output/)
+  })
+
+  it.each(['inspection', 'changeCondition', 'changeIfConfirmed', 'preserve'])('measures the content length of %s without whitespace padding', field => {
+    expect(() => parsePrescriptionGuidance({ flagPrescriptions: { 'title-review': { ...plan(), [field]: ' '.repeat(30) + 'x' } } }, [recommendation]))
+      .toThrow(/Invalid prescription output/)
+  })
+
+  it.each(['fix', 'agentPrompt'])('refuses a whitespace-only repair %s', field => {
+    const raw = payload()
+    raw.flagPrescriptions['title-empty'] = { ...raw.flagPrescriptions['title-empty'], [field]: ' '.repeat(30) }
+    expect(() => parsePrescriptionGuidance(raw, [recommendation, failure])).toThrow(/Invalid prescription output/)
+  })
+
+  it('allows a recorded public asset path without treating it as a guessed repository file', () => {
+    const source = { ...failure, problem: 'The published product script fails',
+      evidence: 'GET https://example.com/app/product.js returned 500.' }
+    const fix = 'Repair the published product script at https://example.com/app/product.js so it loads successfully.'
+    expect(parsePrescriptionGuidance({ flagPrescriptions: { [source.flagKey]: { fix, agentPrompt: null } } }, [source])
+      .flagPrescriptions[0].fix).toBe(fix)
+    const endingWithUrl = 'Repair the published product script at https://example.com/app/product.js.'
+    expect(parsePrescriptionGuidance({ flagPrescriptions: { [source.flagKey]: { fix: endingWithUrl, agentPrompt: null } } }, [source])
+      .flagPrescriptions[0].fix).toBe(endingWithUrl)
+    expect(() => parsePrescriptionGuidance({ flagPrescriptions: { [source.flagKey]: {
+      fix: 'Repair the published product script at https://example.com/app/product.js.', agentPrompt: null,
+    } } }, [{ ...source, evidence: 'GET https://example.com/app/product.js.evil/ returned 500.' }])).toThrow(/unrecorded URL/)
+  })
+
+  it('recognizes the recorded page URL independently of its human-readable evidence', () => {
+    const source = { ...failure, pageUrl: 'https://example.com/product.png', problem: 'The product image fails', evidence: 'The product image returned 500.' }
+    const fix = 'Repair the product image at https://example.com/product.png so the recorded request succeeds.'
+    expect(parsePrescriptionGuidance({ flagPrescriptions: { [source.flagKey]: { fix, agentPrompt: null } } }, [source])
+      .flagPrescriptions[0].fix).toBe(fix)
+  })
 })

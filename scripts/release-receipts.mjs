@@ -228,6 +228,7 @@ export function releaseStageCommands(stage) {
       ['full-verification', 'npm', ['run', 'verify:website']],
       ['progressive-execution', 'node', ['scripts/verify-progressive-execution.mjs']],
       ['website-persistence', 'node', ['scripts/verify-progressive-execution.mjs', '--only',
+        'lib/audit/__tests__/legacy-scan-access-migration.integration.test.ts',
         'lib/audit/progressive/__tests__/prescription-custody.integration.test.ts',
         'lib/audit/progressive/__tests__/claimed-monitoring.integration.test.ts',
         'lib/sites/application/__tests__/site-removal.integration.test.ts',

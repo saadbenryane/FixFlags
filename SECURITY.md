@@ -145,16 +145,16 @@ that the server never returned an HTTP response.
 - Client Site refreshes validate the complete matching projection and update an explicit Site cache key. Captured callbacks and closed streams cannot redirect an old Site's result into the current Site after navigation. Server ownership checks remain the authorization boundary; cached display state never authorizes a write. Settings controls submit only edited notification fields and render validated server values rather than inferred mutation results.
 - Anonymous report claims use an HttpOnly, SameSite=Lax HMAC proof scoped to one audit ID and a bounded expiry. A raw or tampered audit ID cannot transfer ownership. A linked Site must still belong to the claiming account in the serializable claim transaction. Report possession does not authorize restoring or changing another account's Site after an ownership change.
 - `/post-login` awaits the anonymous claim before passkey enrollment or onward navigation. A failed claim leaves the user on the recovery screen.
-- Anonymous report responses may include confirmed Flags, public screenshots, textual evidence, rubric results, and deterministic scan messages.
+- Authorized anonymous creator responses may include confirmed Flags, private captures, textual evidence, rubric results, and deterministic scan messages. Historical public reports retain their explicit public access policy.
 - Anonymous live-report responses omit fix prompts, Timeline events and playback metadata, pipeline logs, owner and plan state, Product Memory, private history, Canvas data, and watch configuration.
 - Repository-owned curated samples may ship versioned static Timeline fixtures because they contain no production report payload or private viewer data.
-- `/report/[id]` is the canonical public evidence URL. Copy link is the share action.
+- `/report/[id]` is the canonical report URL. Copy link preserves its access policy and does not grant access by itself.
 - Legacy `/share/[token]` reads remain compatibility-only. The product no longer creates or manages protected share links. Do not treat `ShareLink.passwordHash` as a live product contract.
 - Canvas is private to the report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
 
 ## Captured evidence access
 
-- New tenant-owned Site runs and credentialed captures are private at Audit creation. Anonymous public analysis retains its public-report behavior.
+- New Site runs, anonymous analyses and credentialed captures are private at Audit creation. Signed creator access and historical public compatibility follow the authentication invariant above.
 - Private screenshots stream through `/api/screenshots` after `resolveAuditAccess`; public-report compatibility remains unchanged. Responses and new screenshot objects use `private, no-store`.
 - `/api/integrity-assets` authorizes the owner of the persisted Outcome RunRequest, or an active Shopify path's linked Site owner / verified Shopify ID-token session. Knowing an artifact URL does not grant access. Invalid namespaces and path traversal are rejected before storage reads.
 - Journey media uses the same private object transport as screenshots, including caller cancellation, a shared deadline, path-style configuration and physical socket cleanup. Production never substitutes worker-local files for bucket storage. Prefix deletion reaches the actual bucket and reports incomplete deletion. Outcome browser journeys qualify artifact namespaces by execution generation.
