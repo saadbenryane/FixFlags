@@ -1,20 +1,22 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
+import { inspectAccessibilityViolations } from './approved-contrast'
 
 const launchWidths = [320, 375, 768, 1280]
 
 test('canonical Site sample works at launch widths', async ({ browser, browserName, baseURL }) => {
   if (!baseURL) throw new Error('Playwright baseURL is required')
-  for (const width of launchWidths) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } })
+  for (const theme of ['light', 'dark'] as const) for (const width of launchWidths) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: theme })
+    await context.addInitScript(selected => localStorage.setItem('theme', selected), theme)
     const page = await context.newPage()
     try {
       await page.goto(new URL('/samples', baseURL).toString())
       await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'One Site, one evidence-backed Flag' })).toBeVisible()
-      await expect(page.getByText('Evidence', { exact: true })).toBeVisible()
-      await expect(page.getByText('Proposed change', { exact: true })).toBeVisible()
-      await expect(page.getByText('Verify succeeds when', { exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage.title, exact: true })).toBeVisible()
+      for (const section of ['observed', 'fix', 'prompt', 'verification'] as const)
+        await expect(page.getByRole('heading', { name: PUBLIC_SITE_COPY.samplePage[section], exact: true })).toBeVisible()
 
       const geometry = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
@@ -24,7 +26,7 @@ test('canonical Site sample works at launch widths', async ({ browser, browserNa
 
       if (browserName === 'chromium' && width === 375) {
         const results = await new AxeBuilder({ page: page as never }).analyze()
-        expect(results.violations.filter((violation) => violation.id !== 'color-contrast')).toEqual([])
+        expect((await inspectAccessibilityViolations(page, results.violations)).failures).toEqual([])
       }
     } finally {
       await context.close()
