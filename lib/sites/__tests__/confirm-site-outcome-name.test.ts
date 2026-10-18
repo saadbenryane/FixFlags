@@ -78,7 +78,7 @@ describe('confirmSiteOutcome semantic identity', () => {
     vi.clearAllMocks()
     mocks.transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx))
     mocks.lockOutcome.mockResolvedValue([{ id: 'outcome-1' }])
-    mocks.txFindFirst.mockResolvedValue({ id: 'outcome-1', name: 'Contact support', kind: 'GENERIC', confirmedAt: null })
+    mocks.txFindFirst.mockResolvedValue({ id: 'outcome-1', name: 'Contact support', kind: 'GENERIC', confirmedAt: null, bindings: [] })
     mocks.txUpdateMany.mockResolvedValue({ count: 1 })
     mocks.bindingUpdateMany.mockResolvedValue({ count: 0 })
     mocks.bindingUpsert.mockResolvedValue({ id: 'binding-1' })
@@ -144,6 +144,7 @@ describe('confirmSiteOutcome semantic identity', () => {
       name: 'A customer can buy the annual plan',
       kind: 'CHECKOUT',
       confirmedAt,
+      bindings: [],
     })
     mocks.txFindUniqueOrThrow.mockResolvedValue(row({
       name: 'A customer can buy the annual plan',

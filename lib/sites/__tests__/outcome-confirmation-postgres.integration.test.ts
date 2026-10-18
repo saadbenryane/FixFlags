@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type Flag, type OutcomeAssessment } from '@prisma/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@/lib/db'
-import { confirmSiteOutcome, listSiteOutcomes, loadSiteOutcomeDetail, renameSiteOutcome } from '@/lib/sites/outcomes'
+import { confirmSiteOutcome, createSiteOutcome, listSiteOutcomes, loadSiteOutcomeDetail, renameSiteOutcome } from '@/lib/sites/outcomes'
 import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 import { persistOutcomeAssessment } from '@/lib/sites/application/outcome-incidents'
@@ -316,6 +316,40 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     const after = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })
     expect(after.name).toBe('A customer can buy the annual plan')
     expect(after.confirmedAt?.toISOString()).toBe(before.confirmedAt?.toISOString())
+  })
+
+  it('preserves a page-specific target when its existing agreement is reconfirmed', async () => {
+    const created = await createSiteOutcome({ site, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    expect(created).not.toBeNull()
+    const before = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: created!.id, enabled: true } })
+    await confirmSiteOutcome({ site, outcomeId: created!.id, confirmed: true, kind: 'AVAILABILITY' })
+    const after = await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })
+    expect(after.config).toEqual(before.config)
+    expect(after.scope).toEqual(before.scope)
+    expect(after.version).toBe(before.version)
+  })
+
+  it('versions a changed target so work admitted against its old binding can be fenced', async () => {
+    const outcome = await genericOutcome('changed-target')
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY' })
+    const before = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: outcome.id, enabled: true } })
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    const after = await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })
+    expect(after.version).toBe(before.version + 1)
+    expect(after.config).not.toEqual(before.config)
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    expect((await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })).version).toBe(after.version)
+  })
+
+  it('advances the binding version when a withdrawn agreement is authorized again', async () => {
+    const outcome = await genericOutcome('reauthorized-binding')
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    const before = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: outcome.id, enabled: true } })
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: false })
+    expect((await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })).enabled).toBe(false)
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY' })
+    const after = await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })
+    expect(after).toMatchObject({ enabled: true, version: before.version + 1, config: before.config })
   })
 
   it('does not wait on or touch a foreign tenant Outcome row', async () => {

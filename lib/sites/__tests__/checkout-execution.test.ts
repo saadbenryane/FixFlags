@@ -91,6 +91,25 @@ describe('bound Checkout execution', () => {
     mocks.flagCreate.mockResolvedValue({ id: 'signup-flag' })
   })
 
+  it('blocks an admitted binding after its current executable intent changes', async () => {
+    const request = await mocks.runFindFirst()
+    const outcome = request.selections[0].outcome
+    const binding = outcome.bindings[0]
+    binding.version = 2
+    request.executionSpec = { version: 1, targetUrl: request.audit.url, environment: 'production',
+      scope: 'OUTCOMES', checks: {}, verificationTarget: null,
+      outcomes: [{ id: outcome.id, kind: outcome.kind, expectation: null, bindingPolicy: 'all-required',
+        bindings: [{ ...binding, version: 1 }] }],
+    }
+    await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
+    expect(mocks.executionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      disposition: 'BLOCKED', reason: 'binding_changed', bindingVersion: 1,
+    }) }))
+    expect(mocks.runPathProbe).not.toHaveBeenCalled()
+    expect(mocks.runGoalProbe).not.toHaveBeenCalled()
+    expect(mocks.safeForm).not.toHaveBeenCalled()
+  })
+
   it('persists a confirmed purchase failure as one customer-level journey Flag', async () => {
     mocks.runPathProbe.mockResolvedValue({
       health: 'RED',

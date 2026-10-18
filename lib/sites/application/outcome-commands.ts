@@ -9,6 +9,7 @@ import type { SiteOutcomeDetailView } from '@/lib/sites/presentation/outcome-det
 import { expectationForKind, nameForConfirmedOutcomeKind, type ConfirmableOutcomeKind } from '@/lib/sites/outcome-kinds'
 import { bindingForConfirmedKind } from './outcome-bindings'
 import { toOutcomeView, loadSiteOutcomeDetail } from './outcome-queries'
+import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 
 /** Confirm that the walked page should stay available. Does not invent a purchase path. */
 export async function confirmPageAvailability(site: SiteRecord): Promise<SiteOutcomeView | null> {
@@ -86,7 +87,8 @@ export async function confirmSiteOutcome(input: {
     if (locked.length === 0) return null
     const outcome = await tx.siteOutcome.findFirst({
       where: { id: input.outcomeId, ...ownerFilter },
-      select: { id: true, name: true, kind: true, confirmedAt: true },
+      select: { id: true, name: true, kind: true, confirmedAt: true,
+        bindings: { select: { key: true, config: true, scope: true, mechanism: true, required: true, enabled: true } } },
     })
     if (!outcome) return null
 
@@ -97,6 +99,16 @@ export async function confirmSiteOutcome(input: {
 
       const binding = bindingForConfirmedKind(input.kind, input.targetUrl ?? input.site.url, safeFixture)
       if (!binding) throw new OutcomeFixtureRequiredError()
+      const previous = outcome.bindings.find(candidate => candidate.key === binding.key)
+      // Reconfirming an agreement preserves its recorded executable intent.
+      // Signup instead uses the explicitly authorized current fixture.
+      const preserve = previous && outcome.kind === input.kind && previous.mechanism === binding.mechanism &&
+        input.targetUrl === undefined && input.kind !== 'SIGNUP'
+      const config = preserve ? previous.config : binding.config
+      const scope = preserve ? previous.scope : binding.scope ?? null
+      const changed = previous && (!previous.enabled || previous.required !== binding.required ||
+        previous.mechanism !== binding.mechanism || canonicalIntent(previous.config) !== canonicalIntent(config) ||
+        canonicalIntent(previous.scope) !== canonicalIntent(scope))
       // One Outcome has one active semantic identity. Legacy or interrupted
       // writes may have left another binding enabled, so retire it in the same
       // transaction that installs the binding matching the agreed kind.
@@ -111,8 +123,9 @@ export async function confirmSiteOutcome(input: {
           enabled: true,
           required: binding.required,
           mechanism: binding.mechanism,
-          config: binding.config,
-          scope: binding.scope,
+          config: config as Prisma.InputJsonValue,
+          scope: scope ?? Prisma.DbNull,
+          ...(changed ? { version: { increment: 1 } } : {}),
         },
       })
     } else if (!input.confirmed) {
