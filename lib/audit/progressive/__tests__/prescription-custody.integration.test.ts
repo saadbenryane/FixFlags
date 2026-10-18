@@ -5,7 +5,7 @@ import { withExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { mergePrescriptionResults } from '@/lib/audit/persist'
 import { freezePrescriptionScope } from '@/lib/audit/prescription-scope'
 import { runAiReview } from '@/lib/audit/run-ai-review'
-import { recordPrescriptionUsage } from '@/lib/audit/prescription-usage'
+import { beginPrescriptionUsage } from '@/lib/audit/prescription-usage'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { recordSettledPrescriptionCost } from '../incomplete'
 import type { PrescriptionOutput } from '@/lib/audit/judge-prescription-schema'
@@ -67,13 +67,32 @@ run('prescription custody in PostgreSQL', () => {
       .rejects.toThrow('PRESCRIPTION_SCOPE_CHANGED')
   })
 
+  it('keeps consumption unknown when an in-flight request loses its write authority', async () => {
+    const f = await fixture()
+    await persistAuditRunCost(f.audit.id, { phase: 'triage', durationMs: 0, pagespeedCalls: 0,
+      llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'gpt-4o-mini' })
+    await withExecutionOwnership(f.owner, async () => {
+      // The provider has been admitted, then its task is exhausted while the
+      // external request is in flight. Late customer writes remain forbidden.
+      const response = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
+      await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
+      await expect(response({ inputTokens: 20, outputTokens: 5, model: 'gpt-4o-mini' }))
+        .rejects.toThrow('no longer owns')
+    })
+    await recordSettledPrescriptionCost(f.audit.id)
+    expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
+      .toMatchObject({ pricingBasis: 'UNPRICED', prescriptionCostUsd: null, llmCostUsd: null })
+  })
+
   it('retains response consumption from rejected attempts and reconciles costs once across replay', async () => {
     const f = await fixture()
     await persistAuditRunCost(f.audit.id, { phase: 'triage', durationMs: 0, pagespeedCalls: 0,
       llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'gpt-4o-mini' })
     await withExecutionOwnership(f.owner, async () => {
-      await recordPrescriptionUsage(f.audit.id, { inputTokens: 20, outputTokens: 5, model: 'gpt-4o-mini' }, 'gpt-4o-mini')
-      await recordPrescriptionUsage(f.audit.id, { inputTokens: 40, outputTokens: 10, model: 'gpt-4o-mini' }, 'gpt-4o-mini')
+      const rejected = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
+      await rejected({ inputTokens: 20, outputTokens: 5, model: 'gpt-4o-mini' })
+      const accepted = await beginPrescriptionUsage(f.audit.id, 'gpt-4o-mini')
+      await accepted({ inputTokens: 40, outputTokens: 10, model: 'gpt-4o-mini' })
     })
     await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })
     await recordSettledPrescriptionCost(f.audit.id)

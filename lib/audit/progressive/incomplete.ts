@@ -92,8 +92,8 @@ export async function recordSettledPrescriptionCost(auditId: string) {
     take: MAX_TASKS_PER_AUDIT + 1,
   })
   if (tasks.some(task => !taskIsSettled(task.workState))) return
-  const responses = await prisma.auditPipelineEvent.findMany({ where: { auditId, event: 'prescription_provider_response' },
-    orderBy: { sequence: 'asc' }, select: { detail: true } })
+  const responses = await prisma.auditPipelineEvent.findMany({ where: { auditId, event: { in: ['prescription_provider_attempt', 'prescription_provider_response'] } },
+    orderBy: { sequence: 'asc' }, select: { event: true, detail: true } })
   const measured = responses.length ? sumPrescriptionResponses(responses) : null
   const usage = measured ?? summedPrescriptionUsage(tasks)
   if (!usage) return

@@ -34,7 +34,7 @@ export interface PrescriptionResult {
 export type { ExistingFlagForPrescription } from './flag-types'
 
 export interface PrescriptionContext {
-  onUsage?: (usage: LlmUsage | null, model: string) => Promise<void>
+  onAttempt?: (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
   url: string
   verdict: string
   score: number
@@ -229,6 +229,7 @@ async function runAnthropicPrescription(
   }
 
   const cfg = getProviderConfig('anthropic', maxTimeoutMs)
+  const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -279,7 +280,7 @@ async function runAnthropicPrescription(
       },
       { signal: controller.signal }
     ).catch(async error => {
-      await context.onUsage?.(null, cfg.model)
+      await recordUsage?.(null)
       throw error
     })
 
@@ -287,7 +288,7 @@ async function runAnthropicPrescription(
       inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, model: response.model ?? cfg.model,
       cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
     }
-    await context.onUsage?.(usage, usage.model)
+    await recordUsage?.(usage)
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -348,6 +349,7 @@ async function runOpenAIPrescription(
   })
 
   const cfg = getProviderConfig('openai', maxTimeoutMs)
+  const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -371,7 +373,7 @@ async function runOpenAIPrescription(
       },
       { signal: controller.signal }
     ).catch(async error => {
-      await context.onUsage?.(null, cfg.model)
+      await recordUsage?.(null)
       throw error
     })
 
@@ -380,7 +382,7 @@ async function runOpenAIPrescription(
       inputTokens: (response.usage?.prompt_tokens ?? 0) - cacheReadTokens,
       outputTokens: response.usage?.completion_tokens ?? 0, cacheReadTokens, model: response.model ?? cfg.model,
     }
-    await context.onUsage?.(response.usage ? usage : null, usage.model)
+    await recordUsage?.(response.usage ? usage : null)
 
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {

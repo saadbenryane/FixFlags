@@ -50,8 +50,9 @@ export function assertPrescriptionScope(scope: PrescriptionScope, flags: Prescri
   const keys = new Set(scope.members.map(member => member.key))
   const selected = flags.filter(flag => scope.allFlags || keys.has(flagKeyForRow(flag)))
   if (selected.length !== scope.members.length) throw new PrescriptionScopeChanged()
+  const rows = new Map(selected.map(flag => [flag.id, flag]))
   for (const member of scope.members) {
-    const row = selected.find(flag => flag.id === member.id)
+    const row = rows.get(member.id)
     if (!row || flagKeyForRow(row) !== member.key || sourceHash(row) !== member.sourceHash ||
       guidanceHash(row) !== (committed?.get(member.id) ?? member.guidanceHash)) throw new PrescriptionScopeChanged()
   }

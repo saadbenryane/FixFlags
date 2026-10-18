@@ -10,14 +10,24 @@ vi.mock('../judge-config', () => ({ getProviderConfig: () => ({ model: 'gpt-4o-m
 import { runPrescriptionWithRetry, type PrescriptionContext } from '../judge-prescription'
 
 describe('prescription response consumption', () => {
+  it('does not call a provider when durable attempt admission fails', async () => {
+    provider.name = 'openai'
+    provider.create.mockClear()
+    const context = { url: 'https://example.com/', verdict: 'Recorded', score: 70,
+      metadata: { pageText: 'Recorded content', h1s: [], h2s: [], ctaTexts: [] }, techStack: [], existingFlags: [], rubrics: [],
+      onAttempt: async () => { throw new Error('Attempt admission unavailable') } } as unknown as PrescriptionContext
+    await expect(runPrescriptionWithRetry(context, null, null)).rejects.toThrow('Attempt admission unavailable')
+    expect(provider.create).not.toHaveBeenCalled()
+  })
+
   it('records unknown consumption when an admitted request returns no response', async () => {
     provider.name = 'openai'
     provider.create.mockRejectedValue(new Error('Connection interrupted after request'))
     const onUsage = vi.fn(async () => undefined)
     const context = { url: 'https://example.com/', verdict: 'Recorded', score: 70,
-      metadata: { pageText: 'Recorded content', h1s: [], h2s: [], ctaTexts: [] }, techStack: [], existingFlags: [], rubrics: [], onUsage } as unknown as PrescriptionContext
+      metadata: { pageText: 'Recorded content', h1s: [], h2s: [], ctaTexts: [] }, techStack: [], existingFlags: [], rubrics: [], onAttempt: async () => onUsage } as unknown as PrescriptionContext
     await expect(runPrescriptionWithRetry(context, null, null)).rejects.toThrow('Connection interrupted')
-    expect(onUsage).toHaveBeenCalledExactlyOnceWith(null, 'gpt-4o-mini')
+    expect(onUsage).toHaveBeenCalledExactlyOnceWith(null)
   })
 
   it.each(['openai', 'anthropic'])('retains %s consumption before rejecting malformed guidance', async name => {
@@ -27,16 +37,22 @@ describe('prescription response consumption', () => {
       : { model: 'claude-sonnet-5', content: [{ type: 'tool_use', input: {} }], usage: { input_tokens: 13, output_tokens: 5, cache_read_input_tokens: 7 } })
     const onUsage = vi.fn(async () => undefined)
     const context = { url: 'https://example.com/', verdict: 'Recorded', score: 70,
-      metadata: { pageText: 'Recorded content', h1s: [], h2s: [], ctaTexts: [] }, techStack: [], existingFlags: [], rubrics: [], onUsage } as unknown as PrescriptionContext
+      metadata: { pageText: 'Recorded content', h1s: [], h2s: [], ctaTexts: [] }, techStack: [], existingFlags: [], rubrics: [], onAttempt: async () => onUsage } as unknown as PrescriptionContext
     await expect(runPrescriptionWithRetry(context, null, null)).rejects.toThrow()
-    expect(onUsage).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ inputTokens: 13, outputTokens: 5, cacheReadTokens: 7 }), name === 'openai' ? 'gpt-4o-mini' : 'claude-sonnet-5')
+    expect(onUsage).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ inputTokens: 13, outputTokens: 5, cacheReadTokens: 7 }))
   })
 
   it('preserves unmeasured consumption and deduplicates identical response receipts', () => {
     const detail = { version: 1, responseId: randomUUID(), model: 'gpt-4o-mini', usage: { inputTokens: 13, outputTokens: 5, cacheReadTokens: 7, cacheWriteTokens: 0 } }
-    expect(sumPrescriptionResponses([{ detail }, { detail }])).toMatchObject({ complete: true, inputTokens: 13, outputTokens: 5, cacheReadTokens: 7 })
+    const admitted = { event: 'prescription_provider_attempt', detail: { ...detail, usage: null } }
+    expect(sumPrescriptionResponses([admitted, { detail }, { detail }])).toMatchObject({ complete: true, inputTokens: 13, outputTokens: 5, cacheReadTokens: 7 })
     expect(sumPrescriptionResponses([{ detail }, { detail: { ...detail, responseId: randomUUID(), usage: null } }]))
       .toMatchObject({ complete: false, inputTokens: 13, outputTokens: 5 })
     expect(sumPrescriptionResponses([{ detail: {} }]).complete).toBe(false)
+    expect(sumPrescriptionResponses([{ detail }]).complete).toBe(false)
+    expect(sumPrescriptionResponses([admitted]).complete).toBe(false)
+    expect(sumPrescriptionResponses([admitted, { detail }, { detail: { ...detail, usage: { ...detail.usage, inputTokens: 99 } } }]).complete).toBe(false)
+    const unfinished = { ...admitted, detail: { ...admitted.detail, responseId: randomUUID() } }
+    expect(sumPrescriptionResponses([admitted, { detail }, unfinished])).toMatchObject({ complete: false, inputTokens: 13, outputTokens: 5 })
   })
 })

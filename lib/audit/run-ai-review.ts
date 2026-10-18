@@ -1,4 +1,4 @@
-import { recordPrescriptionUsage } from './prescription-usage'
+import { beginPrescriptionUsage } from './prescription-usage'
 import { assertPrescriptionScope, prescriptionCommitSchema, prescriptionHash, type PrescriptionScope } from './prescription-scope'
 import { TaskFailure } from './progressive/contracts'
 import { executionWrite } from '@/lib/audit/execution-ownership'
@@ -148,7 +148,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
         metadata,
         techStack,
         existingFlags,
-        onUsage: (usage, model) => recordPrescriptionUsage(auditId, usage, model),
+        onAttempt: model => beginPrescriptionUsage(auditId, model),
         rubrics: audit.rubrics.map((r) => ({
           name: r.name,
           grade: r.grade,
