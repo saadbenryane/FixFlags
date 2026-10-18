@@ -186,6 +186,8 @@ runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
 
   it.each(['COMPLETED', 'CHECKING'] as const)('reuses the same visitor’s %s scan and refreshes claim access', async status => {
     const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId } }))
+      .toMatchObject({ userId: null, isPublic: false })
     await prisma.audit.update({ where: { id: admitted.auditId }, data: { status, ...(status === 'COMPLETED' ? { completedAt: new Date() } : {}) } })
     queueAdd.mockClear(); trackAnonymousAuditId.mockClear()
     const result = await createAndEnqueueAudit({ url, visitorKey })
@@ -201,6 +203,27 @@ runPostgres('visitor-owned anonymous reuse PostgreSQL boundary', () => {
     expect(other.auditId).not.toBe(first.auditId)
     expect(other.siteId).not.toBe(first.siteId)
     expect(queueAdd).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not turn a retained board reference into anonymous access to an owned audit', async () => {
+    const admitted = await createAndEnqueueAudit({ url, visitorKey })
+    const ownerId = 'anonymous-reuse-owner-' + randomUUID()
+    await prisma.user.create({ data: { id: ownerId, email: ownerId + '@example.test' } })
+    try {
+      await prisma.audit.update({ where: { id: admitted.auditId }, data: {
+        userId: ownerId, isPublic: false, status: 'COMPLETED', completedAt: new Date(),
+      } })
+      trackAnonymousAuditId.mockClear()
+      const result = await createAndEnqueueAudit({ url, visitorKey })
+      expect(result.reused).toBe(false)
+      expect(result.auditId).not.toBe(admitted.auditId)
+      expect(trackAnonymousAuditId).toHaveBeenCalledWith(result.auditId)
+      expect(trackAnonymousAuditId).not.toHaveBeenCalledWith(admitted.auditId)
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: admitted.auditId } }))
+        .toMatchObject({ userId: ownerId, isPublic: false })
+    } finally {
+      await prisma.user.delete({ where: { id: ownerId } })
+    }
   })
 
   it('creates a new teaser on the same board when its own completed scan is older than one hour', async () => {

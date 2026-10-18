@@ -53,8 +53,9 @@ it.each(['report', 'share'] as const)('%s image does not promote a historical ve
   expect((result as unknown as { element: ReactElement<{ topIssue: string }> }).element.props.topIssue).toBe('Recorded website observations')
 })
 
-it('keeps private report metadata generic', async () => {
-  db.audit.findUnique.mockResolvedValue({ status: 'COMPLETED', isPublic: false, userId: 'private-owner' })
+it.each([null, 'private-owner'])('keeps private report metadata generic before and after claim: %s', async userId => {
+  db.audit.findUnique.mockResolvedValue({ url: 'https://private.example.com/', status: 'COMPLETED', isPublic: false, userId,
+    score: 45, rubrics: [{ name: 'EXPERIENCE', grade: 'D', score: 45, flags: [failure] }] })
   const result = await ReportImage({ params: Promise.resolve({ id: 'private' }) })
   expect((result as unknown as { element: ReactElement<{ generic: boolean }> }).element.props.generic).toBe(true)
 })

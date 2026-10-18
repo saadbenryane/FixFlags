@@ -128,6 +128,7 @@ that the server never returned an HTTP response.
 
 ## Authentication invariants
 
+- New anonymous website analyses start private. Their signed creator claim authorizes initial report and screenshot access before signup; knowing a record URL does not. Claiming preserves the same evidence and transfers access to the authenticated owner. Private report pages do not publish indexed metadata or evidence-bearing Open Graph images. Existing public reports and explicit retries of those reports retain their public compatibility contract. Attached-review navigation checks each child independently and derives presentation permissions from the selected review.
 - better-auth 1.6 with Prisma adapter (PostgreSQL)
 - Email/password + Google OAuth + GitHub OAuth resolved at runtime
 - Passkeys via `@better-auth/passkey` (WebAuthn). Users register passkeys in Settings, sign in with passkey, or use passkey as the second factor after password.

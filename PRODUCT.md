@@ -37,7 +37,7 @@ The following apply to old routes until deliberately migrated. They are not futu
 
 - Customer “product review” / “update review” maps to existing Audit execution and re-check routes. Manual update review is a fresh full capture diffed against its parent.
 - Report rubrics are Message, Experience and Reach in existing check/scoring/report contracts. Their stored identifiers may remain internally; they do not limit the new Site's capabilities or navigation.
-- Existing anonymous flow provides one teaser analysis with real public-safe evidence and deterministic progress. Fix prompt bodies, interactive Agent and private payloads remain server-gated until claim. Never persist signup strings as evidence.
+- Anonymous checks start private and provide one teaser analysis with real evidence and deterministic progress to the signed creator claim. Signup preserves the same Site and evidence under authenticated ownership. Historical public reports remain compatible. Fix prompt bodies, interactive Agent and private payloads remain server-gated until claim. Never persist signup strings as evidence.
 - Authentication routes through /post-login so anonymous work can be claimed before checkout or onward navigation.
 - Existing report access has public-safe evidence semantics distinct from private customer Project memory, connection data and actions. Do not propagate public report access into new Site ownership.
 - Current HTTP boundaries include /api/checks, /api/reports/[id]/* and /api/products/[id]/signals. Shared application/task services own operations. New Site routes require explicit access and route-contract tests.

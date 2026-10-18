@@ -298,6 +298,9 @@ describe('createAndEnqueueAudit', () => {
     // claim cookie on reuse, so a returning visitor signed up to an account that
     // did not contain their Site.
     expect(trackAnonymousAuditId).toHaveBeenCalledWith('recent-public')
+    expect(prismaMock.audit.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'recent-public', userId: null }),
+    }))
   })
 
   it('reuses the visitor’s own in-progress scan of the same URL', async () => {
@@ -647,9 +650,10 @@ describe('createAndEnqueueAudit', () => {
     expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(true)
   })
 
-  it('retains the public contract of an anonymous first analysis', async () => {
+  it('creates the anonymous first analysis privately and tracks its creator claim', async () => {
     await createAndEnqueueAudit({ url: AUDIT_URL, visitorKey: 'private-visitor' })
-    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(true)
+    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
+    expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
   })
 
   it('uses current Site access instead of credentials retained on the parent', async () => {

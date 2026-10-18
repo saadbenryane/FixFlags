@@ -260,11 +260,10 @@ export async function createAndEnqueueAudit(
   const data = {
     url,
     userId,
-    // Anonymous analysis retains its public-report contract. Owned Site runs
-    // and credentialed captures contain tenant evidence, not public shares.
-    isPublic: !options.runRequestId && !options.runRequestAdmission && !resolvedScanAccess &&
-      (!userId || Boolean(options.retryParent)) &&
-      (!options.retryParent || parentAudit?.isPublic === true),
+    // New evidence is private from admission. Explicit retries retain an
+    // existing public report's visibility without publishing new first checks.
+    isPublic: Boolean(options.retryParent && parentAudit?.isPublic === true &&
+      !options.runRequestId && !options.runRequestAdmission && !resolvedScanAccess),
     projectId,
     scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,
     parentId: options.parentId ?? null,
@@ -537,7 +536,7 @@ export async function createAndEnqueueAudit(
         const owned = await tx.audit.findFirst({
           where: {
             id: ownedAuditId,
-            isPublic: true,
+            userId: null,
             ...(options.retryParent ? { parentId: options.parentId } : {}),
             AND: [
               { status: { not: 'FAILED' } },

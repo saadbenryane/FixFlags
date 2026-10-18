@@ -17,7 +17,6 @@ export function canAccessAudit(
   sessionUser: SessionUser
 ): boolean {
   if (audit.isPublic) return true
-  if (audit.userId === null) return true
   if (sessionUser?.id && audit.userId === sessionUser.id) return true
   return false
 }
@@ -33,7 +32,7 @@ export function canManageAudit(
 /**
  * Anonymous visitors may retry their OWN failed teaser scan, gated on the
  * anonymous-audit cookie (ANON_AUDIT_IDS_COOKIE) instead of userId.
- * Public-by-default teasers stay retryable when the cookie lists this id.
+ * Private teasers stay retryable when the signed creator claim lists this id.
  */
 export function canRetryAnonymousAudit(
   audit: Pick<Audit, 'userId' | 'isPublic'>,
@@ -45,8 +44,9 @@ export function canRetryAnonymousAudit(
 }
 
 /** One live access decision for report pages, APIs, screenshots, and prompts.
- * Unclaimed + cookie → anonymous_teaser. Unclaimed without cookie, or owned public
- * and not the owner → public_viewer. Curated samples never enter this path.
+ * Unclaimed + signed creator claim → anonymous_teaser. Public reports remain
+ * available to public viewers. Private evidence requires its creator, owner or
+ * an explicit current share grant. Curated samples never enter this path.
  */
 export async function resolveAuditAccess(
   audit: Pick<Audit, 'id' | 'userId' | 'isPublic'>,
@@ -55,10 +55,7 @@ export async function resolveAuditAccess(
   anonAuditIds: string[] = []
 ): Promise<AuditAccessContext> {
   if (sessionUser?.id && audit.userId === sessionUser.id) return 'owner'
-  if (audit.userId === null) {
-    if (anonAuditIds.includes(audit.id)) return 'anonymous_teaser'
-    return 'public_viewer'
-  }
+  if (audit.userId === null && anonAuditIds.includes(audit.id)) return 'anonymous_teaser'
 
   if (audit.isPublic) {
     return 'public_viewer'

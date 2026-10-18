@@ -13,6 +13,7 @@ import { createServer } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
+import { resolveAuditAccess } from '@/lib/audit/access'
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { ANON_AUDIT_IDS_COOKIE, readClaimedAnonymousIds } from '@/lib/audit/usage'
 import { startWorker } from '@/lib/queue/worker'
@@ -178,7 +179,10 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect(source.htmlMetadata).toMatchObject({ pageText: expect.stringContaining('Lorem ipsum'),
       renderedCopy: { pageText: expect.not.stringContaining('Lorem ipsum'), h1s: ['Useful service for your team'], complete: true } })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'security-csp-unsafe-inline' } })
-    expect(source).toMatchObject({ userId: null, projectId: null, isPublic: true })
+    expect(source).toMatchObject({ userId: null, projectId: null, isPublic: false })
+    expect(await resolveAuditAccess(source, null, undefined, await readClaimedAnonymousIds())).toBe('anonymous_teaser')
+    expect(await resolveAuditAccess(source, null)).toBe('denied')
+    expect(await resolveAuditAccess(source, { id: owner })).toBe('denied')
     expect(await claimAnonymousAudits(owner)).toBe(1)
     expect(source.triageAt).toBeNull()
     expect(await getAuditQueue().getJob('ai-review-' + source.id)).toBeUndefined()
@@ -187,6 +191,8 @@ run('URL-first analysis through claim and monitored repair', () => {
     expect(site).toMatchObject({ kind: 'project', userId: owner, primaryAuditId: source.id, watchInterval: 'weekly' })
     expect(site.projectId).toBeTruthy()
     const claimed = await prisma.audit.findUniqueOrThrow({ where: { id: source.id }, include: { pages: true } })
+    expect(await resolveAuditAccess(claimed, { id: owner })).toBe('owner')
+    expect(await resolveAuditAccess(claimed, null, undefined, [source.id])).toBe('denied')
     expect(claimed).toMatchObject({ userId: owner, projectId: site.projectId, completedAt: source.completedAt, includeAi: true, triageAt: null, aiReviewAt: null,
       pages: source.pages.map(page => expect.objectContaining({ id: page.id, url: page.url, normalizedUrl: page.normalizedUrl, htmlMetadata: page.htmlMetadata })) })
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toEqual(flag)
@@ -347,9 +353,10 @@ run('URL-first analysis through claim and monitored repair', () => {
       const provider = vi.spyOn(prescription, 'runPrescriptionWithRetry').mockImplementation(async input => {
         const keys = [...new Set(input.existingFlags.map(flag => flag.flagKey))]
         expect(keys).toEqual(expectedKeys)
+        expect(input.existingFlags.every(flag => flag.attention === 'recommendation')).toBe(true)
         const parsed = prescriptionOutputSchema.parse({ flagPrescriptions: (incompletePrescriptions ? [] : keys).map(flagKey => ({ flagKey,
           evidence: 'Compatibility evidence never replaces the original.', whyItMatters: 'Review original evidence.',
-          fix: '1. Review the recorded title against the page purpose.', verificationRule: 'Retain every original condition.',
+          fix: '1. Review the recorded title against the page purpose before suggesting any change.', verificationRule: 'Retain every original condition.',
           agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })),
           rubricPrescriptions: input.rubrics.map(rubric => ({ name: rubric.name, rubricPrompt: 'Review the recorded scope.',
             cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })) })

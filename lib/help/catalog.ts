@@ -6,7 +6,7 @@ export const HELP_CATEGORIES: readonly HelpCategory[] = [
   { id: 'sites-and-coverage', title: 'Sites and coverage', description: 'Understand what was checked, when, and where.', icon: 'flag' },
   { id: 'flags-fix-verify', title: 'Flags, Fix, Verify', description: 'Read a problem, make a change, and check the fix.', icon: 'flag' },
   { id: 'watch-and-notifications', title: 'Watch and notifications', description: 'Set a check schedule and choose your emails.', icon: 'rocket' },
-  { id: 'shopify', title: 'Shopify', description: 'Connect or disconnect your store.', icon: 'creditCard' },
+  { id: 'shopify', title: 'Shopify', description: 'Connection status and removal.', icon: 'creditCard' },
   { id: 'account-and-billing', title: 'Account and billing', description: 'Sign in and manage your plan.', icon: 'creditCard' },
   { id: 'privacy-and-security', title: 'Privacy and security', description: 'Understand saved data and account deletion.', icon: 'user' },
   { id: 'troubleshooting', title: 'Troubleshooting', description: 'Get help when a check does not finish.', icon: 'terminal' },
