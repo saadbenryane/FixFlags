@@ -35,7 +35,7 @@ export async function runAllChecks(
     publicDocument?: import('../search/contracts').PublicDocument;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
     allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea;
-    destinations?: Pick<DestinationCheckOptions, 'fetchDocument' | 'openDestination' | 'collectedAt'> },
+    destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'> },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))

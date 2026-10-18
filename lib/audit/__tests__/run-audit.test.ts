@@ -55,7 +55,8 @@ vi.mock('@/lib/audit/search/google', () => ({
 vi.mock('@/lib/audit/search/workflow', () => ({
   runCheckedPageSearch: vi.fn(async () => []),
 }))
-vi.mock('@/lib/audit/open-check', () => ({
+vi.mock('@/lib/audit/open-check', async original => ({
+  ...await original<typeof import('@/lib/audit/open-check')>(),
   DEFAULT_OPEN_CHECK_CEILING: 80,
   openCheckDestinations: vi.fn(async () => ({ results: [], truncated: false })),
   deadDestinationFlags: vi.fn(() => []),

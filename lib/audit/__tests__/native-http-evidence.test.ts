@@ -94,6 +94,24 @@ describe('private native HTTP evidence', () => {
     expect((await result)[0].evidence).toBe('https://example.com/a; https://example.com/b')
   })
 
+  it('retains exact request membership without storing signed query values or response text', async () => {
+    const secretUrl = 'https://example.com/checkout?token=PRIVATE_VALUE'
+    vi.mocked(openCheckDestination).mockResolvedValue({ url: secretUrl, canonicalUrl: secretUrl, outcome: 'not_found', status: 404,
+      finalUrl: secretUrl, evidence: 'GET ' + secretUrl + ' returned 404.', shouldFlagDead: true })
+    vi.mocked(safeFetchDocument).mockResolvedValue({ ...response, body: 'PRIVATE_BODY', headers: { 'content-type': 'text/plain', 'set-cookie': 'PRIVATE_COOKIE' } })
+    const collected = nativeHttpCollection()
+    const action = await collected.options.openDestination(secretUrl)
+    const image = await collected.options.observeImage(imageUrl, { timeoutMs: 5000, maxBytes: 64_000, accept: 'image/*' })
+    const recorded = collected.snapshot()
+    expect(JSON.stringify(recorded)).not.toMatch(/PRIVATE_|token=|set-cookie/)
+    const replay = nativeHttpCollection(recorded)
+    expect(await replay.options.openDestination(secretUrl)).toEqual({ url: action.url, outcome: action.outcome, status: action.status, shouldFlagDead: action.shouldFlagDead })
+    expect(await replay.options.observeImage(imageUrl, { timeoutMs: 5000, maxBytes: 64_000, accept: 'image/*' })).toEqual(image)
+    expect(replay.snapshot()).toEqual(recorded)
+    expect(openCheckDestination).toHaveBeenCalledTimes(1)
+    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+  })
+
   it('persists the secondary inputs in the actual evaluator artifact and replays the complete receipt', async () => {
     vi.mocked(safeFetchDocument).mockResolvedValue(response)
     const context = { audit: { id: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,

@@ -2,7 +2,7 @@ import type { RuntimeHeadMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { safeFetchDocument } from '../url'
-import { isBotInterstitialDocument } from '../browser/page-capture'
+import { previewImageResponse } from './preview-image-response'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
 export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
@@ -235,14 +235,13 @@ export async function runOgImageUrlCheck(
   let observed = 'The declared image URL could not be resolved.'
   if (!invalid) {
     try {
-      const response = await (options.fetchDocument ?? safeFetchDocument)(imageUrl, { timeoutMs: 5000, deadline: options.deadline,
-        maxBytes: 64_000, accept: 'image/*' })
-      const status = response.statusCode, contentType = response.headers['content-type']?.toLowerCase() ?? ''
-      const restricted = status === 401 || status === 403 || status === 429 ||
-        isBotInterstitialDocument({ body: response.body, headers: response.headers, status })
-      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.body.length > 0
+      const init = { timeoutMs: 5000, deadline: options.deadline, maxBytes: 64_000, accept: 'image/*' }
+      const response = options.observeImage ? await options.observeImage(imageUrl, init)
+        : previewImageResponse(await (options.fetchDocument ?? safeFetchDocument)(imageUrl, init))
+      const status = response.statusCode, contentType = response.contentType, restricted = response.restriction !== null
+      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
       broken = !restricted && (status >= 400 || status >= 200 && status < 300 &&
-        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && response.body.length === 0))
+        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && !response.hasContent))
       complete = passed || broken
       observed = `GET HTTP ${status}${contentType ? `, ${contentType.slice(0, 120)}` : ', no content type'}. ${restricted ? 'Access to the normal image response was not established. ' : ''}${limitation}`
     } catch { observed = 'No public image response was obtained. Network errors and scanner refusals remain unknown.' }

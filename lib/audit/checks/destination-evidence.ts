@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { CheckAssertion } from './assertion'
-import type { openCheckDestination } from '../open-check'
+import type { openCheckDestination, OpenCheckObservation } from '../open-check'
+import type { PreviewImageResponse } from './preview-image-response'
 
 export const DESTINATION_VERIFICATION_RULE = 'Public destination: repeat GET for every originally failed destination under the same page scope.'
 export type DestinationCheckOptions = {
@@ -8,7 +9,8 @@ export type DestinationCheckOptions = {
   record?: (assertion: CheckAssertion) => void
   scope?: { complete?: boolean; limitation?: string; collectedAt?: string }
   collectedAt?: () => string
-  openDestination?: typeof openCheckDestination
+  openDestination?: (...args: Parameters<typeof openCheckDestination>) => Promise<OpenCheckObservation>
+  observeImage?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<PreviewImageResponse>
   /** Tests supply a collected document. Production uses the public fetcher. */
   fetchDocument?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<{ statusCode: number; headers: Record<string, string>; body: string; complete: boolean }>
 }

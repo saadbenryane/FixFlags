@@ -1,11 +1,12 @@
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { openCheckDestinations, deadDestinationFlags, type OpenCheckResult, type openCheckDestination } from '../open-check'
+import { openCheckDestinations, deadDestinationFlags, type OpenCheckObservation } from '../open-check'
 import { collectEligibleDestinations } from '../url-identity'
 import { destinationContext, displayDestination } from './destination-evidence'
 import type { PageMetadata } from '../metadata'
 import { load } from 'cheerio'
 import type { RenderedSearchSnapshot } from '../search/rendered-snapshot'
+import type { DestinationCheckOptions } from './destination-evidence'
 
 export type PageLinkInventory = Pick<PageMetadata, 'links' | 'linkBaseUrl'> & { complete?: boolean }
 type LinkCapture = {
@@ -33,9 +34,9 @@ export const PUBLIC_LINK_LIMITATION = 'Public link GET responses cover the recor
 
 /** Detection and recovery consume the same observed GET, without another fetch.
  * A missing destination assertion cannot certify a removed or changed link. */
-export function publicLinkObservations(sourceUrl: string, urls: string[], results: OpenCheckResult[], inventoryComplete = true) {
+export function publicLinkObservations(sourceUrl: string, urls: string[], results: readonly OpenCheckObservation[], inventoryComplete = true) {
   const byDestination = new Map(results.map(result => [destinationContext(sourceUrl, result.url), result]))
-  const observed: OpenCheckResult[] = []
+  const observed: OpenCheckObservation[] = []
   const assertions: CheckAssertion[] = []
   let complete = inventoryComplete && urls.length <= 120
   for (const url of urls.slice(0, 120)) {
@@ -55,7 +56,7 @@ export function publicLinkObservations(sourceUrl: string, urls: string[], result
 }
 
 /** Targeted repair uses the same bounded public collector as Site discovery. */
-export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInventory, deadline: number, openDestination?: typeof openCheckDestination) {
+export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInventory, deadline: number, openDestination?: DestinationCheckOptions['openDestination']) {
   const urls = publicLinkUrls(sourceUrl, inventory)
   const opened = await openCheckDestinations(urls, { origin: sourceUrl, ceiling: 120, deadline: Math.min(deadline, Date.now() + 8000), openDestination })
   return publicLinkObservations(sourceUrl, urls, opened.results, inventory.complete !== false)

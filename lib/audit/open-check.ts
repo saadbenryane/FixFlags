@@ -31,6 +31,7 @@ export type OpenCheckResult = {
   evidence: string
   shouldFlagDead: boolean
 }
+export type OpenCheckObservation = Pick<OpenCheckResult, 'url' | 'outcome' | 'status' | 'shouldFlagDead'>
 
 export type OpenCheckFetch = (
   input: string,
@@ -258,7 +259,7 @@ function finalizeGet(
   }
 }
 
-export async function openCheckDestinations(
+export async function openCheckDestinations<T extends OpenCheckObservation = OpenCheckResult>(
   urls: string[],
   options: {
     origin?: string
@@ -267,9 +268,9 @@ export async function openCheckDestinations(
     ceiling?: number
     concurrency?: number
     deadline?: number
-    openDestination?: typeof openCheckDestination
+    openDestination?: (...args: Parameters<typeof openCheckDestination>) => Promise<T>
   } = {}
-): Promise<{ results: OpenCheckResult[]; truncated: boolean }> {
+): Promise<{ results: Array<OpenCheckResult | T>; truncated: boolean }> {
   const ceiling = options.ceiling ?? DEFAULT_OPEN_CHECK_CEILING
   const unique: string[] = []
   const seen = new Set<string>()
@@ -284,7 +285,7 @@ export async function openCheckDestinations(
   const truncated = unique.length > ceiling
   const batch = unique.slice(0, ceiling)
   const concurrency = Math.max(1, options.concurrency ?? 6)
-  const results: OpenCheckResult[] = []
+  const results: Array<OpenCheckResult | T> = []
 
   for (let i = 0; i < batch.length; i += concurrency) {
     const slice = batch.slice(i, i + concurrency)
@@ -305,7 +306,7 @@ export async function openCheckDestinations(
 }
 
 export function deadDestinationFlags(
-  results: OpenCheckResult[],
+  results: readonly OpenCheckObservation[],
   sourceUrl: string
 ): Array<{
   checkId: 'broken-internal-links'

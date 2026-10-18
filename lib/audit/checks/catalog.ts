@@ -51,7 +51,7 @@ export type PageCheckContext = {
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
   publicDocument?: PublicDocument;
   deadline?: number;
-  destinations?: Pick<DestinationCheckOptions, 'fetchDocument' | 'openDestination' | 'collectedAt'>;
+  destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'>;
   scope: { complete?: boolean; limitation?: string; collectedAt?: string };
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
