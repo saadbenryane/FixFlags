@@ -6,6 +6,13 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
+  it('states an identical coverage limitation once while preserving recovery', () => {
+    render(<BoardCard name="Security" icon="security" status="Not checked yet" state="unknown" answer="Some checks unfinished"
+      detail="Some checks unfinished" incompleteReason="Some checks unfinished" layout="row"
+      recoveryAction={<button>Check Security again</button>} />)
+    expect(screen.getAllByText('Some checks unfinished')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Check Security again' })).toBeVisible()
+  })
   it('shows unfinished work and a separate recovery action alongside recorded Flags', () => {
     const retry = vi.fn()
     render(<BoardCard name="Search" status="1 Flag" state="problem" answer="Page title is missing" icon="search"

@@ -130,7 +130,8 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
     monitoring: view.presentation.monitoring,
     disconnected,
   })
-  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing')
+  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' &&
+    (banner.kind !== 'incomplete' || summaryNote))
 
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} actions={view.actions} activeRoute={viewMode} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}

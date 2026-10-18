@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { flagMatchesOutcome } from '@/lib/sites/outcome-state'
-import { assertKeyboardReachesTheSurface, assertSiteSurfaceMeetsLaunchBar } from './site-surface-bar'
+import { assertKeyboardReachesTheSurface, assertSharedNavigationTargets, assertSiteSurfaceMeetsLaunchBar } from './site-surface-bar'
 
 /**
  * The canonical customer loop, exercised through the real Site product:
@@ -303,6 +303,7 @@ test.describe('Outcome customer loop', () => {
       await assertSiteSurfaceMeetsLaunchBar(owner.page, path)
       await assertKeyboardReachesTheSurface(owner.page, path)
     }
+    await assertSharedNavigationTargets(owner.page, `/sites/${siteId}`)
     await owner.close()
   })
 

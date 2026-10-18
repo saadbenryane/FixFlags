@@ -16,8 +16,8 @@ export function FilterPill({ className, active, size = 'md', icon: Icon, childre
       type="button"
       aria-pressed={active}
       className={cn(
-        'inline-flex shrink-0 items-center rounded-full font-medium transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-        size === 'sm' ? 'min-h-8 px-2 py-0.5 text-2xs' : 'min-h-9 px-3 py-1 text-sm',
+        'inline-flex min-h-11 min-w-11 shrink-0 items-center rounded-full font-medium transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
+        size === 'sm' ? 'px-2 py-0.5 text-2xs' : 'px-3 py-1 text-sm',
         active
           ? 'bg-accent text-foreground shadow-filter-pill'
           : 'bg-muted/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground',

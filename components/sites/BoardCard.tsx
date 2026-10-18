@@ -193,8 +193,9 @@ export function BoardCard({
       {freshnessLabel && !checking ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
       <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${checking && count > 0 ? `${flagCountLabel(count)}. ` : ''}${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /></span>
     </span>
-    const recovery = incompleteReason && !checking ? <div className={styles.rowRecovery}>
-      <p>{incompleteReason}</p>
+    const recoveryText = previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail) ? incompleteReason : null
+    const recovery = incompleteReason && !checking && (recoveryText || recoveryAction) ? <div className={styles.rowRecovery}>
+      {recoveryText ? <p>{recoveryText}</p> : null}
       {recoveryAction}
     </div> : null
     if (previewFlags.length > 0) {
@@ -220,7 +221,7 @@ export function BoardCard({
     const resultContent = <>
       <span className={styles.rowResultCopy}>
         <strong>{answer}</strong>
-        {detail ? <span>{detail}</span> : null}
+        {detail && detail !== answer ? <span>{detail}</span> : null}
       </span>
       {(href || onOpen) ? <span className={styles.rowArrow}><ArrowRight size={17} aria-hidden="true" /></span> : null}
     </>

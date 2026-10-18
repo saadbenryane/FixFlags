@@ -100,7 +100,7 @@ function SiteShellContent({
       <div className={styles.tabletNavigation}>
         <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
           <SheetTrigger asChild><Button variant="outline" size="sm"><Menu size={16} aria-hidden />{SITE_WORKSPACE_COPY.siteMenu}</Button></SheetTrigger>
-          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all pr-6">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
+          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
             {navigation('Website drawer', () => setNavigationOpen(false))}
           </SheetContent>
         </Sheet>

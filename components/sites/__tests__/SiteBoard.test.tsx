@@ -227,7 +227,8 @@ describe('SiteBoard chrome', () => {
     vi.stubGlobal('fetch', fetchMock)
     try {
       render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-      expect(within(screen.getByRole('region', { name: 'Analysis incomplete' })).getByRole('status')).toHaveTextContent('Analysis incomplete')
+      expect(screen.getAllByText('Analysis incomplete')).toHaveLength(1)
+      expect(screen.queryByRole('region', { name: 'Analysis incomplete' })).not.toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: 'Check again', exact: true })).toHaveLength(1)
       fireEvent.click(screen.getByRole('button', { name: 'Check again', exact: true }))
       expect(await screen.findByText('Try again later.')).toBeVisible()

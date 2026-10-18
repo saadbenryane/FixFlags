@@ -61,7 +61,7 @@ export function AvatarMenu({
         <button
           type="button"
           className={cn(
-            'inline-flex rounded-full transition-transform duration-150 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+            'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition-transform duration-150 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
             className
           )}
           aria-label="Account menu"
