@@ -15,6 +15,7 @@ vi.mock('@/lib/db', () => ({
       findUniqueOrThrow: vi.fn(async()=>({planAtAdmission:'FREE'})),
       findMany: vi.fn(),
     },
+    auditPipelineEvent: { findMany: vi.fn(async () => []) },
     user: {
       findMany: vi.fn(),
     },
@@ -253,6 +254,21 @@ describe('persistAuditRunCost', () => {
   })
 
   describe('triage phase', () => {
+    it('includes rejected provider responses and leaves unfinished attempts unpriced', async () => {
+      const attempt = (responseId: string) => ({ event: 'triage_provider_attempt', detail: { version: 1, responseId, model: 'gpt-4o-mini', usage: null } })
+      const first = attempt('11111111-1111-4111-8111-111111111111')
+      const second = attempt('22222222-2222-4222-8222-222222222222')
+      const events = [first, { event: 'triage_provider_response', detail: { ...first.detail,
+        usage: { inputTokens: 40, outputTokens: 5, cacheReadTokens: 3, cacheWriteTokens: 0 } } },
+      second, { event: 'triage_provider_response', detail: { ...second.detail,
+        usage: { inputTokens: 100, outputTokens: 10, cacheReadTokens: 7, cacheWriteTokens: 0 } } }]
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce(events as never)
+      await persistAuditRunCost('rejected-then-valid', { ...baseMetrics, phase: 'triage', llmInputTokens: 100, llmOutputTokens: 10 })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 140, triageOutputTokens: 15, pricingBasis: 'CONFIGURED_ESTIMATE' })
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce([...events, attempt('33333333-3333-4333-8333-333333333333')] as never)
+      await persistAuditRunCost('rejected-then-valid', { ...baseMetrics, phase: 'triage' })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 140, triageCostUsd: null, llmCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
     it('upserts with triage-specific fields', async () => {
       mockUpsert.mockResolvedValue({} as never)
       await persistAuditRunCost('audit-2', {

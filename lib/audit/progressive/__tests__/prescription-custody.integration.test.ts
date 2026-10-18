@@ -6,6 +6,7 @@ import { mergePrescriptionResults } from '@/lib/audit/persist'
 import { freezePrescriptionScope } from '@/lib/audit/prescription-scope'
 import { runAiReview } from '@/lib/audit/run-ai-review'
 import { beginPrescriptionUsage } from '@/lib/audit/prescription-usage'
+import { beginProviderUsage } from '@/lib/audit/provider-usage'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { recordSettledPrescriptionCost } from '../incomplete'
 import type { PrescriptionOutput } from '@/lib/audit/judge-prescription-schema'
@@ -24,16 +25,17 @@ run('prescription custody in PostgreSQL', () => {
     await prisma.user.deleteMany({ where: { id: userId } })
     await prisma.$disconnect()
   })
-  async function fixture() {
+  async function fixture(kind: 'prescription' | 'judge' = 'prescription') {
     const token = randomUUID(), now = new Date()
     const audit = await prisma.audit.create({ data: { userId, url: 'https://example.com/', isPublic: false,
-      status: 'COMPLETED', completedAt: now, triageAt: now, executionToken: token, executionGeneration: 1,
+      status: kind === 'prescription' ? 'COMPLETED' : 'JUDGING', completedAt: kind === 'prescription' ? now : null,
+      triageAt: kind === 'prescription' ? now : null, executionToken: token, executionGeneration: 1,
       flags: { create: [0, 1].map(index => ({ checkId: 'custody-' + index, rubric: 'REACH', severity: 'IMPORTANT',
         problem: 'Recorded title missing', whyItMatters: 'The affected page has no descriptive title.', confidence: 1, evidence: 'Original title observation ' + index, fix: '',
         pageUrl: 'https://example.com/page-' + index, source: 'DETERMINISTIC', position: index })) } }, include: { flags: true } })
     audits.push(audit.id)
-    const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:prescription', scopeKey: 'custody',
-      pageUrl: audit.url, source: 'EXECUTION', status: 'RUNNING', workKind: 'prescription', workState: 'RUNNING', workToken: token, workGeneration: 1, workLeaseUntil: new Date(Date.now() + 60_000) } })
+    const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:' + kind, scopeKey: 'custody',
+      pageUrl: audit.url, source: 'EXECUTION', status: 'RUNNING', workKind: kind, workState: 'RUNNING', workToken: token, workGeneration: 1, workLeaseUntil: new Date(Date.now() + 60_000) } })
     const owner = { auditId: audit.id, taskId: task.id, token, generation: 1 }
     const output = (keys: string[]): PrescriptionOutput => ({ flagPrescriptions: keys.map(flagKey => ({ flagKey,
       evidence: 'Provider explanation must not replace native evidence', whyItMatters: 'Provider interpretation',
@@ -41,6 +43,51 @@ run('prescription custody in PostgreSQL', () => {
       agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })), rubricPrescriptions: [] })
     return { audit, task, owner, output }
   }
+
+  it('prices rejected and successful triage responses once from durable measurements', async () => {
+    const f = await fixture('judge')
+    await withExecutionOwnership(f.owner, async () => {
+      const rejected = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      await rejected({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5, cacheReadTokens: 3 })
+      const accepted = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      await accepted({ model: 'gpt-4o-mini', inputTokens: 40, outputTokens: 10, cacheReadTokens: 7 })
+    })
+    const metrics = { phase: 'triage' as const, durationMs: 0, pagespeedCalls: 0,
+      llmInputTokens: 40, llmOutputTokens: 10, llmModel: 'gpt-4o-mini' }
+    await persistAuditRunCost(f.audit.id, metrics)
+    const cost = await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })
+    expect(cost).toMatchObject({ triageInputTokens: 60, triageOutputTokens: 15, pricingBasis: 'CONFIGURED_ESTIMATE' })
+    // Monetary estimates retain the existing six-decimal database precision.
+    expect(cost.triageCostUsd?.toString()).toBe('0.000019')
+    await persistAuditRunCost(f.audit.id, metrics)
+    expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
+      .toMatchObject({ triageInputTokens: 60, triageOutputTokens: 15, triageCostUsd: cost.triageCostUsd })
+  })
+
+  it('keeps a triage request unpriced when its task loses response authority', async () => {
+    const f = await fixture('judge')
+    await withExecutionOwnership(f.owner, async () => {
+      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED' } })
+      await expect(response({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5 })).rejects.toThrow('no longer owns')
+    })
+    await persistAuditRunCost(f.audit.id, { phase: 'triage', durationMs: 0, pagespeedCalls: 0,
+      llmInputTokens: 0, llmOutputTokens: 0, llmModel: '' })
+    expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
+      .toMatchObject({ pricingBasis: 'UNPRICED', triageCostUsd: null, llmCostUsd: null })
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'triage_provider_response' } })).toBe(0)
+  })
+
+  it('retains usage custody for the compatible Audit-owned pipeline', async () => {
+    const f = await fixture('judge')
+    await prisma.audit.update({ where: { id: f.audit.id }, data: { executionLeaseUntil: new Date(Date.now() + 60_000) } })
+    const owner = { auditId: f.owner.auditId, token: f.owner.token, generation: f.owner.generation }
+    await withExecutionOwnership(owner, async () => {
+      const response = await beginProviderUsage(f.audit.id, 'triage', 'gpt-4o-mini')
+      await response({ model: 'gpt-4o-mini', inputTokens: 10, outputTokens: 2 })
+    })
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, executionId: f.audit.id, event: 'triage_provider_response' } })).toBe(1)
+  })
 
   it('rejects a changed source at commit without changing any repair guidance', async () => {
     const f = await fixture(), scope = freezePrescriptionScope(f.audit.flags)

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
+import type { ProviderUsageAdmission } from './provider-usage'
 import {
   triageProviderOutputSchema,
   QUALITY_TRIAGE_SCHEMA_OPENAI,
@@ -148,7 +149,8 @@ async function runAnthropicTriage(
   flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<TriageResult> {
   if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
 
@@ -167,6 +169,7 @@ async function runAnthropicTriage(
   }
 
   const cfg = getTriageProviderConfig('anthropic', maxTimeoutMs)
+  const recordUsage = await onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -201,7 +204,19 @@ async function runAnthropicTriage(
         ],
       },
       { signal: controller.signal }
-    )
+    ).catch(async error => {
+      await recordUsage?.(null)
+      throw error
+    })
+
+    const usage: TriageUsage = {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      model: response.model ?? cfg.model,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
+    }
+    await recordUsage?.(usage)
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -210,13 +225,7 @@ async function runAnthropicTriage(
 
     return {
       ...parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown', { ...context, screenshotHint: getScreenshotHint(desktopBase64, mobileBase64) }),
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        model: cfg.model,
-        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -228,7 +237,8 @@ async function runOpenAITriage(
   flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<TriageResult> {
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
 
@@ -260,6 +270,7 @@ async function runOpenAITriage(
   })
 
   const cfg = getTriageProviderConfig('openai', maxTimeoutMs)
+  const recordUsage = await onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -282,7 +293,19 @@ async function runOpenAITriage(
         ],
       },
       { signal: controller.signal }
-    )
+    ).catch(async error => {
+      await recordUsage?.(null)
+      throw error
+    })
+
+    const cacheReadTokens = response.usage?.prompt_tokens_details?.cached_tokens ?? 0
+    const usage: TriageUsage = {
+      inputTokens: (response.usage?.prompt_tokens ?? 0) - cacheReadTokens,
+      outputTokens: response.usage?.completion_tokens ?? 0,
+      cacheReadTokens,
+      model: response.model ?? cfg.model,
+    }
+    await recordUsage?.(response.usage ? usage : null)
 
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {
@@ -292,11 +315,7 @@ async function runOpenAITriage(
     const raw = JSON.parse(rawContent)
     return {
       ...parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown', { ...context, screenshotHint: getScreenshotHint(desktopBase64, mobileBase64) }),
-      usage: {
-        inputTokens: response.usage?.prompt_tokens ?? 0,
-        outputTokens: response.usage?.completion_tokens ?? 0,
-        model: cfg.model,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -309,15 +328,16 @@ async function runTriageWithProvider(
   flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<TriageResult> {
   switch (provider) {
     case 'openai':
       if (!openai) throw new Error('OPENAI_API_KEY is not configured')
-      return runOpenAITriage(context, flags, desktopBase64, mobileBase64, maxTimeoutMs)
+      return runOpenAITriage(context, flags, desktopBase64, mobileBase64, maxTimeoutMs, onAttempt)
     case 'anthropic':
       if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
-      return runAnthropicTriage(context, flags, desktopBase64, mobileBase64, maxTimeoutMs)
+      return runAnthropicTriage(context, flags, desktopBase64, mobileBase64, maxTimeoutMs, onAttempt)
     default:
       throw new Error(`Unknown triage provider: ${provider}`)
   }
@@ -340,7 +360,8 @@ export async function runTriageWithRetry(
   desktopBase64: string | null,
   mobileBase64: string | null,
   maxTimeoutMs?: number,
-  knownObservations?: TriageContext['knownObservations']
+  knownObservations?: TriageContext['knownObservations'],
+  onAttempt?: ProviderUsageAdmission
 ): Promise<TriageResult> {
   const context = buildTriageContext(
     url,
@@ -353,9 +374,9 @@ export async function runTriageWithRetry(
 
   return runLlmWithRetry({
     label: 'triage',
-    input: { context, flags, desktopBase64, mobileBase64, maxTimeoutMs },
-    attemptFn: (provider, { context, flags, desktopBase64, mobileBase64, maxTimeoutMs }) =>
-      runTriageWithProvider(provider, context, flags, desktopBase64, mobileBase64, maxTimeoutMs),
+    input: { context, flags, desktopBase64, mobileBase64, maxTimeoutMs, onAttempt },
+    attemptFn: (provider, { context, flags, desktopBase64, mobileBase64, maxTimeoutMs, onAttempt }) =>
+      runTriageWithProvider(provider, context, flags, desktopBase64, mobileBase64, maxTimeoutMs, onAttempt),
     isRetryable: isTriageAttemptRetryable,
   })
 }

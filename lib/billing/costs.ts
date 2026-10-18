@@ -1,5 +1,6 @@
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { Prisma } from '@prisma/client'
+import { sumProviderResponses } from '@/lib/audit/provider-usage'
 import { prisma } from '@/lib/db'
 
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
@@ -125,11 +126,21 @@ export async function persistAuditRunCost(
   auditId: string,
   metrics: AuditRunCostMetrics,
 ): Promise<void> {
+  const phase = metrics.phase ?? 'full'
+  if (phase === 'triage') {
+    const events = await prisma.auditPipelineEvent.findMany({ where: { auditId,
+      event: { in: ['triage_provider_attempt', 'triage_provider_response'] } }, select: { event: true, detail: true } })
+    if (events.length) {
+      const usage = sumProviderResponses(events, 'triage')
+      metrics = { ...metrics, llmInputTokens: usage.inputTokens, llmOutputTokens: usage.outputTokens,
+        llmModel: usage.model, llmCacheReadTokens: usage.cacheReadTokens, llmCacheWriteTokens: usage.cacheWriteTokens,
+        llmUsageComplete: usage.complete && metrics.llmUsageComplete !== false, llmMeasurements: usage.measurements }
+    }
+  }
   const admission = await prisma.audit.findUniqueOrThrow({
     where: { id: auditId },
     select: { planAtAdmission: true },
   })
-  const phase = metrics.phase ?? 'full'
   const aggregateLlmCostUsd = estimateLlmCostUsd(
     metrics.llmModel,
     metrics.llmInputTokens,
