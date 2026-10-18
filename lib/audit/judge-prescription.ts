@@ -143,6 +143,16 @@ function validateFixQuality(
 ): void {
   const fix = rx.fix.trim()
 
+  if (existing?.attention === 'recommendation') {
+    const inspection = /^\s*(?:(?:\d+[.)]|[-*])\s+)?(?:\*\*|__)?(?:review|inspect|confirm|check|assess|evaluate|compare)\b/i
+    const condition = /\b(?:if|when|before|unless)\b/i
+    for (const guidance of [fix, rx.agentPrompt?.trim()].filter((value): value is string => Boolean(value))) {
+      if (!inspection.test(guidance) || !condition.test(guidance)) {
+        throw new JudgeContractError(`Recommendation ${rx.flagKey} requires conditional inspection before prescribing a change`)
+      }
+    }
+  }
+
   const lines = fix.split('\n').filter((l) => l.trim().length > 0)
   if (lines.length === 0) {
     throw new JudgeContractError(

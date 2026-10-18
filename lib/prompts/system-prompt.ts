@@ -1,5 +1,6 @@
 import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
 import { TRIAGE_TEXT, PRESCRIPTION_TEXT } from '@/lib/audit/page-text-limits'
+import type { PrescriptionGuidanceContext } from '@/lib/audit/flag-types'
 
 /**
  * Phase-1 triage prompt, split into a stable SYSTEM block and a per-request USER
@@ -129,6 +130,10 @@ Technical metadata:
 - Privacy policy link: ${context.metadata.hasPrivacyPolicy === undefined ? 'UNKNOWN' : context.metadata.hasPrivacyPolicy ? 'Present' : 'Missing'}
 - Contact information: ${context.metadata.hasContactInfo === undefined ? 'UNKNOWN' : context.metadata.hasContactInfo ? 'Present' : 'Missing'}
 
+Exact source values for evidenceRefs (JSON):
+${JSON.stringify({ title: context.metadata.title ? [context.metadata.title] : [], description: context.metadata.description ? [context.metadata.description] : [], headline: context.metadata.h1s, ctaText: context.metadata.ctaTexts })}
+The supplied pageText above is the only pageText source. An empty ctaText array does not establish that the page has no controls. Do not copy screenshot text, headings or prose into a ctaText reference. Emit action-clarity only when this array contains the exact action; emit visual-hierarchy only when it contains two distinct actions and the declared screenshot is supplied. Omit a candidate without the required source references, rather than inventing a quote or declaring an unsupported failure. There is no minimum candidate count.
+
 Performance scores:
 - Desktop: ${context.scores.desktopPerf ?? 'N/A'}/100
 - Mobile: ${context.scores.mobilePerf ?? 'N/A'}/100
@@ -175,6 +180,8 @@ Do NOT change scores, verdicts, flag titles, evidence, whyItMatters, or verifica
 
 EVIDENCE BOUNDARY: Use the recorded element, text, attribute, page, device, and target. A screenshot of one page is not evidence about another page. Do not infer absence from truncated content. If a field or observation is unavailable, say that it is not recorded. Keep Recommendations conditional. Do not invent traffic, revenue, abandonment, conversion, ranking, legal compliance, user behavior, or measured business outcomes. An observed technical condition does not measure those outcomes.
 
+RECOMMENDATION GUIDANCE: The server supplies Attention, recorded fix, cause certainty and fix confidence for each finding. Start from that recorded guidance. For Attention: recommendation, begin both fix and agentPrompt with Review, Inspect, Confirm, Check, Assess, Evaluate or Compare. State the if/when condition or what must be confirmed before any change. Preserve working controls. A phrase-match or length observation cannot require renaming a clear Checkout control, adding another CTA, or rewriting usable copy just to satisfy a heuristic. Keeping the existing implementation can be the right result of inspection.
+
 FIX PRECISION: The "fix" field and agentPrompt are a TASK BODY, not a complete editor prompt and not a code patch. FixFlags did not open the repository. Name the live element, its current text or value, and the desired outcome.
 - GOOD: "Replace the H1 that currently reads 'Welcome to our platform' with a concise audience-and-outcome statement. Leave the subheading and CTA unchanged."
 - GOOD: "Keep the primary CTA visible in the first 812px at 375px width. Do not rewrite the offer copy."
@@ -191,7 +198,7 @@ Omit cursorPrompt, claudePrompt, windsurfPrompt, lovablePrompt, and boltPrompt. 
 
 ESSAY-STYLE FIX: For the "fix" field, write imperative steps only. Do NOT nest ## Goal / ## Observed / ## Expected / ## How to verify headers inside fix. Every fix MUST:
 
-1. Name the element to change
+1. Name the element or recorded condition to inspect
 2. State current text/value/behavior
 3. State the expected text/value/behavior after the fix
 4. Stay concise (prefer under 8 lines)
@@ -200,7 +207,7 @@ ESSAY-STYLE FIX: For the "fix" field, write imperative steps only. Do NOT nest #
 EXAMPLE:
 Change the hero H1 from "Welcome to our platform" to an audience-and-outcome statement. Keep the surrounding layout unchanged.
 
-RULE: Before writing, identify the current state from the evidence. Then state the target state. Be specific about WHAT to change and WHAT to change it to.
+RULE: Before writing, identify the current state from the evidence. For an established repair, state the target state and specific change. For a Recommendation, state the inspection and the condition that would justify changing the existing implementation.
 
 VERIFICATION RULE: Repeat the recorded verification rule without narrowing any original page, device, target, or failure mechanism. If unavailable, state "Independent verification conditions are not recorded." Repair instructions may explain how to inspect the same condition, but cannot substitute a score or unrelated successful action for that condition.
 - GOOD: "Reload the page at the recorded viewport and inspect the original button's accessible name."
@@ -212,6 +219,7 @@ RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comp
 - A grouped Flag can contain multiple recorded supporting observations. Address every listed page, device, and target, keeping different conditions distinguishable. Do not prescribe only its representative observation or infer that missing evidence passed.
 - Structure the rubric prompt as a numbered list of changes, one per flag
 - Each step: name the element, current text, replacement text
+- For Recommendations, name the inspection and its condition for change. Do not invent replacement copy when no supported change is established.
 - Include a "Do NOT change" section listing sections or elements that should be left alone
 - End with a verification step on the live page
 - Do not invent file paths
@@ -235,7 +243,7 @@ export interface PrescriptionContext {
     ctaTexts: string[]
   }
   techStack: string[]
-  existingFlags: Array<{
+  existingFlags: Array<PrescriptionGuidanceContext & {
     flagKey: string
     source: string
     rubric: string
@@ -288,6 +296,10 @@ ${context.existingFlags.map((f) => {
     const lines = [`[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`]
     if (f.pageUrl) lines.push(`  Page: ${f.pageUrl}`)
     if (f.evidence?.trim()) lines.push(`  Evidence: ${f.evidence.trim()}`)
+    lines.push(`  Attention: ${f.attention ?? 'Not recorded'}`)
+    lines.push(`  Recorded fix: ${f.fix?.trim() || 'Not recorded'}`)
+    lines.push(`  Recorded cause certainty: ${f.causeCertainty ?? 'Not recorded'}`)
+    lines.push(`  Recorded fix confidence: ${f.fixConfidence ?? 'Not recorded'}`)
     lines.push(`  Recorded whyItMatters: ${f.whyItMatters ?? 'Not recorded'}`)
     lines.push(`  Recorded verificationRule: ${f.verificationRule ?? 'Independent verification conditions are not recorded.'}`)
     const current = quotedCurrentText(f.evidence)

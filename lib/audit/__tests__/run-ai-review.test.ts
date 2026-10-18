@@ -171,6 +171,18 @@ describe('runAiReview', () => {
     assert.equal(mocks.mergePrescriptionResults.mock.calls.length, 0)
   })
 
+  it('passes recorded native guidance and server-owned Recommendation classification to the provider', async () => {
+    const fix = 'Review the intended action before changing the existing Checkout label.'
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'no-cta-detected',
+      severity: 'POLISH', fix, causeCertainty: 'OBSERVED', fixConfidence: 'LOW' }] })
+    await runAiReview('a1')
+    const finding = mocks.runPrescriptionWithRetry.mock.calls[0][0].existingFlags[0]
+    assert.equal(finding.fix, fix)
+    assert.equal(finding.attention, 'recommendation')
+    assert.equal(finding.causeCertainty, 'OBSERVED')
+    assert.equal(finding.fixConfidence, 'LOW')
+  })
+
   it('throws when the audit is missing', async () => {
     mocks.auditFindUnique.mockResolvedValue(null)
     await assert.rejects(() => runAiReview('a1'), /not found/)

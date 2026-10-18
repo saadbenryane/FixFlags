@@ -166,10 +166,17 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
 /**
  * Minimal subset for AI prescription matching.
  */
+export type PrescriptionGuidanceContext = {
+  fix?: string | null
+  attention?: 'flag' | 'recommendation'
+  causeCertainty?: CauseCertainty | null
+  fixConfidence?: FixConfidence | null
+}
+
 export type ExistingFlagForPrescription = Pick<
   FlagData,
   'source' | 'rubric' | 'severity' | 'problem' | 'checkId' | 'evidence' | 'pageUrl'
-> & { flagKey: string; supportingObservations?: import('./flag-observations').SupportingObservationView[] }
+> & PrescriptionGuidanceContext & { flagKey: string; supportingObservations?: import('./flag-observations').SupportingObservationView[] }
 
 /**
  * Minimal subset for theme-based deduplication matching.

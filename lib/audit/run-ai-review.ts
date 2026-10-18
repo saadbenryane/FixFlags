@@ -16,6 +16,7 @@ import { PartialPrescriptionError, runPrescriptionWithRetry } from './judge-pres
 import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-profile'
 import { renderedContentMetadata } from './browser/rendered-copy'
 import { publicSupportingObservations } from './flag-observations'
+import { isCustomerFlag } from './attention'
 
 export type PrescriptionRunUsage = {
   inputTokens: number
@@ -123,6 +124,10 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
       whyItMatters: flag.whyItMatters,
       verificationRule: flag.verificationRule,
       pageUrl: flag.pageUrl,
+      fix: flag.fix,
+      attention: isCustomerFlag(flag) ? 'flag' as const : 'recommendation' as const,
+      causeCertainty: flag.causeCertainty,
+      fixConfidence: flag.fixConfidence,
       supportingObservations,
     }
   })

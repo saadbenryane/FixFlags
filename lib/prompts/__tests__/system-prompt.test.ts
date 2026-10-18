@@ -173,6 +173,15 @@ describe('system-prompt triage contract', () => {
 })
 
 describe('buildTriageUserPrompt', () => {
+  it('keeps exact source membership when visible prose mentions an action absent from the CTA inventory', () => {
+    const prompt = buildTriageUserPrompt({ ...basicTriageContext,
+      pageText: 'View equipment. Review your pack and checkout.',
+      metadata: { ...basicTriageContext.metadata, h1s: ['Equipment, "pricing"'], ctaTexts: [] } })
+    const source = prompt.split('Exact source values for evidenceRefs (JSON):\n')[1].split('\n')[0]
+    assert.deepEqual(JSON.parse(source), { title: ['Example'], description: ['A fine example'], headline: ['Equipment, "pricing"'], ctaText: [] })
+    assert.match(prompt, /empty ctaText array does not establish that the page has no controls/)
+    assert.match(prompt, /There is no minimum candidate count/)
+  })
   it('renders URL, metadata, scores, and deterministic flags', () => {
     const prompt = buildTriageUserPrompt(basicTriageContext)
     assert.match(prompt, /https:\/\/example\.com/)
@@ -251,6 +260,17 @@ describe('buildTriageUserPrompt', () => {
 })
 
 describe('buildPrescriptionUserPrompt', () => {
+  it('supplies the recorded native guidance, certainty and Recommendation policy before enrichment', () => {
+    const prompt = buildPrescriptionUserPrompt({ ...basicPrescriptionContext, existingFlags: [{
+      ...basicPrescriptionContext.existingFlags[0], attention: 'recommendation', causeCertainty: 'OBSERVED', fixConfidence: 'LOW',
+      fix: 'Review the intended visitor action before changing the existing Checkout label.',
+    }] } as PrescriptionContext)
+    assert.match(prompt, /Recorded fix: Review the intended visitor action before changing the existing Checkout label/)
+    assert.match(prompt, /Attention: recommendation/)
+    assert.match(prompt, /Recorded cause certainty: OBSERVED/)
+    assert.match(prompt, /Recorded fix confidence: LOW/)
+  })
+
   it('renders URL, score, verdict, metadata, tech stack, rubrics, and flags', () => {
     const prompt = buildPrescriptionUserPrompt(basicPrescriptionContext)
     assert.match(prompt, /https:\/\/example\.com/)

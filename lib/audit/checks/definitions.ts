@@ -202,7 +202,7 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
   corridor: { ...define('corridor', 'conversion', 'Cross-page previews', 'browser', {
     'preview-titles': assertion('conversion', ['corridor-og-title-drift']),
     'preview-descriptions': assertion('conversion', ['corridor-og-description-drift']),
-  }), requiredEvidence: ['compared-rendered-pages'] },
+  }), version: 2, requiredEvidence: ['compared-rendered-pages'] },
   'mobile-navigation': { ...define('mobile-navigation', 'conversion', 'Mobile navigation', 'browser', {
     'mobile-navigation': assertion('conversion', ['flow-mobile-menu-broken']),
   }), requiredEvidence: ['native-mobile-navigation'], timeoutMs: 15_000 },

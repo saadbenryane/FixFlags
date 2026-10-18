@@ -96,6 +96,24 @@ describe('validatePrescriptionOutput', () => {
   })
   const makeFlag = (flagKey: string): any => ({ flagKey, id: `id-${flagKey}` })
 
+  it('refuses unqualified changes to an observed Recommendation, including its agent handoff', () => {
+    const existing = { ...makeFlag('no-cta-detected'), attention: 'recommendation',
+      problem: 'No captured action label matched the recognized phrases',
+      evidence: 'Recorded controls include Checkout and Create account. Unrecognized labels were not established as missing or broken.',
+      fix: 'Review the intended visitor action. Confirm the existing controls before changing their descriptive labels.' }
+    const prescription = { flagKey: existing.flagKey, evidence: existing.evidence,
+      whyItMatters: 'The existing control labels need review in their task context.',
+      fix: 'Review the Checkout label and its intended task before changing it. If visitors cannot identify the next step, use a descriptive label.',
+      agentPrompt: null, verificationRule: 'Inspect the recorded Checkout control and its actual destination.' }
+    const output = { flagPrescriptions: [prescription], rubricPrescriptions: ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Review the recorded findings before changing them.' })) }
+    assert.equal(validatePrescriptionOutput(output as any, [existing]), output)
+    const formatted = { ...output, flagPrescriptions: [{ ...prescription, fix: '1. **Review** the Checkout label and intended task before changing it. If the existing controls describe their destination, keep their labels.' }] }
+    assert.equal(validatePrescriptionOutput(formatted as any, [existing]), formatted)
+    const unsafe = '1. Redefine existing action buttons with more recognizable labels such as Get started, Sign up, or Try now. 2. Ensure the buttons are visually prominent.'
+    assert.throws(() => validatePrescriptionOutput({ ...output, flagPrescriptions: [{ ...prescription, fix: unsafe }] } as any, [existing]), /Recommendation.*conditional inspection/)
+    assert.throws(() => validatePrescriptionOutput({ ...output, flagPrescriptions: [{ ...prescription, agentPrompt: 'Change the Checkout control to Get started.' }] } as any, [existing]), /Recommendation.*conditional inspection/)
+  })
+
   it('accepts one precise action while refusing blank or nonspecific advice', () => {
     const prescription = { flagKey: 'title-missing', evidence: 'The recorded product page has an empty title tag.', whyItMatters: 'Visitors cannot identify the product in their browser tab.', fix: 'Set the empty <title> to the recorded product name.', verificationRule: 'Reload the same page and verify its title.' }
     const output = { flagPrescriptions: [prescription], rubricPrescriptions: ['MESSAGE', 'EXPERIENCE', 'REACH'].map(name => ({ name, rubricPrompt: 'Address the recorded findings.' })) }

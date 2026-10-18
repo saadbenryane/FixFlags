@@ -220,7 +220,7 @@ const LEGACY_CHECK_DEFINITIONS = {
   'journey-funnel-missing-feedback': { version: 1, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
   'journey-funnel-unclear-progress': { version: 1, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
   'journey-funnel-too-many-steps': { version: 1, area: 'conversion', module: 'journeys', capabilities: ["experience-journey-review"] },
-  'corridor-og-title-drift': { version: 1, area: 'conversion', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
+  'corridor-og-title-drift': { version: 2, area: 'conversion', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
   'corridor-og-description-drift': { version: 1, area: 'conversion', module: 'corridor', capabilities: ["reach-corridor-og-consistency"] },
   'api-engagement-unauthorized': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
   'api-engagement-server-error': { version: 1, area: 'conversion', module: 'network', capabilities: ["experience-engagement-api"] },
