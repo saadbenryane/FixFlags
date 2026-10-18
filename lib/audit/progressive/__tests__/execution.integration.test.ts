@@ -3935,7 +3935,7 @@ run('migrated progressive execution', () => {
     } finally { motionMode = 'ignored'; await prisma.user.delete({ where: { id: owner } }); await resumeExternalQueues(); transport.mockRestore() }
   }, 120_000)
 
-  it('verifies original loading windows through blank evidence, partial repair, full repair and monitoring recurrence', async () => {
+  it('verifies loading failures, retains advisory uncertainty and reopens recovered incidents on recurrence', async () => {
     releaseResources()
     const transport = fixtureTransport(), pageUrl = origin + '/loading-observation'
     const owner = 'loading-owner-' + suffix, siteId = 'loading-site-' + suffix
@@ -3981,7 +3981,20 @@ run('migrated progressive execution', () => {
       for (const flag of sources) {
         loadingUiMode = flag.checkId === 'loading-state-slow' ? 'page' : 'desktop-challenge'
         const verified = await verify(flag, 'healthy')
-        expect(verified.attempt).toMatchObject({ outcome: 'IMPROVED', comparable: true })
+        const advisory = flag.checkId === 'mobile-load-delay-content'
+        const diagnostics = verified.attempt.outcome === (advisory ? 'INCONCLUSIVE' : 'IMPROVED') ? [] : await prisma.auditVerifierExecution.findMany({
+          where: { auditId: verified.run.verificationAuditId!, OR: [{ targetKey: { startsWith: 'check:' } }, { targetKey: { startsWith: 'module:' } }, { workKind: 'check' }] },
+          select: { targetKey: true, detail: true, workState: true, workErrorCode: true, workResult: true },
+        })
+        expect(verified.attempt, JSON.stringify({ checkId: flag.checkId, originalTargets: flag.evidenceTargets, diagnostics }))
+          .toMatchObject({ outcome: advisory ? 'INCONCLUSIVE' : 'IMPROVED', comparable: !advisory })
+        if (advisory) {
+          // A measured advisory clearance cannot certify the original incident.
+          expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
+          expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: verified.run.verificationAuditId!, targetKey: 'check:' + flag.checkId } })).toBeNull()
+          expect(await getOwnedRun(owner, verified.run.runId)).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
+          continue
+        }
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: verified.run.verificationAuditId })
         expect(checkVerifierSchema.parse((await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: verified.run.verificationAuditId!,
           targetKey: 'check:' + flag.checkId } })).detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom' })
@@ -4009,9 +4022,11 @@ run('migrated progressive execution', () => {
         for (const flag of repeated) {
           const original = sources.find(source => source.checkId === flag.checkId)!
           const occurrence = await prisma.improvementOccurrence.findUniqueOrThrow({ where: { flagId: original.id } })
-          expect(flag.status).toBe('REGRESSED')
-          expect(flag.improvementOccurrence).toMatchObject({ improvementId: occurrence.improvementId, kind: 'REGRESSED' })
-          expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject({ status: 'FIXED', resolvedInId: expect.any(String) })
+          const advisory = flag.checkId === 'mobile-load-delay-content'
+          expect(flag.status).toBe(advisory ? 'OPEN' : 'REGRESSED')
+          expect(flag.improvementOccurrence).toMatchObject({ improvementId: occurrence.improvementId, kind: advisory ? 'OBSERVED' : 'REGRESSED' })
+          expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.id } })).toMatchObject(advisory
+            ? { status: 'OPEN', resolvedInId: null } : { status: 'FIXED', resolvedInId: expect.any(String) })
         }
       }
     } finally {

@@ -32,6 +32,8 @@ Secondary native HTTP inputs now remain in the private check artifact. Action-de
 
 The controlled target supports a recorded session lifetime and a bounded signup-response delay for lifecycle acceptance. The account journey waits for actual target-session expiration and proves retained identity reuse with a newly issued session. It does not backdate application or target records, increase the closed five-send budget, or establish live lifecycle acceptance before execution.
 
+The integrated native foundation for `9877f179` passed 186 assertions and failed two, after its website checks and builds passed. Its failed receipt is retained. A focused keyboard rerun passed without a deadline change. Recorded loading receipts confirmed that cleared mobile timing guidance remains an observation. The integration contract now requires that advisory incident to remain open and inconclusive, while established loading failures must prove recovery and reopen on recurrence. This strengthens the integration expectation without changing detection thresholds or recovery decisions. Both focused keyboard and loading worker cases now pass with their existing deadlines. Replacement-candidate acceptance remains open.
+
 ### Completion plan refreshed 2026-10-17
 
 The owner reaffirmed the complete website-beta finish line: enter a public URL, understand a consequential Flag, inspect its evidence, implement and publish a repair, independently verify every original scope, and keep monitoring. Preserve the existing brand, eight coverage areas, one-website beta, shared presentation and website-only availability policies. This update consolidates the earlier overlapping checklists. It does not mark their missing proof complete.
