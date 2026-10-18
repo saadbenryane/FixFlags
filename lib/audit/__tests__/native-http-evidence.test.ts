@@ -70,6 +70,20 @@ describe('private native HTTP evidence', () => {
     expect(safeFetchDocument).toHaveBeenCalledTimes(1)
   })
 
+  it('retains the access-challenge header used by image evaluation', async () => {
+    vi.mocked(safeFetchDocument).mockResolvedValue({ ...response, statusCode: 200,
+      headers: { 'content-type': 'image/png', 'cf-mitigated': 'challenge', 'set-cookie': 'private' } })
+    const collected = nativeHttpCollection(), assertions: CheckAssertion[] = []
+    expect(await runOgImageUrlCheck(pageUrl, metadata, { ...collected.options, record: value => assertions.push(value) })).toEqual([])
+    expect(assertions[0]).toMatchObject({ passed: false, complete: false })
+    const recorded = collected.snapshot(), replay = nativeHttpCollection(recorded), replayAssertions: CheckAssertion[] = []
+    await runOgImageUrlCheck(pageUrl, metadata, { ...replay.options, record: value => replayAssertions.push(value) })
+    expect(replayAssertions).toEqual(assertions)
+    expect(replay.snapshot()).toEqual(recorded)
+    expect(JSON.stringify(recorded)).not.toContain('set-cookie')
+    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps multi-action findings in source order when collection finishes out of order', async () => {
     const pending: Array<(result: OpenCheckResult) => void> = []
     vi.mocked(openCheckDestination).mockImplementation(() => new Promise(resolve => pending.push(resolve)))

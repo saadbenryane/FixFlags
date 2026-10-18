@@ -51,6 +51,36 @@ run('prescription custody in PostgreSQL', () => {
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_guidance_committed' } })).toBe(0)
   })
 
+  it('refuses guidance when a concurrent PostgreSQL writer changes evidence after validation', async () => {
+    const f = await fixture(), flagId = f.audit.flags[0].id, scope = freezePrescriptionScope(f.audit.flags)
+    let unlock!: () => void, locked!: () => void, backend = 0
+    const release = new Promise<void>(resolve => { unlock = resolve }), ready = new Promise<void>(resolve => { locked = resolve })
+    const competing = prisma.$transaction(async tx => {
+      backend = (await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`)[0].pid
+      await tx.$queryRaw`SELECT id FROM flags WHERE id = ${flagId} FOR UPDATE`
+      locked()
+      await release
+      await tx.flag.update({ where: { id: flagId }, data: { evidence: 'Concurrent newer source observation' } })
+    }, { timeout: 10_000 })
+    await ready
+    const publishing = withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0', 'custody-1']), { scope, rubrics: false }))
+      .then(() => null, error => error as Error)
+    try {
+      const until = Date.now() + 5000
+      let waiting = false
+      while (Date.now() < until && !waiting) {
+        waiting = (await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${backend} = ANY(pg_blocking_pids(pid))) AS waiting
+        `)[0].waiting
+        if (!waiting) await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      expect(waiting, 'The actual publication transaction must contend on the original Flag row').toBe(true)
+    } finally { unlock(); await competing }
+    expect(await publishing).toMatchObject({ message: 'PRESCRIPTION_SCOPE_CHANGED' })
+    expect(await prisma.flag.count({ where: { auditId: f.audit.id, fix: { not: '' } } })).toBe(0)
+    expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_guidance_committed' } })).toBe(0)
+  })
+
   it('commits one batch independently and replays its receipt without another capture or provider request', async () => {
     const f = await fixture(), scope = freezePrescriptionScope(f.audit.flags, ['custody-0'])
     await withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0']), { scope, rubrics: false }))

@@ -6,7 +6,7 @@ import type { DestinationCheckOptions } from './checks/destination-evidence'
 
 const destinationSchema = z.object({ url: z.string(), canonicalUrl: z.string(), outcome: z.enum(OPEN_CHECK_OUTCOMES),
   status: z.number().int().nullable(), finalUrl: z.string().nullable(), evidence: z.string(), shouldFlagDead: z.boolean() }).strict()
-const documentSchema = z.object({ statusCode: z.number().int(), headers: z.object({ 'content-type': z.string().optional() }).strict(),
+const documentSchema = z.object({ statusCode: z.number().int(), headers: z.object({ 'content-type': z.string().optional(), 'cf-mitigated': z.string().optional() }).strict(),
   body: z.string().max(64_000), complete: z.boolean() }).strict()
 const requestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('destination'), key: z.string(), result: destinationSchema }).strict(),
@@ -52,7 +52,8 @@ export function nativeHttpCollection(recorded?: NativeHttpEvidence) {
     try {
       const document = await safeFetchDocument(url, options)
       result = documentSchema.parse({ statusCode: document.statusCode, body: document.body, complete: document.complete,
-        headers: document.headers['content-type'] ? { 'content-type': document.headers['content-type'] } : {} })
+        headers: Object.fromEntries(['content-type', 'cf-mitigated'].filter(key => document.headers[key] !== undefined)
+          .map(key => [key, document.headers[key]])) })
       return result
     } finally { requests.push({ kind: 'document', key, result }) }
   }

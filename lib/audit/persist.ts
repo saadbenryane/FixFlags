@@ -549,5 +549,5 @@ export async function mergePrescriptionResults(
 
     // Enrichment does not reopen the completed analysis. The durable prescription
     // task owns its progress and can retry after this transaction commits.
-  })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }
