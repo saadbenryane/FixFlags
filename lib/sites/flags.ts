@@ -221,7 +221,9 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
     select: {
       attentionPolicy: true,
       id: true,
+      auditId: true,
       checkId: true,
+      fingerprint: true,
       rubric: true,
       severity: true,
       impactTag: true,
@@ -386,7 +388,7 @@ export async function loadSiteFlagDetail(
     where: { improvementId: incidentId, audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
     orderBy: { createdAt: 'desc' },
     select: { createdAt: true, flag: { select: { id: true, auditId: true, pageUrl: true, affectedPaths: true, status: true, resolvedInId: true,
-      checkId: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
+      checkId: true, fingerprint: true, verificationRule: true, evidenceTargets: true, attentionPolicy: true, supportingObservations: true } } },
   }) : []
   const recoveries = site.projectId ? (await loadIncidentRecoveryProofs([{ projectId: site.projectId,
     flags: [flagRow, ...occurrenceScope.map(occurrence => occurrence.flag)] }])).get(site.projectId) : null

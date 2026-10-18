@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { prescriptionScopeSchema } from '../prescription-scope'
 
 export const ANALYSIS_RECOVERY_MS = 60 * 60_000
 export const TASK_RECOVERY_MS = 30 * 60_000
@@ -18,6 +19,7 @@ export const taskInputSchema = z.object({
   outcomeId: z.string().min(1).max(120).optional(), bindingKey: z.string().min(1).max(120).optional(),
   fixtureId: z.string().min(1).max(120).optional(),
   device: z.enum(['desktop', 'mobile']).optional(),
+  prescriptionScope: prescriptionScopeSchema.optional(),
   prescriptionFlagKeys: z.array(z.string().min(1).max(2000)).max(12).optional(),
 }).strict()
 export type TaskInput = z.infer<typeof taskInputSchema>

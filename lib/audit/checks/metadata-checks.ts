@@ -235,7 +235,7 @@ export async function runOgImageUrlCheck(
   let observed = 'The declared image URL could not be resolved.'
   if (!invalid) {
     try {
-      const response = await safeFetchDocument(imageUrl, { timeoutMs: 5000, deadline: options.deadline,
+      const response = await (options.fetchDocument ?? safeFetchDocument)(imageUrl, { timeoutMs: 5000, deadline: options.deadline,
         maxBytes: 64_000, accept: 'image/*' })
       const status = response.statusCode, contentType = response.headers['content-type']?.toLowerCase() ?? ''
       const restricted = status === 401 || status === 403 || status === 429 ||

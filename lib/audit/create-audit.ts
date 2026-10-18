@@ -1,4 +1,5 @@
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { prisma } from '@/lib/db'
 import { dispatchAudit } from './dispatch'
@@ -510,7 +511,7 @@ export async function createAndEnqueueAudit(
       })
     })
   } else {
-    audit = await prisma.$transaction(async (tx) => {
+    audit = await executionTransaction(async (tx) => {
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(
           hashtextextended(${`fixflags:anon-url-reuse:${visitorKey}:${url}`}, 0)

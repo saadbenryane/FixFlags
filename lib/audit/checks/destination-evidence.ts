@@ -6,6 +6,8 @@ export type DestinationCheckOptions = {
   deadline?: number
   record?: (assertion: CheckAssertion) => void
   scope?: { complete?: boolean; limitation?: string; collectedAt?: string }
+  /** Tests supply a collected document. Production uses the public fetcher. */
+  fetchDocument?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<{ statusCode: number; headers: Record<string, string>; body: string; complete: boolean }>
 }
 
 /** Retain query-dependent destination identity without persisting signed values. */

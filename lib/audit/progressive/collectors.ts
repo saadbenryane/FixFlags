@@ -1,5 +1,6 @@
 import { RENDERED_HTML_LIMIT } from '../browser/rendered-html'
 import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import { executionTransaction } from '../execution-ownership'
 import { captureScreenshots } from '../screenshot'
 import { mergeRuntimeHeadMetadata, trimMetadataForStorage } from '../metadata'
@@ -36,6 +37,20 @@ async function collectMetadata(html: string, url: string, deadline: number, mode
       const metadataFailure: MetadataFailure = { code: error instanceof TaskFailure ? error.code : 'METADATA_PARSE_FAILED', attempts }
       return { metadata: null, metadataFailure }
     }
+  }
+}
+
+/** Browser and capture tasks can insert the same page together. The committed row wins. */
+async function openAuditPage(auditId: string, pageUrl: string, position: number, role: string) {
+  const where = { auditId_normalizedUrl: { auditId, normalizedUrl: pageUrl } }
+  const create = { auditId, url: pageUrl, normalizedUrl: pageUrl, position, role, status: 'CAPTURING' as const }
+  try {
+    return await executionTransaction(tx => tx.auditPage.upsert({ where, create, update: {} }))
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
+    const existing = await prisma.auditPage.findUnique({ where })
+    if (!existing) throw error
+    return existing
   }
 }
 
@@ -102,11 +117,7 @@ export const collectionHandlers: TaskHandler[] = [
     validateResult: artifact => { browserArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const pageUrl = new URL(context.input.pageUrl).toString()
-      const page = await executionTransaction(tx => tx.auditPage.upsert({
-        where: { auditId_normalizedUrl: { auditId: context.audit.id, normalizedUrl: pageUrl } },
-        create: { auditId: context.audit.id, url: pageUrl, normalizedUrl: pageUrl,
-          position: context.input.position, role: context.input.role, status: 'CAPTURING' }, update: {},
-      }))
+      const page = await openAuditPage(context.audit.id, pageUrl, context.input.position, context.input.role)
       const access = await resolveAuditScanAccess(context.audit.id)
       const spec = readExecutionSpec(context.audit.executionSpec)
       const consoleObservationMs = requestedConsoleWindow(spec, pageUrl)
@@ -153,11 +164,7 @@ export const collectionHandlers: TaskHandler[] = [
     validateResult: artifact => { captureArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const pageUrl = new URL(context.input.pageUrl).toString()
-      const page = await executionTransaction(tx => tx.auditPage.upsert({
-        where: { auditId_normalizedUrl: { auditId: context.audit.id, normalizedUrl: pageUrl } },
-        create: { auditId: context.audit.id, url: pageUrl, normalizedUrl: pageUrl,
-          position: context.input.position, role: context.input.role, status: 'CAPTURING' }, update: {},
-      }))
+      const page = await openAuditPage(context.audit.id, pageUrl, context.input.position, context.input.role)
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `capture-p${context.input.position}-g${context.task.workGeneration}`, {
           runFlow: false, scanAccess: await resolveAuditScanAccess(context.audit.id), deadline: context.deadline,

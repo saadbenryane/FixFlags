@@ -89,8 +89,17 @@ export function startProgressiveWorkers() {
       connection: createWorkerRedis(), concurrency: config.concurrency, lockDuration: 90_000, maxStalledCount: 0,
     })
     worker.on('error', error => logger.error('Execution task worker error', { resource, message: error.message }))
-    worker.on('failed', (job, error) => logger.warn('Task delivery interrupted; ledger recovery owns retry',
-      { resource, taskId: job?.data.taskId, message: error.message }))
+    worker.on('failed', (job, error) => {
+      logger.warn('Task delivery interrupted; ledger recovery owns retry',
+        { resource, taskId: job?.data.taskId, message: error.message })
+      const taskId = job?.data?.taskId
+      if (typeof taskId !== 'string') return
+      // Dispatch otherwise leaves the unclaimed task quiet for half a minute.
+      void prisma.auditVerifierExecution.updateMany({
+        where: { id: taskId, workState: 'READY', workDispatchState: 'SENT' },
+        data: { workDispatchState: 'PENDING', workRetryAt: new Date(Date.now() + 1000) },
+      }).catch(writeError => logger.error('Interrupted task could not be requeued', writeError, { resource, taskId }))
+    })
     return worker
   })
   return { close: async () => {

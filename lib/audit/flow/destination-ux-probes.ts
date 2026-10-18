@@ -1,5 +1,5 @@
 import type { Page } from 'playwright'
-import { parseMetadataFromHtml } from '@/lib/audit/metadata'
+import { parseMetadataFromHtml, publishedTrustSignals } from '@/lib/audit/metadata'
 import { collectRenderedHtml } from '../browser/rendered-html'
 import { observeRenderedCopy } from '../browser/rendered-copy'
 import { collectRenderedActionInventory } from './discover-cta'
@@ -46,6 +46,53 @@ export interface DestinationUXQuality {
     contentAbsentThroughMs?: number
   }
 }
+const TRUST_TEXT_LIMIT = 500_000
+const TRUST_ANCHOR_LIMIT = 5_000
+const TRUST_JSON_LIMIT = 100_000
+
+/** Saved HTML can exceed the metadata bound while the open document still
+ * shows its privacy link and contact details. Unread text stays unknown. */
+async function readLiveTrustSignals(page: Page) {
+  const url = page.url()
+  const parts = await page.evaluate(({ textLimit, anchorLimit, jsonLimit }) => {
+    ;(globalThis as unknown as { __name?: (fn: unknown) => unknown }).__name ??= fn => fn
+    const published = (element: Element) => !element.closest('noscript,template')
+    const nodes = [...document.querySelectorAll('a')].filter(published)
+    if (nodes.length > anchorLimit) return { anchorOverflow: true as const }
+    let privacyInLongAnchor = false
+    const anchors: { text: string; href: string }[] = []
+    for (const anchor of nodes) {
+      const text = anchor.textContent ?? ''
+      const href = anchor.getAttribute('href') ?? ''
+      if (text.length > 2_000 || href.length > 2_000) {
+        if (text.toLowerCase().includes('privacy') || href.toLowerCase().includes('privacy')) privacyInLongAnchor = true
+        continue
+      }
+      anchors.push({ text, href })
+    }
+    const body = document.body?.cloneNode(true) as HTMLElement | undefined
+    if (!body) return { anchorOverflow: true as const }
+    body.querySelectorAll('script,style,template,[hidden]').forEach(node => node.remove())
+    const text = body.textContent ?? ''
+    const textOverflow = text.length > textLimit
+    const publishedHrefs = [...body.querySelectorAll('a[href]')].map(anchor => anchor.getAttribute('href') ?? '')
+    const jsonLd: unknown[] = []
+    let jsonOverflow = false
+    for (const script of [...document.querySelectorAll('script[type="application/ld+json"]')].filter(published)) {
+      const raw = script.textContent ?? ''
+      if (raw.length > jsonLimit) { jsonOverflow = true; continue }
+      try { jsonLd.push(JSON.parse(raw || '{}')) } catch { /* Ignore the same unreadable script the HTML parser ignores. */ }
+    }
+    return { anchorOverflow: false as const, privacyInLongAnchor, anchors, publishedText: textOverflow ? '' : text, publishedHrefs, jsonLd, textOverflow, jsonOverflow }
+  }, { textLimit: TRUST_TEXT_LIMIT, anchorLimit: TRUST_ANCHOR_LIMIT, jsonLimit: TRUST_JSON_LIMIT }).catch(() => null)
+  if (!parts || parts.anchorOverflow || page.url() !== url) return null
+  const signals = publishedTrustSignals(parts)
+  return {
+    hasPrivacyPolicy: signals.hasPrivacyPolicy || parts.privacyInLongAnchor,
+    hasContactInfo: (parts.textOverflow || parts.jsonOverflow) && !signals.hasContactInfo ? null : signals.hasContactInfo,
+  }
+}
+
 /** Inspect the actual reached document. Transport and load observations already
  * belong to the navigation; probing the destination never repeats either. */
 export async function runDestinationUXProbes(
@@ -82,6 +129,7 @@ export async function runDestinationUXProbes(
   if (sameDocument && rendered?.finalUrl === url && rendered.html && !rendered.truncated) {
     try { metadata = parseMetadataFromHtml(rendered.html, url, 'rendered') } catch { /* Unavailable declarations remain unknown. */ }
   }
+  const liveTrust = sameDocument && !metadata && page.url() === url ? await readLiveTrustSignals(page) : null
   const ctaPromisesMatch = (() => {
     if (!originCtaText || !headline) return true
     const ctaLower = originCtaText.toLowerCase(), heading = headline.toLowerCase()
@@ -98,7 +146,7 @@ export async function runDestinationUXProbes(
     contentComplete, controlsComplete, hasClearHeadline: Boolean(headline && headline.length > 5), hasPrimaryCTA: primaryCta !== null,
     ctaText: primaryCta?.text ?? null, ctaPromisesMatch, headline, pageType: null,
     visibleCtaCount: ctas.length, actionableCtaCount: actionableCtas.length, primaryCtaHref: primaryCta?.resolvedHref ?? null,
-    trustSignals: { hasPrivacyPolicy: metadata?.hasPrivacyPolicy ?? null, hasContactInfo: metadata?.hasContactInfo ?? null, isHttps: url.startsWith('https://') },
+    trustSignals: { hasPrivacyPolicy: metadata?.hasPrivacyPolicy ?? liveTrust?.hasPrivacyPolicy ?? null, hasContactInfo: metadata?.hasContactInfo ?? liveTrust?.hasContactInfo ?? null, isHttps: url.startsWith('https://') },
     mobileReadiness: { hasViewportMeta: pageData?.hasViewportMeta ?? false,
       tapTargetsSmall: allControls.some(control => control.width < 44 && control.height < 44) },
     frictionSignals: { tooManyCTAs: distinctCtaCount > 5, ctaCount: ctas.length, distinctCtaCount,

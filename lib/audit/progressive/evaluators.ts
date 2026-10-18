@@ -138,7 +138,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         if (!window || window.device !== 'mobile') throw new TaskFailure('MOBILE_LOADING_EVIDENCE_UNAVAILABLE', false)
         const flag = mobileLoadingDelayFlag(window)
         flags = flag ? [flag] : []
-        assertions = [loadingDelayObservation(window, 4000, 'mobile-loading-delay')]
+        assertions = [loadingDelayObservation(window, 4000, 'mobile-loading-delay', true)]
         complete = assertions[0].complete === true
         limitation = 'This targeted execution evaluates the recorded mobile loading window. Other mobile layout responsibilities remain separate.'
       } else if (checkModule === 'measurement') {

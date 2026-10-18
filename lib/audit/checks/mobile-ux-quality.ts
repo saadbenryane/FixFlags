@@ -34,11 +34,15 @@ export function runMobileUXQualityChecks(
       /^mobile-input:[a-f0-9]{64}$/.test(input.context ?? '') === identified)
     return inputs.length ? [{ inputs, small, context: inputs[0].context ?? 'mobile-input:unknown' }] : []
   })) : [{ inputs: [], small: captureMetrics.inputsBelow16px.length > 0, context: undefined }]
-  for (const group of groups) record?.({ key: 'mobile-input-fonts', name: SITE_ACTION_COPY.mobileInputs.name,
-    expected: SITE_ACTION_COPY.mobileInputs.expected,
-    observed: fontsComplete ? SITE_ACTION_COPY.mobileInputs.observed(group.small ? group.inputs.length : 0) : SITE_ACTION_COPY.mobileInputs.limited,
-    passed: fontsComplete && !group.small, complete: fontsComplete, context: group.context,
-    targets: group.inputs.map(input => ({ selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference, context: input.context })) })
+  for (const group of groups) {
+    const passed = fontsComplete && !group.small
+    // A passing 16px sample records CSS sizing and cannot certify recovery.
+    record?.({ key: 'mobile-input-fonts', name: SITE_ACTION_COPY.mobileInputs.name,
+      expected: SITE_ACTION_COPY.mobileInputs.expected,
+      observed: fontsComplete ? SITE_ACTION_COPY.mobileInputs.observed(group.small ? group.inputs.length : 0) : SITE_ACTION_COPY.mobileInputs.limited,
+      passed, complete: fontsComplete, ...(passed ? { disposition: 'observed' as const } : {}), context: group.context,
+      targets: group.inputs.map(input => ({ selector: input.selector, label: SITE_ACTION_COPY.mobileInputs.reference, context: input.context })) })
+  }
 
   if (captureMetrics.inputsBelow16px.length > 0) {
     findings.push({
@@ -66,7 +70,7 @@ export function runMobileUXQualityChecks(
     measuredPosition ? `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.` : 'No usable primary action position was measured.',
     measuredPosition ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight >= 0.2 : undefined, true)
   const mobileLoad = captureMetrics.loadExperience
-  if (mobileLoad?.device === 'mobile') record?.(loadingDelayObservation(mobileLoad, 4000, 'mobile-loading-delay'))
+  if (mobileLoad?.device === 'mobile') record?.(loadingDelayObservation(mobileLoad, 4000, 'mobile-loading-delay', true))
   else recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
     'No mobile loading window was recorded.', undefined, true)
 

@@ -1,3 +1,5 @@
+import { recordPrescriptionUsage } from './prescription-usage'
+import { assertPrescriptionScope, prescriptionCommitSchema, prescriptionHash, type PrescriptionScope } from './prescription-scope'
 import { TaskFailure } from './progressive/contracts'
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { currentExecutionOwnership } from './execution-ownership'
@@ -38,9 +40,10 @@ function prescriptionUsage(usage: { inputTokens: number; outputTokens: number; m
 }
 
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
-export async function runAiReview(auditId: string, deadline?: number, flagKeys?: readonly string[]): Promise<PrescriptionRunUsage> {
+export async function runAiReview(auditId: string, deadline?: number, flagKeys?: readonly string[], scope?: PrescriptionScope): Promise<PrescriptionRunUsage> {
   const owner = currentExecutionOwnership()
   if (!owner?.taskId || owner.auditId !== auditId) throw new Error('Prescription requires its execution task')
+  if (!scope) throw new TaskFailure('PRESCRIPTION_SCOPE_MISSING', false)
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
     include: {
@@ -70,6 +73,17 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     throw new Error('AI report limit reached')
   }
 
+  if (scope) {
+    const receipt = await prisma.auditPipelineEvent.findFirst({ where: { auditId, executionId: owner.taskId,
+      event: 'prescription_guidance_committed' }, orderBy: { sequence: 'desc' }, select: { detail: true } })
+    const parsed = prescriptionCommitSchema.safeParse(receipt?.detail)
+    if (parsed.success && parsed.data.scopeHash === prescriptionHash(scope)) {
+      assertPrescriptionScope(scope, audit.flags, new Map(parsed.data.guidance.map(item => [item.id, item.hash])))
+      return NO_PRESCRIPTION_USAGE
+    }
+    assertPrescriptionScope(scope, audit.flags)
+  }
+
   const recordedMetadata = audit.htmlMetadata as PageMetadata | null
   if (!recordedMetadata) throw new TaskFailure('PRESCRIPTION_PRIMARY_METADATA_MISSING', false)
   if (recordedMetadata.renderedCopy !== undefined && !recordedMetadata.renderedCopy?.complete) throw new TaskFailure('PRESCRIPTION_PRIMARY_COPY_INCOMPLETE', false)
@@ -88,6 +102,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     throw new TaskFailure('PRESCRIPTION_FLAGS_MISSING', false)
   }
   const selectedRows = requested ? audit.flags.filter(flag => requested.includes(flagKeyForRow(flag))) : audit.flags
+  assertPrescriptionScope(scope, selectedRows)
   const selectedKeys = new Set(selectedRows.map(flag => flagKeyForRow(flag)).filter(Boolean))
   const coversAll = !requested || audit.flags.every(flag => {
     const key = flagKeyForRow(flag)
@@ -133,6 +148,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
         metadata,
         techStack,
         existingFlags,
+        onUsage: (usage, model) => recordPrescriptionUsage(auditId, usage, model),
         rubrics: audit.rubrics.map((r) => ({
           name: r.name,
           grade: r.grade,
@@ -154,7 +170,7 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
       error: errorMsg,
     })
     if (error instanceof PartialPrescriptionError) {
-      await mergePrescriptionResults(auditId, error.partial.output, { rubrics: false })
+      await mergePrescriptionResults(auditId, error.partial.output, { rubrics: false, ...(scope ? { scope } : {}) })
     }
 
     // The durable task owner decides recovery or terminal failure. A failed
@@ -173,8 +189,8 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
   } | null
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'prescription_persist' })
-  if (coversAll) await mergePrescriptionResults(auditId, prescription.output)
-  else await mergePrescriptionResults(auditId, prescription.output, { rubrics: false })
+  if (coversAll) await mergePrescriptionResults(auditId, prescription.output, ...(scope ? [{ scope }] : []))
+  else await mergePrescriptionResults(auditId, prescription.output, { rubrics: false, ...(scope ? { scope } : {}) })
 
   // A partial batch must not stamp aiReviewAt. That stamp would stop every sibling batch.
   if (coversAll) await finalizeAudit({

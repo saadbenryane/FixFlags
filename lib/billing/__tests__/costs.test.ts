@@ -268,6 +268,20 @@ describe('persistAuditRunCost', () => {
   })
 
   describe('prescription phase', () => {
+    it('prices separately measured responses and keeps missing consumption unpriced', async () => {
+      mockFindUnique.mockResolvedValue({ triageInputTokens: 10, triageOutputTokens: 2,
+        pricingBasis: 'CONFIGURED_ESTIMATE', triageCostUsd: new Prisma.Decimal(0.001),
+        triageModel: 'gpt-4o-mini', durationMs: 3000, pagespeedCalls: 0 } as never)
+      const measured = { ...baseMetrics, phase: 'prescription' as const,
+        llmModel: 'gpt-4o-mini,claude-sonnet-5', llmInputTokens: 2_000_000, llmOutputTokens: 0,
+        llmMeasurements: [{ model: 'gpt-4o-mini', inputTokens: 1_000_000, outputTokens: 0 },
+          { model: 'claude-sonnet-5', inputTokens: 1_000_000, outputTokens: 0 }] }
+      await persistAuditRunCost('measured', measured)
+      expect(mockUpdate.mock.lastCall?.[0].data.prescriptionCostUsd?.toString()).toBe('3.15')
+      await persistAuditRunCost('measured', { ...measured, llmUsageComplete: false })
+      expect(mockUpdate.mock.lastCall?.[0].data).toMatchObject({ prescriptionCostUsd: null, llmCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
+
     it('accumulates tokens and costs from existing triage record', async () => {
       const existing = {
         triageInputTokens: 800,

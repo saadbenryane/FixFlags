@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { prisma } from '@/lib/db'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import SiteFlagPage from '../page'
 import { siteViewerActions } from '@/lib/sites/viewer-actions'
@@ -44,7 +46,12 @@ vi.mock('@/lib/analytics/site-events', () => ({
 }))
 
 vi.mock('@/components/sites/SiteShell', () => ({
-  SiteShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SiteShell: ({ children, title }: { children: ReactNode; title?: string }) => (
+    <div>
+      {title ? <h1>{title}</h1> : null}
+      {children}
+    </div>
+  ),
 }))
 
 function attempt(id: string, builder: string, outcome: string | null) {
@@ -161,6 +168,32 @@ describe('Flag verification attempts', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/flags/displayed-capture/fix', expect.anything()))
     expect(fetch).not.toHaveBeenCalledWith('/api/sites/site-1/flags/grouped-incident/fix', expect.anything())
+  })
+
+  it('does not call an unproven recovery recovered when the completed audit is still on file', async () => {
+    vi.mocked(prisma.audit.findFirst).mockResolvedValue({
+      id: 'audit-recovery',
+      status: 'COMPLETED',
+      completedAt: new Date('2026-09-20T17:58:10.414Z'),
+      createdAt: new Date('2026-09-20T17:00:00.000Z'),
+    } as never)
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({
+      ...detail,
+      site: { ...detail.site, projectId: 'project-1' },
+      flag: { ...detail.flag, status: 'UNVERIFIED', resolvedInId: 'audit-recovery' },
+    })
+    render(await SiteFlagPage({
+      params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
+      searchParams: Promise.resolve({}),
+    }))
+    expect(screen.getAllByText(SITE_BOARD_COPY.flagProofMissing).length).toBeGreaterThan(0)
+    expect(screen.getByText(SITE_BOARD_COPY.flagProofMissingBody)).toBeVisible()
+    expect(screen.getByRole('heading', { name: detail.flag.problem })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.problemRecovered })).not.toBeInTheDocument()
+    expect(screen.queryByText(SITE_BOARD_COPY.flagRecovered)).not.toBeInTheDocument()
+    expect(screen.queryByText(SITE_BOARD_COPY.checkoutRecovered)).not.toBeInTheDocument()
+    expect(prisma.audit.findFirst).not.toHaveBeenCalled()
   })
 
   it('keeps anonymous evidence visible while requiring sign-in for fixes and private attempts', async () => {

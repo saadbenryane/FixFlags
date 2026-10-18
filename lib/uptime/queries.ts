@@ -47,8 +47,10 @@ async function readUptime(projectId: string, window: UptimeHistory['window'], cu
     scheduledAt: row.scheduledAt.toISOString(), observedAt: row.observedAt.toISOString(), attempt: row.attempt,
     result: row.result as ProbeResult, confirmed: row.confirmed, reason: row.reason,
     statusCode: row.statusCode, durationMs: row.durationMs, finalUrl: row.finalUrl }))
+  // The Site URL can change before the monitor retargets. The new URL stays
+  // unknown. An open incident remains open until that retarget supersedes it.
   return uptimeHistorySchema.parse({ enabled, targetUrl: target.ok ? target.url : monitor.project.url, state, lastCheckedAt: targetMatches ? monitor.lastCheckedAt?.toISOString() ?? null : null,
-    nextCheckAt: enabled && targetMatches ? (monitor.confirmationDueAt ?? monitor.nextProbeAt).toISOString() : null, openIncidentCount: targetMatches ? openIncidentCount : 0,
+    nextCheckAt: enabled && targetMatches ? (monitor.confirmationDueAt ?? monitor.nextProbeAt).toISOString() : null, openIncidentCount,
     segments: uptimeTimeline(samples.map(row => ({ ...row, result: row.result as ProbeResult, scheduledAt: row.scheduledAt.toISOString(), observedAt: row.observedAt.toISOString() })), now, window),
     window, probes, incidents: incidents.map(row => ({ id: row.id, targetUrl: row.targetUrl, reason: row.reason,
       startedAt: row.startedAt.toISOString(), confirmedAt: row.confirmedAt.toISOString(), recoveredAt: row.recoveredAt?.toISOString() ?? null, supersededAt: row.supersededAt?.toISOString() ?? null })),

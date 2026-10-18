@@ -42,7 +42,7 @@ export function HomepageHandoffSection({ onCopy, copyResult, manualPrompt }: {
           <p className={s.eyebrow}>{C.actions.label}</p>
           <h2 id="handoff-title">{C.story.guidanceTitle}</h2>
           <p>{C.story.guidance}</p>
-          <Link href="/docs/fix-with-ai#what-is-mcp" className={t.mcpAction}>{C.actions.mcpAction}<ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link href="/docs/fix-with-ai" className={t.guidanceAction}>{C.actions.guidanceAction}<ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
         <article className={t.prompt} aria-labelledby="fix-prompt-title">
           <div className={t.promptHeading}><span>{C.actions.promptLabel}</span><Copy size={16} aria-hidden="true" /></div>

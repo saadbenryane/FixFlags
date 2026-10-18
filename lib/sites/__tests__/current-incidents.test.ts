@@ -5,9 +5,9 @@ import { healthyDesktopPs, pageSpeedMeasurementFixture } from '@/lib/audit/__tes
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { scopePerformanceAssertions } from '@/lib/audit/performance-measurement'
 
-const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn() }))
+const db = vi.hoisted(() => ({ improvements: vi.fn(), flags: vi.fn(), audit: vi.fn(), proofs: vi.fn(), assessments: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { improvement: { findMany: db.improvements }, flag: { findMany: db.flags },
-  audit: { findFirst: db.audit, findMany: db.proofs } } }))
+  outcomeAssessment: { findMany: db.assessments }, audit: { findFirst: db.audit, findMany: db.proofs } } }))
 import { loadSiteFlags, loadSiteResolvedFlags } from '../flags'
 import { loadIncidentRecoveryProofs } from '../application/incident-proofs'
 
@@ -32,7 +32,7 @@ function recovery(overrides: Record<string, unknown> = {}) {
     } }], ...overrides }
 }
 beforeEach(() => {
-  vi.resetAllMocks(); db.flags.mockResolvedValue([]); db.audit.mockResolvedValue({ id: 'latest' })
+  vi.resetAllMocks(); db.flags.mockResolvedValue([]); db.assessments.mockResolvedValue([]); db.audit.mockResolvedValue({ id: 'latest' })
   db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'PROPOSED', occurrences: [{ flag: captured() }], attempts: [] }])
   db.proofs.mockResolvedValue([recovery()])
 })
@@ -41,6 +41,7 @@ describe('current incident projection', () => {
     expect(await loadSiteFlags(site)).toEqual([])
     expect(db.proofs).toHaveBeenCalledWith({ where: { id: { in: ['recovery'] }, projectId: { in: ['site-1'] }, status: 'COMPLETED', completedAt: { not: null } },
       select: { id: true, projectId: true, completedAt: true, executionSpec: true,
+        outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } },
         verifierExecutions: { where: { status: 'COMPLETED', OR: [{ targetKey: { startsWith: 'module:' } }, { targetKey: { startsWith: 'check:' } }] },
           select: { targetKey: true, status: true, detail: true } } } })
   })
@@ -102,5 +103,41 @@ describe('current incident projection', () => {
     const proofs = await loadIncidentRecoveryProofs([{ projectId: 'site-1', flags: [captured()] }, { projectId: 'site-2', flags: [captured()] }])
     expect(proofs.get('site-1')).toBeUndefined()
     expect(proofs.get('site-2')?.has('recovery')).toBe(true)
+  })
+  it('proves an outcome flag only from the committed recovery incident', async () => {
+    const fingerprint = 'outcome:v1:checkout-outcome:browser'
+    const incident = { version: 1, transition: 'recovery', incidentRunRequestId: 'source-run', rootFlagIds: ['checkout-flag'],
+      flagIds: [], recoveredFlagIds: ['checkout-flag'], previousAssessmentId: 'before' }
+    const checkout = captured({ id: 'checkout-flag', checkId: 'journey-checkout-failed-http_error', fingerprint, auditId: 'before',
+      impactTag: 'REVENUE', rubric: 'EXPERIENCE', severity: 'CRITICAL', problem: 'Checkout is unavailable', evidence: 'The purchase request failed',
+      whyItMatters: 'Customers cannot pay', fix: 'Restore checkout' })
+    const receipt = { state: 'CLEAR', outcomeId: 'checkout-outcome', evidence: { reason: 'reached', incident } }
+    db.improvements.mockResolvedValue([{ id: 'incident', fingerprint, status: 'VERIFIED', outcome: { id: 'checkout-outcome', name: 'Checkout' },
+      occurrences: [{ flag: checkout }], attempts: [] }])
+    db.proofs.mockResolvedValue([recovery({ executionSpec: { ...recovery().executionSpec, checks: {}, scope: 'OUTCOMES' }, verifierExecutions: [],
+      outcomeAssessments: [receipt] })])
+    db.flags.mockResolvedValue([checkout])
+    expect(await loadSiteFlags(site)).toEqual([])
+    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ sourceFlagId: 'checkout-flag', status: 'FIXED', verificationState: 'verified' }])
+    receipt.evidence.incident.transition = 'clear'
+    expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: 'checkout-flag', status: 'UNVERIFIED' }])
+    expect(await loadSiteResolvedFlags(site)).toEqual([])
+    receipt.evidence.incident.transition = 'recovery'
+    receipt.evidence = { ...receipt.evidence, supersededByAssessmentId: 'later' }
+    expect(await loadSiteFlags(site)).toMatchObject([{ status: 'UNVERIFIED' }])
+    receipt.evidence = { reason: 'reached', incident: { ...incident, recoveredFlagIds: ['other-flag'] } }
+    expect(await loadSiteFlags(site)).toMatchObject([{ status: 'UNVERIFIED' }])
+    const continuation = { ...checkout, id: 'continuation', auditId: 'during' }
+    db.flags.mockResolvedValue([])
+    db.improvements.mockResolvedValue([{ id: 'incident', fingerprint, status: 'VERIFIED', occurrences: [{ flag: continuation }], attempts: [] }])
+    db.assessments.mockResolvedValue([{ auditId: 'during', outcomeId: 'checkout-outcome', audit: { projectId: 'site-1' }, evidence: {
+      incident: { ...incident, transition: 'ongoing_failure', flagIds: ['continuation'], recoveredFlagIds: [] } } }])
+    expect(await loadSiteFlags(site)).toEqual([])
+    db.assessments.mockResolvedValue([{ auditId: 'during', outcomeId: 'checkout-outcome', audit: { projectId: 'site-1' }, evidence: {
+      incident: { ...incident, transition: 'ongoing_failure', incidentRunRequestId: 'other-run', flagIds: ['continuation'], recoveredFlagIds: [] } } }])
+    expect(await loadSiteFlags(site)).toMatchObject([{ sourceFlagId: 'continuation', status: 'UNVERIFIED' }])
+    db.assessments.mockResolvedValue([])
+    db.improvements.mockResolvedValue([{ id: 'incident', fingerprint: 'title', status: 'VERIFIED', occurrences: [{ flag: { ...checkout, fingerprint: 'title' } }], attempts: [] }])
+    expect(await loadSiteFlags(site)).toMatchObject([{ status: 'UNVERIFIED' }])
   })
 })

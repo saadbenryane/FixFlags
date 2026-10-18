@@ -90,6 +90,8 @@ export function estimateLlmCostUsd(
 export type LlmCostPhase = 'triage' | 'prescription' | 'full'
 
 export interface AuditRunCostMetrics {
+  llmUsageComplete?: boolean
+  llmMeasurements?: Array<{ model: string; inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number }>
   durationMs: number
   llmInputTokens: number
   llmOutputTokens: number
@@ -128,13 +130,18 @@ export async function persistAuditRunCost(
     select: { planAtAdmission: true },
   })
   const phase = metrics.phase ?? 'full'
-  const llmCostUsd = estimateLlmCostUsd(
+  const aggregateLlmCostUsd = estimateLlmCostUsd(
     metrics.llmModel,
     metrics.llmInputTokens,
     metrics.llmOutputTokens,
     metrics.llmCacheReadTokens ?? 0,
     metrics.llmCacheWriteTokens ?? 0,
   )
+  const measuredCosts = metrics.llmMeasurements?.map(item => estimateLlmCostUsd(item.model, item.inputTokens,
+    item.outputTokens, item.cacheReadTokens ?? 0, item.cacheWriteTokens ?? 0))
+  const llmCostUsd = metrics.llmUsageComplete === false ? null : measuredCosts
+    ? measuredCosts.some(cost => cost === null) ? null : measuredCosts.reduce<number>((sum, cost) => sum + cost!, 0)
+    : aggregateLlmCostUsd
   const infraOverheadUsd = computeInfraOverheadUsd(metrics.pagespeedCalls, metrics.durationMs)
 
   if (phase === 'triage') {

@@ -412,7 +412,8 @@ run('URL-first analysis through claim and monitored repair', () => {
             supportingObservations: findings[index]!.supportingObservations, verificationRule: findings[index]!.verificationRule })
           expect(after[index]!.fix.length > 0).toBe(!failedPrescriptions)
         }
-        expect(provider).toHaveBeenCalledTimes(primaryMissing || captureMissing ? 0 : interrupted ? 2 : 1)
+        expect(provider).toHaveBeenCalledTimes(primaryMissing || captureMissing ? 0 : 1)
+        if (interrupted) expect(await prisma.auditPipelineEvent.count({ where: { auditId: audit.id, event: 'prescription_guidance_committed' } })).toBe(1)
         const site = (await loadSiteRecord(project.id))!
         expect(await loadSiteFlagDetail(site, findings[0]!.id)).toMatchObject({ repairGuidance: failedPrescriptions ? 'unavailable' : 'ready' })
         if (failedPrescriptions) {

@@ -101,7 +101,8 @@ describe('registered diagnostic observations', () => {
     expect(failed).toMatchObject({ passed: false, complete: true })
     expect(failed?.disposition).toBeUndefined()
     const after = await inspect('mobile-ux-quality', html())
-    expect(assertionForTarget(after.receipt, 'mobile-input-zoom')).toMatchObject({ passed: true, complete: true })
+    expect(after.assertions.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(assertionForTarget(after.receipt, 'mobile-input-zoom')).toBeUndefined()
     expect(after.assertions.find(assertion => assertion.key === 'mobile-input-fonts')?.observed).toContain('not iOS focus')
   })
   it('keeps empty content and unusable measurements incomplete', async () => {

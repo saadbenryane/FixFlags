@@ -44,6 +44,7 @@ import type { TaskContext, TaskHandler } from './registry'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { enqueuePendingAiReview } from '../enqueue-ai-review'
 import { runAiReview, type PrescriptionRunUsage } from '../run-ai-review'
+import { PrescriptionScopeChanged } from '../prescription-scope'
 import { JudgeContractError } from '../validate-judge-output'
 import { admitAiObservation } from '../ai-observation-identity'
 
@@ -199,8 +200,10 @@ export const lifecycleHandlers: TaskHandler[] = [
     validateResult: artifact => { prescriptionResultSchema.parse(artifact.data) },
     async evaluate(context) {
       let usage: PrescriptionRunUsage = { inputTokens: 0, outputTokens: 0, model: '', cacheReadTokens: 0, cacheWriteTokens: 0 }
-      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys) }
+      if (!context.input.prescriptionScope) throw new TaskFailure('PRESCRIPTION_SCOPE_MISSING', false)
+      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys, context.input.prescriptionScope) }
       catch (error) {
+        if (error instanceof PrescriptionScopeChanged) throw new TaskFailure('PRESCRIPTION_SCOPE_CHANGED', false)
         if (error instanceof JudgeContractError) throw new TaskFailure('AI_CONTRACT_INVALID', false)
         throw error
       }

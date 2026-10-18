@@ -1,3 +1,6 @@
+import { flagKeyForRow } from './flag-key'
+import { assertPrescriptionScope, guidanceHash, prescriptionHash, type PrescriptionScope } from './prescription-scope'
+import { currentExecutionOwnership } from './execution-ownership'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import {
   Prisma,
@@ -323,13 +326,7 @@ export function buildTriageAiFlagRow(
   }
 }
 
-export function flagKeyForRow(flag: {
-  checkId: string | null
-  fingerprint: string | null
-}): string {
-  if (flag.fingerprint?.startsWith('ai-observation:v1::') || flag.fingerprint?.startsWith('ai-observation:v2::')) return flag.fingerprint
-  return flag.checkId ?? flag.fingerprint ?? ''
-}
+export { flagKeyForRow } from './flag-key'
 
 /** Treats null, empty, and whitespace-only strings as blank. */
 export function isBlankText(value: string | null | undefined): boolean {
@@ -485,10 +482,17 @@ export async function persistTriageResults(
 export async function mergePrescriptionResults(
   auditId: string,
   prescription: PrescriptionOutput,
-  options?: { rubrics?: boolean }
+  options?: { rubrics?: boolean; scope?: PrescriptionScope }
 ): Promise<void> {
   await executionTransaction(async (tx) => {
     const flags = await tx.flag.findMany({ where: { auditId } })
+    if (options?.scope) {
+      assertPrescriptionScope(options.scope, flags)
+      const expected = new Set(options.scope.members.map(member => member.key))
+      const received = prescription.flagPrescriptions.map(item => item.flagKey)
+      if (received.length !== expected.size || new Set(received).size !== expected.size || received.some(key => !expected.has(key)))
+        throw new Error('PRESCRIPTION_MEMBERSHIP_INVALID')
+    }
     const prescriptionByKey = new Map(
       prescription.flagPrescriptions.map((item) => [item.flagKey, item])
     )
@@ -516,6 +520,15 @@ export async function mergePrescriptionResults(
           boltPrompt: item.boltPrompt ?? null,
         },
       })
+    }
+
+    if (options?.scope) {
+      const owner = currentExecutionOwnership()
+      if (!owner?.taskId || owner.auditId !== auditId) throw new Error('Prescription commit requires its execution task')
+      const selected = await tx.flag.findMany({ where: { auditId, id: { in: options.scope.members.map(member => member.id) } } })
+      await tx.auditPipelineEvent.create({ data: { auditId, executionId: owner.taskId, traceId: auditId,
+        attempt: owner?.generation ?? 1, stage: 'judging', event: 'prescription_guidance_committed', status: 'completed',
+        detail: { version: 1, scopeHash: prescriptionHash(options.scope), guidance: selected.map(flag => ({ id: flag.id, hash: guidanceHash(flag) })) } } })
     }
 
     if (options?.rubrics === false) return

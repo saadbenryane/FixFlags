@@ -34,6 +34,7 @@ export interface PrescriptionResult {
 export type { ExistingFlagForPrescription } from './flag-types'
 
 export interface PrescriptionContext {
+  onUsage?: (usage: LlmUsage | null, model: string) => Promise<void>
   url: string
   verdict: string
   score: number
@@ -277,7 +278,16 @@ async function runAnthropicPrescription(
         ],
       },
       { signal: controller.signal }
-    )
+    ).catch(async error => {
+      await context.onUsage?.(null, cfg.model)
+      throw error
+    })
+
+    const usage: LlmUsage = {
+      inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, model: response.model ?? cfg.model,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
+    }
+    await context.onUsage?.(usage, usage.model)
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -286,13 +296,7 @@ async function runAnthropicPrescription(
 
     return {
       output: parsePrescriptionOutput(toolUse.input, context.existingFlags),
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        model: cfg.model,
-        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -366,7 +370,17 @@ async function runOpenAIPrescription(
         ],
       },
       { signal: controller.signal }
-    )
+    ).catch(async error => {
+      await context.onUsage?.(null, cfg.model)
+      throw error
+    })
+
+    const cacheReadTokens = response.usage?.prompt_tokens_details?.cached_tokens ?? 0
+    const usage: LlmUsage = {
+      inputTokens: (response.usage?.prompt_tokens ?? 0) - cacheReadTokens,
+      outputTokens: response.usage?.completion_tokens ?? 0, cacheReadTokens, model: response.model ?? cfg.model,
+    }
+    await context.onUsage?.(response.usage ? usage : null, usage.model)
 
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {
@@ -376,11 +390,7 @@ async function runOpenAIPrescription(
     const raw = JSON.parse(rawContent)
     return {
       output: parsePrescriptionOutput(raw, context.existingFlags),
-      usage: {
-        inputTokens: response.usage?.prompt_tokens ?? 0,
-        outputTokens: response.usage?.completion_tokens ?? 0,
-        model: cfg.model,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)

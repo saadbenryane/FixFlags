@@ -3,7 +3,8 @@ import { executionTransaction } from './execution-ownership'
 import { dispatchTask } from './progressive/engine'
 import { MAX_TASKS_PER_AUDIT } from './progressive/contracts'
 import { recordProgress } from './progressive/events'
-import { flagKeyForRow } from './persist'
+import { flagKeyForRow } from './flag-key'
+import { freezePrescriptionScope } from './prescription-scope'
 import { prescriptionTaskPlans } from './prescription-plan'
 import { logger } from '@/lib/logger'
 
@@ -32,8 +33,7 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<voi
     const existing = await tx.auditVerifierExecution.findMany({ where: { auditId, workKind: 'prescription' },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { id: true } })
     if (existing.length > 0) return existing.map(task => task.id)
-    const flags = await tx.flag.findMany({ where: { auditId }, orderBy: [{ position: 'asc' }, { id: 'asc' }],
-      select: { checkId: true, fingerprint: true } })
+    const flags = await tx.flag.findMany({ where: { auditId }, orderBy: [{ position: 'asc' }, { id: 'asc' }] })
     const plans = prescriptionTaskPlans(flags.map(flag => ({ flagKey: flagKeyForRow(flag) })))
     const count = await tx.auditVerifierExecution.count({ where: { auditId, targetKey: { startsWith: 'task:' } } })
     if (count + plans.length > MAX_TASKS_PER_AUDIT) throw new Error('Execution task limit exceeded')
@@ -42,6 +42,7 @@ export async function enqueueAiReview(auditId: string, delayMs = 0): Promise<voi
       const task = await tx.auditVerifierExecution.create({ data: { auditId, ...prescriptionIdentity(plan.index),
         pageUrl: audit.url, source: 'EXECUTION', status: 'PENDING', workKind: 'prescription', workState: 'READY',
         workInput: { pageUrl: audit.url, primary: true, position: 0, role: 'prescription',
+          prescriptionScope: freezePrescriptionScope(flags, plan.flagKeys),
           ...(plan.flagKeys ? { prescriptionFlagKeys: plan.flagKeys } : {}) }, workDependencies: [],
         workRetryAt: new Date(Date.now() + Math.max(0, delayMs)), workDispatchState: 'PENDING' } })
       created.push(task.id)

@@ -191,6 +191,13 @@ export const POST_CLICK_ASSERTIONS = {
   'destination-content-timing': ['flow-cta-blank-destination', 'flow-destination-slow-load'],
   'destination-loading-ui': ['flow-cta-stuck-loading', 'flow-destination-stuck-loading'],
 } as const
+export const DESTINATION_CONTENT_ASSERTIONS = {
+  'destination-headline': ['flow-destination-no-headline'],
+  'destination-next-action': ['flow-destination-no-cta'],
+  'destination-promise': ['flow-cta-message-mismatch'],
+  'destination-action-count': ['flow-destination-cta-overload'],
+  'destination-form-privacy': ['flow-destination-no-privacy'],
+} as const
 export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
   corridor: { ...define('corridor', 'conversion', 'Cross-page previews', 'browser', {
     'preview-titles': assertion('conversion', ['corridor-og-title-drift']),
@@ -216,6 +223,8 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
   flow: { ...define('flow', 'conversion', 'Public primary action', 'browser',
     { ...Object.fromEntries(Object.entries(PRIMARY_ACTION_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
       ...Object.fromEntries(Object.entries(POST_CLICK_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
+      'destination-trust': assertion('conversion', ['flow-cta-destination-no-trust']),
+      ...Object.fromEntries(Object.entries(DESTINATION_CONTENT_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
       'pricing-navigation': assertion('conversion', ['flow-pricing-nav-broken']) }),
     requiredEvidence: ['public-primary-action'] },
   'form-validation': { ...define('form-validation', 'conversion', 'Form validation', 'browser', {

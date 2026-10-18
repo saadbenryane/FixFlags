@@ -128,6 +128,33 @@ async function callHook(url: string, secret: string | null, fixtureId: string,
   } finally { release() }
 }
 
+const blockedAdmission = (reason: string): SafeFormExecutionResult => ({ disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'not_started' } })
+
+/** Admission stops before a browser session. A matching fixture is not confirmation. */
+export function refuseSafeFormAdmission(fixture: {
+  authorizedAt: Date | null; lastDryRunVersion: number | null; version: number; targetUrl: string; resetUrl: string; cleanupUrl: string
+} | null, input: { requireAuthorization?: boolean; expectedVersion?: number; startUrl: string; allowLocalhost: boolean; setupAdmitted: boolean }): SafeFormExecutionResult | null {
+  if (!fixture || (input.requireAuthorization !== false && (!fixture.authorizedAt || fixture.lastDryRunVersion !== fixture.version)))
+    return blockedAdmission('fixture_not_authorized')
+  if (input.requireAuthorization === false && !input.setupAdmitted) return blockedAdmission('fixture_setup_not_admitted')
+  if (input.expectedVersion !== undefined && fixture.version !== input.expectedVersion) return blockedAdmission('fixture_changed')
+  const target = normalizeAuditUrl(input.startUrl)
+  if (!target.ok || new URL(target.url).href !== new URL(fixture.targetUrl).href) return blockedAdmission('fixture_target_mismatch')
+  if (new URL(target.url).protocol !== 'https:' && !(input.allowLocalhost && ['localhost', '127.0.0.1'].includes(new URL(target.url).hostname)))
+    return blockedAdmission('fixture_https_required')
+  const origin = new URL(target.url).origin
+  if (!safeExactOrigin(fixture.resetUrl, origin) || !safeExactOrigin(fixture.cleanupUrl, origin)) return blockedAdmission('fixture_hook_origin_mismatch')
+  return null
+}
+
+/** Cleanup and the request boundary override an observed success. They cannot create one. */
+export function concludeSafeFormAttempt(input: { disposition: SafeFormExecutionResult['disposition']; reason: string;
+  detail: SafeFormExecutionResult['detail']; requestRefused: boolean }): SafeFormExecutionResult {
+  if (input.detail.cleanupStatus !== 'succeeded') return { disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: input.detail }
+  if (input.requestRefused) return { disposition: 'BLOCKED', reason: 'fixture_boundary_refused', detail: input.detail }
+  return { disposition: input.disposition, reason: input.reason, detail: input.detail }
+}
+
 export async function executeSafeFormFixture(input: {
   projectId: string
   fixtureId: string
@@ -140,26 +167,14 @@ export async function executeSafeFormFixture(input: {
   const fixture = await prisma.outcomeFixture.findFirst({
     where: { id: input.fixtureId, projectId: input.projectId, enabled: true },
   })
-  if (!fixture || (input.requireAuthorization !== false && (!fixture.authorizedAt || fixture.lastDryRunVersion !== fixture.version))) {
-    return { disposition: 'BLOCKED', reason: 'fixture_not_authorized', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
-  }
-  if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version))
-    return { disposition: 'BLOCKED', reason: 'fixture_setup_not_admitted', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
-  if (input.expectedVersion !== undefined && fixture.version !== input.expectedVersion) {
-    return { disposition: 'BLOCKED', reason: 'fixture_changed', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
-  }
+  const setupAdmitted = fixture && input.requireAuthorization === false ? await setupConsent(input.projectId, fixture.id, fixture.version) : true
+  const refused = refuseSafeFormAdmission(fixture, { ...input, setupAdmitted })
+  if (refused || !fixture) return refused ?? blockedAdmission('fixture_not_authorized')
   const target = normalizeAuditUrl(input.startUrl)
-  if (!target.ok || new URL(target.url).href !== new URL(fixture.targetUrl).href) {
-    return { disposition: 'BLOCKED', reason: 'fixture_target_mismatch', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
-  }
+  if (!target.ok) return blockedAdmission('fixture_target_mismatch')
   const origin = new URL(target.url).origin
-  if (new URL(target.url).protocol !== 'https:' && !(input.allowLocalhost && ['localhost', '127.0.0.1'].includes(new URL(target.url).hostname)))
-    return { disposition: 'BLOCKED', reason: 'fixture_https_required', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
-  const resetUrl = safeExactOrigin(fixture.resetUrl, origin)
-  const cleanupUrl = safeExactOrigin(fixture.cleanupUrl, origin)
-  if (!resetUrl || !cleanupUrl) {
-    return { disposition: 'BLOCKED', reason: 'fixture_hook_origin_mismatch', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
-  }
+  const resetUrl = safeExactOrigin(fixture.resetUrl, origin)!
+  const cleanupUrl = safeExactOrigin(fixture.cleanupUrl, origin)!
 
   const mapping = safeFormMappingSchema.safeParse(fixture.fieldMapping)
   const success = safeFormSuccessSchema.safeParse(fixture.successCriterion)
@@ -287,10 +302,7 @@ export async function executeSafeFormFixture(input: {
     await recordFixtureCleanup(operationId, fixture.id, fixture.version)
   const detail: SafeFormExecutionResult['detail'] = { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus,
     ...(successObservation ? { successObservation } : {}) }
-  if (cleanupStatus !== 'succeeded') return { disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail }
-  if (requestRefused)
-    return { disposition: 'BLOCKED', reason: 'fixture_boundary_refused', detail }
-  return { disposition, reason, detail }
+  return concludeSafeFormAttempt({ disposition, reason, detail, requestRefused })
 }
 
 function targetLocator(page: Awaited<ReturnType<typeof createAuditPage>>['page'], target: AccessibleTarget) {

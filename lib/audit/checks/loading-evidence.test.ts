@@ -92,9 +92,40 @@ describe('source-conditioned loading repair evidence', () => {
     expect(scopedAssertionForTarget({ receipt: receipt(healthy), checkId: stuck.checkId, flag: stuck })?.assertion.passed).toBe(true)
     const mobile = runMobileUXQualityChecks(metrics())
       .find(flag => flag.checkId === 'mobile-load-delay-content')!
-    expect(scopedAssertionForTarget({ receipt: receipt(healthy, 'mobile-ux-quality'), checkId: mobile.checkId, flag: mobile })?.assertion.passed).toBe(true)
+    const cleared = receipt(healthy, 'mobile-ux-quality')
+    expect(cleared.assertions.find(assertion => assertion.key === 'mobile-loading-delay')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(scopedAssertionForTarget({ receipt: cleared, checkId: mobile.checkId, flag: mobile })).toBeUndefined()
+    expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl,
+      environment: 'production', checks: { [mobile.checkId]: 2 }, outcomes: [], verificationTarget: null }, flag: { ...mobile, pageUrl },
+      executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: cleared }] })).toBe(false)
     const legacy = { ...mobile, verificationRule: undefined, evidenceTargets: undefined }
     expect(scopedAssertionForTarget({ receipt: receipt(healthy, 'mobile-ux-quality'), checkId: legacy.checkId, flag: legacy })).toBeUndefined()
+  })
+  it('records a targeted mobile loading clearance as an observation and still flags a slow window', async () => {
+    const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
+    const spec = { version: 1, engine: 'progressive-v1', scope: 'DIAGNOSTIC', targetUrl: pageUrl, environment: 'production',
+      checks: { 'mobile-load-delay-content': 2 }, outcomes: [], verificationTarget: { kind: 'DIAGNOSTIC', pageUrl, checkId: 'mobile-load-delay-content',
+        attemptId: 'attempt', parentAuditId: 'before' } }
+    const context = (clearedMs: number) => ({ audit: { id: 'after', executionSpec: spec }, task: { id: 'task' },
+      input: { pageUrl, position: 0, primary: true, role: 'primary', module: 'mobile-ux-quality' }, deadline: Date.now() + 10_000,
+      dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
+        pageId: 'page', metadata: null, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopBase64: null, mobileBase64: null,
+          consoleErrors: [], captureStatus: { desktop: 'failed', mobile: 'pending' }, captureFailures: [], captureMetrics: metrics(window('mobile', clearedMs)) },
+      }) }]]) }) as unknown as TaskContext
+    const slow = checkArtifactSchema.parse(readArtifact(await evaluate(context(5200)), 'check').data)
+    const fast = checkArtifactSchema.parse(readArtifact(await evaluate(context(500)), 'check').data)
+    const flag = slow.flags.find(item => item.checkId === 'mobile-load-delay-content')
+    expect(flag).toBeDefined()
+    expect(slow.receipt.assertions.map(assertion => assertion.key)).toEqual(['mobile-loading-delay'])
+    expect(fast.receipt.assertions.map(assertion => assertion.key)).toEqual(['mobile-loading-delay'])
+    expect(slow.receipt.assertions.find(assertion => assertion.key === 'mobile-loading-delay')).toMatchObject({ passed: false, complete: true })
+    expect(slow.receipt.assertions.find(assertion => assertion.key === 'mobile-loading-delay')?.disposition).toBeUndefined()
+    expect(fast.flags).toEqual([])
+    expect(fast.receipt.assertions.find(assertion => assertion.key === 'mobile-loading-delay')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(scopedAssertionForTarget({ receipt: fast.receipt, checkId: flag!.checkId, flag: flag! })).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: slow.receipt, checkId: flag!.checkId, flag: flag! })?.assertion.passed).toBe(false)
+    expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec, flag: { ...flag!, pageUrl },
+      executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: fast.receipt }] })).toBe(false)
   })
   it('does not turn scanner restrictions into loading failures or repair proof', () => {
     const data = metrics(window('mobile', null), window('desktop', 5200))

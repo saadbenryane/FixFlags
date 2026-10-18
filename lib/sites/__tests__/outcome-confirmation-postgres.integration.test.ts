@@ -8,7 +8,9 @@ import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 import { persistOutcomeAssessment } from '@/lib/sites/application/outcome-incidents'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
-import { loadSiteFlagDetail, loadSiteFlags, loadSiteResolvedFlags } from '@/lib/sites/flags'
+import { loadIncidentRecoveryProofs } from '@/lib/sites/application/incident-proofs'
+import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
+import { loadSiteFindings, loadSiteFlagDetail, loadSiteFlags, loadSiteResolvedFlags } from '@/lib/sites/flags'
 import type { SiteRecord } from '@/lib/sites/types'
 
 const runPostgres = process.env.OUTCOME_CONFIRMATION_DB_REQUIRED === 'true' ? describe : describe.skip
@@ -148,6 +150,9 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     for (const flag of [original.flag!, newer.flag!]) expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }))
       .toMatchObject({ status: 'OPEN', resolvedInId: null })
     expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvement.id } })).toMatchObject({ status: 'PROPOSED' })
+    const duringOutage = await loadSiteOutcomeDetail(site, outcome.id)
+    expect(duringOutage?.lastSuccessfulVerificationAt).toBeNull()
+    expect(mcpOutcomePayload(duringOutage!).freshness.lastSuccessfulVerificationAt).toBeNull()
     const continued = await observation('continued-failure', 1000, 2000, 'FLAG')
     const ongoing = await persistOutcomeAssessment(continued.input)
     expect(readOutcomeIncident(ongoing.evidence)).toMatchObject({ transition: 'ongoing_failure', incidentRunRequestId: original.run.id })
@@ -155,9 +160,38 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     expect(readOutcomeIncident((await persistOutcomeAssessment(repaired.input)).evidence)?.transition).toBe('recovery')
     for (const flag of [original.flag!, newer.flag!, continued.flag!]) expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }))
       .toMatchObject({ status: 'FIXED', resolvedInId: repaired.audit.id })
+    const recoveredRows = await prisma.flag.findMany({ where: { id: { in: [original.flag!.id, newer.flag!.id, continued.flag!.id] } } })
+    const proofs = await loadIncidentRecoveryProofs([{ projectId, flags: recoveredRows }])
+    for (const flag of recoveredRows) expect(proofs.get(projectId)?.hasFlag?.(flag)).toBe(true)
+    expect(await loadSiteFindings(site)).toMatchObject({ flags: [], recommendations: [] })
+    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ status: 'FIXED', verificationState: 'verified', resolvedInId: repaired.audit.id }])
+    const monitored = { version: 1 as const, targetUrl: site.url, environment: 'production', scope: 'OUTCOMES' as const, checks: {},
+      outcomes: [{ id: outcome.id, kind: 'AVAILABILITY', expectation: null, bindingPolicy: 'ALL_REQUIRED',
+        bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY' as const, required: true, config: { startUrl: site.url } }] }],
+      verificationTarget: null }
+    await prisma.audit.update({ where: { id: repaired.audit.id }, data: { executionSpec: monitored } })
+    const summary = await outcomeMonitoringDiff(repaired.audit.id)
+    const resolved = await loadSiteResolvedFlags(site)
+    expect(summary?.fixed.map(flag => flag.id)).toEqual([continued.flag!.id])
+    expect(resolved.map(flag => flag.sourceFlagId)).toEqual(summary?.fixed.map(flag => flag.id))
+    const recoveredDetail = await loadSiteOutcomeDetail(site, outcome.id)
+    expect(recoveredDetail?.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
+    expect(mcpOutcomePayload(recoveredDetail!).freshness.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
     const repeated = await observation('genuine-recurrence', 5000, 6000, 'FLAG')
     expect(readOutcomeIncident((await persistOutcomeAssessment(repeated.input)).evidence)?.transition).toBe('regression')
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: repeated.flag!.id } })).toMatchObject({ status: 'REGRESSED' })
+    const after = await loadIncidentRecoveryProofs([{ projectId, flags: await prisma.flag.findMany({ where: { audit: { projectId } } }) }])
+    expect(after.get(projectId)?.hasFlag?.(repeated.flag!)).toBe(false)
+    for (const flag of recoveredRows) expect(after.get(projectId)?.hasFlag?.(flag)).toBe(true)
+    expect(await loadSiteFindings(site)).toMatchObject({ flags: [], recommendations: [{ sourceFlagId: repeated.flag!.id, status: 'REGRESSED' }] })
+    await prisma.audit.update({ where: { id: repeated.audit.id }, data: { executionSpec: monitored } })
+    const recurrence = await outcomeMonitoringDiff(repeated.audit.id)
+    expect(recurrence?.regressed.map(flag => flag.id)).toEqual([repeated.flag!.id])
+    expect((await loadSiteFindings(site)).recommendations.map(flag => flag.sourceFlagId)).toEqual(recurrence?.regressed.map(flag => flag.id))
+    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ status: 'FIXED', verificationState: 'verified', resolvedInId: repaired.audit.id }])
+    const afterRecurrence = await loadSiteOutcomeDetail(site, outcome.id)
+    expect(afterRecurrence?.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
+    expect(mcpOutcomePayload(afterRecurrence!).freshness.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
   })
 
   it('keeps the latest requested answer and its method when an older run finishes later', async () => {

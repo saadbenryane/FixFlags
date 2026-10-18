@@ -7,7 +7,7 @@ import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask, priorityForTask } from './queues'
 import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettledPrescriptionCost, settleFailedFinalization, settlePrescriptionAudit } from './incomplete'
-import { executionTransaction, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
+import { executionTransaction, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
   retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind } from './contracts'
@@ -272,12 +272,13 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   if (!handler) throw new Error('Unregistered execution task')
   const token = randomUUID(), now = new Date()
   const input = taskInputSchema.parse(original.workInput)
-  const claimed = await prisma.$transaction(async tx => {
+  const claimed = await executionTransaction(async tx => {
     const projects = await tx.$queryRaw<Array<{ deletedAt: Date | null }>>`
       SELECT p."deletedAt" FROM "projects" p JOIN "audits" a ON a."projectId" = p."id"
-      WHERE a."id" = ${job.auditId} FOR UPDATE OF p`
+      WHERE a."id" = ${job.auditId} FOR SHARE OF p`
     if (projects.some(project => project.deletedAt)) return { count: 0 }
     await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${job.auditId} FOR UPDATE`
+    await tx.$queryRaw`SELECT "id" FROM "audit_verifier_executions" WHERE "id" = ${original.id} FOR UPDATE`
     if (original.workKind === 'prescription') {
       const audit = await tx.audit.findUniqueOrThrow({ where: { id: job.auditId },
         select: { executionLeaseUntil: true, status: true, triageAt: true, completedAt: true } })
@@ -407,7 +408,8 @@ export function classifyTaskFailure(error: unknown): TaskFailure {
   if (error instanceof StorageNotConfiguredError) return new TaskFailure('STORAGE_NOT_CONFIGURED', false)
   if (error instanceof StorageUploadError) return new TaskFailure('STORAGE_UPLOAD_INTERRUPTED', true)
   if (error instanceof Prisma.PrismaClientInitializationError || error instanceof Prisma.PrismaClientKnownRequestError &&
-    ['P1001', 'P1002', 'P1017', 'P2024', 'P2034'].includes(error.code)) return new TaskFailure('PERSISTENCE_UNAVAILABLE', true)
+    ['P1001', 'P1002', 'P1017', 'P2024', 'P2028', 'P2034'].includes(error.code) || transactionAborted(error))
+    return new TaskFailure('PERSISTENCE_UNAVAILABLE', true)
   const code = error && typeof error === 'object' && 'code' in error ? error.code : null
   if (typeof code === 'string' && ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH'].includes(code))
     return new TaskFailure('DEPENDENCY_INTERRUPTED', true)

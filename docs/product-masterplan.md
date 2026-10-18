@@ -22,6 +22,12 @@ Implementation and proof are separate. A requirement closes only with evidence f
 
 Owner implementation plan accepted 2026-10-16: finish the complete website beta, including automatic-account lifecycle proof. Keep eight coverage areas, the one-website policy, existing brand controls and the website-only release boundary. The current reviewed base is `5b8a25ad2e3602879cca969a0127cac0e15a5615`. Web and worker both reported successful deployments of that revision on 2026-10-16. Earlier mismatched revisions are historical evidence.
 
+### Implementation resumed 2026-10-18
+
+The owner authorized the complete website-beta plan, including focused browser and E2E acceptance. Preserve the existing identity, eight coverage areas, one-website policy, exact orange controls and their measured contrast exception. MCP, CLI, repository scanning, paid enrollment and unvalidated connections stay parked. Independent browser observations cannot establish human usability research.
+
+The active ledger records the current source state and proof separately; rejected `6550a2f` receipts remain historical. Existing execution, catalog-evidence and recovery changes are preserved. Outcome commands, queries, synchronization, binding construction and binding execution now have separate owners behind compatibility exports. Prescription work freezes per-row source and guidance fingerprints at admission, compares them before publication and records atomic guidance receipts for replay. Provider response consumption is recorded before response parsing and quality validation. Homepage fix guidance links to the website workflow, and the visibility guard covers parked fragment promotions. Development checks do not close frozen-candidate or production acceptance. Fresh and upgrade foundation, real pipeline precision, lifecycle, published repair, rendered experience and natural production monitoring remain required.
+
 ### Completion plan refreshed 2026-10-17
 
 The owner reaffirmed the complete website-beta finish line: enter a public URL, understand a consequential Flag, inspect its evidence, implement and publish a repair, independently verify every original scope, and keep monitoring. Preserve the existing brand, eight coverage areas, one-website beta, shared presentation and website-only availability policies. This update consolidates the earlier overlapping checklists. It does not mark their missing proof complete.

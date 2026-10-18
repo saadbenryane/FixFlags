@@ -46,6 +46,18 @@ it('shows only the recorded expectation from the same owned Site', async () => {
   expect(detail?.expectedBehavior).toBe('A customer can reach checkout from the product page.')
   expect(detail?.relatedOutcome).toEqual({ id: 'outcome-1', name: 'Checkout' })
 })
+it('shows a committed outcome recovery as proven for the owned checkout flag', async () => {
+  const captured = await mocks.flag()
+  mocks.flag.mockResolvedValue({ ...captured, status: 'FIXED', resolvedInId: 'recovery', fingerprint: 'outcome:v1:outcome-1:browser' })
+  mocks.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'project-1', completedAt: new Date('2026-10-12T12:00:00Z'),
+    executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: 'https://shop.test/checkout', environment: 'production', scope: 'OUTCOMES',
+      checks: {}, outcomes: [], verificationTarget: null }, verifierExecutions: [],
+    outcomeAssessments: [{ state: 'CLEAR', outcomeId: 'outcome-1', evidence: { reason: 'reached', incident: {
+      version: 1, transition: 'recovery', incidentRunRequestId: 'source-run', rootFlagIds: ['captured-flag'], flagIds: [],
+      recoveredFlagIds: ['captured-flag'], previousAssessmentId: 'before' } } }],
+  }])
+  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ status: 'FIXED', verificationState: 'verified', sourceFlagId: 'captured-flag' })
+})
 it('keeps unsupported historical journey recovery unverified even when an Audit completed', async () => {
   const captured = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...captured, status: 'FIXED', resolvedInId: 'recovery' })
