@@ -353,6 +353,9 @@ test.describe('credentialed revenue journeys', () => {
       expect((await user.page.request.patch(`/api/sites/${projectId}/settings`, {
         data: { notificationLevel: 'OFF', notifyOnRecovery: false },
       })).status()).toBe(200)
+      expect((await user.page.request.post(`/api/sites/${projectId}/watch`, {
+        data: { action: 'pause' },
+      })).status()).toBe(200)
       const target = new URL(requiredEnv('E2E_DEPLOYMENT_TRIGGER_URL')).origin
       const outcomeIds: string[] = []
       for (const pathname of ['/pricing', '/checkout']) {
@@ -392,15 +395,21 @@ test.describe('credentialed revenue journeys', () => {
         data: { notificationLevel: 'FLAGS', notifyOnRecovery: true },
       })
       expect(settings.status(), await settings.text()).toBe(200)
+      const monitoringRequestedAt = new Date()
       expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
-      // This designated release fixture accelerates scheduling. It does not
-      // establish a natural production full-check cycle.
-      await fixtureDb.project.update({ where: { id: projectId }, data: { watchNextRunAt: new Date(Date.now() - 1000), watchLeaseUntil: null } })
+      // The owner command makes a paused schedule due. The real worker owns admission.
       await expect.poll(async () => fixtureDb.audit.findFirst({
         where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt }, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: { not: null } },
         select: { id: true },
       }), { timeout: 420_000, intervals: [1000] }).not.toBeNull()
       const child = await fixtureDb.audit.findFirstOrThrow({ where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt } }, orderBy: { createdAt: 'desc' } })
+      const scheduledRun = await fixtureDb.runRequest.findFirstOrThrow({
+        where: { projectId, auditId: child.id, source: 'WATCH' },
+      })
+      const scheduledAt = new Date(scheduledRun.idempotencyKey!.slice(`watch:${projectId}:`.length).split(':weekly:')[0])
+      expect(scheduledAt.getTime()).toBeGreaterThanOrEqual(monitoringRequestedAt.getTime())
+      expect(scheduledAt.getTime()).toBeLessThanOrEqual(scheduledRun.requestedAt.getTime())
+      expect(scheduledRun.idempotencyKey).toBe(`watch:${projectId}:${scheduledAt.toISOString()}:weekly:`)
       expect(child).toMatchObject({ parentId: baseline.auditId, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: expect.any(String),
         executionSpec: expect.objectContaining({ scope: 'OUTCOMES', outcomes: expect.arrayContaining(outcomeIds.map(id => expect.objectContaining({ id }))) }) })
       expect(child.watchRegressionCount).toBeGreaterThan(0)
@@ -471,6 +480,8 @@ test.describe('credentialed revenue journeys', () => {
         recoveredOutcomeId: outcomeIds[0], failingOutcomeId: outcomeIds[1], originalAssessmentId: originalPricing.id,
         recoveredFlagIds: recovery.recoveredFlagIds, failingFlagIds: failure.flagIds,
         matchingMessages: matches.length, humanReceiptOrRead: false, naturalProductionCycle: false,
+        monitoringRequestedAt: monitoringRequestedAt.toISOString(), scheduledAt: scheduledAt.toISOString(),
+        scheduledRunId: scheduledRun.id, timestampMutation: false,
       })) })
     } finally {
       try {
