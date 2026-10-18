@@ -13,7 +13,8 @@ export const prescriptionScopeSchema = z.object({
 export type PrescriptionScope = z.infer<typeof prescriptionScopeSchema>
 
 const sourceFields = ['source', 'checkId', 'fingerprint', 'pageUrl', 'affectedPaths', 'rubric', 'severity',
-  'problem', 'evidence', 'whyItMatters', 'verificationRule', 'supportingObservations', 'evidenceTargets'] as const
+  'problem', 'evidence', 'whyItMatters', 'confidence', 'causeCertainty', 'fixConfidence', 'attentionPolicy', 'impactTag',
+  'verificationRule', 'supportingObservations', 'evidenceTargets'] as const
 export const guidanceFields = ['fix', 'agentPrompt', 'cursorPrompt', 'claudePrompt', 'windsurfPrompt', 'lovablePrompt', 'boltPrompt'] as const
 type SourceField = typeof sourceFields[number]
 type GuidanceField = typeof guidanceFields[number]

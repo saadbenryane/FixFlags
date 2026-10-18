@@ -9,6 +9,7 @@ import { persistDeterministicFlags } from '../persist'
 import type { TaskContext } from './registry'
 import type { TaskArtifact } from './contracts'
 import { observationsForFlag, supportingObservationsSchema } from '../flag-observations'
+import { nativeHttpEvidenceSchema } from '../native-http-evidence'
 
 export const flagSchema = z.object({
   checkId: z.string().min(1), rubric: z.enum(['MESSAGE', 'EXPERIENCE', 'REACH']),
@@ -26,7 +27,7 @@ export const flagSchema = z.object({
   supportingObservations: supportingObservationsSchema.optional(),
 }).strict()
 export const checkArtifactSchema = z.object({
-  flags: z.array(flagSchema).max(500), receipt: checkReceiptSchema,
+  flags: z.array(flagSchema).max(500), receipt: checkReceiptSchema, httpEvidence: nativeHttpEvidenceSchema.optional(),
 }).strict()
 
 /** A shared collector may inspect more than a category admits. Only admitted

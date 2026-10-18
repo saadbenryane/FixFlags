@@ -6,7 +6,8 @@ const flag = { id: 'flag-1', checkId: 'title-missing', fingerprint: 'original', 
   verificationRule: 'Inspect the same page', fix: 'Restore the title', supportingObservations: { version: 1, items: [{ pageUrl: '/pricing' }] } }
 
 describe('frozen prescription scope', () => {
-  it.each(['source', 'checkId', 'fingerprint', 'pageUrl', 'problem', 'evidence', 'verificationRule', 'fix', 'supportingObservations'])(
+  it.each(['source', 'checkId', 'fingerprint', 'pageUrl', 'problem', 'evidence', 'verificationRule', 'fix', 'supportingObservations',
+    'confidence', 'causeCertainty', 'fixConfidence', 'attentionPolicy', 'impactTag'])(
     'refuses changed %s without publishing stale guidance', field => {
       const scope = freezePrescriptionScope([flag])
       expect(() => assertPrescriptionScope(scope, [{ ...flag, [field]: 'changed' }])).toThrow('PRESCRIPTION_SCOPE_CHANGED')

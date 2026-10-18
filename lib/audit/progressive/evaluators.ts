@@ -35,6 +35,7 @@ import { runSecurityBasicsChecks, securityObservations } from '../checks/securit
 import { assessPageResponse } from '../checks/page-response'
 import { publicResponseRestriction } from '../browser/page-capture'
 import { capturedHeadMetadata } from '../checks/head-metadata'
+import { nativeHttpCollection } from '../native-http-evidence'
 
 function dependency(context: TaskContext, kind: string) {
   return [...context.dependencies.values()].find(item => item.workKind === kind && item.workState === 'COMPLETED')
@@ -78,6 +79,7 @@ export const evaluatorHandlers: TaskHandler[] = [
       if (selected.some(([id, version]) => CHECK_REGISTRY[id]?.version !== version))
         throw new TaskFailure('CHECK_VERSION_UNAVAILABLE', false)
       const browser = browserEvidence(context), response = httpEvidence(context), speed = speedEvidence(context)
+      const nativeHttp = nativeHttpCollection(context.replayHttpEvidence)
       const metadata = checkModule === 'security' ? response?.metadata : browser?.metadata
       const snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       const head = checkModule === 'metadata' || checkModule === 'og-image' ? capturedHeadMetadata(snapshot) : undefined
@@ -90,9 +92,9 @@ export const evaluatorHandlers: TaskHandler[] = [
         const inventory = capturedPageLinks(snapshot, metadata ?? null)
         if (!inventory) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
         pageUrl = context.input.pageUrl
-        const checked = await checkPublicLinks(pageUrl, inventory, context.deadline)
+        const checked = await checkPublicLinks(pageUrl, inventory, context.deadline, nativeHttp.options.openDestination)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
-        collectedAt = new Date().toISOString()
+        collectedAt = nativeHttp.options.collectedAt()
       } else if (checkModule === 'page-response') {
         const checked = assessPageResponse(pageUrl, response?.document)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete
@@ -174,7 +176,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         const observedUrl = checkModule === 'security' ? response!.document.finalUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
-            deadline: context.deadline, head, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, renderedScope: snapshot?.renderedScope,
+            deadline: context.deadline, destinations: nativeHttp.options, head, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, renderedScope: snapshot?.renderedScope,
             ...(spec?.category ? { area: spec.category.area, allowedCheckIds: Object.keys(spec.checks) } : {}) })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
         if (checked.executions.length !== 1 || checked.executions[0].module !== checkModule) throw new TaskFailure('EVALUATOR_NOT_REGISTERED', false)
@@ -200,7 +202,7 @@ export const evaluatorHandlers: TaskHandler[] = [
       if (!sourceTask?.workResult) throw new TaskFailure('ASSERTION_SOURCE_UNAVAILABLE', false)
       const source = readArtifact(sourceTask.workResult, sourceKind)
       const device = checkModule === 'mobile' || context.input.device === 'mobile' ? 'mobile' : 'desktop'
-      return serializeArtifact('check', checkArtifactSchema.parse({ flags, receipt: {
+      return serializeArtifact('check', checkArtifactSchema.parse({ flags, httpEvidence: nativeHttp.snapshot(), receipt: {
         kind: 'site-module-check', version: 1, module: checkModule, passed: summary.passed, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
         execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version, checkVersions: Object.fromEntries(selected),

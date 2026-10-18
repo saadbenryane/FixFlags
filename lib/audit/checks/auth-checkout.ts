@@ -65,8 +65,11 @@ export async function runAuthCheckoutChecks(
   }
   const deadline = Math.min(options.deadline ?? Infinity, Date.now() + 8_000)
   let complete = candidates.length <= MAX_LINK_CHECKS
-  await Promise.all(candidates.slice(0, MAX_LINK_CHECKS).map(async ({ url, kind }) => {
-    const result = await openCheckDestination(url, { timeoutMs: FETCH_TIMEOUT_MS, deadline, httpErrorsOnly: true })
+  const responses = await Promise.all(candidates.slice(0, MAX_LINK_CHECKS).map(async ({ url, kind }) => {
+    const result = await (options.openDestination ?? openCheckDestination)(url, { timeoutMs: FETCH_TIMEOUT_MS, deadline, httpErrorsOnly: true })
+    return { url, kind, result }
+  }))
+  for (const { url, kind, result } of responses) {
     const assertion = actionDestinationObservation(pageUrl, url, kind, result)
     options.record?.(assertion)
     if (!assertion.complete) complete = false
@@ -74,7 +77,7 @@ export async function runAuthCheckoutChecks(
       ;(kind === 'checkout' ? deadCheckout : deadAuth).push(displayDestination(url))
       targets[kind].push({ kind: 'page', source: 'measured', device: 'desktop', label: 'Public destination response', context: assertion.context! })
     }
-  }))
+  }
   destinationScope(options, complete, 'GET responses cover up to eight distinct public action destinations. Network errors, scanner refusals, access restrictions and untested destinations remain unknown. No login, checkout or payment is submitted.')
 
   const findings: DeterministicFlag[] = []

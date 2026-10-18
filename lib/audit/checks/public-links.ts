@@ -1,6 +1,6 @@
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { openCheckDestinations, deadDestinationFlags, type OpenCheckResult } from '../open-check'
+import { openCheckDestinations, deadDestinationFlags, type OpenCheckResult, type openCheckDestination } from '../open-check'
 import { collectEligibleDestinations } from '../url-identity'
 import { destinationContext, displayDestination } from './destination-evidence'
 import type { PageMetadata } from '../metadata'
@@ -55,9 +55,9 @@ export function publicLinkObservations(sourceUrl: string, urls: string[], result
 }
 
 /** Targeted repair uses the same bounded public collector as Site discovery. */
-export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInventory, deadline: number) {
+export async function checkPublicLinks(sourceUrl: string, inventory: PageLinkInventory, deadline: number, openDestination?: typeof openCheckDestination) {
   const urls = publicLinkUrls(sourceUrl, inventory)
-  const opened = await openCheckDestinations(urls, { origin: sourceUrl, ceiling: 120, deadline: Math.min(deadline, Date.now() + 8000) })
+  const opened = await openCheckDestinations(urls, { origin: sourceUrl, ceiling: 120, deadline: Math.min(deadline, Date.now() + 8000), openDestination })
   return publicLinkObservations(sourceUrl, urls, opened.results, inventory.complete !== false)
 }
 

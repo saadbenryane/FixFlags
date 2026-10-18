@@ -267,6 +267,7 @@ export async function openCheckDestinations(
     ceiling?: number
     concurrency?: number
     deadline?: number
+    openDestination?: typeof openCheckDestination
   } = {}
 ): Promise<{ results: OpenCheckResult[]; truncated: boolean }> {
   const ceiling = options.ceiling ?? DEFAULT_OPEN_CHECK_CEILING
@@ -289,7 +290,7 @@ export async function openCheckDestinations(
     const slice = batch.slice(i, i + concurrency)
     const chunk = await Promise.all(
       slice.map((url) =>
-        openCheckDestination(url, {
+        (options.openDestination ?? openCheckDestination)(url, {
           origin: options.origin,
           fetchImpl: options.fetchImpl,
           timeoutMs: options.timeoutMs,
