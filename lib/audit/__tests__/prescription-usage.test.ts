@@ -6,7 +6,8 @@ const provider = vi.hoisted(() => ({ name: 'openai', create: vi.fn() }))
 vi.mock('../judge-runner', () => ({ openai: { chat: { completions: { create: provider.create } } },
   anthropic: { messages: { create: provider.create } },
   runLlmWithRetry: (options: { attemptFn: (name: string, input: unknown) => Promise<unknown>; input: unknown }) => options.attemptFn(provider.name, options.input) }))
-vi.mock('../judge-config', () => ({ getProviderConfig: () => ({ model: 'gpt-4o-mini', timeoutMs: 1000, maxTokens: 1000 }) }))
+vi.mock('../judge-config', () => ({ getProviderConfig: () => ({ model: 'gpt-4o-mini', timeoutMs: 1000, maxTokens: 1000 }),
+  getPrescriptionProviderConfig: () => ({ model: 'gpt-4o-mini', timeoutMs: 1000, maxTokens: 1000 }) }))
 import { runPrescriptionWithRetry, type PrescriptionContext } from '../judge-prescription'
 
 describe('prescription response consumption', () => {

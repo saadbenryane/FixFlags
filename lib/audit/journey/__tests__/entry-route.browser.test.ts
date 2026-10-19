@@ -1,13 +1,19 @@
 import { createServer } from 'node:http'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import type { JourneyType } from '../types'
+import type { JourneyPlan } from '../planner-schema'
+
+const activationFault = vi.hoisted(() => ({ enabled: false }))
 
 vi.mock('@/lib/storage/screenshots', () => ({ uploadScreenshot: vi.fn(async () => null) }))
 vi.mock('@/lib/audit/browser/page-session', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/audit/browser/page-session')>()
   return { ...actual, createAuditPage: (...args: Parameters<typeof actual.createAuditPage>) => {
     if (new URL(args[1]).hostname !== '127.0.0.1') throw new Error('Only the controlled local HTTP fixture is authorized')
-    return actual.createAuditPage(args[0], args[1], { ...args[2], allowLocalhost: true })
+    return actual.createAuditPage(args[0], args[1], { ...args[2], allowLocalhost: true }).then(session => {
+      if (activationFault.enabled) session.page.click = vi.fn().mockRejectedValue(new Error('Controlled activation failure'))
+      return session
+    })
   } }
 })
 
@@ -21,16 +27,20 @@ import { journeyAssertions, nativeJourneyFlags } from '../../checks/journey-evid
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('recorded entry route assessment', () => {
   afterAll(closeBrowser)
-  async function walk(journeyType: JourneyType, mode: 'email' | 'no-email' | 'contact-destination' | 'no-links' | 'safety-refusal' | 'button-route' | 'destination-links' | 'oauth-route' | 'inert-signup' | 'no-signup-controls' | 'plain-link' | 'telephone-contact' | 'intentional-revisit') {
+  async function walk(journeyType: JourneyType, mode: 'email' | 'no-email' | 'contact-destination' | 'no-links' | 'safety-refusal' | 'button-route' | 'destination-links' | 'oauth-route' | 'inert-signup' | 'no-signup-controls' | 'plain-link' | 'telephone-contact' | 'intentional-revisit' | 'planned-signup' | 'email-signup' | 'username-signup', plan?: JourneyPlan) {
     let mutatingRequests = 0
+    const requestedPaths: string[] = []
     const server = createServer((request, response) => {
+      requestedPaths.push(request.url ?? '')
       if (request.method === 'POST') mutatingRequests++
       response.setHeader('content-type', 'text/html')
       response.end(mode === 'plain-link'
         ? '<main><h1>Equipment for outdoor adventures</h1><a href="/equipment">View equipment</a></main>'
         : request.url === '/contact' && mode === 'telephone-contact'
         ? '<main><h1>Speak with our team</h1><a href="tel:+971555555555">Call +971555555555</a></main>'
-        : request.url === '/signup' && ['oauth-route', 'inert-signup', 'no-signup-controls'].includes(mode)
+        : request.url === '/signup' && ['email-signup', 'username-signup'].includes(mode)
+        ? '<main><h1>Create your equipment account</h1><form><label>Account identifier<input name="identifier" type="' + (mode === 'email-signup' ? 'email' : 'text') + '"></label><button type="submit">Continue</button></form></main>'
+        : request.url === '/signup' && ['oauth-route', 'inert-signup', 'no-signup-controls', 'planned-signup'].includes(mode)
         ? '<main><h1>Create your equipment account</h1>' + (mode === 'oauth-route' ? '<button onclick="location.href=\'/authorize\'">Continue with identity provider</button>' : mode === 'inert-signup' ? '<button>Continue with identity provider</button>' : '') + '</main>'
         : request.url === '/authorize'
         ? '<main><h1>Continue registration with your provider</h1></main>'
@@ -39,6 +49,7 @@ run('recorded entry route assessment', () => {
         : request.url === '/contact'
         ? '<main><h1>Office information</h1><p>Read our public information.</p></main>'
         : '<main><h1>Equipment for your next outdoor adventure</h1><button>Add to cart</button>' +
+          (mode === 'intentional-revisit' ? '<a href="/">View products</a>' : '') +
           (['no-links', 'button-route'].includes(mode) ? '' : '<a href="/pricing">Equipment pricing</a><a href="/signup">Create account</a><a href="/login">Log in</a><a href="/privacy">Privacy</a>') +
           (mode === 'email' ? '<p>Contact: verification@fixflags.com</p>' : '') +
           (['contact-destination', 'telephone-contact'].includes(mode) ? '<a href="/contact">Contact us</a>' : '') +
@@ -86,13 +97,67 @@ run('recorded entry route assessment', () => {
         } finally { await controlContext.close() }
       }
       const result = await runJourneyTemplate(await getAuditBrowser(), { auditId: 'controlled-contact-route', startUrl, journeyType,
-        plan: mode === 'intentional-revisit' ? { goal: 'Intentionally compare repeated public routes', confidence: 1, estimatedDurationMs: 10000,
-          steps: ['/', '/pricing', '/', '/pricing', '/'].map((target, index) => ({ stepNumber: index + 1, action: 'navigate' as const, target, expectedResult: 'Revisit the chosen public page', evidence: [] })) } : null })
-      return { ...result, mutatingRequests, workingButtonDestination, workingDestinationContinuation, signupControlDestination, telephoneHref }
+        plan: plan ?? (mode === 'intentional-revisit' ? { goal: 'Intentionally compare repeated public routes', confidence: 1, estimatedDurationMs: 10000,
+          steps: ['/', '/pricing', '/', '/pricing', '/'].map((target, index) => ({ stepNumber: index + 1, action: 'navigate' as const, target, expectedResult: 'Revisit the chosen public page', evidence: [] })) } : null) })
+      return { ...result, requestedPaths, mutatingRequests, workingButtonDestination, workingDestinationContinuation, signupControlDestination, telephoneHref }
     } finally {
       await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
     }
   }
+  const planned = (steps: JourneyPlan['steps']): JourneyPlan => ({ goal: 'Inspect recorded public navigation', confidence: 1, estimatedDurationMs: 10000, steps })
+  const action = (stepNumber: number, kind: JourneyPlan['steps'][number]['action'], target: string) => ({ stepNumber, action: kind, target, expectedResult: 'Unverified planner expectation of a successful account.', evidence: [] })
+  it('starts the actual plan at its observed landing page and keeps expectations out of action facts', async () => {
+    const result = await walk('multi-step-funnel', 'planned-signup', planned([action(1, 'navigate', 'Create account'), action(2, 'evaluate', 'Signup page')]))
+    expect(result.steps.map(step => new URL(step.url).pathname)).toEqual(['/', '/signup', '/signup'])
+    expect(result.requestedPaths).not.toContain('/pricing')
+    expect(result.requestedPaths).not.toContain('/Create%20account')
+    expect(result.steps[2].actionDetail).toEqual({ observation: 'captured_accessibility_tree' })
+    expect(JSON.stringify(result.steps.map(step => step.actionDetail))).not.toContain('Unverified planner expectation')
+    expect(result.goalAchieved).toBe(false)
+    expect(result.status).toBe('COMPLETED')
+    expect(result.mutatingRequests).toBe(0)
+  })
+  it('keeps an uncompleted plan partial when the walk reaches its step limit', async () => {
+    const result = await walk('multi-step-funnel', 'planned-signup', planned(Array.from({ length: 10 }, (_, index) => action(index + 1, 'evaluate', 'Recorded landing page'))))
+    expect(result).toMatchObject({ status: 'ABANDONED', blockedReason: 'planned_walk_incomplete', goalAchieved: false })
+    expect(result.mutatingRequests).toBe(0)
+  })
+  it.each(['email-signup', 'username-signup'] as const)('records a completed fill only when the email control was actually filled: %s', async mode => {
+    const result = await walk('signup', mode)
+    const step = result.steps.find(step => step.stepNumber === 3)
+    expect(step).toBeDefined()
+    if (mode === 'email-signup') expect(step).toMatchObject({ actionType: 'type', actionDetail: { filled: true, field: 'email', submitted: false } })
+    else {
+      expect(step).toMatchObject({ actionType: 'evaluate', actionDetail: { filled: false, submitted: false } })
+      expect(step?.actionDetail).not.toHaveProperty('value')
+    }
+    expect(result.mutatingRequests).toBe(0)
+  })
+  it('retains the observed prefix and stops when the next planned target is unavailable there', async () => {
+    const result = await walk('multi-step-funnel', 'destination-links', planned([action(1, 'navigate', 'Equipment pricing'), action(2, 'navigate', 'Create account')]))
+    expect(result).toMatchObject({ status: 'ABANDONED', blockedReason: 'planned_target_not_observed', goalAchieved: false })
+    expect(result.steps.map(step => new URL(step.url).pathname)).toEqual(['/', '/pricing'])
+    expect(result.requestedPaths).not.toContain('/Create%20account')
+    expect(result.requestedPaths).not.toContain('/signup')
+    expect(result.findings.some(finding => finding.checkId === 'journey-funnel-step-failed' || finding.checkId === 'journey-funnel-dead-end')).toBe(false)
+  })
+  it.each(['fill', 'submit', 'scroll'] as const)('keeps unsupported planned %s actions untested', async kind => {
+    const result = await walk('multi-step-funnel', 'planned-signup', planned([action(1, kind, 'Create account')]))
+    expect(result).toMatchObject({ status: 'ABANDONED', blockedReason: 'planned_action_not_supported', goalAchieved: false, mutatingRequests: 0 })
+    expect(result.steps).toHaveLength(1)
+    expect(result.requestedPaths).not.toContain('/signup')
+  })
+  it('preserves a failed activation without navigating around the selected control', async () => {
+    activationFault.enabled = true
+    try {
+      const result = await walk('multi-step-funnel', 'planned-signup', planned([action(1, 'navigate', 'Create account')]))
+      expect(result).toMatchObject({ status: 'ABANDONED', blockedReason: 'journey_control_not_activated', goalAchieved: false })
+      expect(result.steps).toHaveLength(1)
+      expect(result.steps[0].accessibilityTree).toContain('Create account')
+      expect(result.requestedPaths).not.toContain('/signup')
+      expect(result.findings.some(finding => finding.checkId === 'journey-funnel-step-failed')).toBe(false)
+    } finally { activationFault.enabled = false }
+  })
   it.each(['email', 'no-email'] as const)('does not call existing navigation a dead end when a contact route is not selected: %s', async mode => {
     const result = await walk('contact-support', mode)
     expect(result).toMatchObject({ status: 'ABANDONED', goalAchieved: false, blockedReason: 'contact_route_not_selected' })

@@ -1,10 +1,14 @@
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { Prisma } from '@prisma/client'
-import { sumProviderResponses } from '@/lib/audit/provider-usage'
+import { INITIAL_ANALYSIS_PROVIDER_PHASES, sumAnalysisProviderResponses } from '@/lib/audit/provider-usage'
 import { prisma } from '@/lib/db'
 
-const MODEL_RATES: Record<string, { input: number; output: number }> = {
+const MODEL_RATES: Record<string, { input: number; output: number; cacheReadMultiplier?: number; cacheWriteMultiplier?: number;
+  longContext?: { after: number; input: number; output: number } }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
+  // OpenAI Standard rates verified 2026-10-19: https://developers.openai.com/api/docs/models/gpt-6-luna
+  'gpt-6-luna': { input: 0.1, output: 0.5, cacheReadMultiplier: 0.1, cacheWriteMultiplier: 1.25,
+    longContext: { after: 272_000, input: 2, output: 1.5 } },
   // Current models (USD per million tokens, sticker rates).
   'claude-sonnet-5': { input: 3, output: 15 },
   'claude-haiku-4-5': { input: 1, output: 5 },
@@ -14,11 +18,13 @@ const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
 }
 
-function configuredRate(model: string, side: 'input' | 'output'): number | null {
+function configuredRate(model: string, side: 'input' | 'output', contextTokens: number): number | null {
   const override =
     process.env[side === 'input' ? 'LLM_COST_INPUT_PER_MTOK' : 'LLM_COST_OUTPUT_PER_MTOK']
-  const rate =
-    override === undefined || override === '' ? MODEL_RATES[model]?.[side] : Number(override)
+  const defaults = MODEL_RATES[model]
+  const multiplier = defaults?.longContext && contextTokens > defaults.longContext.after ? defaults.longContext[side] : 1
+  const rate = override === undefined || override === ''
+    ? defaults && defaults[side] * multiplier : Number(override)
   return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 ? rate : null
 }
 
@@ -27,6 +33,8 @@ function configuredRate(model: string, side: 'input' | 'output'): number | null 
  * Anthropic serves cache reads at ~0.1x; OpenAI cached input is ~0.5x.
  */
 function cacheReadMultiplier(model: string): number {
+  const configured = MODEL_RATES[model]?.cacheReadMultiplier
+  if (configured !== undefined) return configured
   return model.includes('claude') ? 0.1 : 0.5
 }
 
@@ -35,6 +43,8 @@ function cacheReadMultiplier(model: string): number {
  * Anthropic charges 1.25x to write a 5-minute cache entry; OpenAI cache writes are free.
  */
 function cacheWriteMultiplier(model: string): number {
+  const configured = MODEL_RATES[model]?.cacheWriteMultiplier
+  if (configured !== undefined) return configured
   return model.includes('claude') ? 1.25 : 0
 }
 
@@ -47,8 +57,9 @@ function estimateSingleModelCostUsd(
 ): number | null {
   if ([inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens].every((value) => value === 0))
     return 0
-  const inputRate = configuredRate(model, 'input')
-  const outputRate = configuredRate(model, 'output')
+  const contextTokens = inputTokens + cacheReadTokens + cacheWriteTokens
+  const inputRate = configuredRate(model, 'input', contextTokens)
+  const outputRate = configuredRate(model, 'output', contextTokens)
   if (inputRate === null || outputRate === null) return null
   const inputCost = (inputTokens / 1_000_000) * inputRate
   const outputCost = (outputTokens / 1_000_000) * outputRate
@@ -127,14 +138,24 @@ export async function persistAuditRunCost(
   metrics: AuditRunCostMetrics,
 ): Promise<void> {
   const phase = metrics.phase ?? 'full'
-  if (phase === 'triage') {
+  if (phase !== 'prescription') {
+    const phases = phase === 'triage' ? INITIAL_ANALYSIS_PROVIDER_PHASES : INITIAL_ANALYSIS_PROVIDER_PHASES.filter(name => name !== 'triage')
     const events = await prisma.auditPipelineEvent.findMany({ where: { auditId,
-      event: { in: ['triage_provider_attempt', 'triage_provider_response'] } }, select: { event: true, detail: true } })
+      event: { in: phases.flatMap(name => [`${name}_provider_attempt`, `${name}_provider_response`]) } }, select: { event: true, detail: true } })
     if (events.length) {
-      const usage = sumProviderResponses(events, 'triage')
+      const usage = sumAnalysisProviderResponses(events)
+      const retained = phase === 'full' ? metrics.llmMeasurements ?? [{ model: metrics.llmModel,
+        inputTokens: metrics.llmInputTokens, outputTokens: metrics.llmOutputTokens,
+        cacheReadTokens: metrics.llmCacheReadTokens ?? 0, cacheWriteTokens: metrics.llmCacheWriteTokens ?? 0 }] : []
       metrics = { ...metrics, llmInputTokens: usage.inputTokens, llmOutputTokens: usage.outputTokens,
         llmModel: usage.model, llmCacheReadTokens: usage.cacheReadTokens, llmCacheWriteTokens: usage.cacheWriteTokens,
-        llmUsageComplete: usage.complete && metrics.llmUsageComplete !== false, llmMeasurements: usage.measurements }
+        llmUsageComplete: usage.complete && metrics.llmUsageComplete !== false, llmMeasurements: [...retained, ...usage.measurements] }
+      if (retained.length) metrics = { ...metrics,
+        llmInputTokens: metrics.llmInputTokens + retained.reduce((sum, item) => sum + item.inputTokens, 0),
+        llmOutputTokens: metrics.llmOutputTokens + retained.reduce((sum, item) => sum + item.outputTokens, 0),
+        llmCacheReadTokens: (metrics.llmCacheReadTokens ?? 0) + retained.reduce((sum, item) => sum + (item.cacheReadTokens ?? 0), 0),
+        llmCacheWriteTokens: (metrics.llmCacheWriteTokens ?? 0) + retained.reduce((sum, item) => sum + (item.cacheWriteTokens ?? 0), 0),
+        llmModel: [...new Set([...retained.map(item => item.model).filter(Boolean), usage.model].filter(Boolean))].join(',') }
     }
   }
   const admission = await prisma.audit.findUniqueOrThrow({

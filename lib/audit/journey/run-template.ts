@@ -42,6 +42,7 @@ import {
   JOURNEY_LOOP_THRESHOLD,
 } from './types'
 import type { JourneyPlan } from './planner-schema'
+import { resolveJourneyPlanTarget } from './plan-target'
 import { observeJourneyPage } from './page-observation'
 import { scopedJourneyFinding, type JourneyObservation } from '../checks/journey-evidence'
 
@@ -237,6 +238,9 @@ export async function runJourneyTemplate(
     const landing = await observeJourneyPage(page, options.journeyType, 'landing', route,
       { headline: hasHeadline, primaryAction: cta.found, nextPath: Boolean(target), fieldCount: 0 }, refusedFromStep !== null, documentResponse, landingControls)
     if (landing) pageObservations.push(landing)
+    if (options.plan && options.journeyType === 'multi-step-funnel' && !options.expectedJourneyRoute?.length && !options.journeyPageOnly) {
+      return await runMultiStepFunnel()
+    }
     if (!target && options.journeyType === 'contact-support') {
       blockedReason = 'contact_route_not_selected'
       abandonedReason = JOURNEY_ROUTE_COPY.contactRouteNotSelected
@@ -343,7 +347,7 @@ export async function runJourneyTemplate(
     const afterClick = await shot(page, options.auditId, `journey-${options.journeyType}-02-after`, deadline)
     steps.push({
       stepNumber: 2,
-      actionType: 'click',
+      actionType: navigated ? 'click' : 'navigate',
       actionDetail: { href: target.href, text: target.text, category: target.category },
       url: page.url(),
       screenshotBeforeUrl: beforeClick,
@@ -354,9 +358,9 @@ export async function runJourneyTemplate(
         .filter((f) => f.sameOrigin)
         .map((f) => `${f.method} ${f.status} ${f.url}`),
       elementRef: route[0]?.selector ?? clickSelector,
-      elementDescription: `click ${target.text || target.href}`,
-      outcomeMatch: true,
-      outcomeDetail: 'Navigated successfully',
+      elementDescription: `${navigated ? 'click' : 'navigate'} ${target.text || target.href}`,
+      outcomeMatch: page.url() !== steps[0].url,
+      outcomeDetail: page.url() !== steps[0].url ? 'Destination URL changed after the recorded action' : 'The recorded action completed without a URL change',
       reasoning: `Navigate to ${target.category} target for ${options.journeyType}`,
     })
 
@@ -378,10 +382,10 @@ export async function runJourneyTemplate(
             rubric: 'MESSAGE',
             severity: 'IMPORTANT',
             impactTag: 'CLARITY',
-            problem: 'Destination page after corridor navigation lacks a clear headline',
+            problem: JOURNEY_ROUTE_COPY.destinationHeading.problem,
             evidence: `Reproduced at step 2. Navigated via "${target.text}" to ${page.url()}`,
-            whyItMatters: 'Cross-page narrative breaks when the next page does not restate value.',
-            fix: '1. Add an H1 that continues the story from the previous CTA\n2. Align pricing/signup headlines with homepage promise',
+            whyItMatters: JOURNEY_ROUTE_COPY.destinationHeading.whyItMatters,
+            fix: JOURNEY_ROUTE_COPY.destinationHeading.fix,
             screenshotUrl: afterClick,
           })
         )
@@ -435,20 +439,22 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'IMPORTANT',
             impactTag: 'FRICTION',
-            problem: 'Signup form asks for too many fields at once',
+            problem: JOURNEY_ROUTE_COPY.signupFields.problem,
             evidence: `Reproduced at step 2. Counted ${fields} visible form fields on ${page.url()}.`,
-            whyItMatters: 'Long signup forms increase abandonment before the first success moment.',
-            fix: '1. Reduce to email + password (or OAuth) for step one\n2. Defer company/role questions until after account creation\n3. Show progress if multi-step is required',
+            whyItMatters: JOURNEY_ROUTE_COPY.signupFields.whyItMatters,
+            fix: JOURNEY_ROUTE_COPY.signupFields.fix,
             screenshotUrl: afterClick,
           })
         )
       } else {
         goalAchieved = true
         if (options.journeyPageOnly) return await finalize('ABANDONED')
+        let emailFilled = false
         try {
           const email = page.locator('input[type="email"], input[name*="email" i]').first()
           if (await email.count()) {
             await email.fill(probeEmail)
+            emailFilled = true
             timeline.push('form', 'Fill signup email probe', { url: page.url() })
           }
           const submit = page
@@ -494,12 +500,13 @@ export async function runJourneyTemplate(
         }
         steps.push({
           stepNumber: 3,
-          actionType: 'type',
-          actionDetail: { field: 'email', value: probeEmail, submitted: false },
+          actionType: emailFilled ? 'type' : 'evaluate',
+          actionDetail: emailFilled ? { field: 'email', value: probeEmail, filled: true, submitted: false }
+            : { observation: 'inspected_signup_controls', filled: false, submitted: false },
           url: page.url(),
           accessibilityTree: await captureAccessibilityTree(page),
           screenshotAfterUrl: await shot(page, options.auditId, `journey-signup-03-fill`, deadline),
-          reasoning: 'Fill signup email without submitting (safety)',
+          reasoning: emailFilled ? 'Fill signup email without submitting (safety)' : 'Inspect signup controls without a completed email fill or submission',
         })
       }
     }
@@ -540,8 +547,7 @@ export async function runJourneyTemplate(
   async function runMultiStepFunnel(): Promise<JourneyRunResult> {
     const visitedUrls = new Set<string>([options.startUrl, page.url()])
     const urlVisits = new Map<string, number>()
-    urlVisits.set(options.startUrl, 1)
-    urlVisits.set(page.url(), (urlVisits.get(page.url()) ?? 0) + 1)
+    for (const step of steps) urlVisits.set(step.url, (urlVisits.get(step.url) ?? 0) + 1)
     let currentStep = steps.length
     let funnelGoalAchieved = false
     const plan = options.plan
@@ -554,6 +560,7 @@ export async function runJourneyTemplate(
     ]
 
     while (currentStep < maxSteps && Date.now() < deadline) {
+      if (plan && planStepIndex >= plan.steps.length) break
       const loopCount = urlVisits.get(page.url()) ?? 0
       if (loopCount >= JOURNEY_LOOP_THRESHOLD) {
         findings.push(
@@ -582,6 +589,12 @@ export async function runJourneyTemplate(
         const planStep = plan.steps[planStepIndex]
         planStepIndex++
 
+        if (!['navigate', 'click', 'evaluate'].includes(planStep.action)) {
+          blockedReason = 'planned_action_not_supported'
+          abandonedReason = JOURNEY_ROUTE_COPY.plannedActionNotSupported
+          return await finalize('ABANDONED')
+        }
+
         if (planStep.action === 'evaluate') {
           const a11ySnap = await captureAccessibilityTree(page)
           const evalShot = await shot(
@@ -592,7 +605,7 @@ export async function runJourneyTemplate(
           steps.push({
             stepNumber: currentStep + 1,
             actionType: 'evaluate',
-            actionDetail: { planTarget: planStep.target, expectedResult: planStep.expectedResult },
+            actionDetail: { observation: 'captured_accessibility_tree' },
             url: page.url(),
             screenshotAfterUrl: evalShot,
             accessibilityTree: a11ySnap,
@@ -602,37 +615,12 @@ export async function runJourneyTemplate(
           continue
         }
 
-        if (planStep.action === 'navigate') {
-          const links = await discoverJourneyLinks(page, origin)
-          const matched = links.find(
-            (l) =>
-              l.href.includes(planStep.target) ||
-              planStep.target.toLowerCase().includes(l.text.toLowerCase()) ||
-              l.text.toLowerCase().includes(planStep.target.toLowerCase())
-          )
-          if (matched) {
-            target = matched
-          } else {
-            try {
-              const resolved = new URL(planStep.target, origin).href
-              if (new URL(resolved).origin === origin) {
-                target = { href: resolved, text: planStep.target, category: 'planned' }
-              }
-            } catch {
-              // Fall through to deterministic discovery
-            }
-          }
-        } else if (planStep.action === 'click') {
-          const links = await discoverJourneyLinks(page, origin)
-          const matched = links.find(
-            (l) =>
-              l.text.toLowerCase().includes(planStep.target.toLowerCase()) ||
-              planStep.target.toLowerCase().includes(l.text.toLowerCase()) ||
-              l.href.toLowerCase().includes(planStep.target.toLowerCase())
-          )
-          if (matched) {
-            target = matched
-          }
+        const links = await discoverJourneyLinks(page, origin)
+        target = resolveJourneyPlanTarget(planStep.target, links, page.url())
+        if (!target) {
+          blockedReason = 'planned_target_not_observed'
+          abandonedReason = JOURNEY_ROUTE_COPY.plannedTargetNotObserved
+          return await finalize('ABANDONED')
         }
       }
 
@@ -656,7 +644,7 @@ export async function runJourneyTemplate(
             impactTag: 'FRICTION',
             problem: 'Review the recorded continuation of this path',
             evidence: 'This check found no eligible link to a page it had not already visited. The intended task may already be complete.',
-            whyItMatters: 'Dead-end funnels lose visitors who intended to convert.',
+            whyItMatters: JOURNEY_ROUTE_COPY.continuationReview.whyItMatters,
             fix: '1. Review the recorded eligible routes and the pages already visited\n2. Confirm whether the intended task was already complete\n3. Add or correct a continuation only where the intended task requires one',
             screenshotUrl: steps[steps.length - 1]?.screenshotAfterUrl,
           })
@@ -735,6 +723,11 @@ export async function runJourneyTemplate(
       }
 
       if (!navigated) {
+        if (clickSelector || plan?.steps[planStepIndex - 1]?.action === 'click') {
+          blockedReason = 'journey_control_not_activated'
+          abandonedReason = JOURNEY_ROUTE_COPY.controlNotActivated
+          return await finalize('ABANDONED')
+        }
         try {
           await page.goto(target.href, { waitUntil: 'domcontentloaded', timeout: 15_000 })
           await settleAuditPage(page)
@@ -812,7 +805,7 @@ export async function runJourneyTemplate(
         isLoading, hasContent, headlinePassed: destHeadline, primaryActionFound: destCta.found,
         screenshotUrl: afterShot, accessibilityEvidence: a11yAfter.slice(0, 2000) }))
 
-      if (destCta.found && currentStep >= 2) {
+      if (!plan && destCta.found && currentStep >= 2) {
         funnelGoalAchieved = true
       }
 
@@ -827,7 +820,7 @@ export async function runJourneyTemplate(
             impactTag: 'FRICTION',
             problem: 'Review the path at the recorded walk step limit',
             evidence: pathTookTooManyStepsEvidence(maxSteps),
-            whyItMatters: 'Long funnels have compounding drop-off at each step.',
+            whyItMatters: JOURNEY_ROUTE_COPY.stepLimitReview.whyItMatters,
             fix: '1. Inspect the recorded route and the walk step limit\n2. Review which steps are required for the intended task\n3. Simplify only steps shown to be unnecessary',
             screenshotUrl: afterShot,
             accessibilityEvidence: a11yAfter.slice(0, 2000),
@@ -838,8 +831,14 @@ export async function runJourneyTemplate(
       }
     }
 
+    if (plan && planStepIndex < plan.steps.length) {
+      blockedReason = 'planned_walk_incomplete'
+      abandonedReason = JOURNEY_ROUTE_COPY.plannedWalkIncomplete
+      return await finalize('ABANDONED')
+    }
     goalAchieved = funnelGoalAchieved
-    const result = await finalize(goalAchieved ? 'COMPLETED' : findings.length > 0 ? 'COMPLETED' : 'ABANDONED')
+    const walkCompleted = Boolean(plan && planStepIndex === plan.steps.length)
+    const result = await finalize(walkCompleted || goalAchieved || findings.length > 0 ? 'COMPLETED' : 'ABANDONED')
     if (options.plannerUsage) {
       result.plannerUsage = options.plannerUsage
     }

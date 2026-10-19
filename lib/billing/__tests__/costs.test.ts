@@ -57,6 +57,15 @@ afterEach(() => {
 
 describe('estimateLlmCostUsd', () => {
   describe('single model pricing', () => {
+    it('estimates the exact Luna alias from measured uncached, cached, written and output tokens', () => {
+      expect(estimateLlmCostUsd('gpt-6-luna', 1000, 1000, 1000, 1000)).toBeCloseTo(0.000735, 10)
+      expect(estimateLlmCostUsd('gpt-6-luna-unlisted', 1000, 1000)).toBeNull()
+    })
+    it('uses the documented long-context rates only above the actual input threshold', () => {
+      expect(estimateLlmCostUsd('gpt-6-luna', 272000, 1000)).toBeCloseTo(0.0277, 10)
+      expect(estimateLlmCostUsd('gpt-6-luna', 273000, 1000)).toBeCloseTo(0.05535, 10)
+      expect(estimateLlmCostUsd('gpt-6-luna', 1000, 0, 272000)).toBeCloseTo(0.00564, 10)
+    })
     it('calculates cost for gpt-4o-mini (input + output)', () => {
       const cost = estimateLlmCostUsd('gpt-4o-mini', 1_000_000, 1_000_000)
       expect(cost).toBeCloseTo(0.75, 10)
@@ -254,6 +263,20 @@ describe('persistAuditRunCost', () => {
   })
 
   describe('triage phase', () => {
+    it('includes both journey phases once and keeps unfinished journey consumption unknown', async () => {
+      const events = ['triage', 'journey_planner', 'journey_evaluator'].flatMap((phase, index) => {
+        const detail = { version: 1, responseId: `${index + 1}1111111-1111-4111-8111-111111111111`, model: 'gpt-4o-mini',
+          usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 3, cacheWriteTokens: 0 } }
+        const response = { event: `${phase}_provider_response`, detail }
+        return [{ event: `${phase}_provider_attempt`, detail: { ...detail, usage: null } }, response, response]
+      })
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce(events as never)
+      await persistAuditRunCost('all-initial-analysis', { ...baseMetrics, phase: 'triage' })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 30, triageOutputTokens: 6, pricingBasis: 'CONFIGURED_ESTIMATE' })
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce(events.filter(event => event.event !== 'journey_evaluator_provider_response') as never)
+      await persistAuditRunCost('incomplete-initial-analysis', { ...baseMetrics, phase: 'triage' })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 20, triageOutputTokens: 4, llmCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
     it('includes rejected provider responses and leaves unfinished attempts unpriced', async () => {
       const attempt = (responseId: string) => ({ event: 'triage_provider_attempt', detail: { version: 1, responseId, model: 'gpt-4o-mini', usage: null } })
       const first = attempt('11111111-1111-4111-8111-111111111111')

@@ -55,6 +55,8 @@ const envSchema = z.object({
   JUDGE_PROVIDER_CHAIN: z.string().default('openai,anthropic').transform(s => s.split(',').map(x => x.trim()).filter(Boolean)),
   OPENAI_JUDGE_MODEL: z.string().optional(),
   ANTHROPIC_JUDGE_MODEL: z.string().optional(),
+  OPENAI_PRESCRIPTION_MODEL: z.string().optional().transform(value => value?.trim() || undefined),
+  ANTHROPIC_PRESCRIPTION_MODEL: z.string().optional().transform(value => value?.trim() || undefined),
   OPENAI_JUDGE_MAX_TOKENS: z.string().optional(),
   // Phase-1 triage (cheap teaser pass). Falls back to the judge provider chain
   // models when unset; small max_tokens keeps the anonymous scan cheap.

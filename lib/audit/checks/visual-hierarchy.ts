@@ -5,6 +5,7 @@ import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
 import { NAVIGATION_OBSERVATION_COPY as C } from '@/lib/marketing/copy/navigation-observations'
+import { QUALITATIVE_GUIDANCE_COPY } from '@/lib/marketing/copy/qualitative-guidance'
 
 export function runVisualHierarchyChecks(
   meta: PageMetadata | null,
@@ -57,7 +58,7 @@ export function runVisualHierarchyChecks(
       severity: 'POLISH',
       problem: 'Review the captured section-heading structure',
       evidence: `${h1s.length} H1 found but no H2 section headings. Visual section boundaries and reader comprehension were not measured.`,
-      fix: '1. Add H2 section headings to break content into scannable sections\n2. Use descriptive H2s that tell the user what each section is about\n3. Maintain hierarchy: H1 → H2 → H3 → body text\n4. Each section heading should promise a specific benefit or answer a question',
+      fix: QUALITATIVE_GUIDANCE_COPY.sections,
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

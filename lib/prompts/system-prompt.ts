@@ -249,9 +249,6 @@ function quotedCurrentText(evidence?: string | null): string | null {
 /** Per-request prescription data. Everything here varies per audit - keep it OUT of the cached system block. */
 export function buildPrescriptionUserPrompt(context: PrescriptionContext): string {
   return `URL: ${context.url}
-Overall score: ${context.score}/100
-Verdict: ${context.verdict}
-
 Page text (first ${PRESCRIPTION_TEXT} chars):
 ${context.pageText.slice(0, PRESCRIPTION_TEXT)}
 ${context.pageText.length > PRESCRIPTION_TEXT ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
@@ -264,9 +261,6 @@ Metadata:
 - CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
 ${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
 
-Rubric grades from triage:
-${context.rubrics.map((r) => `- ${r.name}: ${r.grade ?? 'Not graded'}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
-
 Existing flags (return flagPrescriptions as an object with every unique exact flagKey below as a required property; each value contains its prescription, without repeating flagKey inside it):
 ${context.existingFlags.map((f) => {
     const lines = [`[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`]
@@ -276,7 +270,6 @@ ${context.existingFlags.map((f) => {
     lines.push(`  Guidance contract: ${f.attention === 'recommendation' ? 'Return an inspection plan with an unconfirmed change condition and preserved behavior.' : f.attention === 'flag' ? 'Return a concise task for the established recorded failure.' : 'Not recorded'}`)
     lines.push(`  Recorded cause certainty: ${f.causeCertainty ?? 'Not recorded'}`)
     lines.push(`  Recorded fix confidence: ${f.fixConfidence ?? 'Not recorded'}`)
-    lines.push(`  Recorded whyItMatters: ${f.whyItMatters ?? 'Not recorded'}`)
     lines.push(`  Recorded verificationRule: ${f.verificationRule ?? 'Independent verification conditions are not recorded.'}`)
     const current = quotedCurrentText(f.evidence)
     if (current) lines.push(`  Current text: "${current}"`)

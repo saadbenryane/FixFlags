@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const provider = vi.hoisted(() => ({ name: 'openai' as 'openai' | 'anthropic', create: vi.fn() }))
+const provider = vi.hoisted(() => ({ name: 'openai' as 'openai' | 'anthropic', model: 'controlled-model', create: vi.fn() }))
 vi.mock('openai', () => ({ default: class { chat = { completions: { create: provider.create } } } }))
 vi.mock('@anthropic-ai/sdk', () => ({ default: class { messages = { create: provider.create } } }))
 vi.mock('../llm-keys', () => ({ hasAnthropicProviderKey: () => true, getOpenAIProviderKey: () => 'controlled-key' }))
 vi.mock('../judge-config', () => ({ getConfiguredJudgeProviderChain: () => [provider.name],
+  getPrescriptionProviderConfig: () => ({ model: provider.model, timeoutMs: 1000, maxTokens: 1000, reasoningEffort: provider.model === 'gpt-6-luna' ? 'none' : undefined }),
   getProviderConfig: () => ({ model: 'controlled-model', timeoutMs: 1000, maxTokens: 1000 }) }))
 vi.mock('@/lib/utils/sleep', () => ({ sleep: vi.fn(async () => undefined) }))
 import { PartialPrescriptionError, runPrescriptionWithRetry, type PrescriptionContext } from '../judge-prescription'
@@ -31,15 +32,23 @@ function payload(conditional: boolean) {
 }
 function response(conditional: boolean) {
   return provider.name === 'openai'
-    ? { model: 'controlled-model', choices: [{ message: { content: JSON.stringify(payload(conditional)) } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }
-    : { model: 'controlled-model', content: [{ type: 'tool_use', input: payload(conditional) }], usage: { input_tokens: 20, output_tokens: 5 } }
+    ? { model: provider.model, choices: [{ message: { content: JSON.stringify(payload(conditional)) } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }
+    : { model: provider.model, content: [{ type: 'tool_use', input: payload(conditional) }], usage: { input_tokens: 20, output_tokens: 5 } }
 }
 function userText(request: { messages: Array<{ role: string; content: Array<{ type: string; text?: string }> }> }) {
   return request.messages.find(message => message.role === 'user')!.content.filter(part => part.type === 'text').map(part => part.text).join('\n')
 }
 
 describe('bounded prescription correction', () => {
-  beforeEach(() => { provider.create.mockReset() })
+  beforeEach(() => { provider.create.mockReset(); provider.model = 'controlled-model' })
+
+  it('uses the documented completion budget and disables reasoning for the selected Luna contract', async () => {
+    provider.name = 'openai'; provider.model = 'gpt-6-luna'
+    provider.create.mockResolvedValueOnce(response(true))
+    await runPrescriptionWithRetry(fixture(undefined), null, null)
+    expect(provider.create.mock.calls[0][0]).toMatchObject({ model: 'gpt-6-luna', max_completion_tokens: 1000, reasoning_effort: 'none' })
+    expect(provider.create.mock.calls[0][0].max_tokens).toBeUndefined()
+  })
 
   it.each(['openai', 'anthropic'] as const)('supplies the rejected contract to the next %s attempt without changing source facts', async name => {
     provider.name = name

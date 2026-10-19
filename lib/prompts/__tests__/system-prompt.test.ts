@@ -76,7 +76,7 @@ const basicPrescriptionContext: PrescriptionContext = {
 }
 
 describe('system-prompt triage contract', () => {
-  it('preserves every supporting observation in prescription context and keeps an absent grade unknown', () => {
+  it('preserves every supporting observation without importing rubric judgments into repair guidance', () => {
     const context: PrescriptionContext = { ...basicPrescriptionContext,
       rubrics: [{ name: 'REACH', grade: null, score: null, summary: 'No recorded grade' }],
       existingFlags: [{ ...basicPrescriptionContext.existingFlags[0], supportingObservations: [0, 1].map(index => ({
@@ -87,7 +87,7 @@ describe('system-prompt triage contract', () => {
     const prompt = buildPrescriptionUserPrompt(context)
     for (const value of ['page-0', 'page-1', 'check-0', 'check-1', 'Original supporting evidence 0', 'Original supporting evidence 1',
       'Target: desktop', 'Target: mobile', '#control-0', '#control-1']) assert.ok(prompt.includes(value), value)
-    assert.match(prompt, /REACH: Not graded/)
+    assert.doesNotMatch(prompt, /Rubric grades|REACH: Not graded/)
     assert.doesNotMatch(prompt, /REACH: F|\(0\/100\)/)
   })
   it('asks triage for evidence and whyItMatters without fix prompts', () => {
@@ -275,16 +275,14 @@ describe('buildPrescriptionUserPrompt', () => {
     assert.match(prompt, /Recorded fix confidence: LOW/)
   })
 
-  it('renders URL, score, verdict, metadata, tech stack, rubrics, and flags', () => {
+  it('supplies recorded facts and task identities without scoring narratives', () => {
     const prompt = buildPrescriptionUserPrompt(basicPrescriptionContext)
     assert.match(prompt, /https:\/\/example\.com/)
-    assert.match(prompt, /72\/100/)
-    assert.match(prompt, /Solid foundation/)
+    assert.doesNotMatch(prompt, /72\/100|Solid foundation/)
     assert.match(prompt, /Title: Example/)
     assert.match(prompt, /Next\.js/)
     assert.match(prompt, /Tailwind CSS/)
-    assert.match(prompt, /MESSAGE: C/)
-    assert.match(prompt, /62\/100/)
+    assert.doesNotMatch(prompt, /MESSAGE: C|62\/100/)
     assert.match(prompt, /flagKey=flag-1/)
     assert.match(prompt, /desktop and mobile screenshots/)
   })
@@ -301,13 +299,13 @@ describe('buildPrescriptionUserPrompt', () => {
     assert.match(prompt, /None/)
   })
 
-  it('handles null rubric scores', () => {
+  it('keeps a rubric summary out of prescription facts', () => {
     const ctx: PrescriptionContext = {
       ...basicPrescriptionContext,
       rubrics: [{ name: 'REACH', grade: 'F', score: null, summary: 'Missing social proof' }],
     }
     const prompt = buildPrescriptionUserPrompt(ctx)
-    assert.match(prompt, /REACH: F/)
+    assert.doesNotMatch(prompt, /REACH: F|Missing social proof/)
     assert.doesNotMatch(prompt, /null\/100/)
   })
 
@@ -341,6 +339,8 @@ describe('buildPrescriptionPrompt (back-compat combined)', () => {
   it('includes both system and user sections', () => {
     const prompt = buildPrescriptionPrompt(basicPrescriptionContext)
     assert.match(prompt, /You are FixFlags/)
-    assert.match(prompt, /72\/100/)
+    assert.match(prompt, /URL: https:\/\/example\.com/)
+    assert.match(prompt, /flagKey=flag-1/)
+    assert.doesNotMatch(prompt, /72\/100/)
   })
 })

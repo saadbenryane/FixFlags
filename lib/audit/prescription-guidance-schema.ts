@@ -45,7 +45,8 @@ const common = new Set(['the', 'and', 'for', 'with', 'from', 'this', 'that', 'ha
 function validateTaskText(texts: readonly string[], source: ExistingFlagForPrescription) {
   const text = texts.join(' ')
   if (text.includes('\u2014')) throw new Error(`Invalid prescription output: ${source.flagKey} must use plain punctuation`)
-  if (unsupportedImpact.test(text)) throw new Error(`Invalid prescription output: ${source.flagKey} predicts an unmeasured business outcome`)
+  const impact = text.match(unsupportedImpact)?.[0]
+  if (impact) throw new Error(`Invalid prescription output: ${source.flagKey} predicts an unmeasured business outcome: ${JSON.stringify(impact.slice(0, 160))}. Remove that claim and describe only the supported inspection or repair`)
   const recordedText = [source.problem, source.evidence, source.pageUrl,
     ...source.supportingObservations?.flatMap(observation => [observation.evidence, observation.pageUrl]) || []].filter(Boolean).join(' ')
   if ((text.match(repositoryPath) || []).some(path => !recordedText.includes(path)))
@@ -53,7 +54,7 @@ function validateTaskText(texts: readonly string[], source: ExistingFlagForPresc
   for (const markup of text.match(/<[a-z][^>]*>/gi) || []) {
     for (const match of markup.matchAll(/\b(?:content|href|src|id|class|action|value)\s*=\s*["']([^"']*)["']/gi)) {
       if (!match[1] || !recordedText.includes(match[1]))
-        throw new Error(`Invalid prescription output: ${source.flagKey} invents an attribute value. Describe how to select the verified value instead`)
+        throw new Error(`Invalid prescription output: ${source.flagKey} invents an attribute value: ${JSON.stringify(match[0].slice(0, 160))}. Describe how to select the verified value instead, without markup or a placeholder`)
     }
   }
   for (const match of text.matchAll(/<[a-z][^>]*>([^<]+)<\/[a-z][^>]*>/gi)) {

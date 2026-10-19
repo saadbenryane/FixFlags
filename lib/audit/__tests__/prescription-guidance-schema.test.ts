@@ -107,6 +107,14 @@ describe('version 2 source-bound guidance plans', () => {
     expect(() => parsePrescriptionGuidance({ flagPrescriptions: { 'title-review': {
       ...plan(), changeIfConfirmed: 'set the product title with <meta property="og:title" content="Invented product promise">',
     } } }, [source])).toThrow(/invents an attribute value/)
+    expect(() => parsePrescriptionGuidance({ flagPrescriptions: { 'title-review': {
+      ...plan(), changeIfConfirmed: 'set the product title with <meta property="og:title" content="Invented product promise">',
+    } } }, [source])).toThrow(JSON.stringify('content="Invented product promise"'))
+  })
+  it('identifies the rejected business claim for bounded correction without accepting it', () => {
+    expect(() => parsePrescriptionGuidance({ flagPrescriptions: { 'title-review': {
+      ...plan(), changeIfConfirmed: 'improve search visibility by changing the recorded product title',
+    } } }, [recommendation])).toThrow('"improve search visibility"')
   })
 
   it('keeps every legacy member of one prescription key in the combined task without repeating its action', () => {

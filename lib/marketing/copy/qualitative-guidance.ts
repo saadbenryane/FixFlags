@@ -1,0 +1,26 @@
+export const QUALITATIVE_GUIDANCE_COPY = {
+  sections: 'Review the recorded heading outline alongside the page content and intended task. If distinct content sections need headings, add descriptive headings in a logical outline. Preserve concise task pages and intentional layouts that already explain their content.',
+  headline: 'Review the recorded headline with its supporting copy, page purpose and intended audience. If that context does not explain the page or next action, clarify the existing heading or introduction using verified product information. Keep concise headings when their context is already clear.',
+  previewImage: 'Review the intended shared-link image and existing preview behavior for each affected page. If a specific image is needed, choose a verified asset for that page and configure its og:image metadata using the actual published asset URL. Preserve working preview behavior and inspect the sharing services separately before claiming their rendered result.',
+  previewTitle: 'Review the existing page title and intended shared-link title for each affected page. If a distinct preview title is needed, configure og:title using wording grounded in that page’s verified content. Preserve accurate titles and confirm the published metadata.',
+  previewDescription: 'Review the existing page description and intended shared-link summary for each affected page. If a specific preview summary is needed, configure og:description using that page’s verified content. Preserve accurate descriptions and confirm the published metadata.',
+  favicon: 'Review the intended site icon and whether an existing icon already loads for each affected page. If an explicit icon declaration is needed, configure it using a verified site-icon asset and its actual published location. Preserve working icons and intentional branding.',
+  frictionPreserve: 'working controls, accurate offers, intentional wording, existing pricing and signup routes, and required steps',
+  friction: {
+    'unclear-progress': { inspection: 'the recorded progress indicator and the actual required steps', condition: 'the intended workflow has remaining requirements that its current progress information does not explain', change: 'Label the current step with its task name and explain the actual requirements for continuing' },
+    'missing-feedback': { inspection: 'the authorized interaction and its actual response before judging feedback', condition: 'the actual accepted action lacks the confirmation required for its intended task', change: 'Confirm acceptance immediately after the accepted response, and present its actual loading, success or next state' },
+    'too-many-steps': { inspection: 'the recorded route and which steps the intended task actually requires', condition: 'specific steps are demonstrated to be unnecessary for the intended task', change: 'Simplify only those unnecessary steps and retain the required information and protections' },
+    hesitation: { inspection: 'the recorded action wording alongside its existing context and intended purpose', condition: 'the intended next action remains unclear after reviewing the current explanation', change: 'Clarify the appropriate existing action while retaining its accurate promise and working behavior' },
+    confusion: { inspection: 'the recorded heading, nearby explanation and available actions together', condition: 'the intended next action remains unclear in the existing page context', change: 'Clarify the appropriate existing heading or action; add helper text only if that context needs it' },
+    default: { inspection: 'the recorded step and its actual controls and responses', condition: 'the intended task has a confirmed gap in its current explanation or behavior', change: 'Address that confirmed gap and recheck the original task' },
+  },
+  barrierPreserve: 'working native semantics, accurate labels, visible content and the intended task',
+  barrierInspection: (element: string, evidence: string) => `the recorded control or structure "${element.trim() || 'the affected control'}": ${evidence}`,
+  barrier: {
+    heading: { condition: 'the current heading outline still has the recorded structural gap', change: 'Correct the heading structure while retaining meaningful visible section titles' },
+    name: { condition: 'the current control still lacks an accessible name that explains its actual purpose', change: 'Prefer an associated visible label; use an accessible name consistent with the visible purpose where needed' },
+    focus: { condition: 'keyboard inspection confirms a missing, obscured or incorrectly ordered focus target', change: 'Correct that focus target or order and recheck the task with the keyboard' },
+    keyboard: { condition: 'keyboard inspection confirms that the recorded control cannot perform its intended action', change: 'Restore keyboard operation using native HTML where possible and recheck the same control' },
+    other: { condition: 'inspection confirms the recorded accessibility condition on the current page', change: 'Address that specific condition and recheck the original task with the relevant accessibility method' },
+  },
+} as const

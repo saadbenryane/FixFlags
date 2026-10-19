@@ -4,6 +4,7 @@ import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { DeterministicFlag } from '../flag-types'
 import { normalizeHeadingText } from './utils'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { QUALITATIVE_GUIDANCE_COPY } from '@/lib/marketing/copy/qualitative-guidance'
 
 const WEAK_VALUE_WORDS = /\b(solution|platform|tool|app|software|product|company|business)\b/i
 
@@ -166,7 +167,7 @@ export function runMessagingClarityChecks(meta: PageMetadata, record?: CheckReco
       severity: 'POLISH',
       problem: `Review context for the ${h1WordCount}-word headline`,
       evidence: `Headline: "${h1}" (${h1WordCount} words). Supporting introduction: "${meta.headlineSupport ?? 'not recorded'}". Visitor understanding was not measured.`,
-      fix: '1. Review the headline together with its nearby explanation and intended audience. Keep a concise headline when the supporting context is clear\n2. Example: "Plan releases with a shared team calendar"\n3. Use the subhead to add the "how" if the headline covers the "what"',
+      fix: QUALITATIVE_GUIDANCE_COPY.headline,
       confidence: 0.8,
       source: 'DETERMINISTIC',
     })

@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { currentExecutionOwnership, executionWrite } from './execution-ownership'
 import type { LlmUsage } from './judge-runner'
 
-export type ProviderUsagePhase = 'triage' | 'prescription'
+export type ProviderUsagePhase = 'triage' | 'prescription' | 'journey_planner' | 'journey_evaluator'
+export const INITIAL_ANALYSIS_PROVIDER_PHASES = ['triage', 'journey_planner', 'journey_evaluator'] as const
 export type ProviderUsageAdmission = (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
 
 export const providerUsageSchema = z.object({ version: z.literal(1), responseId: z.string().uuid(),
@@ -62,4 +63,17 @@ export function sumProviderResponses(events: readonly { event?: string; detail: 
     cacheReadTokens: measurements.reduce((sum, item) => sum + (item.cacheReadTokens ?? 0), 0),
     cacheWriteTokens: measurements.reduce((sum, item) => sum + (item.cacheWriteTokens ?? 0), 0),
     model: [...new Set(measurements.length ? measurements.map(item => item.model) : attempts.values())].join(',') }
+}
+
+/** The existing phase-one subtotal covers every initial-analysis provider. */
+export function sumAnalysisProviderResponses(events: readonly { event?: string; detail: unknown }[]) {
+  const phases = INITIAL_ANALYSIS_PROVIDER_PHASES.map(phase => sumProviderResponses(
+    events.filter(event => event.event === `${phase}_provider_attempt` || event.event === `${phase}_provider_response`), phase))
+  const measurements = phases.flatMap(phase => phase.measurements)
+  return { measurements, complete: phases.every(phase => phase.complete),
+    inputTokens: phases.reduce((sum, phase) => sum + phase.inputTokens, 0),
+    outputTokens: phases.reduce((sum, phase) => sum + phase.outputTokens, 0),
+    cacheReadTokens: phases.reduce((sum, phase) => sum + phase.cacheReadTokens, 0),
+    cacheWriteTokens: phases.reduce((sum, phase) => sum + phase.cacheWriteTokens, 0),
+    model: [...new Set(phases.flatMap(phase => phase.model ? phase.model.split(',') : []))].join(',') }
 }

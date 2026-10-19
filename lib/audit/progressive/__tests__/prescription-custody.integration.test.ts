@@ -78,6 +78,28 @@ run('prescription custody in PostgreSQL', () => {
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'triage_provider_response' } })).toBe(0)
   })
 
+  it('reconciles planner and evaluator attempts in the initial subtotal without duplicating retries', async () => {
+    const f = await fixture('judge')
+    await withExecutionOwnership(f.owner, async () => {
+      for (const phase of ['journey_planner', 'journey_evaluator'] as const) {
+        const response = await beginProviderUsage(f.audit.id, phase, 'gpt-4o-mini')
+        await response({ model: 'gpt-4o-mini', inputTokens: 20, outputTokens: 5 })
+      }
+      const metrics = { phase: 'triage' as const, durationMs: 0, pagespeedCalls: 0,
+        llmInputTokens: 0, llmOutputTokens: 0, llmModel: '' }
+      await persistAuditRunCost(f.audit.id, metrics)
+      const first = await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })
+      expect(first).toMatchObject({ triageInputTokens: 40, triageOutputTokens: 10, pricingBasis: 'CONFIGURED_ESTIMATE' })
+      expect(first.triageCostUsd?.toString()).toBe('0.000012')
+      await persistAuditRunCost(f.audit.id, metrics)
+      expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } })).toEqual(first)
+      await beginProviderUsage(f.audit.id, 'journey_evaluator', 'gpt-4o-mini')
+      await persistAuditRunCost(f.audit.id, metrics)
+      expect(await prisma.auditRunCost.findUniqueOrThrow({ where: { auditId: f.audit.id } }))
+        .toMatchObject({ triageInputTokens: 40, triageOutputTokens: 10, triageCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
+  })
+
   it('retains usage custody for the compatible Audit-owned pipeline', async () => {
     const f = await fixture('judge')
     await prisma.audit.update({ where: { id: f.audit.id }, data: { executionLeaseUntil: new Date(Date.now() + 60_000) } })

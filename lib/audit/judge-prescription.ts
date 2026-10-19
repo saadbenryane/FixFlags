@@ -7,7 +7,7 @@ import {
   buildPrescriptionUserPrompt,
 } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
-import { getProviderConfig } from './judge-config'
+import { getPrescriptionProviderConfig } from './judge-config'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
 import type { ExistingFlagForPrescription } from './flag-types'
@@ -241,7 +241,7 @@ async function runAnthropicPrescription(
     })
   }
 
-  const cfg = getProviderConfig('anthropic', maxTimeoutMs)
+  const cfg = getPrescriptionProviderConfig('anthropic', maxTimeoutMs)
   const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
@@ -363,7 +363,7 @@ async function runOpenAIPrescription(
     }),
   })
 
-  const cfg = getProviderConfig('openai', maxTimeoutMs)
+  const cfg = getPrescriptionProviderConfig('openai', maxTimeoutMs)
   const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
@@ -372,7 +372,7 @@ async function runOpenAIPrescription(
     const response = await openai.chat.completions.create(
       {
         model: cfg.model,
-        max_tokens: cfg.maxTokens,
+        ...(cfg.reasoningEffort ? { max_completion_tokens: cfg.maxTokens, reasoning_effort: cfg.reasoningEffort } : { max_tokens: cfg.maxTokens }),
         response_format: {
           type: 'json_schema',
           json_schema: {
