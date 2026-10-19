@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
 import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS } from '@/lib/marketing/copy/care-homepage'
@@ -487,15 +487,19 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('copies the displayed pricing-page guidance without resolving the sample Flag', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
+    let finishCopy!: () => void
+    const clipboardResult = new Promise<void>(resolve => { finishCopy = resolve })
+    const writeText = vi.fn().mockReturnValue(clipboardResult)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<CareHomepage />)
     const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
     for (const fact of C.actions.promptFacts) expect(within(handoff).getByText(fact.value)).toBeVisible()
     expect(within(handoff).getByRole('heading', { name: C.actions.promptTitle })).toBeVisible()
     fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
-    expect(within(handoff).getByRole('status')).toHaveTextContent(C.story.copied)
+    expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt)
+    expect(within(handoff).queryByRole('status')).not.toBeInTheDocument()
+    await act(async () => { finishCopy() })
+    expect(await within(handoff).findByRole('status')).toHaveTextContent(C.story.copied)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '3 Flags', exact: true })).toBeVisible()
   })

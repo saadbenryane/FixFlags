@@ -98,7 +98,7 @@ describe('mailto:/tel: are not dead links (profilium cta-dead-link false positiv
 })
 
 describe('scroll-depth sanity caps (profilium 10243px on 812px viewport)', () => {
-  it('never reports CRITICAL for a CTA far beyond two screens of scroll', () => {
+  it('retains deep action measurements as contextual review', () => {
     const flags = runLayoutChecks(
       captureMetrics({
         mobilePrimaryCtaTopPx: 10243,
@@ -108,10 +108,12 @@ describe('scroll-depth sanity caps (profilium 10243px on 812px viewport)', () =>
       })
     )
     expect(checkIds(flags)).toContain('cta-below-fold-mobile')
-    expect(flags[0]?.severity).toBe('IMPORTANT')
+    expect(flags[0]?.severity).toBe('POLISH')
+    expect(flags[0]?.evidence).toContain('10243px')
+    expect(flags[0]?.fix).toContain('If ')
   })
 
-  it('keeps CRITICAL for a CTA just below the fold', () => {
+  it('does not infer a blocked journey from an action just below the fold', () => {
     const flags = runLayoutChecks(
       captureMetrics({
         mobilePrimaryCtaTopPx: 900,
@@ -120,7 +122,8 @@ describe('scroll-depth sanity caps (profilium 10243px on 812px viewport)', () =>
         mobileDocumentHeight: 4000,
       })
     )
-    expect(flags[0]?.severity).toBe('CRITICAL')
+    expect(flags[0]?.severity).toBe('POLISH')
+    expect(flags[0]?.evidence).toContain('900px')
   })
 
   it('suppresses the flag when the measurement is impossible (beyond document height)', () => {

@@ -1,4 +1,5 @@
 export const REPAIR_GUIDANCE_COPY = {
+  recordedSeverity: (severity: string) => `Recorded severity: ${severity}. Keep changes within the recorded scope and preserve working behavior.`,
   inspection: (subject: string) => `Review ${subject}.`,
   confirmIntent: 'Confirm the intended behavior for this scope before making a change.',
   condition: (condition: string) => `Make a change only if ${condition}.`,

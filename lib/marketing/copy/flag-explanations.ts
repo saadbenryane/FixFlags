@@ -79,7 +79,7 @@ export const FLAG_EXPLANATIONS: Readonly<Record<string, string>> = {
   "heading-hierarchy-missing": "No H2 section headings were recorded in this sample. Review the actual heading hierarchy and page purpose before adding or changing headings.",
   "heading-order-skipped": "The recorded heading outline skips a level. Review the section relationships and navigation experience before adjusting the structure.",
   "no-cta-detected": "No recognized next action was recorded in this scope. Check whether an action is appropriate for the page and whether visitors can find it.",
-  "cta-below-fold-mobile": "The recorded primary action is outside the first mobile screen. Review its placement and available navigation; scroll behavior and signup impact were not measured.",
+  "cta-below-fold-mobile": "The recorded action is outside the first mobile screen. Review its role, placement and available navigation; task priority, scroll behavior and signup impact were not established.",
   "loading-indicator-stuck": "Loading or skeleton UI was visible in the recorded state. Inspect its timing and whether useful content and the intended next step were available.",
   "loading-state-slow": "The initial loading UI cleared late in the recorded load. Review its measured duration and the work needed to expose useful content sooner.",
   "motion-ignores-reduced-preference": "Motion remained active with reduced motion requested in the recorded scope. Review how the experience responds to that preference.",

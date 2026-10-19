@@ -121,7 +121,7 @@ it.each([
   const recorded = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...recorded, fix, audit })
   const detail = await loadSiteFlagDetail(site, 'captured-flag')
-  expect(detail).toMatchObject({ repairGuidance: expected, fix, sourceAuditId: recorded.auditId, evidence: recorded.evidence })
+  expect(detail).toMatchObject({ repairGuidance: expected, fix: fix.trim(), sourceAuditId: recorded.auditId, evidence: recorded.evidence })
 })
 
 it('keeps established historical indexing guidance and its action availability consistent without changing the stored finding', async () => {
@@ -129,5 +129,23 @@ it('keeps established historical indexing guidance and its action availability c
   const snapshot = structuredClone(recorded)
   mocks.flag.mockResolvedValue(recorded)
   expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: SEARCH_COPY.rules.indexing.guidance, repairGuidance: 'ready' })
+  expect(recorded).toEqual(snapshot)
+})
+
+it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('withholds unconditional historical %s guidance without rewriting recorded evidence', async checkId => {
+  const recorded = { ...(await mocks.flag()), checkId, fix: 'Replace the recorded content and move the action.', audit: { failureCode: 'AI_REVIEW_FAILED' } }
+  const snapshot = structuredClone(recorded)
+  mocks.flag.mockResolvedValue(recorded)
+  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: '', repairGuidance: 'unavailable', evidence: recorded.evidence })
+  expect(recorded).toEqual(snapshot)
+})
+
+it('keeps a complete historical editor-only task usable in Site actions without changing its source row', async () => {
+  const task = 'Restore the recorded button label and preserve its working action.'
+  const recorded = { ...(await mocks.flag()), checkId: 'buttons-no-text', fix: '', cursorPrompt: task,
+    audit: { failureCode: 'AI_REVIEW_FAILED' } }
+  const snapshot = structuredClone(recorded)
+  mocks.flag.mockResolvedValue(recorded)
+  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: task, repairGuidance: 'ready', evidence: recorded.evidence })
   expect(recorded).toEqual(snapshot)
 })

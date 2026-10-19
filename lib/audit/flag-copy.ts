@@ -6,6 +6,7 @@ import { verificationRuleForCheckId } from '@/lib/audit/verification-rules'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
 import { FLAG_EXPLANATIONS, FLAG_EXPLANATION_FALLBACK } from '@/lib/marketing/copy/flag-explanations'
+import { REPAIR_GUIDANCE_COPY } from '@/lib/marketing/copy/repair-guidance'
 
 /** Checks fixed in source/head/config - not by staring at a screenshot region. */
 const CODE_OR_HEAD_CHECKS = new Set<string>([
@@ -141,8 +142,11 @@ export function buildExpertFixPrompt(
   flag: RankableFlag,
   extras?: { journeyName?: string | null }
 ): string {
+  const guidance = resolveFixPrompt(flag)
+  if (!guidance) return ''
   const evidence = (flag.evidence ?? flag.problem).trim()
-  const fix = normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
+  const fix = normalizeFixBody(guidance)
+  if (!fix) return ''
   const verify = resolveVerificationRule(flag)
 
   const constraint =
@@ -152,12 +156,7 @@ export function buildExpertFixPrompt(
         ? 'Do not rewrite marketing copy unless it directly affects usability. Do not change unrelated components.'
         : 'Do not change visible page content unless it affects social previews. Do not touch layout or copy.'
 
-  const severity =
-    flag.severity === 'CRITICAL'
-      ? 'This is a critical issue that directly blocks conversions or trust.'
-      : flag.severity === 'IMPORTANT'
-        ? 'This is an important issue that degrades the product experience.'
-        : 'This is a polish issue that improves overall quality.'
+  const severity = REPAIR_GUIDANCE_COPY.recordedSeverity(flag.severity)
 
   const why = resolveWhyItMatters(flag)
 

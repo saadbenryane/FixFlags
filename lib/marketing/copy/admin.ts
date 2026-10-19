@@ -1,4 +1,8 @@
 export const ADMIN_COPY = {
+  operations: {
+    guidance: 'Recorded findings without usable guidance',
+    guidanceUnavailable: 'Guidance unavailable. Inspect the original check and its recorded scope.',
+  },
   analytics: {
     completedAnalysis: 'Completed analyses',
     landingCompletedAnalysis: 'Journeys with a completed analysis',

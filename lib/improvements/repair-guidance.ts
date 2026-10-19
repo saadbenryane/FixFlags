@@ -1,6 +1,8 @@
 import { searchAttentionDecision } from '@/lib/audit/search/policy'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { REPAIR_GUIDANCE_COPY as C } from '@/lib/marketing/copy/repair-guidance'
+import { isConditionalInspection, isUsableFixPrompt, requiresContextualReview } from '@/lib/audit/prescription-policy'
+import type { AgentPrompts } from '@/lib/audit/flag-types'
 
 export type InspectionGuidancePlan = {
   inspection: string
@@ -35,20 +37,31 @@ export function formatCombinedRepairGuidance(rows: readonly {
 export type RepairGuidanceState = 'ready' | 'pending' | 'unavailable'
 
 export function hasRepairGuidance(fix: string | null | undefined): boolean {
-  return Boolean(fix?.trim())
+  return isUsableFixPrompt(fix)
 }
 
-/** Historical indexing guidance retains its existing cautious compatibility meaning. */
-export function repairGuidanceText(input: { fix?: string | null; checkId?: string | null; attentionPolicy?: unknown }): string {
-  return searchAttentionDecision(input)?.reason === 'historical_intent_not_established'
-    ? SEARCH_COPY.rules.indexing.guidance : input.fix ?? ''
+export type RepairGuidanceInput = Partial<AgentPrompts> & {
+  fix?: string | null; checkId?: string | null; attentionPolicy?: unknown
+}
+
+/** One task selection for individual report actions and composed editor handoffs. */
+export function effectiveRepairGuidance(input: RepairGuidanceInput): string | null {
+  if (searchAttentionDecision(input)?.reason === 'historical_intent_not_established') return SEARCH_COPY.rules.indexing.guidance
+  const contextual = requiresContextualReview(input.checkId)
+  const editors = [input.agentPrompt, input.cursorPrompt, input.claudePrompt, input.windsurfPrompt, input.lovablePrompt, input.boltPrompt]
+  for (const candidate of contextual ? [input.fix, ...editors] : [...editors, input.fix]) {
+    if (isUsableFixPrompt(candidate) && (!contextual || isConditionalInspection(candidate))) return candidate.trim()
+  }
+  return null
+}
+
+/** Compatibility text access uses the same task as rendered actions and commands. */
+export function repairGuidanceText(input: RepairGuidanceInput): string {
+  return effectiveRepairGuidance(input) ?? ''
 }
 
 /** Existing per-finding guidance remains usable independently of other prescriptions. */
-export function repairGuidanceState(input: {
-  fix?: string | null
-  checkId?: string | null
-  attentionPolicy?: unknown
+export function repairGuidanceState(input: RepairGuidanceInput & {
   audit?: { includeAi?: boolean; triageAt?: Date | string | null; aiReviewAt?: Date | string | null; failureCode?: string | null }
 }): RepairGuidanceState {
   if (hasRepairGuidance(repairGuidanceText(input))) return 'ready'

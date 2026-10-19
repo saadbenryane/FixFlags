@@ -76,12 +76,12 @@ describe('editor-handoff', () => {
         severity: 'CRITICAL',
         problem: 'CTA below fold',
         evidence: 'On mobile (375×812), the primary CTA starts below the first screen.',
-        fix: 'Keep the primary CTA visible in the first 812px at 375px width.',
+        fix: 'Review the recorded mobile action. If its intended task requires first-screen access, adjust its placement.',
       }),
       { url: 'https://acme.com/' }
     )
     assert.match(prompt, /Viewport: mobile 375x812/)
-    assert.match(prompt, /Section: Primary call-to-action button/)
+    assert.match(prompt, /Section: Recorded call-to-action control/)
     assert.doesNotMatch(prompt, /^Current:/m)
     assert.match(prompt, /layout that renders on mobile/)
     assert.match(prompt, /Do not restyle desktop/)

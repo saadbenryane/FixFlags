@@ -5,6 +5,7 @@ import { isDeadHref } from '../flow/link-scoring'
 import type { DeterministicFlag } from '../flag-types'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 
 const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /lorem ipsum/i, label: 'Lorem ipsum placeholder text' },
@@ -100,10 +101,10 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
         checkId: 'placeholder-copy-detected',
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
-        severity: 'IMPORTANT',
-        problem: 'Placeholder or unfinished copy detected on the page',
-        evidence: `Found ${label}: ${matchedSnippet(sampleText, pattern)}`,
-        fix: '1. Replace placeholder text with product-specific copy\n2. Review the entire page for any remaining placeholder content\n3. Test the live page to confirm no placeholder text is visible',
+        severity: 'POLISH',
+        problem: C.placeholderProblem,
+        evidence: C.placeholderEvidence(label, matchedSnippet(sampleText, pattern)),
+        fix: C.placeholder,
         confidence: 0.95,
         source: 'DETERMINISTIC',
       })

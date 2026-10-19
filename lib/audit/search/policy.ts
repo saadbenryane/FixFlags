@@ -6,7 +6,8 @@ const HISTORICAL_RECOMMENDATIONS = new Set([
   'h1-missing', 'h1-multiple', 'canonical-missing', 'no-structured-data', 'sitemap-missing', 'robots-txt-missing',
   'low-ctr', 'canonical-mismatch',
 ])
-const HISTORICAL_DECLARATIONS = new Set(['robots-blocks-indexing', 'robots-blocked', 'noindex-meta', 'indexing-failure', 'soft-404'])
+export const HISTORICAL_INDEXING_DECLARATIONS = ['robots-blocks-indexing', 'robots-blocked', 'noindex-meta', 'indexing-failure', 'soft-404'] as const
+const HISTORICAL_DECLARATIONS = new Set<string>(HISTORICAL_INDEXING_DECLARATIONS)
 
 export function searchAttentionDecision(flag: { checkId?: string | null; attentionPolicy?: unknown }): SearchAttention | null {
   const current = searchAttentionSchema.safeParse(flag.attentionPolicy)

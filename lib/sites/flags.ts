@@ -14,13 +14,17 @@ import { compareFlagPriority, flagPriority, type FlagVerificationState } from '@
 import type { SiteRecord } from '@/lib/sites/types'
 import { attemptHasActiveVerification, attemptProvesFlagRecovery } from '@/lib/improvements/attempt-state'
 import type { Prisma } from '@prisma/client'
+import type { AgentPrompts } from '@/lib/audit/flag-types'
+
+const guidanceSelect = { fix: true, agentPrompt: true, cursorPrompt: true, claudePrompt: true,
+  windsurfPrompt: true, lovablePrompt: true, boltPrompt: true } satisfies Prisma.FlagSelect
 
 const attemptVerificationSelect = { id: true, projectId: true, parentId: true, status: true, verifierExecutions: {
   where: { workKind: 'finalize', workState: { in: ['READY', 'RUNNING', 'RETRY_WAIT'] } }, take: 1,
   select: { workKind: true, workState: true },
 } } satisfies Prisma.AuditSelect
 
-function toSiteFlagSeed(flag: {
+function toSiteFlagSeed(flag: Partial<AgentPrompts> & {
   attentionPolicy?: unknown
   id: string
   checkId: string | null
@@ -230,7 +234,7 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
       problem: true,
       evidence: true,
       whyItMatters: true,
-      fix: true,
+      ...guidanceSelect,
       pageUrl: true,
       status: true,
       resolvedInId: true,
@@ -281,7 +285,7 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
               problem: true,
               evidence: true,
               whyItMatters: true,
-              fix: true,
+              ...guidanceSelect,
               pageUrl: true,
               confidence: true,
             },
