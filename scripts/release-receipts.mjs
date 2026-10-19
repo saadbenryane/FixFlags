@@ -231,6 +231,7 @@ export function releaseStageCommands(stage) {
         'lib/audit/__tests__/legacy-scan-access-migration.integration.test.ts',
         'lib/audit/progressive/__tests__/prescription-custody.integration.test.ts',
         'lib/audit/progressive/__tests__/claimed-monitoring.integration.test.ts',
+        'lib/improvements/handoff-custody.integration.test.ts',
         'lib/sites/application/__tests__/site-removal.integration.test.ts',
         'lib/sites/application/__tests__/default-monitoring.integration.test.ts',
         'lib/sites/__tests__/outcome-confirmation-postgres.integration.test.ts',

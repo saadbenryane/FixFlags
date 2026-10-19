@@ -5,6 +5,12 @@ import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
+function copyResponse(prompt: string) {
+  return vi.fn(async (_url, options) => ({ ok: true, json: async () => JSON.parse(options!.body as string).action === 'prepare'
+    ? { ok: true, prompt, sourceFlagId: 'flag-1', promptHash: 'a'.repeat(64) }
+    : { ok: true, prompt, handoff: { flagId: 'flag-1', action: 'HANDOFF_COPIED', improvementId: 'improvement-1', sourceReviewId: 'audit-1' } } }))
+}
+
 const refresh = vi.fn()
 vi.mock('@/hooks/useSiteResource', () => ({ useSiteResource: (_siteId: string, initial: unknown) => ({ view: initial, refresh: vi.fn().mockResolvedValue(undefined), disconnected: false }) }))
 
@@ -74,7 +80,7 @@ describe('SiteFlagActions', () => {
   })
 
   it('copies the fix prompt without treating copy as verification', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'FixFlags Flag: Show a confirmation.', handoff: null }) })
+    const fetchMock = copyResponse('FixFlags Flag: Show a confirmation.')
     vi.stubGlobal('fetch', fetchMock)
     render(<SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
@@ -85,7 +91,7 @@ describe('SiteFlagActions', () => {
       '/api/sites/p_site/flags/flag-1/fix',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ action: 'copy' }),
+        body: JSON.stringify({ action: 'copy', promptHash: 'a'.repeat(64) }),
       })
     )
     expect(fetchMock).not.toHaveBeenCalledWith(
@@ -96,7 +102,7 @@ describe('SiteFlagActions', () => {
   })
 
   it('copies a prompt without starting verify or exposing a private share action', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, prompt: 'FixFlags Flag: No confirmation after contact', handoff: null }) })
+    const fetchMock = copyResponse('FixFlags Flag: No confirmation after contact')
     vi.stubGlobal('fetch', fetchMock)
     const writeText = vi.mocked(navigator.clipboard.writeText)
     render(
@@ -117,10 +123,7 @@ describe('SiteFlagActions', () => {
       configurable: true,
       value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
     })
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, prompt: 'FixFlags Flag: Manual copy prompt', handoff: null }),
-    }))
+    vi.stubGlobal('fetch', copyResponse('FixFlags Flag: Manual copy prompt'))
     render(<SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
 
     await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()

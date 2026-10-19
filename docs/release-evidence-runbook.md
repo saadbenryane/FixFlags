@@ -44,6 +44,8 @@ A read-only production inventory found the two additional `scan_access_encrypted
 
 Before production upgrade, compare the actual schema with the previous released schema plus this precisely described legacy variant, and retain the population observation. After the normal forward migrations, require an exact comparison with the candidate schema. Keep the historical execution limitation explicit; never replace its marker with an invented checksum or erase its receipt.
 
+Task preparation is read only. The current Site control acknowledges a handoff after the native clipboard write completes, using the original source Flag and a hash of the prepared task. Changed guidance refuses acknowledgement. The `website-clipboard-v2` marker and separate idempotency keys preserve older request events and their timestamps. Historical requests remain unconfirmed clipboard observations. A direct compatibility API request does not establish physical clipboard completion. Published-repair acceptance must use the real Site control, native clipboard readback and the corresponding stored acknowledgement.
+
 ## Proven locally, still needs a receipt
 
 These have a real test in this repository. They are wired into a release stage, so
@@ -56,6 +58,7 @@ candidate SHA, they are *implemented and specified*, not *proven*.
 | One RunRequest executes every required binding | `lib/sites/__tests__/trigger-equivalence.test.ts` (7 triggers), `journey:outcome-loop` |
 | One durable Outcome-linked Flag with evidence and limitation | `journey:outcome-loop` |
 | Fix records change context without changing the verdict | `journey:outcome-loop`, the handoff step |
+| Clipboard denial or pending work cannot record a copied handoff | `components/sites/__tests__/SitePromptCopyButton.test.tsx`, `lib/improvements/handoff-custody.integration.test.ts` |
 | Verify independently reruns matching scope; failure stays open | `journey:outcome-loop`, the unrepaired-verify step |
 | UI, Watch, deployment, API, Shopify, MCP share one run path | `lib/sites/__tests__/trigger-equivalence.test.ts` |
 | Flag only after a confirmed failure | `lib/sites/__tests__/availability-execution.test.ts`, `checkout-execution.test.ts` |

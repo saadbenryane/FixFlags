@@ -1,4 +1,5 @@
 import { hasRepairGuidance, repairGuidanceText } from './repair-guidance'
+import { handoffProtocolSuffix } from './handoff-contract'
 import {
 ensureProductProject,
 mutateProjectIntelligence,
@@ -259,7 +260,7 @@ export async function recordFlagImprovementAttempt(input: {
       improvementId,
       occurrenceId: flag.improvementOccurrence?.id,
       sourceAuditId: flag.audit.id,
-      idempotencyKey: `handoff-copied:${flag.id}`,
+      idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}`,
       type: 'HANDOFF_COPIED',
       transport: input.builder,
       client: input.client,

@@ -17,6 +17,7 @@ import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/
 import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
 import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
 import { assertAttemptReplay } from '@/lib/improvements/attempt-intent'
+import { handoffProtocolSuffix } from '@/lib/improvements/handoff-contract'
 
 export type SiteCommand =
   | {
@@ -43,6 +44,7 @@ export type SiteCommand =
       flagId: string
       userId: string
       builder: string
+      client?: string
     }
   | {
       type: 'VERIFY_FLAG'
@@ -147,13 +149,14 @@ export async function executeSiteCommand(command: SiteCommand) {
         flagId: command.flagId,
         userId: command.userId,
         builder: command.builder,
+        client: command.client,
         action: 'HANDOFF_COPIED',
       })
       await recordSiteLifecycleEvent({
         name: 'fix_handoff',
-        idempotencyKey: `fix-handoff:${command.userId}:${command.flagId}:${command.builder}`,
+        idempotencyKey: `fix-handoff:${command.userId}:${command.flagId}:${command.builder}${handoffProtocolSuffix(command.client)}`,
         userId: command.userId,
-        properties: { channel: command.builder },
+        properties: { channel: command.builder, client: command.client },
       })
       return { ok: true as const, handoff }
     }
