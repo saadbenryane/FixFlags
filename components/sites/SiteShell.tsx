@@ -13,6 +13,7 @@ import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
+import { useSiteNavigationContinuity } from '@/hooks/useSiteNavigationContinuity'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { cn } from '@/lib/utils'
 import { CustomerMain, customerMobileBarClass } from '@/components/layout/customer-frame'
@@ -69,6 +70,7 @@ function SiteShellContent({
   children: ReactNode
 }) {
   const { user } = useMe()
+  useSiteNavigationContinuity(siteId)
   const signedIn = Boolean(user)
   const ownsSite = actions.ownership === 'owner'
   const showSettings = true

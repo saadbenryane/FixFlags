@@ -23,7 +23,7 @@ export function useRedirectIfAuthenticated(options?: { disabled?: boolean }) {
       try {
         const { data } = await authClient.getSession()
         if (data?.user) {
-          router.push(postLoginHref)
+          router.replace(postLoginHref)
         }
       } catch (error) {
         // This background check is routinely cancelled when the visitor leaves

@@ -77,7 +77,7 @@ export function SiteShell({
           <div className="flex flex-1">
             <DesktopSidebar showAdmin={showAdmin} />
             <div className="flex min-w-0 flex-1 flex-col md:pl-48">
-              <div data-primary-navigation className="sticky top-0 z-navbar flex h-14 items-center gap-3 border-b border-border/40 px-4 glass-nav md:hidden">
+              <div data-primary-navigation className="sticky top-0 z-navbar flex h-14 items-center gap-3 px-4 glass-nav md:hidden">
                 <MobileSidebar showAdmin={showAdmin} />
                 <Logo variant="lockup" size="sm" href="/dashboard" />
               </div>

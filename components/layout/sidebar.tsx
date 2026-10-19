@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 import type { Route } from 'next'
 import Link from 'next/link'
@@ -38,7 +39,7 @@ interface SidebarItem {
 }
 
 const PRIMARY_ITEMS: SidebarItem[] = [
-  { href: '/dashboard', label: 'Websites', icon: Boxes },
+  { href: '/dashboard', label: SITE_WORKSPACE_COPY.websites, icon: Boxes },
 ]
 
 const SECONDARY_ITEMS: SidebarItem[] = [

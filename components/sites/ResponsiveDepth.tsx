@@ -15,16 +15,18 @@ export function ResponsiveDepth({
   onCloseAutoFocus,
   children,
   className,
+  continuationContext,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCloseAutoFocus?: (event: Event) => void
   children: ReactNode
   className?: string
+  continuationContext?: 'category'
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(responsiveDepthClass, styles.depth, className)} onCloseAutoFocus={onCloseAutoFocus}>
+      <DialogContent data-site-return-context={continuationContext} className={cn(responsiveDepthClass, styles.depth, className)} onCloseAutoFocus={onCloseAutoFocus}>
         {children}
       </DialogContent>
     </Dialog>

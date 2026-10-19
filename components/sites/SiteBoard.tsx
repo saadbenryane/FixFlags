@@ -63,7 +63,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
     const url = new URL(window.location.href)
     if (area) url.searchParams.set('category', area)
     else url.searchParams.delete('category')
-    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
   }
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
   function checkAction(area?: SiteCardArea, identifyArea = false) {
@@ -75,7 +75,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
       if (recovery.action === 'inspect' && area) return null
       return <Button asChild variant="outline" size="sm"><Link href={href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button>
     }
-    if (ownsSite) return <Button variant="outline" size="sm" className="min-h-11" aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
+    if (ownsSite) return <Button variant="outline" size="sm" className="min-h-11" data-site-return-focus="check" aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
       <RefreshCw className="h-4 w-4" aria-hidden />{busy ? SITE_BOARD_COPY.starting : checking || categoryChecking ? SITE_BOARD_COPY.checking : name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain}
     </Button>
     if (!ownsSite && (!area || !identifyArea) && !checking && view.audit.id) return <SiteActionContinuation

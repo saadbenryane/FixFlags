@@ -12,7 +12,6 @@ import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
-import { Separator } from '@/components/ui/separator'
 import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { AuthCard } from '@/components/auth/AuthCard'
@@ -152,7 +151,7 @@ export function AuthFlow({
       await onAuthenticated()
       return
     }
-    router.push(postLoginHref)
+    router.replace(postLoginHref)
   }
 
   function twoFactorHref(): string {
@@ -198,7 +197,7 @@ export function AuthFlow({
           return
         }
         if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
-          window.location.href = twoFactorHref()
+          window.location.replace(twoFactorHref())
           return
         }
         trackEvent('signed_in', { method: 'email' })
@@ -407,9 +406,8 @@ export function AuthFlow({
             onClick={toggleEmailForm}
             aria-expanded={showEmailForm}
             aria-controls="report-gate-email-form"
-            className="group flex w-full items-center gap-3 py-1"
+            className="group flex min-h-11 w-full items-center justify-center gap-2 py-2"
           >
-            <Separator className="flex-1" />
             <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
               {AUTH.oauth.separator}
               <ChevronDown
@@ -420,7 +418,6 @@ export function AuthFlow({
                 aria-hidden
               />
             </span>
-            <Separator className="flex-1" />
           </button>
           {showEmailForm ? (
             <div id="report-gate-email-form">{emailForm}</div>
@@ -436,7 +433,7 @@ export function AuthFlow({
         {mode === 'signup' ? AUTH.signUp.footer : AUTH.signIn.footer}{' '}
         <button
           type="button"
-          className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           onClick={() => switchMode(mode === 'signup' ? 'signin' : 'signup')}
         >
           {mode === 'signup' ? AUTH.signUp.footerLink : AUTH.signIn.footerLink}

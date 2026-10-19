@@ -210,7 +210,7 @@ export function PasskeyTwoFactorSettings({
           ) : passkeys.length === 0 ? (
             <p className="text-sm text-muted-foreground">{sec.passkeysEmpty}</p>
           ) : (
-            <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60">
+            <ul className="space-y-2 overflow-hidden rounded-card bg-muted/20">
               {passkeys.map((passkey) => {
                 const created = passkeyCreatedLabel(passkey.createdAt)
                 const location = passkey.backedUp ? sec.synced : sec.device
@@ -259,7 +259,7 @@ export function PasskeyTwoFactorSettings({
         </Button>
       </div>
 
-      <div className="space-y-4 border-t border-border/60 pt-6">
+      <div className="space-y-4 pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">{sec.enableTitle}</h3>

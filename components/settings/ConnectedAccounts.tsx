@@ -65,9 +65,9 @@ export function ConnectedAccounts({
       </CardHeader>
       <CardContent className="space-y-5">
         <PasswordSettings hasPassword={hasPassword} />
-        {methods.length > 0 || available.length > 0 ? <div className="border-t border-border/60 pt-5">
+        {methods.length > 0 || available.length > 0 ? <div className="pt-5">
         <h3 className="mb-2 text-sm font-medium">Connected accounts</h3>
-        <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60">
+        <ul className="space-y-2 overflow-hidden rounded-card bg-muted/20">
           {methods.map((method) => (
             <li key={method.label} className="flex items-center justify-between gap-3 px-3 py-2.5">
               <div className="min-w-0">

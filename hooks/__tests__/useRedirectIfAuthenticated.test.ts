@@ -4,12 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   push: vi.fn(),
+  replace: vi.fn(),
   searchParams: new URLSearchParams(),
 }))
 
 vi.mock('@/lib/auth-client', () => ({ authClient: { getSession: mocks.getSession } }))
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push, replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: vi.fn() }),
   useSearchParams: () => mocks.searchParams,
 }))
 
@@ -27,9 +28,10 @@ describe('useRedirectIfAuthenticated', () => {
     renderHook(() => useRedirectIfAuthenticated())
 
     await waitFor(() =>
-      expect(mocks.push).toHaveBeenCalledWith('/post-login?next=%2Fsites%2Fsite-1%2Fflags')
+      expect(mocks.replace).toHaveBeenCalledWith('/post-login?next=%2Fsites%2Fsite-1%2Fflags')
     )
-    expect(mocks.push).not.toHaveBeenCalledWith('/sites/site-1/flags')
+    expect(mocks.replace).not.toHaveBeenCalledWith('/sites/site-1/flags')
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it('carries the pricing intent through /post-login', async () => {
@@ -37,7 +39,7 @@ describe('useRedirectIfAuthenticated', () => {
     renderHook(() => useRedirectIfAuthenticated())
 
     await waitFor(() =>
-      expect(mocks.push).toHaveBeenCalledWith('/post-login?plan=BUILDER')
+      expect(mocks.replace).toHaveBeenCalledWith('/post-login?plan=BUILDER')
     )
   })
 
@@ -47,6 +49,7 @@ describe('useRedirectIfAuthenticated', () => {
 
     await waitFor(() => expect(mocks.getSession).toHaveBeenCalled())
     expect(mocks.push).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
   })
 
   it('does nothing for an overlay presentation', async () => {
@@ -55,6 +58,7 @@ describe('useRedirectIfAuthenticated', () => {
 
     expect(mocks.getSession).not.toHaveBeenCalled()
     expect(mocks.push).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
   })
 
   it('keeps the form usable when the session check fails', async () => {
@@ -64,6 +68,7 @@ describe('useRedirectIfAuthenticated', () => {
 
     await waitFor(() => expect(warn).toHaveBeenCalled())
     expect(mocks.push).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 })

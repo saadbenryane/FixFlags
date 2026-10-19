@@ -169,7 +169,7 @@ export function ApiKeyManager() {
         ) : keys.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No active keys.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-border rounded-card border border-border/60">
+          <ul className="mt-3 space-y-2 rounded-card bg-muted/20">
             {keys.map((key) => (
               <li key={key.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">

@@ -30,6 +30,7 @@ const push = vi.hoisted(() => vi.fn())
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh: vi.fn() }),
   usePathname: () => SITE_PATH,
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
 const signedInUser = {

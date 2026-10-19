@@ -28,7 +28,7 @@ export default async function HelpCenterPage() {
       <MarketingPageViewTracker page="/help" />
       <Section spacing="overview">
       <Container>
-        <main className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-3xl">
           <MarketingPageHeader eyebrow={HELP_CENTER.label} title={HELP_CENTER.title} description={HELP_CENTER.subhead} />
 
           <div className="space-y-10 sm:space-y-12">
@@ -37,7 +37,7 @@ export default async function HelpCenterPage() {
             <HelpArticleList articles={popular} />
             <HelpChatEscalate className="rounded-card glass-surface shadow-card p-5" />
           </div>
-        </main>
+        </div>
       </Container>
       </Section>
     </>

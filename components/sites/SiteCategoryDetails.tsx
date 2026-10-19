@@ -31,7 +31,7 @@ export function SiteCategoryDetails({ selected, selectedFlags, selectedRecommend
   onClose: () => void; restoreFocus: () => void;
 }) {
   const SelectedIcon = selected ? BOARD_CARD_ICONS[selected.id] : null
-  return (      <ResponsiveDepth open={Boolean(selected)} onOpenChange={(open) => { if (!open) onClose() }} onCloseAutoFocus={(event) => {
+  return (      <ResponsiveDepth continuationContext="category" open={Boolean(selected)} onOpenChange={(open) => { if (!open) onClose() }} onCloseAutoFocus={(event) => {
           event.preventDefault()
           restoreFocus()
         }}>
