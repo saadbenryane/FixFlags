@@ -1,5 +1,5 @@
 import { CHECK_REGISTRY } from '../../check-registry'
-import { TASK_QUEUES } from '../queues'
+import { TASK_QUEUES, queueForTask } from '../queues'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { Worker as ParserWorker } from 'node:worker_threads'
@@ -21,7 +21,7 @@ import { encryptSecret } from '@/lib/security/crypto'
 import { reconcileTasks, dispatchReadyTasks } from '../engine'
 import { searchArtifactSchema } from '../evaluators'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
-import { readArtifact, serializeArtifact } from '../contracts'
+import { readArtifact, serializeArtifact, taskInputSchema, taskKindSchema } from '../contracts'
 import { executionWrite, withExecutionOwnership, ExecutionOwnershipLost } from '@/lib/audit/execution-ownership'
 import { SEARCH_LOCAL_MODULES } from '@/lib/audit/search/workflow'
 import * as pageSessions from '@/lib/audit/browser/page-session'
@@ -820,7 +820,9 @@ run('migrated progressive execution', () => {
     expect(await getOwnedRun(userId, admitted.runId)).toMatchObject({ scope: 'SITE', result: null, completionState: 'PENDING' })
     // Model terminally unavailable dependencies while retaining the actual
     // collector and evaluator results. No successful browser input is invented.
-    await prisma.auditVerifierExecution.updateMany({ where: { auditId, workKind: { in: ['browser', 'keyboard', 'captures', 'pagespeed', 'google'] } },
+    const unavailableCollectors = (await prisma.auditVerifierExecution.findMany({ where: { auditId, workKind: { not: null } } }))
+      .filter(task => ['browser', 'pagespeed', 'google'].includes(queueForTask(taskKindSchema.parse(task.workKind), taskInputSchema.parse(task.workInput))))
+    await prisma.auditVerifierExecution.updateMany({ where: { auditId, id: { in: unavailableCollectors.map(task => task.id) } },
       data: { workRecoveryUntil: new Date(0) } })
     await dispatchReadyTasks(await reconcileTasks(auditId))
     await getAuditTaskQueue('browser').resume()
@@ -841,6 +843,8 @@ run('migrated progressive execution', () => {
     })
     expect(await prisma.runRequest.findUnique({ where: { id: admitted.runId } })).toMatchObject({ status: 'COMPLETED' })
     expect(await prisma.audit.findUnique({ where: { id: auditId } })).toMatchObject({ status: 'COMPLETED', reportCompleteness: 'PARTIAL' })
+    expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId, workKind: 'slow-replay' } }))
+      .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: 'RECOVERY_EXHAUSTED' })
     const summary = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId, targetKey: 'task:p0:search' } })
     const receipt = searchArtifactSchema.parse(readArtifact(summary.workResult, 'search').data).receipt
     expect(receipt.complete).toBe(false)
@@ -1130,14 +1134,20 @@ run('migrated progressive execution', () => {
       await vi.waitFor(async () => {
         expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'keyboard' } })).not.toBeNull()
       }, { timeout: 10_000, interval: 100 })
+      // Keep the source keyboard observation real while unrelated collectors
+      // are unavailable. Slow replay has its own throttled observation window
+      // and separate repair tests, so it must not govern this keyboard deadline.
       await prisma.auditVerifierExecution.updateMany({ where: { auditId: beforeId,
-        workKind: { in: ['browser', 'captures', 'pagespeed', 'google'] } }, data: { workRecoveryUntil: new Date(0) } })
+        workKind: { in: ['browser', 'captures', 'pagespeed', 'google', 'slow-replay'] } }, data: { workRecoveryUntil: new Date(0) } })
       await dispatchReadyTasks(await reconcileTasks(beforeId))
       await getAuditTaskQueue('browser').resume()
       await resumeExternalQueues()
       await vi.waitFor(async () => {
         expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'finalize' } })).toMatchObject({ workState: 'COMPLETED' })
       }, { timeout: 15_000, interval: 100 })
+      expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: beforeId, workKind: 'slow-replay' } }))
+        .toMatchObject({ workState: 'EXHAUSTED', workErrorCode: 'RECOVERY_EXHAUSTED' })
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: beforeId } })).toMatchObject({ reportCompleteness: 'PARTIAL' })
       const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: beforeId, checkId: 'focus-visible-missing' } })
       expect(flag).toMatchObject({ source: 'DETERMINISTIC', pageUrl: origin + '/keyboard-entry',
         evidenceTargets: [{ selector: '#first', source: 'measured' }, { selector: '#second', source: 'measured' }] })
