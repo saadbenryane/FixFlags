@@ -44,6 +44,25 @@ function normalizeReferences(refs: NonNullable<Candidate['evidenceRefs']>) {
     .sort((a, b) => a.source.localeCompare(b.source) || a.quote.localeCompare(b.quote))
 }
 
+function scalarMetadataTargets(candidate: Candidate): Set<string> | undefined {
+  const refs = candidate.evidenceRefs ?? []
+  return candidate.reviewKind === 'search-snippet' && refs.length > 0 &&
+    refs.every(ref => ref.source === 'title' || ref.source === 'description')
+    ? new Set(refs.map(ref => ref.source)) : undefined
+}
+
+function combineScalarReviews(reviews: Candidate[]): Candidate {
+  // With two scalar fields, an overlapping union has a recorded member that
+  // already names its full scope. Keep that member's captured-value identity.
+  const ordered = [...reviews].sort((a, b) => scalarMetadataTargets(b)!.size - scalarMetadataTargets(a)!.size ||
+    a.evidence.localeCompare(b.evidence))
+  const primary = ordered[0]!
+  const supportingReviews = [...new Map(ordered.flatMap(review =>
+    review.supportingReviews ?? [{ evidence: review.evidence }]).map(review => [review.evidence, review])).values()]
+    .sort((a, b) => a.evidence.localeCompare(b.evidence))
+  return { ...groundedRecommendation(primary, normalizeReferences(ordered.flatMap(review => review.evidenceRefs!))), supportingReviews }
+}
+
 function groundedRecommendation(candidate: Candidate, refs: NonNullable<Candidate['evidenceRefs']>): Candidate {
   const copy = TRIAGE_REVIEW_COPY[candidate.reviewKind!]
   return { ...candidate, evidenceRefs: refs, problem: `${copy.problem}: "${refs[0]!.quote.slice(0, 100)}"`,
@@ -99,19 +118,24 @@ export function deduplicateTriageRecommendations(candidates: Candidate[], native
     if (covered) continue
     // Captured title and description are scalar fields. Quote fragments are evidence,
     // not distinct targets, when the declared review concerns only those scalar fields.
-    const scalarMetadata = Boolean(page) && candidate.reviewKind === 'search-snippet' && refs.length > 0 &&
-      refs.every(ref => ref.source === 'title' || ref.source === 'description')
-    const targets = scalarMetadata ? [...new Set(refs.map(ref => ref.source))].sort() : refs
+    const scalarTargets = page ? scalarMetadataTargets(candidate) : undefined
+    const targets = scalarTargets ? [...scalarTargets].sort() : refs
     const identity = JSON.stringify([page, candidate.reviewKind, candidate.device, targets])
+    if (scalarTargets) {
+      const overlapping = [...grouped.entries()].filter(([, prior]) => {
+        const priorTargets = scalarMetadataTargets(prior)
+        return canonicalizeDestination(prior.pageUrl ?? pageUrl ?? '')?.key === page &&
+          prior.device === candidate.device && priorTargets && [...scalarTargets].some(target => priorTargets.has(target))
+      })
+      if (overlapping.length) {
+        const combined = combineScalarReviews([...overlapping.map(([, review]) => review), candidate])
+        for (const [key] of overlapping) grouped.delete(key)
+        grouped.set(JSON.stringify([page, candidate.reviewKind, candidate.device, [...scalarMetadataTargets(combined)!].sort()]), combined)
+        continue
+      }
+    }
     const prior = grouped.get(identity)
     if (!prior) { grouped.set(identity, candidate); continue }
-    if (!scalarMetadata) continue
-    const supportingReviews = [...new Map([
-      ...(prior.supportingReviews ?? [{ evidence: prior.evidence }]),
-      ...(candidate.supportingReviews ?? [{ evidence: candidate.evidence }]),
-    ].map(review => [review.evidence, review])).values()].sort((a, b) => a.evidence.localeCompare(b.evidence))
-    const combined = groundedRecommendation(prior, normalizeReferences([...(prior.evidenceRefs ?? []), ...refs]))
-    grouped.set(identity, { ...combined, supportingReviews })
   }
   return [...grouped.values()]
 }

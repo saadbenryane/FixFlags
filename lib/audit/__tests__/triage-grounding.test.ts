@@ -131,6 +131,45 @@ describe('page triage source grounding', () => {
     const admitted = assessTriageRecommendations([title, description, otherPage, copy], facts).admitted
     expect(deduplicateTriageRecommendations(admitted, [], title.pageUrl!)).toHaveLength(4)
   })
+  it('consolidates the recorded MDN description review and its title-supported equivalent without losing custody', () => {
+    const pageUrl = 'https://developer.mozilla.org/'
+    const metadata = { ...facts.metadata, title: 'MDN Web Docs', description: 'The MDN Web Docs site provides information about Open Web technologies including HTML, CSS, and APIs for both Web sites and progressive web apps.' }
+    const description = candidate({ pageUrl, reviewKind: 'search-snippet', rubric: 'REACH', impactTag: 'SEO',
+      confidence: 0.8, evidenceRefs: [{ source: 'description', quote: metadata.description }] })
+    const withTitle = { ...description, confidence: 0.9, evidenceRefs: [...description.evidenceRefs!, { source: 'title' as const, quote: metadata.title }] }
+    const grounded = assessTriageRecommendations([description, withTitle], { ...facts, metadata, url: pageUrl }).admitted
+    const original = structuredClone(grounded)
+    const origin = { auditId: 'mdn-repeat-1', taskId: 'mdn-page-triage', collectedAt: '2026-10-19T09:32:27.013Z' }
+    const grouped = deduplicateTriageRecommendations(grounded, [], pageUrl)
+    expect(grouped).toHaveLength(1)
+    expect(grounded).toEqual(original)
+    expect(grouped[0]!.evidenceRefs).toHaveLength(2)
+    expect(grouped[0]!.fingerprint).toBe(grounded[1]!.fingerprint)
+    const row = buildTriageAiFlagRow(admitAiObservation(grouped[0]!, origin), 0, new Map(), new Map(), 0)
+    const supporting = row.supportingObservations as unknown as { items: Array<{ evidence: string; provenance: unknown }> }
+    expect(supporting.items.map(item => item.evidence).sort()).toEqual(original.map(item => item.evidence).sort())
+    expect(supporting.items.every(item => JSON.stringify(item.provenance) === JSON.stringify(origin))).toBe(true)
+    expect(deduplicateTriageRecommendations([...grounded].reverse(), [], pageUrl)).toEqual(grouped)
+    const otherPage = { ...grounded[0]!, pageUrl: 'https://developer.mozilla.org/en-US/blog/' }
+    expect(deduplicateTriageRecommendations([...grounded, otherPage], [], pageUrl)).toHaveLength(2)
+  })
+  it('joins overlapping scalar review scopes in either order while keeping disjoint controls and devices separate', () => {
+    const title = candidate({ reviewKind: 'search-snippet', rubric: 'REACH', evidenceRefs: [{ source: 'title', quote: facts.metadata.title }] })
+    const description = { ...title, evidenceRefs: [{ source: 'description' as const, quote: facts.metadata.description }] }
+    const both = { ...title, evidenceRefs: [...title.evidenceRefs!, ...description.evidenceRefs!] }
+    const grounded = assessTriageRecommendations([title, description, both], facts).admitted
+    const forward = deduplicateTriageRecommendations(grounded, [], title.pageUrl!)
+    expect(forward).toHaveLength(1)
+    expect(forward[0]!.supportingReviews).toHaveLength(3)
+    expect(deduplicateTriageRecommendations([...grounded].reverse(), [], title.pageUrl!)).toEqual(forward)
+    const actions = assessTriageRecommendations([candidate(), candidate({ evidenceRefs: [{ source: 'ctaText', quote: 'See an example' }] })], facts).admitted
+    expect(deduplicateTriageRecommendations(actions, [], title.pageUrl!)).toHaveLength(2)
+    const visual = candidate({ reviewKind: 'visual-hierarchy', device: 'desktop', evidenceRefs: [
+      { source: 'ctaText', quote: 'Start free' }, { source: 'ctaText', quote: 'See an example' },
+    ] })
+    const devices = assessTriageRecommendations([visual, { ...visual, device: 'mobile' }], { ...facts, screenshotHint: 'desktop-and-mobile' }).admitted
+    expect(deduplicateTriageRecommendations(devices, [], title.pageUrl!)).toHaveLength(2)
+  })
   it('groups only the same declared scope and retains unrelated native mechanisms, pages and visual devices', () => {
     const review = candidate({ reviewKind: 'copy-clarity', rubric: 'MESSAGE', evidenceRefs: [{ source: 'headline', quote: 'Plan releases together' }] })
     const grounded = assessTriageRecommendations([review], facts).admitted
