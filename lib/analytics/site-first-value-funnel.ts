@@ -1,14 +1,8 @@
 import { prisma } from '@/lib/db'
 import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { analysisCompletionAuditId, analysisCompletionKeys } from './analysis-completion'
 
 const START_PREFIX = 'analyze_started:'
-const RESULT_PREFIX = 'first_useful_result:'
-const COMPLETED_PREFIX = 'analysis_completed:'
-
-/** The old event name measured completion too, never customer usefulness. */
-function resultAuditId(key: string): string | null {
-  return eventAuditId(key, COMPLETED_PREFIX) ?? eventAuditId(key, RESULT_PREFIX)
-}
 
 type StartEventRow = {
   idempotencyKey: string
@@ -31,12 +25,17 @@ type ResultEventRow = {
 export type FirstValueSourceRow = {
   source: string
   started: number
+  analysisCompleted: number
+  /** @deprecated Compatibility alias for analysisCompleted, never a usefulness assessment. */
   firstUsefulResult: number
   claimed: number
 }
 
 export type SiteFirstValueFunnel = {
   started: number
+  analysisCompleted: number
+  customerUsefulnessAssessed: false
+  /** @deprecated Compatibility alias for analysisCompleted, never a usefulness assessment. */
   firstUsefulResult: number
   resultRate: number
   claimed: number
@@ -67,6 +66,8 @@ export type LandingFirstValueFunnel = {
   endDate: string | null
   landingSessions: number | null
   startedSessions: number | null
+  completedAnalysisSessions: number | null
+  /** @deprecated Compatibility alias for completedAnalysisSessions. */
   firstUsefulResultSessions: number | null
   claimedSessions: number | null
   startRate: number | null
@@ -194,7 +195,7 @@ export function calculateSiteFirstValueFunnel(input: {
   )
   const resultIds = new Set(
     input.results
-      .map((event) => resultAuditId(event.idempotencyKey))
+      .map((event) => analysisCompletionAuditId(event.idempotencyKey))
       .filter((auditId): auditId is string => auditId !== null)
       .filter((auditId) => startedIds.has(auditId)),
   )
@@ -207,7 +208,7 @@ export function calculateSiteFirstValueFunnel(input: {
   let claimed = 0
   let failedBeforeResult = 0
   let stillRunning = 0
-  const sourceRows = new Map<string, FirstValueSourceRow>()
+  const sourceRows = new Map<string, Omit<FirstValueSourceRow, 'firstUsefulResult'>>()
   const journeyByAuditId = new Map<string, string>()
 
   for (const event of input.starts) {
@@ -231,17 +232,17 @@ export function calculateSiteFirstValueFunnel(input: {
     const row = sourceRows.get(source) ?? {
       source,
       started: 0,
-      firstUsefulResult: 0,
+      analysisCompleted: 0,
       claimed: 0,
     }
     row.started++
-    if (hasResult) row.firstUsefulResult++
+    if (hasResult) row.analysisCompleted++
     if (wasClaimed) row.claimed++
     sourceRows.set(source, row)
   }
 
   const started = startedIds.size
-  const firstUsefulResult = resultIds.size
+  const analysisCompleted = resultIds.size
   const landingJourneyIds = input.landingArtifact
     ? new Set(input.landingArtifact.journeyIds)
     : null
@@ -254,7 +255,7 @@ export function calculateSiteFirstValueFunnel(input: {
       Boolean(event.createdAt && Number.isFinite(event.createdAt.getTime())))
   if (landingJourneyIds && comparableLanding) {
     const artifact = input.landingArtifact!
-    const allResultIds = new Set(input.results.map((result) => resultAuditId(result.idempotencyKey)))
+    const allResultIds = new Set(input.results.map((result) => analysisCompletionAuditId(result.idempotencyKey)))
     const allAuditsById = new Map(input.audits.map((audit) => [audit.id, audit]))
     for (const event of landingStarts) {
       if (!isAnonymousStart(event.properties) || !event.createdAt ||
@@ -274,16 +275,19 @@ export function calculateSiteFirstValueFunnel(input: {
     comparableLanding
       ? landingJourneyIds!.size
       : null
+  const completedAnalysisSessions = landingSessions === null ? null : resultJourneyIds.size
   return {
     started,
-    firstUsefulResult,
-    resultRate: percentage(firstUsefulResult, started),
+    analysisCompleted,
+    customerUsefulnessAssessed: false,
+    firstUsefulResult: analysisCompleted,
+    resultRate: percentage(analysisCompleted, started),
     claimed,
     claimRate: percentage(claimed, started),
     failedBeforeResult,
     stillRunning,
     missingAudit: started - auditsById.size,
-    sources: [...sourceRows.values()].sort(
+    sources: [...sourceRows.values()].map(row => ({ ...row, firstUsefulResult: row.analysisCompleted })).sort(
       (left, right) =>
         right.started - left.started || left.source.localeCompare(right.source),
     ),
@@ -295,8 +299,8 @@ export function calculateSiteFirstValueFunnel(input: {
       endDate: input.landingArtifact?.endDate ?? null,
       landingSessions,
       startedSessions: landingSessions === null ? null : startedJourneyIds.size,
-      firstUsefulResultSessions:
-        landingSessions === null ? null : resultJourneyIds.size,
+      completedAnalysisSessions,
+      firstUsefulResultSessions: completedAnalysisSessions,
       claimedSessions: landingSessions === null ? null : claimedJourneyIds.size,
       startRate:
         landingSessions === null || landingSessions === 0
@@ -371,7 +375,7 @@ export async function loadSiteFirstValueFunnel(
       where: {
         name: { in: ['analysis_completed', 'first_useful_result'] },
         idempotencyKey: {
-          in: auditIds.flatMap((auditId) => [`${COMPLETED_PREFIX}${auditId}`, `${RESULT_PREFIX}${auditId}`]),
+          in: auditIds.flatMap(analysisCompletionKeys),
         },
       },
       select: { idempotencyKey: true },

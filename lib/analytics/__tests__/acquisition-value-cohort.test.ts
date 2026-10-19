@@ -28,6 +28,16 @@ const fixture = () => ({ starts: [start()], audits: [audit(), audit({ id: 'priva
 })
 
 describe('exact-source anonymous acquisition value', () => {
+  it('does not call current or historical completion receipts customer usefulness', () => {
+    const input = fixture()
+    input.results.push({ idempotencyKey: 'analysis_completed:private-source', createdAt: at(0.3) })
+    const report = calculateAcquisitionValueCohort(input)
+    expect(report).toMatchObject({ customerUsefulnessAssessed: false,
+      matureCohort: { analysisCompletionReceipts: 1, usefulResultReceipts: 1,
+        observedSharesPct: { analysisCompletionReceipts: 100, usefulResultReceipts: 100 } } })
+    expect(report.limitations.join(' ')).toContain('not customer usefulness')
+  })
+
   it('joins a mature start to its useful result, claim, repair and independent verification without identifiers', () => {
     const input = fixture(); input.starts.push(start()); input.cycles.push({ ...cycle(), id: 'another-cycle' })
     const report = calculateAcquisitionValueCohort(input)

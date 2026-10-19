@@ -19,6 +19,28 @@ import {
 } from '../site-first-value-funnel'
 
 describe('Site first-value funnel', () => {
+  it('reports completion independently of usefulness and keeps historical receipts compatible', () => {
+    const result = calculateSiteFirstValueFunnel({
+      starts: [{ idempotencyKey: 'analyze_started:completed', properties: { anonymous: true } }],
+      audits: [{ id: 'completed', userId: null, status: 'COMPLETED', utmSource: null, source: 'HOMEPAGE' }],
+      results: [{ idempotencyKey: 'analysis_completed:completed' }, { idempotencyKey: 'first_useful_result:completed' }, { idempotencyKey: 'flag-feedback:unrelated:1:none' }],
+    })
+    expect(result).toMatchObject({ analysisCompleted: 1, customerUsefulnessAssessed: false,
+      sources: [{ analysisCompleted: 1 }], landing: { completedAnalysisSessions: null } })
+    expect(result.firstUsefulResult).toBe(result.analysisCompleted)
+    expect(result.sources[0].firstUsefulResult).toBe(result.sources[0].analysisCompleted)
+  })
+
+  it.each(['analysis_completed:', 'analysis_completed: completed', 'first_useful_result:completed '])('rejects a completion receipt without its exact recorded identity (%s)', key => {
+    const result = calculateSiteFirstValueFunnel({
+      starts: [{ idempotencyKey: 'analyze_started:completed', properties: { anonymous: true } }],
+      audits: [{ id: 'completed', userId: null, status: 'COMPLETED', utmSource: null, source: 'HOMEPAGE' }],
+      results: [{ idempotencyKey: key }],
+    })
+    expect(result.analysisCompleted).toBe(0)
+    expect(result.customerUsefulnessAssessed).toBe(false)
+  })
+
   beforeEach(() => {
     findLifecycleEvents.mockReset()
     findAudits.mockReset()
@@ -135,6 +157,8 @@ describe('Site first-value funnel', () => {
 
     expect(funnel).toEqual({
       started: 3,
+      analysisCompleted: 2,
+      customerUsefulnessAssessed: false,
       firstUsefulResult: 2,
       resultRate: 67,
       claimed: 1,
@@ -143,8 +167,8 @@ describe('Site first-value funnel', () => {
       stillRunning: 0,
       missingAudit: 0,
       sources: [
-        { source: 'search', started: 2, firstUsefulResult: 2, claimed: 1 },
-        { source: 'tool page', started: 1, firstUsefulResult: 0, claimed: 0 },
+        { source: 'search', started: 2, analysisCompleted: 2, firstUsefulResult: 2, claimed: 1 },
+        { source: 'tool page', started: 1, analysisCompleted: 0, firstUsefulResult: 0, claimed: 0 },
       ],
       landing: {
         status: 'missing',
@@ -153,6 +177,7 @@ describe('Site first-value funnel', () => {
         endDate: null,
         landingSessions: null,
         startedSessions: null,
+        completedAnalysisSessions: null,
         firstUsefulResultSessions: null,
         claimedSessions: null,
         startRate: null,
@@ -217,6 +242,7 @@ describe('Site first-value funnel', () => {
       endDate: '2026-10-03',
       landingSessions: 3,
       startedSessions: 2,
+      completedAnalysisSessions: 2,
       firstUsefulResultSessions: 2,
       claimedSessions: 1,
       startRate: 67,
@@ -262,7 +288,7 @@ describe('Site first-value funnel', () => {
     expect(funnel.stillRunning).toBe(1)
     expect(funnel.missingAudit).toBe(1)
     expect(funnel.sources).toEqual([
-      { source: 'unknown', started: 1, firstUsefulResult: 0, claimed: 0 },
+      { source: 'unknown', started: 1, analysisCompleted: 0, firstUsefulResult: 0, claimed: 0 },
     ])
   })
 

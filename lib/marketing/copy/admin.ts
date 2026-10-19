@@ -1,4 +1,11 @@
 export const ADMIN_COPY = {
+  analytics: {
+    completedAnalysis: 'Completed analyses',
+    landingCompletedAnalysis: 'Journeys with a completed analysis',
+    failedBeforeCompletion: 'Failed before analysis completion',
+    completionCohort: 'Anonymous Site analysis cohort (started in the last 30 days)',
+    completionMeaning: 'Completion records finished analysis, not customer usefulness. Owner feedback, copied handoffs, published changes, verified recovery and monitoring return require separate evidence.',
+  },
   navigation: [
     { href: '/admin', label: 'Overview', icon: 'overview' },
     { href: '/admin/operations', label: 'Operations', icon: 'operations' },

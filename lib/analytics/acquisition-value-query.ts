@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { anonymousAcquisitionAuditId, calculateAcquisitionValueCohort } from './acquisition-value-cohort'
+import { analysisCompletionKeys } from './analysis-completion'
 
 export async function loadAcquisitionValueCohort(input: { since: Date; now?: Date }, db: Pick<typeof prisma, '$transaction'> = prisma) {
   const now = input.now ?? new Date()
@@ -21,7 +22,7 @@ export async function loadAcquisitionValueCohort(input: { since: Date; now?: Dat
     const projects = [...new Set(audits.map((audit) => audit.projectId).filter((id): id is string => Boolean(id)))]
     const [results, claims, cycles] = await Promise.all([
       ids.length ? tx.siteLifecycleEvent.findMany({ where: { name: { in: ['analysis_completed', 'first_useful_result'] }, version: 1,
-        idempotencyKey: { in: ids.flatMap((id) => [`analysis_completed:${id}`, `first_useful_result:${id}`]) }, createdAt: { lte: now } },
+        idempotencyKey: { in: ids.flatMap(analysisCompletionKeys) }, createdAt: { lte: now } },
         select: { idempotencyKey: true, createdAt: true } }) : [],
       projects.length ? tx.siteLifecycleEvent.findMany({ where: { name: 'analysis_claimed', version: 1,
         projectId: { in: projects }, idempotencyKey: { in: ids.map((id) => `analysis_claimed:${id}`) }, createdAt: { lte: now } },
