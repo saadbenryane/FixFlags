@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-18
+reviewed_at: 2026-10-19
 supersedes: []
 ---
 
@@ -24,7 +24,13 @@ Owner implementation plan accepted 2026-10-16: finish the complete website beta,
 
 ### Current acceptance status
 
-The most recent frozen candidate is `dfb1fc696bb4484f2f691418ab8872dad1948e4b`. Its first attempt stopped on an unapplied local development migration; that local prerequisite is now complete. Its separate `a2` attempt retained one failed component assertion expecting the former public-anonymous wording. The privacy implementation and copy remain private to the creator. The corrected component assertions now cover creator privacy, copied-link limits, historical public compatibility and safe execution; all 17 focused surface checks pass. Complete integrated-source website validation precedes the next frozen candidate. Failed attempts retain their own receipts and namespaces.
+Candidate `a282acf9d01be19e5623988c1b13cc504297f7d9` failed foundation before deployment. Its installation, fresh and upgrade rehearsals, two 9,175-assertion website passes, coverage, guards, production builds and all 188 real worker/browser assertions passed. PostgreSQL persistence retained 76 passing assertions and one failure: a custody test compared a position-sorted Flag with the first element of an unordered relation. Actual recorded evidence belonged to the correct Flag. The corrected test matches by durable identity, deliberately reverses input order and additionally asserts unchanged diagnosis, certainty and verification fields. All eight focused real PostgreSQL custody cases pass. A new frozen candidate must earn complete required proof. Packaged runtime, isolated deployment and all customer acceptance remain open. No production database or deployment changed, and the account-send budget remains closed and unused.
+
+A supplemental local rehearsal models the precisely observed production variant without copying customer data. Normal deployment applies all four pending committed migrations with matching checksums, preserves a current opaque encrypted value and the synthetic unknown-history marker, removes only empty legacy columns, and leaves an exact candidate schema. Prisma 6.19.3 returns a successful migration status despite that earlier unmatched historical marker. This does not establish historical SQL execution or reconcile the unknown marker. The passing rehearsal records this limitation independently and confirms disposable-database cleanup. Two earlier failed helper invocations remain separate: one omitted a required synthetic Site field, and the next incorrectly expected the CLI to return a history error after its five data/migration assertions passed. No production database changed.
+
+The production storage preflight used one synthetic public-icon object in the actual private Railway bucket. Signed retrieval matched its bytes, unsigned retrieval returned 403, and deletion was confirmed. No customer evidence was retrieved, and no production database or deployment changed. This limited storage result does not establish application access, initial private captures, claim continuity or cross-tenant refusal. Those require current-candidate deployed proof.
+
+Predecessor `dfb1fc696bb4484f2f691418ab8872dad1948e4b` retains its first failed local-migration prerequisite attempt and separate `a2` attempt with one outdated component assertion expecting former public-anonymous wording. The corrected assertions cover creator privacy, copied-link limits, historical public compatibility and safe execution. All 17 focused surface checks pass. Failed attempts retain their own receipts and namespaces.
 
 The correction set also has 199 focused guidance assertions, four real PostgreSQL migration cases and 31 release-contract checks. Read-only production comparison matches the precisely observed empty legacy-column variant, retaining the old manual marker as unproven history. Railway reports both prior production images eligible for rollback with configuration snapshots. These observations do not establish candidate deployment or production migration. All remaining release proof is open. Production remains unchanged, and the closed five-send allocation remains unused.
 
@@ -42,20 +48,20 @@ The active private ledger is selected by `test-results/release/website-beta-curr
 
 | Requirement | Implementation | Current local proof | Current deployed proof |
 | --- | --- | --- | --- |
-| Foundation | Frozen source and additive migrations preserve the existing data model | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
+| Foundation | Frozen source and additive migrations preserve the existing data model | OPEN: replacement required after the retained custody assertion failure. Earlier partial results belong to `a282acf9`. | OPEN: replacement deployed acceptance required. |
 | Architecture | Queries, commands, synchronization, binding construction and execution have separate owners with compatibility exports | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
 | Finding custody | Exact source membership, page-aware identity, supporting observations and every-scope recovery | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
-| Precision and prescriptions | Guidance-only schema, conditional inspection, source-owned facts and measured failed responses | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
+| Precision and prescriptions | Guidance-only schema, conditional inspection, source-owned facts and measured failed responses | OPEN: corrected identity-based custody suite passes eight focused PostgreSQL cases. Replacement foundation and live precision remain required. | OPEN: replacement deployed acceptance required. |
 | Execution and recovery | Shared admission, bounded transactions, resource queues and ownership fencing | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
 | Automatic accounts | Explicit origin authorization, receiving, encryption, reconciliation, expiry and deletion | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
 | Privacy and identity | Private initial evidence, signed creator access, exact claim and independent tenant access | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
 | Notifications | Combined branded messages and immutable retry identity | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
 | Customer repair loop | Handoff, publication context, verification and recurrence remain distinct | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
-| Information architecture and UI | Existing navigation, shared presentation, explicit evidence states and 44px shared targets | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
-| Copy and availability | Shared copy and website-only discovery preserve the approved promise | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
+| Information architecture and UI | Existing navigation, shared presentation, explicit evidence states and 44px shared targets | OPEN: replacement foundation and rendered acceptance required. | OPEN: replacement deployed acceptance required. |
+| Copy and availability | Shared copy and website-only discovery preserve the approved promise | OPEN: replacement foundation and deployed customer-path review required. | OPEN: replacement deployed acceptance required. |
 | Value and operations | Completion, explicit usefulness feedback, handoff, attempts, recovery and cost remain separate | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
 | Performance and usability | Existing font metrics, layout dimensions and shared controls | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
-| Release and natural monitoring | Exact revision/image attestation and additive upgrade contracts; CI stays disabled | OPEN: replacement foundation required. | OPEN: replacement deployed acceptance required. |
+| Release and natural monitoring | Exact revision/image attestation and additive upgrade contracts; CI stays disabled | OPEN: replacement foundation required. Prior candidate rehearsals retain their exact revision and scope. | OPEN: production remains on `5b8a25ad`. New candidate deployment, refreshed rollback readiness and natural full production cycle remain required. |
 
 ### Retained implementation and acceptance history, 2026-10-18
 

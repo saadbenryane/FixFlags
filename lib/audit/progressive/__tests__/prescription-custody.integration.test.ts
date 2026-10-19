@@ -129,17 +129,30 @@ run('prescription custody in PostgreSQL', () => {
   })
 
   it('commits one batch independently and replays its receipt without another capture or provider request', async () => {
-    const f = await fixture(), scope = freezePrescriptionScope(f.audit.flags, ['custody-0'])
+    const f = await fixture()
+    // Relation order is not source identity. Exercise a different order from
+    // the position-sorted publication read and match every assertion by ID.
+    f.audit.flags.sort((left, right) => right.position - left.position)
+    const original = f.audit.flags.find(flag => flag.checkId === 'custody-0')!
+    const sibling = f.audit.flags.find(flag => flag.checkId === 'custody-1')!
+    const scope = freezePrescriptionScope(f.audit.flags, ['custody-0'])
     await withExecutionOwnership(f.owner, () => mergePrescriptionResults(f.audit.id, f.output(['custody-0']), { scope, rubrics: false }))
     const rows = await prisma.flag.findMany({ where: { auditId: f.audit.id }, orderBy: { position: 'asc' } })
-    expect(rows[0]).toMatchObject({ evidence: f.audit.flags[0].evidence, fix: 'Restore the original title on its affected page.' })
-    expect(rows[1].fix).toBe('')
+    expect(rows).toHaveLength(2)
+    expect(rows.find(flag => flag.id === original.id)).toMatchObject({
+      id: original.id, checkId: original.checkId, problem: original.problem,
+      evidence: original.evidence, whyItMatters: original.whyItMatters,
+      verificationRule: original.verificationRule, confidence: original.confidence,
+      causeCertainty: original.causeCertainty, fixConfidence: original.fixConfidence,
+      fix: 'Restore the original title on its affected page.',
+    })
+    expect(rows.find(flag => flag.id === sibling.id)?.fix).toBe('')
     // This audit has no metadata, verdict or screenshot. Only the persisted
     // matching commit can settle replay before any of those dependencies.
     await expect(withExecutionOwnership(f.owner, () => runAiReview(f.audit.id, undefined, ['custody-0'], scope)))
       .resolves.toMatchObject({ inputTokens: 0, outputTokens: 0 })
     expect(await prisma.auditPipelineEvent.count({ where: { auditId: f.audit.id, event: 'prescription_guidance_committed' } })).toBe(1)
-    await prisma.flag.update({ where: { id: rows[0].id }, data: { fix: 'A newer independent repair' } })
+    await prisma.flag.update({ where: { id: original.id }, data: { fix: 'A newer independent repair' } })
     await expect(withExecutionOwnership(f.owner, () => runAiReview(f.audit.id, undefined, ['custody-0'], scope)))
       .rejects.toThrow('PRESCRIPTION_SCOPE_CHANGED')
   })
