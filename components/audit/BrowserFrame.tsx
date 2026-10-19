@@ -98,7 +98,7 @@ export function BrowserFrame({
       )}
     >
       {chrome === 'browser' ? (
-        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-muted/50 px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 bg-muted/50 px-3 py-2">
           <div className="flex shrink-0 gap-1">
             <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
             <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />

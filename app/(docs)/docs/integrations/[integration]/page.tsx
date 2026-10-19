@@ -27,6 +27,6 @@ export default async function IntegrationGuide({ params, searchParams }: Props) 
   const { error } = await searchParams
   return <DocsPageFrame page={page}>
     {page.key === 'shopify' ? <ShopifyConnectionRecovery error={typeof error === 'string' ? error : undefined} /> : null}
-    <DocsMarkdown>{await readDocsMarkdown(page)}</DocsMarkdown>
+    <DocsMarkdown headings={page.headings}>{await readDocsMarkdown(page)}</DocsMarkdown>
   </DocsPageFrame>
 }

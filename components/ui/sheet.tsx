@@ -28,10 +28,10 @@ SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 const sheetVariants = {
   side: {
     right:
-      "inset-y-0 right-0 h-full w-3/4 max-w-sm border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
-    left: "inset-y-0 left-0 h-full w-3/4 max-w-sm border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+      "inset-y-0 right-0 h-full w-3/4 max-w-sm  data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+    left: "inset-y-0 left-0 h-full w-3/4 max-w-sm  data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
     bottom:
-      "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-card border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+      "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-card data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
   },
 }
 

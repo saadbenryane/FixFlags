@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { uiStyleFailures } from './ui-style-rules.mjs'
+import { separatorStyleFailures, uiStyleFailures } from './ui-style-rules.mjs'
 
 const ROOT = process.cwd()
 const SCAN_DIRS = ['app', 'components']
@@ -25,6 +25,7 @@ function walk(dir, files = []) {
 }
 
 const violations = []
+const reviewedStyleFiles = new Set()
 
 for (const dir of SCAN_DIRS) {
   const base = join(ROOT, dir)
@@ -33,6 +34,7 @@ for (const dir of SCAN_DIRS) {
     const content = readFileSync(file, 'utf8')
 
     violations.push(...uiStyleFailures(rel, content))
+    reviewedStyleFiles.add(rel)
 
     if (/fetch\(['"]\/api\/stripe\/(?:checkout|waitlist)['"]/.test(content)) {
       violations.push(
@@ -50,6 +52,21 @@ for (const dir of SCAN_DIRS) {
     }
   }
 }
+
+// Include marketing, shared geometry, CSS and transactional email. They use
+// the same grouping rule as the customer workspace.
+function inspectGrouping(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (['node_modules', '.next', 'dist', '__tests__'].includes(entry.name)) continue
+    const file = join(dir, entry.name)
+    if (entry.isDirectory()) inspectGrouping(file)
+    else if (/\.(?:tsx?|css)$/.test(entry.name) && !/\.(?:test|spec)\./.test(entry.name)) {
+      const rel = relative(ROOT, file)
+      if (!reviewedStyleFiles.has(rel)) violations.push(...separatorStyleFailures(rel, readFileSync(file, 'utf8')))
+    }
+  }
+}
+for (const dir of ['app', 'components', 'lib/email']) inspectGrouping(join(ROOT, dir))
 
 // Customer Site language is a product contract. These phrases represent the
 // superseded dashboard taxonomy and must not return through component-local

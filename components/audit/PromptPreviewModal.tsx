@@ -80,7 +80,7 @@ export function PromptPreviewModal({
           </pre>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
+        <div className="flex items-center justify-end gap-2 px-6 py-4">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close
           </Button>

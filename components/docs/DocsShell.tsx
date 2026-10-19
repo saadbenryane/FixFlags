@@ -15,12 +15,12 @@ export function DocsShell({
     <div className={s.shell}>
       <DocsMobileNavigation entries={entries} />
       <div className={s.layout}>
-        <aside className={s.sidebar}>
+        <div className={s.sidebar}>
           <div className={s.sidebarContent}>
             <KnowledgeSearch entries={entries} placeholder="Search help and docs" />
             <DocsNavigation />
           </div>
-        </aside>
+        </div>
         <div className={s.main}>{children}</div>
       </div>
     </div>

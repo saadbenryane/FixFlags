@@ -66,7 +66,7 @@ export function WorkspaceMobileTabs({
 
   return (
     <div
-      className="flex w-full min-w-0 max-w-full shrink-0 gap-0 overflow-x-auto border-b border-border/40 lg:hidden"
+      className="flex w-full min-w-0 max-w-full shrink-0 gap-0 overflow-x-auto lg:hidden"
       role="tablist"
       aria-label={label}
     >
@@ -80,7 +80,7 @@ export function WorkspaceMobileTabs({
           className: cn(
             'min-h-11 min-w-0 flex-1 px-1.5 text-center text-xs font-medium leading-tight transition-colors [overflow-wrap:anywhere] sm:px-3 sm:text-sm',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-            tab.selected ? 'border-b-2 border-brand text-foreground' : 'text-muted-foreground'
+            tab.selected ? ' border-brand text-foreground' : 'text-muted-foreground'
           ),
           onKeyDown: (event: KeyboardEvent<HTMLElement>) => handleKeyDown(event, index),
         } as const

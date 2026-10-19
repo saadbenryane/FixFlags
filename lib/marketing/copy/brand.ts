@@ -193,6 +193,8 @@ export const SUPPORT_CHAT = {
   ariaClose: 'Close chat',
   ariaDialog: 'Live chat with FixFlags',
   messageLabel: 'Support message',
+  messagePlaceholder: 'Type a message…',
+  sendLabel: 'Send message',
 } as const
 
 /** Strict severity meanings (enum stays CRITICAL | IMPORTANT | POLISH). */

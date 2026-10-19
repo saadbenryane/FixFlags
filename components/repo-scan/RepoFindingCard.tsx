@@ -77,7 +77,7 @@ export function RepoFindingCard({
   }
 
   return (
-    <div className="relative border-b border-border/60 last:border-b-0">
+    <div className="relative">
       <div className="px-3 py-3 sm:px-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
           <div className="min-w-0 flex-1 space-y-1">
@@ -112,7 +112,7 @@ export function RepoFindingCard({
         </div>
 
         {expanded && (
-          <div className="mt-3 ml-0.5 space-y-3 border-l border-border/60 pl-3">
+          <div className="mt-3 ml-0.5 space-y-3 pl-3">
             <div className="space-y-1">
               <p className="meta-label text-muted-foreground">Where</p>
               <p className="rounded-md bg-muted/50 px-2 py-1.5 font-mono text-xs leading-relaxed text-pretty text-muted-foreground">

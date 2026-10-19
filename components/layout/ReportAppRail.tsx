@@ -36,7 +36,7 @@ export function ReportAppRail({
     <TooltipProvider delayDuration={150}>
       <aside
         className={cn(
-          'hidden w-16 shrink-0 flex-col border-r border-border/50 bg-background md:flex',
+          'hidden w-16 shrink-0 flex-col bg-background md:flex',
           className,
         )}
         aria-label="App"

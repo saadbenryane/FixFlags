@@ -12,9 +12,9 @@ type History = z.infer<typeof agentHistorySchema>
 type Turn = Intent & { reply?: History['messages'][number] }
 
 /** The caller keys this hook's owner by Site and Flag so async results cannot cross contexts. */
-export function useSiteAgentConversation(siteId: string, flagId: string | undefined, active: boolean) {
-  const storageKey = `fixflags:agent:${siteId}:${flagId ?? 'site'}`
-  const draftKey = `${storageKey}:draft`
+export function useSiteAgentConversation<SiteId extends string | null>(siteId: SiteId, flagId: string | undefined, active: boolean) {
+  const storageKey = siteId ? `fixflags:agent:${siteId}:${flagId ?? 'site'}` : null
+  const draftKey = storageKey ? `${storageKey}:draft` : null
   const [question, setQuestion] = useState('')
   const [intent, setIntent] = useState<Intent | null>(null)
   const [history, setHistory] = useState<History | null>(null)
@@ -31,6 +31,7 @@ export function useSiteAgentConversation(siteId: string, flagId: string | undefi
   const saveIntent = useCallback((value: Intent | null) => {
     intentRef.current = value
     setIntent(value)
+    if (!storageKey) return
     try {
       if (value) sessionStorage.setItem(storageKey, JSON.stringify(value))
       else sessionStorage.removeItem(storageKey)
@@ -39,11 +40,13 @@ export function useSiteAgentConversation(siteId: string, flagId: string | undefi
 
   const changeQuestion = useCallback((value: string) => {
     setQuestion(value)
+    if (!draftKey) return
     try { sessionStorage.setItem(draftKey, value) } catch { /* Keep the in-memory draft. */ }
   }, [draftKey])
 
   useEffect(() => {
     alive.current = true
+    if (!storageKey || !draftKey) return () => { alive.current = false; read.current?.abort() }
     try {
       const saved = intentSchema.safeParse(JSON.parse(sessionStorage.getItem(storageKey) ?? 'null'))
       if (saved.success) {
@@ -63,6 +66,7 @@ export function useSiteAgentConversation(siteId: string, flagId: string | undefi
   }, [siteId])
 
   const loadHistory = useCallback(async () => {
+    if (!siteId) return
     read.current?.abort()
     const request = new AbortController()
     read.current = request
@@ -96,7 +100,7 @@ export function useSiteAgentConversation(siteId: string, flagId: string | undefi
   }, [active, loadHistory])
 
   async function send() {
-    if (pending.current || (!intentRef.current && (!history || loading || historyError)) || !question.trim()) return
+    if (!siteId || pending.current || (!intentRef.current && (!history || loading || historyError)) || !question.trim()) return
     pending.current = true
     read.current?.abort()
     setLoading(false)
@@ -138,8 +142,8 @@ export function useSiteAgentConversation(siteId: string, flagId: string | undefi
   }
 
   return { question, changeQuestion, intent, messages, loading, busy, historyError, error, send, loadHistory,
-    canSend: !busy && Boolean(question.trim()) && (Boolean(intent) || Boolean(history && !loading && !historyError)),
+    canSend: Boolean(siteId) && !busy && Boolean(question.trim()) && (Boolean(intent) || Boolean(history && !loading && !historyError)),
     newMessage: () => { saveIntent(null); setError(null) }, siteId }
 }
 
-export type SiteAgentConversation = ReturnType<typeof useSiteAgentConversation>
+export type SiteAgentConversation = ReturnType<typeof useSiteAgentConversation<string>>

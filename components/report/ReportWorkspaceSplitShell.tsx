@@ -175,7 +175,7 @@ export function ReportWorkspaceSplitShell({
         </div>
       </div>
       {footer ? (
-        <div className="flex shrink-0 items-center justify-end border-t border-border/45 px-3 py-3 sm:px-4">
+        <div className="flex shrink-0 items-center justify-end px-3 py-3 sm:px-4">
           {footer}
         </div>
       ) : null}

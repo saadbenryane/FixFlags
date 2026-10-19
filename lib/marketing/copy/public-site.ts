@@ -159,3 +159,9 @@ export const PUBLIC_SITE_COPY = {
     sampleAction: 'Open the product sample',
   },
 } as const
+export const DOCS_CODE_COPY = {
+  defaultLabel: 'Code',
+  copy: 'Copy',
+  copied: 'Copied',
+  accessibleCopy: (label: string) => `Copy ${label}`,
+} as const

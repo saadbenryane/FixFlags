@@ -190,7 +190,7 @@ export default async function IssuePage({ params, searchParams }: Props) {
             )}
 
             {/* CTA */}
-            <div className="text-center space-y-3 pt-4 border-t border-border/30">
+            <div className="text-center space-y-3 pt-4">
               <Body className="text-muted-foreground">
                 Check if your site has this Flag.
               </Body>

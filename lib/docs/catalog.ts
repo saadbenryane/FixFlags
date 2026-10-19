@@ -22,6 +22,7 @@ export interface DocsHeadingDefinition {
   id: string
   title: string
   level?: 2 | 3
+  aliases?: readonly string[]
 }
 
 export interface DocsPageDefinition {
@@ -66,7 +67,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
       { id: 'analyze-a-website', title: 'Analyze a website' },
       { id: 'verify-a-flag', title: 'Verify a Flag' },
       { id: 'keep-watching', title: 'Keep watching' },
-      { id: 'shopify-connection', title: 'Shopify connection' },
+      { id: 'connections', title: 'Connections', aliases: ['shopify-connection'] },
       { id: 'get-help', title: 'Get help' },
     ],
     relatedHelpSlugs: [
@@ -91,7 +92,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
       { id: 'verify', title: 'Verify' },
       { id: 'watch', title: 'Watch' },
       { id: 'automatic-account-checks', title: 'Automatic account checks' },
-      { id: 'shopify-connection', title: 'Shopify connection' },
+      { id: 'connections', title: 'Connections', aliases: ['shopify-connection'] },
     ],
     relatedHelpSlugs: [
       'read-site-coverage',
@@ -178,7 +179,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
       { id: 'site-could-not-be-reached', title: 'Site could not be reached' },
       { id: 'page-asks-for-a-password-or-human-check', title: 'Page asks for a password or human check' },
       { id: 'verify-is-still-in-progress', title: 'Verify is still in progress' },
-      { id: 'shopify-connection', title: 'Shopify connection' },
+      { id: 'connections', title: 'Connections', aliases: ['shopify-connection'] },
       { id: 'contact-support', title: 'Contact support' },
     ],
     relatedHelpSlugs: [

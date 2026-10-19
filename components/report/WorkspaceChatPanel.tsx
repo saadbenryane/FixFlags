@@ -390,7 +390,7 @@ export function WorkspaceChatPanel({
     <TooltipProvider>
       <section
         className={cn(
-          'flex h-full min-h-0 flex-col overflow-hidden border-r border-border/50 bg-background',
+          'flex h-full min-h-0 flex-col overflow-hidden bg-background',
           className,
         )}
         aria-label="Agent"
@@ -554,7 +554,7 @@ export function WorkspaceChatPanel({
 
         {newScan ? (
           <form
-            className="space-y-2 border-t border-border/40 p-3"
+            className="space-y-2 p-3"
             onSubmit={(event) => { event.preventDefault(); void startScan() }}
           >
             <div className="flex min-w-0 gap-2">
@@ -575,12 +575,12 @@ export function WorkspaceChatPanel({
             </button>
           </form>
         ) : historyError && canChat ? (
-          <div className="space-y-3 border-t border-border/40 p-3">
+          <div className="space-y-3 p-3">
             <p role="alert" className="text-xs text-destructive">{historyError}</p>
             <Button variant="outline" className="w-full" onClick={() => void loadConversation()}>{chatCopy.retry}</Button>
           </div>
         ) : meta.exhausted && canChat ? (
-          <div className="space-y-3 border-t border-border/40 p-3">
+          <div className="space-y-3 p-3">
             <p className="text-xs text-muted-foreground">{chatCopy.allowanceBody}</p>
             <Button asChild className="w-full"><Link href="/pricing">{chatCopy.allowanceAction}</Link></Button>
           </div>
@@ -607,7 +607,7 @@ export function WorkspaceChatPanel({
               </div>
             ) : null}
             <form
-              className="border-t border-border/40 p-2"
+              className="p-2"
               onSubmit={(event) => { event.preventDefault(); void send(input) }}
             >
               <div className="flex min-w-0 items-center gap-2">

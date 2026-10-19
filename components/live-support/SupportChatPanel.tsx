@@ -148,7 +148,7 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSend} className={compact ? 'shrink-0 space-y-2 p-3' : 'border-t border-border p-3 space-y-2'}>
+      <form onSubmit={handleSend} className="shrink-0 space-y-2 p-3">
         {error && (
           <p className="text-xs text-destructive" role="alert">
             {error}
@@ -159,16 +159,16 @@ export function SupportChatPanel({ auditId, composer, compact = false, onRead }:
             value={draft}
             onChange={setDraft}
             label={SUPPORT_CHAT.messageLabel}
-            placeholder="Type a message…"
+            placeholder={SUPPORT_CHAT.messagePlaceholder}
             disabled={sending}
-          /> : <Textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Type a message…"
+          /> : <Textarea value={draft} onChange={event => setDraft(event.target.value)} aria-label={SUPPORT_CHAT.messageLabel} placeholder={SUPPORT_CHAT.messagePlaceholder}
             rows={2} className="flex-1 resize-none" onKeyDown={event => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
                 event.preventDefault()
                 void handleSend(event)
               }
             }} />}
-          <Button type="submit" size="icon" disabled={sending || !draft.trim()} aria-label="Send message">
+          <Button type="submit" size="icon" disabled={sending || !draft.trim()} aria-label={SUPPORT_CHAT.sendLabel}>
             <Send className="h-4 w-4" />
           </Button>
         </div>

@@ -25,14 +25,14 @@ Wait on the Flag page while the new check runs. The results refresh there. Refre
 
 If the check fails, read the reason and use the retry action. Contact support if it keeps failing.
 
-## Shopify connection
+## Connections
 
-Open **Integrations** for your website and try the connection again. For a specific message, follow the [Shopify troubleshooting steps](/docs/integrations/shopify#troubleshooting).
+For GitHub authorization, open your website’s **Integrations** and read the connection state. Follow the [GitHub troubleshooting steps](/docs/integrations/github#troubleshooting) if authorization expires or does not finish.
 
-For Google account access, wrong properties, or missing numbers, use the [Google Analytics](/docs/integrations/google-analytics#troubleshooting) or [Search Console](/docs/integrations/google-search-console#troubleshooting) guide.
+Shopify, Google Analytics, and Search Console setup and refresh are unavailable while those integrations are coming soon. Previously saved context keeps its recorded date. Use the [integration guides](/docs/integrations) to understand its limits and remove a saved connection.
 
 ## Contact support
 
-Open the FixFlags Agent on your saved website and choose **Talk to support**, or email [hello@fixflags.com](mailto:hello@fixflags.com).
+Open FixFlags chat on your saved website and choose **Support**, or email [hello@fixflags.com](mailto:hello@fixflags.com).
 
 Include the website address, what you were trying to do, and the message you saw. Do not send passwords, access tokens, or customer payment data.
