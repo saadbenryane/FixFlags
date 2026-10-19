@@ -123,7 +123,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     <SiteShell actions={home.actions} siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" className="-ml-4 text-muted-foreground" asChild>
+          <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground" asChild>
             <Link href={`/sites/${resolvedId}?category=${flag.area}#category-${flag.area}`}>
               <ChevronLeft aria-hidden="true" />
               Back to Overview
@@ -146,11 +146,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
           <div className={`${styles.evidenceGrid} ${resolution.kind === 'open' || resolution.kind === 'verifying' ? styles.withActions : ''}`}>
             <div className="space-y-6">
               <section className="overflow-hidden rounded-[17px] border border-border bg-background shadow-sm" aria-labelledby="flag-evidence-heading">
-                <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-brand text-brand">
+                <div className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand text-brand">
                     <CircleAlert className="h-4 w-4" aria-hidden="true" />
                   </span>
-                  <div>
+                  <div className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
                     <h2 id="flag-evidence-heading" className="font-semibold">
                       {resolution.kind === 'proven' ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence}
                     </h2>
@@ -236,9 +236,9 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
             {!ownsSite ? <SiteActionContinuation availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} action="copy" /> : null}
             {ownsSite ? <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
-              <div className="flex items-center gap-3">
-                <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="verification-history-heading" className="font-semibold">
+              <div className="flex flex-wrap items-center gap-3">
+                <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <h2 id="verification-history-heading" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] font-semibold">
                   {SITE_BOARD_COPY.verificationHistory}
                 </h2>
               </div>

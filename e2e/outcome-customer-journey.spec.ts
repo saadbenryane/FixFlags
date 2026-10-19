@@ -1,3 +1,4 @@
+import { signInFixture } from './fixture-authentication'
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { flagMatchesOutcome } from '@/lib/sites/outcome-state'
@@ -132,10 +133,7 @@ async function setFixtureBroken(
 async function signInOwner(browser: Browser): Promise<{ page: Page; close(): Promise<void> }> {
   const context = await browser.newContext()
   const page = await context.newPage()
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(requiredEnv('E2E_SITE_OWNER_EMAIL'))
-  await page.getByLabel('Password', { exact: true }).fill(requiredEnv('E2E_SITE_OWNER_PASSWORD'))
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await signInFixture(page, requiredEnv('E2E_SITE_OWNER_EMAIL'), requiredEnv('E2E_SITE_OWNER_PASSWORD'))
   await page.waitForURL((url) => !url.pathname.startsWith('/sign-in'), { timeout: 30_000 })
   return { page, close: () => context.close() }
 }
@@ -145,10 +143,7 @@ async function signInStranger(
 ): Promise<{ page: Page; close(): Promise<void> }> {
   const context = await browser.newContext()
   const page = await context.newPage()
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(envOr('E2E_GATE_NON_MEMBER_EMAIL', 'E2E_WATCH_EMAIL'))
-  await page.getByLabel('Password', { exact: true }).fill(envOr('E2E_GATE_NON_MEMBER_PASSWORD', 'E2E_WATCH_PASSWORD'))
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await signInFixture(page, envOr('E2E_GATE_NON_MEMBER_EMAIL', 'E2E_WATCH_EMAIL'), envOr('E2E_GATE_NON_MEMBER_PASSWORD', 'E2E_WATCH_PASSWORD'))
   await page.waitForURL((url) => !url.pathname.startsWith('/sign-in'), { timeout: 30_000 })
   return { page, close: () => context.close() }
 }

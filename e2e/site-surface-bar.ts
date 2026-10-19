@@ -31,8 +31,9 @@ const DENSITIES: Density[] = [
 const INTERACTIVE = 'main a[href], main button, main input, main select, main textarea, main [role="button"], main [role="radio"], main [tabindex]:not([tabindex="-1"])'
 
 async function setTextZoom(page: Page, percent: number): Promise<void> {
-  await page.evaluate((size) => {
+  await page.evaluate(async (size) => {
     document.documentElement.style.fontSize = `${size}%`
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
   }, percent)
 }
 
@@ -58,6 +59,21 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
     expect(geometry.scrollWidth, `horizontal overflow at ${label}`).toBeLessThanOrEqual(
       geometry.clientWidth + 1,
     )
+
+    const mobileNavigation = page.getByRole('navigation', { name: 'Mobile Site', exact: true })
+    if (await mobileNavigation.isVisible()) {
+      const clippedLabels = await mobileNavigation.locator('a').evaluateAll(links => links.flatMap(link => {
+        const bounds = link.getBoundingClientRect(), label = link.querySelector('span')
+        if (!label) return [{ text: '', reason: 'Missing navigation label' }]
+        const range = document.createRange()
+        range.selectNodeContents(label)
+        const clipped = [...range.getClientRects()].some(rect => rect.left < bounds.left - 1 || rect.right > bounds.right + 1 ||
+          rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1)
+        return clipped || bounds.width < 43.99 || bounds.height < 43.99
+          ? [{ text: label.textContent ?? '', reason: 'Label extends beyond its control or target is undersized' }] : []
+      }))
+      expect(clippedLabels, `mobile navigation at ${label}`).toEqual([])
+    }
 
     const violations = (await new AxeBuilder({ page: page as never }).analyze()).violations
     const { failures, approvedContrastCount } = await inspectAccessibilityViolations(page, violations)

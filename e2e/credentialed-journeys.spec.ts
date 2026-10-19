@@ -1,3 +1,4 @@
+import { signInFixture } from './fixture-authentication'
 import { execFile } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -30,10 +31,7 @@ function requiredEnv(name: string): string {
 }
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await signInFixture(page, email, password)
 }
 
 async function signedInPage(

@@ -18,12 +18,12 @@ import {
 import { type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
 import {
   boardFindingTitle,
-  boardCardFreshnessText,
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { flagCountLabel } from '@/lib/sites/presentation'
 import styles from './BoardCard.module.css'
 
@@ -182,7 +182,7 @@ export function BoardCard({
   const previewFlags = flags ?? []
   const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
   const hiddenPreviewCount = Math.max(0, previewFlags.length - visiblePreviewFlags.length)
-  const freshnessLabel = freshness ?? boardCardFreshnessText(checkedAt ?? null)
+  const freshnessLabel = freshness ?? formatEvidenceTimestamp(checkedAt)
   const cardFooter = footer ?? (compact && state === 'healthy' && !checking ? freshnessLabel : null)
 
   if (layout === 'row') {
@@ -329,6 +329,7 @@ export function BoardCard({
 
 export function ProductBoardCard({
   card,
+  freshness,
   onOpen,
   renderFlagCopy,
   recoveryAction,
@@ -336,6 +337,7 @@ export function ProductBoardCard({
   layout = 'card',
 }: {
   card: BoardCardView
+  freshness?: string
   onOpen?: () => void
   renderFlagCopy?: (flag: BoardCardFlagChip) => React.ReactNode
   recoveryAction?: React.ReactNode
@@ -371,6 +373,7 @@ export function ProductBoardCard({
       flags={card.flagChips.map(flag => ({ ...flag, copyAction: renderFlagCopy?.(flag) }))}
       sources={card.sources}
       checkedAt={card.checkedAt}
+      freshness={freshness}
       layout={layout}
     />
   )

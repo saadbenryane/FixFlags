@@ -1,3 +1,4 @@
+import { signInFixture } from './fixture-authentication'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { ACCOUNT_CHECK_COPY } from '@/lib/marketing/copy/account-checks'
 import type { SiteHomeView } from '@/lib/sites/site-home'
@@ -43,10 +44,7 @@ test.describe('controlled website capabilities', () => {
     test.skip(process.env.E2E_CREDENTIALED !== 'true', 'Requires the designated credentialed verification environment')
     const origin = new URL(required('RELEASE_ENV_URL'))
     if (['fixflags.com', 'www.fixflags.com'].includes(origin.hostname)) throw new Error('Capability fixtures must never target production')
-    await page.goto('/sign-in')
-    await page.getByLabel('Email').fill(required('E2E_CAPABILITY_OWNER_EMAIL'))
-    await page.getByLabel('Password', { exact: true }).fill(required('E2E_CAPABILITY_OWNER_PASSWORD'))
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await signInFixture(page, required('E2E_CAPABILITY_OWNER_EMAIL'), required('E2E_CAPABILITY_OWNER_PASSWORD'))
     await page.waitForURL(url => !url.pathname.startsWith('/sign-in'))
   })
 

@@ -1,11 +1,35 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { BoardCard, ProductBoardCard } from '../BoardCard'
+import { renderToString } from 'react-dom/server'
+import { hydrateRoot, type Root } from 'react-dom/client'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
+  it('hydrates recorded freshness even when the browser arrives after a minute boundary', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-19T12:00:59Z'))
+    const element = <BoardCard name="Search" status="Not checked yet" state="unknown" answer="Recorded checks"
+      icon="search" layout="row" checkedAt="2026-10-19T12:00:00Z" onOpen={() => undefined} />
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    container.innerHTML = renderToString(element)
+    const serverText = container.textContent
+    now.mockReturnValue(Date.parse('2026-10-19T12:02:01Z'))
+    const errors: unknown[] = []
+    let root: Root | undefined
+    try {
+      await act(async () => { root = hydrateRoot(container, element, { onRecoverableError: error => errors.push(error) }) })
+      expect(errors).toEqual([])
+      expect(container.textContent).toBe(serverText)
+    } finally {
+      await act(async () => root?.unmount())
+      container.remove()
+      now.mockRestore()
+    }
+  })
+
   it('states an identical coverage limitation once while preserving recovery', () => {
     render(<BoardCard name="Security" icon="security" status="Not checked yet" state="unknown" answer="Some checks unfinished"
       detail="Some checks unfinished" incompleteReason="Some checks unfinished" layout="row"
