@@ -32,6 +32,10 @@ for (const theme of ['light', 'dark'] as const) {
         await route.continue()
       })
       let lookupSettled = false
+      let lookupRequests = 0
+      page.on('request', request => {
+        if (new URL(request.url()).pathname === '/api/me') lookupRequests++
+      })
       if (lookup === 'unavailable') {
         await page.route('**/api/me', async route => {
           await route.abort('failed')
@@ -68,9 +72,10 @@ for (const theme of ['light', 'dark'] as const) {
         state.stopped = true
         return state
       })
-      await test.info().attach('documentation-hydration', { body: JSON.stringify({ theme, lookup, moduleHeld, lookupSettled, ...observation }), contentType: 'application/json' })
+      await test.info().attach('documentation-hydration', { body: JSON.stringify({ theme, lookup, moduleHeld, lookupSettled, lookupRequests, ...observation }), contentType: 'application/json' })
       expect(observation.published).toBe(true)
       expect(observation.losses).toEqual([])
+      expect(lookupRequests).toBe(1)
     })
   }
 }
