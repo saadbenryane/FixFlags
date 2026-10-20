@@ -2,12 +2,11 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
-  useMemo,
-  useRef,
+  useLayoutEffect,
   useState,
+  useSyncExternalStore,
 } from 'react'
 
 const PANEL_STORAGE_KEY = 'ff_support_panel_open'
@@ -30,7 +29,51 @@ interface SupportContextValue {
   openSupportChat: (options?: OpenSupportChatOptions) => void
 }
 
-const SupportContext = createContext<SupportContextValue | null>(null)
+type SupportState = Pick<SupportContextValue, 'panelOpen' | 'sessionId' | 'auditId' | 'draftPrefill'>
+
+function rememberPanel(open: boolean) {
+  try { sessionStorage.setItem(PANEL_STORAGE_KEY, open ? '1' : '0') } catch { /* Keep the current tab usable. */ }
+}
+
+function createSupportStore(baseAuditId: string | null) {
+  let override: string | null = null
+  let state: SupportState = { panelOpen: false, sessionId: null, auditId: baseAuditId, draftPrefill: null }
+  const listeners = new Set<() => void>()
+  let snapshot: SupportContextValue
+  function update(patch: Partial<SupportState>) {
+    if ((Object.keys(patch) as (keyof SupportState)[]).every(key => Object.is(state[key], patch[key]))) return
+    state = { ...state, ...patch }
+    snapshot = { ...state, ...actions }
+    for (const listener of listeners) listener()
+  }
+  const actions = {
+    setPanelOpen(open: boolean) { update({ panelOpen: open }); rememberPanel(open) },
+    setSessionId(id: string | null) { update({ sessionId: id }) },
+    setAuditIdOverride(id: string | null) { override = id; update({ auditId: override ?? baseAuditId }) },
+    clearDraftPrefill() { update({ draftPrefill: null }) },
+    openSupportChat(options?: OpenSupportChatOptions) {
+      if (options?.auditId) override = options.auditId
+      update({ panelOpen: true, auditId: override ?? baseAuditId,
+        ...(options?.prefill ? { draftPrefill: options.prefill } : {}) })
+      rememberPanel(true)
+    },
+  }
+  snapshot = { ...state, ...actions }
+  const serverSnapshot = snapshot
+  return {
+    getSnapshot: () => snapshot,
+    getServerSnapshot: () => serverSnapshot,
+    subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener) } },
+    setBaseAuditId(id: string | null) { baseAuditId = id; update({ auditId: override ?? baseAuditId }) },
+    restorePanel() {
+      try { if (sessionStorage.getItem(PANEL_STORAGE_KEY) === '1') actions.setPanelOpen(true) } catch { /* Keep the initial closed state. */ }
+    },
+  }
+}
+
+const SupportContext = createContext<ReturnType<typeof createSupportStore> | null>(null)
+const noSupport = () => null
+const noSubscription = () => () => {}
 
 export function SupportProvider({
   children,
@@ -39,80 +82,23 @@ export function SupportProvider({
   children: React.ReactNode
   auditId?: string | null
 }) {
-  const [panelOpen, setPanelOpenState] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [hydrated, setHydrated] = useState(false)
-  const [auditIdOverride, setAuditIdOverride] = useState<string | null>(null)
-  const [draftPrefill, setDraftPrefill] = useState<string | null>(null)
-  const openRequestRef = useRef(0)
-
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(PANEL_STORAGE_KEY)
-      if (stored === '1') setPanelOpenState(true)
-    } catch {
-      // ignore storage errors
-    }
-    setHydrated(true)
-  }, [])
-
-  const setPanelOpen = useCallback((open: boolean) => {
-    setPanelOpenState(open)
-    try {
-      sessionStorage.setItem(PANEL_STORAGE_KEY, open ? '1' : '0')
-    } catch {
-      // ignore storage errors
-    }
-  }, [])
-
-  const clearDraftPrefill = useCallback(() => setDraftPrefill(null), [])
-
-  const openSupportChat = useCallback(
-    (options?: OpenSupportChatOptions) => {
-      openRequestRef.current += 1
-      if (options?.auditId) setAuditIdOverride(options.auditId)
-      if (options?.prefill) setDraftPrefill(options.prefill)
-      setPanelOpen(true)
-    },
-    [setPanelOpen]
-  )
-
-  const resolvedAuditId = auditIdOverride ?? auditId
-
-  const value = useMemo(
-    () => ({
-      panelOpen: hydrated && panelOpen,
-      setPanelOpen,
-      sessionId,
-      setSessionId,
-      auditId: resolvedAuditId,
-      setAuditIdOverride,
-      draftPrefill,
-      clearDraftPrefill,
-      openSupportChat,
-    }),
-    [
-      hydrated,
-      panelOpen,
-      setPanelOpen,
-      sessionId,
-      resolvedAuditId,
-      draftPrefill,
-      clearDraftPrefill,
-      openSupportChat,
-    ]
-  )
-
-  return <SupportContext.Provider value={value}>{children}</SupportContext.Provider>
+  // Keep the context stable so chat updates reach consumers without disturbing
+  // server-rendered content whose client modules have not hydrated yet.
+  const [store] = useState(() => createSupportStore(auditId))
+  useLayoutEffect(() => { store.setBaseAuditId(auditId) }, [auditId, store])
+  useEffect(() => { store.restorePanel() }, [store])
+  return <SupportContext.Provider value={store}>{children}</SupportContext.Provider>
 }
 
 export function useSupportContext() {
-  const ctx = useContext(SupportContext)
+  const ctx = useOptionalSupportContext()
   if (!ctx) throw new Error('useSupportContext must be used within SupportProvider')
   return ctx
 }
 
 /** Safe hook when SupportProvider may be absent (e.g. admin). */
 export function useOptionalSupportContext() {
-  return useContext(SupportContext)
+  const store = useContext(SupportContext)
+  return useSyncExternalStore(store?.subscribe ?? noSubscription,
+    store?.getSnapshot ?? noSupport, store?.getServerSnapshot ?? noSupport)
 }

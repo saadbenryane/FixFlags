@@ -33,6 +33,12 @@
     scroll-padding-top: calc(var(--header-height-marketing, 4.5rem) + 12px);
   }
 
+  [data-yielding-to-focus='true'] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: none !important;
+  }
+
   /* Fixed-viewport surface gradient. A pseudo-element instead of
      background-attachment: fixed, which iOS Safari ignores. */
   body::before {

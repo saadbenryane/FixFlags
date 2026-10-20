@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -138,23 +139,30 @@ export function MeProvider({
     if (!force && loadedRef.current) return { user: state.user }
     if (requestRef.current) return requestRef.current
 
-    setState((current) => ({ ...current, isLoading: true, error: null }))
+    // Background session updates must preserve content that is still hydrating.
+    startTransition(() => {
+      setState((current) => ({ ...current, isLoading: true, error: null }))
+    })
     requestRef.current = fetch('/api/me')
       .then(async (response) => {
         if (!response.ok) throw new Error(AUTH.me.loadError)
         const data = await response.json()
         loadedRef.current = true
-        setState((current) => ({
-          ...current,
-          user: data.user ?? null,
-          isLoading: false,
-          error: null,
-        }))
+        startTransition(() => {
+          setState((current) => ({
+            ...current,
+            user: data.user ?? null,
+            isLoading: false,
+            error: null,
+          }))
+        })
         return data
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : AUTH.me.loadError
-        setState((current) => ({ ...current, isLoading: false, error: message }))
+        startTransition(() => {
+          setState((current) => ({ ...current, isLoading: false, error: message }))
+        })
         return null
       })
       .finally(() => {

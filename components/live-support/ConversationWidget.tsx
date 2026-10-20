@@ -12,6 +12,7 @@ import { SiteAgent } from '@/components/sites/SiteAgent'
 import { SITE_AGENT_COPY as C } from '@/lib/marketing/copy/site-agent'
 import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+import { useFocusYield } from '@/components/system/useFocusYield'
 import styles from './ConversationWidget.module.css'
 
 const supportDraftKey = 'fixflags:support:draft'
@@ -41,6 +42,7 @@ export function ConversationWidget(props: ConversationWidgetProps) {
   const [supportError, setSupportError] = useState<string | null>(null)
   const supportPending = useRef(false)
   const launcher = useRef<HTMLButtonElement>(null)
+  useFocusYield(launcher)
   const open = questionsOpen || support.panelOpen
   const showSupport = support.panelOpen || !ownsSite
   const conversation = useSiteAgentConversation(siteId, flagId, open && ownsSite && !showSupport)
