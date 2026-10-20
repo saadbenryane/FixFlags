@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import {
   useCallback,
   useEffect,
@@ -136,7 +137,7 @@ function EvidenceTooltip({
   if (showFixedTooltip) {
     return createPortal(
       <>
-        <button
+        <InteractiveButton
           type="button"
           className="fixed inset-0 z-overlay bg-foreground/20"
           aria-label="Close evidence"
@@ -227,7 +228,7 @@ function PinOverlay({
           transform: 'translate(-50%, -50%)',
         }}
       >
-        <button
+        <InteractiveButton
           ref={pinRef}
           type="button"
           className="pointer-events-auto flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
@@ -241,7 +242,7 @@ function PinOverlay({
           onClick={handleClick}
         >
           <EvidencePin severity={highlight.severity} active={open} selected={selected} />
-        </button>
+        </InteractiveButton>
         <EvidenceTooltip
           highlight={highlight}
           open={open}
@@ -281,7 +282,7 @@ function PageEvidenceOverlay({
 
   return (
     <div className="absolute inset-0 z-[1]">
-      <button
+      <InteractiveButton
         ref={triggerRef}
         type="button"
         className="pointer-events-auto absolute inset-0 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset"
@@ -564,7 +565,7 @@ function ScreenshotPanel({
               The capture could not be loaded right now.
             </p>
           </div>
-          <button
+          <InteractiveButton
             type="button"
             onClick={() => {
               setImgError(false)
@@ -575,7 +576,7 @@ function ScreenshotPanel({
           >
             <RotateCw className="h-3.5 w-3.5" aria-hidden />
             Retry
-          </button>
+          </InteractiveButton>
         </div>
       ) : (
         <>

@@ -3,6 +3,8 @@
 import * as React from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { InteractiveButton } from './interactive-controls'
+import { hasClientInteraction } from './client-interaction'
 
 export interface FilterPillProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean
@@ -11,8 +13,9 @@ export interface FilterPillProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 }
 
 export function FilterPill({ className, active, size = 'md', icon: Icon, children, ...props }: FilterPillProps) {
+  const Control = hasClientInteraction(props) ? InteractiveButton : 'button'
   return (
-    <button
+    <Control
       type="button"
       aria-pressed={active}
       className={cn(
@@ -27,6 +30,6 @@ export function FilterPill({ className, active, size = 'md', icon: Icon, childre
     >
       {Icon && <Icon className={cn('shrink-0', size === 'sm' ? 'h-3 w-3' : 'h-4 w-4', children ? 'mr-1' : '')} aria-hidden />}
       {children}
-    </button>
+    </Control>
   )
 }

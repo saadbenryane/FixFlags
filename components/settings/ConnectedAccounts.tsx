@@ -60,7 +60,7 @@ export function ConnectedAccounts({
   return (<>
     <Card variant="subtle">
       <CardHeader>
-        <CardTitle className="text-base">Sign-in methods</CardTitle>
+        <CardTitle as="h2" className="text-base">Sign-in methods</CardTitle>
         <CardDescription>Choose how you can sign in to this account.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -90,7 +90,7 @@ export function ConnectedAccounts({
       </CardContent>
     </Card>
     <Card variant="subtle">
-      <CardHeader><CardTitle className="text-base">Security</CardTitle><CardDescription>Protect this account with passkeys and two-factor authentication.</CardDescription></CardHeader>
+      <CardHeader><CardTitle as="h2" className="text-base">Security</CardTitle><CardDescription>Protect this account with passkeys and two-factor authentication.</CardDescription></CardHeader>
       <CardContent><PasskeyTwoFactorSettings twoFactorEnabled={twoFactorEnabled} hasPassword={hasPassword} /></CardContent>
     </Card>
   </>)

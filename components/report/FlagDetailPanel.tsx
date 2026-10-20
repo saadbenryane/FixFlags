@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useState, type ReactNode } from 'react'
 import { ChevronDown, Link2, Share2, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -248,7 +249,7 @@ export function FlagPromptRow({
     row = (
       <div className="space-y-2">
         <div className="flex items-stretch overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
-          <button
+          <InteractiveButton
             type="button"
             aria-expanded={canViewPrompt ? promptOpen : undefined}
             onClick={() => {
@@ -268,7 +269,7 @@ export function FlagPromptRow({
               )}
               aria-hidden
             />
-          </button>
+          </InteractiveButton>
           <div className="flex shrink-0 items-stretch">
             <PromptCopyButton
               prompt={aiLocked ? '' : flag.copyFixPrompt || flag.fixPrompt}

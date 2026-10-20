@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, ExternalLink, History } from 'lucide-react'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
-import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
 import { SiteShell } from '@/components/sites/SiteShell'
@@ -50,29 +49,34 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const actionFlagId = flag.sourceFlagId ?? flag.id
   const repairGuidance = flag.repairGuidance ?? repairGuidanceState(flag)
   const affectedPaths = flag.affectedPaths ?? (flag.pageUrl ? [flag.pageUrl] : [])
-  if (access.decision.role === 'owner') {
-    await recordSiteLifecycleEvent({
-      name: 'flag_opened',
-      idempotencyKey: `flag_opened:${site.projectId}:${flag.id}`,
-      userId: site.userId,
-      projectId: site.projectId,
-      properties: { area: flag.area, severity: flag.severity },
-    }).catch(() => undefined)
-    if (source === 'watch-email') {
+  async function recordOpening() {
+    if (ownsSite) {
       await recordSiteLifecycleEvent({
-        name: 'notification_returned',
-        idempotencyKey: `notification_returned:${site.projectId}:${flag.id}`,
+        name: 'flag_opened',
+        idempotencyKey: `flag_opened:${site.projectId}:${flag.id}`,
         userId: site.userId,
         projectId: site.projectId,
-        properties: { destination: 'flag' },
+        properties: { area: flag.area, severity: flag.severity },
       }).catch(() => undefined)
+      if (source === 'watch-email') {
+        await recordSiteLifecycleEvent({
+          name: 'notification_returned',
+          idempotencyKey: `notification_returned:${site.projectId}:${flag.id}`,
+          userId: site.userId,
+          projectId: site.projectId,
+          properties: { destination: 'flag' },
+        }).catch(() => undefined)
+      }
     }
   }
-  const outcomes = await listSiteOutcomes(site)
-  const connectionContext = site.projectId ? connectionLines((await loadSiteConnectionViews(site.projectId)).facts, flag.pageUrl) : []
-  const relatedOutcome = outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
-  const home = await loadSiteHome(resolvedId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
+  const [home, connectionViews] = await Promise.all([
+    loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated }),
+    site.projectId ? loadSiteConnectionViews(site.projectId) : null,
+    recordOpening(),
+  ])
   if (!home) notFound()
+  const connectionContext = connectionLines(connectionViews?.facts ?? [], flag.pageUrl)
+  const relatedOutcome = home.outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
 
   const proofId = flagRecoveryProofId({
     status: flag.status,

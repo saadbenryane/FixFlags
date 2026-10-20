@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { usePathname } from 'next/navigation'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
@@ -157,20 +158,20 @@ export function ConversionScripts() {
             {ANALYTICS_CONSENT_COPY.body}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
+            <InteractiveButton
               type="button"
               className="min-h-11 rounded-full bg-foreground px-4 text-xs font-semibold text-background"
               onClick={() => writeAnalyticsConsent('granted')}
             >
               {ANALYTICS_CONSENT_COPY.allow}
-            </button>
-            <button
+            </InteractiveButton>
+            <InteractiveButton
               type="button"
               className="min-h-11 rounded-full border border-border px-4 text-xs font-semibold text-foreground"
               onClick={() => writeAnalyticsConsent('denied')}
             >
               {ANALYTICS_CONSENT_COPY.necessaryOnly}
-            </button>
+            </InteractiveButton>
           </div>
         </div>
       ) : null}

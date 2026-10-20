@@ -1,3 +1,4 @@
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -95,12 +96,12 @@ export function TechnologyStrip({ items, label = 'Built with', onSelect }: { ite
     {label ? <span className={styles.technologyLabel}>{label}</span> : null}
     <ul className={styles.technologyList}>
       {items.map(item => <li key={item.name} title={`${item.name}: ${item.status}`}>
-        <button type="button" className={styles.technologyItem} onClick={() => onSelect?.(item)} disabled={!onSelect} aria-label={`${item.name}: ${item.status}`}>
+        <InteractiveButton type="button" className={styles.technologyItem} onClick={() => onSelect?.(item)} disabled={!onSelect} aria-label={`${item.name}: ${item.status}`}>
         <ToolLogo name={item.name} />
         <span className={styles.technologyName}>{item.name}</span>
         <i className={`${styles.statusDot} ${item.state === 'attention' ? styles.attention : ''}`} aria-hidden="true" />
         <span className="sr-only">{item.status}</span>
-        </button>
+        </InteractiveButton>
       </li>)}
     </ul>
   </section>

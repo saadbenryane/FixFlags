@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -312,7 +313,7 @@ export function AuthFlow({
             {AUTH.signIn.forgotPassword}
           </Link>
           {!isReportGate ? (
-            <button
+            <InteractiveButton
               type="button"
               disabled={loading !== null}
               onClick={() => {
@@ -327,7 +328,7 @@ export function AuthFlow({
                 <Fingerprint className="h-3.5 w-3.5" aria-hidden />
               )}
               {AUTH.signIn.passkeyCta}
-            </button>
+            </InteractiveButton>
           ) : null}
         </div>
       ) : null}
@@ -401,7 +402,7 @@ export function AuthFlow({
 
       {isReportGate ? (
         <div className="space-y-4">
-          <button
+          <InteractiveButton
             type="button"
             onClick={toggleEmailForm}
             aria-expanded={showEmailForm}
@@ -418,7 +419,7 @@ export function AuthFlow({
                 aria-hidden
               />
             </span>
-          </button>
+          </InteractiveButton>
           {showEmailForm ? (
             <div id="report-gate-email-form">{emailForm}</div>
           ) : null}
@@ -431,13 +432,13 @@ export function AuthFlow({
 
       <p className="text-center text-sm text-muted-foreground">
         {mode === 'signup' ? AUTH.signUp.footer : AUTH.signIn.footer}{' '}
-        <button
+        <InteractiveButton
           type="button"
           className="inline-flex min-h-11 min-w-11 items-center justify-center font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           onClick={() => switchMode(mode === 'signup' ? 'signin' : 'signup')}
         >
           {mode === 'signup' ? AUTH.signUp.footerLink : AUTH.signIn.footerLink}
-        </button>
+        </InteractiveButton>
       </p>
     </>
   )

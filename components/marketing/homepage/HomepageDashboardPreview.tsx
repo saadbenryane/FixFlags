@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useRef, useState } from 'react'
 import { Copy, RefreshCw } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
@@ -49,7 +50,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
   } })) : [] }))
   const summaryItems = S.summaryItems.filter(item => !('id' in item) || item.id !== 'monitoring')
   const renderCard = (card: SampleCategory, layout: 'card' | 'row') => <BoardCard key={card.id} compact name={card.name} status={card.status} state={card.state} answer={card.answer} detail={layout === 'row' ? card.context : undefined} icon={card.id} flagCount={card.flagCount} freshness={S.freshness}
-    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, href: '#product', onOpen: () => onOpenFlag(card, flag), copyAction: <button type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></button> }))} onOpen={() => onOpen(card.id)} layout={layout} />
+    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, href: '#product', onOpen: () => onOpenFlag(card, flag), copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={() => onOpen(card.id)} layout={layout} />
 
   function updateConnection(provider: GoogleProvider, connected: boolean) {
     setConnections(current => ({ ...current, [provider]: { ...current[provider], status: connected ? 'connected' : 'revoked', propertyLabel: connected ? provider === 'SEARCH_CONSOLE' ? `https://${C.boardLabel}/` : C.boardLabel : null, lastSyncedAt: connected ? P.checkedAt : null } }))
@@ -70,7 +71,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag }: {
     <aside className={s.boardSidebar}>
       <div className={s.boardBrand}><span className={s.boardBrandLockup}><Logo size="sm" /></span><span className={s.boardBrandMark}><Logo variant="mark" size="sm" /></span></div>
       <div className={s.sampleIdentity}><strong>{C.boardHost}</strong><span>{C.boardLabel}</span><small>{S.freshness}</small></div>
-      <SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} renderItem={({ id, label, selected, className, content }) => <button key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</button>} />
+      <SiteWorkspaceNavigation activeRoute={view} label={S.navigationLabel} renderItem={({ id, label, selected, className, content }) => <InteractiveButton key={id} ref={element => { if (element) navigationItems.current.set(id, element); else navigationItems.current.delete(id) }} type="button" className={className} aria-label={label} aria-pressed={selected} onClick={() => setView(id)}>{content}</InteractiveButton>} />
     </aside>
     <div className={s.boardMain} data-site-content>
       <div className={s.boardHeader}><div className={s.boardIdentity}><h3>{SITE_ROUTES.find(([id]) => id === view)?.[1]}</h3></div>

@@ -137,8 +137,10 @@ describe('Site notice for an undelivered alert', () => {
     // unscoped Watch alerts belonging to other tenants, and an undelivered alert
     // is exactly the kind of state that must never leak sideways.
     const queries = readFileSync(resolve(root, 'lib/sites/application/queries.ts'), 'utf8')
-    expect(queries).toMatch(/const latestAlert = site\.projectId\s*\?/)
-    expect(queries).toContain('where: { projectId: site.projectId, recheckTrigger: \'WATCH\'')
+    expect(queries).toMatch(/async function loadLatestWatchAlert\(projectId: string \| null \| undefined\)/)
+    expect(queries).toMatch(/return projectId\s*\? await prisma\.audit\.findFirst/)
+    expect(queries).toContain("where: { projectId, recheckTrigger: 'WATCH'")
+    expect(queries).toContain('loadLatestWatchAlert(site.projectId)')
     expect(queries).toContain('watchNotificationLeaseUntil: true')
     expect(queries).toContain('leaseUntil: latestAlert?.watchNotificationLeaseUntil')
   })

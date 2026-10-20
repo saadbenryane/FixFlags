@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveInput, InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, KeyRound, Loader2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -112,7 +113,7 @@ export function ApiKeyManager() {
         </label>
         <label htmlFor="api-key-expiry" className="space-y-2 text-sm font-medium">
           Expires after
-          <select
+          <InteractiveSelect
             id="api-key-expiry"
             value={expiresInDays}
             onChange={(event) => setExpiresInDays(Number(event.target.value) as DeveloperKeyExpiryDays)}
@@ -123,7 +124,7 @@ export function ApiKeyManager() {
                 {days} days
               </option>
             ))}
-          </select>
+          </InteractiveSelect>
         </label>
         <p className="text-sm text-muted-foreground md:col-span-2">
           Access: <span className="font-medium text-foreground">{API_KEY_COPY.accessName}</span>. {API_KEY_COPY.accessDescription}
@@ -142,7 +143,7 @@ export function ApiKeyManager() {
         <div className="rounded-card border border-brand/30 bg-brand-muted p-4">
           <p className="text-sm font-medium">Copy this key now</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input
+            <InteractiveInput
               ref={revealedKey}
               readOnly
               value={created.key}

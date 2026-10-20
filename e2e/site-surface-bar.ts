@@ -163,7 +163,9 @@ export async function assertSharedNavigationTargets(page: Page, url: string): Pr
       if (!await opener.isVisible()) continue
       await opener.focus()
       await page.keyboard.press('Enter')
-      const drawer = page.getByRole('dialog')
+      const drawer = page.getByRole('dialog').filter({
+        has: page.getByRole('button', { name: 'Close', exact: true }),
+      })
       await expect(drawer).toBeVisible()
       const close = drawer.getByRole('button', { name: 'Close', exact: true })
       const box = await close.boundingBox()

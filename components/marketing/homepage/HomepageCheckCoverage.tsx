@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useRef, useState } from 'react'
 import Image from 'next/image'
 import { Activity, ArrowRight, ArrowUpRight, Check, CircleAlert, Code2, FileText, Fingerprint, Gauge, LockKeyhole, MousePointer2, Search, ShieldCheck } from 'lucide-react'
@@ -36,7 +37,7 @@ export function HomepageCheckCoverage() {
     <div className={t.checkGrid}>{C.checks.areas.map(area => {
       const Icon = AREA_ICONS[area.id]
       return <article className={t.checkCard} data-area={area.id} key={area.id}>
-        <h3><button type="button" aria-label={C.checks.explore(area.name)} onClick={event => { opener.current = event.currentTarget; setSelected(area.id) }}><Icon size={19} strokeWidth={1.6} aria-hidden="true" /><span>{area.name}</span><ArrowUpRight size={16} aria-hidden="true" /></button></h3>
+        <h3><InteractiveButton type="button" aria-label={C.checks.explore(area.name)} onClick={event => { opener.current = event.currentTarget; setSelected(area.id) }}><Icon size={19} strokeWidth={1.6} aria-hidden="true" /><span>{area.name}</span><ArrowUpRight size={16} aria-hidden="true" /></InteractiveButton></h3>
         <p className={t.benefit}>{area.benefit}</p>
         <div className={t.preview}><CheckPreview area={area.id} /></div>
       </article>

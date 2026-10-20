@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton, InteractiveTextarea } from '@/components/ui/interactive-controls'
 import { useId, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -88,7 +89,7 @@ export function CareHomepage() {
     <HomepageIntegrationsSection />
     <HomepageFinalSection />
     <ResponsiveDepth header={<>
-      {flag ? <button type="button" className={s.backButton} onClick={backToCategory}><ArrowLeft size={16} aria-hidden="true" />Back to {selectedCard?.name ?? 'area'}</button> : null}
+      {flag ? <InteractiveButton type="button" className={s.backButton} onClick={backToCategory}><ArrowLeft size={16} aria-hidden="true" />Back to {selectedCard?.name ?? 'area'}</InteractiveButton> : null}
       <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
     </>} open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
       <DialogDescription>{selectedFlag?.scope ?? selectedCard?.context ?? ''}</DialogDescription>
@@ -100,7 +101,7 @@ export function CareHomepage() {
           <a href={selectedFlag.url}>{selectedFlag.page}</a>
         </section>
         <section className={s.fixGuidance}><h3>{S.fixTitle}</h3><p>{S.fixBody}</p><p className={s.promptSummary}>{selectedFlag.fix}</p>
-          <button type="button" onClick={() => void copyFlag('read', prompt)}><Copy size={16} aria-hidden="true" />{S.sampleCopy}</button>
+          <InteractiveButton type="button" onClick={() => void copyFlag('read', prompt)}><Copy size={16} aria-hidden="true" />{S.sampleCopy}</InteractiveButton>
           <Link href="/docs/fix-with-ai">{S.guidanceAction}<ArrowRight size={16} aria-hidden="true" /></Link>
           {manualPrompt ? <p className={s.copyStatus} role="status">{copyResult?.source === 'read' ? copyResult.message : ''}</p> : null}
         </section>
@@ -110,12 +111,12 @@ export function CareHomepage() {
         <ul className={`${s.resultList} ${selectedCard.id === 'site' ? s.pageResults : ''}`}>{selectedCard.results.map((result, index) => <li key={result.label}>
           {selectedCard.id === 'site' && result.label.startsWith('/') ? <PageCapturePreview page={result.label} capture={result.capture} /> : null}
           <div className={s.resultHeading}><strong>{result.label}</strong><span data-result={result.status}>{result.status}</span></div><p>{result.detail}</p>
-          {result.status === 'Flag' && (result.flag ?? selectedCard.flag) ? <button id={`${resultId}-${index}`} type="button" aria-label={`View Flag for ${result.label}`} onClick={event => openFlag((result.flag ?? selectedCard.flag)!, event.currentTarget)}>{S.detailAction}<ArrowRight size={16} aria-hidden="true" /></button> : null}
+          {result.status === 'Flag' && (result.flag ?? selectedCard.flag) ? <InteractiveButton id={`${resultId}-${index}`} type="button" aria-label={`View Flag for ${result.label}`} onClick={event => openFlag((result.flag ?? selectedCard.flag)!, event.currentTarget)}>{S.detailAction}<ArrowRight size={16} aria-hidden="true" /></InteractiveButton> : null}
         </li>)}</ul>
         <p className={s.scope}>{selectedCard.scope}</p>
         {selectedCard.connection ? <aside className={s.contextConnection}><Link href={selectedCard.connection.href as Route}>{selectedCard.connection.label}<ArrowRight size={14} aria-hidden="true" /></Link><p>{selectedCard.connection.body}</p><small>{S.connections}</small></aside> : null}
       </> : null}
-      {manualPrompt ? <div className={s.manualCopy}><label htmlFor="sample-guidance">{S.guidanceLabel}</label><textarea id="sample-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
+      {manualPrompt ? <div className={s.manualCopy}><label htmlFor="sample-guidance">{S.guidanceLabel}</label><InteractiveTextarea id="sample-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
     </ResponsiveDepth>
   </div>
 }

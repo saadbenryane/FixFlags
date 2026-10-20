@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -570,9 +571,9 @@ export function WorkspaceChatPanel({
               <Button type="submit" loading={loading} disabled={!scanUrl.trim()}>{chatCopy.startAction}</Button>
             </div>
             {scanError ? <p role="alert" className="text-xs text-destructive">{scanError}</p> : null}
-            <button type="button" className="min-h-11 text-xs text-muted-foreground hover:text-foreground" onClick={() => setNewScan(false)}>
+            <InteractiveButton type="button" className="min-h-11 text-xs text-muted-foreground hover:text-foreground" onClick={() => setNewScan(false)}>
               {chatCopy.returnToReport}
-            </button>
+            </InteractiveButton>
           </form>
         ) : historyError && canChat ? (
           <div className="space-y-3 p-3">
@@ -595,14 +596,14 @@ export function WorkspaceChatPanel({
                 aria-label={chatCopy.suggestionsLabel}
               >
                 {[chatCopy.cannedFirst, chatCopy.cannedUnresolved].map((chip) => (
-                  <button
+                  <InteractiveButton
                     key={chip}
                     type="button"
                     className="min-h-9 rounded-full bg-muted/50 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     onClick={() => void send(chip)}
                   >
                     {chip}
-                  </button>
+                  </InteractiveButton>
                 ))}
               </div>
             ) : null}

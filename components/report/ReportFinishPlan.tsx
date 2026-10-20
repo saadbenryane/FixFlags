@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import { ChevronDown, Loader2 } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
@@ -96,7 +97,7 @@ export function ReportFinishPlan({
           />
         ) : hasPrompt ? (
           <div className="space-y-3">
-            <button
+            <InteractiveButton
               type="button"
               onClick={() => setPreviewOpen((open) => !open)}
               className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
@@ -110,7 +111,7 @@ export function ReportFinishPlan({
                 )}
                 aria-hidden
               />
-            </button>
+            </InteractiveButton>
             {previewOpen ? (
               <FixPromptBlock
                 prompt={prompt!}

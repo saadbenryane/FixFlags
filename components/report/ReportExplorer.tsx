@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Info } from 'lucide-react'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
@@ -422,13 +423,13 @@ export function ReportExplorer({
           data-flag-list-footer
           className="shrink-0 pt-3"
         >
-          <button
+          <InteractiveButton
             type="button"
             onClick={() => setShowAll((value) => !value)}
             className="flex min-h-11 w-full items-center justify-center rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}
-          </button>
+          </InteractiveButton>
         </footer>
       ) : null}
     </div>

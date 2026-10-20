@@ -37,6 +37,23 @@ function fact(area: CoverageFact['area'], state: CoverageFact['state'], label: s
   }
 }
 
+it.each([
+  { name: 'never checked', evidenced: false, incompleteReason: null, stale: false, inFlight: false, status: SITE_BOARD_COPY.notCheckedYet },
+  { name: 'recorded partial results', evidenced: true, incompleteReason: null, stale: false, inFlight: false, status: SITE_BOARD_COPY.siteCoverageIncomplete },
+  { name: 'attempted but unfinished checks', evidenced: false, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete, stale: false, inFlight: false, status: SITE_BOARD_COPY.siteCoverageIncomplete },
+  { name: 'retained stale results', evidenced: true, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete, stale: true, inFlight: false, status: SITE_BOARD_COPY.checkOutOfDate },
+  { name: 'refreshing partial results', evidenced: true, incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete, stale: false, inFlight: true, status: SITE_BOARD_COPY.checking },
+])('distinguishes $name in the category status', ({ evidenced, incompleteReason, stale, inFlight, status }) => {
+  const saved = evidenced || incompleteReason ? '2026-10-20T06:06:08.689Z' : null
+  const cards = buildBoardCards({
+    siteId: 'partial-status-site', inFlight, hasLastKnown: Boolean(saved),
+    health: { state: 'unknown', answer: SITE_BOARD_COPY.cardCheckIncomplete, statusLabel: SITE_BOARD_COPY.siteCoverageIncomplete },
+    coverageByArea: new Map([['security', { ...fact('security', 'unknown', SITE_BOARD_COPY.cardCheckIncomplete), checkedAt: saved, evidenced, incompleteReason, stale }]]),
+    flags: [], outcomes: [], pageCount: 0, captureUrl: null, checkedAt: saved, areas: ['security'],
+  })
+  expect(cards[0]).toMatchObject({ state: 'unknown', status, checkedAt: saved, evidenced, incompleteReason })
+})
+
 const conversionFlag: SiteFlagSeed = {
   id: 'flag-1',
   improvementId: null,

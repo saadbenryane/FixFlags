@@ -165,7 +165,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} summaryItems={summaryItems}
+        <SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} capturePriority summaryItems={summaryItems}
           notice={checking ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
             if (item.id === 'pages') { opener.current = document.activeElement as HTMLElement; setSelectedCard('site'); return }

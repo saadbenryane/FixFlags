@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
@@ -99,7 +100,7 @@ export function WorkspaceMobileTabs({
             {tabContent(tab)}
           </Link>
         ) : (
-          <button
+          <InteractiveButton
             key={tab.id}
             {...tabProps}
             ref={(node) => { tabRefs.current[index] = node }}
@@ -107,7 +108,7 @@ export function WorkspaceMobileTabs({
             onClick={tab.onSelect}
           >
             {tabContent(tab)}
-          </button>
+          </InteractiveButton>
         )
       })}
     </div>

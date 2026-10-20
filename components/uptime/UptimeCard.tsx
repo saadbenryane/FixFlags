@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Activity, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -87,10 +88,10 @@ export function UptimeCard({ siteId, summary, verification, historySource }: {
   const data = validHistory ?? (window === '24h' ? summary : null)
   return <>
     <article className={styles.card} aria-label={C.title} data-state={state}>
-      <button ref={trigger} type="button" className={styles.header} aria-label={C.details} onClick={() => setOpen(true)}>
+      <InteractiveButton ref={trigger} type="button" className={styles.header} aria-label={C.details} onClick={() => setOpen(true)}>
         <span><Activity size={18} aria-hidden /><strong>{C.title}</strong></span>
         <span className={styles.state}>{state === 'checking' ? <Loader2 size={13} className="text-brand motion-safe:animate-spin" aria-hidden /> : <i data-state={state} aria-hidden />}{C.states[state]}<ArrowRight size={16} aria-hidden /></span>
-      </button>
+      </InteractiveButton>
       {summary?.segments ? <PeriodStrip segments={summary.segments} /> : null}
       <div className={styles.meta}><span>{summary ? summary.enabled ? C.cadence : C.paused : C.scope}</span>{summary?.lastCheckedAt ? <time dateTime={summary.lastCheckedAt}>{C.lastChecked} {formatEvidenceTimestamp(summary.lastCheckedAt)}</time> : <span>{C.firstCheck}</span>}</div>
       {summary && summary.openIncidentCount > 0 ? <p className={styles.incidentCount}>{C.openIncidents(summary.openIncidentCount)}</p> : null}

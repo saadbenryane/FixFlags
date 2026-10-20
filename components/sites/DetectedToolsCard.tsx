@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -13,11 +14,11 @@ export function DetectedToolsCard({ items, onSelect }: { items: readonly ToolIte
   const trigger = useRef<HTMLButtonElement>(null)
   if (!items.length) return null
   return <section className={styles.card} aria-label="Detected technologies">
-    <button ref={trigger} type="button" className={styles.trigger} aria-label={C.viewTools} onClick={() => setOpen(true)}>
+    <InteractiveButton ref={trigger} type="button" className={styles.trigger} aria-label={C.viewTools} onClick={() => setOpen(true)}>
       <span className={styles.heading}><strong>{items.length}</strong><span>{C.tools(items.length)}</span><ArrowUpRight size={15} aria-hidden /></span>
       <span className={styles.tools}>{items.slice(0, 4).map(item => <span key={item.name} title={`${item.name}: ${item.status}`}><ToolLogo name={item.name} /><span>{item.name}</span></span>)}</span>
       {items.length > 4 ? <span className={styles.more}>{C.moreTools(items.length - 4)}</span> : null}
-    </button>
+    </InteractiveButton>
     <ResponsiveDepth header={<DialogTitle>{C.detectedTools}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
       <DialogDescription>{items.length} {C.tools(items.length)}</DialogDescription>
       <TechnologyStrip items={items} label={null} onSelect={onSelect ? item => { setOpen(false); onSelect(item) } : undefined} />

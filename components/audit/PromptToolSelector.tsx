@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useState, useEffect } from 'react'
 import { EditorMark, type EditorMarkName } from '@/components/brand/EditorMarks'
 import {
@@ -76,7 +77,7 @@ export function PromptToolSelector({
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
       {availableTools.map((opt) => (
-        <button
+        <InteractiveButton
           key={opt.key}
           type="button"
           onClick={() => {
@@ -94,7 +95,7 @@ export function PromptToolSelector({
         >
           <EditorMark name={opt.editorMark} className="h-3 w-3 shrink-0" />
           {opt.label}
-        </button>
+        </InteractiveButton>
       ))}
     </div>
   )

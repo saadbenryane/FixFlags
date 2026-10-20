@@ -90,6 +90,30 @@ async function countSitePages(site: SiteRecord): Promise<number> {
   return 0
 }
 
+async function loadLatestWatchAlert(projectId: string | null | undefined) {
+  // Delivery belongs to the most recent Watch alert, independently of the
+  // monitoring schedule. Retrying an older receipt cannot make its incident
+  // newest or hide a later delivery failure.
+  //
+  // Guarded on a resolved projectId, like every other tenant-scoped read here. A
+  // provisional Site has none, and querying with projectId: null would match
+  // other tenants' unscoped Watch alerts.
+  return projectId
+    ? await prisma.audit.findFirst({
+      where: { projectId, recheckTrigger: 'WATCH', watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
+      // Delivery retries change updatedAt, not the incident's chronology.
+      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        watchNotificationStatus: true,
+        watchNotificationAttempts: true,
+        watchNotificationAttemptCeiling:true,
+        watchNotificationLeaseUntil: true,
+        updatedAt: true,
+      },
+    })
+    : null
+}
+
 export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean; viewerAuthenticated?: boolean } = {}): Promise<SiteHomeView | null> {
   const site = await loadSiteRecord(siteId)
   if (!site) return null
@@ -98,7 +122,10 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const selection = await loadSiteAnalysisSelection(site)
   const audit = await resolveLatestAudit(site, selection)
 
-  const [{ flags: loadedFlags, recommendations: loadedRecommendations }, outcomes, pageCount, checkedPages, projectSettings, loadedResolvedFlags] = await Promise.all([
+  const [
+    { flags: loadedFlags, recommendations: loadedRecommendations }, outcomes, pageCount, checkedPages,
+    projectSettings, loadedResolvedFlags, prior, categoryRuns,
+  ] = await Promise.all([
     loadSiteFindings(site),
     listSiteOutcomes(site),
     countSitePages(site),
@@ -112,6 +139,8 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
       },
     }) : null,
     loadSiteResolvedFlags(site),
+    site.kind === 'project' ? resolvePriorCompletedAudit(site, audit?.id ?? null, selection) : null,
+    loadCategoryEvidence(site.projectId ? [site.projectId] : []),
   ])
   const guidanceAudit = audit ? { includeAi: audit.includeAi, triageAt: audit.triageAt, aiReviewAt: audit.aiReviewAt, failureCode: audit.failureCode } : null
   const withGuidance = (flag: SiteFlagSeed): SiteFlagSeed => ({
@@ -123,17 +152,12 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const resolvedFlags = loadedResolvedFlags.map(withGuidance)
 
   const inFlight = isAuditInFlight(audit?.status)
-  const prior =
-    site.kind === 'project'
-      ? await resolvePriorCompletedAudit(site, audit?.id ?? null, selection)
-      : null
-
   const lastKnownFacts =
     prior != null
       ? factsFromAudit(prior, flags, now)
       : null
 
-  const categoryEvidence = applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [site.projectId] : []), audit)
+  const categoryEvidence = applicableCategoryEvidence(categoryRuns, audit)
   const coverage = overlayCategoryCoverage(factsFromAudit(
     audit,
     flags,
@@ -145,7 +169,24 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
 
   const finished = isAuditFinished(audit?.status)
-  const resultPage = await loadSiteCheckResultPage(site, audit, undefined, categoryEvidence)
+  const trackingAudit = categoryEvidence.get('tracking')
+  const [
+    resultPage, captures, uptime, uptimeEvents, technologyProfile, trackingProfile,
+    monitoringHistoryView, activeRuns, connections, latestAlert, executionProgress, accountChecks,
+  ] = await Promise.all([
+    loadSiteCheckResultPage(site, audit, undefined, categoryEvidence),
+    loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null),
+    options.ownerEvidence && site.projectId ? loadUptimeSummary(site.projectId, now) : undefined,
+    options.ownerEvidence && site.projectId ? loadUptimeEvents(site.projectId) : undefined,
+    audit?.id ? loadTechnologyProfile(audit.id) : null,
+    trackingAudit ? loadTechnologyProfile(trackingAudit.id) : null,
+    loadMonitoringHistory(site, selection),
+    loadActiveSiteRuns(site, now),
+    site.projectId ? loadSiteConnectionViews(site.projectId) : null,
+    loadLatestWatchAlert(site.projectId),
+    loadExecutionProgress(site, audit?.id ?? null),
+    site.projectId ? loadAccountChecksView(site.projectId) : undefined,
+  ])
   const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
   const health = siteCardHealth({
     inFlight,
@@ -158,22 +199,11 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     pagesComplete: checkedPages.length > 0 && checkedPages.every(page => page.status === 'COMPLETED'),
     outcomes: outcomes.map((outcome) => ({ state: outcome.state, enabled: outcome.enabled })),
   })
-  const captures = await loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null)
   const capture = captures.find(item => item.device === 'desktop')
-  const [uptime, uptimeEvents] = options.ownerEvidence && site.projectId ? await Promise.all([
-    loadUptimeSummary(site.projectId, now), loadUptimeEvents(site.projectId),
-  ]) : [undefined, undefined]
-
-  const technologyProfile = audit?.id ? await loadTechnologyProfile(audit.id) : null
-  const trackingAudit = categoryEvidence.get('tracking')
-  const trackingProfile = trackingAudit ? await loadTechnologyProfile(trackingAudit.id) : null
   const analytics = (trackingProfile && trackingProfile.status !== 'not_captured' ? trackingProfile : technologyProfile)?.technologies
     .filter((tech) => tech.category === 'analytics')
     .map((tech) => tech.name) ?? []
-  const { timeline: monitoringHistory, trend: monitoringTrend } = await loadMonitoringHistory(site, selection)
-  const activeRuns = await loadActiveSiteRuns(site, now)
-
-  const connections = site.projectId ? await loadSiteConnectionViews(site.projectId) : null
+  const { timeline: monitoringHistory, trend: monitoringTrend } = monitoringHistoryView
   const connectionNotes = connectionCardNotes(connections?.facts ?? [])
   const cards: BoardCardView[] = buildBoardCards({
     siteId,
@@ -203,27 +233,6 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     siteId, site, cards, flags, health, coverage, checkedPages, capture, audit, prior, finished, now,
   })
 
-  // Delivery belongs to the most recent Watch alert, independently of the
-  // monitoring schedule. Retrying an older receipt cannot make its incident
-  // newest or hide a later delivery failure.
-  //
-  // Guarded on a resolved projectId, like every other tenant-scoped read here. A
-  // provisional Site has none, and querying with projectId: null would match
-  // other tenants' unscoped Watch alerts.
-  const latestAlert = site.projectId
-    ? await prisma.audit.findFirst({
-      where: { projectId: site.projectId, recheckTrigger: 'WATCH', watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
-      // Delivery retries change updatedAt, not the incident's chronology.
-      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'desc' }],
-      select: {
-        watchNotificationStatus: true,
-        watchNotificationAttempts: true,
-        watchNotificationAttemptCeiling:true,
-        watchNotificationLeaseUntil: true,
-        updatedAt: true,
-      },
-    })
-    : null
   const alertState = watchAlertDelivery({
     status: latestAlert?.watchNotificationStatus ?? null,
     attempts: latestAlert?.watchNotificationAttempts ?? 0,
@@ -231,7 +240,6 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     leaseUntil: latestAlert?.watchNotificationLeaseUntil ?? null,
   })
 
-  const executionProgress = await loadExecutionProgress(site, audit?.id ?? null)
   // A completed partial report starts a new check through the existing retry
   // action. Task-level configuration limits describe the saved run, not a live
   // execution that still owns its recovery. Keep this aligned with Site summaries.
@@ -294,7 +302,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
       },
     },
     settings: {
-      ...(site.projectId ? { accountChecks: await loadAccountChecksView(site.projectId) } : {}),
+      ...(accountChecks ? { accountChecks } : {}),
       notificationLevel: projectSettings?.notificationLevel ?? null,
       notifyOnRecovery: projectSettings?.notifyOnRecovery ?? null,
       shopify: {

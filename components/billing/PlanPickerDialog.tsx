@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import type { Route } from 'next'
 
 import { useEffect, useState } from 'react'
@@ -309,14 +310,14 @@ export function PlanPickerDialog({
                 {PRICING.pickerSubtitle}
               </SheetDescription>
             </div>
-            <button
+            <InteractiveButton
               type="button"
               onClick={() => handleOpenChange(false)}
               aria-label={SYSTEM_COPY.actions.close}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <X className="h-4 w-4" aria-hidden />
-            </button>
+            </InteractiveButton>
           </div>
           <div className="flex-1 px-5 py-5">{body}</div>
         </SheetContent>

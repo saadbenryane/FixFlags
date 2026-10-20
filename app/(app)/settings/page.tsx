@@ -46,7 +46,7 @@ export default async function SettingsPage() {
 
       <Card variant="subtle">
         <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
+          <CardTitle as="h2" className="text-base">Profile</CardTitle>
           <CardDescription>Your plan, name, and email address.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -74,7 +74,7 @@ export default async function SettingsPage() {
       />
 
       <Card variant="subtle" className="border-destructive/30">
-        <CardHeader><CardTitle className="text-base">Danger zone</CardTitle><CardDescription>Permanently remove this FixFlags account.</CardDescription></CardHeader>
+        <CardHeader><CardTitle as="h2" className="text-base">Danger zone</CardTitle><CardDescription>Permanently remove this FixFlags account.</CardDescription></CardHeader>
         <CardContent><AccountDangerZone /></CardContent>
       </Card>
     </div>

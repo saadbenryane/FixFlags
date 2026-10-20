@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton, InteractiveTextarea } from '@/components/ui/interactive-controls'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -51,7 +52,7 @@ export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: st
       <div className={s.narrative}>
         <div className={s.stepLabel}><span className={s.icon}><Flag aria-hidden size={28} strokeWidth={1.5} /></span><span><small aria-hidden>02</small>{C.steps[1].label}</span></div>
         <h2>{C.steps[1].title}</h2><p className={s.body}>{C.steps[1].body}</p>
-        <div className={s.examplePicker} role="group" aria-label={C.walkthrough.label}>{C.walkthrough.examples.map(item => <button key={item.id} type="button" aria-pressed={selected === item.id} onClick={() => chooseExample(item.id)}>{item.label}<ArrowRight aria-hidden size={16} /></button>)}</div>
+        <div className={s.examplePicker} role="group" aria-label={C.walkthrough.label}>{C.walkthrough.examples.map(item => <InteractiveButton key={item.id} type="button" aria-pressed={selected === item.id} onClick={() => chooseExample(item.id)}>{item.label}<ArrowRight aria-hidden size={16} /></InteractiveButton>)}</div>
       </div>
       <div className={s.flagPanel} aria-live="polite" aria-atomic="true">
         <div className={s.flagHeader}><span className={s.flagLabel}><Flag aria-hidden size={13} />{C.steps[1].label}</span><span className={s.pagePath}>{example.page}</span></div>
@@ -73,7 +74,7 @@ export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: st
         <blockquote className={s.prompt}>{example.prompt}</blockquote>
         <Button variant="outline" onClick={() => void copyPrompt()}><Copy aria-hidden size={16} />{C.walkthrough.copy}</Button>
         {copyState === 'copied' ? <p className={s.copyStatus} role="status"><Check aria-hidden size={16} />{C.walkthrough.copied}</p> : null}
-        {copyState === 'manual' ? <div className={s.manualCopy}><p role="status">{C.walkthrough.copyFallback}</p><textarea ref={manualPrompt} aria-label={C.walkthrough.promptLabel} readOnly value={example.prompt} rows={6} onFocus={event => event.currentTarget.select()} /></div> : null}
+        {copyState === 'manual' ? <div className={s.manualCopy}><p role="status">{C.walkthrough.copyFallback}</p><InteractiveTextarea ref={manualPrompt} aria-label={C.walkthrough.promptLabel} readOnly value={example.prompt} rows={6} onFocus={event => event.currentTarget.select()} /></div> : null}
         <details className={s.comparison}>
           <summary>{C.walkthrough.recoveryDetail}</summary>
           <h4>{C.walkthrough.recoveryTitle}</h4><p>{C.walkthrough.recoveryBody}</p>
