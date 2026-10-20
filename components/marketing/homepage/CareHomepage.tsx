@@ -37,13 +37,13 @@ export function CareHomepage() {
     setSelected(card); setFlag(null); setManualPrompt(null); setCopyResult(null)
   }
   const focusHeading = () => {
-    const dialog = heading.current?.closest<HTMLElement>('[role="dialog"]')
+    const dialog = heading.current?.closest<HTMLElement>('[role="dialog"]')?.querySelector<HTMLElement>('[data-dialog-scroll]')
     if (dialog) dialog.scrollTop = 0
     heading.current?.focus({ preventScroll: true })
   }
   const openFlag = (id: SampleFlagId, trigger: HTMLButtonElement) => {
     flagOpener.current = trigger.id
-    categoryScroll.current = trigger.closest<HTMLElement>('[role="dialog"]')?.scrollTop ?? 0
+    categoryScroll.current = trigger.closest<HTMLElement>('[data-dialog-scroll]')?.scrollTop ?? 0
     setFlag(id); setCopyResult(null)
     requestAnimationFrame(focusHeading)
   }
@@ -57,7 +57,7 @@ export function CareHomepage() {
     requestAnimationFrame(() => {
       const trigger = flagOpener.current ? document.getElementById(flagOpener.current) : null
       if (!trigger) { focusHeading(); return }
-      const dialog = trigger.closest<HTMLElement>('[role="dialog"]')
+      const dialog = trigger.closest<HTMLElement>('[data-dialog-scroll]')
       if (dialog) dialog.scrollTop = categoryScroll.current
       trigger.focus({ preventScroll: true })
     })
@@ -87,9 +87,10 @@ export function CareHomepage() {
     <HomepageHandoffSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
     <HomepageIntegrationsSection />
     <HomepageFinalSection />
-    <ResponsiveDepth open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
+    <ResponsiveDepth header={<>
       {flag ? <button type="button" className={s.backButton} onClick={backToCategory}><ArrowLeft size={16} aria-hidden="true" />Back to {selectedCard?.name ?? 'area'}</button> : null}
       <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
+    </>} open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
       <DialogDescription>{selectedFlag?.scope ?? selectedCard?.context ?? ''}</DialogDescription>
       {selectedFlag ? <>
         <FlagEvidenceDetails observed={selectedFlag.observed} expected={selectedFlag.expected}

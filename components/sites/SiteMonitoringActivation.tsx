@@ -103,8 +103,8 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
       {status && !open ? <p role="status" className="mt-3 text-sm">{status}</p> : null}
       {view.watch.lastError ? <p className="mt-3 text-sm text-muted-foreground">{C.needsAttention} <Link href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link></p> : null}
     </section>
-    <ResponsiveDepth className="content-start motion-reduce:!animate-none" open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); if (!exploring.current) trigger.current?.focus(); exploring.current = false }}>
-      <DialogTitle>{scheduled && page ? C.reviewTitle : C.setupTitle}</DialogTitle><DialogDescription>{scheduled && page ? C.reviewBody : C.setupBody}</DialogDescription>
+    <ResponsiveDepth header={<DialogTitle>{scheduled && page ? C.reviewTitle : C.setupTitle}</DialogTitle>} className="content-start motion-reduce:!animate-none" open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); if (!exploring.current) trigger.current?.focus(); exploring.current = false }}>
+      <DialogDescription>{scheduled && page ? C.reviewBody : C.setupBody}</DialogDescription>
       {!owner || authRequired ? <div className="space-y-4"><h3 className="font-semibold">{authRequired ? C.signInAgain : C.claimTitle}</h3><p className="text-sm text-muted-foreground">{C.claimBody}</p><div className="flex flex-wrap gap-2"><Button asChild variant="brand"><Link href={signUpHref}>{C.signUp}</Link></Button><Button asChild variant="outline"><Link href={signedInHref}>{C.signIn}</Link></Button></div></div> : <>
         <div className="py-4"><h3 className="text-sm font-semibold">{C.page}</h3><p className="mt-1 break-all text-sm">{view.site.url}</p><p className="mt-2 text-sm text-muted-foreground">{C.expectation}</p>
           {ready.filter(item => item.id !== page?.id).length ? <div className="mt-4"><h3 className="text-sm font-semibold">{C.existing}</h3><ul className="mt-2 space-y-1 text-sm">{ready.filter(item => item.id !== page?.id).map(item => <li key={item.id}>{item.name}</li>)}</ul></div> : null}

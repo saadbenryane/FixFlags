@@ -42,8 +42,7 @@ export function HomepageCheckCoverage() {
       </article>
     })}</div>
   </section>
-  <ResponsiveDepth open={area !== undefined} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }} className={t.coverageDialog}>
-    <DialogTitle className={t.detailTitle}>{area ? C.checks.detailTitle(area.name) : ''}</DialogTitle>
+  <ResponsiveDepth header={<DialogTitle className={t.detailTitle}>{area ? C.checks.detailTitle(area.name) : ''}</DialogTitle>} open={area !== undefined} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }} className={t.coverageDialog}>
     <DialogDescription>{area?.benefit}</DialogDescription>
     {area ? <div className={t.checkGroups}>{area.groups.map(group => <section key={group.title}><h3>{group.title}</h3><ul>{group.checks.map(check => <li key={check}>{check}</li>)}</ul></section>)}</div> : null}
     <a href="#analyze" className={t.detailAction} onClick={() => { opener.current = document.getElementById('audit-url-care-hero'); setSelected(null) }}>{C.checks.detailAction}<ArrowRight size={16} aria-hidden="true" /></a>

@@ -188,8 +188,8 @@ test.describe('credentialed revenue journeys', () => {
     await expect(originalCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
     const continuation = originalCategory.getByRole('link', { name: 'Sign in to check again', exact: true }).last()
     await continuation.focus()
-    await originalCategory.evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
-    const beforeAuth = await originalCategory.evaluate(node => ({ dialogTop: node.scrollTop, x: scrollX, y: scrollY, destination: location.pathname + location.search + location.hash }))
+    await originalCategory.locator('[data-dialog-scroll]').evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
+    const beforeAuth = await originalCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY, destination: location.pathname + location.search + location.hash }))
     await expect(continuation).toBeInViewport()
     await continuation.click()
     await page.waitForURL(url => url.pathname === '/sign-in')
@@ -205,8 +205,8 @@ test.describe('credentialed revenue journeys', () => {
     const returnedCategory = page.getByRole('dialog')
     await expect(returnedCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
     await expect.poll(() => returnedCategory.evaluate((node, before) =>
-      node.contains(document.activeElement) && Math.abs(node.scrollTop - before.dialogTop) <= 1 && Math.abs(scrollY - before.y) <= 1, beforeAuth), { timeout: 6000 }).toBe(true)
-    const afterAuth = await returnedCategory.evaluate(node => ({ dialogTop: node.scrollTop, x: scrollX, y: scrollY,
+      node.contains(document.activeElement) && Math.abs(node.querySelector('[data-dialog-scroll]')!.scrollTop - before.dialogTop) <= 1 && Math.abs(scrollY - before.y) <= 1, beforeAuth), { timeout: 6000 }).toBe(true)
+    const afterAuth = await returnedCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY,
       focusInsideCategory: node.contains(document.activeElement), destination: location.pathname + location.search + location.hash }))
     await test.info().attach('actual-authentication-context-continuity', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ beforeAuth, afterAuth,
       scope: 'Actual anonymous category, normal sign-in link, signup, exact claim and restored browser reading position. No storage values, application timestamps or assessment records were seeded.' })) })

@@ -43,8 +43,8 @@ export function SitePreviewCard({ host, captures }: { host: string; captures: re
           onError={() => setFailedUrl(capture.url)} data-device={device} />}
       <span className={styles.enlarge}><Maximize2 size={16} aria-hidden /></span>
     </button> : <div className={styles.empty}><Globe2 size={24} aria-hidden /><p>{capture ? C.captureUnavailable : C.noCapture}</p></div>}
-    {capture ? <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }} className="max-w-4xl">
-      <DialogTitle>{host}</DialogTitle><DialogDescription>{capture.previous ? C.previousCapture : C.latestCapture} · {capture.pageUrl} · {capture.viewport} · {capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}</DialogDescription>
+    {capture ? <ResponsiveDepth header={<DialogTitle>{host}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }} className="max-w-4xl">
+      <DialogDescription>{capture.previous ? C.previousCapture : C.latestCapture} · {capture.pageUrl} · {capture.viewport} · {capture.recordedAt ? formatEvidenceTimestamp(capture.recordedAt) : C.timeUnknown}</DialogDescription>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={capture.url} alt={C.openCapture(host)} width={width} height={height} className="h-auto max-w-full" />
     </ResponsiveDepth> : null}

@@ -85,8 +85,7 @@ export function SitePromptCopyButton({
         {!copied ? <SiteActionFeedback message={message} error={error} siteId={siteId} /> : null}
       </span>
       <Dialog open={Boolean(manualPrompt)} onOpenChange={(open) => { if (!open) setManualPrompt(null) }}>
-        <DialogContent>
-          <DialogTitle>{SITE_BOARD_COPY.manualCopyTitle}</DialogTitle>
+        <DialogContent header={<DialogTitle>{SITE_BOARD_COPY.manualCopyTitle}</DialogTitle>}>
           <DialogDescription>{SITE_BOARD_COPY.manualCopyBody}</DialogDescription>
           <Textarea ref={promptRef} readOnly value={manualPrompt ?? ''} rows={12} aria-label={SITE_BOARD_COPY.fixPromptLabel} onFocus={(event) => event.currentTarget.select()} />
           <DialogFooter>

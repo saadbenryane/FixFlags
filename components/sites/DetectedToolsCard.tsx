@@ -18,8 +18,8 @@ export function DetectedToolsCard({ items, onSelect }: { items: readonly ToolIte
       <span className={styles.tools}>{items.slice(0, 4).map(item => <span key={item.name} title={`${item.name}: ${item.status}`}><ToolLogo name={item.name} /><span>{item.name}</span></span>)}</span>
       {items.length > 4 ? <span className={styles.more}>{C.moreTools(items.length - 4)}</span> : null}
     </button>
-    <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-      <DialogTitle>{C.detectedTools}</DialogTitle><DialogDescription>{items.length} {C.tools(items.length)}</DialogDescription>
+    <ResponsiveDepth header={<DialogTitle>{C.detectedTools}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
+      <DialogDescription>{items.length} {C.tools(items.length)}</DialogDescription>
       <TechnologyStrip items={items} label={null} onSelect={onSelect ? item => { setOpen(false); onSelect(item) } : undefined} />
     </ResponsiveDepth>
   </section>

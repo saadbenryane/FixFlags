@@ -95,8 +95,8 @@ export function UptimeCard({ siteId, summary, verification, historySource }: {
       <div className={styles.meta}><span>{summary ? summary.enabled ? C.cadence : C.paused : C.scope}</span>{summary?.lastCheckedAt ? <time dateTime={summary.lastCheckedAt}>{C.lastChecked} {formatEvidenceTimestamp(summary.lastCheckedAt)}</time> : <span>{C.firstCheck}</span>}</div>
       {summary && summary.openIncidentCount > 0 ? <p className={styles.incidentCount}>{C.openIncidents(summary.openIncidentCount)}</p> : null}
     </article>
-    <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }} className="max-w-3xl">
-      <DialogTitle>{C.details}</DialogTitle><DialogDescription>{C.description}</DialogDescription>
+    <ResponsiveDepth header={<DialogTitle>{C.details}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }} className="max-w-3xl">
+      <DialogDescription>{C.description}</DialogDescription>
       {verification ? <details className={styles.periods}><summary>{C.renderedVerification}</summary><p>{C.renderedLimitation}</p>{verification}</details> : null}
       <p className={styles.scope}>{data?.targetUrl}<br />{C.scope} {C.limitation}</p>
       <div className={styles.windows}>{(['24h', '7d', '30d'] as const).map(value => <Button key={value} variant={window === value ? 'secondary' : 'ghost'} size="sm" aria-pressed={window === value} onClick={() => setWindow(value)}>{C.periods[value]}</Button>)}</div>

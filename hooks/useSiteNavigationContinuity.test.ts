@@ -8,7 +8,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   sessionStorage.clear()
   window.history.replaceState({}, '', '/sites/site-return?category=accessibility')
-  document.body.innerHTML = '<main id="main-content" tabindex="-1"><div role="dialog" data-state="open" data-site-return-context="category" tabindex="-1"><a data-site-return-focus="check" href="/sign-in?next=%2Fsites%2Fsite-return%3Fcategory%3Daccessibility">Sign in</a></div></main>'
+  document.body.innerHTML = '<main id="main-content" tabindex="-1"><div role="dialog" data-state="open" data-site-return-context="category" tabindex="-1"><div data-dialog-scroll><a data-site-return-focus="check" href="/sign-in?next=%2Fsites%2Fsite-return%3Fcategory%3Daccessibility">Sign in</a></div></div></main>'
   vi.stubGlobal('scrollTo', vi.fn())
   vi.stubGlobal('scrollY', 420)
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => setTimeout(() => callback(0), 16))
@@ -20,7 +20,7 @@ function depart() {
   const mounted = renderHook(() => useSiteNavigationContinuity('site-return'))
   const link = document.querySelector('a')!
   link.addEventListener('click', event => event.preventDefault())
-  document.querySelector<HTMLElement>('[role="dialog"]')!.scrollTop = 180
+  document.querySelector<HTMLElement>('[data-dialog-scroll]')!.scrollTop = 180
   act(() => { link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })) })
   mounted.unmount()
 }
@@ -30,11 +30,12 @@ describe('Site authentication reading-position continuity', () => {
     const saved = JSON.parse(sessionStorage.getItem(key)!)
     expect(saved).toMatchObject({ y: 420, dialogTop: 180, focus: 'check' })
     expect(Object.keys(saved).sort()).toEqual(['destination', 'dialogTop', 'focus', 'recordedAt', 'version', 'x', 'y'])
-    document.querySelector('[role="dialog"]')!.innerHTML = '<button data-site-return-focus="check">Check again</button>'
+    document.querySelector('[role="dialog"]')!.innerHTML = '<div data-dialog-scroll><button data-site-return-focus="check">Check again</button></div>'
     renderHook(() => useSiteNavigationContinuity('owned-site'))
     await act(async () => { await vi.advanceTimersByTimeAsync(40) })
     expect(document.activeElement?.textContent).toBe('Check again')
-    expect(document.querySelector<HTMLElement>('[role="dialog"]')!.scrollTop).toBe(180)
+    expect(document.querySelector<HTMLElement>('[data-dialog-scroll]')!.scrollTop).toBe(180)
+    expect(document.querySelector<HTMLElement>('[role="dialog"]')!.scrollTop).toBe(0)
     expect(window.scrollTo).toHaveBeenCalledWith({ left: 0, top: 420, behavior: 'instant' })
     expect(sessionStorage.getItem(key)).toBeNull()
   })
@@ -44,7 +45,7 @@ describe('Site authentication reading-position continuity', () => {
     renderHook(() => useSiteNavigationContinuity('owned-site'))
     await act(async () => { await vi.advanceTimersByTimeAsync(40) })
     expect(window.scrollTo).not.toHaveBeenCalled()
-    await act(async () => { document.querySelector('main')!.insertAdjacentHTML('beforeend', '<div role="dialog" data-state="open" data-site-return-context="category" tabindex="-1"><button data-site-return-focus="check">Check again</button></div>') })
+    await act(async () => { document.querySelector('main')!.insertAdjacentHTML('beforeend', '<div role="dialog" data-state="open" data-site-return-context="category" tabindex="-1"><div data-dialog-scroll><button data-site-return-focus="check">Check again</button></div></div>') })
     await act(async () => { await vi.advanceTimersByTimeAsync(40) })
     expect(document.activeElement?.textContent).toBe('Check again')
     expect(window.location.search).toBe('?category=accessibility')
@@ -60,7 +61,7 @@ describe('Site authentication reading-position continuity', () => {
   })
   it('keeps a disabled successor inside its original dialog focus boundary', async () => {
     depart()
-    document.querySelector('[role="dialog"]')!.innerHTML = '<button data-site-return-focus="check" disabled>Checking</button>'
+    document.querySelector('[role="dialog"]')!.innerHTML = '<div data-dialog-scroll><button data-site-return-focus="check" disabled>Checking</button></div>'
     renderHook(() => useSiteNavigationContinuity('owned-site'))
     await act(async () => { await vi.advanceTimersByTimeAsync(40) })
     expect(document.activeElement).toBe(document.querySelector('[role="dialog"]'))

@@ -17,8 +17,7 @@ export function SiteRemovalDialog({ open, onOpenChange, accounts, busy, onCleanu
   const snapshot = JSON.stringify(remaining)
   const [acknowledged, setAcknowledged] = useState(false)
   useEffect(() => { setAcknowledged(false) }, [open, snapshot])
-  return <ResponsiveDepth open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
-    <DialogTitle>{S.remove}</DialogTitle>
+  return <ResponsiveDepth header={<DialogTitle>{S.remove}</DialogTitle>} open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
     <DialogDescription>{S.removeBody}</DialogDescription>
     {remaining.length > 0 ? <div className="mt-4 space-y-3">
       <p className="text-sm">{A.removalAccounts}</p>

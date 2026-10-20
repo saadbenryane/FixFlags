@@ -81,9 +81,8 @@
 .final { text-align: center; background: hsl(var(--muted) / .35); }
 .final > p { margin: 16px auto 0; max-width: 520px; font-size: 16px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
 .final .textLink { margin-top: 12px; }
-.dialog { max-width: 680px; padding: 28px; background: hsl(var(--background)); }
-.dialog > button:last-child { min-width: 44px; min-height: 44px; top: 8px; right: 8px; }
-.dialog > h2 { padding-right: 28px; font-size: 25px; line-height: 1.3; letter-spacing: -.03em; }
+.dialog { max-width: 680px; background: hsl(var(--background)); }
+.dialog [data-dialog-title] { font-size: 25px; line-height: 1.3; letter-spacing: -.03em; }
 .depthAnswer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-block: 18px; }
 .depthAnswer > strong { font-size: 18px; font-weight: 600; }
 .resultsTitle, .fixGuidance h3 { margin-top: 12px; font-size: 14px; font-weight: 600; }
@@ -166,7 +165,6 @@
   .boardSummary { gap: 10px; }
   .boardIdentity strong { font-size: 13px; }
   .boardPane button { max-width: 100%; height: auto; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
-  .dialog { inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; transform: none; border-radius: 0; padding: calc(24px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
   .fixGuidance > a { margin-left: 0; }
   .manualCopy textarea { font-size: 16px; }
 }

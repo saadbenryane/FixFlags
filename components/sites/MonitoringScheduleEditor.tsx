@@ -34,8 +34,7 @@ export function MonitoringScheduleEditor({ open, onOpenChange, schedule, availab
   const interval = scheduleInterval(selected)
   const supported = sample || interval === null || availableIntervals.includes(interval)
 
-  return <ResponsiveDepth open={open} onOpenChange={value => { if (!busy) onOpenChange(value) }}>
-    <DialogTitle>{C.title}</DialogTitle>
+  return <ResponsiveDepth header={<DialogTitle>{C.title}</DialogTitle>} open={open} onOpenChange={value => { if (!busy) onOpenChange(value) }}>
     <DialogDescription>{C.description}</DialogDescription>
     {sample ? <p className="text-sm text-muted-foreground">{C.sample}</p> : null}
     <form className="space-y-4" onSubmit={event => { event.preventDefault(); if (valid && supported && !busy && !loading && !loadError) onSave(selected) }}>

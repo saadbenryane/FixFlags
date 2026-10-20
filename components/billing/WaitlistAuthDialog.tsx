@@ -38,10 +38,9 @@ export function WaitlistAuthDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain p-5 sm:p-6"
+      <DialogContent header={<DialogTitle className="sr-only">{WAITLIST_PAGE.authDialogTitle}</DialogTitle>}
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md"
       >
-        <DialogTitle className="sr-only">{WAITLIST_PAGE.authDialogTitle}</DialogTitle>
         <DialogDescription className="sr-only">
           {WAITLIST_PAGE.authDialogBody}
         </DialogDescription>

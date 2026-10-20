@@ -68,13 +68,14 @@ describe('comprehensive homepage experience', () => {
   it('returns to the same page result and scroll position after reading a Flag', async () => {
     render(<CareHomepage />)
     const dialog = openCategory('Pages')
-    dialog.scrollTop = 320
+    const scrollBody = dialog.querySelector<HTMLElement>('[data-dialog-scroll]')!
+    scrollBody.scrollTop = 320
     fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /contact' }))
     await waitFor(() => expect(within(dialog).getByRole('heading', { name: SAMPLE_FLAGS.contact.title })).toHaveFocus())
-    expect(dialog.scrollTop).toBe(0)
+    expect(scrollBody.scrollTop).toBe(0)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to Pages' }))
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'View Flag for /contact' })).toHaveFocus())
-    expect(dialog.scrollTop).toBe(320)
+    expect(scrollBody.scrollTop).toBe(320)
   })
 
   it('keeps keyboard focus in the board when a detected tool opens Integrations', async () => {

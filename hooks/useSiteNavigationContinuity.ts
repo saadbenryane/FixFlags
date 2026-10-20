@@ -47,9 +47,12 @@ export function useSiteNavigationContinuity(siteId: string) {
             if (stopped || !container.isConnected) return
             const control = accountControl ?? container.querySelector<HTMLElement>(`[data-site-return-focus="${saved.focus}"]`)
             const target = control && !control.matches(':disabled,[aria-disabled="true"]') ? control : container
-            target.focus({ preventScroll: true })
             window.scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' })
-            if (saved.dialogTop !== null) container.scrollTop = saved.dialogTop
+            if (saved.dialogTop !== null) {
+              const body = container.querySelector<HTMLElement>('[data-dialog-scroll]')
+              if (body) body.scrollTop = saved.dialogTop
+            }
+            target.focus({ preventScroll: true })
             remove()
             stop()
           })
@@ -78,7 +81,7 @@ export function useSiteNavigationContinuity(siteId: string) {
       const dialog = sameContext ? anchor.closest<HTMLElement>('[role="dialog"][data-site-return-context="category"]') : null
       const state: SiteContinuation = { version: 1, destination: destination.pathname + destination.search + destination.hash,
         recordedAt: Date.now(), x: sameContext ? Math.max(0, window.scrollX) : 0, y: sameContext ? Math.max(0, window.scrollY) : 0,
-        dialogTop: dialog ? Math.max(0, dialog.scrollTop) : null,
+        dialogTop: dialog ? Math.max(0, dialog.querySelector<HTMLElement>('[data-dialog-scroll]')?.scrollTop ?? 0) : null,
         focus: sameContext ? siteReturnFocus(anchor.closest<HTMLElement>('[data-site-return-focus]')?.dataset.siteReturnFocus) : 'context' }
       try { sessionStorage.setItem(key, JSON.stringify(state)) } catch { /* Never block authentication when local storage is unavailable. */ }
     }
