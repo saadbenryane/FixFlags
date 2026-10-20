@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import type { PrescriptionOutput } from './judge-prescription-schema'
-import { prescriptionGuidanceJsonSchema, parsePrescriptionGuidance, composePrescriptionRubrics } from './prescription-guidance-schema'
+import { prescriptionGuidanceJsonSchema, parsePrescriptionGuidance, composePrescriptionRubrics, recordedPrescriptionFields } from './prescription-guidance-schema'
 import {
   buildPrescriptionSystemPrompt,
   buildPrescriptionUserPrompt,
@@ -19,6 +19,7 @@ import {
 } from './judge-runner'
 import { PRESCRIPTION_BATCH_SIZE, prescriptionFlagBatches } from './prescription-plan'
 import { isConditionalInspection } from './prescription-policy'
+import { getScreenshotHint } from './screenshot-hint'
 
 export { prescriptionFlagBatches, prescriptionTaskPlans } from './prescription-plan'
 
@@ -87,7 +88,15 @@ export function validatePrescriptionOutput(
 
   for (const rx of output.flagPrescriptions) {
     const existing = existingFlags.find((f) => f.flagKey === rx.flagKey)
-    validateFixQuality(rx, existing)
+    if (!existing || typeof existing.evidence !== 'string' || !existing.evidence.trim()) {
+      throw new JudgeContractError(`recorded evidence for ${rx.flagKey} is unavailable`)
+    }
+    for (const [field, value] of Object.entries(recordedPrescriptionFields(existing))) {
+      if (rx[field as 'evidence' | 'whyItMatters' | 'verificationRule'] !== value) {
+        throw new JudgeContractError(`prescription for ${rx.flagKey} changes recorded ${field}`)
+      }
+    }
+    validateRepairTaskQuality(rx, existing)
     // Soft-fail mismatched agentPrompt: keep fix/evidence, drop the bad prompt
     // so the whole prescription job is not aborted after retries.
     const agentPrompt = rx.agentPrompt?.trim()
@@ -135,14 +144,11 @@ function sharesRecordedTarget(fix: string, problem: string, evidence: string): b
   return matching.length >= 2
 }
 
-function validateFixQuality(
+function validateRepairTaskQuality(
   rx: {
     flagKey: string
     fix: string
-    evidence: string
-    whyItMatters: string
     agentPrompt?: string | null
-    verificationRule: string
   },
   existing?: ExistingFlagForPrescription
 ): void {
@@ -197,26 +203,6 @@ function validateFixQuality(
     )
   }
 
-  const evidence = rx.evidence.trim()
-  if (evidence.length < 20) {
-    throw new JudgeContractError(
-      `evidence for ${rx.flagKey} is too brief (${evidence.length} chars), must describe what is visible on the page`
-    )
-  }
-
-  const why = rx.whyItMatters.trim()
-  if (why.length < 15) {
-    throw new JudgeContractError(
-      `whyItMatters for ${rx.flagKey} is too brief (${why.length} chars), must repeat the recorded explanation`
-    )
-  }
-
-  const vr = rx.verificationRule.trim()
-  if (vr.length < 10) {
-    throw new JudgeContractError(
-      `verificationRule for ${rx.flagKey} is too brief (${vr.length} chars), must describe how to verify the fix`
-    )
-  }
 }
 
 async function runAnthropicPrescription(
@@ -284,8 +270,7 @@ async function runAnthropicPrescription(
                   existingFlags: context.existingFlags,
                   validationFeedback: context.validationFeedback,
                   rubrics: context.rubrics,
-                  screenshotHint:
-                    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only',
+                  screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
                 }),
               },
             ],
@@ -339,8 +324,7 @@ async function runOpenAIPrescription(
       image_url: { url: `data:image/png;base64,${mobileBase64}`, detail: 'low' },
     })
   }
-  const screenshotHint =
-    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only'
+  const screenshotHint = getScreenshotHint(desktopBase64, mobileBase64)
   content.push({
     type: 'text',
     text: buildPrescriptionUserPrompt({
@@ -465,8 +449,14 @@ async function runPrescriptionBatch(
         return await runPrescriptionWithProvider(provider, validationFeedback ? { ...context, validationFeedback } : context,
           desktopBase64, mobileBase64, deadline === undefined ? maxTimeoutMs : Math.max(1, deadline - Date.now()))
       } catch (error) {
-        if (error instanceof JudgeContractError || (error instanceof Error && error.message.startsWith('Invalid prescription output:')))
+        if (error instanceof JudgeContractError || (error instanceof Error && error.message.startsWith('Invalid prescription output:'))) {
           validationFeedback = error.message.slice(0, 4000)
+          const target = context.existingFlags.find(flag => error.message.includes(`${flag.flagKey} does not identify its recorded target`))
+          if (target) {
+            // Source text stays in the private retry input, outside logged errors.
+            validationFeedback = `${validationFeedback}\nTarget reminder from the original observation: ${JSON.stringify(target.evidence.slice(0, 600))}. Name this recorded target in the inspection or repair.`.slice(0, 4000)
+          }
+        }
         throw error
       }
     },

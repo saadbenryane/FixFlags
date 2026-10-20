@@ -39,6 +39,7 @@ import { enqueueAiReview, enqueuePendingAiReview, recoverPendingAiReviews } from
 import { executionWrite, withExecutionOwnership } from '@/lib/audit/execution-ownership'
 import * as prescription from '@/lib/audit/judge-prescription'
 import { prescriptionOutputSchema } from '@/lib/audit/judge-prescription-schema'
+import { recordedPrescriptionFields } from '@/lib/audit/prescription-guidance-schema'
 import { uploadScreenshot, deleteAuditScreenshotAssets } from '@/lib/storage/screenshots'
 import { loadExecutionProgress } from '@/lib/sites/application/execution-progress'
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
@@ -355,8 +356,8 @@ run('URL-first analysis through claim and monitored repair', () => {
         expect(keys).toEqual(expectedKeys)
         expect(input.existingFlags.every(flag => flag.attention === 'recommendation')).toBe(true)
         const parsed = prescriptionOutputSchema.parse({ flagPrescriptions: (incompletePrescriptions ? [] : keys).map(flagKey => ({ flagKey,
-          evidence: 'Compatibility evidence never replaces the original.', whyItMatters: 'Review original evidence.',
-          fix: '1. Review the recorded title against the page purpose before suggesting any change.', verificationRule: 'Retain every original condition.',
+          ...recordedPrescriptionFields(input.existingFlags.find(flag => flag.flagKey === flagKey)!),
+          fix: '1. Review the recorded title against the page purpose before suggesting any change.',
           agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })),
           rubricPrescriptions: input.rubrics.map(rubric => ({ name: rubric.name, rubricPrompt: 'Review the recorded scope.',
             cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })) })

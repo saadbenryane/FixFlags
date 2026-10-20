@@ -13,4 +13,5 @@ export const REPAIR_GUIDANCE_COPY = {
   supporting: (evidence: string) => `Supporting observation: ${evidence}`,
   verify: (rule: string, page?: string | null) => `Independent verification${page ? ` for ${page}` : ''}: ${rule}`,
   verificationUnavailable: 'Independent verification conditions are not recorded.',
+  explanationUnavailable: 'No explanation was recorded for this finding.',
 } as const

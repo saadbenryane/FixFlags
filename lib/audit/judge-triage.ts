@@ -12,6 +12,7 @@ import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
 import { getTriageProviderConfig } from './judge-config'
+import { getScreenshotHint } from './screenshot-hint'
 import { assessTriageRecommendations, type TriageAssessment } from './triage-grounding'
 import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
@@ -79,13 +80,6 @@ export function buildTriageContext(
     pagePurpose: detectPagePurpose(metadata, url),
     knownObservations,
   }
-}
-
-function getScreenshotHint(desktopBase64: string | null, mobileBase64: string | null): 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile' {
-  if (desktopBase64 && mobileBase64) return 'desktop-and-mobile'
-  if (desktopBase64) return 'desktop-only'
-  if (mobileBase64) return 'mobile-only'
-  return 'no-screenshot'
 }
 
 export function normalizeTriageRawOutput(raw: unknown): unknown {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assessTriageRecommendations, deduplicateTriageRecommendations } from '../triage-grounding'
+import { assessTriageRecommendations, deduplicateTriageRecommendations, triageAssessmentSchema } from '../triage-grounding'
 import type { TriageOutput } from '../judge-triage-schema'
 import { admitAiObservation } from '../ai-observation-identity'
 import { buildTriageAiFlagRow } from '../persist'
@@ -15,6 +15,44 @@ const candidate = (changes: Partial<Candidate> = {}): Candidate => ({ rubric: 'E
   reviewKind: 'action-clarity', evidenceRefs: [{ source: 'ctaText', quote: 'Start free' }], device: 'none', ...changes })
 
 describe('page triage source grounding', () => {
+  it.each([
+    ['copy-clarity', 'MESSAGE', 'headline', 'Plan releases together', 'description', 'Coordinate your team'],
+    ['search-snippet', 'REACH', 'description', 'Coordinate your team', 'headline', 'Plan releases together'],
+  ] as const)('retains an explicitly partial assessment for mixed %s repair targets', (reviewKind, rubric, source, quote, extraSource, extraQuote) => {
+    const raw = candidate({ reviewKind, rubric, evidenceRefs: [{ source, quote }, { source: extraSource, quote: extraQuote }] })
+    const before = structuredClone(raw)
+    const result = assessTriageRecommendations([raw], facts)
+    expect(result.admitted).toEqual([])
+    expect(result.assessment).toMatchObject({ version: 2, status: 'PARTIAL', admittedCount: 0, candidates: [before] })
+    expect(result.assessment.rejected).toHaveLength(1)
+    expect(raw).toEqual(before)
+    expect(triageProviderOutputSchema.shape.newFlags.element.safeParse(raw).success).toBe(false)
+    expect(triageOutputSchema.shape.newFlags.element.safeParse(raw).success).toBe(true)
+    expect(triageAssessmentSchema.safeParse({ ...result.assessment, version: 1 }).success).toBe(true)
+  })
+  it('keeps visible copy and search metadata distinct even when their recorded words are identical', () => {
+    const quote = 'Plan releases together'
+    const sharedFacts = { ...facts, metadata: { ...facts.metadata, title: quote, description: quote } }
+    const reviews = [
+      candidate({ reviewKind: 'copy-clarity', rubric: 'MESSAGE', evidenceRefs: [{ source: 'headline', quote }] }),
+      candidate({ reviewKind: 'search-snippet', rubric: 'REACH', evidenceRefs: [{ source: 'description', quote }] }),
+    ]
+    expect(reviews.every(review => triageProviderOutputSchema.shape.newFlags.element.safeParse(review).success)).toBe(true)
+    const result = assessTriageRecommendations(reviews, sharedFacts)
+    expect(result.assessment.status).toBe('COMPLETE')
+    expect(deduplicateTriageRecommendations(result.admitted, [], reviews[0]!.pageUrl!)).toHaveLength(2)
+  })
+  it('constrains fresh provider device and action scopes before grounding captured references', () => {
+    const schema = triageProviderOutputSchema.shape.newFlags.element
+    expect(schema.safeParse(candidate({ device: 'mobile' })).success).toBe(false)
+    expect(schema.safeParse(candidate({ evidenceRefs: [{ source: 'title', quote: facts.metadata.title }] })).success).toBe(false)
+    const visual = candidate({ reviewKind: 'visual-hierarchy', device: 'mobile', evidenceRefs: [
+      { source: 'ctaText', quote: 'Start free' }, { source: 'ctaText', quote: 'See an example' },
+    ] })
+    expect(schema.safeParse(visual).success).toBe(true)
+    expect(schema.safeParse({ ...visual, device: 'none' }).success).toBe(false)
+    expect(schema.safeParse({ ...visual, evidenceRefs: visual.evidenceRefs!.slice(0, 1) }).success).toBe(false)
+  })
   it('does not admit the actual unreferenced absence, decision-fatigue and abandonment claims', () => {
     const candidates = ['No actionable CTAs visible', 'Confusing competing CTAs above the fold', 'Missing mobile-friendly CTA placement']
       .map(problem => candidate({ problem, reviewKind: undefined, evidenceRefs: undefined, device: undefined }))

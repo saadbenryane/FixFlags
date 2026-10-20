@@ -5,7 +5,7 @@ import { JOURNEY_ASSERTIONS } from './journey-definitions'
 
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
-  version: 1 | 2 | 3; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
+  version: 1 | 2 | 3 | 4; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
   input: 'metadata' | 'headers' | 'http' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard' | 'console';
   evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
   assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only' | 'protected';
@@ -156,7 +156,7 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'claim-support-signals': assertion('conversion', ['trust-unsupported-claims']),
     'direct-contact-signals': assertion('conversion', ['trust-no-direct-contact']),
     'internal-navigation-count': assertion('conversion', ['trust-no-internal-links']),
-  }), version: 3 },
+  }), version: 4 },
   layout: define('layout', 'conversion', 'Layout', 'browser', {
     'mobile-cta-position': assertion('conversion', ['cta-below-fold-mobile']),
   }),

@@ -90,7 +90,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     id: 'message-trust-psychology',
     dimension: 'MESSAGE',
     category: 'trust',
-    label: 'Authority signals, claim substantiation & contact',
+    label: C.trustContextLabel,
     tool: 'html-parse',
     status: 'live',
 

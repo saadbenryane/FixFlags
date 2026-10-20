@@ -154,7 +154,7 @@ const LEGACY_CHECK_DEFINITIONS = {
   'friction-no-social-proof': { version: 1, area: 'conversion', module: 'conversion-friction', capabilities: ["message-conversion-friction"] },
   'trust-no-authority-signals': { version: 3, area: 'conversion', module: 'trust-psychology', capabilities: ["message-trust-psychology"] },
   'trust-testimonial-quality': { version: 2, area: 'conversion', module: 'trust-psychology', capabilities: ["message-trust-psychology"] },
-  'trust-unsupported-claims': { version: 1, area: 'conversion', module: 'trust-psychology', capabilities: ["message-trust-psychology"] },
+  'trust-unsupported-claims': { version: 2, area: 'conversion', module: 'trust-psychology', capabilities: ["message-trust-psychology"] },
   'trust-no-direct-contact': { version: 1, area: 'conversion', module: 'trust-psychology', capabilities: ["message-trust-psychology"] },
   'trust-no-internal-links': { version: 2, area: 'conversion', module: 'trust-psychology', capabilities: ["message-trust-psychology"] },
   'hierarchy-competing-actions': { version: 2, area: 'conversion', module: 'visual-hierarchy', capabilities: ["experience-visual-hierarchy"] },

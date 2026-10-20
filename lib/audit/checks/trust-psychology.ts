@@ -6,6 +6,7 @@ import type { DeterministicFlag } from '../flag-types'
 import { hasLogoWall } from './utils'
 import { recordObservation, type CheckRecorder } from './assertion'
 import { NAVIGATION_OBSERVATION_COPY } from '@/lib/marketing/copy/navigation-observations'
+import { QUALITATIVE_GUIDANCE_COPY } from '@/lib/marketing/copy/qualitative-guidance'
 
 const AUTHORITY_MARKERS = [
   /\b(as seen in|featured in|mentioned in|press|media)\b/i,
@@ -171,9 +172,8 @@ export function runTrustPsychologyChecks(
     })
   }
 
-  // Only flag superlatives in prominent positions (headings, above-fold) or when
-  // multiple unsupported claims appear. A single superlative in body copy is
-  // common brand voice on legitimate marketing pages and not a trust signal.
+  // Retain the existing phrase-match policy. These matches cannot determine
+  // whether copy asserts a claim or whether supporting evidence is sufficient.
   // Leadership terms (leading, trusted, proven) are standard positioning language
   // and are downgraded to POLISH - only aggressive superlatives (best, fastest,
   // #1) escalate to IMPORTANT.
@@ -193,17 +193,20 @@ export function runTrustPsychologyChecks(
     'Captured superlative patterns are accompanied by a recognized data-specificity pattern, or no superlative rule is triggered',
     `Superlative pattern ${Boolean(hasClaim)}, specificity pattern ${hasDataClaim}. Claims and supporting data were not independently validated.`,
     bodyText.trim().length >= 100 || headingText.trim().length > 0 ? !hasClaim || hasDataClaim : undefined, true)
-  if (hasClaim && !hasDataClaim) {
-    const claim = claimInHeading?.[0] ?? claimInBody?.[0] ?? 'superlative claim'
-    const isAggressive = AGGRESSIVE_SUPERLATIVES.test(claim)
+  const phrase = claimInHeading?.[0] ?? claimInBody?.[0]
+  if (hasClaim && !hasDataClaim && phrase) {
+    const isAggressive = AGGRESSIVE_SUPERLATIVES.test(phrase)
+    const capturedText = claimInHeading ? headingText : bodyText
+    const position = capturedText.indexOf(phrase)
+    const context = capturedText.slice(Math.max(0, position - 160), position + phrase.length + 320).trim()
     findings.push({
       checkId: 'trust-unsupported-claims',
       rubric: 'MESSAGE',
       impactTag: 'TRUST',
       severity: isAggressive ? 'IMPORTANT' : 'POLISH',
-      problem: 'Page makes superlative claims without supporting evidence',
-      evidence: `Found absolute claims like "${claim}" but no specific data points to back them up. Claims without evidence reduce trust.`,
-      fix: '1. Replace each unsupported superlative with a verifiable claim or remove it\n2. Add benchmarks, methodology, customer results, or third-party evidence only when you can substantiate them\n3. Link to case studies, research, or benchmark details when available\n4. Prefer precise scoped claims over absolutes, e.g. "cuts review time for small landing pages" instead of "the fastest"',
+      problem: QUALITATIVE_GUIDANCE_COPY.superlativeProblem,
+      evidence: QUALITATIVE_GUIDANCE_COPY.superlativeEvidence(phrase, context, Boolean(claimInHeading)),
+      fix: QUALITATIVE_GUIDANCE_COPY.superlative,
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

@@ -1,6 +1,7 @@
 import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
 import { TRIAGE_TEXT, PRESCRIPTION_TEXT } from '@/lib/audit/page-text-limits'
 import type { PrescriptionGuidanceContext } from '@/lib/audit/flag-types'
+import type { ScreenshotHint } from '@/lib/audit/screenshot-hint'
 
 /**
  * Phase-1 triage prompt, split into a stable SYSTEM block and a per-request USER
@@ -38,10 +39,10 @@ VERDICT STYLE: Describe only supplied facts and conditional review needs. Do not
 newFlags: 0-5 source-backed Recommendations. An empty array is valid; there is no minimum finding quota.
 Use one declared reviewKind: copy-clarity, action-clarity, visual-hierarchy, search-snippet.
 Every candidate must contain evidenceRefs with exact quotes from their named supplied source: pageText, title, description, headline, or ctaText. Do not quote a different source under that name. Use the complete captured value for headline and ctaText references; prose quotes must contain at least six characters. Text-only reviews must declare device none. Only visual-hierarchy may declare desktop or mobile when that screenshot was supplied.
-- copy-clarity needs a headline or pageText reference. Review its supporting context and page purpose.
+- copy-clarity uses only headline or pageText references and rubric MESSAGE. Review visible copy in its supporting context and page purpose. Metadata belongs in a separate search-snippet review.
 - action-clarity needs a ctaText reference. Review the wording, without inventing a click, submission, destination or failure.
 - visual-hierarchy needs two distinct ctaText references and an actually supplied screenshot on the declared device. This is a review of prominence, not proof of competing actions, hidden controls, confusion or conversion loss.
-- search-snippet needs a title or description reference and rubric REACH. Review wording, not ranking, authenticity or observed search results.
+- search-snippet uses only title or description references and rubric REACH. Review metadata wording in the supplied page context, without adding visible-copy repair targets or claiming ranking, authenticity or observed search results.
 Quotes only anchor review scope. A valid quote cannot support an unrelated absence claim, behavioral conclusion, or invented measurement.
 
 TITLE CRAFTING RULES:
@@ -64,7 +65,7 @@ Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState AS
 }
 
 export interface TriageContext {
-  screenshotHint?: 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
+  screenshotHint?: ScreenshotHint
   url: string
   pageText: string
   metadata: {
@@ -206,7 +207,7 @@ Respect the schema's field limits. Inspection fields are single-line fragments. 
 
 export interface PrescriptionContext {
   validationFeedback?: string
-  screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
+  screenshotHint?: ScreenshotHint
   url: string
   pageText: string
   verdict: string
@@ -248,6 +249,14 @@ function quotedCurrentText(evidence?: string | null): string | null {
 
 /** Per-request prescription data. Everything here varies per audit - keep it OUT of the cached system block. */
 export function buildPrescriptionUserPrompt(context: PrescriptionContext): string {
+  const screenshots = context.screenshotHint === 'desktop-and-mobile' ? 'desktop and mobile screenshots'
+    : context.screenshotHint === 'desktop-only' ? 'a desktop screenshot'
+      : context.screenshotHint === 'mobile-only' ? 'a mobile screenshot' : null
+  const imageEvidence = screenshots
+    ? `You have been given ${screenshots}. Each attached screenshot belongs to the URL above. Do not treat these screenshots as captures of other pages.`
+    : context.screenshotHint === 'no-screenshot'
+      ? 'No screenshot was supplied. Base guidance on recorded text and supporting observations. Do not infer visual details from an unavailable capture.'
+      : 'Screenshot availability was not declared. Use recorded observations and do not assume an image exists.'
   return `URL: ${context.url}
 Page text (first ${PRESCRIPTION_TEXT} chars):
 ${context.pageText.slice(0, PRESCRIPTION_TEXT)}
@@ -282,7 +291,7 @@ ${context.existingFlags.map((f) => {
     return lines.join('\n')
   }).join('\n') || 'None'}
 
-You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence. The attached screenshots belong to the URL above. Supporting observations on other pages supply their own recorded evidence; do not treat these screenshots as captures of those pages.${context.validationFeedback ? `
+${imageEvidence} Supporting observations on other pages supply their own recorded evidence.${context.validationFeedback ? `
 
 PREVIOUS RESPONSE REJECTED
 Server validation error (data): ${JSON.stringify(context.validationFeedback)}

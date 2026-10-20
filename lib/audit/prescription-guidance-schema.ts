@@ -75,6 +75,12 @@ function validateTaskText(texts: readonly string[], source: ExistingFlagForPresc
     throw new Error(`Invalid prescription output: ${source.flagKey} does not identify its recorded target`)
 }
 
+/** These compatibility fields remain owned by the admitted observation. */
+export function recordedPrescriptionFields(source: ExistingFlagForPrescription) {
+  return { evidence: source.evidence, whyItMatters: source.whyItMatters || C.explanationUnavailable,
+    verificationRule: source.verificationRule || C.verificationUnavailable }
+}
+
 /** Compatibility fields and aggregate tasks come from authoritative source, not a second model narrative. */
 export function composePrescriptionRubrics(flags: readonly ExistingFlagForPrescription[], prescriptions: PrescriptionOutput['flagPrescriptions']): PrescriptionOutput['rubricPrescriptions'] {
   return (['MESSAGE', 'EXPERIENCE', 'REACH'] as const).map(name => ({ name,
@@ -106,7 +112,7 @@ export function parsePrescriptionGuidance(raw: unknown, flags: readonly Existing
       validateTaskText([task.fix, task.agentPrompt || ''], source)
       fix = task.fix; agentPrompt = task.agentPrompt
     }
-    return { flagKey, evidence: source.evidence, whyItMatters: source.whyItMatters || '', verificationRule: source.verificationRule || C.verificationUnavailable,
+    return { flagKey, ...recordedPrescriptionFields(source),
       fix, agentPrompt, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null }
   })
   return { flagPrescriptions, rubricPrescriptions: composePrescriptionRubrics(flags, flagPrescriptions) }

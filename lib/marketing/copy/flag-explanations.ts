@@ -46,7 +46,7 @@ export const FLAG_EXPLANATIONS: Readonly<Record<string, string>> = {
   "friction-no-social-proof": "No recognized proof signal was recorded near the action. Consider relevant product evidence or authorized customer examples when they help explain the offer.",
   "trust-no-authority-signals": "No recognized authority or proof reference matched the sampled content. Review existing product evidence and company context before adding substantiated references.",
   "trust-testimonial-quality": "A sampled quotation lacks recognized attribution or detail in its own scope. Check the source and permission before publishing more specific customer proof.",
-  "trust-unsupported-claims": "Sampled claims matched a superlative pattern without recognized supporting detail. Check their evidence and scope before retaining or revising them.",
+  "trust-unsupported-claims": "A superlative phrase was recorded. Review its surrounding content and supporting sources before treating it as an unsupported assertion.",
   "trust-no-direct-contact": "No recognized direct contact method was recorded in the sampled content. Check whether visitors have an appropriate way to ask for help.",
   "trust-no-internal-links": "Few internal navigation paths were recorded. Review whether the page gives visitors useful access to related information and the intended next action.",
   "hierarchy-competing-actions": "Several actions have similar visual prominence in the captured scope. Review whether their hierarchy communicates the intended next step.",

@@ -11,6 +11,7 @@ vi.mock('@/lib/utils/sleep', () => ({ sleep: vi.fn(async () => undefined) }))
 import { PartialPrescriptionError, runPrescriptionWithRetry, type PrescriptionContext } from '../judge-prescription'
 import { MAX_RETRIES, type LlmUsage } from '../judge-runner'
 import { JudgeContractError } from '../validate-judge-output'
+import { logger } from '@/lib/logger'
 
 const key = 'search-duplicate-title'
 function fixture(onAttempt: PrescriptionContext['onAttempt']): PrescriptionContext {
@@ -50,6 +51,19 @@ describe('bounded prescription correction', () => {
     expect(provider.create.mock.calls[0][0].max_tokens).toBeUndefined()
   })
 
+  it.each([
+    ['openai', null, 'No screenshot'], ['anthropic', null, 'No screenshot'],
+    ['openai', 'controlled-mobile-image', 'a mobile screenshot'], ['anthropic', 'controlled-mobile-image', 'a mobile screenshot'],
+  ] as const)('describes only the actual %s attachments when mobile is %s', async (name, mobile, expected) => {
+    provider.name = name
+    provider.create.mockResolvedValueOnce(response(true))
+    await runPrescriptionWithRetry(fixture(undefined), null, mobile)
+    const prompt = userText(provider.create.mock.calls[0][0])
+    expect(prompt).toContain(expected)
+    expect(prompt).not.toContain('You have been given a desktop screenshot')
+    expect(prompt).not.toContain('You have been given desktop and mobile screenshots')
+  })
+
   it.each(['openai', 'anthropic'] as const)('supplies the rejected contract to the next %s attempt without changing source facts', async name => {
     provider.name = name
     provider.create.mockResolvedValueOnce(response(false)).mockResolvedValueOnce(response(true))
@@ -82,6 +96,30 @@ describe('bounded prescription correction', () => {
     expect(provider.create).toHaveBeenCalledTimes(MAX_RETRIES)
     expect(record).toHaveBeenCalledTimes(MAX_RETRIES)
     expect(context.existingFlags[0].fix).toBe('')
+  })
+
+  it('keeps a rejected target reminder in the private retry input without logging source evidence', async () => {
+    provider.name = 'openai'
+    const context = fixture(undefined)
+    context.existingFlags[0].evidence = 'Private recorded product title evidence: scope-sentinel.'
+    const invalid = response(true)
+    invalid.choices![0].message.content = JSON.stringify({ flagPrescriptions: { [key]: {
+      inspection: 'the operational dashboard widgets and charts',
+      changeCondition: 'the operational widgets show a different administrative process',
+      changeIfConfirmed: 'reorganize the dashboard widgets for that administrative process',
+      preserve: 'other operational widgets and charts',
+    } } })
+    provider.create.mockResolvedValueOnce(invalid).mockResolvedValueOnce(response(true))
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => undefined)
+    try {
+      await runPrescriptionWithRetry(context, null, null)
+      expect(provider.create).toHaveBeenCalledTimes(2)
+      const feedback = userText(provider.create.mock.calls[1][0]).split('PREVIOUS RESPONSE REJECTED')[1]
+      expect(feedback).toContain('Target reminder from the original observation')
+      expect(feedback).toContain('scope-sentinel')
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('scope-sentinel')
+      expect(context.existingFlags[0].evidence).toBe('Private recorded product title evidence: scope-sentinel.')
+    } finally { warn.mockRestore() }
   })
 
   it('retains a quality-contract failure after the final rejected schema response', async () => {
