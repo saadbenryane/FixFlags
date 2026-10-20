@@ -10,6 +10,7 @@ import { Heading } from '@/components/ui/typography'
 import { SYSTEM_COPY, TOOLS } from '@/lib/marketing/copy'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { trackToolInteraction, type ToolResultOutcome } from '@/lib/analytics/events'
 import { ToolUrlForm } from '@/components/marketing/tools/ToolUrlForm'
 
 interface PlaceholderMatch {
@@ -52,24 +53,36 @@ export function PlaceholderDetectorClient() {
     }
 
     setLoading(true)
+    trackToolInteraction('placeholder-detector', 'submitted')
+    let outcome: ToolResultOutcome = 'network_error'
     try {
       const res = await fetch('/api/tools/placeholder-detector', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalized }),
       })
+      outcome = 'response_error'
       if (!res.ok) {
+        outcome = 'api_error'
         const err = await parseApiErrorResponse(res)
         setError(err.message)
         return
       }
       const data = await res.json()
+      // Tool routes return domain failures as HTTP 200 with an error field.
+      if (data.error) {
+        outcome = 'application_error'
+        setError(SYSTEM_COPY.errors.genericRetry)
+        return
+      }
+      outcome = 'succeeded'
       setMatches(data.matches)
       setSubmittedUrl(normalized)
       setSearched(true)
     } catch {
       setError(SYSTEM_COPY.errors.genericRetry)
     } finally {
+      trackToolInteraction('placeholder-detector', outcome)
       setLoading(false)
     }
   }

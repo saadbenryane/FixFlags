@@ -10,6 +10,7 @@ import { Heading } from '@/components/ui/typography'
 import { SYSTEM_COPY, TOOLS } from '@/lib/marketing/copy'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { trackToolInteraction, type ToolResultOutcome } from '@/lib/analytics/events'
 import { ToolUrlForm } from '@/components/marketing/tools/ToolUrlForm'
 
 interface MetaPreviewResult {
@@ -104,22 +105,34 @@ export function MetaPreviewClient() {
     }
 
     setLoading(true)
+    trackToolInteraction('meta-preview', 'submitted')
+    let outcome: ToolResultOutcome = 'network_error'
     try {
       const res = await fetch('/api/tools/meta-preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalized }),
       })
+      outcome = 'response_error'
       if (!res.ok) {
+        outcome = 'api_error'
         const err = await parseApiErrorResponse(res)
         setError(err.message)
         return
       }
       const data = await res.json()
+      // Tool routes return domain failures as HTTP 200 with an error field.
+      if (data.error) {
+        outcome = 'application_error'
+        setError(SYSTEM_COPY.errors.genericRetry)
+        return
+      }
+      outcome = 'succeeded'
       setResult(data)
     } catch {
       setError(SYSTEM_COPY.errors.genericRetry)
     } finally {
+      trackToolInteraction('meta-preview', outcome)
       setLoading(false)
     }
   }

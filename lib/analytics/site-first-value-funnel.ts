@@ -43,6 +43,7 @@ export type SiteFirstValueFunnel = {
   claimRate: number
   failedBeforeResult: number
   stillRunning: number
+  completedWithoutReceipt: number
   missingAudit: number
   sources: FirstValueSourceRow[]
   landing: LandingFirstValueFunnel
@@ -207,6 +208,7 @@ export function calculateSiteFirstValueFunnel(input: {
   let claimed = 0
   let failedBeforeResult = 0
   let stillRunning = 0
+  let completedWithoutReceipt = 0
   const sourceRows = new Map<string, FirstValueSourceRow>()
   const journeyByAuditId = new Map<string, string>()
 
@@ -224,8 +226,11 @@ export function calculateSiteFirstValueFunnel(input: {
     const hasResult = resultIds.has(auditId)
     const wasClaimed = Boolean(audit.userId)
     if (wasClaimed) claimed++
-    if (!hasResult && audit.status === 'FAILED') failedBeforeResult++
-    if (!hasResult && audit.status !== 'FAILED') stillRunning++
+    if (!hasResult) {
+      if (audit.status === 'FAILED') failedBeforeResult++
+      else if (audit.status === 'COMPLETED') completedWithoutReceipt++
+      else stillRunning++
+    }
 
     const source = acquisitionSource(audit)
     const row = sourceRows.get(source) ?? {
@@ -282,6 +287,7 @@ export function calculateSiteFirstValueFunnel(input: {
     claimRate: percentage(claimed, started),
     failedBeforeResult,
     stillRunning,
+    completedWithoutReceipt,
     missingAudit: started - auditsById.size,
     sources: [...sourceRows.values()].sort(
       (left, right) =>
