@@ -1,8 +1,10 @@
 import { prisma } from '@/lib/db'
-import { calculateSiteValueCohort } from './site-value-cohort'
+import { calculateSiteValueCohort, type SiteValueFollowupDays } from './site-value-cohort'
 
-export async function loadSiteValueCohort(input: { since: Date; now?: Date }, db: Pick<typeof prisma,'$transaction'> = prisma) {
+export async function loadSiteValueCohort(input: { since: Date; now?: Date; followupDays?: SiteValueFollowupDays }, db: Pick<typeof prisma,'$transaction'> = prisma) {
   const now = input.now ?? new Date()
+  const followupDays = input.followupDays ?? 7
+  if (followupDays !== 7 && followupDays !== 28) throw new Error('Invalid Site follow-up duration')
   if (!Number.isFinite(now.getTime()) || !Number.isFinite(input.since.getTime()) || input.since > now) throw new Error('Invalid Site value window')
   return db.$transaction(async tx => {
     await tx.$executeRaw`SET TRANSACTION READ ONLY`
@@ -35,6 +37,6 @@ export async function loadSiteValueCohort(input: { since: Date; now?: Date }, db
       ...cycles.flatMap(cycle=>[cycle.sourceAuditId,...cycle.events.flatMap(event=>event.verificationAuditId?[event.verificationAuditId]:[])]),
     ])]
     const audits = auditIds.length ? await tx.audit.findMany({where:{id:{in:auditIds}},select:auditSelect}) : []
-    return calculateSiteValueCohort({claims,sites,runs,cycles,audits,since:input.since,now})
+    return calculateSiteValueCohort({claims,sites,runs,cycles,audits,since:input.since,now,followupDays})
   },{isolationLevel:'RepeatableRead'})
 }

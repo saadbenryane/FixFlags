@@ -40,6 +40,7 @@ export const BLOG_PAGE = {
   guideBody: 'Enter a public URL and see what FixFlags can check. If it finds a problem, open the Flag and take a look at what happened.',
   startCta: 'Check your website',
   docsCta: 'Read the docs',
+  guidesCta: 'Explore website guides',
   back: 'Back to blog',
   onThisPage: 'In this article',
   relatedTitle: 'If you want to try this',
@@ -97,7 +98,7 @@ export const BLOG_POSTS: readonly BlogPost[] = [
         paragraphs: [
           'FixFlags checks the live website and brings what it finds into one Site. You can see the areas it checked, when it checked them, and where it couldn’t get enough information.',
           'When a problem needs attention, you get a Flag with the affected page, what happened, and guidance for the fix. After you publish a change, Verify checks the relevant behavior again. Copying a suggestion or finishing a deployment doesn’t close the Flag on its own.',
-          'You can also add a monitoring schedule for your Site. Shopify can add product information and checks of selected purchase paths through checkout entry. Analytics and Search Console can add traffic and search context beside the findings.',
+          'You can also add a monitoring schedule for your Site. Shopify, Google Analytics, and Google Search Console connections are coming soon. Their planned context is described separately from the website checks available today.',
           'The limits matter. A checkout-entry check stops before payment. Traffic numbers don’t prove a form works. A page blocked by a password or bot challenge hasn’t passed a check. We want those gaps to be visible, so you know what still needs a look.',
         ],
       },

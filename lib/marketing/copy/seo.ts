@@ -1,7 +1,9 @@
+import { GUIDES_PAGE } from './guides'
 import { WEBSITE_PROMISE } from './care-homepage'
 import { PUBLIC_OFFER } from './public-offer'
 
 export const SEO = {
+  guides: { title: GUIDES_PAGE.metadataTitle, description: GUIDES_PAGE.description },
   coverage: {
     title: 'What FixFlags checks | FixFlags',
     description: 'Explore website checks across eight areas, their setup requirements, and what the evidence can establish.',

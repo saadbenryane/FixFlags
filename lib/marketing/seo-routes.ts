@@ -1,3 +1,4 @@
+import { WEBSITE_GUIDES } from './copy/guides'
 import { SEO } from './copy'
 import { PUBLIC_OFFER } from './copy/public-offer'
 import { PUBLIC_RESEARCH_COPY } from './copy/research'
@@ -36,6 +37,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/docs/integrations/google-search-console', seoKey: 'docs', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/changelog', seoKey: 'changelog', priority: 0.5, changeFrequency: 'weekly' },
   { path: '/blog', seoKey: 'blog', priority: 0.6, changeFrequency: 'weekly' },
+  { path: '/guides', seoKey: 'guides', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/samples', seoKey: 'samples', priority: 0.7, changeFrequency: 'weekly' },
   { path: '/privacy', seoKey: 'privacy', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', seoKey: 'terms', priority: 0.3, changeFrequency: 'yearly' },
@@ -108,6 +110,13 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     requiresReviewedResearch: true,
     links: [
       { path: '/issues', label: 'Issues we detect', note: PUBLIC_RESEARCH_COPY.llmsLibraryNote },
+    ],
+  },
+  {
+    title: 'Website guides',
+    links: [
+      { path: '/guides', label: 'Website guides', note: 'Practical checks, monitoring decisions, and source-backed comparisons' },
+      ...WEBSITE_GUIDES.map(guide => ({ path: `/guides/${guide.slug}`, label: guide.title, note: guide.description })),
     ],
   },
   {

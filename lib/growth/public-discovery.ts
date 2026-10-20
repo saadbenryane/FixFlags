@@ -50,7 +50,7 @@ function eligibleUrl(value: string, origin: string): URL | null {
   } catch { return null }
 }
 
-async function readBounded(response: Response): Promise<string> {
+export async function readDiscoveryBody(response: Response): Promise<string> {
   if (!response.body) return ''
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -88,7 +88,7 @@ export async function inspectPublicDiscovery(input: {
       redirect: 'manual', signal: AbortSignal.timeout(20_000),
       headers: { 'user-agent': 'FixFlagsDiscoveryVerifier/1.0', accept: 'text/html,application/xml,text/plain' },
     })
-    return { response, body: await readBounded(response) }
+    return { response, body: await readDiscoveryBody(response) }
   }
   const report: DiscoveryReport = {
     version: 1, origin, observedAt: (input.now ?? new Date()).toISOString(), method: 'public-http-get',
