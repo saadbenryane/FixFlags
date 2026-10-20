@@ -1,7 +1,7 @@
 'use client'
 
 import { InteractiveButton, InteractiveTextarea } from '@/components/ui/interactive-controls'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Activity, ArrowRight, Check, Copy, Flag, Gauge, Globe, MousePointer2, Radar, Search, ShieldCheck, Sparkles, Wrench } from 'lucide-react'
@@ -16,11 +16,10 @@ const AREA_ICONS = { uptime: Activity, site: Globe, conversion: MousePointer2, p
 export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: string }[] }) {
   const [selected, setSelected] = useState<SampleFlagId>('availability')
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'manual'>('idle')
-  const manualPrompt = useRef<HTMLTextAreaElement>(null)
+  const focusManualPrompt = useCallback((element: HTMLTextAreaElement | null) => {
+    if (element) { element.focus(); element.select() }
+  }, [])
   const copyGeneration = useRef(0)
-  useEffect(() => {
-    if (copyState === 'manual') { manualPrompt.current?.focus(); manualPrompt.current?.select() }
-  }, [copyState])
   const example = SAMPLE_FLAGS[selected]
   const chooseExample = (id: SampleFlagId) => { copyGeneration.current++; setSelected(id); setCopyState('idle') }
   const copyPrompt = async () => {
@@ -74,7 +73,7 @@ export function HowItWorksWalkthrough({ areas }: { areas: { id: string; name: st
         <blockquote className={s.prompt}>{example.prompt}</blockquote>
         <Button variant="outline" onClick={() => void copyPrompt()}><Copy aria-hidden size={16} />{C.walkthrough.copy}</Button>
         {copyState === 'copied' ? <p className={s.copyStatus} role="status"><Check aria-hidden size={16} />{C.walkthrough.copied}</p> : null}
-        {copyState === 'manual' ? <div className={s.manualCopy}><p role="status">{C.walkthrough.copyFallback}</p><InteractiveTextarea ref={manualPrompt} aria-label={C.walkthrough.promptLabel} readOnly value={example.prompt} rows={6} onFocus={event => event.currentTarget.select()} /></div> : null}
+        {copyState === 'manual' ? <div className={s.manualCopy}><p role="status">{C.walkthrough.copyFallback}</p><InteractiveTextarea ref={focusManualPrompt} aria-label={C.walkthrough.promptLabel} readOnly value={example.prompt} rows={6} onFocus={event => event.currentTarget.select()} /></div> : null}
         <details className={s.comparison}>
           <summary>{C.walkthrough.recoveryDetail}</summary>
           <h4>{C.walkthrough.recoveryTitle}</h4><p>{C.walkthrough.recoveryBody}</p>
