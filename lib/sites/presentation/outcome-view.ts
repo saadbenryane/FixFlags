@@ -1,7 +1,8 @@
 import type { Prisma } from '@prisma/client'
-import { assessmentIsComparable, type CurrentBindingRevision } from '@/lib/sites/domain/assessment-comparability'
-import { currentOutcomeState, UNASSESSED_OUTCOME_SUMMARY, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
+import type { CurrentBindingRevision } from '@/lib/sites/domain/assessment-comparability'
+import { UNASSESSED_OUTCOME_SUMMARY, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { currentOutcomeAssessment } from '../outcome-assessment'
 
 export type OutcomeViewSource = {
   id: string
@@ -64,8 +65,8 @@ export function projectOutcomeView(row: OutcomeViewSource, context: {
 }): SiteOutcomeView {
   const pageIds = row.pages.map((p) => p.pageId)
   const latest = row.assessments[0] ?? null
-  const revisions = context.bindingRevisions
-  const comparable = latest && assessmentIsComparable(latest.coverage, revisions, row.environment)
+  const current = currentOutcomeAssessment({ assessment: latest, bindings: context.bindingRevisions,
+    environment: row.environment, staleAfterMinutes: row.staleAfterMinutes, now: context.now })
   return {
     id: row.id,
     name: row.name,
@@ -94,10 +95,10 @@ export function projectOutcomeView(row: OutcomeViewSource, context: {
       version: binding.version,
     })),
     coverage: latest?.coverage ?? null,
-    state: latest && !comparable ? 'COULD_NOT_VERIFY' : currentOutcomeState(latest, context.now),
-    summary: latest && !comparable ? SITE_ACTION_COPY.configurationUnknown : latest?.summary ?? UNASSESSED_OUTCOME_SUMMARY,
-    lastVerifiedAt: comparable ? latest.assessedAt.toISOString() : null,
-    validUntil: comparable ? latest.validUntil.toISOString() : null,
+    state: current.state,
+    summary: latest && !current.comparable ? SITE_ACTION_COPY.configurationUnknown : latest?.summary ?? UNASSESSED_OUTCOME_SUMMARY,
+    lastVerifiedAt: current.assessedAt?.toISOString() ?? null,
+    validUntil: current.validUntil?.toISOString() ?? null,
     flagId: latest?.improvementId ?? null,
     latestRunId: row.runSelections[0]?.runRequest.id ?? latest?.runRequestId ?? null,
     running: row.runSelections.some(

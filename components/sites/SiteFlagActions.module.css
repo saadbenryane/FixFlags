@@ -1,0 +1,15 @@
+.actions { min-width: 0; }
+.steps { display: grid; gap: 28px; margin: 0; padding: 0; list-style: none; }
+.steps > li { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 12px; }
+.number { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 600; }
+.step { min-width: 0; }
+.step h3 { margin: 2px 0 0; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.description { margin: 8px 0 14px; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.65; }
+.guidance { margin-top: 8px; font-size: 13px; line-height: 1.65; }
+.guidance summary { display: flex; align-items: center; gap: 8px; min-height: 44px; width: fit-content; cursor: pointer; color: hsl(var(--muted-foreground)); list-style: none; }
+.guidance summary::-webkit-details-marker { display: none; }
+.guidance summary svg { flex-shrink: 0; }
+.guidance[open] summary svg { transform: rotate(180deg); }
+.guidance summary:hover { color: hsl(var(--foreground)); }
+.guidance summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
+.guidance p { margin: 4px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }

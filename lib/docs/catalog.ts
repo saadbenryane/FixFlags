@@ -147,7 +147,7 @@ export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
     relatedHelpSlugs: ['connect-shopify', 'connect-google-data'],
   },
   ...([
-    { key: 'github', title: 'GitHub', description: 'Authorize your GitHub account, hand off a fix prompt, and verify your deployed change.', relatedHelpSlugs: ['verify-a-flag'], order: 4.5 },
+    { key: 'github', title: 'GitHub', description: 'Connect or disconnect your GitHub account. Website checks and fix prompts work without it.', relatedHelpSlugs: ['verify-a-flag'], order: 4.5 },
     { key: 'shopify', title: 'Shopify', description: 'Coming soon: store and selected product-path context.', relatedHelpSlugs: ['connect-shopify', 'shopify-access-and-removal'], order: 5 },
     { key: 'google-analytics', title: 'Google Analytics', description: 'Coming soon: traffic context beside matching checked pages.', relatedHelpSlugs: ['connect-google-data'], order: 6 },
     { key: 'google-search-console', title: 'Google Search Console', description: 'Coming soon: search and recorded indexing context.', relatedHelpSlugs: ['connect-google-data'], order: 7 },

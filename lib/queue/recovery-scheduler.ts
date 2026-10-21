@@ -18,12 +18,13 @@ import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-reques
 import { dispatchPendingAudits } from '@/lib/audit/dispatch'
 import { recoverProgressiveAudits } from '@/lib/audit/progressive/runtime'
 import { refreshDueGoogleContexts } from '@/lib/sites/connections/google'
+import { MONITORING_SWEEP_INTERVAL_MS } from '@/lib/sites/monitoring-freshness'
 
 const PROGRESSIVE_RECOVERY_INTERVAL_MS = 10_000
 const RECOVERY_INTERVAL_MS = 120_000
 const RECOVERY_LOCK_TTL_MS = 110_000
 
-const WATCH_INTERVAL_MS = 5 * 60_000 // every 5 min
+const WATCH_MAINTENANCE_INTERVAL_MS = 5 * 60_000
 const WATCH_LOCK_TTL_MS = 4 * 60_000
 
 const NURTURE_INTERVAL_MS = 6 * 60 * 60 * 1000 // check every 6h
@@ -59,12 +60,28 @@ async function recoveryTick(): Promise<void> {
   try {
     const result = await runStuckAuditRecoverySweep()
     if (result.requeued || result.failed) logger.info('Recovery sweep', result)
+  } catch (err) {
+    logger.error('Recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
+  }
+}
+
+async function projectionRecoveryTick(): Promise<void> {
+  if (!(await tryAcquireLock('recover-completed-projections', RECOVERY_LOCK_TTL_MS))) return
+  try {
     const projections = await recoverCompletedImprovementProjections()
     if (projections.checked > 0) logger.info('Improvement projection recovery sweep', projections)
+  } catch (err) {
+    logger.error('Improvement projection recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
+  }
+}
+
+async function siteRunRecoveryTick(): Promise<void> {
+  if (!(await tryAcquireLock('recover-expired-site-runs', RECOVERY_LOCK_TTL_MS))) return
+  try {
     const runs = await recoverExpiredSiteRuns(reconcileOutcomeRunsForAudit)
     if (runs > 0) logger.info('Recovered abandoned Site executions', { runs })
   } catch (err) {
-    logger.error('Recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
+    logger.error('Expired Site execution recovery failed', err instanceof Error ? err : new Error(String(err)))
   }
 }
 
@@ -79,7 +96,8 @@ async function integrityWatchTick(): Promise<void> {
 }
 
 async function projectWatchTick(): Promise<void> {
-  if (!(await tryAcquireLock('project-watches', WATCH_LOCK_TTL_MS))) return
+  // Per-Site claims fence admission and schedule advancement. A second global
+  // rate window would cap the entire service at one batch regardless of workers.
   try {
     const result = await processDueProjectWatches()
     if (result.processed > 0) logger.info('Project watch sweep', result)
@@ -89,7 +107,8 @@ async function projectWatchTick(): Promise<void> {
 }
 
 async function projectWatchNotificationTick(): Promise<void> {
-  if (!(await tryAcquireLock('project-watch-notifications', WATCH_LOCK_TTL_MS))) return
+  // Each alert has a due time and conditional database claim. The timer guard
+  // bounds local work without imposing one batch on the whole service.
   try {
     const retried = await retryPendingWatchNotifications()
     if (retried > 0) logger.info('Project watch notification retries', { notificationRetries: retried })
@@ -162,9 +181,9 @@ export async function accountRetentionTick(): Promise<void> {
 
 /**
  * Self-hosted scheduler for periodic jobs (stuck-audit recovery + nurture
- * emails + knowledge-graph issue rollup). Runs in every dedicated worker; a
- * Redis lock ensures exactly one instance runs each job per window, so it
- * scales safely to any number of workers and needs no external cron.
+ * emails + knowledge-graph issue rollup). Runs in every dedicated worker.
+ * Site admission uses per-Site database claims; other maintenance retains
+ * its distributed lease or rate window. No external cron is required.
  * Idempotent; timers are unref'd so they never keep the process alive.
  */
 export function startRecoveryScheduler() {
@@ -174,10 +193,12 @@ export function startRecoveryScheduler() {
     [accountRetentionTick, 5000, 60_000],
     [progressiveRecoveryTick, 1000, PROGRESSIVE_RECOVERY_INTERVAL_MS],
     [recoveryTick, 15_000, RECOVERY_INTERVAL_MS],
-    [projectWatchTick, 45_000, WATCH_INTERVAL_MS],
-    [projectWatchNotificationTick, 46_000, WATCH_INTERVAL_MS],
-    [googleContextTick, 47_000, WATCH_INTERVAL_MS],
-    [integrityWatchTick, 50_000, WATCH_INTERVAL_MS],
+    [projectionRecoveryTick, 16_000, RECOVERY_INTERVAL_MS],
+    [siteRunRecoveryTick, 17_000, RECOVERY_INTERVAL_MS],
+    [projectWatchTick, 5000, MONITORING_SWEEP_INTERVAL_MS],
+    [projectWatchNotificationTick, 6000, MONITORING_SWEEP_INTERVAL_MS],
+    [googleContextTick, 47_000, WATCH_MAINTENANCE_INTERVAL_MS],
+    [integrityWatchTick, 50_000, WATCH_MAINTENANCE_INTERVAL_MS],
     [nurtureTick, 60_000, NURTURE_INTERVAL_MS],
     [growthRollupTick, 90_000, ROLLUP_INTERVAL_MS],
     [analyticsTick, 120_000, ANALYTICS_INTERVAL_MS],

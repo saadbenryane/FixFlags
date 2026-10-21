@@ -30,11 +30,14 @@ function sameDocument(left: URL, right: URL) {
 /** Detection and repair share exact document and fragment scope. Removed links
  * cannot produce an assertion for the originally failed target. */
 export function sectionLinkObservations(pageUrl: string, metadata: PageMetadata, scope?: CaptureObservationScope) {
+  // Fragment targets belong to the active document, even after navigation or
+  // History API changes. The requested URL still owns the recorded finding.
+  const documentUrl = scope?.finalUrl ?? pageUrl
   const links = new Map<string, { fragment: string; text: string; count: number }>()
   for (const link of metadata.documentLinks ?? metadata.links) {
     try {
-      const destination = new URL(link.href, metadata.linkBaseUrl ?? pageUrl)
-      if (!destination.hash || !sameDocument(destination, new URL(pageUrl))) continue
+      const destination = new URL(link.href, metadata.linkBaseUrl ?? documentUrl)
+      if (!destination.hash || !sameDocument(destination, new URL(documentUrl))) continue
       const fragment = destination.hash.slice(1)
       const prior = links.get(fragment)
       links.set(fragment, { fragment, text: prior?.text || link.text, count: (prior?.count ?? 0) + 1 })

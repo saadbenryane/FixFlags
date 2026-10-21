@@ -11,7 +11,7 @@ const pageUrl = 'https://example.com/service?token=PRIVATE_QUERY'
 const scope: CaptureObservationScope = { pageUrl, finalUrl: pageUrl, profile: 'desktop-fixture', access: 'public' }
 function observe(body: string, overrides: Partial<CaptureObservationScope> = {}) {
   const metadata = parseMetadataFromHtml('<!doctype html><html><head><title>Service</title></head><body>' + body + '</body></html>', overrides.finalUrl ?? pageUrl)
-  return sectionLinkObservations(overrides.finalUrl ?? pageUrl, metadata, { ...scope, ...overrides })
+  return sectionLinkObservations(pageUrl, metadata, { ...scope, ...overrides })
 }
 function receipt(observed: ReturnType<typeof observe>) {
   return { kind: 'site-module-check' as const, version: 1 as const, module: 'seo', pageUrl, applicable: true, passed: !observed.flags.length,
@@ -20,6 +20,26 @@ function receipt(observed: ReturnType<typeof observe>) {
 }
 
 describe('declared section-link evidence', () => {
+  it.each(['https://www.example.com/service?token=PRIVATE_QUERY', 'https://example.com/service/'])
+    ('inspects missing targets in the active document reached at %s', finalUrl => {
+      const checked = observe('<a href="#contact">Contact</a>', { finalUrl })
+      expect(checked.flags).toHaveLength(1)
+      expect(checked.assertions).toMatchObject([{ complete: true, passed: false }])
+      expect(checked.flags[0].verificationRule).toBe(SECTION_LINK_VERIFICATION_RULE)
+      const restored = observe('<a href="#contact">Contact</a><section id="contact"></section>', { finalUrl })
+      expect(scopedAssertionForTarget({ receipt: receipt(restored), checkId: 'broken-page-anchors', flag: checked.flags[0] })?.assertion.passed).toBe(true)
+      const changed = observe('<a href="#contact">Contact</a><section id="contact"></section>', { finalUrl: finalUrl + 'other' })
+      expect(scopedAssertionForTarget({ receipt: receipt(changed), checkId: 'broken-page-anchors', flag: checked.flags[0] })).toBeUndefined()
+    })
+
+  it('does not mistake links back to the requested URL or another base for current-document sections', () => {
+    const finalUrl = 'https://example.com/rendered'
+    const checked = observe('<base href="/elsewhere"><a href="#missing">Another document</a>' +
+      '<a href="' + pageUrl + '#missing">Original request</a><a href="' + finalUrl + '#missing">Current document</a>', { finalUrl })
+    expect(checked.assertions).toHaveLength(1)
+    expect(checked.flags).toHaveLength(1)
+    expect(checked.flags[0].evidence).toContain('Current document')
+  })
   it('does not accept inactive fallback or template targets as repaired sections', () => {
     const checked = observe('<a href="#contact">Contact</a><a href="#legacy">Legacy</a>' +
       '<noscript><section id="contact"></section></noscript><template><a name="legacy"></a></template>')
@@ -143,5 +163,13 @@ describe('declared section-link evidence', () => {
     expect(runSlopChecks(inactive).some(flag => flag.checkId === 'cta-dead-link')).toBe(false)
     const missing = parseMetadataFromHtml('<a href="#signup">Sign up</a><noscript><section id="signup"></section></noscript>', pageUrl)
     expect(runSlopChecks(missing).some(flag => flag.checkId === 'cta-dead-link')).toBe(true)
+  })
+  it('keeps browser routes and base-directed documents out of placeholder findings without certifying their behavior', () => {
+    for (const html of ['<a href="#/signup">Get started free</a>', '<a href="#!/signup">Get started free</a>',
+      '<base href="/signup"><a href="#details">Get started free</a>', '<base href="/signup"><a href="#">Get started free</a>']) {
+      const metadata = parseMetadataFromHtml(html, pageUrl)
+      expect(runSlopChecks(metadata).some(flag => flag.checkId === 'cta-dead-link')).toBe(false)
+    }
+    expect(runSlopChecks(parseMetadataFromHtml('<a href="#">Get started free</a>', pageUrl)).some(flag => flag.checkId === 'cta-dead-link')).toBe(true)
   })
 })

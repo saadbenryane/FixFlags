@@ -1,56 +1,45 @@
 import { resolve4, resolve6 } from 'node:dns/promises'
 import { isIP, type LookupFunction } from 'node:net'
+import { addAbortSignal } from 'node:stream'
+import { createGunzip } from 'node:zlib'
+import { MIMEType } from 'node:util'
+import { decodeBuffer } from 'encoding-sniffer'
 import { Agent } from 'undici'
 import { publicHttpCapacity } from './progressive/capacity'
+import { isPublicIp } from './public-ip'
+import { PublicCertificateError, readCertificateFailure } from './tls-evidence'
+import { PublicResponseBodyError, type PublicHttpDocument } from './http-evidence'
+import { PublicRedirectError, isAutomaticRedirectStatus } from './redirect-evidence'
+export { isPublicIp } from './public-ip'
 
 const PUBLIC_PROTOCOLS = new Set(['http:', 'https:'])
 
-function isPrivateIpv4(address: string): boolean {
-  const parts = address.split('.').map(Number)
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return true
-  }
-  const [a, b] = parts
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && (b === 0 || b === 168)) ||
-    (a === 198 && (b === 18 || b === 19 || b === 51)) ||
-    (a === 203 && b === 0) ||
-    a >= 224
-  )
+async function readGzipDocument(input: Buffer, maxBytes: number, signal: AbortSignal) {
+  const decoder = addAbortSignal(signal, createGunzip())
+  const chunks: Buffer[] = []
+  let bytes = 0, complete = true
+  decoder.end(input)
+  try {
+    for await (const chunk of decoder) {
+      if (bytes + chunk.length > maxBytes) {
+        chunks.push(chunk.subarray(0, maxBytes - bytes))
+        complete = false
+        break
+      }
+      bytes += chunk.length; chunks.push(chunk)
+    }
+    return { bytes: Buffer.concat(chunks), complete }
+  } finally { decoder.destroy() }
 }
 
-function normalizeIpv6(address: string): string {
-  const value = address.toLowerCase().split('%')[0]
-  try { return new URL(`http://[${value}]`).hostname.replace(/^\[|\]$/g, '') }
-  catch { return value }
-}
-
-function isPrivateIpv6(address: string): boolean {
-  const value = normalizeIpv6(address)
-  if (value === '::' || value === '::1') return true
-  if (value.startsWith('fc') || value.startsWith('fd') || /^fe[89ab]/.test(value)) return true
-  if (value.startsWith('ff') || value.startsWith('2001:db8')) return true
-  const mapped = value.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-  if (mapped) return isPrivateIpv4(mapped[1])
-  const hexMapped = value.match(/^::ffff:([a-f0-9]{1,4}):([a-f0-9]{1,4})$/)
-  if (hexMapped) {
-    const high = parseInt(hexMapped[1], 16), low = parseInt(hexMapped[2], 16)
-    return isPrivateIpv4(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`)
-  }
-  return false
-}
-
-export function isPublicIp(address: string): boolean {
-  const version = isIP(address)
-  if (version === 4) return !isPrivateIpv4(address)
-  if (version === 6) return !isPrivateIpv6(address)
-  return false
+/** Decode collected bytes once, after transport and file decompression. The
+ * shared HTML sniffer handles BOM, HTTP, meta and XML declarations without
+ * rewriting the source. Undeclared documents retain the existing UTF-8 default. */
+function decodeDocument(bytes: Buffer, contentType?: string) {
+  let charset: string | undefined
+  try { charset = new MIMEType(contentType ?? '').params.get('charset') ?? undefined }
+  catch { /* A malformed media type cannot discard otherwise collected evidence. */ }
+  return decodeBuffer(bytes, { transportLayerEncodingLabel: charset, defaultEncoding: 'utf-8' })
 }
 
 export function isBlockedHostname(hostname: string, allowDevLocalhost = process.env.DEV_ALLOW_LOCALHOST === 'true'): boolean {
@@ -72,9 +61,8 @@ export function isBlockedHostname(hostname: string, allowDevLocalhost = process.
   )
 }
 
-export function normalizeAuditUrl(
-  raw: string
-): { ok: true; url: string } | { ok: false; error: string } {
+type PublicUrlResult = { ok: true; url: string } | { ok: false; error: string }
+function normalizePublicUrl(raw: string, navigation: boolean): PublicUrlResult {
   try {
     const parsed = new URL(raw.trim())
     if (!PUBLIC_PROTOCOLS.has(parsed.protocol)) {
@@ -86,12 +74,17 @@ export function normalizeAuditUrl(
     if (isBlockedHostname(parsed.hostname)) {
       return { ok: false, error: 'FixFlags can only check publicly accessible URLs' }
     }
-    parsed.hash = ''
+    if (!navigation) parsed.hash = ''
     return { ok: true, url: parsed.toString() }
   } catch {
     return { ok: false, error: 'Invalid URL format' }
   }
 }
+
+/** HTTP requests address the document without its browser fragment state. */
+export function normalizeAuditUrl(raw: string): PublicUrlResult { return normalizePublicUrl(raw, false) }
+/** A customer-supplied navigation can select a different rendered application state. */
+export function normalizeAuditNavigationUrl(raw: string): PublicUrlResult { return normalizePublicUrl(raw, true) }
 
 /**
  * URL rejected before enqueue (bad format, unresolvable domain, private
@@ -140,10 +133,9 @@ export const publicSocketLookup: LookupFunction = (hostname, options, callback) 
     else callback(null, eligible[0], isIP(eligible[0]))
   }).catch(error => callback(error instanceof Error ? error : new Error('Public address validation failed'), ''))
 }
-const publicDispatcher = new Agent({ connect: { lookup: publicSocketLookup } })
+const publicDispatcher = new Agent({ connect: { lookup: publicSocketLookup, rejectUnauthorized: true } })
 
-export async function assertPublicAuditUrl(raw: string, signal?: AbortSignal, publicOnly = false): Promise<URL> {
-  const normalized = normalizeAuditUrl(raw)
+async function assertNormalizedPublicUrl(normalized: PublicUrlResult, signal?: AbortSignal, publicOnly = false): Promise<URL> {
   if (!normalized.ok) throw new AuditUrlError(normalized.error)
   const parsed = new URL(normalized.url)
   if (publicOnly && isBlockedHostname(parsed.hostname, false)) throw new AuditUrlError('Destination is not publicly accessible')
@@ -163,6 +155,13 @@ export async function assertPublicAuditUrl(raw: string, signal?: AbortSignal, pu
   return parsed
 }
 
+export function assertPublicAuditUrl(raw: string, signal?: AbortSignal, publicOnly = false): Promise<URL> {
+  return assertNormalizedPublicUrl(normalizeAuditUrl(raw), signal, publicOnly)
+}
+export function assertPublicNavigationUrl(raw: string, signal?: AbortSignal, publicOnly = false): Promise<URL> {
+  return assertNormalizedPublicUrl(normalizeAuditNavigationUrl(raw), signal, publicOnly)
+}
+
 export async function safeFetchHtml(
   rawUrl: string,
   options: {
@@ -177,24 +176,21 @@ export async function safeFetchHtml(
   statusCode: number
   headers: Record<string, string>
 }> {
-  const document = await fetchPublicDocument(rawUrl, {
+  const document = await fetchPublicBody(rawUrl, {
     ...options, timeoutMs: options.timeoutMs ?? 10_000, maxBytes: options.maxBytes ?? 5_000_000,
     accept: 'text/html,application/xhtml+xml',
-  }, true)
+  }, decodeDocument, true)
   return { html: document.body, finalUrl: document.finalUrl, statusCode: document.statusCode, headers: document.headers }
 }
 
 /** One bounded transport owns HTTP admission, redirects and response reads.
  * Capacity waiting and response collection have separate bounded budgets;
  * an explicit execution deadline remains the limit across both phases. */
-async function fetchPublicDocument(rawUrl: string, options: {
+async function fetchPublicBody<Body>(rawUrl: string, options: {
   timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
-  accept?: string;
+  accept?: string; decodeGzip?: boolean;
   publicOnly?: boolean; headers?: Record<string, string>; onRequestStart?: () => void;
-} = {}, requireHtml = false): Promise<{
-  body: string; finalUrl: string; statusCode: number; headers: Record<string, string>;
-  complete: boolean; redirects: string[];
-}> {
+}, decodeBody: (bytes: Buffer, contentType?: string) => Body, requireHtml = false): Promise<Omit<PublicHttpDocument, 'body'> & { body: Body }> {
   const timeoutMs = options.timeoutMs ?? 5000, deadline = options.deadline ?? Infinity
   const admissionExpiresAt = Math.min(deadline, Date.now() + timeoutMs)
   const release = await publicHttpCapacity.acquire(AbortSignal.timeout(Math.max(1, admissionExpiresAt - Date.now())))
@@ -203,6 +199,7 @@ async function fetchPublicDocument(rawUrl: string, options: {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), Math.max(1, expiresAt - Date.now()))
   const redirects: string[] = []
+  let uncertainRedirect = false
   const maxBytes = options.maxBytes ?? 1_000_000
   let requestInFlight = false
   try {
@@ -213,17 +210,29 @@ async function fetchPublicDocument(rawUrl: string, options: {
     for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
       if (Date.now() >= expiresAt) throw new Error('Public evidence deadline exhausted')
       requestInFlight = true
-      const response = await fetch(current, { redirect: 'manual', signal: controller.signal, dispatcher: publicDispatcher,
-        headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml',
-          ...(new URL(current).origin === credentialOrigin ? options.headers ?? {} : {}) } } as RequestInit & { dispatcher: Agent })
+      let response: Response
+      try {
+        response = await fetch(current, { redirect: 'manual', signal: controller.signal, dispatcher: publicDispatcher,
+          headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)', Accept: options.accept ?? 'text/html,text/plain,application/xml,text/xml',
+            ...(new URL(current).origin === credentialOrigin ? options.headers ?? {} : {}) } } as RequestInit & { dispatcher: Agent })
+      } catch (error) {
+        const failure = readCertificateFailure(error)
+        if (failure && new URL(current).protocol === 'https:') throw new PublicCertificateError(current, [...redirects], failure, error)
+        throw error
+      }
       requestInFlight = false
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location')
         await response.body?.cancel()
         requestInFlight = false
         if (!location) throw new Error('Redirect response is missing a location')
+        uncertainRedirect ||= response.headers.has('set-cookie') || response.headers.has('cf-mitigated') || !isAutomaticRedirectStatus(response.status)
+        const next = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal, options.publicOnly)).toString()
+        if (hop === (options.maxRedirects ?? 5)) throw new PublicRedirectError({ finalUrl: current,
+          statusCode: response.status, headers: Object.fromEntries(response.headers), redirects: [...redirects] }, uncertainRedirect,
+        requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : undefined)
         redirects.push(current)
-        current = (await assertPublicAuditUrl(new URL(location, current).toString(), controller.signal, options.publicOnly)).toString()
+        current = next
         continue
       }
       if (requireHtml && (!response.ok || !/text\/html|application\/xhtml\+xml/.test(response.headers.get('content-type')?.toLowerCase() ?? ''))) {
@@ -232,7 +241,7 @@ async function fetchPublicDocument(rawUrl: string, options: {
       }
       if (requireHtml && !response.body) throw new Error('Destination returned an empty response')
       const headers = Object.fromEntries(response.headers.entries())
-      if (!response.body) return { body: '', finalUrl: current, statusCode: response.status, headers, complete: true, redirects }
+      if (!response.body) return { body: decodeBody(Buffer.alloc(0), headers['content-type']), finalUrl: current, statusCode: response.status, headers, complete: true, redirects }
       const reader = response.body.getReader()
       const chunks: Uint8Array[] = []
       let bytes = 0, complete = true
@@ -249,9 +258,29 @@ async function fetchPublicDocument(rawUrl: string, options: {
           bytes += value.byteLength
           chunks.push(value)
         }
-      } finally { reader.releaseLock() }
-      return { body: new TextDecoder().decode(Buffer.concat(chunks)), finalUrl: current,
-        statusCode: response.status, headers, complete, redirects }
+        const collected = Buffer.concat(chunks)
+        let documentBytes = collected
+        // Fetch already decodes HTTP Content-Encoding. A gzip sitemap file may
+        // still contain compressed bytes, independently of its response headers.
+        if (options.decodeGzip && collected[0] === 0x1f && collected[1] === 0x8b) {
+          const decoded = complete ? await readGzipDocument(collected, maxBytes, controller.signal) : { bytes: Buffer.alloc(0), complete: false }
+          documentBytes = decoded.bytes; complete = decoded.complete
+        }
+        const body = decodeBody(documentBytes, headers['content-type'])
+        return { body, finalUrl: current, statusCode: response.status, headers, complete, redirects }
+      } catch (error) {
+        if (requireHtml) throw error
+        const prefix = Buffer.concat(chunks)
+        let body: string | null = null
+        // Compressed file bytes are not inspected document text. Decoding a
+        // collected text prefix is useful evidence, never proof of completeness.
+        if (!(prefix[0] === 0x1f && prefix[1] === 0x8b)) {
+          try { body = decodeDocument(prefix, headers['content-type']) } catch { /* Response facts remain available. */ }
+        }
+        throw new PublicResponseBodyError({ body, finalUrl: current, statusCode: response.status, headers, redirects: [...redirects] }, error)
+      } finally {
+        reader.releaseLock()
+      }
     }
     throw new Error(requireHtml ? `Destination exceeded ${options.maxRedirects ?? 5} redirects` : 'Public evidence redirect limit exceeded')
   } catch (error) {
@@ -265,8 +294,15 @@ async function fetchPublicDocument(rawUrl: string, options: {
 export function safeFetchDocument(rawUrl: string, options: {
   timeoutMs?: number; maxBytes?: number; maxRedirects?: number; deadline?: number;
   accept?: string; publicOnly?: boolean; headers?: Record<string, string>;
+  /** Decode gzip file content within the same byte and execution bounds. */
+  decodeGzip?: boolean;
   /** Called after local capacity admission, before URL and DNS validation. */
   onRequestStart?: () => void;
 } = {}) {
-  return fetchPublicDocument(rawUrl, options)
+  return fetchPublicBody(rawUrl, options, decodeDocument)
+}
+
+/** Binary evidence keeps the original bytes through the same public boundary. */
+export function safeFetchResource(rawUrl: string, options: Parameters<typeof safeFetchDocument>[1] = {}) {
+  return fetchPublicBody(rawUrl, options, bytes => bytes)
 }

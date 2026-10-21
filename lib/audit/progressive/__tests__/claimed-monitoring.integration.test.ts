@@ -31,6 +31,8 @@ import { getOwnedRun } from '@/lib/sites/application/run-queries'
 import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
 import { processDueProjectWatches } from '@/lib/audit/project-watch'
 import { requestScheduledSiteRun } from '@/lib/sites/application/scheduled-runs'
+import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
+import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { fixedClock, systemClock } from '@/lib/time/clock'
 import { executeUptimeProbe, scheduleUptimeProbes } from '@/lib/uptime/service'
 import { startUptimeWorker } from '@/lib/uptime/queue'
@@ -50,6 +52,12 @@ import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import type { SiteCheckResult } from '@/lib/sites/check-results'
 
 const cookieState = vi.hoisted(() => ({ values: new Map<string, string>() }))
+// Retain deterministic public DNS outside TEST-NET-3. The controlled transport
+// below supplies responses; neither real DNS nor live websites supply this proof.
+vi.mock('node:dns/promises', async importOriginal => ({
+  ...await importOriginal<typeof import('node:dns/promises')>(),
+  resolve4: async () => ['203.0.114.1'], resolve6: async () => [],
+}))
 vi.mock('next/headers', () => ({
   cookies: async () => ({
     get: (name: string) => cookieState.values.has(name) ? { value: cookieState.values.get(name) } : undefined,
@@ -237,7 +245,9 @@ run('URL-first analysis through claim and monitored repair', () => {
       .toMatchObject({ flag: { sourceFlagId: flag.id, verificationState: 'verified' } })
     expect((await loadMonitoringHistory(site)).timeline.find(entry => entry.id === source.id)?.flags).toEqual(expect.arrayContaining([{ id: flag.id, title: flag.problem }]))
     repaired = false
-    const tick = new Date(Date.now() + 8 * 86400_000)
+    const tick = new Date()
+    // Make broad evidence due without moving only the scheduler's lease clock.
+    await prisma.audit.update({ where: { id: source.id }, data: { createdAt: new Date(tick.getTime() - 8 * 86400_000) } })
     await prisma.project.update({ where: { id: site.projectId! }, data: { watchNextRunAt: tick } })
     expect(await processDueProjectWatches(1, { onlyProjectId: site.projectId!, clock: fixedClock(tick) })).toMatchObject({ enqueued: 1, errors: 0 })
     const watch = await prisma.runRequest.findFirstOrThrow({ where: { projectId: site.projectId!, source: 'WATCH' }, orderBy: { requestedAt: 'desc' } })
@@ -307,6 +317,28 @@ run('URL-first analysis through claim and monitored repair', () => {
       await prisma.adminOperation.delete({ where: { id: operation.id } })
       await prisma.user.delete({ where: { id: actorId } })
     }
+    const retainedAssessments = await prisma.outcomeAssessment.findMany({ where: { outcomeId: availability.id }, orderBy: { id: 'asc' } })
+    for (const interval of ['hourly', 'weekly'] as const) {
+      const changedAt = new Date()
+      expect(await setProjectWatch({ projectId: site.projectId!, userId: owner, interval }, { clock: fixedClock(changedAt) }))
+        .toMatchObject({ ok: true })
+      expect(await processDueProjectWatches(1, { onlyProjectId: site.projectId!, clock: fixedClock(changedAt) }))
+        .toMatchObject({ enqueued: 1, errors: 0 })
+      const scheduled = await prisma.runRequest.findFirstOrThrow({ where: { projectId: site.projectId!, source: 'WATCH',
+        requestedAt: { gte: changedAt } }, orderBy: { requestedAt: 'desc' } })
+      expect(readExecutionSpec(scheduled.executionSpec)).toMatchObject({ scope: 'OUTCOMES' })
+      await complete(scheduled.auditId!, false)
+      const assessment = await prisma.outcomeAssessment.findUniqueOrThrow({ where: {
+        runRequestId_outcomeId: { runRequestId: scheduled.id, outcomeId: availability.id },
+      } })
+      expect(assessment.state).toBe('CLEAR')
+      expect(assessment.validUntil.getTime() - assessment.assessedAt.getTime())
+        .toBe((interval === 'hourly' ? 13 * 60 : 8 * 24 * 60) * 60_000)
+      expect((await loadSiteHome(site.siteId))?.outcomes.find(outcome => outcome.id === availability.id))
+        .toMatchObject({ state: 'CLEAR', latestRunId: scheduled.id, validUntil: assessment.validUntil.toISOString() })
+    }
+    expect(await prisma.outcomeAssessment.findMany({ where: { id: { in: retainedAssessments.map(assessment => assessment.id) } },
+      orderBy: { id: 'asc' } })).toEqual(retainedAssessments)
   }, 240_000)
 
   it.each(['missing-linked-page', 'rejected-advisory', 'missing-primary-metadata', 'missing-primary-capture', 'interrupted-after-guidance', 'incomplete-prescriptions'] as const)(

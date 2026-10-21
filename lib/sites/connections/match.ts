@@ -1,4 +1,5 @@
-import { searchFactScope, ANALYTICS_PAGE_LIMIT, type AnalyticsPage, type AnalyticsReportScope, type AnalyticsAudience, type SearchReportScope, type ConnectionReportScope } from './report-scope'
+import { parsePublicHttpUrl } from '@/lib/audit/url-identity'
+import { analyticsPagePath, analyticsPageFactScope, searchFactScope, ANALYTICS_PAGE_LIMIT, type AnalyticsPage, type AnalyticsPageFactScope, type AnalyticsReportScope, type AnalyticsAudience, type SearchReportScope, type ConnectionReportScope } from './report-scope'
 import { SITE_CONNECTION_COPY as C } from '@/lib/marketing/copy/site-connections'
 
 export type ConnectionProviderName = 'SEARCH_CONSOLE' | 'ANALYTICS'
@@ -42,17 +43,6 @@ export function canonicalHost(value: string): string {
   return value.trim().toLowerCase().replace(/^www\./, '')
 }
 
-export function pagePathOf(value: string | null | undefined): string | null {
-  if (!value) return null
-  try {
-    const url = value.includes('://') ? new URL(value) : new URL(value, 'https://example.com')
-    const path = url.pathname || '/'
-    return path.length > 1 ? path.replace(/\/$/, '') : path
-  } catch {
-    return null
-  }
-}
-
 export function searchPropertyMatches(siteUrl: string, host: string): boolean {
   const wanted = canonicalHost(host)
   const value = siteUrl.trim().toLowerCase()
@@ -90,7 +80,7 @@ export function factsFromSearchRows(rows: Array<{
   return rows.slice(0, 25).flatMap((row) => {
     const reportScope = scope && row.keys?.[0] ? searchFactScope(scope, row.keys[0]) : null
     if (!reportScope) return []
-    const page = pagePathOf(row.keys?.[0])
+    const page = new URL(reportScope.pageUrl).pathname
     const query = row.keys?.[1]?.trim().slice(0, 120)
     if (!page || !query) return []
     return [{
@@ -108,7 +98,7 @@ export function factsFromSearchRows(rows: Array<{
 
 export function factsFromAnalyticsRows(rows: AnalyticsPage[], reportScope?: AnalyticsReportScope): ConnectionFact[] {
   return rows.slice(0, 2 * ANALYTICS_PAGE_LIMIT).flatMap((row) => {
-    const page = pagePathOf(row.pagePath)
+    const page = analyticsPagePath(row.pagePath)
     if (!page) return []
     return [{
       kind: 'analytics_page' as const,
@@ -119,7 +109,7 @@ export function factsFromAnalyticsRows(rows: AnalyticsPage[], reportScope?: Anal
       sessions: countOrNull(row.sessions),
       pageViews: countOrNull(row.pageViews),
       position: null,
-      ...(reportScope ? { reportScope } : {}),
+      ...(reportScope ? { reportScope: analyticsPageFactScope(reportScope, page)! } : {}),
     }]
   })
 }
@@ -130,16 +120,19 @@ export function factsFromAnalyticsAudience(audience: AnalyticsAudience, reportSc
     clicks: null, impressions: null, sessions, activeUsers, pageViews, position: null, reportScope }]
 }
 
+function measuredAnalyticsPage(fact: ConnectionFact): fact is ConnectionFact & { reportScope: AnalyticsPageFactScope } {
+  return fact.kind === 'analytics_page' && (fact.sessions !== null || fact.pageViews != null) && fact.reportScope?.kind === 'analytics-hostnames' &&
+    'pagePath' in fact.reportScope && fact.pagePath === fact.reportScope.pagePath
+}
+
 export function contextLinesForPage(facts: ConnectionFact[], pageUrl: string | null): string[] {
-  const path = pagePathOf(pageUrl)
-  if (!path) return []
-  const onPage = facts.filter((fact) => fact.pagePath === path)
-  let hostname: string | null = null
-  try { hostname = pageUrl ? new URL(pageUrl).hostname.toLowerCase() : null } catch { /* Relative paths do not establish a hostname. */ }
+  const page = pageUrl ? parsePublicHttpUrl(pageUrl) : null
+  if (!page) return []
+  const hostname = page.hostname.toLowerCase()
   const lines: string[] = []
-  const queries = onPage
+  const queries = facts
     .filter((fact) => fact.kind === 'search_query' && fact.reportScope?.kind === 'search-hostnames' &&
-      hostname && fact.reportScope.hostnames.includes(hostname) && (fact.impressions !== null || fact.clicks !== null))
+      fact.reportScope.hostnames.includes(hostname) && parsePublicHttpUrl(fact.reportScope.pageUrl)?.href === page.href && (fact.impressions !== null || fact.clicks !== null))
     .sort((a, b) => (b.impressions ?? 0) - (a.impressions ?? 0))
     .slice(0, 2)
   for (const query of queries) {
@@ -147,8 +140,7 @@ export function contextLinesForPage(facts: ConnectionFact[], pageUrl: string | n
       C.searchPage(query.subject, query.impressions, query.clicks, factPeriod(query), factAge(query)),
     )
   }
-  const measured = onPage.filter(fact => fact.kind === 'analytics_page' && (fact.sessions !== null || fact.pageViews != null) && fact.reportScope?.kind === 'analytics-hostnames' &&
-    hostname && fact.reportScope.hostnames.includes(hostname))
+  const measured = facts.filter(fact => measuredAnalyticsPage(fact) && fact.reportScope.pagePath === page.pathname && fact.reportScope.hostnames.includes(hostname))
   if (measured.length) {
     const observation = measured[0]
     lines.push(C.analyticsPage(observation.sessions, observation.pageViews ?? null, factPeriod(observation), factAge(observation)))
@@ -160,10 +152,10 @@ export function cardContext(facts: ConnectionFact[]): { search: string | null; t
   const top = facts
     .filter((fact) => fact.kind === 'search_query' && fact.reportScope?.kind === 'search-hostnames' && (fact.impressions !== null || fact.clicks !== null))
     .sort((a, b) => (b.impressions ?? 0) - (a.impressions ?? 0))[0]
-  const measured = facts.filter(fact => fact.kind === 'analytics_page' && (fact.sessions !== null || fact.pageViews != null) && fact.reportScope?.kind === 'analytics-hostnames')
+  const measured = facts.filter(measuredAnalyticsPage)
   const audience = facts.find(fact => fact.kind === 'analytics_site' && fact.reportScope?.kind === 'analytics-hostnames' && (fact.sessions !== null || fact.activeUsers != null || fact.pageViews != null))
   return {
-    search: top ? C.searchPage(top.subject, top.impressions, top.clicks, factPeriod(top), factAge(top)) : null,
+    search: top ? C.searchPage(top.subject, top.impressions, top.clicks, factPeriod(top), factAge(top), 'reported') : null,
     tracking: audience ? C.analyticsAudience(audience.sessions, audience.activeUsers ?? null, audience.pageViews ?? null, factPeriod(audience), factAge(audience)) : measured.length
       ? C.analyticsPages(new Set(measured.map(fact => fact.pagePath)).size, factPeriod(measured[0]), factAge(measured[0]))
       : null,

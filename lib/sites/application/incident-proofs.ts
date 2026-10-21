@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { outcomeFlagOwner } from '@/lib/audit/flag-identity'
-import { hasRecordedRecoveryEvidence, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
+import { createRecordedRecoveryReader, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 
@@ -53,6 +53,14 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
   const provenFlagsByProject = new Map<string, Set<string>>()
   if (!ids.length) return byProject
   const projectIds = [...new Set(groups.map(group => group.projectId))]
+  const flagsByRecovery = new Map<string, IncidentFlag[]>()
+  for (const group of groups) for (const flag of group.flags) {
+    if (!flag.id || flag.status !== 'FIXED' || !flag.resolvedInId) continue
+    const key = JSON.stringify([group.projectId, flag.resolvedInId])
+    const flags = flagsByRecovery.get(key)
+    if (flags) flags.push(flag)
+    else flagsByRecovery.set(key, [flag])
+  }
   const audits = await prisma.audit.findMany({ where: { id: { in: ids }, projectId: { in: projectIds },
     status: 'COMPLETED', completedAt: { not: null } }, select: { id: true, projectId: true, completedAt: true, executionSpec: true,
       outcomeAssessments: { select: { state: true, outcomeId: true, evidence: true } },
@@ -72,11 +80,12 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
   for (const audit of audits) if (audit.projectId && audit.completedAt) {
     const certificates = recoveryCertificates(audit.outcomeAssessments)
     certificatesByAudit.set(audit.id, certificates)
-    for (const flag of groups.filter(group => group.projectId === audit.projectId).flatMap(group => group.flags)) {
-      if (!flag.id || flag.status !== 'FIXED' || flag.resolvedInId !== audit.id) continue
-      if (!hasRecordedRecoveryEvidence({ auditId: audit.id, executionSpec: audit.executionSpec, flag, executions: audit.verifierExecutions ?? [] }) &&
+    const recovery = createRecordedRecoveryReader({ auditId: audit.id, executionSpec: audit.executionSpec,
+      executions: audit.verifierExecutions ?? [] })
+    for (const flag of flagsByRecovery.get(JSON.stringify([audit.projectId, audit.id])) ?? []) {
+      if (!recovery.hasRecovery(flag) &&
         !namedByRecovery(flag, certificates)) continue
-      remember(audit.projectId, flag.id, audit.id, audit.completedAt)
+      remember(audit.projectId, flag.id!, audit.id, audit.completedAt)
     }
   }
   const pending = groups.flatMap(group => group.flags.flatMap(flag => {
@@ -88,13 +97,18 @@ export async function loadIncidentRecoveryProofs(groups: Array<{ projectId: stri
     const membership = await prisma.outcomeAssessment.findMany({ where: {
       auditId: { in: [...new Set(pending.map(item => item.flag.auditId!))] }, audit: { projectId: { in: projectIds } } },
       select: { auditId: true, outcomeId: true, evidence: true, audit: { select: { projectId: true } } } })
+    const auditsById = new Map(audits.map(audit => [audit.id, audit]))
+    const members = new Set(membership.flatMap(row => {
+      const incident = readOutcomeIncident(row.evidence)?.incidentRunRequestId
+      return incident ? [JSON.stringify([row.audit.projectId, row.auditId, row.outcomeId, incident])] : []
+    }))
     for (const item of pending) {
-      const audit = audits.find(candidate => candidate.id === item.flag.resolvedInId && candidate.projectId === item.projectId && candidate.completedAt)
+      const audit = auditsById.get(item.flag.resolvedInId!)
+      if (!audit?.completedAt || audit.projectId !== item.projectId) continue
       const certificates = audit ? certificatesByAudit.get(audit.id) ?? [] : []
-      const member = certificates.some(certificate => certificate.outcomeId === item.owner.outcomeId && membership.some(row =>
-        row.auditId === item.flag.auditId && row.audit.projectId === item.projectId && row.outcomeId === item.owner.outcomeId &&
-        readOutcomeIncident(row.evidence)?.incidentRunRequestId === certificate.incidentRunRequestId))
-      if (audit?.completedAt && member) remember(item.projectId, item.flag.id!, audit.id, audit.completedAt)
+      const member = certificates.some(certificate => certificate.outcomeId === item.owner.outcomeId &&
+        members.has(JSON.stringify([item.projectId, item.flag.auditId, item.owner.outcomeId, certificate.incidentRunRequestId])))
+      if (member) remember(item.projectId, item.flag.id!, audit.id, audit.completedAt)
     }
   }
   return byProject

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ owner: vi.fn(), history: vi.fn() }))
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteOwner: mocks.owner }))
-vi.mock('@/lib/uptime/queries', () => ({ loadUptimeHistory: mocks.history }))
+vi.mock('@/lib/uptime/queries', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/uptime/queries')>(), loadUptimeHistory: mocks.history }))
 import { GET } from '../route'
+import { InvalidUptimeCursorError } from '@/lib/uptime/queries'
 const context = { params: Promise.resolve({ siteId: 'alias' }) }
 const request = (query = '') => new Request(`http://localhost/api/sites/alias/uptime${query}`)
 beforeEach(() => { vi.clearAllMocks(); mocks.owner.mockResolvedValue({ ok: true, projectId: 'owned-project', decision: { site: { siteId: 'owned-project' } } }); mocks.history.mockResolvedValue({ window: '24h', probes: [], nextCursor: null }) })
@@ -23,7 +24,7 @@ describe('private Uptime history', () => {
     expect(mocks.history).not.toHaveBeenCalled()
   })
   it('rejects a cursor outside the authorized monitor history', async () => {
-    mocks.history.mockRejectedValue(new Error('Invalid uptime cursor'))
+    mocks.history.mockRejectedValue(new InvalidUptimeCursorError())
     expect((await GET(request('?cursor=foreign-probe'), context)).status).toBe(400)
   })
 })

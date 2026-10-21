@@ -37,7 +37,7 @@ describe('Site connection matching', () => {
       ...factsFromSearchRows([{ keys: ['https://shop.example/pricing', 'plans'], clicks: 4, impressions: 80, position: 6 }], searchReportScope('shop.example', 'sc-domain:shop.example')),
       ...factsFromAnalyticsRows([{ pagePath: '/pricing', sessions: 12 }], analyticsReportScope('shop.example', 'properties/1')),
     ]
-    const lines = contextLinesForPage(facts, 'https://shop.example/pricing/')
+    const lines = contextLinesForPage(facts, 'https://shop.example/pricing')
     expect(lines.join(' ')).toContain('80 impressions')
     expect(lines.join(' ')).toContain('12 sessions')
     expect(lines.join(' ').toLowerCase()).not.toContain('clear')
@@ -62,7 +62,8 @@ describe('Site connection matching', () => {
     expect(factsFromSearchRows(rows, searchReportScope('shop.example', 'https://shop.example/blog/'))).toEqual([])
     expect(contextLinesForPage(facts, 'https://other.shop.example/pricing')).toEqual([])
     expect(contextLinesForPage(facts, '/pricing')).toEqual([])
-    const line = contextLinesForPage(facts, 'https://www.shop.example/pricing').join(' ')
+    expect(contextLinesForPage(facts, 'https://www.shop.example/pricing')).toEqual([])
+    const line = contextLinesForPage(facts, 'https://shop.example/pricing').join(' ')
     expect(line).toContain('80 impressions')
     expect(line).not.toContain('0 clicks')
     expect(cardContext(facts).search).not.toContain('0 clicks')
@@ -85,6 +86,45 @@ describe('Site connection matching', () => {
     const audience = factsFromAnalyticsAudience({ sessions: 12, activeUsers: 3 }, scope)
     expect(cardContext([...scoped, ...factsFromAnalyticsRows([{ pagePath: '/', sessions: 12 }], scope), ...audience]).tracking).toContain('12 sessions and 3 active users')
     expect(factsFromAnalyticsAudience({}, scope)).toEqual([])
+  })
+  it('attaches Search counts only to the exact reported URI', () => {
+    const source = 'https://shop.example/pricing/?plan=teams', scope = searchReportScope('shop.example', 'sc-domain:shop.example')
+    const facts = factsFromSearchRows([{ keys: [source, 'team plans'], impressions: 80, clicks: 4 }], scope)
+    expect(contextLinesForPage(facts, source).join(' ')).toContain('80 impressions')
+    for (const target of ['https://shop.example/pricing?plan=teams', 'https://shop.example/pricing/?plan=solo',
+      'https://www.shop.example/pricing/?plan=teams', 'http://shop.example/pricing/?plan=teams', 'https://shop.example:8443/pricing/?plan=teams'])
+      expect(contextLinesForPage(facts, target), target).toEqual([])
+    expect(cardContext(facts).search).not.toContain('on this page')
+  })
+  it('preserves distinct Analytics page paths and refuses missing dimension values', () => {
+    const scope = analyticsReportScope('shop.example', 'properties/1')
+    const facts = factsFromAnalyticsRows([{ pagePath: '/pricing', pageViews: 12 }, { pagePath: '/pricing/', pageViews: 42 },
+      { pagePath: '(not set)', pageViews: 999 }, { pagePath: 'https://other.example/pricing', pageViews: 999 }], scope)
+    expect(facts.map(fact => fact.pagePath)).toEqual(['/pricing', '/pricing/'])
+    expect(contextLinesForPage(facts, 'https://shop.example/pricing/').join(' ')).toContain('42 page views')
+    expect(contextLinesForPage(facts, 'https://shop.example/pricing').join(' ')).toContain('12 page views')
+    // The provider selected pagePath, so query variants share its aggregate.
+    expect(contextLinesForPage(facts, 'https://shop.example/pricing/?plan=teams').join(' ')).toContain('42 page views')
+    expect(cardContext(facts).tracking).toContain('2 recorded pages')
+  })
+  it('withholds ambiguous Analytics paths while retaining separately scoped Site audience', () => {
+    const scope = analyticsReportScope('shop.example', 'properties/1')
+    const [fact] = factsFromAnalyticsRows([{ pagePath: '/pricing/', pageViews: 42 }], scope)
+    const legacy = { ...fact, reportScope: scope, pagePath: '/pricing' }
+    const conflicting = { ...fact, pagePath: '/pricing' }
+    for (const unknown of [legacy, conflicting]) {
+      expect(contextLinesForPage([unknown], 'https://shop.example/pricing')).toEqual([])
+      expect(contextLinesForPage([unknown], 'https://shop.example/pricing/')).toEqual([])
+      expect(cardContext([unknown]).tracking).toBeNull()
+    }
+    const audience = factsFromAnalyticsAudience({ sessions: 10, activeUsers: 8 }, scope)
+    expect(cardContext([legacy, ...audience]).tracking).toContain('10 sessions and 8 active users')
+  })
+  it('refuses page context for non-public URL schemes or embedded credentials', () => {
+    const facts = [...factsFromSearchRows([{ keys: ['https://shop.example/pricing', 'plans'], impressions: 80 }], searchReportScope('shop.example', 'sc-domain:shop.example')),
+      ...factsFromAnalyticsRows([{ pagePath: '/pricing', pageViews: 12 }], analyticsReportScope('shop.example', 'properties/1'))]
+    for (const target of ['ftp://shop.example/pricing', 'https://user:secret@shop.example/pricing', '/pricing'])
+      expect(contextLinesForPage(facts, target)).toEqual([])
   })
   it('uses genuine page views without relabeling sessions or inventing absent counts', () => {
     const scope = analyticsReportScope('shop.example', 'properties/1')

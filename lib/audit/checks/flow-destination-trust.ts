@@ -23,12 +23,12 @@ function missingTrust(trust: NonNullable<FlowScanResult['destinationTrust']>) {
 }
 
 /** Same clicked control and reached URL. A different control, URL, or unhealthy response is a different observation. */
-export function comparableDestinationContext(result: Pick<FlowScanResult, 'status' | 'finalUrl' | 'actionEvidence'>, prefix: 'flow:trust:v1' | 'flow:destination:v1') {
+export function comparableDestinationContext(result: Pick<FlowScanResult, 'status' | 'finalUrl' | 'actionEvidence'>, prefix: 'flow:trust:v1' | 'flow:destination:v1', detector?: string) {
   const action = result.actionEvidence
   const control = action?.controlContext?.match(/^flow:control:([a-f0-9]{64})$/)?.[1]
   if (result.status !== 'success' || !result.finalUrl || !control || !action?.clicked || action.clickBlocked ||
     action.navigation !== 'changed' || !action.responseExpected || action.response !== 'healthy') return undefined
-  return `${prefix}:${control}:${createHash('sha256').update(result.finalUrl).digest('hex')}`
+  return `${prefix}:${control}:${createHash('sha256').update(detector ? JSON.stringify([result.finalUrl, detector]) : result.finalUrl).digest('hex')}`
 }
 
 /** Trust signals are recorded even when nothing is wrong. Silence is not a pass. */

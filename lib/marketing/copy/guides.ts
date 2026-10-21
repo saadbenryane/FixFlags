@@ -5,7 +5,7 @@ export const GUIDE_REVIEWED_AT = '2026-10-20'
 export const GUIDES_PAGE = {
   eyebrow: 'Website guides',
   title: 'Know what to check next.',
-  description: 'Practical checks after publishing, troubleshooting paths, and comparisons that start with the evidence you need.',
+  description: 'Simple guides to checking your website, fixing problems, and setting up monitoring.',
   metadataTitle: 'Website checking and monitoring guides | FixFlags',
   start: 'Check your website',
   pricing: 'See current pricing',
@@ -18,7 +18,7 @@ export const GUIDES_PAGE = {
   related: 'Keep going',
   coverageLink: 'FixFlags coverage and limits',
   docsLink: 'Check, fix, and verify with AI',
-  nextTitle: 'Check the live website you are responsible for.',
+  nextTitle: 'Try a check on your website.',
   offer: PUBLIC_OFFER.free,
   offerLimits: PUBLIC_OFFER.availability,
 } as const

@@ -6,7 +6,7 @@ export const SEO = {
   guides: { title: GUIDES_PAGE.metadataTitle, description: GUIDES_PAGE.description },
   coverage: {
     title: 'What FixFlags checks | FixFlags',
-    description: 'Explore website checks across eight areas, their setup requirements, and what the evidence can establish.',
+    description: 'See what FixFlags checks, from broken pages to slow loading. Explore the checks, setup, and limits across eight website areas.',
   },
   security: {
     title: 'Privacy and security | FixFlags',
@@ -14,17 +14,17 @@ export const SEO = {
   },
   useCases: {
     title: 'Website monitoring use cases | FixFlags',
-    description: 'See how founders, ecommerce operators, agencies, and growth teams can check live websites and act on evidence.',
+    description: 'Website checks, email alerts, and fix guidance for builders, store owners, agencies, and marketing teams.',
   },
   home: {
-    title: 'FixFlags - Your software runs. FixFlags watches.',
+    title: 'FixFlags | Website monitoring. From problem to fix.',
     description:
       WEBSITE_PROMISE,
   },
   integrations: {
     title: 'FixFlags Integrations',
     description:
-      'Connect GitHub to FixFlags. Explore other integrations coming soon after testing and validation.',
+      'Start with your website URL. Explore GitHub account connection and other integrations coming soon.',
   },
   pricing: {
     title: 'FixFlags Pricing',
@@ -42,12 +42,12 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Monitor. Flag. Fix. Repeat. Start with your website URL, see what needs attention, publish a fix, and check the same live behavior again.',
+      'Enter your URL, see what needs attention, and get help fixing it. Save your website for fix prompts, scheduled checks, and email alerts.',
   },
   samples: {
     title: 'Sample Site and Flag',
     description:
-      'Explore a recorded demo check, its page capture, a fix prompt, and the evidence a fresh verification needs.',
+      'Try a recorded demo check. See a website problem, read the evidence, and copy a fix prompt for your AI.',
   },
   faq: {
     title: 'FAQ',
@@ -62,7 +62,7 @@ export const SEO = {
   docs: {
     title: 'FixFlags Documentation',
     description:
-      'Learn how FixFlags analyzes a Site, verifies important paths, uses evidence, and progressively adds context.',
+      'Learn how to check your website, read a Flag, use a fix prompt, and set up monitoring.',
   },
   changelog: {
     title: 'Changelog',
@@ -70,9 +70,9 @@ export const SEO = {
       'Product updates, new checks, and shipping improvements for FixFlags.',
   },
   metaPreview: {
-    title: 'Meta Preview Tool – FixFlags',
+    title: 'Link preview checker | FixFlags',
     description:
-      'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Check og:image, title, and description tags on any URL. Free tool.',
+      'Check the image, title, and description people see when you share a page. Free link preview tool from FixFlags.',
   },
   placeholderDetector: {
     title: 'Placeholder Copy Detector – FixFlags',
@@ -95,7 +95,7 @@ export const SEO = {
   issues: {
     title: 'Flag Library',
     description:
-      'Real Flags from reviewed sites, with frequency, affected frameworks, examples, and fixes.',
+      'Reviewed website problems and fix guidance. Published patterns include their evidence, research scope, and limits.',
   },
 
 } as const

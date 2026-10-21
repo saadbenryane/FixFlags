@@ -685,6 +685,8 @@ model Audit {
   watchNotificationAttemptCeiling Int @default(5)
   planAtAdmission Plan?
   watchNotificationAttempts  Int                          @default(0)
+  /// Null admits initial and historical deliveries immediately. Failed attempts save their own backoff.
+  watchNotificationNextAttemptAt DateTime?
   watchNotificationLastError String?
   /// Provider acceptance reference, never proof that a person received or read it.
   watchNotificationProviderId String?
@@ -755,7 +757,7 @@ model Audit {
   @@index([siteId])
   /// Supports the Watch notification retry sweep, which only ever looks at a
   /// small set of undelivered alerts.
-  @@index([watchNotificationStatus, updatedAt])
+  @@index([watchNotificationStatus, watchNotificationNextAttemptAt, updatedAt], map: "audits_watch_notification_due_idx")
   @@index([dispatchState, dispatchNextAt], map: "audits_dispatch_due_idx")
   @@map("audits")
 }

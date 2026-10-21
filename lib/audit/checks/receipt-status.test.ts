@@ -9,6 +9,7 @@ import { evaluatorHandlers } from '../progressive/evaluators'
 import { serializeArtifact, readArtifact } from '../progressive/contracts'
 import { checkArtifactSchema } from '../progressive/results'
 import type { TaskContext } from '../progressive/registry'
+import { NATIVE_CONSTRAINT_OBSERVATION } from './form-validation'
 
 const pageUrl = 'https://example.com/'
 const scope = { pageUrl, finalUrl: pageUrl, profile: 'desktop', access: 'public' }
@@ -18,6 +19,15 @@ const receipt = { kind: 'site-module-check', version: 1, module: 'cta-focus', pa
   complete: true, assertions: [assertion] }
 
 describe('check receipt summaries', () => {
+  it('projects a recorded native shortcut as incomplete without altering its original receipt', () => {
+    const original = { kind: 'site-module-check', version: 1, module: 'form-validation', pageUrl, passed: true, applicable: true,
+      complete: true, assertions: [{ key: 'form-feedback', name: 'Feedback', expected: 'Immediate feedback',
+        observed: NATIVE_CONSTRAINT_OBSERVATION, passed: true, complete: true }] }
+    const saved = JSON.stringify(original)
+    expect(readCheckReceipt(original)).toMatchObject({ passed: false, complete: false,
+      assertions: [expect.objectContaining({ passed: true, complete: false })] })
+    expect(JSON.stringify(original)).toBe(saved)
+  })
   it('keeps incomplete advisory evidence unknown even when a stored summary says it passed', () => {
     expect(readCheckReceipt(receipt)).toMatchObject({ passed: false, complete: false, assertions: [assertion] })
     expect(receipt).toMatchObject({ passed: true, complete: true })

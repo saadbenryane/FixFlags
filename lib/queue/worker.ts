@@ -31,15 +31,13 @@ function workerBrowserDiagnostics() {
 }
 
 export function startWorker() {
-  void runBestEffort(
-    () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
-    { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },
-  )
-
   const worker = new Worker(
     'audit',
     async (job) => {
-      await touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'active' })
+      void runBestEffort(
+        () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'active' }),
+        { operation: 'worker_heartbeat', logger, context: { phase: 'active', jobId: String(job.id) } },
+      )
       if (job.name === 'repo-scan') {
         const { repoScanId } = job.data as { repoScanId: string }
         await runRepoScan(repoScanId)
@@ -114,19 +112,24 @@ export function startWorker() {
   )
 
   let browserRecoveryRunning = false
+  let closing = false
+  function recoverBrowser() {
+    if (closing || workerBrowserDiagnostics().browserOk || browserRecoveryRunning) return
+    browserRecoveryRunning = true
+    // Startup and later recovery use the same nonblocking, single-flight path.
+    // The shared browser manager owns physical launch and shutdown cleanup.
+    void getAuditBrowser()
+      .then(() => { if (!closing) return touchWorkerHeartbeat(workerBrowserDiagnostics()) })
+      .catch(error => { if (!closing) logger.error('Worker browser recovery failed; independent work remains available', error) })
+      .finally(() => { browserRecoveryRunning = false })
+  }
   const heartbeatTimer = setInterval(() => {
     const diagnostics = workerBrowserDiagnostics()
     void runBestEffort(
       () => touchWorkerHeartbeat({ ...diagnostics, queueState: 'idle' }),
       { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
     )
-    if (diagnostics.browserOk || browserRecoveryRunning) return
-    browserRecoveryRunning = true
-    // A browser outage must not stop public-response, provider, or availability work.
-    void getAuditBrowser()
-      .then(() => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }))
-      .catch((error) => logger.error('Worker browser recovery failed; independent work remains available', error))
-      .finally(() => { browserRecoveryRunning = false })
+    recoverBrowser()
   }, HEARTBEAT_INTERVAL_MS)
   heartbeatTimer.unref?.()
 
@@ -209,8 +212,17 @@ export function startWorker() {
   const tasks = startProgressiveWorkers()
   const uptime = startUptimeRuntime()
   const adminOperations = startAdminOperationRuntime()
+  void runBestEffort(
+    () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }),
+    { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },
+  )
+  recoverBrowser()
   const closeAuditWorker = worker.close.bind(worker)
-  worker.close = async force => { clearInterval(heartbeatTimer); await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()]) }
+  worker.close = async force => {
+    closing = true
+    clearInterval(heartbeatTimer)
+    await Promise.all([closeAuditWorker(force), tasks.close(), uptime.close(), adminOperations.close()])
+  }
   return worker
 }
 

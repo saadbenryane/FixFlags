@@ -1,3 +1,4 @@
+import { reconcileScheduledCompletions } from './scheduled-completion'
 import { persistOutcomeAssessment } from './outcome-incidents'
 import { readOutcomeIncident } from '../domain/outcome-incident'
 import { executionWrite } from '@/lib/audit/execution-ownership'
@@ -179,6 +180,9 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         leaseUntil: null,
       },
     }))
+    if (request.context && typeof request.context === 'object' && 'scheduled' in request.context)
+      await reconcileScheduledCompletions(1, undefined, { projectId: request.projectId, runId: request.id })
+        .catch(error => logger.warn('Scheduled completion deferred after run settlement', { runId: request.id, error }))
   }
 }
 
@@ -238,5 +242,8 @@ export async function markOutcomeRunsCouldNotVerify(
         leaseUntil: null,
       },
     }))
+    if (request.context && typeof request.context === 'object' && 'scheduled' in request.context)
+      await reconcileScheduledCompletions(1, undefined, { projectId: request.projectId, runId: request.id })
+        .catch(error => logger.warn('Scheduled completion deferred after run settlement', { runId: request.id, error }))
   }
 }

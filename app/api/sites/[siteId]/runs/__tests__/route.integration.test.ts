@@ -26,6 +26,7 @@ vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers(
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
 vi.mock('@/lib/db', () => ({
   prisma: {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },

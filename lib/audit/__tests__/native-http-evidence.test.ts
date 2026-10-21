@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nativeHttpCollection, nativeHttpEvidenceSchema } from '../native-http-evidence'
 import { openCheckDestination, type OpenCheckResult } from '../open-check'
-import { safeFetchDocument } from '../url'
+import { safeFetchResource } from '../url'
 import { runAuthCheckoutChecks } from '../checks/auth-checkout'
 import { runOgImageUrlCheck } from '../checks/metadata-checks'
 import { parseMetadataFromHtml } from '../metadata'
@@ -12,11 +12,11 @@ import type { TaskContext } from '../progressive/registry'
 import { CHECK_REGISTRY } from '../check-registry'
 
 vi.mock('../open-check', async original => ({ ...await original<typeof import('../open-check')>(), openCheckDestination: vi.fn() }))
-vi.mock('../url', async original => ({ ...await original<typeof import('../url')>(), safeFetchDocument: vi.fn() }))
+vi.mock('../url', async original => ({ ...await original<typeof import('../url')>(), safeFetchResource: vi.fn() }))
 const pageUrl = 'https://example.com/pricing', imageUrl = 'https://example.com/preview.png'
-const metadata = parseMetadataFromHtml('<html><head><meta property="og:image" content="' + imageUrl + '"></head><body><a href="/signup">Sign up</a><a href="/checkout">Buy now</a></body></html>')
-const response = { statusCode: 404, headers: { 'content-type': 'text/plain', 'set-cookie': 'private' }, body: 'Missing', complete: true, finalUrl: imageUrl, redirects: [] }
-beforeEach(() => { vi.mocked(openCheckDestination).mockReset(); vi.mocked(safeFetchDocument).mockReset() })
+const metadata = parseMetadataFromHtml('<html><head><meta property="og:image" content="' + imageUrl + '"></head><body><a href="/signup">Sign up</a><a href="/checkout">Buy now</a></body></html>', pageUrl)
+const response = { statusCode: 404, headers: { 'content-type': 'text/plain', 'set-cookie': 'private' }, body: Buffer.from('Missing'), complete: true, finalUrl: imageUrl, redirects: [] }
+beforeEach(() => { vi.mocked(openCheckDestination).mockReset(); vi.mocked(safeFetchResource).mockReset() })
 
 describe('private native HTTP evidence', () => {
   it('replays action decisions and their assertions without another public request', async () => {
@@ -36,12 +36,12 @@ describe('private native HTTP evidence', () => {
   })
 
   it.each([
-    { status: 200, type: 'image/png', body: 'image', flags: 0 },
-    { status: 404, type: 'text/plain', body: 'Missing', flags: 1 },
+    { status: 200, type: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFElEQVQImWP4r8TwX4kBhP8rMQAAI6YEhXbc9zcAAAAASUVORK5CYII=', 'base64'), flags: 0 },
+    { status: 404, type: 'text/plain', body: Buffer.from('Missing'), flags: 1 },
     { status: 200, type: 'image/png', body: '', flags: 1 },
     { status: 403, type: 'text/html', body: 'Refused', flags: 0 },
   ])('replays the consumed image response facts for HTTP $status', async ({ status, type, body, flags }) => {
-    vi.mocked(safeFetchDocument).mockResolvedValue({ ...response, statusCode: status, body, headers: { 'content-type': type, 'set-cookie': 'private' } })
+    vi.mocked(safeFetchResource).mockResolvedValue({ ...response, statusCode: status, body: Buffer.from(body), headers: { 'content-type': type, 'set-cookie': 'private' } })
     const collected = nativeHttpCollection(), scope = {}, assertions: CheckAssertion[] = []
     const original = await runOgImageUrlCheck(pageUrl, metadata, { ...collected.options, scope, record: value => assertions.push(value) })
     expect(original).toHaveLength(flags)
@@ -52,11 +52,11 @@ describe('private native HTTP evidence', () => {
     expect(replayAssertions).toEqual(assertions)
     expect(replayScope).toEqual(scope)
     expect(replay.snapshot()).toEqual(recorded)
-    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+    expect(safeFetchResource).toHaveBeenCalledTimes(1)
   })
 
   it('retains unavailable collection and refuses missing or unused replay inputs', async () => {
-    vi.mocked(safeFetchDocument).mockRejectedValue(new Error('Transport unavailable'))
+    vi.mocked(safeFetchResource).mockRejectedValue(new Error('Transport unavailable'))
     const collected = nativeHttpCollection(), assertions: CheckAssertion[] = []
     expect(await runOgImageUrlCheck(pageUrl, metadata, { ...collected.options, record: value => assertions.push(value) })).toEqual([])
     expect(assertions[0]).toMatchObject({ passed: false, complete: false })
@@ -67,11 +67,11 @@ describe('private native HTTP evidence', () => {
     const changed = nativeHttpCollection(recorded)
     await runOgImageUrlCheck(pageUrl, { ogImage: imageUrl + '?different=1' }, changed.options)
     expect(() => changed.snapshot()).toThrow('NATIVE_HTTP_REPLAY_INPUT_MISMATCH')
-    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+    expect(safeFetchResource).toHaveBeenCalledTimes(1)
   })
 
   it('retains the access-challenge header used by image evaluation', async () => {
-    vi.mocked(safeFetchDocument).mockResolvedValue({ ...response, statusCode: 200,
+    vi.mocked(safeFetchResource).mockResolvedValue({ ...response, statusCode: 200,
       headers: { 'content-type': 'image/png', 'cf-mitigated': 'challenge', 'set-cookie': 'private' } })
     const collected = nativeHttpCollection(), assertions: CheckAssertion[] = []
     expect(await runOgImageUrlCheck(pageUrl, metadata, { ...collected.options, record: value => assertions.push(value) })).toEqual([])
@@ -81,13 +81,13 @@ describe('private native HTTP evidence', () => {
     expect(replayAssertions).toEqual(assertions)
     expect(replay.snapshot()).toEqual(recorded)
     expect(JSON.stringify(recorded)).not.toContain('set-cookie')
-    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+    expect(safeFetchResource).toHaveBeenCalledTimes(1)
   })
 
   it('keeps multi-action findings in source order when collection finishes out of order', async () => {
     const pending: Array<(result: OpenCheckResult) => void> = []
     vi.mocked(openCheckDestination).mockImplementation(() => new Promise(resolve => pending.push(resolve)))
-    const result = runAuthCheckoutChecks(pageUrl, { ...metadata, links: [{ href: '/a', text: 'Buy now' }, { href: '/b', text: 'Buy now' }] })
+    const result = runAuthCheckoutChecks(pageUrl, { ...metadata, links: [{ href: '/a', text: 'Buy now', rel: null }, { href: '/b', text: 'Buy now', rel: null }] })
     const failure = (path: string): OpenCheckResult => ({ url: 'https://example.com' + path, canonicalUrl: path, outcome: 'not_found', status: 404,
       finalUrl: 'https://example.com' + path, evidence: 'HTTP 404', shouldFlagDead: true })
     pending[1](failure('/b')); pending[0](failure('/a'))
@@ -98,7 +98,7 @@ describe('private native HTTP evidence', () => {
     const secretUrl = 'https://example.com/checkout?token=PRIVATE_VALUE'
     vi.mocked(openCheckDestination).mockResolvedValue({ url: secretUrl, canonicalUrl: secretUrl, outcome: 'not_found', status: 404,
       finalUrl: secretUrl, evidence: 'GET ' + secretUrl + ' returned 404.', shouldFlagDead: true })
-    vi.mocked(safeFetchDocument).mockResolvedValue({ ...response, body: 'PRIVATE_BODY', headers: { 'content-type': 'text/plain', 'set-cookie': 'PRIVATE_COOKIE' } })
+    vi.mocked(safeFetchResource).mockResolvedValue({ ...response, body: Buffer.from('PRIVATE_BODY'), headers: { 'content-type': 'text/plain', 'set-cookie': 'PRIVATE_COOKIE' } })
     const collected = nativeHttpCollection()
     const action = await collected.options.openDestination(secretUrl)
     const image = await collected.options.observeImage(imageUrl, { timeoutMs: 5000, maxBytes: 64_000, accept: 'image/*' })
@@ -109,11 +109,11 @@ describe('private native HTTP evidence', () => {
     expect(await replay.options.observeImage(imageUrl, { timeoutMs: 5000, maxBytes: 64_000, accept: 'image/*' })).toEqual(image)
     expect(replay.snapshot()).toEqual(recorded)
     expect(openCheckDestination).toHaveBeenCalledTimes(1)
-    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+    expect(safeFetchResource).toHaveBeenCalledTimes(1)
   })
 
   it('persists the secondary inputs in the actual evaluator artifact and replays the complete receipt', async () => {
-    vi.mocked(safeFetchDocument).mockResolvedValue(response)
+    vi.mocked(safeFetchResource).mockResolvedValue(response)
     const context = { audit: { id: 'audit', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
       environment: 'production', scope: 'SITE', checks: { 'og-image-broken': CHECK_REGISTRY['og-image-broken'].version }, outcomes: [], verificationTarget: null } },
       task: { id: 'task' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module: 'og-image' }, deadline: Date.now() + 12_000,
@@ -129,6 +129,6 @@ describe('private native HTTP evidence', () => {
     expect(artifact.data.flags).toHaveLength(1)
     const replay = await evaluate({ ...context, replayHttpEvidence: http })
     expect(replay.data).toEqual(artifact.data)
-    expect(safeFetchDocument).toHaveBeenCalledTimes(1)
+    expect(safeFetchResource).toHaveBeenCalledTimes(1)
   })
 })

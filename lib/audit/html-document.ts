@@ -1,5 +1,27 @@
-import type { CheerioAPI } from 'cheerio'
+import { load, type CheerioAPI } from 'cheerio'
 import type { AnyNode, Element } from 'domhandler'
+
+/** Public scripting-enabled interpretation excludes dormant document fragments.
+ * Keep the collected source intact and remove these only from the parsed view. */
+export function parseActiveHtmlDocument(html: string): { document: CheerioAPI; source: string } {
+  const document = load(html, { sourceCodeLocationInfo: true })
+  const ranges = document('template, noscript').toArray().filter(element => !isInertHtmlNode(element))
+    .map(element => {
+      if (element.startIndex === null || element.endIndex === null) throw new Error('Inactive HTML scope is unavailable')
+      return { start: element.startIndex, end: element.endIndex }
+    }).sort((left, right) => left.start - right.start)
+  // Embedded RDF parsers also need the original document or fragment shape.
+  // DOM serialization adds implicit roots that can change the entity subject.
+  const parts: string[] = []
+  let offset = 0
+  for (const range of ranges) {
+    if (range.start < offset) continue
+    parts.push(html.slice(offset, range.start)); offset = range.end
+  }
+  parts.push(html.slice(offset))
+  document('template, noscript').remove()
+  return { document, source: parts.join('') }
+}
 
 export function isInertHtmlNode(element: AnyNode): boolean {
   // Template document fragments retain a parent boundary outside Cheerio's selectors.

@@ -308,9 +308,9 @@ for (const [name, deduplicate] of deduplicators) {
       assert.equal(deduplicate([], [ai(), ai({ pageUrl: pricing })]).length, 2)
     })
 
-    it('normalizes page fragments but preserves distinct query variants', () => {
+    it('keeps independent fragment states and query variants outside another page ownership claim', () => {
       const deterministic = [det({ checkId: 'messaging-no-audience', problem: 'Headline lacks audience specificity', evidence: 'Recorded H1: Build something better', pageUrl: root })]
-      assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '#hero' })]).length, 0)
+      assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '#hero' })]).length, 1)
       assert.equal(deduplicate(deterministic, [ai({ pageUrl: root + '?variant=b' })]).length, 1)
     })
 

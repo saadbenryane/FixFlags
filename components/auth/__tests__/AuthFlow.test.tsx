@@ -86,7 +86,7 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
 
     expect(
       screen.getByText(
-        'Create a free account while FixFlags checks southernia.com. Your Site will be saved here.'
+        'Create a free account to save southernia.com, get fix prompts, and set a monitoring schedule.'
       )
     ).toBeInTheDocument()
 

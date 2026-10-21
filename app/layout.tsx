@@ -42,12 +42,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon-32.png', type: 'image/png', sizes: '32x32' },
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+      { url: '/favicon.ico?v=20261021', sizes: '16x16 32x32 48x48' },
+      { url: '/icon-32.png?v=20261021', type: 'image/png', sizes: '32x32' },
+      { url: '/icon.svg?v=20261021', type: 'image/svg+xml', sizes: 'any' },
     ],
-    apple: '/apple-icon.png',
+    apple: [{ url: '/apple-touch-icon-v2.png', type: 'image/png', sizes: '180x180' }],
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',

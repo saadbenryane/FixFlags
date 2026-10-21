@@ -3,6 +3,7 @@ import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
 import {
   collectEligibleDestinations,
   canonicalizeDestination,
+  navigationDestinationKey,
   reviewPathLabel,
   type EligibleLink,
   isEligiblePublicDestination,
@@ -36,7 +37,7 @@ export function monitoringReviewUrls(targetUrl: string, recorded: readonly unkno
     if (urls.size >= INTERNAL_REVIEW_PAGE_CEILING) break
     if (typeof value !== 'string' || !URL.canParse(value)) continue
     const url = new URL(value)
-    if (url.username || url.password || !isEligiblePublicDestination(url.href, targetUrl)) continue
+    if (url.username || url.password || !isEligiblePublicDestination(url.href, targetUrl, 'admitted')) continue
     urls.add(url.href)
   }
   return [...urls]
@@ -133,19 +134,23 @@ export function planReviewTargets(input: {
   const fromPasted = collectEligibleDestinations(origin, input.pastedLinks)
   const rankedFromPasted = rankDestinations(fromPasted)
 
-  const reviewKeys = new Set<string>()
+  const eligibleNavigations = new Set<string>()
+  const representedDestinations = new Set<string>()
   const reviewUrls: string[] = []
 
   const addReview = (url: string, preserveNavigation = false) => {
     const canonical = canonicalizeDestination(url, origin)
     if (!canonical) return
-    if (reviewKeys.has(canonical.key)) return
+    const navigation = preserveNavigation ? navigationDestinationKey(url, origin) : canonical.url
+    if (!navigation || !preserveNavigation && representedDestinations.has(canonical.key)) return
+    representedDestinations.add(canonical.key)
+    if (eligibleNavigations.has(navigation)) return
+    eligibleNavigations.add(navigation)
     if (reviewUrls.length >= reviewCeiling) return
-    reviewKeys.add(canonical.key)
-    reviewUrls.push(preserveNavigation ? new URL(url).href : canonical.url)
+    reviewUrls.push(navigation)
   }
 
-  addReview(origin)
+  addReview(input.pastedUrl, true)
 
   if (input.depth >= 2) {
     for (const url of monitoringReviewUrls(input.pastedUrl, input.retainedUrls ?? [])) addReview(url, true)
@@ -170,28 +175,19 @@ export function planReviewTargets(input: {
       }
     }
   }
-
-  const uniqueEligibleReview = new Set<string>(reviewKeys)
-  if (input.depth >= 2) for (const url of monitoringReviewUrls(input.pastedUrl, input.retainedUrls ?? [])) {
-    const canonical = canonicalizeDestination(url)
-    if (canonical) uniqueEligibleReview.add(canonical.key)
-  }
-  for (const destination of rankedFromPasted) {
-    if (input.depth >= 2) uniqueEligibleReview.add(destination.canonical.key)
-  }
-  if (input.depth >= 3) {
-    for (const page of input.linkedPageLinks ?? []) {
-      for (const destination of collectEligibleDestinations(origin, page.links)) {
-        uniqueEligibleReview.add(destination.canonical.key)
-      }
-    }
-  }
+  // Preserve representative coverage before spending the same bounded HTTP
+  // budget on distinct locale, query, host and trailing-slash variants.
+  for (const destination of collectEligibleDestinations(origin, input.pastedLinks, 'request'))
+    openCheckUrls.add(destination.canonical.url)
+  if (input.depth >= 3) for (const page of input.linkedPageLinks ?? [])
+    for (const destination of collectEligibleDestinations(origin, page.links, 'request'))
+      openCheckUrls.add(destination.canonical.url)
 
   return {
     depth: input.depth,
     reviewUrls,
     openCheckUrls: [...openCheckUrls],
-    truncated: uniqueEligibleReview.size > reviewUrls.length,
+    truncated: eligibleNavigations.size > reviewUrls.length,
   }
 }
 

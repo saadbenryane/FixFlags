@@ -13,7 +13,7 @@ import { CONFIRMABLE_OUTCOME_KINDS, type ConfirmableOutcomeKind } from '@/lib/si
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
+import { findReusableVerificationRun, loadRunSourceEnvironment, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
 import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
 import { assertAttemptReplay } from '@/lib/improvements/attempt-intent'
@@ -168,7 +168,7 @@ export async function executeSiteCommand(command: SiteCommand) {
       const source = command.source ?? 'WEB'
       const requestedKey = command.idempotencyKey ?? (command.attemptId ? `flag-verify:${command.attemptId}` : undefined)
       if (requestedKey) {
-        const reusable = await findReusableRun({
+        const reusable = await findReusableVerificationRun({
           projectId: initialSite.projectId,
           source,
           idempotencyKey: requestedKey,
@@ -187,6 +187,8 @@ export async function executeSiteCommand(command: SiteCommand) {
             : originalFlag.checkId !== target.checkId || originalFlag.pageUrl !== target.pageUrl)) {
             throw new SiteRunRefusal('This request key belongs to another Flag attempt.', 409)
           }
+          const environment = await loadRunSourceEnvironment(initialSite.projectId, attempt.sourceAuditId)
+          if (environment !== reusable.environment) throw new SiteRunRefusal('Verification receipt environment does not match its source', 409)
           if (!command.attemptId) assertAttemptReplay({ userId: command.userId, sourceAuditId: attempt.sourceAuditId,
             handoffReference: attempt.handoffReference, changeSummary: command.changeSummary }, attempt)
           return {
@@ -217,13 +219,14 @@ export async function executeSiteCommand(command: SiteCommand) {
             changeSummary: command.changeSummary,
             client: source.toLowerCase(),
           })
-      const { site, flag, attemptId } = await requireSiteFlagAttempt({
+      const { site, flag, attemptId, attempt } = await requireSiteFlagAttempt({
         siteId: command.siteId,
         flagId: command.flagId,
         attemptId: recorded.attemptId,
         userId: command.userId,
       })
       const idempotencyKey = command.idempotencyKey ?? `flag-verify:${attemptId}`
+      const environment = await loadRunSourceEnvironment(site.projectId!, attempt.sourceAuditId)
 
       if (flag.outcomeId) {
         const started = await requestOutcomeRun({
@@ -232,6 +235,7 @@ export async function executeSiteCommand(command: SiteCommand) {
           userId: command.userId,
           source,
           idempotencyKey,
+          environment,
           verificationAttemptId: attemptId,
           parentAuditId: flag.sourceAuditId,
           verificationTarget: {
@@ -267,6 +271,7 @@ export async function executeSiteCommand(command: SiteCommand) {
       const started = await requestSiteRun({
         projectId: site.projectId!,
         outcomeIds: [],
+        environment,
         userId: command.userId,
         source,
         idempotencyKey,

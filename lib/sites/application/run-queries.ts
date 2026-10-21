@@ -2,14 +2,11 @@ import { prisma } from '@/lib/db'
 import { analysisTaskWhere } from '@/lib/audit/progressive/contracts'
 import { currentOutcomeState } from '@/lib/sites/outcome-state'
 import { readExecutionSpec } from '../domain/execution-spec'
-import { buildCoverageFacts } from '../coverage'
-import { projectSiteAssessment, recordedRunFlags, recordedDiagnosticConclusion, recordedAccountConclusion } from '../assessment'
-import { isCustomerFlag } from '@/lib/audit/attention'
+import { projectSiteAssessment, recordedDiagnosticConclusion, recordedAccountConclusion } from '../assessment'
 import { siteCoverageExecutionSelect } from './site-execution'
 import { SITE_ASSESSMENT_COPY } from '@/lib/marketing/copy/site-assessment'
-import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
-import { categoryCoverageFact } from './category-evidence'
-import { SITE_COVERAGE_MAX_AGE_MS } from '../coverage'
+import { SITE_COVERAGE_MAX_AGE_MS } from '../evidence-freshness'
+import { projectRecordedSiteResult } from './recorded-assessment'
 
 export async function getOwnedRun(userId: string, runId: string) {
   const run = await prisma.runRequest.findFirst({
@@ -17,11 +14,11 @@ export async function getOwnedRun(userId: string, runId: string) {
     include: {
       selections: { include: { outcome: true } },
       assessments: true,
-      audit: { select: { id: true, parentId: true, progress: true, status: true, completedAt: true, reportCompleteness: true,
+      audit: { select: { id: true, parentId: true, progress: true, status: true, completedAt: true, reportCompleteness: true, executionSpec: true,
         evidenceCoverage: true, failureCode: true, failedModules: true,
         verifierExecutions: { ...siteCoverageExecutionSelect,
-          select: { ...siteCoverageExecutionSelect.select, workState: true },
-          where: { OR: [...siteCoverageExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET },
+          select: { ...siteCoverageExecutionSelect.select, workState: true, workDependencies: true },
+          where: { OR: [...siteCoverageExecutionSelect.where.OR,
             { ...analysisTaskWhere, audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } } }] } },
         pages: { select: { url: true, status: true } },
         verificationAttempts: { select: { id: true, sourceAuditId: true, verificationAuditId: true,
@@ -51,7 +48,6 @@ export async function getOwnedRun(userId: string, runId: string) {
   })
   const spec = readExecutionSpec(run.executionSpec)
   const broad = spec?.scope === 'SITE' || spec?.scope === 'CATEGORY'
-  const recorded = recordedRunFlags({ executionSpec: run.executionSpec, audit: run.audit })
   const diagnostic = recordedDiagnosticConclusion({ executionSpec: run.executionSpec, audit: run.audit })
   const accountTask = spec?.scope === 'ACCOUNT_CHECKS' && run.auditId ? await prisma.auditVerifierExecution.findFirst({
     where: { auditId: run.auditId, targetKey: 'task:automatic-accounts', workKind: 'automatic-accounts', workState: 'COMPLETED' },
@@ -59,22 +55,17 @@ export async function getOwnedRun(userId: string, runId: string) {
   }) : null
   const account = recordedAccountConclusion(run.executionSpec, accountTask?.workResult)
   const scopedConclusion = diagnostic ?? account
-  const categoryFact = spec?.category && run.audit ? categoryCoverageFact({ ...run.audit, executionSpec: run.executionSpec }, now) : null
-  const assessment = projectSiteAssessment({
+  const assessment = broad && run.audit ? projectRecordedSiteResult({ audit: run.audit, executionSpec: run.executionSpec,
+    status: run.status, assessments: run.assessments, now }).assessment : projectSiteAssessment({
     status: run.status, executionSpec: run.executionSpec, now,
     requiredAreas: broad ? undefined : [],
-    // A run describes recorded observations, even after a later repair changes
-    // the source Flag's current lifecycle status.
-    flags: broad ? recorded.flags.filter(flag => isCustomerFlag({ ...flag, status: undefined })) : [],
-    assessmentComplete: recorded.complete,
+    flags: [],
+    assessmentComplete: !broad,
     scopedConclusion: scopedConclusion ? { ...scopedConclusion, validUntil: run.audit?.completedAt
       ? new Date(run.audit.completedAt.getTime() + SITE_COVERAGE_MAX_AGE_MS) : null } : null,
-    coverage: categoryFact ? [categoryFact] : broad && run.audit ? buildCoverageFacts({ auditStatus: run.audit.status, completedAt: run.audit.completedAt,
-      now, evidenceCoverage: run.audit.evidenceCoverage, failureCode: run.audit.failureCode,
-      failedModules: run.audit.failedModules, verifierExecutions: run.audit.verifierExecutions, flags: [] }) : [],
+    coverage: [],
     checkedAt: run.audit?.completedAt,
-    pagesComplete: spec?.category ? spec.category.pages.every(url => run.audit?.pages.some(page => page.url === url && page.status === 'COMPLETED'))
-      : broad ? Boolean(run.audit?.pages.length) && run.audit!.pages.every(page => page.status === 'COMPLETED') : undefined,
+    pagesComplete: broad ? false : undefined,
     outcomes: broad ? spec.outcomes.map(outcome => {
       const recorded = run.assessments.find(assessment => assessment.outcomeId === outcome.id)
       return { id: outcome.id, state: currentOutcomeState(recorded ?? null, now), validUntil: recorded?.validUntil }

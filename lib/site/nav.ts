@@ -26,8 +26,8 @@ export const FOOTER_COLUMNS = {
     { href: '/faq', label: 'FAQ' },
     { href: '/blog', label: 'Blog' },
     { href: '/guides', label: 'Website guides' },
-    { href: '/tools/meta-preview', label: 'Meta Preview Tool' },
-    { href: '/tools/placeholder-detector', label: 'Placeholder Copy Detector' },
+    { href: '/tools/meta-preview', label: 'Link preview checker' },
+    { href: '/tools/placeholder-detector', label: 'Placeholder copy detector' },
   ],
   company: [
     { href: '/blog/introducing-fixflags', label: 'Why we built FixFlags' },

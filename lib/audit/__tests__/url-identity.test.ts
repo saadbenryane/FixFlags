@@ -6,11 +6,39 @@ import {
   isEligiblePublicDestination,
   reviewPathLabel,
   sameCanonicalDestination,
+  navigationDestinationKey,
 } from '@/lib/audit/url-identity'
 
 const ORIGIN = 'https://example.com/'
 
 describe('url identity', () => {
+  it('refuses embedded credentials instead of changing the destination to a public request', () => {
+    for (const url of ['https://user:secret@example.com/private', '//user@example.com/private']) {
+      expect(canonicalizeDestination(url, ORIGIN)).toBeNull()
+      expect(navigationDestinationKey(url, ORIGIN)).toBeNull()
+      expect(isEligiblePublicDestination(url, ORIGIN)).toBe(false)
+    }
+  })
+
+  it('separates executable navigation from discovery grouping for admitted URL variants', () => {
+    for (const [left, right] of [
+      [ORIGIN + 'pricing', ORIGIN + 'pricing/'],
+      [ORIGIN + 'pricing?utm_campaign=one', ORIGIN + 'pricing?utm_campaign=two'],
+      [ORIGIN + 'pricing?a=1&b=2', ORIGIN + 'pricing?b=2&a=1'],
+      [ORIGIN + 'pricing?plan=one&plan=two', ORIGIN + 'pricing?plan=two&plan=one'],
+      [ORIGIN + 'pricing?', ORIGIN + 'pricing'],
+      [ORIGIN + 'pricing', 'https://www.example.com/pricing'],
+      [ORIGIN + 'fr/pricing', ORIGIN + 'pricing'],
+      [ORIGIN + 'pricing?page=2', ORIGIN + 'pricing'],
+      [ORIGIN + 'app#start', ORIGIN + 'app#reset'],
+      [ORIGIN + 'app#', ORIGIN + 'app'],
+    ]) {
+      expect(sameCanonicalDestination(left, right)).toBe(true)
+      expect(navigationDestinationKey(left)).not.toBe(navigationDestinationKey(right))
+    }
+    expect(navigationDestinationKey(ORIGIN)).toBe(navigationDestinationKey('https://example.com'))
+    expect(navigationDestinationKey('javascript:alert(1)')).toBeNull()
+  })
   it('strips hashes, trailing slashes, and tracking params', () => {
     const a = canonicalDestinationKey('https://example.com/pricing/?utm_source=ad#hero')
     const b = canonicalDestinationKey('https://example.com/pricing')

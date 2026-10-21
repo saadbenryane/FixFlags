@@ -21,7 +21,9 @@ export async function observeJourneyControls(page: Page, origin: string) {
   const raw = inventory.pageUrl === page.url() ? inventory.controls.filter(control => control.enabled && control.labelComplete) : []
   const out: JourneyLinkCandidate[] = []
   for (const link of raw) {
-    if (link.tag !== 'a' || !link.resolvedHref || classifyCtaHref(link.href, { hashTargetExists: link.hashTargetExists }).isPlaceholder) continue
+    if (link.tag !== 'a' || !link.resolvedHref || !classifyCtaHref(link.href, {
+      baseUrl: inventory.pageUrl, resolvedHref: link.resolvedHref, hashTargetExists: link.hashTargetExists,
+    }).isPageNavigation) continue
     const resolved = link.resolvedHref, target = new URL(resolved)
     if (!['http:', 'https:'].includes(target.protocol) || target.origin !== origin) continue
     const score = scoreCtaLink(resolved, link.text)

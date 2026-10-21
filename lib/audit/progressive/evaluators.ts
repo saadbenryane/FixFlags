@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { runAllChecks } from '../checks'
+import { isUnresolvedPublicRedirect } from '../redirect-evidence'
 import { runPerformanceChecks, runInpChecks } from '../checks/performance'
 import { runMobileChecks } from '../checks/mobile'
 import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION } from '../checks/security-headers'
@@ -16,7 +17,7 @@ import { searchReceiptSchema } from '../search/contracts'
 import { searchFindings } from '../search/registry'
 import { collectSearchEvidence, missingDocument } from '../search/collect'
 import { SEARCH_CHECK_DEFINITIONS } from '../search/registry'
-import { CHECK_MODULES, CHECK_REGISTRY, CHECK_ASSERTIONS } from '../check-registry'
+import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { keyboardEvidenceSchema } from '../browser/keyboard-probe'
 import { runKeyboardChecks } from '../checks/keyboard'
 import { runTrackingChecks } from '../checks/tracking'
@@ -25,13 +26,12 @@ import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
-import { summarizeCheckAssertions } from '../checks/receipt'
+import { scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
 import { capturedPageLinks, checkPublicLinks } from '../checks/public-links'
 import { runInteractionChecks } from '../checks/interaction'
 import { loadingDelayObservation, mobileLoadingDelayFlag } from '../checks/loading-evidence'
 import { applyMotionObservation, motionObservationSchema } from '../checks/motion-evidence'
 import { scopeRenderedPageEvidence } from '../checks/rendered-page-evidence'
-import { runSecurityBasicsChecks, securityObservations } from '../checks/security'
 import { assessPageResponse } from '../checks/page-response'
 import { publicResponseRestriction } from '../browser/page-capture'
 import { capturedHeadMetadata } from '../checks/head-metadata'
@@ -74,13 +74,14 @@ export const evaluatorHandlers: TaskHandler[] = [
       const checkModule = context.input.module, definition = checkModule ? CHECK_MODULES[checkModule] : null
       if (!checkModule || !definition || checkModule === 'search') throw new TaskFailure('CHECK_NOT_REGISTERED', false)
       const spec = readExecutionSpec(context.audit.executionSpec)
+      const evidenceScope = spec?.category ? { area: spec.category.area, allowedCheckIds: Object.keys(spec.checks) } : undefined
       const selected = Object.entries(spec?.checks ?? {}).filter(([id]) => CHECK_REGISTRY[id]?.module === checkModule)
       if (!selected.length) throw new TaskFailure('CHECK_NOT_ADMITTED', false)
       if (selected.some(([id, version]) => CHECK_REGISTRY[id]?.version !== version))
         throw new TaskFailure('CHECK_VERSION_UNAVAILABLE', false)
       const browser = browserEvidence(context), response = httpEvidence(context), speed = speedEvidence(context)
       const nativeHttp = nativeHttpCollection(context.replayHttpEvidence)
-      const metadata = checkModule === 'security' ? response?.metadata : browser?.metadata
+      const metadata = definition.input === 'http' ? response?.metadata : browser?.metadata
       const snapshot = browser ? readScreenshotSnapshot(browser.snapshot) : null
       const head = checkModule === 'metadata' || checkModule === 'og-image' ? capturedHeadMetadata(snapshot) : undefined
       let flags: import('../flag-types').DeterministicFlag[], assertions: import('../checks/assertion').CheckAssertion[] = []
@@ -99,12 +100,6 @@ export const evaluatorHandlers: TaskHandler[] = [
         const checked = assessPageResponse(pageUrl, response?.document)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete
         limitation = checked.limitation; collectedAt = checked.collectedAt
-      } else if (checkModule === 'security') {
-        if (!response || response.document.status === null) throw new TaskFailure('HTTP_COLLECTION_UNAVAILABLE', false)
-        flags = runSecurityBasicsChecks(response.document.finalUrl, response.metadata)
-        assertions = securityObservations(response.document.finalUrl, response.metadata)
-        complete = assertions.every(assertion => assertion.complete === true)
-        if (!complete) limitation = 'The connection protocol was observed. Declared resources require an inspectable HTML document.'
       } else if (checkModule === 'console') {
         if (!snapshot) throw new TaskFailure('CONSOLE_EVIDENCE_UNAVAILABLE', false)
         flags = runConsoleChecks(snapshot.consoleErrors, snapshot.consoleCoverage)
@@ -128,11 +123,8 @@ export const evaluatorHandlers: TaskHandler[] = [
         const motion = dependency(context, 'motion')
         if (motion?.workResult) snapshot.captureMetrics = applyMotionObservation(snapshot.captureMetrics, motionObservationSchema.parse(readArtifact(motion.workResult, 'motion').data))
         flags = runInteractionChecks(snapshot.captureMetrics, assertion => assertions.push(assertion))
-        if (spec?.category) {
-          flags = flags.filter(flag => Object.hasOwn(spec.checks, flag.checkId.split('::page:')[0]))
-          assertions = assertions.filter(assertion => CHECK_ASSERTIONS[checkModule]?.[assertion.key]?.area === spec.category!.area ||
-            CHECK_ASSERTIONS[checkModule]?.[assertion.key]?.verifies.some(id => Object.hasOwn(spec.checks, id)))
-        }
+        const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope: evidenceScope })
+        flags = admitted.flags; assertions = admitted.assertions
         complete = assertions.filter(assertion => assertion.disposition !== 'observed').every(assertion => assertion.complete === true)
         limitation = 'Recorded mobile loading and reduced-motion observations, plus available desktop loading windows. Unavailable or unmatched source conditions cannot certify recovery.'
       } else if (checkModule === 'mobile-ux-quality' && spec?.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.split('::page:')[0] === 'mobile-load-delay-content') {
@@ -157,9 +149,12 @@ export const evaluatorHandlers: TaskHandler[] = [
         // Each receipt describes only its own device and responsibility.
         assertions = inpOnly ? [recordInpObservation(measurement!)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
           metadata: null, desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
+        const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope: evidenceScope })
+        flags = admitted.flags; assertions = admitted.assertions
         complete = assertions.every(assertion => assertion.complete === true)
         if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
       } else if (checkModule === 'security-headers') {
+        if (response && isUnresolvedPublicRedirect(response.document)) throw new TaskFailure('PUBLIC_REDIRECT_UNRESOLVED', false)
         if (response?.document.reason === 'public_access_challenge') throw new TaskFailure('PUBLIC_ACCESS_CHALLENGE', false)
         if (response && response.document.status !== null && publicResponseRestriction({
           body: response.document.body ?? '', headers: response.document.headers, status: response.document.status,
@@ -173,11 +168,11 @@ export const evaluatorHandlers: TaskHandler[] = [
       } else {
         if (!metadata && definition.input === 'metadata' && !head) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
         if (definition.input === 'browser' && !snapshot?.captureMetrics) throw new TaskFailure('RENDERED_METRICS_UNAVAILABLE', false)
-        const observedUrl = checkModule === 'security' ? response!.document.finalUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
+        const observedUrl = definition.input === 'http' ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
-            deadline: context.deadline, destinations: nativeHttp.options, head, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, renderedScope: snapshot?.renderedScope,
-            ...(spec?.category ? { area: spec.category.area, allowedCheckIds: Object.keys(spec.checks) } : {}) })
+            deadline: context.deadline, destinations: nativeHttp.options, head, publicDocument: response?.document, renderedCopy: snapshot?.renderedCopy, accessibilityEvidence: snapshot?.accessibilityEvidence, renderedScope: snapshot?.renderedScope,
+            ...evidenceScope })
         if (checked.failedModules.length) throw new TaskFailure('CHECK_EVALUATION_INTERRUPTED', true, undefined, true)
         if (checked.executions.length !== 1 || checked.executions[0].module !== checkModule) throw new TaskFailure('EVALUATOR_NOT_REGISTERED', false)
         flags = checked.flags
@@ -196,7 +191,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         .map(flag => ({ ...flag, pageUrl }))
       const summary = summarizeCheckAssertions({ passed: flags.length === 0, complete, assertions })
       complete = summary.complete
-      const sourceKind = checkModule === 'keyboard' ? 'keyboard' : definition.input === 'http' || checkModule === 'security' || checkModule === 'security-headers' ? 'http'
+      const sourceKind = checkModule === 'keyboard' ? 'keyboard' : definition.input === 'http' || checkModule === 'security-headers' ? 'http'
         : checkModule === 'performance' || checkModule === 'mobile' ? 'pagespeed' : 'browser'
       const sourceTask = dependency(context, sourceKind)
       if (!sourceTask?.workResult) throw new TaskFailure('ASSERTION_SOURCE_UNAVAILABLE', false)
@@ -260,15 +255,9 @@ export const evaluatorHandlers: TaskHandler[] = [
       }
       const evidence = await collectSearchEvidence(input)
       const previous = await priorSearchReceipt(context.audit.id, context.input.pageUrl, evaluator)
-      let observations = await evaluateSearchIsolated(evidence, previous, context.deadline, [evaluator])
-      let complete = !observations.some(item => item.disposition === 'unknown') &&
+      const observations = await evaluateSearchIsolated(evidence, previous, context.deadline, [evaluator])
+      const complete = !observations.some(item => item.disposition === 'unknown') &&
         (!['indexing', 'discovery'].includes(evaluator) || evidence.sitemapsComplete)
-      if (observations.length > 499) {
-        observations = observations.slice(0, 499)
-        observations.push({ ...observations[0], id: 'search-observation-coverage:' + evaluator, checkId: 'search-observation-coverage',
-          disposition: 'unknown', reason: 'observation_limit', attention: { policy: 'search', version: 1, kind: 'observation', reason: 'observation_limit' } })
-        complete = false
-      }
       const result = { receipt: searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: context.audit.id,
         pageUrl: context.input.pageUrl, collectedAt: evidence.collectedAt, complete, observations }), findings: searchFindings(observations) }
       return serializeArtifact('search', searchArtifactSchema.parse({ receipt: result.receipt, flags: result.findings }))
@@ -283,6 +272,7 @@ export const evaluatorHandlers: TaskHandler[] = [
         pages: [{ url: context.input.pageUrl, local: receipt }], deadline: context.deadline,
         sections: context.input.module === 'google-performance' ? ['analytics'] : ['index'],
         receiptModule: context.input.module === 'google-performance' ? 'search-google-performance' : 'search-google-index',
+        requireConfiguredEvidence: readExecutionSpec(context.audit.executionSpec)?.scope === 'DIAGNOSTIC',
         deferTransient: true })
       const interruption = result.receipts.flatMap(item => item.observations).find(item => ['PROVIDER_UNAVAILABLE', 'PROVIDER_QUOTA'].includes(item.reason))
       if (interruption) {

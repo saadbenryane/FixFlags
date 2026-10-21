@@ -36,6 +36,23 @@ function recovered(checkId: string, executions: RecoveryExecution[], extraFlag =
 }
 
 describe('automatic recovery uses recorded responsibility evidence', () => {
+  it('cannot borrow healthy Search evidence from a different trailing-slash resource', async () => {
+    const originalUrl = url + '/'
+    const read = async (pageUrl: string, title: string) => {
+      const page = document('<html><head>' + title + '</head><body><h1>Pricing</h1></body></html>', { url: pageUrl, finalUrl: pageUrl })
+      const input = evidence(undefined, { auditId: 'after', pageUrl, original: page, rendered: page })
+      return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: 'after', pageUrl, collectedAt: input.collectedAt,
+        complete: true, observations: await evaluateSearch(input, null, ['presentation']) })
+    }
+    const before = await read(originalUrl, '')
+    const flag = searchFindings(before.observations).find(flag => flag.checkId === 'title-missing')!
+    const after = await read(url, '<title>Useful pricing</title>')
+    expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec('title-missing'), flag,
+      executions: [{ targetKey: 'module:search-presentation', status: 'COMPLETED', detail: after }] })).toBe(false)
+    const exact = await read(originalUrl, '<title>Useful pricing</title>')
+    expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec('title-missing'), flag,
+      executions: [{ targetKey: 'module:search-presentation', status: 'COMPLETED', detail: exact }] })).toBe(true)
+  })
   it('requires every structured original observation and its exact admitted version', () => {
     const peer = 'https://example.com/other'
     const original = (pageUrl: string) => observationsForFlag({ ...labFlag(pageUrl), pageUrl }, {
@@ -76,7 +93,15 @@ describe('automatic recovery uses recorded responsibility evidence', () => {
   it('allows a proved lab repair despite unrelated partial Site coverage, and rejects failed or different scope', () => {
     expect(isPageComparableAbsence({ auditStatus: 'COMPLETED', reportCompleteness: 'PARTIAL',
       childPages: [], auditId: 'after', executionSpec: spec('lcp-poor'),
-      parentFlag: { ...labFlag(), pageUrl: url + '/#section' }, verifierExecutions: [row()] })).toBe(true)
+      parentFlag: labFlag(), verifierExecutions: [row()] })).toBe(true)
+    const fragmentUrl = url + '#/plans'
+    const fragmentFlag = { ...labFlag(fragmentUrl), pageUrl: fragmentUrl }
+    expect(isPageComparableAbsence({ auditStatus: 'COMPLETED', reportCompleteness: 'PARTIAL',
+      childPages: [], auditId: 'after', executionSpec: spec('lcp-poor'),
+      parentFlag: fragmentFlag, verifierExecutions: [row()] })).toBe(false)
+    expect(isPageComparableAbsence({ auditStatus: 'COMPLETED', reportCompleteness: 'PARTIAL',
+      childPages: [], auditId: 'after', executionSpec: spec('lcp-poor'),
+      parentFlag: fragmentFlag, verifierExecutions: [row({ pageUrl: fragmentUrl })] })).toBe(true)
     for (const receipt of [row({ complete: false }), row({ applicable: false }), row({ failed: true }),
       row({ pageUrl: 'https://example.com/other' }), row({ assertions: [] }),
       row({ assertions: [{ key: 'lcp', name: 'LCP', expected: 'Fast', observed: '6000ms', passed: false }] }),

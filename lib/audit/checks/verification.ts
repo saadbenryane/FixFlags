@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { TLS_CERTIFICATE_VERIFICATION_RULE } from '../tls-evidence'
+import { certificateRequestContext } from './security'
 import { KEYBOARD_CONTEXT_PATTERN } from './keyboard'
 import { JOURNEY_VERIFICATION_RULE, readJourneyContext } from './journey-evidence'
 import { readSlowActionTargets, sameSlowActionIdentity, slowActionContextSchema, SLOW_REPLAY_CONTEXT, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
@@ -9,6 +11,7 @@ import { checkAssertionSchema, checkReceiptSchema, recordedCheckVersion } from '
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
 import { DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { FORM_VERIFICATION_RULE } from '../flow/form-evidence'
+import { currentFormFeedbackObservation } from './form-validation'
 import { SECURITY_HEADER_VERIFICATION_RULE, currentSecurityHeaderObservation } from './security-headers'
 import { CONSOLE_VERIFICATION_RULE, readConsoleContext } from '../console-evidence'
 import { ACCESSIBILITY_VERIFICATION_RULE } from './accessibility-rules'
@@ -189,6 +192,10 @@ export function scopedAssertionForTarget(input: {
   const headers = receipt.module === 'security-headers' && (flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE || ['security-headers-missing', 'security-headers-hardening'].includes(checkId))
     const form = receipt.module === 'form-validation'
     let assertion = assertionForTarget(receipt, checkId)
+    if (checkId === 'security-certificate-invalid' && (flag.verificationRule !== TLS_CERTIFICATE_VERIFICATION_RULE ||
+      receipt.execution?.source !== 'http' || assertion?.context !== certificateRequestContext(receipt.pageUrl) ||
+      !Array.isArray(flag.evidenceTargets) || !flag.evidenceTargets.some(target => target && typeof target === 'object' &&
+        'context' in target && target.context === assertion?.context))) return undefined
     if (!assertion && !tracking && !destination && !form && !headers && !accessibility && !primaryAction && !sections && !loading && !overlays && !mobileNavigation && receipt.module !== 'journeys' && receipt.module !== 'slow-replay') return undefined
     let supportingTasks: Array<{ taskId: string; pageUrl: string; collectedAt: string }> = []
     if (mobileNavigation) {
@@ -359,6 +366,7 @@ export function scopedAssertionForTarget(input: {
         source.module === receipt.module && source.execution.source === sourceKind && source.execution.checkVersion === receipt.execution!.checkVersion && source.applicable && !source.failed)
       const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
         (!headers || currentSecurityHeaderObservation(item)) &&
+        (!form || currentFormFeedbackObservation(item)) &&
         MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
       const matched = contexts.data.map(prior => candidates.find(candidate => candidate.item.context === prior.context))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)

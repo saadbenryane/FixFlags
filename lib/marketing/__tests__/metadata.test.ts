@@ -5,7 +5,7 @@ import { DEFAULT_OG_IMAGE, buildIndexableMetadata, buildPageMetadata } from '../
 describe('site share metadata', () => {
   it('points Open Graph and Twitter cards at the 1200x630 brand artwork', () => {
     expect(DEFAULT_OG_IMAGE).toEqual({
-      url: '/og.jpg',
+      url: '/og-v2.jpg',
       width: 1200,
       height: 630,
       alt: BRAND.tagline,
@@ -16,7 +16,7 @@ describe('site share metadata', () => {
     expect(home.openGraph?.images).toEqual([DEFAULT_OG_IMAGE])
     expect(home.twitter).toMatchObject({
       card: 'summary_large_image',
-      images: [`${SITE_URL}/og.jpg`],
+      images: [`${SITE_URL}/og-v2.jpg`],
     })
   })
 

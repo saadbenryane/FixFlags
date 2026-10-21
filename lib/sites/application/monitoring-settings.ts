@@ -2,9 +2,9 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { systemClock, type Clock } from '@/lib/time/clock'
-import { calcWatchNextRun, fromStoredWatchInterval, toStoredWatchInterval } from '@/lib/audit/watch-interval'
-import { watchIntervalMinutes, watchScheduleSchema, type WatchInterval } from '../watch-schedule'
-import { outcomeFreshnessMinutes } from './care-policy'
+import { fromStoredWatchInterval, toStoredWatchInterval } from '@/lib/audit/watch-interval'
+import { watchScheduleSchema, type WatchInterval } from '../watch-schedule'
+import { outcomeFreshnessMinutes } from '../evidence-freshness'
 
 export type MonitoringChange = { interval: WatchInterval | null; everyMinutes?: number } | { action: 'pause' | 'resume' }
 type MonitoringResult = { ok: true; interval?: WatchInterval | null; everyMinutes?: number | null }
@@ -53,16 +53,16 @@ export async function setProjectWatch(input: { projectId: string; userId: string
 
     const now = clock.now()
     const sameCadence = previous === interval && (interval !== 'custom' || project.watchEveryMinutes === everyMinutes)
-    const tightened = interval && previous && watchIntervalMinutes(interval, everyMinutes) < watchIntervalMinutes(previous, project.watchEveryMinutes)
     let data: Prisma.ProjectUpdateManyMutationInput
     if (action === 'pause') {
       data = { watchNextRunAt: null, watchLeaseUntil: null,
         watchLastError: 'Paused. This Site is not on a check schedule.' }
     } else if (interval) {
       data = { watchInterval: toStoredWatchInterval(interval), watchEveryMinutes: interval === 'custom' ? everyMinutes : null }
+      // Changed cadence establishes fresh evidence under its new policy.
       // Repeated saves preserve both due intent and a live scheduler lease.
       if (!sameCadence || !project.watchNextRunAt) Object.assign(data, {
-        watchNextRunAt: !project.watchNextRunAt || tightened ? now : calcWatchNextRun(interval, now, everyMinutes),
+        watchNextRunAt: now,
         watchLeaseUntil: null, watchConsecutiveFailures: 0, watchLastError: null,
       })
     } else {

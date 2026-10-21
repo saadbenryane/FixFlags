@@ -5,7 +5,7 @@ import { Info, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
-import { useSiteResource } from '@/hooks/useSiteResource'
+import { useSharedSiteResource } from '@/components/sites/SiteResourceBoundary'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { ExecutionProgress } from '@/lib/sites/application/execution-progress'
 import type { SiteActivity } from '@/lib/sites/activity'
@@ -17,8 +17,8 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import styles from './AnalysisDetails.module.css'
 
-export function LiveSiteAnalysisDetails({ siteId, initial }: { siteId: string; initial: SiteHomeView }) {
-  const { view, disconnected } = useSiteResource(siteId, initial)
+export function LiveSiteAnalysisDetails({ siteId }: { siteId: string }) {
+  const { view, disconnected } = useSharedSiteResource(siteId)
   return <SiteAnalysisDetails view={view} disconnected={disconnected} />
 }
 

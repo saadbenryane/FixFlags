@@ -11,7 +11,7 @@ import { BRAND } from '@/lib/marketing/copy'
 import { siteNotificationEmail } from '@/lib/email/site-notification'
 import { watchEmailPayloadSchema } from '@/lib/email/watch-payload'
 import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '@/lib/email/watch-delivery'
-import { sendNotificationEmail } from '@/lib/email/notification-delivery'
+import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
@@ -22,6 +22,8 @@ import {
 } from '@/lib/audit/watch-interval'
 import { ensureDefaultMonitoring, initializeDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { reconcileScheduledCompletions } from '@/lib/sites/application/scheduled-completion'
+import { ACTIVE_RUN_STATUSES } from '@/lib/sites/application/run-leases'
 
 export type { WatchInterval } from '@/lib/audit/watch-interval'
 export {
@@ -80,6 +82,8 @@ export async function processDueProjectWatches(
     await assertAdminDomainActor(dependencies.operator, project.userId, dependencies.onlyProjectId)
     operatorOwnerId = project.userId
   }
+  await reconcileScheduledCompletions(limit, clock, { projectId: dependencies.onlyProjectId })
+    .catch(error => logger.warn('Scheduled completion recovery deferred; due admissions will continue', { error }))
   if(!dependencies.onlyProjectId)await initializeDefaultMonitoring(limit, clock)
   const selectedAt = clock.now()
   const due = await prisma.project.findMany({
@@ -162,11 +166,18 @@ export async function processDueProjectWatches(
       processed += 1
 
       await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, clock.now()))
+      // Current admissions own their overlap and replay decision. Only older
+      // executions without active request ownership need this compatibility guard.
+      const physicalNow = clock.now()
       const active = await prisma.audit.findFirst({
         where: {
           projectId: project.id,
           recheckTrigger: 'WATCH',
           status: { notIn: ['COMPLETED', 'FAILED'] },
+          runRequests: { none: { status: { in: [...ACTIVE_RUN_STATUSES] } } },
+          OR: [{ executionLeaseUntil: { gt: physicalNow } }, {
+            executionSpec: { path: ['engine'], equals: 'progressive-v1' }, recoveryUntil: { gt: physicalNow },
+          }],
         },
         select: { id: true },
       })
@@ -183,24 +194,21 @@ export async function processDueProjectWatches(
       await requestScheduledSiteRun({
         projectId: project.id, userId: project.userId, interval,
         everyMinutes: project.watchEveryMinutes, scheduledAt: project.watchNextRunAt ?? admissionAt, now: admissionAt,
+        claim: { attemptedAt, leaseUntil },
         ...(dependencies.operator ? { operator: dependencies.operator } : {}),
       })
       enqueued += 1
-      // A saved schedule can change while a check is being queued. Advance
-      // only the schedule this worker claimed, preserving the owner's edit.
-      await prisma.project.updateMany({
-        where: mutationScope,
-        data: {
-          watchLeaseUntil: null,
-          watchNextRunAt: calcWatchNextRun(interval, admissionAt, project.watchEveryMinutes),
-          watchConsecutiveFailures: 0,
-          watchLastError: null,
-        },
-      })
     } catch (error) {
+      if (error instanceof SiteRunRefusal && error.code === 'WATCH_CLAIM_CHANGED') continue
       errors += 1
       try {
         const failedAt = clock.now()
+        if (error instanceof SiteRunRefusal && error.code === 'SITE_RUN_IN_PROGRESS') {
+          await prisma.project.updateMany({ where: mutationScope,
+            data: { watchLeaseUntil: null, watchNextRunAt: retryAt(1, failedAt) } })
+          errors -= 1
+          continue
+        }
         const usageLimit = (error && typeof error === 'object' ? error : {}) as {
           code?: string
           renewalAt?: Date
@@ -259,6 +267,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
       watchRecoveryCount: true,
       watchNotificationStatus: true,
       watchNotificationAttempts: true,
+      watchNotificationNextAttemptAt: true,
       watchNotificationAttemptCeiling: true,
       watchNotificationLeaseUntil: true,
       watchNotificationPayload: true,
@@ -326,7 +335,7 @@ async function prepareWatchNotification(parentAuditId: string | null, childAudit
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
         { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: new Date() } }] },
       ] },
-      data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null },
+      data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null, watchNotificationNextAttemptAt: null },
     })
     return
   }
@@ -374,20 +383,39 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
         watchNotificationStatus: 'FAILED',
         watchNotificationLastError: 'Delivery confirmation expired after the final attempt',
         watchNotificationLeaseUntil: null,
+        watchNotificationNextAttemptAt: null,
       },
     })
     return
   }
 
+  if (child.watchNotificationNextAttemptAt && child.watchNotificationNextAttemptAt > deliveryNow) return
+
+  let preparation: { payload: ReturnType<typeof selectWatchEmailDelivery> } | { error: unknown }
+  try {
+    if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
+    const selected = selectWatchEmailDelivery({ auditId: child.id, recorded: child.watchNotificationPayload,
+      broadLegacyPermission: child.project?.notificationLevel !== 'CRITICAL_ONLY' && child.project?.notifyOnRecovery !== false,
+      fresh: watchEmailPayloadSchema.parse({ version: 1, from: FROM_EMAIL, to: child.user.email,
+        firstAttemptAt: !child.watchNotificationPayload && child.watchNotificationAttempts > 0 ? child.completedAt!.toISOString() : new Date().toISOString(),
+        ...siteNotificationEmail({ projectId, url: child.url, name: child.user.name,
+          checkedAt: child.completedAt, regressions: alertRegressions, recoveries: alertRecoveries }),
+        tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }],
+        selection: watchEmailSelection(projectId, alertRegressions, alertRecoveries) }) })
+    preparation = { payload: prepareNotificationReplay(selected, new Date(), child.completedAt!) }
+  } catch (error) { preparation = { error } }
+
   // The claim is a lease, not a one-way flip. SENDING is claimable again once
   // the lease expires, so a worker that dies mid-delivery cannot suppress the
   // alert forever. A held lease is excluded, so a second worker never steals a
   // delivery that is still in flight.
-  const claimNow = deliveryNow
+  const claimNow = new Date()
   const claimLease = new Date(claimNow.getTime() + NOTIFICATION_LEASE_MS)
   const claimed = await prisma.audit.updateMany({
     where: {
       ...currentEligibility,
+      watchNotificationPayload: { equals: child.watchNotificationPayload ?? Prisma.DbNull },
+      watchNotificationNextAttemptAt: child.watchNotificationNextAttemptAt ?? null,
       // Eligibility can change after classification. The claim is the last
       // admission boundary before the external provider operation.
       watchNotificationAttemptCeiling: child.watchNotificationAttemptCeiling,
@@ -405,6 +433,8 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
       watchNotificationAttempts: { increment: 1 },
       watchNotificationLastError: null,
       watchNotificationLeaseUntil: claimLease,
+      watchNotificationNextAttemptAt: null,
+      ...('payload' in preparation ? { watchNotificationPayload: preparation.payload } : {}),
     },
   })
   if (claimed.count !== 1) return
@@ -412,21 +442,12 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
     watchNotificationAttempts: child.watchNotificationAttempts + 1, watchNotificationLeaseUntil: claimLease }
 
   try {
+    if ('error' in preparation) throw preparation.error
     if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
-    const payload = selectWatchEmailDelivery({ auditId: child.id, recorded: child.watchNotificationPayload,
-      broadLegacyPermission: child.project?.notificationLevel !== 'CRITICAL_ONLY' && child.project?.notifyOnRecovery !== false,
-      fresh: watchEmailPayloadSchema.parse({ version: 1, from: FROM_EMAIL, to: child.user.email,
-        ...siteNotificationEmail({ projectId, url: child.url, name: child.user.name,
-          checkedAt: child.completedAt, regressions: alertRegressions, recoveries: alertRecoveries }),
-        tags: [{ name: 'audit_id', value: child.id }, { name: 'purpose', value: 'watch' }],
-        selection: watchEmailSelection(projectId, alertRegressions, alertRecoveries) }) })
-    if (JSON.stringify(payload) !== JSON.stringify(child.watchNotificationPayload)) {
-      const saved = await prisma.audit.updateMany({
-        where: { ...ownedClaim, watchNotificationPayload: { equals: child.watchNotificationPayload == null ? Prisma.DbNull : child.watchNotificationPayload } },
-        data: { watchNotificationPayload: payload },
-      })
-      if (saved.count !== 1) return
-    }
+    const { payload } = preparation
+    if (claimLease.getTime() - Date.now() <= NOTIFICATION_REQUEST_TIMEOUT_MS)
+      throw new Error('Notification claim has insufficient time for provider delivery')
+    assertNotificationReplayWindow(payload.firstAttemptAt, new Date())
     const message = watchEmailProviderBody(payload)
     const providerId = await sendNotificationEmail(resend, message, payload.deliveryKey!)
     const recorded = await prisma.audit.updateMany({
@@ -437,6 +458,7 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
         watchNotifiedAt: new Date(),
         watchNotificationLastError: null,
         watchNotificationLeaseUntil: null,
+        watchNotificationNextAttemptAt: null,
       },
     })
     if (recorded.count !== 1) return
@@ -448,6 +470,7 @@ export async function notifyWatchRegression(parentAuditId: string | null, childA
         watchNotificationStatus: 'FAILED',
         watchNotificationLastError: message.slice(0, 1000),
         watchNotificationLeaseUntil: null,
+        watchNotificationNextAttemptAt: notificationRetryAt(child.watchNotificationAttempts + 1, new Date()),
       },
     })
     logger.warn('Watch regression email failed', { childAuditId, error: message })
@@ -479,6 +502,7 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
       improvementProjectedAt: { not: null },
       user: { lifecycleStatus: 'ACTIVE' },
       project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
+      AND: [{ OR: [{ watchNotificationNextAttemptAt: null }, { watchNotificationNextAttemptAt: { lte: now } }] }],
       // SENDING without a lease has no active owner. Claims below the
       // ceiling can be retried; an exhausted final claim is terminalized.
       OR: [
@@ -489,9 +513,10 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
         { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: now } }] },
       ],
     },
-    select: { id: true, parentId: true, watchNotificationAttempts: true },
+    select: { id: true, parentId: true, watchNotificationAttempts: true,
+      watchNotificationStatus: true, watchNotificationLeaseUntil: true, watchNotificationNextAttemptAt: true },
     take: limit,
-    orderBy: { updatedAt: 'asc' },
+    orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
   })
   for (const audit of audits) {
     try {
@@ -507,9 +532,13 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
       try {
         await prisma.audit.updateMany({ where: { id: audit.id,
           watchNotificationAttempts: audit.watchNotificationAttempts,
+          watchNotificationStatus: audit.watchNotificationStatus,
+          watchNotificationLeaseUntil: audit.watchNotificationLeaseUntil,
+          watchNotificationNextAttemptAt: audit.watchNotificationNextAttemptAt,
           OR: [{ watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
             { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: now } }] }] },
-          data: { updatedAt: new Date(), watchNotificationLastError: 'Notification classification could not complete' } })
+          data: { watchNotificationNextAttemptAt: new Date(Date.now() + 30_000),
+            watchNotificationLastError: 'Notification classification could not complete' } })
       } catch (updateError) {
         logger.warn('Watch notification retry could not be deferred', { childAuditId: audit.id,
           error: updateError instanceof Error ? updateError.message : String(updateError) })

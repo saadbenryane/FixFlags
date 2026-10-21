@@ -7,6 +7,7 @@ import { classifyCtaHref } from './link-scoring'
 import type { PostClickMetrics } from './post-click-probes'
 
 export interface DestinationUXQuality {
+  controlsVersion?: 2 | 3
   contentComplete?: boolean
   controlsComplete?: boolean
   hasClearHeadline: boolean
@@ -120,7 +121,7 @@ export async function runDestinationUXProbes(
   const ctas = allControls.filter(control => !control.inNavigation)
   const primaryCta = ctas.find(control => control.primary) ?? ctas[0] ?? null
   const actionableCtas = ctas.filter(control => control.tag === 'button' || control.role === 'button' ||
-    Boolean(control.href && !classifyCtaHref(control.href, { hashTargetExists: control.hashTargetExists }).isPlaceholder &&
+    Boolean(control.href && !classifyCtaHref(control.href, { baseUrl: url, resolvedHref: control.resolvedHref, hashTargetExists: control.hashTargetExists }).isPlaceholder &&
       control.resolvedHref && /^https?:/i.test(control.resolvedHref)))
   const CTA_TEXT = /\b(sign\s?up|log\s?in|get started|start (free|now|today|building|for free)|try (it|for free|free|now)|buy|book (a )?(demo|call)|subscribe|contact sales|download|request (a )?(demo|quote)|create (an )?account|join (now|free|us)?|get (a )?demo|start (a )?(free )?trial|add to cart|checkout|upgrade|get the app)\b/i
   const distinctCtaCount = new Set(actionableCtas.filter(control => CTA_TEXT.test(control.text))
@@ -143,7 +144,7 @@ export async function runDestinationUXProbes(
     return words.length === 0
   })()
   return {
-    contentComplete, controlsComplete, hasClearHeadline: Boolean(headline && headline.length > 5), hasPrimaryCTA: primaryCta !== null,
+    contentComplete, controlsComplete, controlsVersion: 3, hasClearHeadline: Boolean(headline && headline.length > 5), hasPrimaryCTA: primaryCta !== null,
     ctaText: primaryCta?.text ?? null, ctaPromisesMatch, headline, pageType: null,
     visibleCtaCount: ctas.length, actionableCtaCount: actionableCtas.length, primaryCtaHref: primaryCta?.resolvedHref ?? null,
     trustSignals: { hasPrivacyPolicy: metadata?.hasPrivacyPolicy ?? liveTrust?.hasPrivacyPolicy ?? null, hasContactInfo: metadata?.hasContactInfo ?? liveTrust?.hasContactInfo ?? null, isHttps: url.startsWith('https://') },

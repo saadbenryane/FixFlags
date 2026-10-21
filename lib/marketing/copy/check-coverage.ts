@@ -16,22 +16,22 @@ const AREAS = [
     { title: 'Availability', items: [item('uptime.response', 'Watched-page response'), item('uptime.errors', 'Unavailable pages and response errors'), item('uptime.provenance', 'Checked URL, time, and failure evidence')] },
     { title: 'Incidents and repeat checks', items: [item('uptime.console', 'Browser console errors'), item('uptime.schedule', 'Scheduled availability checks'), item('uptime.incidents', 'Incidents in the last 24 hours'), item('uptime.history', 'Check history'), item('uptime.recovery', 'Recovery confirmation')] },
   ] },
-  { id: 'site', name: CARD_CATALOG.site.name, benefit: 'Find the pages your customers can’t open.', groups: [
+  { id: 'site', name: CARD_CATALOG.site.name, benefit: 'Find the pages your visitors can’t reach.', groups: [
     { title: 'Pages and navigation', items: [item('pages.discovery', 'Public page discovery'), item('pages.internal-links', 'Internal links'), item('pages.responses', 'Page availability and response errors'), item('pages.pricing-contact', 'Pricing and contact-page navigation'), item('pages.section-links', 'Broken page-section links')] },
     { title: 'Destinations', items: [item('pages.action-destinations', 'Main action destinations'), item('pages.blank-dead-end', 'Blank pages and dead ends'), item('pages.loading', 'Stuck loading'), item('pages.destination-content', 'Destination headlines and next actions'), item('pages.promise-consistency', 'Consistency between the original promise and destination')] },
   ] },
-  { id: 'conversion', name: CARD_CATALOG.conversion.name, benefit: 'Find obstacles in your visitors’ next steps.', groups: [
+  { id: 'conversion', name: CARD_CATALOG.conversion.name, benefit: 'Spot the steps that stop visitors moving forward.', groups: [
     { title: 'Customer journeys', items: [item('conversion.primary-action', 'Primary call to action and destination'), item('conversion.checkout-entry', 'Product, cart, and checkout entry'), item('conversion.action-links', 'Checkout and sign-in links'), item('conversion.journey-failures', 'Journey failures, loops, timeouts, and dead ends'), item('conversion.validation', 'Form validation'), item('conversion.feedback', 'Submission errors and feedback')] },
     { title: 'Customer experience', items: [item('conversion.mobile-navigation', 'Mobile menus and pricing navigation'), item('conversion.overlays', 'Overlays blocking buttons, forms, or navigation'), item('conversion.loading-feedback', 'Loading states and feedback speed'), item('conversion.input-zoom', 'Mobile input zoom'), item('conversion.button-placement', 'Mobile button placement'), item('conversion.reduced-motion', 'Reduced-motion support')] },
     { title: 'Content and layout', items: [item('conversion.cta-focus', 'Call-to-action visibility and focus'), item('conversion.value-proposition', 'Headline clarity and value proposition'), item('conversion.audience-language', 'Audience, jargon, and sentence length'), item('conversion.placeholder-copy', 'Placeholder copy and template defaults'), item('conversion.form-friction', 'Form length and trial requirements'), item('conversion.contact-privacy', 'Contact details and privacy links'), item('conversion.claims', 'Testimonials and claim wording'), item('conversion.hierarchy', 'Visual hierarchy and section structure'), item('conversion.density', 'Information density'), item('conversion.visual-consistency', 'Typography and corner-radius consistency')] },
     { title: 'Automatic account checks on supported websites', items: [item('accounts.signup', 'Supported signup forms'), item('accounts.verification', 'Email verification'), item('accounts.signed-in', 'Signed-in pages'), item('accounts.deletion', 'Test-account deletion')] },
     { title: 'Configured signup monitoring with authorized test data', items: [item('signup.confirmation', 'Signup through confirmation'), item('signup.fixture', 'Safe test data and test account'), item('signup.cleanup', 'Reset and cleanup path'), item('signup.authorization', 'Authorized setup and successful dry run')] },
   ] },
-  { id: 'security', name: CARD_CATALOG.security.name, benefit: 'Check your public website’s protections.', groups: [
+  { id: 'security', name: CARD_CATALOG.security.name, benefit: 'Check your connection and browser protections.', groups: [
     { title: 'Connection and content', items: [item('security.https', 'HTTPS'), item('security.mixed-content', 'Mixed content'), item('security.privacy', 'Privacy policy'), item('security.contact', 'Contact information'), item('security.consent', 'Cookie-consent signals')] },
     { title: 'Browser protections', items: [item('security.csp', 'Content Security Policy and script permissions'), item('security.hsts', 'Strict-Transport-Security'), item('security.framing', 'Frame protection'), item('security.content-type', 'Content-type sniffing protection'), item('security.referrer', 'Referrer policy'), item('security.cross-origin', 'Cross-origin opener, embedder, and resource policies'), item('security.permissions', 'Browser permissions'), item('security.cross-domain', 'Cross-domain policy headers')] },
   ] },
-  { id: 'performance', name: CARD_CATALOG.performance.name, benefit: 'See what keeps your customers waiting.', groups: [
+  { id: 'performance', name: CARD_CATALOG.performance.name, benefit: 'See what’s slowing your visitors down.', groups: [
     { title: 'Loading and responsiveness', items: [item('performance.loading', 'Mobile and desktop loading'), item('performance.lcp', 'Largest Contentful Paint'), item('performance.cls', 'Cumulative Layout Shift'), item('performance.inp', 'Interaction to Next Paint'), item('performance.render-blocking', 'Render-blocking resources'), item('performance.unused-code', 'Unused JavaScript and CSS'), item('performance.images', 'Image optimization')] },
     { title: 'Mobile experience', items: [item('performance.slow-visibility', 'Content and call-to-action visibility on slow connections'), item('performance.blank-delayed', 'Blank screens and delayed content'), item('performance.destination-loading', 'Destination loading time')] },
   ] },
@@ -44,7 +44,7 @@ const AREAS = [
     { title: 'Analytics setup', items: [item('tracking.page-tags', 'Analytics tags across public pages'), item('tracking.markup', 'Google Analytics, Google Tag Manager, and PostHog markup'), item('tracking.absence', 'Missing analytics setup'), item('tracking.tools', 'Detected analytics tools')] },
     { title: integrationRelease('analytics') === 'planned' ? 'Coming soon: Analytics context' : 'With Analytics connected', items: [item('tracking.audience', 'Audience context'), item('tracking.page-traffic', 'Page views and watched-page traffic')] },
   ] },
-  { id: 'accessibility', name: CARD_CATALOG.accessibility.name, benefit: 'Catch barriers to using your website.', groups: [
+  { id: 'accessibility', name: CARD_CATALOG.accessibility.name, benefit: 'Find barriers to reading, navigating, and taking action.', groups: [
     { title: 'Controls and keyboard access', items: [item('accessibility.names', 'Accessible names for buttons, links, and controls'), item('accessibility.labels', 'Form labels and embedded-frame titles'), item('accessibility.traps', 'Keyboard traps'), item('accessibility.focus', 'Visible focus indicators'), item('accessibility.tab-order', 'Tab order'), item('accessibility.skip-links', 'Skip links'), item('accessibility.targets', 'Mobile tap-target sizes')] },
     { title: 'Content and structure', items: [item('accessibility.alt', 'Image alternative text'), item('accessibility.contrast', 'Color contrast'), item('accessibility.language', 'Page language'), item('accessibility.structure', 'Headings and list structure'), item('accessibility.aria', 'ARIA parent and child relationships'), item('accessibility.identifiers', 'Duplicate control and ARIA identifiers'), item('accessibility.landmarks', 'Page landmarks and main-content region'), item('accessibility.viewport', 'Mobile viewport configuration')] },
   ] },
@@ -53,10 +53,10 @@ const AREAS = [
 export const HOMEPAGE_CHECK_COVERAGE = {
   label: 'What we check',
   title: `Your website, checked across ${AREAS.length} areas.`,
-  body: 'From uptime to checkout, including the experience your customers have.',
+  body: 'From pages that won’t open to buttons that lead nowhere. See what gets checked, then open an area for the details.',
   explore: (name: string) => `Explore ${name} checks`,
   detailTitle: (name: string) => `${name} checks`,
-  detailAction: 'Analyze your website',
+  detailAction: 'Check your website',
   areas: AREAS.map(area => ({ ...area, groups: area.groups.map(group => ({ ...group, checks: group.items.map(check => check.label) })) })),
   previews: {
     pages: [{ page: '/pricing', status: '404', flagged: true }, { page: '/products', status: '200', flagged: false }, { page: '/contact', status: '200', flagged: false }],

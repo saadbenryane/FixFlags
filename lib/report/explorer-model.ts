@@ -1,4 +1,4 @@
-import { hasUnreadableSupportingObservations } from '@/lib/audit/flag-observations'
+import { hasUnreadableStoredSupportingObservations } from '@/lib/audit/flag-observations'
 import { presentationAttentionPolicy } from '@/lib/audit/search/policy'
 import { formatDisplayEvidence, resolveWhyItMatters } from '@/lib/audit/flag-copy'
 import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
@@ -178,7 +178,7 @@ function mapLiveFlag(
     id: flag.id,
     checkId: flag.checkId ?? null,
     attentionPolicy: presentationAttentionPolicy(flag.attentionPolicy),
-    supportingEvidenceUnreadable: hasUnreadableSupportingObservations(flag.supportingObservations),
+    supportingEvidenceUnreadable: hasUnreadableStoredSupportingObservations(flag.supportingObservations),
     title: flag.problem,
     rubric: flag.rubric,
     rubricLabel: rubricLabel(flag.rubric),

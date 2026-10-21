@@ -3,20 +3,25 @@
   "assets": [
     {
       "id": "site-open-graph",
-      "src": "/og.jpg",
-      "classification": "approved",
+      "src": "/og-v2.jpg",
+      "classification": "refined",
       "width": 1200,
       "height": 630,
       "requiresAlpha": false,
       "contentBearing": true,
       "requiredTerms": [
-        "fixflags.com",
-        "Copy prompt"
+        "FixFlags",
+        "Website monitoring.",
+        "From problem to fix.",
+        "Find problems. Get email alerts. Know what to fix.",
+        "fixflags.com"
       ],
       "consumers": [
         "lib/marketing/metadata.ts"
       ],
-      "replaces": []
+      "replaces": [
+        "/og.jpg"
+      ]
     },
     {
       "id": "demosite-open-graph-preview",
@@ -52,6 +57,34 @@
       "replaces": [
         "/marketing/blog/website-quality-cover-v1.webp"
       ]
+    },
+    {
+      "id": "folded-f-studio-v1",
+      "src": "/marketing/visuals/folded-f-studio-v1.webp",
+      "classification": "refined",
+      "width": 1731,
+      "height": 909,
+      "requiresAlpha": false,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "components/marketing/BrandClosing.tsx"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "folded-f-studio-dark-v1",
+      "src": "/marketing/visuals/folded-f-studio-dark-v1.webp",
+      "classification": "refined",
+      "width": 1730,
+      "height": 909,
+      "requiresAlpha": false,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "components/marketing/BrandClosing.tsx"
+      ],
+      "replaces": []
     }
   ]
 }

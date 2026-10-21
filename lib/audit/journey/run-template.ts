@@ -1,3 +1,4 @@
+import { captureScreenshot } from '../browser/capture-screenshot'
 import { JOURNEY_ROUTE_COPY } from '@/lib/marketing/copy/verification-evidence'
 import { assessFunnelDestination } from './funnel-findings'
 import { assessFormProbeResponse, assessFormProbeConfirmation } from './form-probe-assessment'
@@ -48,7 +49,7 @@ import { scopedJourneyFinding, type JourneyObservation } from '../checks/journey
 
 async function shot(page: Page, auditId: string, key: string, deadline: number): Promise<string | null> {
   try {
-    const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+    const buffer = await captureScreenshot(page, { type: 'png', fullPage: false, timeout: 1500 }, deadline)
     return await uploadScreenshot(auditId, 'desktop', buffer, key, { deadline })
   } catch (err) {
     logger.warn('Journey screenshot failed', { err: String(err), key })

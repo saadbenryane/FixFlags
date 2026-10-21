@@ -4,7 +4,7 @@ import { createWorkerRedis } from '@/lib/queue/redis'
 import { logger } from '@/lib/logger'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { claimExecution, withExecutionOwnership, executionTransaction } from '../execution-ownership'
-import { initialTaskPlan, availabilityOnly } from './graph'
+import { initialTaskPlan } from './graph'
 import { collectionHandlers } from './collectors'
 import { evaluatorHandlers } from './evaluators'
 import { lifecycleHandlers } from './lifecycle'
@@ -16,7 +16,6 @@ import { TASK_QUEUES } from './queues'
 import { recordProgress } from './events'
 import { ADVERTISED_COVERAGE_REGISTRY } from '../advertised-coverage'
 import { closeParserWorker } from './cpu'
-import { ACTIVE_GRAPH_LIMIT } from './capacity'
 import { recoverPendingAiReviews } from '../enqueue-ai-review'
 
 const handlers = registerTaskHandlers([...collectionHandlers, ...evaluatorHandlers, ...actionHandlers, ...lifecycleHandlers, ...accountHandlers])
@@ -34,22 +33,13 @@ export async function coordinateProgressiveAudit(auditId: string): Promise<void>
   const owner = await claimExecution(auditId, { resume: true })
   if (!owner) return
   await withExecutionOwnership(owner, async () => {
-    const allowed = await executionTransaction(async tx => {
-      // Short, cross-worker admission lock. Queued analyses keep their durable intent.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('progressive-analysis-admission'))`
-      const active = await tx.audit.count({ where: { id: { not: auditId }, startedAt: { not: null },
-        status: { notIn: ['COMPLETED', 'FAILED'] }, executionSpec: { path: ['engine'], equals: 'progressive-v1' },
-        OR: [{ verifierExecutions: { some: { workState: { in: ['READY', 'RUNNING'] } } } },
-          { verifierExecutions: { none: { workKind: { not: null } } } }],
-      } })
-      if (!audit.startedAt && active >= ACTIVE_GRAPH_LIMIT && !availabilityOnly(spec)) return false
-      if (!audit.startedAt) {
-        await tx.audit.update({ where: { id: auditId }, data: { startedAt: new Date(), status: 'CAPTURING', progress: 0 } })
+    await executionTransaction(async tx => {
+      const started = await tx.audit.updateMany({ where: { id: auditId, startedAt: null, status: { notIn: ['COMPLETED', 'FAILED'] } },
+        data: { startedAt: new Date(), status: 'CAPTURING', progress: 0 } })
+      if (started.count) {
         await recordProgress(tx, auditId, { kind: 'analysis', state: 'started' })
       }
-      return true
     })
-    if (!allowed) return
     if (!(await loadTaskGraph(auditId)).length) {
       const plans = initialTaskPlan(spec)
       for (const plan of plans) if (!handlers.has(plan.kind)) throw new Error('Missing task evaluator: ' + plan.kind)

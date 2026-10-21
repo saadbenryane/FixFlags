@@ -16,8 +16,7 @@ import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
 import { PageCaptureError } from '../browser/page-capture'
-
-const DELIVERY_RECHECK_MS = 30_000
+import { claimTaskDelivery, DELIVERY_RECHECK_MS, retireObsoleteTaskDeliveries } from './delivery-window'
 
 /** A cooperative deadline also has an enforced boundary. Late continuations
  * lose write authority, while the engine retains authority to record failure. */
@@ -113,22 +112,11 @@ export async function loadTaskGraph(auditId: string) {
 }
 
 export async function dispatchTask(taskId: string): Promise<boolean> {
-  const now = new Date(), lease = new Date(now.getTime() + DELIVERY_RECHECK_MS)
-  const won = await prisma.auditVerifierExecution.updateMany({
-    where: { id: taskId, workState: 'READY',
-      OR: [{ workDispatchLeaseUntil: null }, { workDispatchLeaseUntil: { lte: now } }],
-      audit: { status: { not: 'FAILED' } },
-      AND: [{ OR: [{ workRetryAt: null }, { workRetryAt: { lte: now } }] },
-        { OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: { in: [...COMPLETION_TASK_KINDS] } }] }] },
-    data: { workDispatchLeaseUntil: lease },
-  })
-  if (won.count !== 1) return false
-  const task = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: taskId } })
-  if (task.workState !== 'READY' || task.workDispatchLeaseUntil?.getTime() !== lease.getTime()) return false
+  const delivery = await claimTaskDelivery(taskId)
+  if (!delivery) return false
+  const { task, input, resource, lease } = delivery
   const dispatchOwner = { id: taskId, workState: 'READY' as const, workGeneration: task.workGeneration, workDispatchLeaseUntil: lease }
   try {
-    const input = taskInputSchema.parse(task.workInput)
-    const resource = queueForTask(task.workKind as TaskKind, input)
     if (resource === 'browser' && !getBrowserDiagnostics().connected && !(await readWorkerHeartbeat().catch(() => null))?.browserOk) {
       await executionTransaction(async tx => {
         await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${task.auditId} FOR UPDATE`
@@ -155,7 +143,7 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
     return true
   } catch {
     await prisma.auditVerifierExecution.updateMany({ where: dispatchOwner,
-      data: { workDispatchState: 'PENDING', workDispatchLeaseUntil: null, workRetryAt: new Date(Date.now() + 5000),
+      data: { workDispatchState: 'FAILED', workDispatchLeaseUntil: null, workRetryAt: new Date(Date.now() + 5000),
         workErrorCode: 'QUEUE_UNAVAILABLE' } })
     return false
   }
@@ -430,7 +418,7 @@ export async function dispatchReadyTasks(ids: string[]) {
   return sent
 }
 
-export async function recoverProgressiveTasks(limit = 25) {
+async function recoverActiveTaskGraphs(limit: number) {
   const audits = await prisma.audit.findMany({
     where: { status: { not: 'FAILED' },
       startedAt: { not: null },
@@ -455,4 +443,11 @@ export async function recoverProgressiveTasks(limit = 25) {
     } catch (error) { logger.error('Audit task recovery interrupted; retained graph will be retried', error, { auditId: audit.id }) }
   }
   return dispatched
+}
+
+export async function recoverProgressiveTasks(limit = 25) {
+  const retirement = retireObsoleteTaskDeliveries(limit)
+    .catch(error => logger.warn('Task delivery cleanup deferred; execution recovery will continue', { error }))
+  try { return await recoverActiveTaskGraphs(limit) }
+  finally { await retirement }
 }

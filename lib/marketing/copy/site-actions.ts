@@ -36,8 +36,8 @@ export const SITE_ACTION_COPY = {
   },
   sessionPending: 'Checking your session…',
   signupPrompt: {
-    title: 'Keep an eye on this website.',
-    body: 'Create an account to save this analysis and keep track of what needs attention.',
+    title: 'Save your website. Start monitoring.',
+    body: 'Create a free account for fix prompts, scheduled checks, and email alerts.',
     email: 'Sign up with email', signIn: 'Sign in with email', skip: 'Skip for now',
   },
   configurationUnknown: 'Previous evidence does not verify the current configuration. Run a fresh verification.',

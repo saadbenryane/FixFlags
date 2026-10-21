@@ -193,6 +193,7 @@ export type ThemeMatchableFlag = Pick<FlagData, 'problem' | 'evidence'> & {
  */
 export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric' | 'severity'> & {
   attentionPolicy?: unknown
+  supportingEvidenceUnreadable?: boolean
   /** Exact persisted Flag represented by this diff item, when available. */
   id?: string
   status?: string

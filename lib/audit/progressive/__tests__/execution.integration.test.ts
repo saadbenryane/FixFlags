@@ -1019,7 +1019,8 @@ run('migrated progressive execution', () => {
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: securityFlag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
       headerMode = 'healthy'
       const repair = await recheck('security', 'category-security-repaired')
-      expect(await prisma.flag.findUniqueOrThrow({ where: { id: securityFlag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: repair.auditId })
+      const recoveryDetail = await prisma.auditVerifierExecution.findMany({ where: { auditId: repair.auditId!, workKind: { in: ['check', 'finalize'] } }, select: { targetKey: true, detail: true } })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: securityFlag.id } }), JSON.stringify({ source: securityFlag, recovery: recoveryDetail })).toMatchObject({ status: 'FIXED', resolvedInId: repair.auditId })
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: searchFlag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
       headerMode = 'failed'
       const recurrence = await recheck('security', 'category-security-recurrence')
@@ -1066,7 +1067,9 @@ run('migrated progressive execution', () => {
       expect(home.resolvedFlags.find(flag => flag.checkId === 'title-missing')?.id).toBe(improvementId)
       const repairedRun = await getOwnedRun(userId, repair.runId)
       const comparison = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: repair.auditId!, targetKey: 'projection:flag-comparison' }, select: { detail: true } })
-      expect(repairedRun?.result, JSON.stringify(comparison.detail)).not.toBe('FLAG')
+      // Repairing the title does not repair the fixture's deliberately missing canonical target.
+      expect(repairedRun?.result).toBe('FLAG')
+      expect(JSON.stringify(comparison.detail)).toContain('canonical_target_broken')
       expect((await loadSiteSummaries(userId)).find(site => site.id === projectId)?.presentation.result).toEqual(home.presentation.result)
       headerTitleMissing = true
       const recurrence = await settledRun('CATEGORY', 'incident-recurrence')

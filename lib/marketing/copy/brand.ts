@@ -1,20 +1,28 @@
 import { helpHrefForSurface } from '@/lib/help/contextual'
+import { PRODUCT_STORY } from './product-story'
 
 export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
-  tagline: 'Your software runs. FixFlags watches.',
+  tagline: PRODUCT_STORY.headline.join(' '),
   footerDescription:
-    'FixFlags monitors your customer journeys, flags critical issues, and helps your AI fix them.',
+    'Website checks, email alerts, and clear steps to fix problems.',
   trademarkNotice:
     'Third-party trademarks and logos belong to their respective owners. Their use does not imply affiliation with or endorsement of FixFlags.',
-  category: 'Independent monitoring for the outcomes that matter.',
+  category: 'Independent website monitoring.',
   oneLiner:
-    'FixFlags independently checks important outcomes on your live website and shows evidence when something breaks.',
+    'FixFlags monitors your website, emails you about problems, and helps you fix them.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
-  tribeBadge: 'Your software runs. FixFlags watches.',
+  tribeBadge: PRODUCT_STORY.headline.join(' '),
+} as const
+
+export const SOCIAL_CARD = {
+  headline: PRODUCT_STORY.headline,
+  description: 'Find problems. Get email alerts. Know what to fix.',
+  label: 'Checks on your schedule',
+  workflow: 'Monitor. Flag. Fix.',
 } as const
 
 export const SITE_URL =
@@ -29,14 +37,19 @@ export const OUTPUT_LABELS = {
 
 export const URL_PLACEHOLDER = 'https://yoursite.com'
 
+const WEBSITE_CHECK_HANDOFF = {
+  heading: 'Check more of your website',
+  description: 'Find broken pages, slow loading, and other problems. Get evidence and guidance to help fix them.',
+} as const
+
 export const TOOLS = {
   metaPreview: {
     badge: 'Free Tool',
-    heading: 'Meta Preview Tool',
+    heading: 'Link preview checker',
     subhead:
-      'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
+      'See how your page looks when shared. Check its image, title, and description before you post the link.',
     ctaCheck: 'Check preview',
-    ctaAudit: 'Analyze this website',
+    ctaAudit: PRODUCT_STORY.action,
     socialPreviewHeading: 'Social Preview',
     metaTagsHeading: 'Meta Tags',
     metaFieldLabels: {
@@ -54,15 +67,14 @@ export const TOOLS = {
     canonicalMissing: 'No canonical',
     robotsPresent: 'Robots meta',
     robotsMissing: 'No robots meta',
-    auditHeading: 'Check more of your website',
-    auditSubhead:
-      'Check public pages, action destinations, and other available coverage. Start a website analysis when you are ready.',
+    auditHeading: WEBSITE_CHECK_HANDOFF.heading,
+    auditSubhead: WEBSITE_CHECK_HANDOFF.description,
   },
   placeholderDetector: {
     badge: 'Free Tool',
-    heading: 'Placeholder Copy Detector',
+    heading: 'Placeholder copy detector',
     subhead:
-      'Scan any URL for Lorem ipsum, TODO markers, AI-builder template artifacts, and unreplaced tokens. One less thing to miss before you share the link.',
+      'Find placeholder text and unfinished copy before you share your website.',
     ctaScan: 'Scan page',
     noIssuesIconAria: 'Clean page',
     noIssuesHeading: 'No placeholder content found',
@@ -76,15 +88,13 @@ export const TOOLS = {
       'template-token': 'Template Token',
       'social-proof': 'Social proof',
     },
-    auditHeading: 'Check more of your website',
-    auditSubhead:
-      'Check public pages, action destinations, and other available coverage. Start a website analysis when you are ready.',
+    auditHeading: WEBSITE_CHECK_HANDOFF.heading,
+    auditSubhead: WEBSITE_CHECK_HANDOFF.description,
   },
   shared: {
-    auditHeading: 'Check more of your website',
-    auditSubhead:
-      'Check public pages, action destinations, and other available coverage. Start a website analysis when you are ready.',
-    ctaAudit: 'Analyze this website',
+    auditHeading: WEBSITE_CHECK_HANDOFF.heading,
+    auditSubhead: WEBSITE_CHECK_HANDOFF.description,
+    ctaAudit: PRODUCT_STORY.action,
   },
 } as const
 
@@ -165,7 +175,7 @@ export const SCORE_HELP = {
 export const HELP_CENTER = {
   label: 'Help Center',
   title: 'How can we help?',
-  subhead: 'Search guides for website checks, Flags, verification, and your account. Still stuck? Chat with us.',
+  subhead: 'Help with your first check, fixing problems, monitoring, and your account.',
   searchPlaceholder: 'Search help and docs…',
   categoriesHeading: 'Browse by topic',
   popularHeading: 'Popular articles',

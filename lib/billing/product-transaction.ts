@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { executionTransaction } from '@/lib/audit/execution-ownership'
+import { executionTransaction, transactionConflict } from '@/lib/audit/execution-ownership'
 
 export class ProductAdmissionBusy extends Error {
   readonly code = 'ADMISSION_BUSY'
@@ -15,7 +15,7 @@ export async function productTransaction<T>(operation: (tx: Prisma.TransactionCl
   try {
     return await executionTransaction(operation, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') throw new ProductAdmissionBusy(error)
+    if (transactionConflict(error)) throw new ProductAdmissionBusy(error)
     throw error
   }
 }

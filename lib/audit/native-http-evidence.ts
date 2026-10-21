@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { openCheckDestination, OPEN_CHECK_OUTCOMES } from './open-check'
-import { safeFetchDocument } from './url'
+import { safeFetchResource } from './url'
 import type { DestinationCheckOptions } from './checks/destination-evidence'
 import { previewImageResponse, previewImageResponseSchema } from './checks/preview-image-response'
 
@@ -48,8 +48,8 @@ export function nativeHttpCollection(recorded?: NativeHttpEvidence) {
     }
     let result: z.infer<typeof previewImageResponseSchema> | null = null
     try {
-      const document = await safeFetchDocument(url, options)
-      result = previewImageResponse(document)
+      const document = await safeFetchResource(url, options)
+      result = await previewImageResponse(document, options.deadline)
       return result
     } finally { requests.push({ kind: 'document', key, result }) }
   }

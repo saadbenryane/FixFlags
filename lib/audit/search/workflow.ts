@@ -9,21 +9,16 @@ import { searchReceiptSchema, searchVerifierSchema, type SearchObservation, type
 import { recordVerifierExecution } from '@/lib/improvements/verifier-provenance'
 import { parseAffectedPaths } from '@/lib/audit/flag-identity'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
+import { boundSearchObservations } from './observation-bounds'
 
 export const SEARCH_LOCAL_MODULES = SEARCH_DEFINITIONS.filter(item => !['google', 'cross-page'].includes(item.evaluator))
   .map(item => 'module:search-' + item.evaluator)
 
 /** Aggregate receipts are bounded views. Source tasks retain every committed part. */
 export function combineSearchReceipts(input: { auditId: string; pageUrl: string; receipts: SearchReceipt[]; expected: number }): SearchReceipt {
-  let observations = input.receipts.flatMap(receipt => receipt.observations)
-  let complete = input.receipts.length === input.expected && input.receipts.every(receipt => receipt.complete)
-  if (observations.length > 499) {
-    observations = observations.slice(0, 499)
-    observations.push({ ...observations[0], id: 'search-observation-coverage:summary', checkId: 'search-observation-coverage',
-      disposition: 'unknown', reason: 'observation_limit', observed: 'The summary observation limit was reached. Source results remain recorded.',
-      attention: { policy: 'search', version: 1, kind: 'observation', reason: 'observation_limit' } })
-    complete = false
-  }
+  const observations = boundSearchObservations(input.receipts.flatMap(receipt => receipt.observations), 'summary')
+  const complete = input.receipts.length === input.expected && input.receipts.every(receipt => receipt.complete) &&
+    !observations.some(item => item.disposition === 'unknown')
   return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: input.auditId, pageUrl: input.pageUrl,
     collectedAt: input.receipts.map(receipt => receipt.collectedAt).sort().at(-1) ?? new Date().toISOString(), complete, observations })
 }
@@ -106,16 +101,8 @@ export async function runSearchWorkflow(input: Parameters<typeof collectSearchEv
   }
   const evidence = await collectSearchEvidence(input)
   const previous = await priorSearchReceipt(input.auditId, input.pageUrl)
-  let observations = await (input.evaluate ?? evaluateSearch)(evidence, previous)
-  let complete = !observations.some(item => item.disposition === 'unknown') && evidence.sitemapsComplete
-  if (observations.length > 499) {
-    observations = observations.slice(0, 499)
-    const template = observations[0]
-    observations.push({ ...template, id: 'search-observation-coverage:http', checkId: 'search-observation-coverage',
-      responsibility: 'structured-data', disposition: 'unknown', reason: 'observation_limit', observed: 'The observation limit was reached. Remaining evidence is not certified.',
-      attention: { policy: 'search', version: 1, kind: 'observation', reason: 'observation_limit' } })
-    complete = false
-  }
+  const observations = boundSearchObservations(await (input.evaluate ?? evaluateSearch)(evidence, previous), 'http')
+  const complete = !observations.some(item => item.disposition === 'unknown') && evidence.sitemapsComplete
   const receipt = searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: input.auditId, pageUrl: input.pageUrl,
     collectedAt: evidence.collectedAt, complete, observations })
   const stored = await persistSearchReceipt(receipt)

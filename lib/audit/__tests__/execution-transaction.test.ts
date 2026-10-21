@@ -61,6 +61,36 @@ describe('execution transaction conflicts', () => {
     expect(transaction).toHaveBeenCalledTimes(2)
   })
 
+  it.each(['40001', '40P01'])('retries the whole transaction for raw SQLSTATE %s', async code => {
+    const aborted = new Prisma.PrismaClientKnownRequestError('Raw query failed', {
+      code: 'P2010', clientVersion: 'test', meta: { code },
+    })
+    transaction.mockReset().mockImplementationOnce(async (write: () => Promise<unknown>) => { await write(); throw aborted })
+      .mockImplementationOnce(async (write: () => Promise<unknown>) => write())
+    const write = vi.fn(async () => 'saved')
+    const result = executionTransaction(write, { isolationLevel: 'Serializable' })
+    await vi.runAllTimersAsync()
+    await expect(result).resolves.toBe('saved')
+    expect(transaction).toHaveBeenCalledTimes(2)
+    expect(write).toHaveBeenCalledTimes(2)
+  })
+
+  it('bounds retries of raw serialization conflicts', async () => {
+    const error = new Prisma.PrismaClientKnownRequestError('Raw query failed', { code: 'P2010', clientVersion: 'test', meta: { code: '40001' } })
+    transaction.mockReset().mockRejectedValue(error)
+    const failed = expect(executionTransaction(vi.fn())).rejects.toBe(error)
+    await vi.runAllTimersAsync()
+    await failed
+    expect(transaction).toHaveBeenCalledTimes(5)
+  })
+
+  it('does not repeat raw SQL with an unrelated SQLSTATE', async () => {
+    const error = new Prisma.PrismaClientKnownRequestError('Raw query failed', { code: 'P2010', clientVersion: 'test', meta: { code: '23505' } })
+    transaction.mockReset().mockRejectedValue(error)
+    await expect(executionTransaction(vi.fn())).rejects.toBe(error)
+    expect(transaction).toHaveBeenCalledTimes(1)
+  })
+
   it('does not repeat an interactive timeout after a second attempt', async () => {
     const expired = new Prisma.PrismaClientKnownRequestError('Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5200 ms passed since the start of the transaction.', { code: 'P2028', clientVersion: 'test' })
     transaction.mockReset().mockRejectedValue(expired)

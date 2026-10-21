@@ -16,6 +16,7 @@ export interface FlowCtaCandidate {
   opensInNewTab: boolean
   context?: string
   controls?: string | null
+  fragmentRoute?: boolean
 }
 
 const CTA_SELECTORS = 'a[href], a.btn, a[class*="cta"], button, input[type="button"], input[type="submit"], [role="button"]'
@@ -72,6 +73,47 @@ export async function collectRenderedActionInventory(page: Page, includeNavigati
         return visible
       }
       const range = document.createRange()
+      const referenceHidden = new Map<Element, boolean>()
+      const hiddenFromName = (element: Element) => {
+        const pending: Element[] = []
+        let hidden = false
+        for (let node: Element | null = element; node; node = node.parentElement) {
+          const cached = referenceHidden.get(node)
+          if (cached !== undefined) { hidden = cached; break }
+          pending.push(node)
+          const style = styleOf(node)
+          if (node.getAttribute('aria-hidden') === 'true' || style.display === 'none' || style.contentVisibility === 'hidden') { hidden = true; break }
+        }
+        for (const node of pending) referenceHidden.set(node, hidden)
+        return hidden || styleOf(element).visibility !== 'visible'
+      }
+      const referenceNames = new Map<Element, { text: string; complete: boolean }>()
+      const referenceText = (element: Element) => {
+        const cached = referenceNames.get(element)
+        if (cached) return cached
+        let text = '', complete = true
+        if (element.matches('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) complete = false
+        else if (element.getAttribute('aria-label')?.trim()) text = element.getAttribute('aria-label')!
+        else {
+          const includeHidden = hiddenFromName(element)
+          const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+          let node: Node | null
+          while ((node = walker.nextNode())) {
+            if (++labelNodes > 20_000) { complete = false; break }
+            const parent = node.parentElement
+            if (!parent || parent.closest('script,style,noscript,template')) continue
+            if (!includeHidden && hiddenFromName(parent)) continue
+            if (parent.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) { complete = false; continue }
+            const raw = node.textContent ?? ''
+            if (text.length + raw.length > 1000) { complete = false; break }
+            text += raw
+          }
+        }
+        if (text.length > 1000) complete = false
+        const result = { text: text.slice(0, 1000).replace(/\s+/g, ' ').trim(), complete }
+        referenceNames.set(element, result)
+        return result
+      }
       const labelFor = (element: Element) => {
         const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
         let node: Node | null, text = element instanceof HTMLInputElement && ['button', 'submit'].includes(element.type) ? element.value : '', previous: DOMRect | undefined, labelComplete = true
@@ -92,7 +134,24 @@ export async function collectRenderedActionInventory(page: Page, includeNavigati
           if (raw.length > 1000) labelComplete = false
           return raw.slice(0, 1000).trim()
         }
-        text = (boundedLabel(text) || boundedLabel(element.getAttribute('aria-label') ?? '') || boundedLabel(element.getAttribute('title') ?? '')).replace(/\s+/g, ' ')
+        text = boundedLabel(text)
+        if (!text) {
+          const references = element.getAttribute('aria-labelledby')?.trim() ?? ''
+          const ids = [...new Set(references.split(/\s+/).filter(Boolean))]
+          const names: string[] = []
+          if (references.length > 1000 || ids.length > 50) labelComplete = false
+          else for (const id of ids) {
+            // Explicit references may name a control with hidden label text.
+            // First-ID browser lookup does not borrow a later duplicate label.
+            const label = document.getElementById(id)
+            if (!label) continue
+            const name = referenceText(label)
+            labelComplete &&= name.complete
+            names.push(name.text)
+          }
+          text = boundedLabel(names.join(' ')) || boundedLabel(element.getAttribute('aria-label') ?? '') || boundedLabel(element.getAttribute('title') ?? '')
+        }
+        text = text.replace(/\s+/g, ' ')
         if (!labelComplete) complete = false
         return { text: text.slice(0, 1000), labelComplete }
       }
@@ -145,12 +204,20 @@ export async function collectRenderedActionInventory(page: Page, includeNavigati
         const anchor = tag === 'a' ? el : el.closest('a')
         const opensInNewTab = Boolean(anchor && (anchor.getAttribute('target') ?? document.querySelector('base[target]')?.getAttribute('target'))?.toLowerCase() === '_blank')
 
-        el.setAttribute(attr, String(idx))
+        let destination: URL | null = null
+        try { if (href) destination = new URL(href, document.baseURI) } catch { /* Invalid destinations stay unverified. */ }
+        const resolvedHref = destination?.href ?? null
         let hashTargetExists: boolean | undefined
-        if (href?.startsWith('#')) {
+        if (destination?.username || destination?.password) {
+          complete = false
+          if (inViewport) viewportComplete = false
+          continue
+        }
+        el.setAttribute(attr, String(idx))
+        if (destination?.hash && destination.origin === location.origin && destination.pathname === location.pathname && destination.search === location.search) {
           hashTargetExists = false
           try {
-            const id = decodeURIComponent(href.slice(1))
+            const id = decodeURIComponent(destination.hash.slice(1))
             hashTargetExists = Boolean(id && (document.getElementById(id) || document.querySelector('a[name="' + CSS.escape(id) + '"]')))
           } catch { /* Invalid fragments cannot establish a destination. */ }
         }
@@ -164,8 +231,6 @@ export async function collectRenderedActionInventory(page: Page, includeNavigati
           path.unshift(node.tagName.toLowerCase() + ':nth-of-type(' + siblingPosition(node) + ')')
           node = node.parentElement
         }
-        let resolvedHref: string | null = null
-        try { if (href) resolvedHref = new URL(href, document.baseURI).href } catch { /* Invalid destinations stay unverified. */ }
         items.push({ idx, tag, inputType: el instanceof HTMLInputElement ? el.type : null, role: el.getAttribute('role'), text, labelComplete, inViewport, href, opensInNewTab, identity: path.join('>'), controls: el.getAttribute('aria-controls'), resolvedHref,
           enabled: !el.matches(':disabled,[aria-disabled="true"]'), styledAction: el.matches('a.btn,a[class*="cta"]'),
           inNavigation: Boolean(el.closest('nav,header,[role="navigation"]')),
@@ -186,12 +251,12 @@ export async function discoverFlowCtas(page: Page, pageUrl: string, includeNavig
   const raw = samePage ? inventory.controls.filter(control => control.labelComplete) : []
   const pageContext = primaryPageContext(pageUrl, page.url(), page.viewportSize(), auditPageObservation(page)?.scope)
   const byIndex = new Map(raw.map(item => [item.idx, item]))
-  const candidates = scoreCtaCandidates(pageUrl, raw).map((item) => {
+  const candidates = scoreCtaCandidates(page.url(), raw).map((item) => {
     const element = byIndex.get(item.idx)!
-    return { flowIdx: item.idx, text: item.text, href: element.href?.startsWith('#') ? item.href : element.resolvedHref ?? item.href,
+    return { flowIdx: item.idx, text: item.text, href: item.href,
       score: item.score, opensInNewTab: element.opensInNewTab,
       context: primaryControlContext({ pageContext, identity: element.identity, label: item.text, href: element.resolvedHref, controls: element.controls }),
-      controls: element.controls }
+      controls: element.controls, ...(item.fragmentRoute ? { fragmentRoute: true } : {}) }
   })
   return { candidates, complete: inventory.complete && samePage }
 }

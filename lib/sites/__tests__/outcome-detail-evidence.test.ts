@@ -1,13 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Prisma, type OutcomeAssessmentState, type SiteOutcomeKind } from '@prisma/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { type OutcomeAssessmentState, type SiteOutcomeKind } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, checkoutResultCopy, customerBindingResult, outcomeStatusLabel } from '@/lib/sites/outcome-state'
 
 const mocks = vi.hoisted(() => ({
+  outcomeFindMany: vi.fn(),
+  references: vi.fn(),
   outcomeFindFirst: vi.fn(),
-  pageFindMany: vi.fn(),
   executionFindMany: vi.fn(),
   assessmentFindFirst: vi.fn(),
   improvementFindMany: vi.fn(),
@@ -15,13 +16,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    siteOutcome: { findFirst: mocks.outcomeFindFirst },
-    sitePage: { findMany: mocks.pageFindMany },
-    outcomeBindingExecution: { findMany: mocks.executionFindMany },
-    outcomeAssessment: { findFirst: mocks.assessmentFindFirst },
-    improvement: { findMany: mocks.improvementFindMany },
+    siteOutcome: { findMany: mocks.outcomeFindMany },
   },
 }))
+vi.mock('@/lib/sites/application/outcome-references', () => ({ loadOutcomeDetailReferences: mocks.references }))
 
 import { loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
@@ -53,12 +51,14 @@ function projectSite(): SiteRecord {
 function outcomeRow() {
   return {
     id: 'outcome-1',
+    projectId: 'project-1',
+    provisionalSiteId: null,
     name: 'Checkout',
     slug: 'checkout',
     description: null,
     inferenceSource: 'browser',
     confirmedAt: null,
-    pages: [{ pageId: 'page-1' }],
+    pages: [{ pageId: 'page-1', page: { url: 'https://shop.example/products/tote', projectId: 'project-1', provisionalSiteId: null } }],
     kind: 'CHECKOUT' as SiteOutcomeKind,
     criticality: 'CRITICAL' as const,
     environment: 'production',
@@ -162,35 +162,42 @@ function executionsNewestFirst() {
 
 describe('loadSiteOutcomeDetail newest execution', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(NEWER.getTime() + 60 * 60_000))
     vi.clearAllMocks()
     mocks.outcomeFindFirst.mockResolvedValue(outcomeRow())
-    mocks.pageFindMany.mockResolvedValue([{ id: 'page-1', url: 'https://shop.example/products/tote' }])
     mocks.assessmentFindFirst.mockResolvedValue({ assessedAt: NEWER })
     mocks.improvementFindMany.mockResolvedValue([])
     mocks.executionFindMany.mockResolvedValue(executionsNewestFirst())
+    mocks.references.mockImplementation(async () => {
+      const row = await mocks.outcomeFindFirst()
+      if (!row) return []
+      const executions = await mocks.executionFindMany(), successful = await mocks.assessmentFindFirst()
+      return [{ id: row.id, assessmentIds: row.assessments.map((item: { id: string }) => item.id),
+        successfulAssessmentId: successful ? 'successful-assessment' : null,
+        runRequestIds: row.runSelections.map((item: { runRequest: { id: string } }) => item.runRequest.id),
+        bindingAttemptIds: row.bindingAttempts.map((item: { id: string }) => item.id), executionIds: executions.map((item: { id: string }) => item.id),
+        improvementIds: [], occurrenceIds: [], improvementAttemptIds: [] }]
+    })
+    // The existing fact fixtures now arrive as bounded Outcome relations.
+    mocks.outcomeFindMany.mockImplementation(async () => {
+      const row = await mocks.outcomeFindFirst(), successful = await mocks.assessmentFindFirst()
+      return row ? [{ ...row, assessments: [...row.assessments, ...(successful ? [{ ...successful, id: 'successful-assessment', state: 'CLEAR', evidence: null }] : [])],
+        bindingExecutions: await mocks.executionFindMany(), improvements: await mocks.improvementFindMany() }] : []
+    })
   })
+  afterEach(() => { vi.useRealTimers() })
 
   it('shows the newest execution for each binding and keeps older attempts in history', async () => {
     const detail = await loadSiteOutcomeDetail(projectSite(), 'outcome-1')
 
-    expect(mocks.outcomeFindFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'outcome-1', projectId: 'project-1' },
-    }))
-    expect(mocks.executionFindMany).toHaveBeenCalledWith({
-      where: { outcomeId: 'outcome-1' },
+    expect(mocks.references).toHaveBeenCalledWith(projectSite(), { outcomeId: 'outcome-1' })
+    expect(mocks.outcomeFindMany.mock.calls[0][0].include.bindingExecutions).toEqual({
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      where: { id: { in: executionsNewestFirst().map(item => item.id) } },
       include: { audit: { select: { executionSpec: true } } },
     })
-    expect(mocks.assessmentFindFirst).toHaveBeenCalledWith({
-      where: {
-        outcomeId: 'outcome-1',
-        state: 'CLEAR',
-        evidence: { path: ['supersededByAssessmentId'], equals: Prisma.AnyNull },
-      },
-      orderBy: { assessedAt: 'desc' },
-      select: { assessedAt: true },
-    })
+    expect(mocks.outcomeFindMany.mock.calls[0][0].where).toEqual({ projectId: 'project-1', id: { in: ['outcome-1'] } })
     expect(detail).not.toBeNull()
     expect(detail?.state).toBe('CLEAR')
     expect(detail?.timeline.find((event) => event.type === 'assessment')?.title).toBe(outcomeStatusLabel('CLEAR'))
@@ -266,7 +273,7 @@ describe('loadSiteOutcomeDetail newest execution', () => {
       { ...executionsNewestFirst()[0], disposition: 'FAILED', reason: 'checkout_error' },
     ])
     const detail = await loadSiteOutcomeDetail(projectSite(), row.id)
-    expect(mocks.outcomeFindFirst.mock.calls[0][0].include.assessments.orderBy)
+    expect(mocks.outcomeFindMany.mock.calls[0][0].include.assessments.orderBy)
       .toEqual([{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }])
     expect(detail).toMatchObject({ state: 'FLAG', summary: current.summary })
     expect(detail?.bindings[0].latestEvidence).toMatchObject({ auditId: 'audit-new', disposition: 'FAILED', reason: 'checkout_error' })

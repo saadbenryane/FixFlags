@@ -4,6 +4,7 @@ import { Section } from '@/components/ui/section'
 import { Button } from '@/components/ui/button'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
+import { BrandClosing } from '@/components/marketing/BrandClosing'
 import { PUBLIC_SITE_COPY as C } from '@/lib/marketing/copy/public-site'
 import { PublicLink } from './PublicInteraction'
 
@@ -28,9 +29,11 @@ export function PublicPageActions() {
 export function PublicPageNextStep() {
   return <Section spacing="tight" tint="subtle">
     <Container variant="marketing">
+      <BrandClosing>
       <h2 className="text-balance font-display text-3xl font-semibold tracking-display">{C.nextTitle}</h2>
       <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">{C.nextBody}</p>
       <PublicPageActions />
+      </BrandClosing>
     </Container>
   </Section>
 }

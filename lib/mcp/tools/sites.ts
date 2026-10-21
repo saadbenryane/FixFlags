@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
 import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
-import { listSiteOutcomes, loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
+import { listSiteOutcomes, loadSiteOutcomeDetails } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
@@ -14,6 +14,10 @@ import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { loadSiteCheckResultPage } from '@/lib/sites/application/check-results'
 import { resolveLatestAudit } from '@/lib/sites/application/site-execution'
+import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/status'
+import { InvalidUptimeCursorError, loadUptimeHistory, loadUptimeSummary } from '@/lib/uptime/queries'
+import { uptimeCursorSchema, uptimeWindowSchema } from '@/lib/uptime/contracts'
+import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
@@ -45,21 +49,25 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           where: { userId: user.id, deletedAt: null },
           orderBy: { updatedAt: 'desc' },
           select: {
-            id: true,
+            ...uptimeStatusProjectSelect,
             name: true,
             canonicalHost: true,
-            watchInterval: true,
             siteOutcomes: { where: { enabled: true }, select: { id: true } },
           },
         })
+        const now = new Date()
         return mcpStructuredResult({
-          sites: sites.map((site) => ({
-            siteId: site.id,
-            name: site.name,
-            host: site.canonicalHost,
-            outcomeCount: site.siteOutcomes.length,
-            watching: site.watchInterval != null,
-          })),
+          sites: sites.map((site) => {
+            const uptime = projectUptimeStatus(site, site.uptimeMonitor, now)
+            return {
+              siteId: site.id,
+              name: site.name,
+              host: site.canonicalHost,
+              outcomeCount: site.siteOutcomes.length,
+              watching: uptime.enabled,
+              uptime,
+            }
+          }),
         })
       } catch (error) {
         return mcpCoreError(error)
@@ -71,29 +79,34 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.listOutcomes.name,
     {
       description: MCP_TOOLS.listOutcomes.desc,
-      inputSchema: z.object({ siteId: z.string().min(1), resultCursor: z.string().max(1024).optional() }),
+      inputSchema: z.object({ siteId: z.string().min(1), resultCursor: z.string().max(1024).optional(),
+        uptimeWindow: uptimeWindowSchema.optional().describe('Include bounded recorded probe and incident history for this window.'),
+        uptimeCursor: uptimeCursorSchema.optional().describe('Continue uptime history using its nextCursor and the same uptimeWindow.'),
+      }).refine(input => !input.uptimeCursor || input.uptimeWindow, { message: 'uptimeCursor requires uptimeWindow', path: ['uptimeWindow'] }),
       annotations: toolAnnotations(MCP_TOOLS.listOutcomes),
     },
-    async ({ siteId, resultCursor }) => {
+    async ({ siteId, resultCursor, uptimeWindow, uptimeCursor }) => {
       try {
         const site = await ownedSite(user.id, siteId)
-        const outcomes = await listSiteOutcomes(site)
-        const details = await Promise.all(
-          outcomes
-            .filter((outcome) => outcome.kind !== 'GENERIC')
-            .map((outcome) => loadSiteOutcomeDetail(site, outcome.id)),
-        )
+        const details = await loadSiteOutcomeDetails(site, { excludeGeneric: true })
         const latestAudit = await resolveLatestAudit(site)
         const resultPage = await loadSiteCheckResultPage(site, latestAudit, resultCursor)
+        const uptime = uptimeWindow ? await loadUptimeHistory(site.projectId!, uptimeWindow, uptimeCursor ?? null)
+          : await loadUptimeSummary(site.projectId!)
         return mcpStructuredResult({
           siteId: site.siteId,
+          uptime: uptime ? { ...uptime, scope: UPTIME_COPY.scope, limitation: UPTIME_COPY.limitation } : null,
           checkResults: resultPage.results,
           checkResultsNextCursor: resultPage.nextCursor,
-          outcomes: details
-            .filter((outcome) => outcome != null)
-            .map((outcome) => mcpOutcomePayload(outcome)),
+          outcomes: details.map((outcome) => mcpOutcomePayload(outcome)),
         })
       } catch (error) {
+        if (error instanceof InvalidUptimeCursorError) {
+          const failure = mcpCoreError(error, { code: 'INVALID_UPTIME_CURSOR', action: 'restart_uptime_history' })
+          return { ...failure, ...mcpStructuredResult({ ...failure.structuredContent,
+            next: { tool: MCP_TOOLS.listOutcomes.name, arguments: { siteId, uptimeWindow: uptimeWindow ?? '24h', ...(resultCursor ? { resultCursor } : {}) } },
+          }) }
+        }
         return mcpCoreError(error)
       }
     },

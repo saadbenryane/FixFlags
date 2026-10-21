@@ -32,6 +32,10 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
+// These fixtures exercise assessment interpretation; native cases verify the ID selection.
+vi.mock('@/lib/sites/application/outcome-references', () => ({ loadOutcomeSummaryReferencesForProjects: async () => [
+  { id: 'outcome-1', assessmentIds: ['assessment-1'] }, { id: 'outcome-2', assessmentIds: ['assessment-2'] },
+] }))
 
 function observed(module: string, keys: string[]) {
   return { targetKey: 'module:' + module, status: 'COMPLETED', detail: {
@@ -53,8 +57,10 @@ describe('loadSiteSummaries', () => {
     mocks.categoryIds.mockResolvedValue([])
     mocks.provisionalFindMany.mockResolvedValue([])
     mocks.projectFindMany.mockResolvedValue([
-      { id: 'site-1', name: 'One', canonicalHost: 'one.example', updatedAt: new Date('2026-10-01'), watchInterval: null, watchNextRunAt: null, watchLastError: null, watchConsecutiveFailures: 0 },
-      { id: 'site-2', name: 'Two', canonicalHost: 'two.example', updatedAt: new Date('2026-10-02'), watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-10'), watchLastError: null, watchConsecutiveFailures: 0 },
+      { id: 'site-1', url: 'https://one.example/', deletedAt: null, user: { id: 'user-1', lifecycleStatus: 'ACTIVE' }, uptimeMonitor: null,
+        name: 'One', canonicalHost: 'one.example', updatedAt: new Date('2026-10-01'), watchInterval: null, watchNextRunAt: null, watchLastError: null, watchConsecutiveFailures: 0 },
+      { id: 'site-2', url: 'https://two.example/', deletedAt: null, user: { id: 'user-1', lifecycleStatus: 'ACTIVE' }, uptimeMonitor: null,
+        name: 'Two', canonicalHost: 'two.example', updatedAt: new Date('2026-10-02'), watchInterval: 'WEEKLY', watchNextRunAt: new Date(Date.now() + 7 * 86400_000), watchLastError: null, watchConsecutiveFailures: 0 },
     ])
     const audits = [
       { id: 'audit-1', projectId: 'site-1', status: 'COMPLETED', startedAt: new Date('2026-10-01'), completedAt: new Date('2026-10-01'), failureCode: null, evidenceCoverage: null, updatedAt: new Date('2026-10-01') },
@@ -120,6 +126,28 @@ describe('loadSiteSummaries', () => {
       pageUrl: 'https://one.example/', checkId: 'broken-internal-links', rubric: 'REACH', impactTag: 'SEO' }])
     expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state).toBe('flags')
   })
+  it('does not certify a progressive analysis whose finding comparison has not been published', async () => {
+    const audit = completedAudit({ executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE',
+      targetUrl: 'https://one.example/', environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null } })
+    mocks.auditFindMany.mockReset().mockResolvedValue([audit])
+    mocks.auditPageFindMany.mockResolvedValue([{ auditId: audit.id, url: 'https://one.example/', status: 'COMPLETED' }])
+    expect((await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')?.presentation.result.state).toBe('could_not_verify')
+  })
+  it('counts missing admitted and discovered pages in coverage without inventing a finding', async () => {
+    const targetUrl = 'https://one.example/', peer = targetUrl + 'pricing'
+    const executionSpec = { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl, environment: 'production',
+      monitoringPages: [targetUrl, peer], checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null }
+    const audit = completedAudit({ executionSpec })
+    mocks.auditPageFindMany.mockResolvedValue([{ auditId: audit.id, url: targetUrl, status: 'COMPLETED' }])
+    for (const source of [audit, { ...audit, executionSpec: { ...executionSpec, monitoringPages: undefined },
+      verifierExecutions: [...audit.verifierExecutions, { targetKey: 'task:p1:browser', workKind: 'browser', status: 'FAILED', pageUrl: peer }] }]) {
+      mocks.auditFindMany.mockReset().mockResolvedValue([source])
+      const site = (await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')!
+      expect(site.presentation.coverage).toMatchObject({ pagesReached: 1, pagesExpected: 2, complete: false })
+      expect(site.presentation.result.state).toBe('could_not_verify')
+      expect(site.presentation.flags.count).toBe(0)
+    }
+  })
   it('batches recovery proof and keeps the two owned Sites independent', async () => {
     const audit = completedAudit()
     const measurement = healthyDesktopPs({ lcp: 3000, diagnostics: { measurement: pageSpeedMeasurementFixture('https://one.example/') } })
@@ -172,8 +200,8 @@ describe('loadSiteSummaries', () => {
     mocks.auditFindMany.mockReset().mockResolvedValue([audit])
     const binding = { key: 'http', required: true, mechanism: 'HTTP_AVAILABILITY', version: 2, config: {} }
     const coverage = { environment: 'production', requiredBindings: ['http'], bindings: [binding] }
-    const outcome = { projectId: 'site-1', enabled: true, environment: 'production', bindings: [binding], assessments: [
-      { state: 'CLEAR', validUntil: new Date(Date.now() + 60_000), coverage },
+    const outcome = { projectId: 'site-1', enabled: true, environment: 'production', staleAfterMinutes: 60, bindings: [binding], assessments: [
+      { state: 'CLEAR', assessedAt: new Date(), validUntil: new Date(Date.now() + 60_000), coverage },
     ] }
     for (const changed of [outcome, { ...outcome, environment: 'staging' }, { ...outcome, bindings: [{ ...binding, version: 3 }] },
       { ...outcome, bindings: [] }, { ...outcome, assessments: [{ ...outcome.assessments[0], coverage: {} }] }]) {
@@ -189,8 +217,8 @@ describe('loadSiteSummaries', () => {
     mocks.auditFindMany.mockReset().mockResolvedValue([audit])
     const binding = { key: 'signup', required: true, mechanism: 'SAFE_FORM', version: 1, config: { fixtureId: 'fixture' } }
     const coverage = { environment: 'production', requiredBindings: ['signup'], bindings: [{ ...binding, fixture: { id: 'fixture', version: 4 } }] }
-    mocks.outcomeFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, enabled: true, environment: 'production',
-      bindings: [binding], assessments: [{ state: 'CLEAR', validUntil: new Date(Date.now() + 60_000), coverage }] })))
+    mocks.outcomeFindMany.mockResolvedValue(['site-1', 'site-2'].map(projectId => ({ projectId, enabled: true, environment: 'production', staleAfterMinutes: 60,
+      bindings: [binding], assessments: [{ state: 'CLEAR', assessedAt: new Date(), validUntil: new Date(Date.now() + 60_000), coverage }] })))
     const fixture = { id: 'fixture', projectId: 'site-1', version: 4, enabled: true, authorizedAt: new Date(), lastDryRunVersion: 4 }
     for (const changed of [fixture, { ...fixture, version: 5 }, { ...fixture, enabled: false }, { ...fixture, authorizedAt: null },
       { ...fixture, projectId: 'site-2' }]) {

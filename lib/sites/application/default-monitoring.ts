@@ -4,7 +4,7 @@ import { resolveEffectiveEntitlements, type EffectiveEntitlements } from '@/lib/
 import { toStoredWatchInterval, fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { bindingForConfirmedKind } from '@/lib/sites/outcomes'
 import { expectationForKind } from '@/lib/sites/outcome-kinds'
-import { outcomeFreshnessMinutes } from './care-policy'
+import { outcomeFreshnessMinutes } from '../evidence-freshness'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { deferMonitoringSetup, monitoringSetupDue, monitoringSetupOrder } from './monitoring-setup'
 import { logger } from '@/lib/logger'

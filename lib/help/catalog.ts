@@ -20,7 +20,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       { type: "p", text: "You can try your first check before creating an account. Use a live webpage that visitors can open without signing in." },
       { type: "p", text: "No installation needed for public-page analysis." },
-      { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Analyze.", "Open a Flag to read the observed problem, supporting evidence, and suggested next step. If FixFlags could not inspect an area, read the reason beside that result."] },
+      { type: "steps", items: ["Open Add website or use the address field on the homepage.", "Paste your website address and select Check your website.", "Open a Flag to read the observed problem, supporting evidence, and suggested next step. If FixFlags could not inspect an area, read the reason beside that result."] },
       { type: "callout", text: "A Flag is a problem that needs attention. Not checked yet means results are not available for that area." },
     ], related: ['save-your-site', 'read-site-coverage', 'verify-a-flag'], relatedDocs: ['getting-started'],
   },

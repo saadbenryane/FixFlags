@@ -151,6 +151,17 @@ describe('runAudit orchestrator', () => {
     ;(tryPartialFinalize as Mock).mockResolvedValue(false)
   })
 
+  it('executes every admitted navigation once across compatibility discovery passes', async () => {
+    const peer = 'https://example.com/pricing', affected = peer + '/'
+    prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ url: peer, reviewDepth: 3, executionSpec: {
+      version: 1, scope: 'SITE', targetUrl: peer, environment: 'production', monitoringPages: [peer, affected],
+      checks: {}, outcomes: [], verificationTarget: null,
+    } }))
+    ;(runPage as Mock).mockImplementation(async (_context, input: { url: string }) => makePageRun({ url: input.url }))
+    await runAudit('audit-1')
+    expect((runPage as Mock).mock.calls.map(([, input]) => input.url)).toEqual([peer, affected])
+  })
+
   it('resumes durable projection before returning an already-completed audit', async () => {
     prismaMock.audit.findUnique.mockReset()
     prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))

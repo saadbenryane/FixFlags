@@ -12,6 +12,7 @@ import { googleIndexObservations } from './google-index'
 type Failure = keyof typeof C.googleFailures
 type GoogleReceiptModule = 'search-google' | 'search-google-index' | 'search-google-performance'
 type GoogleAccess = { token: string; property: string; connectionId: string | null; legacyUserId: string | null; connectionScope?: Prisma.SiteConnectionWhereInput }
+type GoogleAdmission = { access: GoogleAccess | Failure; pageUrls: readonly string[] }
 
 function providerObservation(pageUrl: string, input: {
   checkId: string; source: 'google-index' | 'google-analytics'; disposition: SearchObservation['disposition'];
@@ -46,23 +47,30 @@ function failed(pageUrl: string, failure: Failure, source: 'google-index' | 'goo
     source, disposition: 'unknown', reason: failure, observed: C.googleFailures[failure], collectedAt, locator: 'provider response' })
 }
 
-async function googleAccess(projectId: string, userId: string): Promise<GoogleAccess | Failure> {
+async function googleAdmission(projectId: string, userId: string, input: {
+  pageUrls: readonly string[]; requireConfiguredEvidence?: boolean;
+}): Promise<GoogleAdmission | null> {
+  const selected = (access: GoogleAccess | Failure): GoogleAdmission => ({ access, pageUrls: input.pageUrls })
   const connection = await prisma.siteConnection.findUnique({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } } })
   if (connection) {
     // A revoked or refused Site connection never falls through to broader legacy credentials.
-    if (connection.status === 'REVOKED') return 'NOT_CONNECTED'
-    if (connection.status === 'MISMATCH' || !connection.propertyId) return 'PROPERTY_MISMATCH'
-    if (!['CONNECTED', 'UNAVAILABLE'].includes(connection.status)) return 'AUTH_EXPIRED'
+    if (connection.status === 'REVOKED') return selected('NOT_CONNECTED')
+    if (connection.status === 'MISMATCH' || !connection.propertyId) return selected('PROPERTY_MISMATCH')
+    if (!['CONNECTED', 'UNAVAILABLE'].includes(connection.status)) return selected('AUTH_EXPIRED')
     try {
       const token = await accessTokenForConnection(connection)
-      return token ? { token, property: connection.propertyId, connectionId: connection.id, legacyUserId: null,
-        connectionScope: googleConnectionGrantScope(connection) } : 'AUTH_EXPIRED'
-    } catch { return 'AUTH_EXPIRED' }
+      return selected(token ? { token, property: connection.propertyId, connectionId: connection.id, legacyUserId: null,
+        connectionScope: googleConnectionGrantScope(connection) } : 'AUTH_EXPIRED')
+    } catch { return selected('AUTH_EXPIRED') }
   }
   const legacy = await prisma.gscConnection.findUnique({ where: { userId }, select: { siteUrl: true } })
-  if (!legacy) return 'NOT_CONNECTED'
+  if (!legacy) return null
+  // Account-level historical access is enrichment only for the pages it covers.
+  // An unrelated Site must not refresh or require that credential.
+  const pageUrls = input.requireConfiguredEvidence ? input.pageUrls : input.pageUrls.filter(url => searchPropertyCoversUrl(legacy.siteUrl, url))
+  if (!pageUrls.length) return null
   const token = await getGscAccessToken(userId)
-  return token ? { token, property: legacy.siteUrl, connectionId: null, legacyUserId: userId } : 'AUTH_EXPIRED'
+  return { pageUrls, access: token ? { token, property: legacy.siteUrl, connectionId: null, legacyUserId: userId } : 'AUTH_EXPIRED' }
 }
 
 function failureCode(error: unknown): Failure {
@@ -70,7 +78,7 @@ function failureCode(error: unknown): Failure {
 }
 
 /** Provider facts and their receipt commit together, with one writer for each Audit/page. */
-async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null, inspection: SearchUrlInspection | null, rows: GscSearchRow[], dateRange: string, moduleName: GoogleReceiptModule) {
+async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null, inspection: SearchUrlInspection | null, rows: GscSearchRow[], dateRange: string, moduleName: GoogleReceiptModule, applicable: boolean) {
   return executionTransaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`search-google:${receipt.auditId}:${receipt.pageUrl}`}, 0))`
     const existing = await tx.auditVerifierExecution.findUnique({
@@ -98,7 +106,7 @@ async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null
     await tx.auditVerifierExecution.upsert({
       where: { auditId_targetKey_scopeKey: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}` } },
       create: { auditId: receipt.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${receipt.pageUrl}`, pageUrl: receipt.pageUrl,
-        source: 'GOOGLE', status: 'COMPLETED', detail: receipt as Prisma.InputJsonValue,
+        source: 'GOOGLE', status: applicable ? 'COMPLETED' : 'NOT_APPLICABLE', detail: receipt as Prisma.InputJsonValue,
         evidenceReference: { auditId: receipt.auditId, pageUrl: receipt.pageUrl, connectionId: access?.connectionId ?? null,
           property: access?.property ?? null, dateRange, inspectionResultLink: inspection?.inspectionResultLink ?? null } },
       update: {},
@@ -110,6 +118,7 @@ async function persistGoogle(receipt: SearchReceipt, access: GoogleAccess | null
 export async function runGoogleSearchForAudit(input: {
   auditId: string; userId?: string | null; pages: Array<{ url: string; local?: SearchReceipt }>; deadline: number;
   sections?: Array<'index' | 'analytics'>; receiptModule?: GoogleReceiptModule; deferTransient?: boolean;
+  requireConfiguredEvidence?: boolean;
 }) {
   const moduleName = input.receiptModule ?? 'search-google'
   const indexRequested = !input.sections || input.sections.includes('index')
@@ -120,12 +129,14 @@ export async function runGoogleSearchForAudit(input: {
     select: { id: true, projectId: true, parentId: true, userId: true, project: { select: { userId: true } } },
   })
   if (!audit || audit.userId && audit.project?.userId !== audit.userId) throw new Error('Search execution does not belong to this Site owner')
-  const access = audit.projectId && audit.userId ? await googleAccess(audit.projectId, audit.userId) : 'NOT_CONNECTED'
+  const pages = input.pages.slice(0, 24)
+  const admission = audit.projectId && audit.userId ? await googleAdmission(audit.projectId, audit.userId,
+    { pageUrls: pages.map(page => page.url), requireConfiguredEvidence: input.requireConfiguredEvidence }) : null
   const end = new Date(Date.now() - 24 * 60 * 60 * 1000), start = new Date(end.getTime() - 27 * 24 * 60 * 60 * 1000)
   const startDate = start.toISOString().slice(0, 10), endDate = end.toISOString().slice(0, 10), dateRange = `${startDate}/${endDate}`
   const receipts: SearchReceipt[] = []
   let providerRefusal: Failure | null = null
-  for (const page of input.pages.slice(0, 24)) {
+  for (const page of pages) {
     const existing = await prisma.auditVerifierExecution.findUnique({
       where: { auditId_targetKey_scopeKey: { auditId: input.auditId, targetKey: `module:${moduleName}`, scopeKey: `page:${page.url}` } }, select: { detail: true },
     })
@@ -134,10 +145,12 @@ export async function runGoogleSearchForAudit(input: {
     if (existing) throw new Error('Persisted Google Search receipt is incompatible')
     const observations: SearchObservation[] = [], collectedAt = new Date().toISOString()
     let inspection: SearchUrlInspection | null = null, rows: GscSearchRow[] = []
-    const refusal: Failure | null = providerRefusal ?? (typeof access === 'string' ? access : !searchPropertyCoversUrl(access.property, page.url) ? 'PROPERTY_MISMATCH'
+    const applicable = input.requireConfiguredEvidence === true || admission?.pageUrls.includes(page.url) === true
+    const access = applicable ? admission?.access ?? null : null
+    const refusal: Failure | null = access === null ? 'NOT_CONNECTED' : providerRefusal ?? (typeof access === 'string' ? access : !searchPropertyCoversUrl(access.property, page.url) ? 'PROPERTY_MISMATCH'
       : input.deadline - Date.now() < 1000 ? 'DEADLINE_EXHAUSTED' : null)
     if (refusal) observations.push(failed(page.url, refusal, 'google-index', collectedAt), failed(page.url, refusal, 'google-analytics', collectedAt))
-    else if (typeof access !== 'string') {
+    else if (access && typeof access !== 'string') {
       const signal = AbortSignal.timeout(Math.max(1, Math.min(10_000, input.deadline - Date.now())))
       const [index, performance] = await Promise.allSettled([
         indexRequested ? inspectSearchUrl(access.token, access.property, page.url, signal) : Promise.resolve({}),
@@ -186,7 +199,10 @@ export async function runGoogleSearchForAudit(input: {
       receipts.push(receipt)
       continue
     }
-    const persisted = await persistGoogle(receipt, typeof access === 'string' ? null : access, inspection, rows, dateRange, moduleName)
+    // No configured property is optional enrichment. A revoked grant or an
+    // explicitly admitted provider diagnostic still owns an unresolved obligation.
+    const persisted = await persistGoogle(receipt, typeof access === 'string' ? null : access, inspection, rows, dateRange, moduleName,
+      applicable)
     receipts.push(persisted)
     const { recordSearchVerifiers } = await import('./workflow')
     await recordSearchVerifiers(persisted)

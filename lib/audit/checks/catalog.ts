@@ -22,8 +22,7 @@ import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
 import { runTrackingChecks } from './tracking'
 import type { TrackingEvidence } from '../tracking/contracts'
-import { runSecurityBasicsChecks } from './security'
-import { RESOURCE_TRANSPORT_SCOPE } from '../resource-transport'
+import { assessSecurityTransport } from './security'
 import { runSecurityHeaderChecks } from './security-headers'
 import { runVisualPolishChecks } from './visual-polish'
 import { runCtaFocusChecks } from './cta-focus'
@@ -122,9 +121,10 @@ export const PAGE_CHECKS = registerPageEvaluators([
     checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
   { id: 'auth-checkout', evaluate: withMetadata(c => runAuthCheckoutChecks(c.url, c.metadata, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline })) },
   { id: 'security', evaluate: c => {
-    Object.assign(c.scope, { complete: new URL(c.url).protocol !== 'https:' || c.metadata?.resourceTransport?.complete === true,
-      limitation: RESOURCE_TRANSPORT_SCOPE })
-    return runSecurityBasicsChecks(c.url, c.metadata)
+    const checked = assessSecurityTransport(c.url, c.metadata, c.publicDocument)
+    checked.assertions.forEach(c.record)
+    Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation, collectedAt: checked.collectedAt })
+    return checked.flags
   } },
   { id: 'security-headers', evaluate: c => runSecurityHeaderChecks(c.url, c.headers ?? null) },
   { id: 'messaging-clarity', evaluate: withMetadata(c => runMessagingClarityChecks(c.metadata, c.record)) },

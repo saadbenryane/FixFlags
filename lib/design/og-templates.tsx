@@ -69,8 +69,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             letterSpacing: '-0.01em',
           }}
         >
-          {[CARE_HOME.headlineAccent, ...CARE_HOME.headlineLines].join(' ')}
-          <span style={{ color: p.brand }}>.</span>
+          {CARE_HOME.hero.headline.join(' ')}
         </div>
         <div
           style={{

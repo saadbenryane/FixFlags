@@ -135,7 +135,7 @@ vi.mock('@/lib/audit/ai-report-entitlement', () => ({
 }))
 
 vi.mock('@/lib/audit/url', () => ({
-  assertPublicAuditUrl: vi.fn(async (url: string) => new URL(url)),
+  assertPublicNavigationUrl: vi.fn(async (url: string) => new URL(url)),
 }))
 
 vi.mock('@/lib/audit/ensure-product-project', () => ({

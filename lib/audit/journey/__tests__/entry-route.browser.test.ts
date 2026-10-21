@@ -3,15 +3,21 @@ import { afterAll, describe, expect, it, vi } from 'vitest'
 import type { JourneyType } from '../types'
 import type { JourneyPlan } from '../planner-schema'
 
-const activationFault = vi.hoisted(() => ({ enabled: false }))
+const activationFault = vi.hoisted(() => ({ enabled: false, pendingFont: false, fontLoading: false }))
 
 vi.mock('@/lib/storage/screenshots', () => ({ uploadScreenshot: vi.fn(async () => null) }))
 vi.mock('@/lib/audit/browser/page-session', async importOriginal => {
   const actual = await importOriginal<typeof import('@/lib/audit/browser/page-session')>()
   return { ...actual, createAuditPage: (...args: Parameters<typeof actual.createAuditPage>) => {
     if (new URL(args[1]).hostname !== '127.0.0.1') throw new Error('Only the controlled local HTTP fixture is authorized')
-    return actual.createAuditPage(args[0], args[1], { ...args[2], allowLocalhost: true }).then(session => {
+    return actual.createAuditPage(args[0], args[1], { ...args[2], allowLocalhost: true }).then(async session => {
       if (activationFault.enabled) session.page.click = vi.fn().mockRejectedValue(new Error('Controlled activation failure'))
+      if (activationFault.pendingFont) {
+        await session.page.route('**/pending-font.woff2', () => {})
+        await session.page.addStyleTag({ content: '@font-face { font-family: Pending; src: url("/pending-font.woff2") } body { font-family: Pending }' })
+        await session.page.evaluate(() => { void document.fonts.load('16px Pending') })
+        activationFault.fontLoading = await session.page.evaluate(() => document.fonts.status === 'loading')
+      }
       return session
     })
   } }
@@ -169,6 +175,22 @@ run('recorded entry route assessment', () => {
     expect(result.findings).toEqual([])
     expect(nativeJourneyFlags(result.findings)).toEqual([])
   })
+  it('retains independent journey observations when a font prevents optional screenshots', async () => {
+    activationFault.pendingFont = true
+    activationFault.fontLoading = false
+    try {
+      const result = await walk('contact-support', 'contact-destination')
+      expect(activationFault.fontLoading).toBe(true)
+      expect(result).toMatchObject({ status: 'COMPLETED', goalAchieved: false })
+      expect(result.steps).toHaveLength(2)
+      expect(result.steps[0]).toMatchObject({ screenshotAfterUrl: null })
+      expect(result.steps[0].accessibilityTree).toContain('Equipment pricing')
+      expect(result.steps[1].accessibilityTree).toContain('Office information')
+      expect(result.requestedPaths).toContain('/contact')
+      expect(result.findings).toContainEqual(expect.objectContaining({ checkId: 'journey-contact-not-found' }))
+      expect(result.mutatingRequests).toBe(0)
+    } finally { activationFault.pendingFont = false }
+  })
   it('preserves actual protected-action refusal over the missing contact-route reason', async () => {
     const result = await walk('contact-support', 'safety-refusal')
     expect(result).toMatchObject({ status: 'ABANDONED', goalAchieved: false,
@@ -283,7 +305,7 @@ run('recorded entry route assessment', () => {
     expect(result.findings).toEqual([])
     expect(nativeJourneyFlags(result.findings)).toEqual([])
     const observation = result.pageObservations![0]!
-    expect(observation).toMatchObject({ pathVersion: 3, primaryAction: true, nextPath: false, pathComplete: false })
+    expect(observation).toMatchObject({ pathVersion: 5, primaryAction: true, nextPath: false, pathComplete: false })
     expect(journeyAssertions(observation).find(assertion => assertion.key === 'landing-path')).toMatchObject({ complete: false, passed: false })
     expect(journeyAssertions(observation).find(assertion => assertion.key === 'landing-headline')).toMatchObject({ complete: true, passed: true })
     expect(journeyAssertions(observation).find(assertion => assertion.key === 'landing-action')).toMatchObject({ complete: true, passed: true })

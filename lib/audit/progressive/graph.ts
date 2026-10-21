@@ -6,6 +6,23 @@ import { ACTION_CHECK_DEFINITIONS } from '../checks/definitions'
 import { motionRequested } from '../checks/motion-evidence'
 import { monitoringReviewUrls } from '../review-depth'
 
+/** Admission and execution share public behavior policy. Frozen scope retains
+ * responsibility even when a queued category has not created task rows yet. */
+export function publicPageBehaviors(input: Pick<TaskInput, 'pageUrl' | 'primary'>, spec: ExecutionSpec): NonNullable<ExecutionSpec['monitoringBehaviors']>[number]['behaviors'] {
+  const entry = input.primary || (spec.scope === 'SITE' || spec.scope === 'CATEGORY') && Boolean(spec.monitoringEntryPages?.includes(input.pageUrl))
+  const retained = new Set((spec.scope === 'SITE' || spec.scope === 'CATEGORY') ? spec.monitoringBehaviors?.find(scope => scope.pageUrl === input.pageUrl)?.behaviors ?? [] : [])
+  const modules = new Set(Object.keys(spec.checks).flatMap(id => CHECK_REGISTRY[id]?.module ? [CHECK_REGISTRY[id].module] : []))
+  const publicAction = entry || retained.has('flow') || Boolean(spec.category && ['conversion', 'tracking'].includes(spec.category.area)) || spec.scope === 'DIAGNOSTIC' &&
+    (modules.has('overlays') || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))
+  const behaviors: NonNullable<ExecutionSpec['monitoringBehaviors']>[number]['behaviors'] = []
+  if (publicAction) behaviors.push('flow')
+  if (retained.has('pricing-navigation') || publicAction && (spec.checks['flow-pricing-nav-broken'] || modules.has('overlays') && spec.scope !== 'DIAGNOSTIC' || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl &&
+    scope.overlayPhases?.some(phase => phase.startsWith('pricing_navigation'))))) behaviors.push('pricing-navigation')
+  if (entry || retained.has('slow-replay') || spec.scope === 'DIAGNOSTIC' && modules.has('slow-replay')) behaviors.push('slow-replay')
+  if (entry || retained.has('journeys') || spec.scope === 'DIAGNOSTIC' && (modules.has('overlays') || modules.has('journeys'))) behaviors.push('journeys')
+  return behaviors
+}
+
 export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] {
   const prefix = 'p' + input.position, scope = 'page:' + input.pageUrl
   const make = (kind: TaskKind, dependencies: string[] = [], module?: string): TaskPlan => ({
@@ -22,7 +39,7 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
   if (modules.has('mobile-navigation')) plans.push(make('flow', [], 'mobile-navigation'))
   for (const [module, definition] of Object.entries(CHECK_MODULES)) {
     if (module === 'automatic-accounts' || module === 'search' || ACTION_CHECK_DEFINITIONS[module] || !modules.has(module)) continue
-    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : module === 'security' || definition.input === 'headers' || definition.input === 'http' ? 'http'
+    const inputKind = definition.input === 'keyboard' ? 'keyboard-evidence' : definition.input === 'headers' || definition.input === 'http' ? 'http'
       : definition.input === 'performance' ? 'pagespeed-desktop' : definition.input === 'mobile' ? 'pagespeed-mobile' : 'browser'
     plans.push(make('check', [prefix + ':' + inputKind, ...(module === 'interaction' && motionRequested(spec) ? [prefix + ':motion'] : [])], module))
     if (module === 'performance') plans.push({ ...make('check', [prefix + ':pagespeed-mobile'], 'inp-mobile'),
@@ -42,15 +59,12 @@ export function pageTaskPlan(input: TaskInput, spec: ExecutionSpec): TaskPlan[] 
     input: { ...input, module: 'summary' } })
   plans.push(make('google', [prefix + ':search-indexing'], 'google-index'))
   plans.push(make('google', [], 'google-performance'))
-  if (input.primary || spec.category && ['conversion', 'tracking'].includes(spec.category.area) || spec.scope === 'DIAGNOSTIC' &&
-    (modules.has('overlays') || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl && scope.phases.includes('public_action')))) {
-    plans.push(make('flow', [prefix + ':browser']))
-    if (spec.checks['flow-pricing-nav-broken'] || modules.has('overlays') && spec.scope !== 'DIAGNOSTIC' || spec.verificationScopes?.some(scope => scope.pageUrl === input.pageUrl &&
-      scope.overlayPhases?.some(phase => phase.startsWith('pricing_navigation')))) plans.push(make('flow', [], 'pricing-navigation'))
-  }
-  if (input.primary || spec.scope === 'DIAGNOSTIC' && modules.has('slow-replay')) plans.push(make('slow-replay'))
-  if (input.primary || spec.scope === 'DIAGNOSTIC' && (modules.has('overlays') || modules.has('journeys'))) {
-    plans.push(make('journeys', [prefix + ':browser']))
+  const behaviors = new Set(publicPageBehaviors(input, spec))
+  if (behaviors.has('flow')) plans.push(make('flow', [prefix + ':browser']))
+  if (behaviors.has('pricing-navigation')) plans.push(make('flow', [], 'pricing-navigation'))
+  if (behaviors.has('slow-replay')) plans.push(make('slow-replay'))
+  if (behaviors.has('journeys')) plans.push(make('journeys', [prefix + ':browser']))
+  if (input.primary) {
     for (const outcome of spec.outcomes) for (const binding of outcome.bindings.filter(item => item.required)) {
       plans.push({ kind: 'bindings', key: 'binding:' + outcome.id + ':' + binding.key, scope: 'outcome:' + outcome.id,
         input: { ...input, outcomeId: outcome.id, bindingKey: binding.key, module: binding.mechanism,
@@ -179,11 +193,6 @@ export function initialTaskPlan(spec: ExecutionSpec): TaskPlan[] {
   ]
   validateTaskGraph(plans)
   return plans
-}
-
-export function availabilityOnly(spec: ExecutionSpec) {
-  const bindings = spec.outcomes.flatMap(outcome => outcome.bindings.filter(binding => binding.required))
-  return spec.scope === 'OUTCOMES' && bindings.length > 0 && bindings.every(binding => binding.mechanism === 'HTTP_AVAILABILITY')
 }
 
 function siteResourcePlans(input: TaskInput): TaskPlan[] {

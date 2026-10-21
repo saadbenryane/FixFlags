@@ -1,5 +1,5 @@
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { categoryAreaSchema } from '../domain/execution-spec'
 import { buildExecutionSpec,executionIntentHash } from './execution-spec'
@@ -79,7 +79,7 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
   const requestedUrl = fixture?.targetUrl ?? (input.verificationTarget?.kind === 'DIAGNOSTIC'
     ? input.verificationTarget.pageUrl
     : input.url ?? (scope === 'SITE' || scope === 'CATEGORY' || input.source === 'WATCH' || !singleStart ? project.url : singleStart))
-  const normalized = normalizeAuditUrl(requestedUrl)
+  const normalized = normalizeAuditNavigationUrl(requestedUrl)
   const auditUrl = normalized.ok ? normalized.url : requestedUrl
   const executionSpec = fixture ? { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: auditUrl, environment,
     scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: fixture.id, version: fixture.version }, checks: {}, outcomes: [], verificationTarget: null } : await buildExecutionSpec({

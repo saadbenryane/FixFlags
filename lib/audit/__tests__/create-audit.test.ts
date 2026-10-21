@@ -15,6 +15,7 @@ const betaPolicy = vi.hoisted(() => ({ enabled: false }))
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   $executeRaw: vi.fn(),
+  $queryRaw: vi.fn(),
   runRequest: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   outcomeFixture: { updateMany: vi.fn() },
   flag: { findMany: vi.fn() },
@@ -51,7 +52,7 @@ const enforceAnonymousIpSoftCeiling = vi.hoisted(() => vi.fn())
 const trackAnonymousAuditId = vi.hoisted(() => vi.fn())
 const resolveIncludeAiForNewAudit = vi.hoisted(() => vi.fn())
 const wouldBlockNewCheckWithCredits = vi.hoisted(() => vi.fn())
-const assertPublicAuditUrl = vi.hoisted(() => vi.fn())
+const assertPublicNavigationUrl = vi.hoisted(() => vi.fn())
 const ensureProductProject = vi.hoisted(() => vi.fn())
 const ensureSiteForAudit = vi.hoisted(() => vi.fn())
 const refreshUserUsagePeriod = vi.hoisted(() => vi.fn())
@@ -69,8 +70,9 @@ vi.mock('@/lib/audit/ai-report-entitlement', () => ({
   resolveIncludeAiForNewAudit,
 }))
 vi.mock('@/lib/billing/credits', () => ({ wouldBlockNewCheckWithCredits }))
-vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl }))
+vi.mock('@/lib/audit/url', () => ({ assertPublicNavigationUrl }))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
+vi.mock('@/lib/sites/application/default-monitoring', () => ({ ensureDefaultMonitoring: vi.fn(async () => true) }))
 vi.mock('@/lib/sites/ensure-site', () => ({ ensureSiteForAudit }))
 vi.mock('@/lib/sites/visitor-identity', () => ({ resolveVisitorKey }))
 vi.mock('@/lib/billing/usage-period', () => ({
@@ -121,6 +123,7 @@ describe('createAndEnqueueAudit', () => {
     vi.clearAllMocks()
     prismaMock.audit.findUnique.mockReset().mockResolvedValue(null)
     prismaMock.project.findUnique.mockReset().mockResolvedValue(null)
+    prismaMock.$queryRaw.mockResolvedValue([{ id: 'project-1', url: AUDIT_URL, canonicalHost: 'example.com' }])
     prismaMock.flag.findMany.mockReset().mockResolvedValue([])
 
     prismaMock.$transaction.mockImplementation(async (op: (tx: typeof prismaMock) => Promise<{ id: string }>) => {
@@ -160,7 +163,7 @@ describe('createAndEnqueueAudit', () => {
       watchConsecutiveFailures: 0,
       userId: 'user-1',
     })
-    assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))
+    assertPublicNavigationUrl.mockResolvedValue(new URL(AUDIT_URL))
     refreshUserUsagePeriod.mockResolvedValue(signedInUser())
     rollUserUsagePeriod.mockResolvedValue(signedInUser())
   })
@@ -189,6 +192,16 @@ describe('createAndEnqueueAudit', () => {
       data: { authorizedAt: null, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: Prisma.DbNull } })
     expect(prismaMock.audit.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isPublic: false, skipUsageCount: true }) }))
     expect(prismaMock.runRequest.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ auditId: 'audit-1', executionSpec: expect.objectContaining({ fixtureSetup: { id: 'fixture', version: 2 } }) }) }))
+    expect(ensureProductProject).not.toHaveBeenCalled()
+  })
+
+  it('refuses attaching a Site command to a parent from another Site', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', projectId: 'other-project', status: 'COMPLETED' })
+    await expect(createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', parentId: 'parent-1', runRequestId: 'run',
+      runRequestAdmission: { id: 'run', projectId: 'project-1', requestedByUserId: 'user-1', source: 'WEB', idempotencyKey: 'parent' },
+    })).rejects.toThrow('same Site')
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
   })
 
   it('refuses a changed fixture before creating its durable RunRequest or dispatching work', async () => {
@@ -783,7 +796,7 @@ describe('createAndEnqueueAudit', () => {
   })
 
   it('rejects invalid URLs', async () => {
-    assertPublicAuditUrl.mockRejectedValueOnce(
+    assertPublicNavigationUrl.mockRejectedValueOnce(
       new Error('Enter a valid URL like https://yoursite.com')
     )
 

@@ -48,7 +48,7 @@ import {
   openCheckDestinations,
   type OpenCheckResult,
 } from './open-check'
-import { canonicalizeDestination } from './url-identity'
+import { canonicalizeDestination, navigationDestinationKey } from './url-identity'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { systemClock } from '@/lib/time/clock'
 import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
@@ -194,7 +194,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
 
       const reviewedKeys = new Set(
         pageRuns
-          .map((page) => canonicalizeDestination(page.url)?.key)
+          .map((page) => navigationDestinationKey(page.url))
           .filter((key): key is string => Boolean(key))
       )
 
@@ -203,7 +203,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
         secondaryPageBudgetMs + MIN_JUDGE_BUDGET_MS + FINALIZE_RESERVE_MS
 
       const reviewQueue = hop1Plan.reviewUrls.filter((url) => {
-        const key = canonicalizeDestination(url)?.key
+        const key = navigationDestinationKey(url)
         return key ? !reviewedKeys.has(key) : true
       })
 
@@ -232,7 +232,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
           primary: false,
         })
         pageRuns.push(pageRun)
-        const key = canonicalizeDestination(pageRun.url)?.key
+        const key = navigationDestinationKey(pageRun.url)
         if (key) reviewedKeys.add(key)
         await persistReviewedFlagsSoFar(auditId, pageRuns)
       }
@@ -249,10 +249,8 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
           })),
         })
         if (pageRuns.some(page => page.navigation?.complete === false)) ctx.supplementalPagesSkipped = true
-        const extraOpenCheck = hop2Plan.openCheckUrls.filter((url) => {
-          const key = canonicalizeDestination(url)?.key
-          return key ? !openCheckResults.some((result) => canonicalizeDestination(result.canonicalUrl)?.key === key) : true
-        })
+        const checkedUrls = new Set(openCheckResults.map(result => result.url))
+        const extraOpenCheck = hop2Plan.openCheckUrls.filter(url => !checkedUrls.has(url))
         if (extraOpenCheck.length > 0) {
           const extra = await openCheckDestinations(extraOpenCheck, {
             origin: canonicalizeDestination(audit.url)?.url ?? audit.url,
@@ -269,7 +267,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
           }
         }
         for (const url of hop2Plan.reviewUrls) {
-          const key = canonicalizeDestination(url)?.key
+          const key = navigationDestinationKey(url)
           if (key && reviewedKeys.has(key)) continue
           if (ctx.deadline - ctx.clock.now().getTime() < secondaryStartReserveMs) {
             ctx.supplementalPagesSkipped = true
@@ -329,6 +327,7 @@ async function runOwnedAudit(auditId: string, audit: Audit): Promise<void> {
 
       await runJourneyReviewsForAudit(auditId, audit.url, {
         included: audit.journeyReviewIncluded,
+        metadata: primary.metadata,
         deadline: ctx.deadline,
         scanAccess: ctx.scanAccess,
       })

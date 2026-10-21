@@ -7,7 +7,7 @@ Use a page visitors can open without signing in. If your website is still only o
 ## Analyze a website
 
 1. Open [Add website](/new), or use the address field on the homepage.
-2. Paste your website address and select **Analyze**.
+2. Paste your website address and select **Check your website**.
 3. Stay on the results page while FixFlags checks your website.
 
 The results are grouped into areas such as Pages, Search, and Performance. A **Flag** is a problem that needs attention. Open one to see what happened and how to fix it.

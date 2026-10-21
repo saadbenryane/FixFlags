@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { CARE_HOME, SEO } from '@/lib/marketing/copy'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { REVIEW_ENTRY } from '@/lib/marketing/copy/terminology'
+import { BRAND, SOCIAL_CARD } from '@/lib/marketing/copy/brand'
+import { PRODUCT_STORY } from '@/lib/marketing/copy/product-story'
 
 /** Rendered narrative coverage lives in PublicPages and CareHomepage component tests. */
 describe('shared product story contracts', () => {
@@ -9,9 +11,15 @@ describe('shared product story contracts', () => {
     const expected = ['monitor', 'flag', 'fix']
     expect(CARE_HOME.workflow.steps.map(step => step.id)).toEqual(expected)
     expect(PUBLIC_SITE_COPY.howItWorks.steps.map(step => step.id)).toEqual(expected)
-    expect(PUBLIC_SITE_COPY.howItWorks.title).toBe('Monitor. Flag. Fix. Repeat.')
     expect(CARE_HOME.workflow.steps[2].body).toContain('Check now')
-    expect(SEO.home.description).toContain('Publish the change, then check it again')
+    expect(CARE_HOME.workflow.steps[0].body).toMatch(/save your site to start scheduled monitoring/i)
+    expect(SEO.home.description).toBe(PRODUCT_STORY.description)
+    expect(SEO.home.description).toMatch(/email alerts/i)
+    expect(SEO.home.description).toMatch(/clear steps to fix/i)
+  })
+  it('keeps the hero and social artwork on the same product promise', () => {
+    expect(CARE_HOME.hero.headline.join(' ')).toBe(BRAND.tagline)
+    expect(SOCIAL_CARD.headline.join(' ')).toBe(BRAND.tagline)
   })
   it('keeps the first analysis and public evidence destinations reachable before signup', () => {
     expect(REVIEW_ENTRY.href).toBe('/new')

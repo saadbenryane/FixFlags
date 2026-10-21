@@ -27,7 +27,7 @@ function run(overrides: Record<string, unknown> = {}) {
       environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null },
     audit: { id: 'audit-1', parentId: null, progress: 100, status: 'COMPLETED', completedAt: now, reportCompleteness: 'FULL',
       evidenceCoverage: { metadata: true, desktopPageSpeed: true, flowScan: true }, failedModules: [], failureCode: null,
-      verifierExecutions: [observed('security', ['https', 'image-transport']), comparison()], flags: [], pages: [{ status: 'COMPLETED' }] },
+      verifierExecutions: [observed('security', ['https', 'image-transport']), comparison()], flags: [], pages: [{ url: 'https://acme.fixture.test/', status: 'COMPLETED' }] },
     ...overrides }
 }
 
@@ -100,7 +100,7 @@ describe('owned run assessment', () => {
       area: 'security', sourceAuditId: 'full', pages: ['https://acme.fixture.test/'] } } as never
     source.audit.pages = [{ url: 'https://acme.fixture.test/', status: 'COMPLETED' }] as never
     source.audit.verifierExecutions.push(...initialTaskPlan(readExecutionSpec(source.executionSpec)!).map(task => ({
-      targetKey: 'task:' + task.key, status: 'COMPLETED', workState: 'COMPLETED', detail: null,
+      targetKey: 'task:' + task.key, status: 'COMPLETED', workKind: task.kind, workState: 'COMPLETED', workDependencies: task.dependencies, detail: null,
     })) as never)
     mocks.findFirst.mockResolvedValue(source)
     expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ scope: 'CATEGORY', area: 'security', result: 'CLEAR',
@@ -118,6 +118,16 @@ describe('owned run assessment', () => {
     expect(result?.summary).toBeTruthy()
     expect(result?.validUntil).toBe('2026-10-20T12:00:00.000Z')
     expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: 'run-1', project: { userId: 'owner', deletedAt: null } })
+  })
+  it('retains admitted and discovered pages that have no observation row', async () => {
+    const source = run(), peer = source.executionSpec.targetUrl + 'pricing'
+    source.executionSpec = { ...source.executionSpec, monitoringPages: [source.executionSpec.targetUrl, peer] } as never
+    mocks.findFirst.mockResolvedValue(source)
+    expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL',
+      coverage: { gaps: [{ area: 'site', reason: 'pages' }] } })
+    source.executionSpec = { ...source.executionSpec, monitoringPages: undefined } as never
+    source.audit.verifierExecutions.push({ targetKey: 'task:p1:browser', workKind: 'browser', status: 'FAILED', pageUrl: peer } as never)
+    expect(await getOwnedRun('owner', 'run-1')).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })
   })
   it('does not emit a settled result while the run is queued or running', async () => {
     for (const status of ['QUEUED', 'RUNNING']) {

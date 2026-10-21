@@ -23,6 +23,24 @@ function receipt(observed: JourneyObservation) {
 const compare = (observed: JourneyObservation) => scopedAssertionForTarget({ receipt: receipt(observed), checkId, flag })
 
 describe('independent public journey conditions', () => {
+  it('keeps resolved fragment discovery separate from earlier action and path conditions', () => {
+    const old = { ...observation(), actionVersion: 5 as const, pathVersion: 4 as const }
+    const current = { ...old, actionVersion: 6 as const, pathVersion: 5 as const }
+    expect(journeyObservationSchema.parse(current)).toMatchObject({ actionVersion: 6, pathVersion: 5 })
+    for (const condition of ['landing-action', 'destination-action', 'landing-path'])
+      expect(journeyContext(old, condition)).not.toBe(journeyContext(current, condition))
+    for (const condition of ['landing-headline', 'destination-headline', 'destination-form', 'destination-field-count'])
+      expect(journeyContext(old, condition)).toBe(journeyContext(current, condition))
+  })
+  it('qualifies only action and route comparisons when referenced labels become observable', () => {
+    const old = { ...observation(), actionVersion: 4 as const, pathVersion: 3 as const }
+    const current = { ...old, actionVersion: 5 as const, pathVersion: 4 as const }
+    expect(journeyObservationSchema.parse(current)).toMatchObject({ actionVersion: 5, pathVersion: 4 })
+    for (const condition of ['landing-action', 'destination-action', 'landing-path'])
+      expect(journeyContext(old, condition)).not.toBe(journeyContext(current, condition))
+    for (const condition of ['landing-headline', 'destination-headline', 'destination-form', 'destination-field-count'])
+      expect(journeyContext(old, condition)).toBe(journeyContext(current, condition))
+  })
   it('versions rendered action and path discovery without treating detector changes as repair', () => {
     const original = { ...observation(), phase: 'landing' as const, route: [], primaryAction: false, nextPath: false }
     const corrected = { ...original, actionVersion: 3 as const, pathVersion: 2 as const, actionComplete: true }

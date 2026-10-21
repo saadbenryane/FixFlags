@@ -1,4 +1,5 @@
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { availabilityFailureCopy } from '@/lib/marketing/copy/availability'
 
 export type BindingDispositionName = 'SUCCEEDED' | 'FAILED' | 'BLOCKED'
 
@@ -21,15 +22,6 @@ export type BindingVerdict = {
   summary: string
   requiredBindings: string[]
   observedBindings: string[]
-}
-
-const FAILURE_COPY: Record<string, { summary: string; problem: string; evidence: string; fix: string }> = {
-  http_unavailable: {
-    summary: 'The page was unavailable.',
-    problem: 'A required page did not respond successfully.',
-    evidence: 'FixFlags requested the bound page and received an unsuccessful response.',
-    fix: 'Restore the page so a public request succeeds, then verify this Outcome again.',
-  },
 }
 
 export function assessRequiredBindings(
@@ -104,7 +96,8 @@ export function summaryFor(reason: string, state: BindingVerdict['state']): stri
   if (reason === 'safe_fixture_required') {
     return 'FixFlags did not submit this form because no safe fixture is authorized.'
   }
-  if (reason === 'http_unavailable') return FAILURE_COPY.http_unavailable.summary
+  const availability = availabilityFailureCopy(reason)
+  if (availability) return availability.summary
   if (['success_text_missing', 'success_target_missing', 'success_url_missing'].includes(reason)) return safeFormFlagCopy(reason).summary
   if (reason === 'success_criterion_preexisting') return 'The success signal was already present, so FixFlags could not verify a new signup.'
   if (reason === 'success_observation_incomplete') return 'The signup completion check ran out of time.'
@@ -134,7 +127,7 @@ export function availabilityFlagCopy(reason: string): {
   evidence: string
   fix: string
 } {
-  return FAILURE_COPY[reason] ?? {
+  return availabilityFailureCopy(reason) ?? {
     summary: summaryFor(reason, 'FLAG'),
     problem: 'A required page could not be verified as available.',
     evidence: 'FixFlags did not receive a successful public response for the bound page.',

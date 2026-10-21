@@ -21,23 +21,34 @@ function currentProbeSlot(job: UptimeJob, scheduledAt: Date, now: Date) {
 
 /** Synchronize activation and target generations without touching analysis schedules or credits. */
 async function syncMonitor(snapshot: UptimeMonitor, project: MonitoringProject, now: Date) {
-  const target = normalizeAuditUrl(project.url)
-  const enabled = uptimeEligible(project) && target.ok
-  const changed = target.ok && target.url !== snapshot.targetUrl
-  const expiredConfirmation = snapshot.pendingFailureAt && now.getTime() - snapshot.pendingFailureAt.getTime() > UPTIME_INTERVAL_MS
-  if (!changed && enabled === snapshot.enabled && !expiredConfirmation) return snapshot
+  const transition = monitorSynchronization(snapshot, project, now)
+  if (!transition) return snapshot
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM uptime_monitors WHERE id = ${snapshot.id} FOR UPDATE`
-    const current = await tx.uptimeMonitor.findUniqueOrThrow({ where: { id: snapshot.id } })
+    const current = await tx.uptimeMonitor.findUniqueOrThrow({ where: { id: snapshot.id }, include: { project: { include: uptimeProjectInclude } } })
     if (current.version !== snapshot.version || current.targetUrl !== snapshot.targetUrl) return current
+    // The selection is only a hint. A worker may have completed an observation
+    // or acquired its lease while this caller was waiting for the row lock.
+    const latest = monitorSynchronization(current, current.project, now)
+    if (!latest) return current
+    const { targetUrl, enabled, changed } = latest
     if (changed) await tx.uptimeIncident.updateMany({ where: { monitorId: current.id, recoveredAt: null, supersededAt: null }, data: { supersededAt: now } })
     return tx.uptimeMonitor.update({ where: { id: current.id }, data: {
-      enabled, ...(changed ? { targetUrl: target.url, version: { increment: 1 }, lastCheckedAt: null, lastScheduledAt: null } : {}),
+      enabled, ...(changed ? { targetUrl, version: { increment: 1 }, lastCheckedAt: null, lastScheduledAt: null } : {}),
       state: enabled ? 'unknown' : 'paused', nextProbeAt: enabled ? slot(now) : nextSlot(now),
       pendingFailureAt: null, pendingSlotAt: null, confirmationDueAt: null, leaseUntil: null, leaseToken: null,
       lastDispatchAttemptAt: null,
     } })
   })
+}
+
+function monitorSynchronization(monitor: UptimeMonitor, project: MonitoringProject, now: Date) {
+  const target = normalizeAuditUrl(project.url)
+  const enabled = uptimeEligible(project) && target.ok
+  const changed = target.ok && target.url !== monitor.targetUrl
+  const leased = monitor.leaseUntil && monitor.leaseUntil > now
+  const expiredConfirmation = !leased && monitor.pendingFailureAt && now.getTime() - monitor.pendingFailureAt.getTime() > UPTIME_INTERVAL_MS
+  return changed || enabled !== monitor.enabled || expiredConfirmation ? { targetUrl: target.ok ? target.url : monitor.targetUrl, enabled, changed } : null
 }
 
 /** Bounded sweeps plus durable due fields recover enqueue failures without a catch-up burst. */
@@ -85,6 +96,7 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
       // Record an attempt before publishing, so failed or unexecuted jobs cannot monopolize a batch.
       // Only the worker's observation advances due times or establishes reachability evidence.
       const attemptedAt = clock.now()
+      if (monitor.nextProbeAt > attemptedAt && (!monitor.confirmationDueAt || monitor.confirmationDueAt > attemptedAt)) continue
       const attempted = await prisma.uptimeMonitor.updateMany({ where: {
         id: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl, enabled: true,
         lastDispatchAttemptAt: monitor.lastDispatchAttemptAt, nextProbeAt: monitor.nextProbeAt,

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { prescriptionScopeSchema } from '../prescription-scope'
+import { jsonValueSchema } from '@/lib/json-value'
+export { jsonValueSchema, type JsonValue } from '@/lib/json-value'
 
 export const ANALYSIS_RECOVERY_MS = 60 * 60_000
 export const TASK_RECOVERY_MS = 30 * 60_000
@@ -34,10 +36,6 @@ export const taskJobSchema = z.object({ auditId: z.string().min(1), taskId: z.st
 export const SETTLED_TASK_STATES = ['COMPLETED', 'BLOCKED', 'EXHAUSTED'] as const
 export function taskIsSettled(state: string | null) { return SETTLED_TASK_STATES.some(value => value === state) }
 
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
-export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
-  z.string(), z.number().finite(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema),
-]))
 /** `{ completed: true }` remains valid. Token fields are present only after a measured run. */
 export const prescriptionResultSchema = z.object({
   completed: z.literal(true),

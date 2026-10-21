@@ -11,8 +11,8 @@ describe('Outcome discovery from recorded facts', () => {
       ] }] }
     const original = structuredClone(source)
     expect(discoverOutcomePages('https://example.test/', source)).toEqual([
-      { rawUrl: 'https://example.test/start#original', url: 'https://example.test/start', path: '/start', title: 'Observed starting title' },
-      { rawUrl: 'https://example.test/signup#step', url: 'https://example.test/signup', path: '/signup', title: null },
+      { rawUrl: 'https://example.test/start#original', url: 'https://example.test/start#original', path: '/start', title: 'Observed starting title' },
+      { rawUrl: 'https://example.test/signup#step', url: 'https://example.test/signup#step', path: '/signup', title: null },
     ])
     expect(source).toEqual(original)
   })
@@ -20,8 +20,8 @@ describe('Outcome discovery from recorded facts', () => {
     expect(discoverOutcomePages('https://example.test/', { pages: [], journeyReviews: [
       { journeyType: 'signup', startUrl: 'https://example.test/signup#first', steps: [{ url: 'https://example.test/signup#second' }] },
     ] })).toEqual([
-      { rawUrl: 'https://example.test/signup#first', url: 'https://example.test/signup', path: '/signup', title: null },
-      { rawUrl: 'https://example.test/signup#second', url: 'https://example.test/signup', path: '/signup', title: null },
+      { rawUrl: 'https://example.test/signup#first', url: 'https://example.test/signup#first', path: '/signup', title: null },
+      { rawUrl: 'https://example.test/signup#second', url: 'https://example.test/signup#second', path: '/signup', title: null },
     ])
   })
   it('does not invent a purchase or generic Outcome from a journey label', () => {

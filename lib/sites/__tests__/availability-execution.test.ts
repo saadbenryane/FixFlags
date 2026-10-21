@@ -81,7 +81,14 @@ describe('availability Outcome execution', () => {
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.flagCreate.mockResolvedValue({ id: 'flag-1' })
     mocks.auditFindUnique.mockResolvedValue({ htmlMetadata: { pageText: 'Unrelated old capture must never be read.' } })
-    mocks.createAuditPage.mockResolvedValue({ page: { evaluate: async () => 'Example page is ready.', url: () => 'https://example.net/', context: () => ({ close: async () => {} }) }, disposeNetwork: vi.fn() })
+    const frame = {}, page = { evaluate: async () => ({ text: 'Example page is ready.', html: '<main>Example page is ready.</main>', url: 'https://example.net/' }),
+      url: () => 'https://example.net/', context: () => ({ close: async () => {} }), mainFrame: () => frame, off: vi.fn(),
+      on: (_: string, listener: (response: unknown) => void) => listener({ status: () => 200, headers: () => ({}), url: () => 'https://example.net/',
+        frame: () => frame, request: () => ({ isNavigationRequest: () => true }) }) }
+    mocks.createAuditPage.mockImplementation(async (_browser, _url, options) => {
+      options.onNavigationStart(page, Date.now())
+      return { httpStatus: 200, responseHeaders: {}, page, disposeNetwork: vi.fn() }
+    })
   })
 
   it('records a successful public response and that is the only Clear', async () => {

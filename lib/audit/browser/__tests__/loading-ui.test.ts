@@ -7,7 +7,7 @@ beforeEach(() => {
   vi.stubGlobal('innerWidth', 390); vi.stubGlobal('innerHeight', 800)
   vi.stubGlobal('getComputedStyle', (element: HTMLElement) => ({ display: element.style.display || 'block',
     visibility: element.style.visibility || 'visible', opacity: element.style.opacity || '1' }))
-  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     const data = (this as HTMLElement).dataset
     const left = Number(data.left ?? 0), top = Number(data.top ?? 0), width = Number(data.width ?? 200), height = Number(data.height ?? 150)
     return { left, right: left + width, top, bottom: top + height, width, height } as DOMRect
@@ -17,6 +17,15 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe('shared blocking loading observation', () => {
+  it('uses the loader computed visibility instead of rejecting an overridden ancestor value', () => {
+    document.body.innerHTML = '<main style="visibility:hidden"><div class="spinner" style="visibility:visible"></div></main>'
+    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: true })
+    expect(loadingUiInDocument(true)).toBe(false)
+    document.querySelector<HTMLElement>('.spinner')!.style.visibility = 'hidden'
+    expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: false })
+    expect(loadingUiInDocument(true)).toBe(1000)
+  })
+
   it('uses the same viewport predicate for the snapshot and browser clearance timestamp', () => {
     document.body.innerHTML = '<main><div class="hero-skeleton" aria-label="Loading content"></div></main><footer><div class="spinner" data-width="12" data-height="12"></div></footer>'
     expect(loadingUiInDocument(false)).toMatchObject({ loadingVisible: true, loadingLabel: 'Loading content' })

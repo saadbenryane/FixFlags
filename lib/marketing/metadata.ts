@@ -3,7 +3,7 @@ import { BRAND, SITE_URL } from './copy/brand'
 import { SEO } from './copy/seo'
 
 const DEFAULT_OG_IMAGE = {
-  url: '/og.jpg',
+  url: '/og-v2.jpg',
   width: 1200,
   height: 630,
   alt: BRAND.tagline,

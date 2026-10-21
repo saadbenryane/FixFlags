@@ -54,6 +54,3 @@ export function configuredLimit(name: string, defaultValue: number, environment 
 }
 export const browserCapacity = new BoundedSemaphore(configuredLimit('AUDIT_BROWSER_CONTEXT_LIMIT', 2))
 export const publicHttpCapacity = new BoundedSemaphore(configuredLimit('AUDIT_HTTP_REQUEST_LIMIT', 4))
-// Graphs are durable orchestration, not physical resource slots. A bounded
-// window lets independent queues make progress while another resource waits.
-export const ACTIVE_GRAPH_LIMIT = configuredLimit('AUDIT_ACTIVE_GRAPH_LIMIT', 8)

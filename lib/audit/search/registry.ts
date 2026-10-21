@@ -1,14 +1,16 @@
 import { searchSectionBody, type SearchSection } from './rendered-snapshot'
-import * as cheerio from 'cheerio'
+import { createHash } from 'node:crypto'
 import robotsParser from 'robots-parser'
 import type { DeterministicFlag } from '../flag-types'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { parseSitemap } from './collect'
 import { SEARCH_DEFINITIONS, SEARCH_CHECK_REGISTRY } from './definitions'
 import { inspectStructuredData, inspectFeature, entityValues } from './structured-data'
-import { searchObservationSchema, type PublicDocument, type SearchPageEvidence, type SearchObservation, type SearchReceipt } from './contracts'
+import { searchObservationSchema, STRUCTURED_PROPERTY_LIMIT, type PublicDocument, type SearchPageEvidence, type SearchObservation, type SearchReceipt } from './contracts'
+import { boundSearchObservations } from './observation-bounds'
 import { pageScopedSearchAttention } from './attention-scope'
 import { canonicalDeclarations } from './canonical-declarations'
+import { parseActiveHtmlDocument } from '../html-document'
 
 type Rule = keyof typeof C.rules
 type EvaluatorInput = { evidence: SearchPageEvidence; previous?: SearchReceipt | null }
@@ -24,26 +26,34 @@ type ObservationInput = Omit<Partial<SearchObservation>, 'attention'> & {
   attention?: SearchObservation['attention']['kind']; document?: PublicDocument; locator?: string; excerpt?: string;
 }
 
+// Active-document corrections cannot certify recovery from an earlier detector.
+const activeDocumentChecks = new Set<string>(SEARCH_DEFINITIONS.filter(definition =>
+  ['presentation', 'indexing', 'canonical', 'structured-data'].includes(definition.evaluator))
+  .flatMap(definition => [...definition.checkIds]))
+activeDocumentChecks.add('search-discovery-links')
+
 function observation(evidence: SearchPageEvidence, input: ObservationInput): SearchObservation {
   const definition = C.rules[input.rule], document = input.document
+  const version = activeDocumentChecks.has(input.checkId) ? 3 : evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1)
   return searchObservationSchema.parse({
-    id: input.id ?? `${input.checkId}:${input.source}`, checkId: input.checkId, checkVersion: evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1),
+    id: input.id ?? `${input.checkId}:${input.source}`, checkId: input.checkId, checkVersion: version,
     responsibility: input.responsibility ?? 'presentation', name: input.name ?? definition.name,
     disposition: input.disposition, reason: input.reason, expected: input.expected ?? definition.expected,
     observed: input.observed, source: input.source, collectedAt: document?.collectedAt ?? evidence.collectedAt,
-    pageUrl: evidence.pageUrl, attention: { policy: 'search', version: evidence.collectorVersion ?? (evidence.rendered.searchSnapshot ? 2 : 1), kind: input.attention ?? 'observation', reason: input.reason },
+    pageUrl: evidence.pageUrl, attention: { policy: 'search', version, kind: input.attention ?? 'observation', reason: input.reason },
     evidence: input.evidence ?? [{ source: input.source, url: document?.finalUrl ?? evidence.pageUrl,
       locator: input.locator ?? input.checkId, excerpt: (input.excerpt ?? input.observed).slice(0, 2000),
       collectedAt: document?.collectedAt ?? evidence.collectedAt }],
     limitation: input.limitation ?? C.localLimit, guidance: input.guidance ?? definition.guidance,
     entityTypes: input.entityTypes,
     entityId: input.entityId, invalidProperties: input.invalidProperties,
+    ...(input.source === 'sitemap' && document ? { resourceKey: createHash('sha256').update(urlIdentity(document.url)).digest('hex') } : {}),
   })
 }
 
 function html(document: PublicDocument, section: SearchSection = 'metadata') {
   const body = searchSectionBody(document, section)
-  return body == null ? null : cheerio.load(body)
+  return body == null ? null : parseActiveHtmlDocument(body).document
 }
 function primary(evidence: SearchPageEvidence, section: SearchSection = 'metadata'): [PublicDocument, 'original-html' | 'rendered-dom'] {
   return html(evidence.rendered, section) ? [evidence.rendered, 'rendered-dom'] : [evidence.original, 'original-html']
@@ -142,6 +152,9 @@ function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
 
 function crawl({ evidence, previous }: EvaluatorInput): SearchObservation[] {
   const document = evidence.robots
+  if (new URL(document.url).origin !== new URL(evidence.pageUrl).origin)
+    return [observation(evidence, { checkId: 'search-crawl-access', responsibility: 'crawl', rule: 'robots', source: 'robots-txt', document,
+      disposition: 'unknown', reason: 'robots_authority_mismatch', observed: C.unknown })]
   if (!document.complete || document.status == null || document.status >= 500 || document.status === 429)
     return [unknown(evidence, 'search-crawl-access', 'crawl', 'robots', 'robots-txt')]
   if (document.status >= 400) return [
@@ -151,7 +164,8 @@ function crawl({ evidence, previous }: EvaluatorInput): SearchObservation[] {
       disposition: 'passed', reason: 'crawl_allowed', observed: 'The robots.txt response establishes no applicable crawl restriction under Google’s 4xx interpretation.' }),
   ]
   if (/<(?:!doctype|html)\b/i.test(document.body ?? '')) return [unknown(evidence, 'search-crawl-access', 'crawl', 'robots', 'robots-txt')]
-  const parser = robotsParser(document.finalUrl, document.body ?? '')
+  // Redirected rules govern the initial authority, not the resource's host.
+  const parser = robotsParser(document.url, document.body ?? '')
   const allowed = parser.isAllowed(evidence.pageUrl, 'Googlebot')
   const regression = previous?.pageUrl === evidence.pageUrl && previous.observations.some(item => item.checkId === 'search-crawl-access' &&
     (item.reason === 'crawl_allowed' || item.attention.kind === 'flag' && item.reason === 'crawl_policy_regressed'))
@@ -214,7 +228,7 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
     ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
       reason: 'canonical_optional_absent', observed: 'No canonical preference was recorded. This does not itself prevent indexing.' })
     : unknown(evidence, 'canonical-missing', 'canonical', 'canonical', 'http'))
-  return observations.map(item => ({ ...item, checkVersion: 3 as const, attention: { ...item.attention, version: 3 as const } }))
+  return observations
 }
 
 function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
@@ -222,10 +236,10 @@ function discovery({ evidence }: EvaluatorInput): SearchObservation[] {
   return evidence.sitemaps.flatMap((document, index) => {
     const parsed = parseSitemap(document), missing = document.status === 404 || document.status === 410
     const declared = evidence.declaredSitemaps.includes(document.url)
-    const invalid = document.complete && document.status === 200 && !parsed.valid && !['sitemap_url_limit'].includes(parsed.reason)
+    const invalid = document.complete && document.status === 200 && !parsed.valid && !['sitemap_url_limit', 'sitemap_parse_unavailable'].includes(parsed.reason)
     const base = { rule: 'sitemap' as const, responsibility: 'discovery' as const, source: 'sitemap' as const,
       document, locator: 'sitemap document', observed: parsed.valid ? `${parsed.urls.length} page URLs and ${parsed.children.length} child sitemaps recorded in this document.`
-        : missing ? `${document.url} returned HTTP ${document.status}.` : parsed.reason }
+        : missing ? `${document.url} returned HTTP ${document.status}.` : `${document.url}: ${parsed.reason}.` }
     return [
       ...(parsed.valid ? [observation(evidence, { ...base, checkId: 'search-sitemap-contents', id: `sitemap-contents:${index}`,
         disposition: 'observed', reason: 'sitemap_parsed' })] : []),
@@ -265,7 +279,7 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
   const $ = html(document, 'structured')
   const contextBody = document.searchSnapshot && ['metadata', 'text', 'links'].every(key => document.searchSnapshot!.sections[key as SearchSection].complete)
     ? `<html><head>${document.searchSnapshot.sections.metadata.html}</head><body>${document.searchSnapshot.sections.text.html}${document.searchSnapshot.sections.links.html}</body></html>` : null
-  const context = contextBody ? cheerio.load(contextBody) : document.searchSnapshot ? null : $
+  const context = contextBody ? parseActiveHtmlDocument(contextBody).document : document.searchSnapshot ? null : $
   if (!$) return [unknown(evidence, 'no-structured-data', 'structured-data', 'markup', source)]
   // Content matching enriches markup inspection. Missing or bounded page prose
   // cannot discard independently collected syntax and entity observations.
@@ -297,17 +311,24 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
       for (const type of entity.types) {
         const profile = type === 'BlogPosting' || type === 'NewsArticle' || type === 'TechArticle' ? 'Article' : type
         const feature = inspectFeature(entity, profile, inspection.entities)
-        const details = feature ? [...feature.invalid.map(key => `Invalid: ${key}`), ...feature.missing.map(key => `Missing feature requirement: ${key}`),
-          ...feature.recommended.map(key => `Recommended: ${key}`)] : ['Detected type is outside feature-specific validation.']
-        observations.push(observation(evidence, { id: `entity:${snapshotSource}:${entity.id}:${type}`,
-          checkId: 'search-structured-feature', rule: 'feature', name: `${entity.format} · ${type}`, responsibility: 'structured-data',
-          source: snapshotSource, document: snapshot, disposition: feature ? feature.invalid.length ? 'failed' : feature.missing.length || feature.recommended.length ? 'observed' : 'passed' : 'not_applicable',
-          reason: feature ? feature.invalid.length ? 'markup_property_invalid' : feature.missing.length ? 'feature_requirements_missing' : feature.recommended.length ? 'feature_recommended_properties' : 'supported_feature_rules_passed' : 'unsupported_feature_type',
-          observed: details.length ? details.join('; ') : 'The stated feature rules passed for this entity.',
-          attention: feature?.invalid.length ? 'flag' : feature && (feature.missing.length || feature.recommended.length) ? 'recommendation' : 'observation',
-          locator: entity.locator, entityTypes: [type], entityId: entity.id,
-          invalidProperties: feature?.invalid ?? [], limitation: C.structuredLimit,
-          guidance: feature ? `${C.rules.feature.guidance} Reference: ${feature.source}` : C.rules.feature.guidance }))
+        const invalid = feature?.invalid ?? []
+        // A long entity keeps all observed properties in ordinary bounded records.
+        // Recovery still compares the original entity, type, source and properties.
+        for (let offset = 0; offset < Math.max(1, invalid.length); offset += STRUCTURED_PROPERTY_LIMIT) {
+          const properties = invalid.slice(offset, offset + STRUCTURED_PROPERTY_LIMIT)
+          const details = feature ? [...properties.map(key => `Invalid: ${key}`),
+            ...(offset ? [] : feature.missing.map(key => `Missing feature requirement: ${key}`)),
+            ...(offset ? [] : feature.recommended.map(key => `Recommended: ${key}`))] : ['Detected type is outside feature-specific validation.']
+          observations.push(observation(evidence, { id: `entity:${snapshotSource}:${entity.id}:${type}` + (offset ? `:properties:${offset}` : ''),
+            checkId: 'search-structured-feature', rule: 'feature', name: `${entity.format} · ${type}`, responsibility: 'structured-data',
+            source: snapshotSource, document: snapshot, disposition: feature ? feature.invalid.length ? 'failed' : feature.missing.length || feature.recommended.length ? 'observed' : 'passed' : 'not_applicable',
+            reason: feature ? feature.invalid.length ? 'markup_property_invalid' : feature.missing.length ? 'feature_requirements_missing' : feature.recommended.length ? 'feature_recommended_properties' : 'supported_feature_rules_passed' : 'unsupported_feature_type',
+            observed: details.length ? details.join('; ') : 'The stated feature rules passed for this entity.',
+            attention: feature?.invalid.length ? 'flag' : feature && (feature.missing.length || feature.recommended.length) ? 'recommendation' : 'observation',
+            locator: entity.locator, entityTypes: [type], entityId: entity.id,
+            invalidProperties: properties, limitation: C.structuredLimit,
+            guidance: feature ? `${C.rules.feature.guidance} Reference: ${feature.source}` : C.rules.feature.guidance }))
+        }
         const name = entityValues(entity, profile === 'Article' ? 'headline' : 'name', inspection.entities)[0]
         if (visibleText !== undefined && snapshotSource === source && typeof name === 'string' && name.length > 3 && !visibleText.includes(name)) {
           observations.push(observation(evidence, { id: `content:${entity.id}:${type}`, checkId: 'search-structured-content', rule: 'feature', responsibility: 'structured-data',
@@ -380,7 +401,7 @@ export async function evaluateSearch(evidence: SearchPageEvidence, previous?: Se
       observations.push(...results.map(item => searchObservationSchema.parse(item)))
     } catch { observations.push(unknown(evidence, definition.checkIds[0], definition.responsibility, definition.guidance, 'http')) }
   }
-  return observations
+  return boundSearchObservations(observations, evaluators?.join(',') ?? 'http')
 }
 
 export function evaluateCheckedPageTitles(receipts: SearchReceipt[]): Map<string, SearchObservation[]> {
@@ -417,21 +438,31 @@ export function searchFindings(observations: SearchObservation[]): Deterministic
     if (item.attention.kind === 'observation') continue
     const prior = findings.get(item.checkId)
     if (prior && (prior.attentionPolicy?.kind === 'flag' || item.attention.kind !== 'flag')) continue
+    const related = observations.filter(other => other.checkId === item.checkId && other.attention.kind === item.attention.kind)
+    const resources = related.filter(other => other.resourceKey)
+    const markup = related.filter(other => other.attention.kind === 'flag' && other.entityId && other.invalidProperties?.length)
+    // Handoffs receive the recorded failures they must repair. Comparison policy
+    // remains private, and bounded receipt membership bounds this evidence too.
+    const evidence = related.map(other => [other.entityId
+        ? `${other.source} · ${(other.entityTypes ?? []).join(', ')} · ${other.entityId}: ${other.observed}`
+        : related.length > 1 ? `${other.source}: ${other.observed}` : other.observed,
+      ...other.evidence.filter(reference => reference.excerpt && !other.observed.includes(reference.excerpt))
+        .map(reference => `${reference.locator}: ${reference.excerpt}`),
+    ].join('\n')).join('\n')
     findings.set(item.checkId, { checkId: item.checkId, rubric: 'REACH', source: 'DETERMINISTIC', impactTag: 'SEO',
       severity: item.attention.kind === 'flag' ? item.checkId === 'title-missing' ? 'CRITICAL' : 'IMPORTANT' : 'POLISH',
       confidence: item.attention.kind === 'flag' ? 1 : 0.8,
-      problem: C.problems[item.reason as keyof typeof C.problems] ?? item.name, evidence: item.observed,
+      problem: C.problems[item.reason as keyof typeof C.problems] ?? item.name,
+      evidence,
       fix: item.guidance, pageUrl: item.pageUrl,
       verificationRule: `A fresh independent public execution establishes: ${item.expected} Scope: ${item.pageUrl}. Missing or unsupported evidence cannot establish recovery.`,
       attentionPolicy: { ...item.attention, google: item.google,
-        sources: [...new Set(observations.filter(other => other.checkId === item.checkId &&
-          other.attention.kind === item.attention.kind).map(other => other.source))],
-        markupTargets: observations.filter(other => other.checkId === item.checkId && other.attention.kind === 'flag' &&
-          other.entityId && other.invalidProperties?.length).flatMap(other => (other.entityTypes ?? []).map(entityType => ({
+        ...(resources.length ? { resourceKeys: [...new Set(resources.map(resource => resource.resourceKey!))] } : {}),
+        sources: [...new Set(related.map(other => other.source))],
+        markupTargets: markup.flatMap(other => (other.entityTypes ?? []).map(entityType => ({
             entityId: other.entityId!, entityType, source: other.source, properties: other.invalidProperties!,
           }))),
-        entityTypes: [...new Set(observations.filter(other =>
-        other.checkId === item.checkId && other.attention.kind === 'flag').flatMap(other => other.entityTypes ?? []))] } })
+        entityTypes: [...new Set(related.filter(other => other.attention.kind === 'flag').flatMap(other => other.entityTypes ?? []))] } })
   }
   return [...findings.values()].map(flag => ({ ...flag, attentionPolicy: pageScopedSearchAttention(flag.attentionPolicy!, flag.pageUrl!) }))
 }

@@ -9,7 +9,7 @@ export function safeContext(
     Object.entries(value)
       .filter(
         ([key, item]) =>
-          !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
+          key !== 'scheduled' && !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
           item !== undefined,
       )
       .map(([key, item]) => {
@@ -43,6 +43,7 @@ export type RunInput = {
   source: RunRequestSource
   operator?: import('@/lib/admin/domain-actor').AdminDomainActor
   expectedResponsibilityHash?: string
+  scheduledClaim?: import('./scheduled-admission').ScheduledRunClaim
   /** Broad Site care derives enabled bindings; callers do not select them. */
   scope?: 'OUTCOMES' | 'SITE' | 'CATEGORY' | 'FIXTURE_SETUP' | 'ACCOUNT_CHECKS'
   categoryArea?: CategoryArea

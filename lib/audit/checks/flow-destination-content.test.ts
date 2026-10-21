@@ -14,9 +14,7 @@ function ux(overrides: Partial<DestinationUXQuality> = {}): DestinationUXQuality
   return {
     contentComplete: true, controlsComplete: true, hasClearHeadline: true, hasPrimaryCTA: true, ctaText: 'Continue', ctaPromisesMatch: true,
     headline: 'Start the useful service', pageType: null, visibleCtaCount: 1, actionableCtaCount: 1, primaryCtaHref: '/next',
-    trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
     mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
-    frictionSignals: { ctaCount: 1, distinctCtaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
     loadQuality: { hadStuckLoading: false, timeToContentMs: 100, layoutShift: false }, ...overrides,
     trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true, ...overrides.trustSignals },
     frictionSignals: { ctaCount: 1, distinctCtaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false, ...overrides.frictionSignals },
@@ -32,6 +30,25 @@ function receipt(destination: DestinationUXQuality, evidence = action, finalUrl 
 }
 
 describe('destination content recovery', () => {
+  it('does not use resolved fragment control discovery to certify an earlier detector repair', () => {
+    const missing = ux({ controlsVersion: 2, hasPrimaryCTA: false, primaryCtaHref: null, ctaText: null,
+      frictionSignals: { ctaCount: 0, distinctCtaCount: 0, tooManyCTAs: false, hasDeadEnd: true, formRequiredForValue: false } })
+    const old = runFlowChecks(scan(missing)).find(flag => flag.checkId === 'flow-destination-no-cta')!
+    const current = receipt(ux({ controlsVersion: 3 }))
+    expect(scopedAssertionForTarget({ receipt: current, flag: old, checkId: old.checkId })).toBeUndefined()
+    const fresh = runFlowChecks(scan({ ...missing, controlsVersion: 3 })).find(flag => flag.checkId === old.checkId)!
+    expect(scopedAssertionForTarget({ receipt: current, flag: fresh, checkId: fresh.checkId })?.assertion.passed).toBe(true)
+  })
+  it('qualifies corrected destination control discovery without changing headline comparisons', () => {
+    const missing = ux({ hasPrimaryCTA: false, primaryCtaHref: null, ctaText: null, frictionSignals: { ctaCount: 0, distinctCtaCount: 0, tooManyCTAs: false, hasDeadEnd: true, formRequiredForValue: false } })
+    const old = runFlowChecks(scan(missing)).find(flag => flag.checkId === 'flow-destination-no-cta')!
+    const current = receipt(ux({ controlsVersion: 2 }))
+    expect(scopedAssertionForTarget({ receipt: current, flag: old, checkId: old.checkId })).toBeUndefined()
+    const fresh = runFlowChecks(scan({ ...missing, controlsVersion: 2 })).find(flag => flag.checkId === old.checkId)!
+    expect(scopedAssertionForTarget({ receipt: current, flag: fresh, checkId: fresh.checkId })?.assertion.passed).toBe(true)
+    const headline = runFlowChecks(scan(ux({ hasClearHeadline: false, headline: null }))).find(flag => flag.checkId === 'flow-destination-no-headline')!
+    expect(scopedAssertionForTarget({ receipt: current, flag: headline, checkId: headline.checkId })?.assertion.passed).toBe(true)
+  })
   it('certifies a restored headline only for the original control and reached URL', () => {
     const flags = runFlowChecks(scan(ux({ hasClearHeadline: false, headline: null })))
     const flag = flags.find(item => item.checkId === 'flow-destination-no-headline')!

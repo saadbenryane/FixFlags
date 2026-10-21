@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Prisma } from '@prisma/client'
 const transaction = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/audit/execution-ownership', () => ({ executionTransaction: transaction }))
+vi.mock('@/lib/audit/execution-ownership', async () => ({
+  ...await vi.importActual('@/lib/audit/execution-ownership'), executionTransaction: transaction,
+}))
 import { productTransaction } from '@/lib/billing/product-transaction'
 
 const conflict = () => new Prisma.PrismaClientKnownRequestError('Concurrent admission', { code: 'P2034', clientVersion: 'test' })
@@ -24,6 +26,12 @@ describe('concurrent Site admission', () => {
   it('reports admission busy when the shared transaction retry is exhausted', async () => {
     transaction.mockRejectedValue(conflict())
     await expect(productTransaction(vi.fn())).rejects.toMatchObject({ name: 'ProductAdmissionBusy', code: 'ADMISSION_BUSY', cause: { code: 'P2034' } })
+    expect(transaction).toHaveBeenCalledTimes(1)
+  })
+  it.each(['40001', '40P01'])('reports admission busy after exhausted raw PostgreSQL conflict %s', async code => {
+    const error = new Prisma.PrismaClientKnownRequestError('Raw query failed', { code: 'P2010', clientVersion: 'test', meta: { code } })
+    transaction.mockRejectedValue(error)
+    await expect(productTransaction(vi.fn())).rejects.toMatchObject({ name: 'ProductAdmissionBusy', code: 'ADMISSION_BUSY', cause: error })
     expect(transaction).toHaveBeenCalledTimes(1)
   })
   it.each(['P2002', 'P2028'])('never treats an unrelated database error as admission contention: %s', async code => {

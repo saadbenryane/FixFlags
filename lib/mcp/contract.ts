@@ -11,7 +11,8 @@ import {
 } from '@/lib/mcp/tool-manifest'
 
 export const MCP_WORKFLOW = [
-  'Use fixflags.list_sites and fixflags.list_outcomes to select owned Outcomes.',
+  'Use fixflags.list_sites and fixflags.list_outcomes to inspect owned Sites, automatic uptime and watched Outcomes. Set uptimeWindow on list_outcomes for recorded probe and incident history.',
+  'Uptime probes continue automatically. Read their nextCheckAt and fresh evidence to observe HTTP recovery; reachability cannot verify a browser Flag repair.',
   'Call fixflags.run and poll fixflags.get_run until independent execution finishes.',
   'If FixFlags returns a Flag, inspect it with fixflags.get_flag and change the software outside FixFlags.',
   'Call fixflags.record_fix with the change context, then fixflags.verify_flag with the returned attemptId.',

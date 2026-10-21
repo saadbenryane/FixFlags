@@ -2,6 +2,8 @@ import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { scheduleFromWatch, scheduleLabel } from './monitoring-schedule'
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
+import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
+import type { uptimeAssessment } from '@/lib/uptime/status'
 import type { WatchBoardState } from '@/lib/sites/watch-state'
 
 export type SiteResultState =
@@ -167,7 +169,10 @@ export function resultPresentation(input: {
   stale: boolean
   hasCurrentEvidence: boolean
   assessmentResult?: import('./assessment').SiteAssessment['result']
+  uptime?: ReturnType<typeof uptimeAssessment>
 }): SitePresentation['result'] {
+  if (input.uptime?.state === 'FLAG') return { state: 'flags', label:
+    input.uptime.observedState === 'offline' ? UPTIME_COPY.states.offline : SITE_BOARD_COPY.needsAttention }
   const inFlight = Boolean(input.auditStatus && !['COMPLETED', 'FAILED'].includes(input.auditStatus))
   let state: SiteResultState
   if (inFlight) state = 'checking'
@@ -207,7 +212,7 @@ export function compareFlagPriority(
 
 export function siteSortRank(site: SitePresentation): number {
   if (site.result.state === 'failed' || site.run.state === 'failed' || site.run.state === 'interrupted' || site.result.state === 'checking') return 0
-  if (site.flags.fixFirstCount > 0) return 1
+  if (site.flags.fixFirstCount > 0 || site.result.state === 'flags' && site.flags.count === 0) return 1
   if (site.result.state === 'stale' || site.result.state === 'could_not_verify' ||
       site.monitoring.state === 'delayed' || site.monitoring.state === 'quota_blocked') return 2
   if (site.flags.count > 0) return 3
@@ -248,6 +253,7 @@ export function runPresentation(input: {
  */
 export function customerAttention(site: Pick<SitePresentation, 'result' | 'flags'>): CustomerAttention {
   if (site.flags.count > 0) return { text: site.flags.label, tone: 'attention' }
+  if (site.result.state === 'flags') return { text: site.result.label, tone: 'attention' }
   if (site.result.state === 'clear') return { text: site.flags.label, tone: 'clear' }
   return { text: site.result.label, tone: 'pending' }
 }
@@ -370,13 +376,17 @@ export function categoryPresentation(input: {
   }
 }
 
-/** Pages is a coverage summary, not a duplicate of the Site-wide Flag inbox. */
-export function pagesCardPresentation(site: SitePresentation): {
+/** Pages combines its recorded coverage with its own unresolved findings. */
+export function pagesCardPresentation(site: SitePresentation, pageFlags: readonly { severity: string }[]): {
   state: CardHealthState
   status: string
 } {
-  if (site.result.state === 'checking') return { state: 'checking', status: site.result.label }
-  if (site.result.state === 'failed') return { state: 'unknown', status: site.result.label }
+  if (pageFlags.length > 0) return {
+    state: pageFlags.some(flag => ['CRITICAL', 'IMPORTANT'].includes(flag.severity)) ? 'problem' : 'attention',
+    status: SITE_BOARD_COPY.flagStatus,
+  }
+  if (site.run.state === 'queued' || site.run.state === 'running') return { state: 'checking', status: SITE_PRESENTATION_COPY.result.checking }
+  if (site.run.state === 'failed' || site.run.state === 'interrupted') return { state: 'unknown', status: SITE_PRESENTATION_COPY.result.failed }
   if (site.freshness.stale) return { state: 'unknown', status: SITE_PRESENTATION_COPY.result.stale }
   if (!site.coverage.complete) return { state: 'unknown', status: SITE_PRESENTATION_COPY.coverageIncomplete }
   return { state: 'healthy', status: SITE_PRESENTATION_COPY.flags(0) }

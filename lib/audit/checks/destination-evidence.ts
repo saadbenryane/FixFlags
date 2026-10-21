@@ -12,15 +12,15 @@ export type DestinationCheckOptions = {
   openDestination?: (...args: Parameters<typeof openCheckDestination>) => Promise<OpenCheckObservation>
   observeImage?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<PreviewImageResponse>
   /** Tests supply a collected document. Production uses the public fetcher. */
-  fetchDocument?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<{ statusCode: number; headers: Record<string, string>; body: string; complete: boolean }>
+  fetchDocument?: (url: string, init: { timeoutMs: number; deadline?: number; maxBytes: number; accept: string }) => Promise<{ statusCode: number; headers: Record<string, string>; body: string | Buffer; complete: boolean }>
 }
 
 /** Retain query-dependent destination identity without persisting signed values. */
-export function destinationContext(pageUrl: string, destination: string): string {
+export function destinationContext(pageUrl: string, destination: string, criterion?: string): string {
   const identity = (value: string) => {
     try { const url = new URL(value); url.hash = ''; return url.toString() } catch { return value }
   }
-  return 'destination:' + createHash('sha256').update(JSON.stringify([identity(pageUrl), identity(destination)])).digest('hex')
+  return 'destination:' + createHash('sha256').update(JSON.stringify([identity(pageUrl), identity(destination), ...(criterion ? [criterion] : [])])).digest('hex')
 }
 
 export function displayDestination(value: string): string {

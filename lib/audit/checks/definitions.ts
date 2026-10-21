@@ -15,8 +15,9 @@ function define(evaluator: string, area: SiteCardArea, name: string, input: Page
   assertions: Record<string, AssertionDefinition> = {}): PageCheckDefinition {
   return { version: 1, area, name, input, evaluator, source: 'DETERMINISTIC', assertions,
     resultSchema: 'site-module-check-v1', timeoutMs: 12_000, replaySafety: 'read_only',
-    requiredEvidence: evaluator === 'metadata' ? ['rendered-head'] : evaluator === 'measurement' ? ['rendered-html', 'browser-network'] : input === 'headers' || input === 'http' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
-      : input === 'mobile' ? ['pagespeed-mobile'] : evaluator === 'security' ? ['original-html']
+    requiredEvidence: evaluator === 'metadata' ? ['rendered-head'] : evaluator === 'measurement' ? ['rendered-html', 'browser-network']
+      : evaluator === 'security' ? ['public-transport', 'resource-declarations-when-html'] : input === 'headers' || input === 'http' ? ['public-response'] : input === 'performance' ? ['pagespeed-desktop']
+      : input === 'mobile' ? ['pagespeed-mobile']
       : input === 'console' ? ['desktop-console', 'mobile-console'] : input === 'keyboard' ? ['keyboard-navigation'] : input === 'browser' ? ['rendered-metrics'] : input === 'accessibility' ? ['rendered-html', 'axe']
         : evaluator === 'og-image' ? ['rendered-head', 'public-destination-response']
           : evaluator === 'auth-checkout' ? ['rendered-html', 'public-destination-response'] : ['rendered-html'] }
@@ -25,7 +26,7 @@ function define(evaluator: string, area: SiteCardArea, name: string, input: Page
 /** Portable contracts. Server registration supplies the declared evaluator. */
 export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
   'page-response': define('page-response', 'site', 'Public page response', 'http', {
-    'page-response': assertion('site', ['page-http-error']),
+    'page-response': assertion('site', ['page-http-error', 'page-redirect-loop']),
   }),
   metadata: define('metadata', 'search', 'Page metadata', 'metadata', {
     'title-presence': assertion('search'), 'description-presence': assertion('search'),
@@ -37,6 +38,7 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   }),
   'og-image': define('og-image', 'search', 'Link preview image', 'metadata', {
     'preview-image-response': assertion('search', ['og-image-broken']),
+    'preview-image-decoding': assertion('search', ['og-image-broken']),
   }),
   seo: define('seo', 'search', 'Search access', 'metadata', {
     'public-destination': assertion('search', ['broken-internal-links']),
@@ -66,8 +68,9 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
   console: define('console', 'uptime', 'Browser console', 'console', {
     'console-errors': assertion('uptime', ['console-errors-critical', 'console-errors-some']),
   }),
-  security: define('security', 'security', 'Public security configuration', 'metadata', {
+  security: define('security', 'security', 'Public security configuration', 'http', {
     https: assertion('security', ['no-https']), 'image-transport': assertion('security'),
+    'tls-certificate': assertion('security', ['security-certificate-invalid']),
     'resource-transport': assertion('security', ['security-mixed-content']),
   }),
   'security-headers': define('security-headers', 'security', 'Response headers', 'headers', {

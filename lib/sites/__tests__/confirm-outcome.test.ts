@@ -25,7 +25,8 @@ vi.mock('@/lib/products/application/commands', () => ({ executeProductCommand: m
 vi.mock('@/lib/sites/application/run-requests', () => ({
   requestOutcomeRun: vi.fn(),
   requestSiteRun: vi.fn(),
-  findReusableRun: vi.fn(),
+  findReusableVerificationRun: vi.fn(),
+  loadRunSourceEnvironment: vi.fn(),
 }))
 vi.mock('@/lib/sites/application/flag-verification', () => ({
   recordSiteFlagFix: vi.fn(),

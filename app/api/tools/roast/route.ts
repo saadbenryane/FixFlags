@@ -6,7 +6,7 @@ import {
   AuditLimitError,
   createAndEnqueueAudit,
 } from '@/lib/audit/create-audit'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       return apiError('URL is required', 400)
     }
 
-    const urlResult = normalizeAuditUrl(rawUrl)
+    const urlResult = normalizeAuditNavigationUrl(rawUrl)
     if (!urlResult.ok) {
       return apiError(urlResult.error, 400)
     }

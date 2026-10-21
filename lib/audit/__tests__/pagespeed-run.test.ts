@@ -2,6 +2,10 @@ import assert from 'node:assert/strict'
 import { describe, it, beforeEach, vi, afterEach, expect } from 'vitest'
 import { auditCache } from '../cache'
 import { fetchPageSpeedData, toStoredPageSpeedResult, PAGESPEED_REQUEST_TIMEOUT_MS } from '../pagespeed'
+import { runInpChecks, runPerformanceChecks } from '../checks/performance'
+import { recordInpObservation } from '../checks/observations'
+import { pageSpeedSchema } from '../progressive/snapshots'
+import { readCruxMetric } from '../crux'
 
 const fetchMock = vi.fn()
 
@@ -131,12 +135,13 @@ describe('fetchPageSpeedData', () => {
     assert.equal(result.desktop?.failedAccessibilityAudits.length, 1)
     assert.equal(result.desktop?.failedAccessibilityAudits[0].id, 'color-contrast')
 
-    assert.equal(result.desktop?.crux?.lcp, 2400)
-    assert.equal(result.desktop?.crux?.cls, 0.12)
-    assert.equal(result.desktop?.crux?.scope, 'page')
-    assert.equal(result.desktop?.crux?.reportingWindowDays, 28)
-    assert.equal(result.desktop?.crux?.formFactor, null)
-    assert.equal(result.desktop?.crux?.effectiveConnectionType, null)
+    const field = readCruxMetric(result.desktop!.crux, 'lcp')!
+    assert.equal(field.value, 2400)
+    assert.equal(readCruxMetric(result.desktop!.crux, 'cls')!.value, 0.12)
+    assert.equal(field.cohort.scope, 'page')
+    assert.equal(field.cohort.reportingWindowDays, 28)
+    assert.equal(field.cohort.formFactor, null)
+    assert.equal(field.cohort.effectiveConnectionType, null)
 
     assert.equal(result.mobile?.strategy, 'mobile')
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -171,7 +176,8 @@ describe('fetchPageSpeedData', () => {
       } } })))
       const result = await fetchPageSpeedData('https://unavailable-metrics.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
       expect(result.desktop).toMatchObject({ score: 95, lcp: null, cls: null, fcp: null, tbt: null })
-      expect(result.desktop?.crux).toMatchObject({ lcp: 2400, cls: 0.12 })
+      expect(readCruxMetric(result.desktop!.crux, 'lcp')?.value).toBe(2400)
+      expect(readCruxMetric(result.desktop!.crux, 'cls')?.value).toBe(0.12)
     })
 
   it('normalizes current Lighthouse insights and feeds actual byte savings into findings', async () => {
@@ -361,10 +367,73 @@ describe('fetchPageSpeedData', () => {
     expect(result.desktopError).toBeUndefined()
   })
 
+  it('retains origin INP alongside independent page metrics through stored evidence and evaluation', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({
+      lighthouseResult: { categories: { performance: { score: 0.9 } }, audits: { 'largest-contentful-paint': { numericValue: 5000 } } },
+      loadingExperience: { id: 'https://example.com/page', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 } } },
+      originLoadingExperience: { id: 'https://example.com/', metrics: {
+        INTERACTION_TO_NEXT_PAINT: { percentile: 800 }, LARGEST_CONTENTFUL_PAINT_MS: { percentile: 2800 },
+      } },
+    })))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile?.inp).toBe(800)
+    const stored = pageSpeedSchema.parse({ ...toStoredPageSpeedResult(result.mobile!), raw: {} })
+    expect(runInpChecks(stored)[0]).toMatchObject({ checkId: 'inp-critical', problem: expect.stringContaining('Origin-level') })
+    expect(runInpChecks(stored)[0].evidence).toContain('origin scope (https://example.com/)')
+    expect(recordInpObservation(stored)).toMatchObject({ complete: true, passed: false, disposition: 'observed',
+      observed: expect.stringContaining('origin scope') })
+    expect(runPerformanceChecks(stored, null)[0].evidence).toContain('CrUX page (p75, 28 days): 1.4s')
+  })
+
+  it('honors an explicit origin fallback inside the page experience record', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: {
+      id: 'https://example.com/', origin_fallback: true, metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 800 } },
+    } })))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(runInpChecks(result.mobile!)[0].evidence).toContain('origin scope')
+    expect(recordInpObservation(result.mobile!).observed).toContain('origin scope')
+  })
+
+  it('retains independent valid metrics when a sibling is malformed and ignores unknown metric names', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: {
+      id: 'https://example.com/page', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 },
+        INTERACTION_TO_NEXT_PAINT: { percentile: 'not measured' }, FUTURE_METRIC: { percentile: 10 } },
+    }, originLoadingExperience: { id: 'https://example.com/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 800 } } } })))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(readCruxMetric(result.mobile!.crux, 'lcp')).toMatchObject({ value: 1400, cohort: { scope: 'page' } })
+    expect(readCruxMetric(result.mobile!.crux, 'inp')).toMatchObject({ value: 800, cohort: { scope: 'origin' } })
+  })
+
+  it('prefers a measured page value of zero over an origin failure without merging their scope', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: {
+      id: 'https://example.com/page', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 0 } },
+    }, originLoadingExperience: { id: 'https://example.com/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 800 } } } })))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile!.inp).toBe(0)
+    expect(runInpChecks(result.mobile!)).toEqual([])
+    expect(recordInpObservation(result.mobile!)).toMatchObject({ passed: true, complete: true, disposition: 'observed',
+      observed: expect.stringContaining('0ms, page scope') })
+  })
+
+  it('reads historical single-cohort evidence without inventing its missing source scope', () => {
+    const stored = pageSpeedSchema.parse({ strategy: 'mobile', score: 90, lcp: 1400, cls: 0.02, fcp: 800, tbt: 0, inp: 800,
+      opportunities: [], failedAccessibilityAudits: [], diagnostics: {}, raw: {}, crux: {
+        lcp: 1400, cls: 0.02, fcp: 800, inp: 800, ttfb: 100, formFactor: 'PHONE', effectiveConnectionType: '4G',
+      } })
+    const field = readCruxMetric(stored.crux, 'inp')!
+    expect(field.value).toBe(800)
+    expect(field.cohort.scope).toBeUndefined()
+    expect(field.cohort.url).toBeUndefined()
+    expect(recordInpObservation(stored)).toMatchObject({ complete: true, passed: false, disposition: 'observed',
+      observed: expect.stringContaining('unknown scope') })
+    expect(runInpChecks(stored)[0].evidence).toContain('unknown scope')
+  })
+
   it('labels origin-only field data rather than attributing it to the requested page', async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(lighthouseBody({ loadingExperience: { id: 'https://example.com/page', metrics: {} },
       originLoadingExperience: { id: 'https://example.com/', metrics: { CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 0 } } } })), { status: 200 }))
     const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
-    expect(result.desktop?.crux).toMatchObject({ cls: 0, scope: 'origin', url: 'https://example.com/', reportingWindowDays: 28 })
+    expect(readCruxMetric(result.desktop!.crux, 'cls')).toMatchObject({ value: 0,
+      cohort: { scope: 'origin', url: 'https://example.com/', reportingWindowDays: 28 } })
   })
 })

@@ -8,7 +8,7 @@ import type { SiteOutcomeView } from '@/lib/sites/presentation/outcome-view'
 import type { SiteOutcomeDetailView } from '@/lib/sites/presentation/outcome-detail-view'
 import { expectationForKind, nameForConfirmedOutcomeKind, type ConfirmableOutcomeKind } from '@/lib/sites/outcome-kinds'
 import { bindingForConfirmedKind } from './outcome-bindings'
-import { toOutcomeView, loadSiteOutcomeDetail } from './outcome-queries'
+import { toOutcomeView, loadSiteOutcomeDetail, outcomePageProjection, outcomeRunRequestSelect } from './outcome-queries'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 import { fenceOutcomeBindingTasks, lockOutcomeAuthority } from './outcome-authorization'
 
@@ -177,10 +177,10 @@ export async function confirmSiteOutcome(input: {
     return tx.siteOutcome.findUniqueOrThrow({
       where: { id: outcome.id },
       include: {
-        pages: true,
+        pages: outcomePageProjection,
         bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
         assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
-        runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
+        runSelections: { select: { runRequest: { select: outcomeRunRequestSelect } }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
       },
     })
   })
@@ -197,7 +197,6 @@ export async function createSiteOutcome(input: {
   if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password || target.origin !== new URL(input.site.url).origin) {
     throw new SiteRunRefusal('Choose a page on this website’s exact origin.', 400)
   }
-  target.hash = ''
   if (input.kind === 'SIGNUP') {
     const fixture = await prisma.outcomeFixture.findFirst({
       where: { id: input.fixtureId ?? '', projectId: input.site.projectId, enabled: true, authorizedAt: { not: null } },
@@ -250,10 +249,10 @@ export async function renameSiteOutcome(input: {
     where: { id: outcome.id },
     data: { name: input.name.trim(), inferenceSource: 'user' },
     include: {
-      pages: true,
+      pages: outcomePageProjection,
       bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true, config: true } },
       assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1 },
-      runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
+      runSelections: { select: { runRequest: { select: outcomeRunRequestSelect } }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
   }))
   return toOutcomeView(updated)

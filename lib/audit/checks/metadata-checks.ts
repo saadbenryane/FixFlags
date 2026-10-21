@@ -1,8 +1,8 @@
 import type { RuntimeHeadMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { safeFetchDocument } from '../url'
-import { previewImageResponse } from './preview-image-response'
+import { safeFetchResource } from '../url'
+import { previewImageResponse, PREVIEW_IMAGE_MAX_BYTES, type PreviewImageResponse } from './preview-image-response'
 import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
@@ -219,7 +219,7 @@ export async function runOgImageUrlCheck(
   meta: { ogImage?: string | null; linkBaseUrl?: string },
   options: DestinationCheckOptions = {},
 ): Promise<DeterministicFlag[]> {
-  const limitation = 'A bounded public GET sample establishes response status and declared image content type. Full image decoding, rendered previews and platform caches were not evaluated.'
+  const limitation = 'A bounded public GET observes response facts and first-frame PNG, JPEG, WebP or GIF decoding within 5MB, 16 million pixels and the execution budget. Unsupported formats and incomplete decoding remain unknown. Sharing-platform rendering, later animation frames and caches were not evaluated.'
   if (meta.ogImage === undefined) {
     options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
       expected: 'The declared image destination returns a successful GET response with image content type and content',
@@ -232,33 +232,47 @@ export async function runOgImageUrlCheck(
   let invalid = false
   try { imageUrl = new URL(meta.ogImage, meta.linkBaseUrl ?? pageUrl).toString() }
   catch { imageUrl = meta.ogImage; invalid = true }
-  let complete = invalid, passed = false, broken = invalid
+  let complete = invalid, responseComplete = invalid, passed = false, broken = invalid, imageEligible = false
+  let decoding: PreviewImageResponse['decoding']
   let observed = 'The declared image URL could not be resolved.'
   if (!invalid) {
     try {
-      const init = { timeoutMs: 5000, deadline: options.deadline, maxBytes: 64_000, accept: 'image/*' }
+      const init = { timeoutMs: 5000, deadline: options.deadline, maxBytes: PREVIEW_IMAGE_MAX_BYTES, accept: 'image/*' }
       const response = options.observeImage ? await options.observeImage(imageUrl, init)
-        : previewImageResponse(await (options.fetchDocument ?? safeFetchDocument)(imageUrl, init))
+        : await previewImageResponse(await (options.fetchDocument ?? safeFetchResource)(imageUrl, init), options.deadline)
       const status = response.statusCode, contentType = response.contentType, restricted = response.restriction !== null
-      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
+      imageEligible = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
+      decoding = response.decoding
+      passed = imageEligible && decoding?.state !== 'invalid'
       broken = !restricted && (status >= 400 || status >= 200 && status < 300 &&
-        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && !response.hasContent))
-      complete = passed || broken
+        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && !response.hasContent)) || imageEligible && decoding?.state === 'invalid'
+      responseComplete = passed || broken
+      complete = responseComplete && (!imageEligible || decoding?.state === 'decoded' || decoding?.state === 'invalid')
       observed = `GET HTTP ${status}${contentType ? `, ${contentType.slice(0, 120)}` : ', no content type'}. ${restricted ? 'Access to the normal image response was not established. ' : ''}${limitation}`
     } catch { observed = 'No public image response was obtained. Network errors and scanner refusals remain unknown.' }
   }
   const context = destinationContext(pageUrl, imageUrl)
   options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
-    expected: 'The declared image destination returns a successful GET response with image content type and content',
-    observed, passed, complete, context })
+    expected: 'The declared image destination returns a successful GET response with image content type, content and no observed decoding failure',
+    observed, passed, complete: responseComplete, context })
+  const decodingContext = destinationContext(pageUrl, imageUrl, 'preview-image-decoding-v1')
+  const decodingObserved = decoding?.state === 'decoded'
+    ? `The ${decoding.format} first frame decoded from the collected bytes (${decoding.width} × ${decoding.height}).`
+    : decoding?.state === 'invalid' ? `The collected ${decoding.format} bytes could not be decoded.`
+      : `Image decoding remains unknown (${decoding?.reason ?? 'byte_evidence_unavailable'}).`
+  if (imageEligible) options.record?.({ key: 'preview-image-decoding', name: 'Link preview image decoding',
+    expected: 'The original image destination supplies decodable pixels under the recorded raster policy',
+    observed: decodingObserved, passed: decoding?.state === 'decoded',
+    complete: decoding?.state === 'decoded' || decoding?.state === 'invalid', context: decodingContext })
   destinationScope(options, complete, limitation)
   if (!broken) return []
+  const decodingFailed = imageEligible && decoding?.state === 'invalid'
   return [{
     checkId: 'og-image-broken', rubric: 'REACH', impactTag: 'SHARING', severity: 'IMPORTANT',
-    problem: invalid ? 'og:image URL is invalid' : 'og:image URL does not load',
-    evidence: `${displayDestination(imageUrl)}: ${observed}`,
+    problem: invalid ? 'og:image URL is invalid' : decodingFailed ? 'Link preview image data could not be decoded' : 'og:image URL does not load',
+    evidence: `${displayDestination(imageUrl)}: ${decodingFailed ? decodingObserved + ' ' : ''}${observed}`,
     fix: '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
     confidence: 1.0, source: 'DETERMINISTIC', verificationRule: DESTINATION_VERIFICATION_RULE,
-    evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Link preview image response', context }],
+    evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Link preview image response', context: decodingFailed ? decodingContext : context }],
   }]
 }

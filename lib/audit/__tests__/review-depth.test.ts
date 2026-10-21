@@ -22,6 +22,35 @@ const LINKS = [
 ]
 
 describe('review depth', () => {
+  it('retains admitted browser states on the same document while discovery keeps its anchor policy', () => {
+    const target = ORIGIN + 'app/#/help', route = ORIGIN + 'app/#/pricing'
+    expect(monitoringReviewUrls(target, [route, 'https://other.example/app/#/pricing', '#local'])).toEqual([target, route])
+    expect(planReviewTargets({ pastedUrl: target, depth: 2, pastedLinks: [{ href: route, text: 'Pricing' }], retainedUrls: [route] }).reviewUrls)
+      .toEqual([target, route])
+    expect(planReviewTargets({ pastedUrl: target, depth: 2, pastedLinks: [{ href: route, text: 'Pricing' }] }).reviewUrls)
+      .toEqual([target])
+  })
+  it('keeps each admitted navigation even when discovery groups its path, host or query variants together', () => {
+    const retainedUrls = [ORIGIN + 'pricing', ORIGIN + 'pricing/', ORIGIN + 'pricing?utm_campaign=launch',
+      ORIGIN + 'pricing?utm_campaign=return', ORIGIN + 'pricing?b=2&a=1', ORIGIN + 'pricing?a=1&b=2',
+      ORIGIN + 'app#sign-in', ORIGIN + 'app#reset', 'https://www.example.com/pricing']
+    const plan = planReviewTargets({ pastedUrl: ORIGIN, depth: 2, pastedLinks: [], retainedUrls })
+    expect(plan.reviewUrls).toEqual([ORIGIN, ...retainedUrls])
+    expect(plan.truncated).toBe(false)
+    const limited = planReviewTargets({ pastedUrl: ORIGIN, depth: 2, pastedLinks: [], retainedUrls, reviewCeiling: 2 })
+    expect(limited.reviewUrls).toEqual([ORIGIN, retainedUrls[0]])
+    expect(limited.truncated).toBe(true)
+  })
+  it('keeps the supplied primary fragment and groups newly discovered variants after admitted obligations', () => {
+    const pastedUrl = ORIGIN + 'app#start', retainedUrls = [ORIGIN + 'pricing/']
+    expect(planReviewTargets({ pastedUrl, depth: 1, pastedLinks: [] }).reviewUrls).toEqual([pastedUrl])
+    const plan = planReviewTargets({ pastedUrl, depth: 2, retainedUrls, pastedLinks: [
+      { href: '/pricing?utm_campaign=launch', text: 'Pricing' }, { href: '/pricing/', text: 'Other pricing link' },
+      { href: '/app#reset', text: 'Reset' },
+    ] })
+    expect(plan.reviewUrls).toEqual([pastedUrl, ...retainedUrls])
+    expect(plan.truncated).toBe(false)
+  })
   it('retains observed pages before new discovery without exceeding the existing depth and ceiling', () => {
     const retainedUrls = ['https://example.com/old-pricing', 'https://www.example.com/flow?mode=original#step']
     const plan = planReviewTargets({ pastedUrl: ORIGIN, depth: 2, pastedLinks: LINKS, retainedUrls, reviewCeiling: 3 })

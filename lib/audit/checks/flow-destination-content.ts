@@ -28,19 +28,21 @@ export function destinationContentObservations(result: Pick<FlowScanResult, 'sta
     'Destination content was not recorded.', false, false, context)]
   const headline = ux.contentComplete === true
   const controls = ux.controlsComplete === true
+  const controlContext = ux.controlsVersion === 3 ? comparableDestinationContext(result, 'flow:destination:v1', 'resolved-action-destinations-v3')
+    : ux.controlsVersion === 2 ? comparableDestinationContext(result, 'flow:destination:v1', 'referenced-action-labels-v2') : context
   const privacy = ux.trustSignals.hasPrivacyPolicy
   return [
     observed('destination-headline', 'Destination headline', 'The reached page has a prominent headline',
       ux.headline ? `Headline: ${ux.headline}` : 'No prominent headline was recorded.', ux.hasClearHeadline, headline, context),
     observed('destination-next-action', 'Destination next action', 'The reached page offers a next action',
       ux.hasPrimaryCTA || ux.frictionSignals.ctaCount > 0 ? 'A next action was recorded.' : 'No next action was recorded.',
-      ux.hasPrimaryCTA || ux.frictionSignals.ctaCount > 0, controls, context),
+      ux.hasPrimaryCTA || ux.frictionSignals.ctaCount > 0, controls, controlContext),
     observed('destination-promise', 'Destination promise', 'The destination headline agrees with the clicked action',
       ux.headline && result.ctaText ? `Action "${result.ctaText}" reached headline "${ux.headline}".` : 'The action and headline were not both recorded.',
       ux.ctaPromisesMatch, headline && Boolean(ux.headline) && Boolean(result.ctaText), context),
     observed('destination-action-count', 'Destination action count', 'The reached page has one primary action',
       ux.frictionSignals.tooManyCTAs ? `${ux.frictionSignals.distinctCtaCount ?? ux.frictionSignals.ctaCount} competing actions were recorded.` : 'Competing actions were not recorded.',
-      !ux.frictionSignals.tooManyCTAs, controls, context),
+      !ux.frictionSignals.tooManyCTAs, controls, controlContext),
     observed('destination-form-privacy', 'Destination form privacy', 'A form that asks for information has a privacy link',
       privacy === null ? 'The privacy link was not conclusively recorded.' : privacy === false && ux.frictionSignals.formRequiredForValue ? 'The form has no privacy link.' : 'No missing privacy link was recorded for a form.',
       !(privacy === false && ux.frictionSignals.formRequiredForValue), privacy !== null, context),

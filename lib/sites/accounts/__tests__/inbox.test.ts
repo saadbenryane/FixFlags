@@ -1,8 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 import { extractVerification, verifyReceivingSignature, acceptReceivingEmail } from '../inbox'
-const db = vi.hoisted(() => ({ message: vi.fn(), accounts: vi.fn(), transaction: vi.fn() }))
+const db = vi.hoisted(() => ({ message: vi.fn(), accounts: vi.fn(), transaction: vi.fn(), capacity: vi.fn() }))
 vi.mock('@/lib/db', () => ({ prisma: { siteAccountMessage: { findUnique: db.message }, siteTestAccount: { findMany: db.accounts }, $transaction: db.transaction } }))
+vi.mock('@/lib/email/provider-admission', () => ({ waitForEmailProviderCapacity: db.capacity }))
+beforeEach(() => { vi.clearAllMocks(); db.capacity.mockReset().mockResolvedValue(undefined) })
+afterEach(() => vi.unstubAllGlobals())
 
 describe('inbound verification', () => {
   it('matches the published Svix signature example and rejects changed or stale payloads', () => {
@@ -30,6 +33,7 @@ describe('inbound verification', () => {
     db.message.mockResolvedValueOnce({ id: 'existing' })
     const fetch = vi.fn(); vi.stubGlobal('fetch', fetch)
     await acceptReceivingEmail({ type: 'email.received', data: { email_id: 'f00e8c11-567c-4b3c-a970-45b4db22de4f', to: ['checks+ff-test@example.com'] } })
+    expect(db.capacity).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled(); vi.unstubAllGlobals()
   })
   it('ignores unknown or ambiguous recipients before retrieving email', async () => {
@@ -37,6 +41,24 @@ describe('inbound verification', () => {
     const fetch = vi.fn(); vi.stubGlobal('fetch', fetch)
     const event = { type: 'email.received' as const, data: { email_id: 'f00e8c11-567c-4b3c-a970-45b4db22de4f', to: ['checks+ff-test@example.com'] } }
     await acceptReceivingEmail(event); await acceptReceivingEmail(event)
+    expect(db.capacity).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled(); vi.unstubAllGlobals()
+  })
+  it('shares provider capacity for a matched receiving request and retains one total deadline', async () => {
+    const submittedAt = new Date()
+    db.message.mockResolvedValue(null)
+    db.accounts.mockResolvedValue([{ id: 'account', email: 'checks+ff-test@example.com', origin: 'https://example.com', submittedAt }])
+    const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      to: ['checks+ff-test@example.com'], created_at: submittedAt.toISOString(), text: 'No verification action',
+    })))
+    vi.stubGlobal('fetch', fetch)
+    const event = { type: 'email.received' as const, data: { email_id: 'f00e8c11-567c-4b3c-a970-45b4db22de4f', to: ['checks+ff-test@example.com'] } }
+    db.capacity.mockRejectedValueOnce(new Error('Provider capacity unavailable'))
+    await expect(acceptReceivingEmail(event)).rejects.toThrow('Provider capacity unavailable')
+    expect(fetch).not.toHaveBeenCalled()
+    await acceptReceivingEmail(event)
+    expect(fetch).toHaveBeenCalledOnce()
+    expect(fetch.mock.calls[0][1].signal).toBe(db.capacity.mock.calls[1][0])
+    expect(db.transaction).not.toHaveBeenCalled()
   })
 })

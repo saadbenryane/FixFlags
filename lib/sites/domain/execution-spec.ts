@@ -15,11 +15,15 @@ export const verificationTargetSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('DIAGNOSTIC'), pageUrl: z.string().url(), checkId: z.string().min(1), attemptId: z.string().min(1), parentAuditId: z.string().min(1) }).strict(),
   ])
 import { scanAccessIntentSchema } from '@/lib/audit/scan-access-intent'
+export const monitoredBehaviorSchema = z.enum(['flow', 'pricing-navigation', 'slow-replay', 'journeys'])
 export const executionSpecSchema = z.object({
   scanAccess: scanAccessIntentSchema.optional(),
   engine: z.literal('progressive-v1').optional(),
   reviewDepth: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   monitoringPages: z.array(z.string().url()).min(1).max(24).optional(),
+  monitoringBehaviors: z.array(z.object({ pageUrl: z.string().url(), behaviors: z.array(monitoredBehaviorSchema).min(1).max(4) }).strict()).min(1).max(24).optional(),
+  // Historical snapshots retain their original entry-role contract. New admission records behaviors.
+  monitoringEntryPages: z.array(z.string().url()).min(1).max(24).optional(),
   consoleObservationMs: z.number().int().min(0).max(90000).optional(),
   consoleObservationScopes: z.array(z.object({ pageUrl: z.string().url(), minimumMs: z.number().int().min(2000).max(90000) }).strict()).max(100).optional(),
   version: z.literal(1), targetUrl: z.string().url(), environment: z.string().min(1),
@@ -36,6 +40,17 @@ export const executionSpecSchema = z.object({
 }).strict().superRefine((spec, context) => {
   if (spec.monitoringPages && (spec.scope !== 'SITE' || spec.monitoringPages[0] !== spec.targetUrl || new Set(spec.monitoringPages).size !== spec.monitoringPages.length))
     context.addIssue({ code: 'custom', message: 'Invalid monitoring page scope' })
+  if (spec.monitoringBehaviors) {
+    const pages = spec.scope === 'SITE' ? spec.monitoringPages ?? [spec.targetUrl] : spec.scope === 'CATEGORY' ? spec.category?.pages : undefined
+    if (!pages || new Set(spec.monitoringBehaviors.map(item => item.pageUrl)).size !== spec.monitoringBehaviors.length ||
+      spec.monitoringBehaviors.some(item => !pages.includes(item.pageUrl) || new Set(item.behaviors).size !== item.behaviors.length))
+      context.addIssue({ code: 'custom', message: 'Invalid monitoring behavior scope' })
+  }
+  if (spec.monitoringEntryPages) {
+    const pages = spec.scope === 'SITE' ? spec.monitoringPages ?? [spec.targetUrl] : spec.scope === 'CATEGORY' ? spec.category?.pages : undefined
+    if (!pages || new Set(spec.monitoringEntryPages).size !== spec.monitoringEntryPages.length || spec.monitoringEntryPages.some(page => !pages.includes(page)))
+      context.addIssue({ code: 'custom', message: 'Invalid monitoring entry scope' })
+  }
   if ((spec.scope === 'CATEGORY') !== Boolean(spec.category) || spec.scope === 'CATEGORY' &&
     (spec.verificationTarget || spec.category!.pages[0] !== spec.targetUrl || new Set(spec.category!.pages).size !== spec.category!.pages.length))
     context.addIssue({ code: 'custom', message: 'Invalid category scope' })

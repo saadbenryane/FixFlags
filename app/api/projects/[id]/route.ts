@@ -6,7 +6,7 @@ import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { canonicalProductHost } from '@/lib/audit/product-intelligence'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
 
 const updateSchema = z.object({
@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const body = await req.json().catch(() => ({}))
     const parsed = updateSchema.safeParse(body)
     if (!parsed.success) return apiError('Enter a valid name or URL', 400, { code: 'INVALID_PROJECT' })
-    const target = parsed.data.url === undefined ? null : normalizeAuditUrl(parsed.data.url)
+    const target = parsed.data.url === undefined ? null : normalizeAuditNavigationUrl(parsed.data.url)
     if (target && !target.ok) return apiError('Enter a valid name or URL', 400, { code: 'INVALID_PROJECT' })
 
     const existing = await prisma.project.findFirst({ where: { id, userId: session.user.id, deletedAt: null } })

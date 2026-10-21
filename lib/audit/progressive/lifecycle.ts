@@ -1,3 +1,4 @@
+import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { journeyAssessmentSchema, hasIncompleteJourneyAssessment, type JourneyAssessment } from '../journey/evaluation-grounding'
 import { Prisma, type AuditVerifierExecution } from '@prisma/client'
 import { z } from 'zod'
@@ -12,7 +13,7 @@ import { browserEvidence, captureEvidence, searchArtifactSchema } from './evalua
 import { flagSchema, commitFindings, recordedTaskFindings } from './results'
 import { asReviewDepth, planReviewTargets, openCheckCeilingForDepth, buildReviewCoverage } from '../review-depth'
 import { openCheckDestinations } from '../open-check'
-import { canonicalizeDestination } from '../url-identity'
+import { navigationDestinationKey } from '../url-identity'
 import { capturedPageLinks, publicLinkObservations, publicLinkUrls, resolvedPageLinks } from '../checks/public-links'
 import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
 import { checkReceiptSchema } from '../checks/receipt'
@@ -24,7 +25,6 @@ import type { JourneyFindingDraft } from '../journey/types'
 import { durableCheckId } from '../flag-identity'
 import { runCheckedPageSearch } from '../search/workflow'
 import { evaluateCorridorConsistency } from '../checks/corridor-consistency'
-import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { pagePreviewSchema, pagePreviewForComparison } from '../checks/page-preview'
 import { runBoundOutcomeExecutions } from '@/lib/sites/application/checkout-execution'
 import { reconcileSafeFixtureCleanup, executeSafeFormFixture, safeFormExecutionResultSchema } from '@/lib/sites/application/safe-form-executor'
@@ -48,6 +48,7 @@ import { runAiReview, type PrescriptionRunUsage } from '../run-ai-review'
 import { PrescriptionScopeChanged } from '../prescription-scope'
 import { JudgeContractError } from '../validate-judge-output'
 import { admitAiObservation } from '../ai-observation-identity'
+import { settleRecordedPages } from './page-settlement'
 
 const findingsSchema = z.object({ flags: z.array(flagSchema).max(500) }).strict()
 const crossPageSchema = findingsSchema.extend({ receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
@@ -254,11 +255,11 @@ export const lifecycleHandlers: TaskHandler[] = [
       const existing = await loadTaskGraph(context.audit.id)
       const allPlans: TaskPlan[] = existing.map(task => ({ kind: task.workKind as TaskPlan['kind'], key: task.targetKey.slice(5),
         scope: task.scopeKey, input: task.workInput as TaskPlan['input'], dependencies: task.workDependencies }))
-      const known = new Set(existing.filter(task => task.workKind === 'browser').map(task => canonicalizeDestination(task.pageUrl!)?.key))
+      const known = new Set(existing.filter(task => task.workKind === 'browser').map(task => task.pageUrl ? navigationDestinationKey(task.pageUrl) : null))
       let nextPosition = existing.filter(task => task.workKind === 'browser').length
-      for (const url of plan.reviewUrls) if (!known.has(canonicalizeDestination(url)?.key) && nextPosition < 24) {
+      for (const url of plan.reviewUrls) if (!known.has(navigationDestinationKey(url)) && nextPosition < 24) {
         allPlans.push(...pageTaskPlan({ pageUrl: url, primary: false, position: nextPosition++, role: 'linked' }, spec))
-        known.add(canonicalizeDestination(url)?.key)
+        known.add(navigationDestinationKey(url))
       }
       if (depth === 3 && context.input.module !== 'second' && !allPlans.some(task => task.key === 'discovery:second')) allPlans.push({ kind: 'discovery', key: 'discovery:second', scope: 'site:second',
         input: { ...context.input, module: 'second' }, dependencies: ['discovery', ...allPlans.filter(task => task.input.position > 0 && ['browser', 'http'].includes(task.kind)).map(task => task.key)] })
@@ -344,7 +345,8 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
     },
     async evaluate(context) {
-      if (!browserEvidence(context)?.metadata) throw new TaskFailure('JOURNEY_PAGE_UNAVAILABLE', false)
+      const metadata = browserEvidence(context)?.metadata
+      if (!metadata) throw new TaskFailure('JOURNEY_PAGE_UNAVAILABLE', false)
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
       const phases = spec?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.overlayPhases?.filter(phase => phase.startsWith('journey_'))
       const sources = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: { auditId: target.parentAuditId,
@@ -369,7 +371,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const assessments: JourneyAssessment[] = []
       const pages: JourneyObservation[] = [], findings: JourneyFindingDraft[] = []
       const findingCount = await runJourneyReviewsForAudit(context.audit.id, context.input.pageUrl,
-        { included: true, deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id),
+        { included: true, deadline: context.deadline, metadata, scanAccess: await resolveAuditScanAccess(context.audit.id),
           ...(spec ? { allowedCheckIds: Object.keys(spec.checks) } : {}),
           ...(phases?.length ? { overlayPhases: phases, overlayExpectedTargets: expected, allowedCheckIds: Object.keys(spec!.checks) } : {}),
           ...(journeyTarget ? { expectedJourneyConditions: conditions, allowedCheckIds: Object.keys(spec!.checks) } : {}),
@@ -408,6 +410,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const latest = await prisma.audit.findUniqueOrThrow({ where: { id: context.audit.id }, select: { id: true, status: true, parentId: true,
         reportCompleteness: true, executionSpec: true, completedAt: true, startedAt: true, createdAt: true, url: true } })
       if (latest.status === 'COMPLETED') {
+        await executionWrite(tx => settleRecordedPages(tx, latest.id))
         await persistImprovementCycle(latest.id, latest.parentId)
         await enqueuePendingAiReview(latest.id)
         return serializeArtifact('finalize', { status: 'COMPLETED', partial: latest.reportCompleteness !== 'FULL' })
@@ -418,13 +421,14 @@ export const lifecycleHandlers: TaskHandler[] = [
         take: MAX_TASKS_PER_AUDIT, select: { workResult: true } })
       if (journeyAssessments.some(task => hasIncompleteJourneyAssessment(task.workResult))) failed.push('journey-evaluation')
       const incomplete = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id,
-        targetKey: { startsWith: 'module:' }, OR: [
+        targetKey: { startsWith: 'module:' }, status: { not: 'NOT_APPLICABLE' }, OR: [
           { detail: { path: ['complete'], equals: false } },
           { detail: { path: ['assertions'], array_contains: [{ complete: false }] } },
           { detail: { path: ['failed'], equals: true } },
         ] },
         take: MAX_TASKS_PER_AUDIT, select: { targetKey: true } })
       failed.push(...incomplete.map(receipt => receipt.targetKey.slice('module:'.length)))
+      await executionWrite(tx => settleRecordedPages(tx, latest.id))
       const spec = readExecutionSpec(latest.executionSpec)
       if (spec && spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') {
         // A configured action does not need an unrelated page scan, screenshot,
@@ -459,8 +463,6 @@ export const lifecycleHandlers: TaskHandler[] = [
           llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'none',
           pagespeedCalls: pages.reduce((count, page) => count + Number(Boolean(page.desktop)) + Number(Boolean(page.mobile)), 0), pagesReviewed: pages.length })
         await executionWrite(async tx => {
-          for (const page of pages) await tx.auditPage.updateMany({ where: { auditId: latest.id, url: page.url, status: { not: 'FAILED' } },
-            data: { status: 'COMPLETED' } })
           await tx.audit.update({ where: { id: latest.id }, data: {
             status: 'COMPLETED', progress: 100, verdict: null,
             reportCompleteness: failed.length ? 'PARTIAL' : 'FULL', failedModules: [...new Set(failed)],

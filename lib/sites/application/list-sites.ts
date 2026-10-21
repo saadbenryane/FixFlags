@@ -2,9 +2,9 @@ import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { loadLegacySiteAnalysisIds } from './legacy-analysis'
 import { includeLegacySiteAnalyses } from './analysis-scope'
 import { prisma } from '@/lib/db'
-import { isCustomerFlag } from '@/lib/audit/attention'
+import { isCustomerFlag, hasUnresolvedFlagEvidence } from '@/lib/audit/attention'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
-import { buildCoverageFacts, isAuditFinished, isAuditInFlight } from '@/lib/sites/coverage'
+import { isAuditFinished, isAuditInFlight } from '@/lib/sites/coverage'
 import {
   flagCountLabel,
   flagPriority,
@@ -18,13 +18,16 @@ import {
 } from '@/lib/sites/presentation'
 import { watchBoardState } from '@/lib/sites/watch-state'
 import { siteCardHealth } from '@/lib/sites/site-health'
-import { siteCoverageExecutionSelect } from './site-execution'
-import { currentOutcomeState } from '../outcome-state'
-import { assessmentIsComparable } from '../domain/assessment-comparability'
+import { siteCoverageExecutionSelect, siteObservationExecutionSelect } from './site-execution'
+import { currentOutcomeAssessment } from '../outcome-assessment'
 import { loadOutcomeBindingRevisions } from './outcome-binding-revisions'
-import { loadCategoryEvidence, applicableCategoryEvidence, overlayCategoryCoverage } from './category-evidence'
+import { loadCategoryEvidence } from './category-evidence'
+import { projectCurrentSiteEvidence } from './current-evidence'
 import { currentImprovementFlags, currentUnboundFindings, incidentAffectedPaths } from '../flag-resolution'
 import { currentImprovementWhere, loadIncidentRecoveryProofs, unboundSiteFindingWhere } from './incident-proofs'
+import { executionPageCoverage } from '../page-coverage'
+import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/status'
+import { loadOutcomeSummaryReferencesForProjects } from './outcome-references'
 
 export type SiteSummary = {
   id: string
@@ -33,6 +36,20 @@ export type SiteSummary = {
   presentation: SitePresentation
   /** Application-only ordering fact. Not rendered as a second status. */
   lastUsefulChangeAt: string
+}
+
+async function loadWatchedOutcomeSummaries(projectIds: string[]) {
+  const references = await loadOutcomeSummaryReferencesForProjects(projectIds)
+  if (!references.length) return []
+  return prisma.siteOutcome.findMany({
+    where: { projectId: { in: projectIds }, enabled: true, id: { in: references.map(row => row.id) } },
+    select: { id: true, projectId: true, enabled: true, environment: true, staleAfterMinutes: true,
+      bindings: { where: { enabled: true }, select: { key: true, required: true, mechanism: true, version: true, config: true } },
+      assessments: { where: { id: { in: references.flatMap(row => row.assessmentIds) } },
+        orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }],
+        select: { state: true, assessedAt: true, validUntil: true, coverage: true } },
+    },
+  })
 }
 
 /**
@@ -46,6 +63,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
     where: { userId, deletedAt: null },
     orderBy: { updatedAt: 'desc' },
     select: {
+      ...uptimeStatusProjectSelect,
       id: true,
       name: true,
       canonicalHost: true,
@@ -61,18 +79,21 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
 
   const projectIds = projects.map((project) => project.id)
   const siteWideWhere = includeLegacySiteAnalyses(await loadLegacySiteAnalysisIds(projectIds))
-  const [latestAudits, latestCompletedAudits, improvements, outcomes, categoryAudits] = await Promise.all([
+  const [latestAudits, latestCompletedAudits, improvements, outcomes] = await Promise.all([
     prisma.audit.findMany({
       where: { projectId: { in: projectIds }, ...siteWideWhere },
       orderBy: [{ projectId: 'asc' }, { createdAt: 'desc' }],
       distinct: ['projectId'],
       select: {
         id: true,
+        parentId: true,
         projectId: true,
         status: true,
         startedAt: true,
         completedAt: true,
         failureCode: true,
+        triageAt: true,
+        aiReviewAt: true,
         evidenceCoverage: true,
         verifierExecutions: siteCoverageExecutionSelect,
         failedModules: true,
@@ -86,8 +107,9 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       where: { projectId: { in: projectIds }, status: 'COMPLETED', ...siteWideWhere },
       orderBy: [{ projectId: 'asc' }, { completedAt: 'desc' }],
       distinct: ['projectId'],
-      select: { id: true, projectId: true, status: true, completedAt: true, evidenceCoverage: true, executionSpec: true,
-        verifierExecutions: siteCoverageExecutionSelect, failedModules: true },
+      select: { id: true, parentId: true, projectId: true, status: true, createdAt: true, completedAt: true,
+        evidenceCoverage: true, executionSpec: true, failureCode: true, triageAt: true, aiReviewAt: true,
+        verifierExecutions: siteObservationExecutionSelect, failedModules: true },
     }),
     prisma.improvement.findMany({
       where: { projectId: { in: projectIds }, ...currentImprovementWhere },
@@ -127,26 +149,16 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         },
       },
     }),
-    prisma.siteOutcome.findMany({
-      where: { projectId: { in: projectIds }, enabled: true },
-      select: { projectId: true, enabled: true, environment: true,
-        bindings: { where: { enabled: true }, select: { key: true, required: true, mechanism: true, version: true, config: true } },
-        assessments: { orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }], take: 1,
-          select: { state: true, validUntil: true, coverage: true } },
-      },
-    }),
-    loadCategoryEvidence(projectIds),
+    loadWatchedOutcomeSummaries(projectIds),
   ])
-
-  const bindingRevisions = await loadOutcomeBindingRevisions(outcomes)
 
   const latestByProject = new Map(latestAudits.flatMap((audit) => audit.projectId ? [[audit.projectId, audit] as const] : []))
   const completedByProject = new Map(latestCompletedAudits.flatMap((audit) => audit.projectId ? [[audit.projectId, audit] as const] : []))
   const auditIds = [...new Set([...latestAudits, ...latestCompletedAudits].map((audit) => audit.id))]
-  const [auditPages, screenshots, unboundFlags] = await Promise.all([
+  const [auditPages, screenshots, unboundFlags, categoryAudits, bindingRevisions] = await Promise.all([
     prisma.auditPage.findMany({
       where: { auditId: { in: auditIds } },
-      select: { auditId: true, status: true },
+      select: { auditId: true, url: true, status: true },
     }),
     prisma.screenshot.findMany({
       where: { auditId: { in: auditIds }, device: 'DESKTOP' },
@@ -183,6 +195,8 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         attentionPolicy: true,
       },
     }),
+    loadCategoryEvidence(latestAudits.flatMap(audit => audit.projectId ? [{ projectId: audit.projectId, auditId: audit.id }] : [])),
+    loadOutcomeBindingRevisions(outcomes),
   ])
 
   const pagesByAudit = groupBy(auditPages, (page) => page.auditId)
@@ -195,54 +209,55 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
   ])
   const outcomesByProject = groupBy(outcomes, outcome => outcome.projectId)
   const now = new Date()
-  const currentStates = new Map(outcomes.map((outcome, index) => {
-    const assessment = outcome.assessments[0] ?? null
-    return [outcome, assessment && !assessmentIsComparable(assessment.coverage, bindingRevisions[index], outcome.environment)
-      ? 'COULD_NOT_VERIFY' as const : currentOutcomeState(assessment, now)] as const
-  }))
+  const currentAssessments = new Map(outcomes.map((outcome, index) => [outcome, currentOutcomeAssessment({
+    assessment: outcome.assessments[0] ?? null, bindings: bindingRevisions[index], environment: outcome.environment,
+    staleAfterMinutes: outcome.staleAfterMinutes, now,
+  })] as const))
 
   return projects.map((project): SiteSummary => {
     const watchInterval = fromStoredWatchInterval(project.watchInterval)
     const latest = latestByProject.get(project.id) ?? null
     const completed = latest?.status === 'COMPLETED' ? latest : completedByProject.get(project.id) ?? null
     const pages = latest ? pagesByAudit.get(latest.id) ?? [] : []
-    const pagesReached = pages.filter((page) => page.status === 'COMPLETED').length
-    const pagesExpected = pages.length
+    const pageCoverage = executionPageCoverage({ executionSpec: latest?.executionSpec, pages, executions: latest?.verifierExecutions })
+    const { pagesReached, pagesExpected } = pageCoverage
 
     const durable = improvementsByProject.get(project.id) ?? []
     const represented = new Set(durable.filter(improvement => improvement.occurrences?.length).map(improvement => improvement.fingerprint))
+    let evidenceComplete = true
     const durableFlags = durable.flatMap((improvement) => {
       const active = currentImprovementFlags(improvement.occurrences.map(occurrence => occurrence.flag), recoveryIds.get(project.id) ?? new Set<string>(),
         improvement.status, improvement.attempts ?? [], project.id)
       const occurrence = active[0]
+      if (occurrence && hasUnresolvedFlagEvidence(occurrence)) evidenceComplete = false
       if (!occurrence || !isCustomerFlag(occurrence)) return []
       const affectedPageCount = incidentAffectedPaths(active).length
-      return [{ severity: occurrence.severity, priority: flagPriority({ severity: occurrence.severity, confidence: occurrence.confidence, affectedPageCount, outcomeId: improvement.outcomeId }) }]
+      return [{ severity: occurrence.severity, checkId: occurrence.checkId, rubric: occurrence.rubric, impactTag: occurrence.impactTag,
+        priority: flagPriority({ severity: occurrence.severity, confidence: occurrence.confidence, affectedPageCount, outcomeId: improvement.outcomeId }) }]
     })
-    const unprojected = currentUnboundFindings(unboundByProject.get(project.id) ?? [], recoveryIds.get(project.id) ?? new Set<string>())
-      .filter((flag) => (!flag.fingerprint || !represented.has(flag.fingerprint)) && isCustomerFlag(flag))
-      .map((flag) => ({ severity: flag.severity, priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: flag.pageUrl ? 1 : 0 }) }))
+    const currentUnbound = currentUnboundFindings(unboundByProject.get(project.id) ?? [], recoveryIds.get(project.id) ?? new Set<string>())
+      .filter(flag => !flag.fingerprint || !represented.has(flag.fingerprint))
+    if (currentUnbound.some(hasUnresolvedFlagEvidence)) evidenceComplete = false
+    const unprojected = currentUnbound.filter(isCustomerFlag)
+      .map((flag) => ({ severity: flag.severity, checkId: flag.checkId, rubric: flag.rubric, impactTag: flag.impactTag,
+        priority: flagPriority({ severity: flag.severity, confidence: flag.confidence, affectedPageCount: flag.pageUrl ? 1 : 0 }) }))
     const customerFlags = [...durableFlags, ...unprojected]
 
-    const facts = overlayCategoryCoverage(completed ? buildCoverageFacts({
-      auditStatus: completed.status,
-      completedAt: completed.completedAt,
-      now,
-      evidenceCoverage: completed.evidenceCoverage,
-      verifierExecutions: completed.verifierExecutions,
-      failedModules: completed.failedModules,
-      flags: [],
-    }) : [], applicableCategoryEvidence(categoryAudits.filter(audit => audit.projectId === project.id), latest), now)
+    const { coverage: facts, coverageMaxAgeMs, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({ audit: latest,
+      prior: completed?.id !== latest?.id ? completed : null, flags: customerFlags,
+      categories: categoryAudits.filter(audit => audit.projectId === project.id), now, evidenceComplete,
+      watchInterval, watchEveryMinutes: project.watchEveryMinutes })
     const evidenced = facts.filter((fact) => fact.evidenced)
     const stale = evidenced.length > 0 && evidenced.every((fact) => fact.stale === true)
     const hasCurrentEvidence = isAuditFinished(completed?.status) && evidenced.some((fact) => !fact.stale)
-    const watched = (outcomesByProject.get(project.id) ?? []).map(outcome => ({ enabled: outcome.enabled,
-      state: currentStates.get(outcome)!, validUntil: outcome.assessments[0]?.validUntil }))
+    const watched = (outcomesByProject.get(project.id) ?? []).map(outcome => ({ id: outcome.id, enabled: outcome.enabled,
+      state: currentAssessments.get(outcome)!.state, validUntil: currentAssessments.get(outcome)!.validUntil }))
     const health = siteCardHealth({ inFlight: isAuditInFlight(latest?.status), finished: isAuditFinished(latest?.status),
-      hasLastKnown: Boolean(completed), flags: customerFlags, coverage: facts, now,
+      hasLastKnown, assessmentComplete, flags: customerFlags, coverage: facts, now, coverageMaxAgeMs,
       executionSpec: latest?.executionSpec,
       outcomes: watched,
-      pagesComplete: pagesExpected > 0 && pagesReached === pagesExpected })
+      uptime: projectUptimeStatus(project, project.uptimeMonitor, now),
+      pagesComplete: pageCoverage.complete })
     const result = resultPresentation({
       auditStatus: latest?.status ?? null,
       healthState: health.state,
@@ -250,12 +265,14 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
       stale,
       hasCurrentEvidence,
       assessmentResult: health.assessment.result,
+      uptime: health.uptime,
     })
     const watchState = watchBoardState({
       interval: watchInterval ?? null,
       nextRunAt: project.watchNextRunAt,
       lastError: project.watchLastError,
       consecutiveFailures: project.watchConsecutiveFailures,
+      now,
     })
     const previewAudit = latest ?? completed
     const shot = previewAudit ? shotsByAudit.get(previewAudit.id)?.[0] ?? null : null
@@ -278,7 +295,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         pagesReached,
         pagesExpected,
         label: pageCoverageLabel(pagesReached, pagesExpected),
-        complete: pagesExpected > 0 && pagesReached === pagesExpected,
+        complete: pageCoverage.complete,
       },
       freshness: { checkedAt, stale, label: freshnessLabel(checkedAt, now) },
       flags: {

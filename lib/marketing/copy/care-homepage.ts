@@ -1,5 +1,6 @@
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { HOMEPAGE_CHECK_COVERAGE } from './check-coverage'
+import { PRODUCT_STORY } from './product-story'
 
 /** Homepage examples are illustrative. Captures and illustrations are distinguished in context. */
 const EXAMPLE_HOST = 'Everyday Goods'
@@ -13,23 +14,21 @@ const CART_EXAMPLE = {
 
 export type HomepageAudienceKey = 'website' | 'store' | 'webapp'
 
-export const WEBSITE_PROMISE = 'Start with a public URL. See meaningful website problems, the evidence behind them, and what to fix next. Publish the change, then check it again.'
+export const WEBSITE_PROMISE = PRODUCT_STORY.description
 
 export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
-  headlineAccent: 'Finish',
-  headlineLines: ['what', 'your AI started'],
-  headlinePunctuation: '.',
   hero: {
-    eyebrow: 'INDEPENDENT WEBSITE MONITORING',
+    headline: PRODUCT_STORY.headline,
     body: WEBSITE_PROMISE,
-    setup: 'No installation needed for public-page analysis.',
-    cta: 'Analyze now',
+    setup: PRODUCT_STORY.setup,
+    cta: PRODUCT_STORY.action,
+    sampleAction: 'See it in action',
     placeholder: 'yourwebsite.com',
     benefits: [
-      { title: 'Monitors key journeys' },
-      { title: 'Flags critical issues' },
-      { title: 'Helps your AI fix them' },
+      { title: 'Checks on your schedule' },
+      { title: 'Email alerts' },
+      { title: 'Clear fix guidance' },
     ],
   },
   boardHost: EXAMPLE_HOST,
@@ -138,7 +137,7 @@ export const CARE_HOME = {
   },
   checks: HOMEPAGE_CHECK_COVERAGE,
   story: {
-    label: 'Beyond uptime',
+    label: 'Website checks',
     title: 'Online isn’t the same as working.',
     body: 'A page can load while checkout fails. FixFlags follows the journey, then checks the fix.',
     before: 'The Flag', after: 'Verified recovery',
@@ -146,12 +145,12 @@ export const CARE_HOME = {
     beforeBody: 'The product page loads. Checkout returns an error.',
     afterTitle: 'Checkout opens again.',
     afterBody: 'After the fix, a fresh check reaches checkout.',
-    guidanceTitle: 'Beyond the Flags, get the fixes too.',
-    guidance: 'FixFlags gives you a ready prompt with the affected page, what went wrong, and the result to restore. Paste it into your AI tool, publish the fix, then select Check now to return to Monitor.',
-    copy: 'Copy this prompt', copied: 'Prompt copied.',
+    guidanceTitle: 'From Flag to fix.',
+    guidance: 'Copy a prompt with the page, the problem, and what should happen instead. Use it with your AI or developer, then check the live website after publishing.',
+    copy: 'Copy fix prompt', copied: 'Prompt copied.',
     sample: 'Illustrative checkout example',
     comparisonNote: 'Illustrative checkout example. Product to checkout, with no payment or order.',
-    recoveryNote: 'After publishing, recheck the page to confirm the fix.',
+    recoveryNote: 'Publish the change. Then check it again.',
     about: 'What this example shows',
     aboutBody: 'This illustration follows a failure and recovery reproduced on a controlled local website: the public page opened, checkout returned HTTP 503, and a fresh independent check reached checkout after repair. It represents checkout entry only. No payment or order was made. Switching this example does not run a check.',
     example: {
@@ -170,9 +169,9 @@ export const CARE_HOME = {
     title: 'See the problem. Know when it’s fixed.',
     body: 'Give the evidence to your teammate or AI. After the fix, let FixFlags check again.',
     steps: [
-      { id: 'monitor', label: 'Monitor', title: 'Keep checking what matters.', body: 'Start with a public URL. Save your Site to start its default monitoring schedule, then check the affected behavior again after a fix.' },
-      { id: 'flag', label: 'Flag', title: 'See what needs attention.', body: 'Find the affected page, what went wrong, and the evidence behind it.' },
-      { id: 'fix', label: 'Fix', title: 'Give your developer or AI a clear next step.', body: 'Use the fix prompt, publish the change, then return to Monitor with Check now.' },
+      { id: 'monitor', label: '01 · Monitor', title: 'Start with your URL.', body: 'Run a free check on your public website. Save your Site to start scheduled monitoring.' },
+      { id: 'flag', label: '02 · Flag', title: 'See what needs attention.', body: 'A Flag shows the page, the problem, and the evidence. New problems can trigger an email.' },
+      { id: 'fix', label: '03 · Fix', title: 'Fix it. Then check again.', body: 'Give your AI or developer the fix prompt. Publish the change, then select Check now to see whether it worked.' },
     ],
     failedAlt: 'Canvas Tote product page after Add to cart with an empty cart',
     passedAlt: 'Canvas Tote product page with one item in the cart and a Checkout control',
@@ -187,6 +186,18 @@ export const CARE_HOME = {
     page: '/products/canvas-tote',
     source: 'Local browser fixtures · Product and cart',
     instructions: CART_EXAMPLE.prompt,
+  },
+  notifications: {
+    label: 'Email alerts',
+    title: 'The problem, in your inbox.',
+    body: 'FixFlags checks on your schedule. Get email alerts about new problems and confirmed fixes, with a link to the evidence.',
+    detailTitle: 'What gets checked?',
+    detailBody: 'Save your Site to activate monitoring. Your Site shows the supported checks, schedule, and latest results. Email alerts follow your notification settings. Problems can be detected at the next scheduled check.',
+    sampleLabel: 'Example email · illustrative evidence',
+    sender: 'FixFlags',
+    host: 'www.examplesites.com',
+    flag: 'Pricing page is not loading',
+    action: 'Explore the sample Flag',
   },
   coverage: {
     label: 'What FixFlags watches',
@@ -209,17 +220,17 @@ export const CARE_HOME = {
     ] satisfies ReadonlyArray<{ id: HomepageAudienceKey; label: string; question: string; monitored: string }>,
   },
   actions: {
-    label: 'Flag handoff',
+    label: 'Fix guidance',
     title: 'Ready for the person fixing it.',
     body: 'See what happened, where it happened, and what should happen instead.',
-    promptLabel: 'Pages · sample Flag',
-    promptTitle: 'Pricing page returns 404.',
+    promptLabel: 'Example fix prompt',
+    promptTitle: 'Pricing page won’t open.',
     promptFacts: [
       { label: 'Page', value: '/pricing' },
       { label: 'Observed', value: 'The pricing page returns HTTP 404.' },
       { label: 'Expected', value: 'The pricing page opens with its content.' },
     ],
-    editorLabel: 'Works with your favorite AI tools',
+    editorLabel: 'Works with the AI you use',
     editorGuidesLabel: 'AI editor setup guides',
     guidanceAction: 'How to fix with AI',
     packet: [
@@ -237,8 +248,9 @@ export const CARE_HOME = {
   },
   integrations: {
     label: 'Integrations',
-    title: 'Know more about your site with the tools you already use.',
-    body: 'GitHub is available. Other integrations are coming soon.',
+    title: 'Your tools, when you need them.',
+    body: 'Website checks need no integration. GitHub account connection is available. More connections are coming soon.',
+    detailsAction: 'See the connections',
     center: 'Independent checks',
     add: 'Add integration',
     addTitle: 'Add an integration',
@@ -248,7 +260,7 @@ export const CARE_HOME = {
     added: 'Added',
     action: 'Explore integrations',
   },
-  close: { title: 'Vibe coders, start here.', body: 'Vibe code in peace, knowing that your website is looked after.', pricing: 'View pricing' },
+  close: { title: 'Try it on your website.', body: 'Run a free check. Save your Site for fix prompts and scheduled monitoring.', pricing: 'What’s included for free' },
 } as const
 
 /** Illustrative analysis snapshot, not a customer assessment or live schedule. */
@@ -277,8 +289,8 @@ export function sampleFlagsForCategory(card: SampleCategory): SampleFlagId[] {
 export const HOMEPAGE_SAMPLE = {
   exploreAction: 'Explore the sample', sampleLabel: 'Interactive sample · illustrative evidence',
   identityAlt: 'Everyday Goods sample homepage, shown for website identity',
-  title: 'Flag issues before your customers do.',
-  subtitle: "Log in to your personalized dashboard and see everything that's going on with your website.",
+  title: 'See what needs attention.',
+  subtitle: 'A Flag is a problem that needs attention. Open one to see the evidence and fix guidance.',
   summary: '3 Flags',
   freshness: '15 minutes ago',
   boardAction: 'Recheck',

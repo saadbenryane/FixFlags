@@ -38,7 +38,7 @@ const stored = {
   resetUrl: 'https://example.com/test/reset', cleanupUrl: 'https://example.com/test/cleanup',
   encryptedHookSecret: 'encrypted-hook', version: 1, lastDryRunVersion: null,
   lastDryRunAt: null, lastDryRunResult: null, authorizedAt: null, enabled: true,
-}
+} as const
 
 const input = {
   name: 'Signup', targetUrl: stored.targetUrl,
@@ -65,6 +65,14 @@ describe('Outcome fixture lifecycle', () => {
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       projectId: 'project-1', encryptedValues: expect.stringContaining('synthetic@example.test'),
       encryptedHookSecret: 'encrypted:hook', authorizedAt: null,
+    }) }))
+  })
+
+  it('preserves the browser form route without granting authorization or changing its HTTP hooks', async () => {
+    const targetUrl = 'https://example.com/#/signup'
+    await createOutcomeFixture({ projectId: 'project-1', siteUrl: 'https://example.com', fixture: { ...input, targetUrl } })
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      targetUrl, resetUrl: stored.resetUrl, cleanupUrl: stored.cleanupUrl, authorizedAt: null,
     }) }))
   })
 

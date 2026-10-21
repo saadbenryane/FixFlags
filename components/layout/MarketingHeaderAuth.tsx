@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useMe } from "@/hooks/useMe";
 import { useSiteSignInHref } from "@/hooks/useSiteSignInHref";
 import { AUTH } from "@/lib/marketing/copy/auth";
+import { REVIEW_ENTRY } from "@/lib/marketing/copy/terminology";
 import { SITE_WORKSPACE_COPY } from "@/lib/marketing/copy/workspace";
 import { AvatarMenu } from "@/components/layout/AvatarMenu";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ type HeaderAuthProps = {
 
 function AnalyzeAction({ mode, onNavigate }: HeaderAuthProps) {
   return <Button variant="brand" size="sm" className={cn(mode === "mobileSheet" && "w-full")} asChild>
-    <PublicLink href="/new" target="analyze" onClick={onNavigate}>Analyze</PublicLink>
+    <PublicLink href="/new" target="analyze" onClick={onNavigate}>{REVIEW_ENTRY.compactCta}</PublicLink>
   </Button>;
 }
 

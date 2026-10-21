@@ -130,7 +130,8 @@ describe('probeFormValidation', () => {
     document.body.innerHTML = '<main><form><input name="email" type="email" required><button type="submit">Subscribe</button></form></main>'
     const result = await probeFormValidation(makePage())
     assert.equal(result.formValidation, 'ok')
-    assert.equal(result.feedbackMs, 0)
+    // Constraint inspection does not measure a feedback event.
+    assert.equal(result.feedbackMs, null)
     assert.equal(result.evidence?.reason, 'native_validation')
   })
   it('skips forms without required fields', async () => {

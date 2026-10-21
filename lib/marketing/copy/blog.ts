@@ -33,11 +33,11 @@ export const BLOG_SERIES_COVER: BlogCover = {
 export const BLOG_PAGE = {
   label: 'Blog',
   headline: 'A few things worth checking.',
-  body: 'Why we built FixFlags, what to check before you share a website, and how to know a fix worked.',
+  body: 'Practical notes on finding website problems, fixing them, and checking the result.',
   seriesLabel: 'The FixFlags notes',
   readArticle: 'Read article',
   guideTitle: 'Try it on your own website',
-  guideBody: 'Enter a public URL and see what FixFlags can check. If it finds a problem, open the Flag and take a look at what happened.',
+  guideBody: 'Run a free check. See the evidence behind a problem and get help with the fix.',
   startCta: 'Check your website',
   docsCta: 'Read the docs',
   guidesCta: 'Explore website guides',

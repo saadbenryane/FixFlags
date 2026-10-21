@@ -21,7 +21,8 @@
 .summary-healthy { --summary-signal: hsl(var(--success)); }
 .summary-unknown { --summary-signal: hsl(var(--muted-foreground) / .45); }
 .boardRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 18px; width: 100%; min-width: 0; min-height: 92px; padding: 16px 18px; border: 1px solid hsl(var(--border) / .65); border-radius: var(--radius-board-panel); background: hsl(var(--background)); color: inherit; font: inherit; text-align: left; text-decoration: none; }
-.boardRow:hover { box-shadow: var(--shadow-board-hover); }
+.boardRow { transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+.boardRow:hover, .boardRow:focus-within { box-shadow: var(--shadow-board-hover); }
 .rowProblem { border-color: hsl(var(--border)); }
 .rowClear { min-height: 68px; }
 .rowChecking { border-color: hsl(var(--brand) / .3); background: hsl(var(--brand) / .025); }
@@ -83,9 +84,10 @@
 .outcomeRowActions > div { flex-wrap: wrap; }
 .outcomeRowActions:not(:has(a, button)) { display: none; }
 .card { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 164px; padding: 18px; border: 1px solid hsl(var(--border) / .65); border-radius: var(--radius-board-card); background: hsl(var(--background)); text-align: left; color: inherit; font: inherit; }
+.card { transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
 .card:is(button) { width: 100%; cursor: pointer; }
 .card:is(button):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
-.card:has(.body:hover) { border-color: hsl(var(--foreground) / .25); box-shadow: var(--shadow-board-hover); }
+.card:has(.body:hover), .card:focus-within { border-color: hsl(var(--foreground) / .25); box-shadow: var(--shadow-board-hover); }
 .problem, .good, .incomplete { border-color: hsl(var(--border) / .65); }
 .problem:has(.body:hover), .good:has(.body:hover), .incomplete:has(.body:hover) { border-color: hsl(var(--foreground) / .25); }
 .header { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; width: 100%; margin-bottom: 16px; font-size: 13px; font-weight: 550; }
@@ -187,7 +189,10 @@
   .surface { padding: 14px; border-radius: 16px; }
   .addCard { min-height: 72px; padding: 16px; flex-direction: row; align-items: center; justify-content: flex-start; }
 }
-@media (prefers-reduced-motion: reduce) { .checkingDot i { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .checkingDot i { animation: none; }
+  .boardRow, .card { transition: none; }
+}
 @container board-rows (max-width: 640px) {
   .boardRow { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; }
   .outcomeRow { grid-template-columns: minmax(0, 1fr) auto; }

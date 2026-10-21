@@ -1,0 +1,15 @@
+.entry { min-width: 0; padding: 20px; border-radius: var(--radius-card); background: hsl(var(--muted) / .25); }
+.entry[data-first='true'] { padding-block: 32px; }
+.title { font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -.025em; }
+.entry[data-first='true'] .title { font-size: clamp(24px, 4vw, 32px); letter-spacing: -.035em; }
+.description { max-width: 46ch; margin: 8px 0 20px; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.steps { display: grid; gap: 24px; margin: 32px 0 0; padding: 0; list-style: none; }
+.steps li { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.stepNumber { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: hsl(var(--background)); color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 500; }
+.steps h3 { margin: 3px 0 6px; font-size: 13px; line-height: 1.5; font-weight: 600; }
+.steps p { max-width: 28ch; margin: 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.6; }
+@media (min-width: 640px) {
+  .entry { padding: 24px; }
+  .entry[data-first='true'] { padding: 40px 32px; }
+  .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 40px; }
+}

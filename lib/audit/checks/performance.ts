@@ -1,19 +1,20 @@
-import { PageSpeedResult, CruxMetrics } from '../pagespeed'
+import type { PageSpeedResult } from '../pagespeed'
+import { readCruxMetric, type CruxEvidence, type CruxMetric } from '../crux'
 import type { DeterministicFlag } from '../flag-types'
 import { PERFORMANCE_RESOURCE_THRESHOLDS, RESOURCE_REPAIR_RULE, resourceAuditContext, resourceCheckPolicy } from '../pagespeed-opportunities'
 import { scopePerformanceFlags } from '../performance-measurement'
 
-function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string {
-  if (!crux) return ''
-  const value = crux[metric]
-  if (value === null || value === undefined) return ''
+function cruxSuffix(crux: CruxEvidence | null, metric: CruxMetric): string {
+  const field = readCruxMetric(crux, metric)
+  if (!field) return ''
+  const { value, cohort } = field
 
   const display =
     metric === 'cls'
       ? value.toString()
       : `${(Math.round((value as number) / 100) / 10).toFixed(1)}s`
 
-  return `. CrUX ${crux.scope ?? 'unknown scope'} (p75, ${crux.reportingWindowDays ?? 28} days): ${display}`
+  return `. CrUX ${cohort.scope ?? 'unknown scope'} (p75, ${cohort.reportingWindowDays ?? 28} days): ${display}`
 }
 
 export function runPerformanceChecks(
@@ -200,29 +201,30 @@ export function runLabVitalsChecks(ps: PageSpeedResult): DeterministicFlag[] {
 
 export function runInpChecks(mobile: PageSpeedResult): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  if (mobile.inp === null) return findings
-  const scope = mobile.crux?.scope === 'origin' ? 'Origin-level mobile' : 'Mobile'
-  const evidence = mobile.crux?.inp !== null && mobile.crux?.inp !== undefined
-    ? `CrUX INP p75: ${mobile.inp}ms on mobile, ${mobile.crux.scope ?? 'unknown scope'} scope${mobile.crux.url ? ` (${mobile.crux.url})` : ''}, trailing ${mobile.crux.reportingWindowDays ?? 28} days. This is field data, not a measurement of the current audit interaction.`
-    : `Recorded INP: ${mobile.inp}ms on mobile. Reporting scope and collection window are unavailable.`
+  const field = readCruxMetric(mobile.crux, 'inp'), inp = field?.value ?? mobile.inp
+  if (inp === null) return findings
+  const scope = field?.cohort.scope === 'origin' ? 'Origin-level mobile' : 'Mobile'
+  const evidence = field
+    ? `CrUX INP p75: ${inp}ms on mobile, ${field.cohort.scope ?? 'unknown scope'} scope${field.cohort.url ? ` (${field.cohort.url})` : ''}, trailing ${field.cohort.reportingWindowDays ?? 28} days. This is field data, not a measurement of the current audit interaction.`
+    : `Recorded INP: ${inp}ms on mobile. Reporting scope and collection window are unavailable.`
 
-  if (mobile.inp > 500) {
+  if (inp > 500) {
     findings.push({
       checkId: 'inp-critical',
       rubric: 'EXPERIENCE',
       severity: 'CRITICAL',
-      problem: `${scope} Interaction to Next Paint is critically slow (${mobile.inp}ms, target <= 200ms)`,
+      problem: `${scope} Interaction to Next Paint is critically slow (${inp}ms, target <= 200ms)`,
       evidence,
       fix: '1. Defer non-critical JavaScript to reduce main-thread work\n2. Split long tasks (over 50ms) with setTimeout or scheduler.yield\n3. Optimize event handlers to avoid heavy DOM operations',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else if (mobile.inp > 200) {
+  } else if (inp > 200) {
     findings.push({
       checkId: 'inp-poor',
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
-      problem: `${scope} Interaction to Next Paint needs improvement (${mobile.inp}ms, target <= 200ms)`,
+      problem: `${scope} Interaction to Next Paint needs improvement (${inp}ms, target <= 200ms)`,
       evidence,
       fix: '1. Open Chrome DevTools Performance panel and record an interaction\n2. Identify long tasks and JavaScript execution during the interaction\n3. Reduce or defer non-essential work to keep INP under 200ms',
       confidence: 1.0,

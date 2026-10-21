@@ -35,7 +35,7 @@ export async function persistJourneyResult(auditId: string, result: JourneyRevie
 export async function runJourneyReviewsForAudit(
   auditId: string,
   startUrl: string,
-  options: { included: boolean; deadline: number; scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null;
+  options: { included: boolean; deadline: number; metadata: PageMetadata | null; scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null;
     overlayExpectedTargets?: OverlayTarget[]; overlayPhases?: string[]; allowedCheckIds?: readonly string[];
     expectedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
     recordedJourneyConditions?: Array<NonNullable<ReturnType<typeof readJourneyContext>>>;
@@ -57,14 +57,10 @@ export async function runJourneyReviewsForAudit(
 
   const auditRow = await prisma.audit.findUnique({
     where: { id: auditId },
-    select: { productContract: true, userId: true, htmlMetadata: true },
+    select: { productContract: true },
   })
   const contract = parseProductContract(auditRow?.productContract)
-  const metadata =
-    auditRow?.htmlMetadata && typeof auditRow.htmlMetadata === 'object'
-      ? (auditRow.htmlMetadata as unknown as PageMetadata)
-      : null
-  const purpose = metadata ? detectPagePurpose(metadata, startUrl).purpose : null
+  const purpose = options.metadata ? detectPagePurpose(options.metadata, startUrl).purpose : null
   const journeyRuns = selectJourneyRuns(contract, purpose, options)
 
   const browser = await getAuditBrowser()
@@ -187,7 +183,7 @@ export async function runJourneyReviewsForAudit(
           }
           const evaluatorUsage = evalResult.usage
           if (evaluatorUsage) await executionWrite(tx => tx.journeyReview.updateMany({
-            where: { auditId, journeyType },
+            where: { auditId, journeyType, startUrl },
             data: {
               evaluatorInputTokens: evaluatorUsage.inputTokens,
               evaluatorOutputTokens: evaluatorUsage.outputTokens,

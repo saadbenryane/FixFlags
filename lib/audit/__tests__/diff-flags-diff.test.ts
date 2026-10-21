@@ -1,3 +1,4 @@
+import { analysisEnvironmentWhere } from '@/lib/sites/application/analysis-scope'
 import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, expect } from 'vitest'
 import type { FlagStatus, Severity } from '@prisma/client'
@@ -56,7 +57,7 @@ import {
   reviewedPageUrls,
 } from '../diff-flags'
 import { CHECK_REGISTRY } from '../check-registry'
-import { FLAG_COMPARISON_TARGET } from '../flag-comparison'
+import { FLAG_COMPARISON_TARGET, comparisonEvidenceComplete } from '../flag-comparison'
 
 type FlagRow = {
   id: string
@@ -68,6 +69,7 @@ type FlagRow = {
   pageUrl?: string | null
   affectedPaths?: unknown
   fingerprint?: string
+  supportingObservations?: unknown
 }
 
 function flag(overrides: Partial<FlagRow>): FlagRow {
@@ -105,6 +107,22 @@ describe('completed comparison facts', () => {
     prismaMock.$transaction.mockImplementation(async fn => fn(prismaMock))
     prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit(), projectId: 'project-1', parentId: 'parent', verifierExecutions: [] })
     prismaMock.auditVerifierExecution.upsert.mockImplementation(async input => ({ status: 'COMPLETED', detail: input.create.detail }))
+  })
+  it.each(['newIssues', 'unchanged', 'inconclusive', 'fixed'] as const)('retains unavailable source evidence through %s without copying private observations', async bucket => {
+    const unreadable = { version: 999, items: [{ evidence: 'Private unavailable source' }] }
+    const original = flag({ id: 'before', supportingObservations: unreadable })
+    const current = flag({ id: 'after', supportingObservations: unreadable })
+    if (bucket === 'inconclusive') prismaMock.audit.findUnique.mockResolvedValue({ ...childAudit({ reportCompleteness: 'PARTIAL' }),
+      projectId: 'project-1', parentId: 'parent', verifierExecutions: [] })
+    const absent = bucket === 'inconclusive' || bucket === 'fixed'
+    prismaMock.flag.findMany.mockResolvedValueOnce(bucket === 'newIssues' ? [] : [original])
+      .mockResolvedValueOnce(absent ? [] : [current])
+    await persistFlagDiffSummary('parent', 'child')
+    const summary = prismaMock.auditVerifierExecution.upsert.mock.calls[0][0].create.detail.summary
+    expect(summary[bucket]).toMatchObject([{ id: absent ? 'before' : 'after', supportingEvidenceUnreadable: true }])
+    expect(comparisonEvidenceComplete(summary)).toBe(false)
+    expect(JSON.stringify(summary)).not.toContain('Private unavailable source')
+    expect(original.supportingObservations).toEqual(unreadable)
   })
   it('retains an unchanged failure after later monitoring resolves or regresses its Flag rows', async () => {
     prismaMock.flag.findMany.mockResolvedValueOnce([flag({ id: 'before' })]).mockResolvedValueOnce([flag({ id: 'after' })])
@@ -237,11 +255,9 @@ describe('durable diagnostic continuity', () => {
       { executionSpec: { path: ['scope'], equals: expect.anything() } },
       { NOT: { executionSpec: { path: ['scope'], equals: 'FIXTURE_SETUP' } } },
     ] })
-    expect(history.AND[1].OR).toEqual([
-      { executionSpec: { path: ['environment'], equals: 'production' } },
-      { executionSpec: { path: ['environment'], equals: expect.anything() } },
-    ])
-    expect(query.select.attempts.where.sourceAudit).toEqual(history)
+    expect(history.AND[1]).toEqual(analysisEnvironmentWhere('production'))
+    const unresolved = prismaMock.flag.findMany.mock.calls.find(([input]) => input.where.improvementOccurrence)?.[0]
+    expect(unresolved.where.audit).toEqual(history)
   })
   it('does not repeat an old recovery on healthy monitoring runs', async () => {
     prismaMock.flag.findMany.mockResolvedValue([])
@@ -250,9 +266,8 @@ describe('durable diagnostic continuity', () => {
     expect(Object.values(summary).flat()).toEqual([])
   })
   it('closes an older pending fix only with its own positive scoped evidence', async () => {
-    prismaMock.flag.findMany.mockResolvedValue([])
-    prismaMock.improvement.findMany.mockResolvedValue([{ id: 'improvement', occurrences: [{ flag: previous({ id: 'latest' }) }],
-      attempts: [{ sourceAudit: { improvementOccurrences: [{ improvementId: 'improvement', flag: previous() }] } }] }])
+    prismaMock.flag.findMany.mockImplementation(async input => input.where.improvementOccurrence ? [previous()] : [])
+    prismaMock.improvement.findMany.mockResolvedValue([{ occurrences: [{ flag: previous({ id: 'latest' }) }] }])
     prismaMock.auditVerifierExecution.findMany.mockResolvedValue([{ targetKey: 'check:title-missing', status: 'COMPLETED', detail: {
       kind: 'search-verifier', version: 1, auditId: 'current-audit', pageUrl, checkId: 'title-missing', verdict: 'passed', comparable: true,
       observationIds: ['fresh-title'], reason: 'Fresh original and rendered title',
@@ -467,12 +482,15 @@ describe('getFlagDiffSummary', () => {
     expect(summary.inconclusive).toHaveLength(1)
   })
 
-  it('credits Fixed when the Flag page was captured even without PageSpeed FULL', async () => {
+  it.each([
+    { observed: 'https://example.com/pricing/', fixed: true },
+    { observed: 'https://example.com/pricing', fixed: false },
+  ])('requires the exact Flag resource despite optional PageSpeed gaps: $observed', async ({ observed, fixed }) => {
     prismaMock.audit.findUnique.mockResolvedValue(
       childAudit({
         reportCompleteness: 'PARTIAL',
         pages: [
-          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'PARTIAL' },
+          { url: observed, status: 'COMPLETED', completeness: 'PARTIAL' },
           { url: 'https://example.com/blog', status: 'FAILED', completeness: 'PARTIAL' },
         ],
       })
@@ -489,8 +507,8 @@ describe('getFlagDiffSummary', () => {
       .mockResolvedValueOnce([])
 
     const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
-    expect(summary.fixed).toHaveLength(1)
-    expect(summary.inconclusive).toEqual([])
+    expect(summary.fixed).toHaveLength(fixed ? 1 : 0)
+    expect(summary.inconclusive).toHaveLength(fixed ? 0 : 1)
   })
 
   it('credits Fixed for historical PARTIAL page status when the page was run', async () => {

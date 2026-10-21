@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { checkFormValidation } from './form-validation'
+import { checkFormValidation, NATIVE_CONSTRAINT_OBSERVATION } from './form-validation'
 import { scopedAssertionForTarget } from './verification'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 import { FORM_VERIFICATION_RULE, type FormEvidence } from '../flow/form-evidence'
@@ -45,4 +45,32 @@ it('can verify rejection of empty fields while retaining an independently observ
   const slow = { ...receipt, passed: false, assertions: checked.assertions }
   expect(scopedAssertionForTarget({ receipt: slow, checkId: 'flow-form-no-validation', flag })?.assertion.passed).toBe(true)
   expect(scopedAssertionForTarget({ receipt: slow, checkId: 'flow-form-slow-feedback', flag })?.assertion.passed).toBe(false)
+})
+
+it('retains a native constraint fact without claiming historical zero-time feedback or a repair', () => {
+  const checked = checkFormValidation({ ...evidence, reason: 'native_validation', feedbackMs: 0 })
+  expect(checked.complete).toBe(false)
+  expect(checked.assertions).toEqual(expect.arrayContaining([
+    expect.objectContaining({ key: 'empty-form-validation', passed: true, complete: true }),
+    expect.objectContaining({ key: 'form-feedback', passed: false, complete: false }),
+  ]))
+  const old = { ...receipt, assertions: receipt.assertions.map(assertion => ({ ...assertion, observed: NATIVE_CONSTRAINT_OBSERVATION })) }
+  expect(scopedAssertionForTarget({ receipt: old, checkId: flag.checkId, flag })).toBeUndefined()
+  expect(scopedAssertionForTarget({ receipt: old, checkId: 'flow-form-slow-feedback', flag })).toBeUndefined()
+})
+
+it('keeps conclusive missing feedback separate from unavailable timing', () => {
+  const checked = checkFormValidation({ ...evidence, disposition: 'failed', reason: 'missing_feedback', feedbackMs: null })
+  expect(checked.complete).toBe(true)
+  expect(checked.assertions).toEqual(expect.arrayContaining([
+    expect.objectContaining({ key: 'form-feedback', passed: false, complete: true }),
+  ]))
+})
+
+it('accepts freshly observed native reporting under the same original form scope', () => {
+  const checked = checkFormValidation({ ...evidence, reason: 'native_feedback', feedbackMs: 20 })
+  expect(checked.complete).toBe(true)
+  const measured = { ...receipt, assertions: checked.assertions }
+  expect(scopedAssertionForTarget({ receipt: measured, checkId: flag.checkId, flag })?.assertion.passed).toBe(true)
+  expect(scopedAssertionForTarget({ receipt: measured, checkId: 'flow-form-slow-feedback', flag })?.assertion.passed).toBe(true)
 })

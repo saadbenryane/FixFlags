@@ -103,8 +103,6 @@ export function AuditInput({
       return
     }
 
-    normalized = normalized.replace(/\/+$/, '')
-
     const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(normalized)
     if (!hasScheme) {
       normalized = 'https://' + normalized

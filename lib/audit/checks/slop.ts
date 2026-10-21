@@ -1,7 +1,7 @@
 import { renderedContentMetadata } from '../browser/rendered-copy'
 import { sectionTargetExists, sectionTargetSet } from './section-links'
 import { PageMetadata } from '../metadata'
-import { isDeadHref } from '../flow/link-scoring'
+import { classifyCtaHref } from '../flow/link-scoring'
 import type { DeterministicFlag } from '../flag-types'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { recordObservation, type CheckRecorder } from './assertion'
@@ -171,11 +171,13 @@ export function runSlopChecks(meta: PageMetadata, record?: CheckRecorder): Deter
   const sectionTargets = sectionTargetSet(meta)
   const deadCtaLinks = (meta.documentLinks ?? meta.links).filter((link) => {
     const href = link.href
-    // Hash target that exists on the page is not dead
-    if (href.startsWith('#')) {
-      if (sectionTargetExists(meta, href.slice(1), sectionTargets)) return false
-    }
-    return isDeadHref(href) && CTA_PATTERN.test(`${href} ${link.text}`)
+    let destination: URL | undefined
+    try { if (meta.documentUrl) destination = new URL(href, meta.linkBaseUrl ?? meta.documentUrl) }
+    catch { /* Invalid declarations retain their original classification. */ }
+    const fragment = destination ? destination.hash.slice(1) : href.startsWith('#') ? href.slice(1) : ''
+    return classifyCtaHref(href, { baseUrl: meta.documentUrl, resolvedHref: destination?.href,
+      hashTargetExists: Boolean(fragment && sectionTargetExists(meta, fragment, sectionTargets)),
+    }).isPlaceholder && CTA_PATTERN.test(`${href} ${link.text}`)
   })
   if (deadCtaLinks.length > 0) {
     const sample = deadCtaLinks[0]

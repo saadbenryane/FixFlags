@@ -22,6 +22,7 @@ import styles from './SiteShell.module.css'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { LazySiteChat } from './LazySiteChat'
 import { SiteMonitoringMenu } from './SiteMonitoringMenu'
+import { SiteResourceBoundary } from './SiteResourceBoundary'
 import { nextCheckLabel } from '@/lib/sites/monitoring-schedule'
 import { siteContinuationHref, type SiteViewerActions } from '@/lib/sites/viewer-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -35,7 +36,8 @@ function routeHref(siteId: string, route: SiteRoute): Route {
 }
 
 export function SiteShell(props: Parameters<typeof SiteShellContent>[0]) {
-  return <SupportProvider><SiteShellContent {...props} /></SupportProvider>
+  const content = <SupportProvider><SiteShellContent {...props} /></SupportProvider>
+  return props.analysisView ? <SiteResourceBoundary siteId={props.siteId} initial={props.analysisView}>{content}</SiteResourceBoundary> : content
 }
 
 function SiteShellContent({
@@ -95,7 +97,7 @@ function SiteShellContent({
       {!signedIn ? <div className={styles.anonymousBrand}><Logo variant="lockup" size="sm" /></div> : null}
       <div className={styles.identity}>
         <Link href={routeHref(siteId, 'home')} className={styles.domain}>{host}</Link>
-        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} initial={analysisView} /> : <AnalysisDetails host={host} statusLabel={presentation?.run.label ?? watch.label}
+        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : <AnalysisDetails host={host} statusLabel={presentation?.run.label ?? watch.label}
           active={Boolean(analyzing)} disconnected={false} />)}
       </div>
       <div className={styles.desktopNavigation}>{navigation('Site')}</div>

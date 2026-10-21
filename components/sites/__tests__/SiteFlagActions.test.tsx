@@ -1,5 +1,7 @@
-import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { siteFlagFixture, siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
+import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import type { SiteResourceUpdate } from '@/hooks/useSiteResource'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -12,13 +14,76 @@ function copyResponse(prompt: string) {
 }
 
 const refresh = vi.fn()
-vi.mock('@/hooks/useSiteResource', () => ({ useSiteResource: (_siteId: string, initial: unknown) => ({ view: initial, refresh: vi.fn().mockResolvedValue(undefined), disconnected: false }) }))
+const resource = vi.hoisted(() => ({ view: null as SiteHomeView | null, update: undefined as ((update: SiteResourceUpdate) => void) | undefined }))
+vi.mock('@/hooks/useSiteResource', () => ({ useSiteResource: (_siteId: string, initial: unknown, update?: (update: SiteResourceUpdate) => void) => {
+  resource.update = update
+  return { view: resource.view ?? initial, refresh: vi.fn().mockResolvedValue(undefined), disconnected: false }
+} }))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh }),
 }))
 
 describe('SiteFlagActions', () => {
+  it.each(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])('refreshes pending historical guidance from its own %s prescription notice', state => {
+    const initial = siteViewFixture()
+    render(<SiteFlagActions repairGuidance="pending" sourceAuditId="original-audit" initial={initial} siteId="p_site" flagId="historical-flag" />)
+    const notice = { version: 1 as const, auditId: 'original-audit', kind: 'prescription', state, taskId: 'prescription-task', observationReference: null }
+    for (const unrelated of [{ ...notice, auditId: 'newer-audit' }, { ...notice, kind: 'browser' }, { ...notice, state: 'RUNNING' }])
+      act(() => resource.update?.({ type: 'projection', notice: unrelated }))
+    expect(refresh).not.toHaveBeenCalled()
+    act(() => resource.update?.({ type: 'projection', notice }))
+    expect(refresh).toHaveBeenCalledTimes(1)
+    act(() => resource.update?.({ type: 'projection', notice }))
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(SITE_ACTION_COPY.repairGuidance.pending)).toBeVisible()
+  })
+
+  it('catches up historical guidance after reconnect without borrowing another occurrence', () => {
+    const initial = siteViewFixture()
+    initial.flags = [siteFlagFixture({ repairGuidance: 'ready', sourceFlagId: 'another-source' })]
+    const rendered = render(<SiteFlagActions repairGuidance="pending" sourceAuditId="original-audit" initial={initial} siteId="p_site" flagId="historical-flag" />)
+    act(() => resource.update?.({ type: 'reconnected' }))
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).not.toBeInTheDocument()
+    rendered.rerender(<SiteFlagActions repairGuidance="ready" sourceAuditId="original-audit" initial={initial} siteId="p_site" flagId="historical-flag" />)
+    act(() => resource.update?.({ type: 'reconnected' }))
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+  it.each(['ready', 'unavailable'] as const)('publishes %s guidance automatically from the same source finding', repairGuidance => {
+    const initial = siteViewFixture()
+    initial.flags = [siteFlagFixture({ repairGuidance: 'pending' })]
+    const rendered = render(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" />)
+    resource.view = { ...initial, flags: [siteFlagFixture({ repairGuidance, fix: repairGuidance === 'ready' ? 'Restore the label.' : '' })] }
+    rendered.rerender(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" />)
+    expect(repairGuidance === 'ready' ? screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })
+      : screen.getByRole('link', { name: SITE_ACTION_COPY.repairGuidance.overview })).toBeVisible()
+    expect(refresh).toHaveBeenCalledTimes(1)
+    rendered.rerender(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" />)
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not borrow readiness from another source occurrence of the same incident', () => {
+    const initial = siteViewFixture()
+    initial.flags = [siteFlagFixture({ id: 'flag-1', sourceFlagId: 'another-source', improvementId: 'flag-1', repairGuidance: 'ready' })]
+    render(<SiteFlagActions repairGuidance="pending" initial={initial} siteId="p_site" flagId="flag-1" />)
+    expect(screen.getByText(SITE_ACTION_COPY.repairGuidance.pending)).toBeVisible()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('refreshes a changed explanation once while preserving an open verification draft', () => {
+    const initial = siteViewFixture()
+    initial.flags = [siteFlagFixture({ repairGuidance: 'ready', fix: 'Original guidance.' })]
+    const rendered = render(<SiteFlagActions repairGuidance="ready" initialFix="Original guidance." initial={initial} siteId="p_site" flagId="flag-1" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), { target: { value: 'My unfinished verification note' } })
+    resource.view = { ...initial, flags: [siteFlagFixture({ repairGuidance: 'ready', fix: 'Updated guidance for the original button.' })] }
+    rendered.rerender(<SiteFlagActions repairGuidance="ready" initialFix="Original guidance." initial={initial} siteId="p_site" flagId="flag-1" />)
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue('My unfinished verification note')
+    rendered.rerender(<SiteFlagActions repairGuidance="ready" initialFix="Updated guidance for the original button." initial={initial} siteId="p_site" flagId="flag-1" />)
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
   it.each(['pending', 'unavailable'] as const)('explains %s repair guidance without offering a copied handoff', async repairGuidance => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
@@ -43,15 +108,15 @@ describe('SiteFlagActions', () => {
       : screen.getByRole('link', { name: SITE_ACTION_COPY.repairGuidance.overview })).toHaveFocus()
   })
 
-  it('groups Fix and Monitor and submits one scoped check with the optional change summary', async () => {
+  it('groups applying and checking a fix and submits one scoped check with the optional change summary', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 202, json: async () => ({
       ok: true, accepted: true, runRequestId: 'run-1', runId: 'run-1', verificationAuditId: 'audit-1',
       siteId: 'p_site', flagId: 'flag-1', attemptId: 'attempt-1', parentAuditId: 'parent-1', expectedBehavior: 'The product appears in the cart',
     }) })
     vi.stubGlobal('fetch', fetchMock)
     render(<SiteFlagActions repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
-    expect(screen.getByRole('heading', { name: 'Fix' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Monitor' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.fixStep })).toBeVisible()
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.verifyStep })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Check now' }))
     const dialog = screen.getByRole('dialog')
     fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Updated the cart handler' } })
@@ -73,6 +138,8 @@ describe('SiteFlagActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    resource.view = null
+    resource.update = undefined
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -99,6 +166,19 @@ describe('SiteFlagActions', () => {
       expect.anything()
     )
     expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('keeps long guidance available without pushing the copy and verification actions below it', () => {
+    const initial = siteViewFixture()
+    const guidance = 'Restore the button label and publish the change.'
+    initial.flags = [siteFlagFixture({ repairGuidance: 'ready', fix: guidance })]
+    render(<SiteFlagActions repairGuidance="ready" initialFix={guidance} initial={initial} siteId="p_site" flagId="flag-1" />)
+    const explanation = screen.getByText(guidance)
+    expect(explanation).not.toBeVisible()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeVisible()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeVisible()
+    fireEvent.click(screen.getByText(SITE_BOARD_COPY.readFixGuidance))
+    expect(explanation).toBeVisible()
   })
 
   it('copies a prompt without starting verify or exposing a private share action', async () => {

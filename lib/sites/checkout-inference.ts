@@ -100,7 +100,6 @@ function normalizeStart(
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
   if (!allowOtherHost && (!siteHost || parsed.hostname !== siteHost)) return null
-  parsed.hash = ''
   const start = parsed.toString()
   if (isCheckoutUrl(start) || isTerminalOrderUrl(start)) return null
   return start

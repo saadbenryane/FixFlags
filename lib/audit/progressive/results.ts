@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import type { Prisma } from '@prisma/client'
-import { checkReceiptSchema, summarizeCheckAssertions } from '../checks/receipt'
-import { CHECK_ASSERTIONS, CHECK_MODULES } from '../check-registry'
+import { checkReceiptSchema, scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
+import { CHECK_MODULES } from '../check-registry'
 import { recordAssertionVerifiers } from '../checks/verification'
 import { searchAttentionSchema } from '../search/contracts'
 import { persistDeterministicFlags } from '../persist'
@@ -78,10 +78,8 @@ export async function recordedTaskFindings(auditId: string, db: Pick<Prisma.Tran
 export async function commitCheckReceipt(context: TaskContext, receipt: z.infer<typeof checkReceiptSchema>, tx: Prisma.TransactionClient, scopeSuffix = '') {
   const spec = readExecutionSpec(context.audit.executionSpec)
   const allowedCheckIds = spec?.category ? Object.keys(spec.checks) : undefined
-  if (allowedCheckIds) receipt = { ...receipt, assertions: receipt.assertions.filter(assertion => {
-    const definition = CHECK_ASSERTIONS[receipt.module]?.[assertion.key]
-    return definition && (definition.area === spec!.category!.area || definition.verifies.some(id => allowedCheckIds.includes(id)))
-  }) }
+  if (spec?.category) receipt = { ...receipt, assertions: scopeCheckEvidence({ module: receipt.module,
+    flags: [], assertions: receipt.assertions, scope: { area: spec.category.area, allowedCheckIds } }).assertions }
   if (allowedCheckIds && !receipt.assertions.length && CHECK_MODULES[receipt.module]?.area !== spec!.category!.area) return
   receipt = { ...receipt, ...summarizeCheckAssertions(receipt) }
   const scopeKey = 'page:' + receipt.pageUrl + scopeSuffix

@@ -12,14 +12,16 @@ import { severityRank } from '@/lib/utils'
 import type { Flag, FlagStatus, ReportCompleteness, Severity } from '@prisma/client'
 import { Prisma } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
-import { hasRecordedRecoveryEvidence, type RecoveryExecution, type RecoveryFlag } from './recovery-evidence'
+import { createRecordedRecoveryReader, type RecoveryExecution, type RecoveryFlag } from './recovery-evidence'
 import { readExecutionSpec, type ExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { CHECK_REGISTRY } from './check-registry'
 import { SEARCH_DEFINITIONS } from './search/definitions'
 import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
-import { siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
+import { analysisEnvironmentWhere, siteAnalysisAuditWhere } from '@/lib/sites/application/analysis-scope'
 import { FLAG_COMPARISON_TARGET, flagComparisonSchema, readFlagComparison, type FlagDiffSummary } from './flag-comparison'
+import { preparePublishedSiteAssessment } from '@/lib/sites/application/recorded-assessment'
+import { hasUnreadableStoredSupportingObservations } from './flag-observations'
 
 export type { FlagDiffSummaryItem } from './flag-types'
 
@@ -85,7 +87,7 @@ export function diffMatchKey(input: {
   return observationIdentity(input)
 }
 
-/** Normalize URLs for page-comparable Fixed matching (hash stripped, trailing slash). */
+/** Compare the same resource, retaining meaningful path and query delimiters. */
 export const normalizeDiffUrl = normalizeVerifierUrl
 
 function flagPageUrls(flag: Pick<FlagRow, 'pageUrl' | 'affectedPaths'>): string[] {
@@ -127,22 +129,28 @@ export function isPageComparableAbsence(input: {
   executionSpec?: unknown
   verifierExecutions?: RecoveryExecution[]
 }): boolean {
-  if (input.auditStatus !== 'COMPLETED') return false
+  return pageAbsenceCheck(input)(input.parentFlag)
+}
+
+/** One comparison batch shares its recorded receipts and legacy page index. */
+function pageAbsenceCheck(input: Omit<Parameters<typeof isPageComparableAbsence>[0], 'parentFlag'>): (flag: RecoveryFlag) => boolean {
+  if (input.auditStatus !== 'COMPLETED') return () => false
   const spec = readExecutionSpec(input.executionSpec)
-  if (input.executionSpec != null && !spec) return false
-  if (spec?.engine === 'progressive-v1') return Boolean(input.auditId && hasRecordedRecoveryEvidence({
-    auditId: input.auditId, executionSpec: input.executionSpec, flag: input.parentFlag, executions: input.verifierExecutions ?? [],
-  }))
-
-  const ownedUrls = flagPageUrls(input.parentFlag)
-  if (ownedUrls.length === 0) {
-    return input.reportCompleteness === 'FULL'
+  if (input.executionSpec != null && !spec) return () => false
+  if (spec?.engine === 'progressive-v1') {
+    const reader = input.auditId && createRecordedRecoveryReader({
+      auditId: input.auditId, executionSpec: input.executionSpec, executions: input.verifierExecutions ?? [],
+    })
+    return flag => Boolean(reader && reader.hasRecovery(flag))
   }
-
   const byUrl = new Map(
     input.childPages.map((page) => [normalizeDiffUrl(page.url), page])
   )
-  return ownedUrls.every((url) => pageIsReobservationComparable(byUrl.get(url)))
+  return flag => {
+    const ownedUrls = flagPageUrls(flag)
+    return ownedUrls.length === 0 ? input.reportCompleteness === 'FULL'
+      : ownedUrls.every(url => pageIsReobservationComparable(byUrl.get(url)))
+  }
 }
 
 async function loadAuditCoverage(auditId: string | null): Promise<{
@@ -195,30 +203,22 @@ async function diagnosticBaseline(input: {
   // whether a previously verified incident can recur.
   const historyAudit = {
     projectId: input.child.projectId, id: { not: input.auditId }, status: 'COMPLETED',
-    createdAt: { lt: input.child.createdAt }, AND: [siteAnalysisAuditWhere,
-      spec.environment === 'production' ? { OR: [
-        { executionSpec: { path: ['environment'], equals: spec.environment } },
-        { executionSpec: { path: ['environment'], equals: Prisma.AnyNull } },
-      ] } : { executionSpec: { path: ['environment'], equals: spec.environment } }],
+    createdAt: { lt: input.child.createdAt }, AND: [siteAnalysisAuditWhere, analysisEnvironmentWhere(spec.environment)],
   } satisfies Prisma.AuditWhereInput
   const admitted = (flag: Flag) => categoryAdmitsFlag(spec, flag)
   const history = await prisma.improvement.findMany({
     where: { projectId: input.child.projectId, outcomeId: null },
-    select: { id: true, occurrences: {
+    select: { occurrences: {
       where: { audit: historyAudit },
       orderBy: [{ audit: { createdAt: 'desc' } }, { id: 'desc' }], take: 1,
       select: { flag: true },
-    }, attempts: {
-      where: { OR: [{ outcome: null }, { outcome: 'INCONCLUSIVE' }], createdAt: { lt: input.child.createdAt },
-        sourceAudit: historyAudit },
-      select: { sourceAudit: { select: { improvementOccurrences: { select: { improvementId: true, flag: true } } } } },
     } },
   })
   const parentFlags = input.parentFlags.filter(admitted)
   const keys = parentMatchKeySet(parentFlags), currentKeys = parentMatchKeySet(input.currentFlags)
   const baseline = [...parentFlags]
   const sourceFlags = spec.category && spec.category.sourceAuditId !== input.parentId ? await prisma.flag.findMany({
-    where: { auditId: spec.category.sourceAuditId, audit: { projectId: input.child.projectId } },
+    where: { auditId: spec.category.sourceAuditId, audit: { projectId: input.child.projectId, AND: [analysisEnvironmentWhere(spec.environment)] } },
   }) : []
   for (const previous of [...sourceFlags, ...history.flatMap(improvement => improvement.occurrences[0]?.flag ?? [])]) {
     if (!previous || !admitted(previous) || outcomeFlagOwner(previous.fingerprint) || previous.status === 'IGNORED') continue
@@ -228,11 +228,11 @@ async function diagnosticBaseline(input: {
     baseline.push(previous)
     for (const key of previousKeys) keys.add(key)
   }
-  // A fix can belong to an older source than the latest failure. Its original
-  // Flag must receive its own scope proof before the pending attempt resumes.
   const ids = new Set(baseline.map(flag => flag.id))
   // Every unresolved original condition needs its own recovery decision. A
-  // newer occurrence cannot stand in for an older page, device or interaction.
+  // newer occurrence cannot stand in for an older page, device or interaction,
+  // including an older repair's source. Read those Flags once, independently
+  // of how many attempts or sibling findings their source Audits contain.
   const unresolved = await prisma.flag.findMany({ where: { status: { in: ['OPEN', 'REGRESSED'] },
     improvementOccurrence: { improvement: { projectId: input.child.projectId, outcomeId: null } },
     audit: historyAudit } })
@@ -240,14 +240,6 @@ async function diagnosticBaseline(input: {
     if (!admitted(previous) || ids.has(previous.id) || outcomeFlagOwner(previous.fingerprint) ||
       observationMatchKeys(previous).some(key => currentKeys.has(key))) continue
     baseline.push(previous); ids.add(previous.id)
-  }
-  for (const improvement of history) for (const attempt of improvement.attempts) {
-    const occurrence = attempt.sourceAudit.improvementOccurrences.find(row => row.improvementId === improvement.id)
-    const previous = occurrence?.flag
-    if (!previous || !admitted(previous) || ids.has(previous.id) || !['OPEN', 'REGRESSED'].includes(previous.status) || outcomeFlagOwner(previous.fingerprint) ||
-      observationMatchKeys(previous).some(key => currentKeys.has(key))) continue
-    baseline.push(previous)
-    ids.add(previous.id)
   }
   return baseline
 }
@@ -323,6 +315,9 @@ export async function diffFlagsAgainstParent(
   const monitoringByKey = indexByMatchKeys(monitoringFlags)
   const recovery = await loadRecoveryExecutions(monitoringAuditId, child.executionSpec,
     parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))))
+  const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
+    reportCompleteness: child.reportCompleteness, childPages: child.pages,
+    auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery })
   const updates: Array<{
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
@@ -335,15 +330,7 @@ export async function diffFlagsAgainstParent(
       .find(Boolean)
 
     if (!monitoringFlag) {
-      if (
-        isPageComparableAbsence({
-          auditStatus: child.status,
-          reportCompleteness: child.reportCompleteness,
-          childPages: child.pages,
-          parentFlag,
-          auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery,
-        })
-      ) {
+      if (comparableAbsence(parentFlag)) {
         updates.push({
           id: parentFlag.id,
           data: { status: 'FIXED', resolvedInId: monitoringAuditId },
@@ -440,13 +427,16 @@ export async function getFlagDiffSummary(
  * Flag statuses that a later monitoring run can legitimately change. */
 export async function persistFlagDiffSummary(parentAuditId: string | null, monitoringAuditId: string): Promise<void> {
   const child = await loadAuditCoverage(monitoringAuditId)
-  const scope = readExecutionSpec(child.executionSpec)?.scope
+  const spec = readExecutionSpec(child.executionSpec), scope = spec?.scope
   if (scope === 'DIAGNOSTIC' || scope === 'FIXTURE_SETUP') return
   if (child.status !== 'COMPLETED' || child.parentId !== parentAuditId) throw new Error('Flag comparison requires its completed execution and original parent.')
   if (child.comparison) return
   const summary = await calculateFlagDiffSummary(parentAuditId, monitoringAuditId, child)
-  const detail = flagComparisonSchema.parse({ kind: 'flag-comparison', version: 1, auditId: monitoringAuditId,
+  const comparison = flagComparisonSchema.parse({ kind: 'flag-comparison', version: 1, auditId: monitoringAuditId,
     parentAuditId, summary })
+  const detail = spec?.engine === 'progressive-v1' && (scope === 'SITE' || scope === 'CATEGORY')
+    ? flagComparisonSchema.parse({ ...comparison, siteAssessment: await preparePublishedSiteAssessment(monitoringAuditId, comparison) })
+    : comparison
   await executionTransaction(async tx => {
     const record = await tx.auditVerifierExecution.upsert({ where: { auditId_targetKey_scopeKey: {
       auditId: monitoringAuditId, targetKey: FLAG_COMPARISON_TARGET, scopeKey: 'product',
@@ -479,6 +469,9 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
   const monitoringByKey = indexByMatchKeys(monitoringFlags)
   const recovery = await loadRecoveryExecutions(monitoringAuditId, child.executionSpec,
     parentFlags.filter(flag => !observationMatchKeys(flag).some(key => monitoringByKey.has(key))))
+  const comparableAbsence = pageAbsenceCheck({ auditStatus: child.status,
+    reportCompleteness: child.reportCompleteness, childPages: child.pages,
+    auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery })
   const parentKeys = parentMatchKeySet(parentFlags)
 
   const fixed: FlagDiffSummaryItem[] = []
@@ -518,13 +511,7 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
     }
 
     if (!monitoringFlag) {
-      const unverified = parentGroups.get(key)!.filter(original => !isPageComparableAbsence({
-          auditStatus: child.status,
-          reportCompleteness: child.reportCompleteness,
-          childPages: child.pages,
-          parentFlag: original,
-          auditId: monitoringAuditId, executionSpec: child.executionSpec, verifierExecutions: recovery,
-        }))
+      const unverified = parentGroups.get(key)!.filter(original => !comparableAbsence(original))
       if (unverified.length === 0) {
         fixed.push(item)
       } else {
@@ -602,7 +589,13 @@ async function calculateFlagDiffSummary(parentAuditId: string | null, monitoring
     })
   }
 
-  return { fixed: [...fixed, ...(outcome?.fixed ?? [])], inconclusive: [...inconclusive, ...(outcome?.inconclusive ?? [])],
-    unchanged: [...unchanged, ...(outcome?.unchanged ?? [])], regressed: [...regressed, ...(outcome?.regressed ?? [])],
-    newIssues: [...newIssues, ...(outcome?.newIssues ?? [])] }
+  const sources = new Map([...parentRows, ...parentFlags, ...monitoringRows].map(flag => [flag.id, flag]))
+  const retainEvidenceState = (items: FlagDiffSummaryItem[]) => items.map(item => {
+    const source = item.id ? sources.get(item.id) : null
+    return source && hasUnreadableStoredSupportingObservations(source.supportingObservations)
+      ? { ...item, supportingEvidenceUnreadable: true } : item
+  })
+  return { fixed: retainEvidenceState([...fixed, ...(outcome?.fixed ?? [])]), inconclusive: retainEvidenceState([...inconclusive, ...(outcome?.inconclusive ?? [])]),
+    unchanged: retainEvidenceState([...unchanged, ...(outcome?.unchanged ?? [])]), regressed: retainEvidenceState([...regressed, ...(outcome?.regressed ?? [])]),
+    newIssues: retainEvidenceState([...newIssues, ...(outcome?.newIssues ?? [])]) }
 }

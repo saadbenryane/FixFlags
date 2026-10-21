@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cardAreaForCheck, ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
-import { buildCoverageFacts, SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from '@/lib/sites/coverage'
+import { buildCoverageFacts } from '@/lib/sites/coverage'
+import { SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from '../evidence-freshness'
 import { encodeSiteId, parseSiteId } from '@/lib/sites/types'
 import { siteCardHealth } from '@/lib/sites/site-health'
 import { buildBoardCards } from '@/lib/sites/board-card'

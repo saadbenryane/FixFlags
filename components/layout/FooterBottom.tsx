@@ -13,7 +13,7 @@ export function FooterBottom({
   category: string
 }) {
   return (
-    <div className="mt-10 space-y-8 lg:mt-8">
+    <div className="mt-10 space-y-8 lg:mt-16">
       <div className="grid min-w-0 items-center justify-items-center gap-2 text-center lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-6">
         <p className="text-2xs leading-relaxed text-muted-foreground lg:justify-self-start lg:whitespace-nowrap lg:text-left">
           © {year} {brandName}

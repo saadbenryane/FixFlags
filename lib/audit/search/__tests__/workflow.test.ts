@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { evaluateSearch, searchFindings } from '../registry'
+import { assessSearchRecovery } from '../recovery'
 import { searchReceiptSchema, type SearchReceipt } from '../contracts'
 import { evidence, markup, PAGE, document } from './fixtures'
 
@@ -50,6 +51,22 @@ describe('fresh Search verification and history', () => {
     expect(summary.complete).toBe(false)
     expect(summary.observations.at(-1)?.reason).toBe('observation_limit')
     expect(parts[1].observations).toHaveLength(300)
+  })
+
+  it('uses the full receipt capacity without declaring a gap and keeps late failures in larger summaries', async () => {
+    const source = await receipt()
+    const template = source.observations.find(item => item.disposition === 'passed')!
+    const parts = [0, 1].map(part => ({ ...source, observations: Array.from({ length: 250 }, (_, index) => ({ ...template, id: `part:${part}:${index}` })) }))
+    const complete = combineSearchReceipts({ auditId: source.auditId, pageUrl: PAGE, receipts: parts, expected: 2 })
+    expect(complete.complete).toBe(true)
+    expect(complete.observations).toHaveLength(500)
+    const failure = { ...template, id: 'late-failure', disposition: 'failed' as const,
+      attention: { ...template.attention, kind: 'flag' as const } }
+    parts[1].observations.push(failure)
+    const partial = combineSearchReceipts({ auditId: source.auditId, pageUrl: PAGE, receipts: parts, expected: 2 })
+    expect(partial.complete).toBe(false)
+    expect(partial.observations).toContainEqual(failure)
+    expect(partial.observations.at(-1)?.reason).toBe('observation_limit')
   })
 
   it('does not replace a rendered title failure with original-HTML success when rendered collection fails', async () => {
@@ -103,12 +120,37 @@ describe('fresh Search verification and history', () => {
   })
   it('verifies repaired declared sitemap syntax and target availability using stable identities', async () => {
     for (const checkId of ['sitemap-missing', 'search-sitemap-invalid']) {
-      pending(checkId, { policy: 'search', version: 1, kind: 'flag', reason: 'sitemap_unavailable' })
+      const sitemapUrl = PAGE + 'sitemap.xml'
+      const broken = await receipt(undefined, undefined, {
+        sitemaps: [document(checkId === 'sitemap-missing' ? null : '<urlset><url>',
+          { url: sitemapUrl, finalUrl: sitemapUrl, status: checkId === 'sitemap-missing' ? 404 : 200, complete: true })],
+        declaredSitemaps: [sitemapUrl],
+      })
+      const flag = searchFindings(broken.observations).find(flag => flag.checkId === checkId)!
+      pending(checkId, flag.attentionPolicy)
       await recordSearchVerifiers(await receipt(undefined, undefined, {
-        sitemaps: [document('<urlset><url><loc>' + PAGE + '</loc></url></urlset>')],
+        sitemaps: [document('<urlset><url><loc>' + PAGE + '</loc></url></urlset>', { url: sitemapUrl, finalUrl: sitemapUrl })],
       }))
       expect(proof()).toMatchObject({ checkId, verdict: 'passed', comparable: true })
     }
+  })
+  it('does not certify the old escaped request target as repaired by a parser correction', async () => {
+    const originalTarget = PAGE + 'pages.xml?page=2&amp;type=product'
+    const correctedTarget = PAGE + 'pages.xml?page=2&type=product'
+    const before = await receipt(undefined, undefined, {
+      sitemaps: [document(null, { url: originalTarget, finalUrl: originalTarget, status: 404, complete: true })],
+      declaredSitemaps: [originalTarget],
+    })
+    const flag = searchFindings(before.observations).find(item => item.checkId === 'sitemap-missing')!
+    pending(flag.checkId, flag.attentionPolicy)
+    const corrected = await receipt(undefined, undefined, {
+      sitemaps: [document('<urlset><url><loc>' + PAGE + '</loc></url></urlset>', { url: correctedTarget, finalUrl: correctedTarget })],
+      declaredSitemaps: [correctedTarget],
+    })
+    expect(assessSearchRecovery(corrected, flag.checkId, flag.attentionPolicy)).toMatchObject({ verdict: 'unknown', comparable: false })
+    await recordSearchVerifiers(corrected)
+    expect(db.auditVerifierExecution.upsert).not.toHaveBeenCalled()
+    expect(flag.evidence).toContain(originalTarget)
   })
   it('retains the originating receipt on a repeated persistence attempt', async () => {
     const first = await receipt()

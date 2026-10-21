@@ -10,7 +10,7 @@ import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { Prisma,type RunRequestSource } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { canonicalIntent,readExecutionSpec,readVerificationTarget } from '../domain/execution-spec'
-import { siteAnalysisAuditWhere,siteWideAnalysisAuditWhere } from './analysis-scope'
+import { analysisEnvironmentValueSql,analysisEnvironmentWhere,siteAnalysisAuditWhere,siteWideAnalysisAuditWhere } from './analysis-scope'
 import { canonicalExecutionOutcomes,executionIntentHash } from './execution-spec'
 import { activeRunWhere,reclaimExpiredRuns,RUN_LEASE_MS } from './run-leases'
 import { reconcileOutcomeRunsForAudit } from './run-reconciliation'
@@ -35,7 +35,7 @@ function auditSource(source: RunRequestSource) {
   return 'DASHBOARD' as const
 }
 
-import { safeContext,sameExecutionScope,sameSelection,verificationTargetKind,type RunInput,type SiteRunVerificationTarget } from './run-intent'
+import { safeContext,sameExecutionScope,sameSelection,type RunInput,type SiteRunVerificationTarget } from './run-intent'
 /**
  * Which Site runs count against the plan's scan allowance.
  *
@@ -130,7 +130,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   })
   if (active) {
     if (active.environment !== environment || !compatibleActive(active)) {
-      throw new SiteRunRefusal('Another Site run is already in progress', 409)
+      throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
     }
     return { runId: active.id, auditId: active.auditId, outcomeIds: replaySelection(active), reused: true }
   }
@@ -177,7 +177,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
         { executionSpec: { path: ['scope'], equals: 'CATEGORY' } },
         { executionSpec: { path: ['category', 'area'], equals: executionSpec.category.area } },
         { executionSpec: { path: ['category', 'sourceAuditId'], equals: executionSpec.category.sourceAuditId } },
-        { executionSpec: { path: ['environment'], equals: executionSpec.environment } },
+        analysisEnvironmentWhere(environment),
       ] }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true },
     }) : null
     const parentAuditId = fixture ? undefined : input.verificationTarget?.parentAuditId ?? input.parentAuditId ?? categoryParent?.id ?? executionSpec.category?.sourceAuditId
@@ -186,13 +186,13 @@ export async function requestSiteRun(input: RunInput): Promise<{
           where: {
             id: parentAuditId,
             projectId: input.projectId,
-            status: 'COMPLETED',
+            status: 'COMPLETED', AND: [analysisEnvironmentWhere(environment)],
           },
           select: { id: true },
         })
       : fixture ? null : await prisma.audit.findFirst({
           where: { projectId: input.projectId, status: 'COMPLETED', url: auditUrl,
-            ...(scope === 'SITE' ? siteWideAnalysisAuditWhere : siteAnalysisAuditWhere) },
+            ...(scope === 'SITE' ? siteWideAnalysisAuditWhere : siteAnalysisAuditWhere), AND: [analysisEnvironmentWhere(environment)] },
           orderBy: { completedAt: 'desc' },
           select: { id: true },
         })
@@ -211,6 +211,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       reuseActiveManual: false,
       runRequestId: run.id,
       runRequestAdmission: runAdmission,
+      scheduledClaim: input.scheduledClaim,
       operator: input.operator,
       executionSpec,
       attribution: buildAttribution({
@@ -246,7 +247,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       if (concurrent) {
         const identicalKey = concurrent.source === input.source && concurrent.idempotencyKey === requestedKey
         if (concurrent.environment !== environment || !(identicalKey ? matchesIntent(concurrent) : compatibleActive(concurrent)))
-          throw new SiteRunRefusal('Another Site run is already in progress', 409)
+          throw new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS')
         return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: replaySelection(concurrent), reused: true }
       }
     }
@@ -260,17 +261,24 @@ export async function requestOutcomeRun(input: Omit<RunInput, 'outcomeIds'> & { 
   return requestSiteRun({ ...input, outcomeIds: [input.outcomeId] })
 }
 
-export async function findReusableRun(input: {
+/** The caller must authorize the Site. Resolve only that Site's original source. */
+export async function loadRunSourceEnvironment(projectId: string, auditId: string): Promise<string> {
+  const [source] = await prisma.$queryRaw<Array<{ environment: string | null }>>(Prisma.sql`
+    SELECT ${analysisEnvironmentValueSql} AS environment FROM "audits" "source"
+    WHERE "source"."projectId" = ${projectId} AND "source"."id" = ${auditId}`)
+  if (!source?.environment) throw new SiteRunRefusal('Verification source environment is unavailable', 409, 'SOURCE_ENVIRONMENT_UNAVAILABLE')
+  return source.environment
+}
+
+export async function findReusableVerificationRun(input: {
   projectId: string
   source: RunRequestSource
   idempotencyKey: string
   outcomeIds: string[]
-  environment?: string
-  verificationTargetKind?: SiteRunVerificationTarget['kind']
+  verificationTargetKind: SiteRunVerificationTarget['kind']
   verificationIdentity?: { outcomeId?: string; pageUrl?: string; checkId?: string; attemptId?: string }
-}): Promise<{ runId: string; auditId: string | null; outcomeIds: string[]; verificationTarget: SiteRunVerificationTarget | null } | null> {
+}): Promise<{ runId: string; auditId: string; environment: string; outcomeIds: string[]; verificationTarget: SiteRunVerificationTarget } | null> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
-  const environment = input.environment ?? 'production'
   const existing = await prisma.runRequest.findUnique({
     where: {
       projectId_source_idempotencyKey: {
@@ -284,13 +292,15 @@ export async function findReusableRun(input: {
   if (!existing) return null
   const target = readVerificationTarget(existing.verificationTarget)
   if (
-    existing.environment !== environment ||
+    !existing.auditId || !target ||
     !sameSelection(existing, selectedIds) ||
-    verificationTargetKind(existing.verificationTarget) !== (input.verificationTargetKind ?? null) ||
-    (input.verificationIdentity && (!target || Object.entries(input.verificationIdentity).some(([key, value]) =>
-      value !== undefined && target[key as keyof typeof target] !== value)))
+    target.kind !== input.verificationTargetKind ||
+    (input.verificationIdentity && Object.entries(input.verificationIdentity).some(([key, value]) =>
+      value !== undefined && target[key as keyof typeof target] !== value))
   ) {
     throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
   }
-  return { runId: existing.id, auditId: existing.auditId, outcomeIds: selectedIds, verificationTarget: target }
+  const environment = await loadRunSourceEnvironment(input.projectId, existing.auditId)
+  if (existing.environment !== environment) throw new SiteRunRefusal('Verification receipt environment does not match its observation', 409)
+  return { runId: existing.id, auditId: existing.auditId, environment, outcomeIds: selectedIds, verificationTarget: target }
 }

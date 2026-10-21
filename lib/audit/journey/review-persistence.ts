@@ -18,24 +18,26 @@ async function mergeActionTimeline(
   events: ActionTimelineEvent[] | undefined
 ): Promise<void> {
   if (!events?.length) return
-  const audit = await prisma.audit.findUnique({
-    where: { id: auditId },
-    select: { performanceData: true },
+  await executionWrite(async tx => {
+    const audit = await tx.audit.findUnique({
+      where: { id: auditId },
+      select: { performanceData: true },
+    })
+    const existing = parseActionTimeline(audit?.performanceData)
+    const merged = [...existing, ...events].slice(0, 80)
+    const base =
+      audit?.performanceData &&
+      typeof audit.performanceData === 'object' &&
+      !Array.isArray(audit.performanceData)
+        ? (audit.performanceData as Record<string, unknown>)
+        : {}
+    await tx.audit.update({
+      where: { id: auditId },
+      data: {
+        performanceData: { ...base, actionTimeline: merged } as unknown as Prisma.InputJsonValue,
+      },
+    })
   })
-  const existing = parseActionTimeline(audit?.performanceData)
-  const merged = [...existing, ...events].slice(0, 80)
-  const base =
-    audit?.performanceData &&
-    typeof audit.performanceData === 'object' &&
-    !Array.isArray(audit.performanceData)
-      ? (audit.performanceData as Record<string, unknown>)
-      : {}
-  await executionWrite(tx => tx.audit.update({
-    where: { id: auditId },
-    data: {
-      performanceData: { ...base, actionTimeline: merged } as unknown as Prisma.InputJsonValue,
-    },
-  }))
 }
 
 export async function recordJourneyResult(

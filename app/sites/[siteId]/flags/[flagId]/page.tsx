@@ -231,9 +231,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                 <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
                   {SITE_BOARD_COPY.fixAndVerify}
                 </h2>
-                {repairGuidance === 'ready' ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flag.fix}</p> : null}
                 <div className="mt-6">
-                  <SiteFlagActions repairGuidance={repairGuidance} siteId={resolvedId} flagId={actionFlagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
+                  <SiteFlagActions repairGuidance={repairGuidance} initialFix={flag.fix} sourceAuditId={flag.sourceAuditId} siteId={resolvedId} flagId={actionFlagId} initial={home} initialVerificationAuditId={flag.attempts.find(attempt => attempt.verifying && attempt.sourceAuditId === flag.sourceAuditId)?.verificationAuditId ?? null} verifying={flag.verifying} />
                 </div>
               </aside>
             ) : null}

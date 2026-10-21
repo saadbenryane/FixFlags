@@ -4,7 +4,7 @@
  * Monitor. Flag. Fix. is the customer loop. Verification supplies recovery proof.
  */
 
-export const ANALYZE_CTA = 'Analyze'
+export const ANALYZE_CTA = 'Check website'
 
 export const SITE_ACTIVITY_COPY = {
   milestones: ['Reached', 'Captured', 'Checked', 'Reviewed', 'Saved'],
@@ -19,7 +19,7 @@ export const REVIEW_ENTRY = {
   cta: ANALYZE_CTA,
   compactCta: ANALYZE_CTA,
   href: '/new',
-  description: 'Paste a website URL. FixFlags opens your Site board and starts looking after what matters.',
+  description: 'Run a free check with your public website URL. Save your Site for fix prompts and scheduled monitoring.',
   urlPlaceholder: 'yourwebsite.com',
   trySampleCta: 'See how it works',
 } as const
@@ -80,11 +80,12 @@ export const SITE_BOARD_COPY = {
   flagExpected: 'Expected after the fix',
   flagScope: 'Checked scope',
   fixThis: 'Fix this',
-  fixAndVerify: 'Fix and monitor',
-  fixStep: 'Fix',
-  fixStepBody: 'Use the guidance yourself, or give it to your developer or AI.',
-  verifyStep: 'Monitor',
-  verifyStepBody: 'Published the fix? Let FixFlags check the same page and action again.',
+  fixAndVerify: 'Fix this problem',
+  fixStep: 'Apply the fix',
+  fixStepBody: 'Paste the fix prompt into your AI tool, or share it with your developer.',
+  readFixGuidance: 'Read fix guidance',
+  verifyStep: 'Check the fix',
+  verifyStepBody: 'Publish your changes, then check the same page and action again.',
   copyDoesNotResolve: 'Copying is a handoff. Only a fresh comparable check can close this Flag.',
   verifyFix: 'Check now',
   copyPrompt: 'Copy fix prompt',
@@ -103,7 +104,7 @@ export const SITE_BOARD_COPY = {
   verificationStarted: 'Check started. This Flag stays open until the same page and action pass.',
   verificationHistory: 'Verification history',
   noVerificationYet: 'No verification yet',
-  noVerificationBody: 'Independent results and change notes will appear here.',
+  noVerificationBody: 'Check the fix after publishing. The result and your change notes will appear here.',
   verifying: 'Checking…',
   verificationFailed: 'Could not start verification',
   verificationConnectionLost: 'We lost the connection. Refresh to see whether the check started.',
@@ -273,10 +274,16 @@ export const SITE_PRESENTATION_COPY = {
 } as const
 
 export const WEBSITES_COPY = {
-  analyzeTitle: 'Analyze a website',
-  analyzeBody: 'Enter a public URL to add a Site and see what needs attention.',
-  emptyTitle: 'No Sites yet',
-  emptyBody: 'Enter a URL above to analyze your first Site.',
+  analyzeTitle: 'Add a website',
+  analyzeBody: 'Check your public pages for problems, with clear steps to fix them.',
+  firstTitle: 'Check your first website',
+  firstSteps: [
+    { title: 'Find problems', body: 'See what needs attention on your public pages.' },
+    { title: 'Get fix guidance', body: 'Give the fix prompt to your AI or developer.' },
+    { title: 'Keep monitoring', body: 'Get scheduled checks and email alerts about new problems.' },
+  ],
+  emptyTitle: 'No websites yet',
+  emptyBody: 'Start with your website URL.',
   count: (count: number) => `${count} ${count === 1 ? 'website' : 'websites'}`,
   monitoring: 'Monitoring',
   result: 'Result',

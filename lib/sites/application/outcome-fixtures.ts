@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditUrl, normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { requestSiteRun } from './run-requests'
 import { readExecutionSpec } from '../domain/execution-spec'
@@ -96,7 +96,7 @@ function findFixture(projectId: string, fixtureId: string) {
 
 function normalizeFixtureInput(siteUrl: string, input: OutcomeFixtureInput) {
   const site = normalizeAuditUrl(siteUrl)
-  const target = normalizeAuditUrl(input.targetUrl)
+  const target = normalizeAuditNavigationUrl(input.targetUrl)
   const reset = normalizeAuditUrl(input.resetUrl)
   const cleanup = normalizeAuditUrl(input.cleanupUrl)
   if (!site.ok || !target.ok || !reset.ok || !cleanup.ok) {

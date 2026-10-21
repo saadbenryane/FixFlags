@@ -13,7 +13,7 @@ import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 import { assessTargetedOutcomeCoverage,assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
 import { readVerificationTarget } from '@/lib/sites/domain/execution-spec'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
-import { hasRecordedRecoveryEvidence } from '@/lib/audit/recovery-evidence'
+import { createRecordedRecoveryReader } from '@/lib/audit/recovery-evidence'
 import { systemClock } from '@/lib/time/clock'
 import type {
 ImprovementStatus,
@@ -119,6 +119,8 @@ export async function reconcileImprovementVerification(input: {
   )
   const results: VerificationResult[] = []
   const reconciledAttemptIds = new Set<string>()
+  const recoveryReader = createRecordedRecoveryReader({ auditId: verificationAudit.id,
+    executionSpec: verificationAudit.executionSpec, executions: verificationAudit.verifierExecutions })
   for (const occurrence of occurrences) {
     if (occurrence.improvement.status === 'REJECTED' || occurrence.improvement.status === 'SUPERSEDED') continue
     const sourceAuditId = occurrence.auditId
@@ -145,7 +147,7 @@ export async function reconcileImprovementVerification(input: {
       executionSpec: verificationAudit.executionSpec,
       originalFlag: occurrence.flag,
       verifierExecutions: verificationAudit.verifierExecutions,
-    })
+    }, recoveryReader)
     const outcomeRun = target?.kind === 'OUTCOME' ? targetedRun : !target && occurrence.improvement.outcomeId
       ? verificationAudit.runRequests?.find(run => run.verificationTarget === null && run.projectId === verificationAudit.projectId &&
         run.assessments.some(assessment => assessment.outcomeId === occurrence.improvement.outcomeId)) : null
@@ -228,8 +230,7 @@ export async function reconcileImprovementVerification(input: {
           }, take: 100, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: {
             id: true, checkId: true, pageUrl: true, affectedPaths: true, attentionPolicy: true, evidenceTargets: true, verificationRule: true, supportingObservations: true,
           } })
-          const recovered = unresolved.filter(flag => hasRecordedRecoveryEvidence({ auditId: verificationAudit.id,
-            executionSpec: verificationAudit.executionSpec, flag, executions: verificationAudit.verifierExecutions }))
+          const recovered = unresolved.filter(recoveryReader.hasRecovery)
           if (recovered.length) await tx.flag.updateMany({ where: {
             id: { in: recovered.map(flag => flag.id) }, audit: { projectId: verificationAudit.projectId },
             source: 'DETERMINISTIC', status: { in: ['OPEN', 'REGRESSED'] }, createdAt: { lte: verificationAudit.startedAt },

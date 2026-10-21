@@ -1,3 +1,4 @@
+import { captureScreenshot } from '../browser/capture-screenshot'
 /**
  * Visual capture orchestrator. Decides what visual evidence to capture
  * for a given set of flags and composes the final outputs.
@@ -93,6 +94,7 @@ export async function captureVisualEvidence(
           intervalMs: desc.gifIntervalMs ?? 500,
           maxFrames: desc.gifMaxFrames ?? 6,
           totalWindowMs: 8000,
+          deadline,
         })
       } else {
         frameSet = await captureInteractionFrames(
@@ -105,7 +107,7 @@ export async function captureVisualEvidence(
             await new Promise((r) => setTimeout(r, 500))
             await p.evaluate(() => window.scrollTo(0, 0))
           },
-          { preFrames: 2, postFrames: desc.gifMaxFrames ?? 4, postDelayMs: 2000 }
+          { preFrames: 2, postFrames: desc.gifMaxFrames ?? 4, postDelayMs: 2000, deadline }
         )
       }
 
@@ -136,8 +138,8 @@ export async function captureVisualEvidence(
     }
   }
 
-  if (overlayFlags.length > 0 && Date.now() < deadline) {
-    const buf = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+  if (overlayFlags.length > 0 && Date.now() < deadline) try {
+    const buf = await captureScreenshot(page, { type: 'png', fullPage: false }, deadline)
     const meta = await import('sharp').then((s) => s.default(buf).metadata())
     const w = meta.width ?? 1280
     const h = meta.height ?? 900
@@ -162,6 +164,8 @@ export async function captureVisualEvidence(
         logger.error(`Failed to render overlay for ${flag.checkId}`, err)
       }
     }
+  } catch (error) {
+    logger.warn('Overlay screenshot unavailable', { error })
   }
 
   for (const flag of sideBySideFlags) {
@@ -261,11 +265,11 @@ async function captureSideBySide(
 ): Promise<VisualEvidence | null> {
   const mode = desc.sideBySideMode ?? 'before-after'
   if (mode !== 'before-after') return null
-  const leftBuf = Buffer.from(await currentPage.screenshot({ type: 'png', fullPage: false }))
+  const leftBuf = await captureScreenshot(currentPage, { type: 'png', fullPage: false }, deadline)
   let rightBuf: Buffer
   try {
     await currentPage.emulateMedia({ reducedMotion: 'reduce' })
-    rightBuf = Buffer.from(await currentPage.screenshot({ type: 'png', fullPage: false }))
+    rightBuf = await captureScreenshot(currentPage, { type: 'png', fullPage: false }, deadline)
   } finally {
     await currentPage.emulateMedia({ reducedMotion: 'no-preference' }).catch(() => {})
   }

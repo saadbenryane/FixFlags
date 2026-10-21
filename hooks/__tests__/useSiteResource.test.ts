@@ -3,8 +3,73 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useSiteResource } from '../useSiteResource'
-import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
+import { siteFlagFixture, siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import { categoryExecutionRecovery } from '@/lib/sites/execution-recovery'
+
+it('delivers validated source notices to the current observer without replacing the Site stream', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  const streams: Array<{ listeners: Map<string, (event?: Event) => void>; closed: boolean }> = []
+  vi.stubGlobal('EventSource', class {
+    listeners = new Map<string, (event?: Event) => void>(); closed = false
+    constructor() { streams.push(this) }
+    addEventListener(name: string, listener: (event?: Event) => void) { this.listeners.set(name, listener) }
+    close() { this.closed = true }
+  })
+  const fetch = vi.fn(async () => Response.json(initial))
+  vi.stubGlobal('fetch', fetch)
+  const first = vi.fn(), next = vi.fn()
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0, shouldRetryOnError: false } }, children)
+  const { rerender, unmount } = renderHook(({ observer }) => useSiteResource(initial.site.siteId, initial, observer),
+    { wrapper, initialProps: { observer: first } })
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    const notice = { version: 1, auditId: 'original-audit', kind: 'prescription', state: 'COMPLETED', taskId: 'task-one', observationReference: null }
+    act(() => streams[0].listeners.get('projection')?.(new MessageEvent('projection', { data: JSON.stringify(notice) })))
+    expect(first).toHaveBeenCalledWith({ type: 'projection', notice })
+    for (const data of ['not-json', JSON.stringify({ ...notice, version: 2 }), JSON.stringify({ ...notice, secret: 'PRIVATE' })])
+      act(() => streams[0].listeners.get('projection')?.(new MessageEvent('projection', { data })))
+    expect(first).toHaveBeenCalledTimes(1)
+    rerender({ observer: next })
+    expect(streams).toHaveLength(1)
+    act(() => streams[0].listeners.get('projection')?.(new MessageEvent('projection', { data: JSON.stringify(notice) })))
+    expect(next).toHaveBeenCalledWith({ type: 'projection', notice })
+    await act(async () => { streams[0].listeners.get('open')?.() })
+    await waitFor(() => expect(next).toHaveBeenCalledWith({ type: 'reconnected' }))
+    await act(async () => { streams[0].listeners.get('access-expired')?.() })
+    expect(streams[0].closed).toBe(true)
+    act(() => streams[0].listeners.get('projection')?.(new MessageEvent('projection', { data: JSON.stringify(notice) })))
+    expect(next).toHaveBeenCalledTimes(2)
+    unmount()
+    act(() => streams[0].listeners.get('projection')?.(new MessageEvent('projection', { data: JSON.stringify(notice) })))
+    expect(first).toHaveBeenCalledTimes(1)
+    expect(next).toHaveBeenCalledTimes(2)
+  } finally { unmount() }
+})
+
+it('keeps pending guidance updating after analysis completion and stops frequent polling when it settles', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
+  try {
+    const initial = siteViewFixture(); initial.outcomes = []
+    initial.flags = [siteFlagFixture({ repairGuidance: 'pending' })]
+    const ready = { ...initial, flags: [siteFlagFixture({ repairGuidance: 'ready', fix: 'Restore the label.' })] }
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json(initial)).mockImplementation(async () => Response.json(ready))
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: {
+      provider: () => new Map(), dedupingInterval: 0, shouldRetryOnError: false, isVisible: () => true, isOnline: () => true,
+    } }, children)
+    const { result, unmount } = renderHook(() => useSiteResource(initial.site.siteId, initial), { wrapper })
+    try {
+      await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+      expect(fetch).toHaveBeenCalledTimes(1)
+      await act(async () => { await vi.advanceTimersByTimeAsync(2700) })
+      expect(result.current.view.flags[0].repairGuidance).toBe('ready')
+      const settledReads = fetch.mock.calls.length
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+      expect(fetch).toHaveBeenCalledTimes(settledReads)
+    } finally { unmount() }
+  } finally { vi.useRealTimers() }
+})
 
 it('accepts a successful refresh with the actual sparse recovery map and keeps updates available', async () => {
   const initial = siteViewFixture(); initial.outcomes = []
@@ -77,15 +142,15 @@ it('keeps a captured refresh bound to its original Site after navigation', async
   unmount()
 })
 
-it('retains newest validated facts when an older request later fails', async () => {
-  const initial = siteViewFixture(); initial.outcomes = []
-  const current = { ...initial, inventoryPageCount: 12 }
+it('retains newest validated facts and connection state when an older request later fails', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []; initial.audit.status = 'CHECKING'
+  let current = { ...initial, inventoryPageCount: 12 }
   let release!: (response: Response) => void
   const older = new Promise<Response>(resolve => { release = resolve })
-  const fetch = vi.fn().mockReturnValueOnce(older).mockResolvedValue(Response.json(current))
+  const fetch = vi.fn().mockReturnValueOnce(older).mockImplementation(async () => Response.json(current))
   vi.stubGlobal('fetch', fetch)
   const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
-    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+    { value: { provider: () => new Map(), shouldRetryOnError: false, dedupingInterval: 0, isVisible: () => true, isOnline: () => true } }, children)
   const { result, unmount } = renderHook(() => useSiteResource(initial.site.siteId, initial), { wrapper })
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
   await act(async () => { await result.current.refresh() })
@@ -93,8 +158,58 @@ it('retains newest validated facts when an older request later fails', async () 
   expect(result.current.disconnected).toBe(false)
   await act(async () => { release(Response.json({ error: 'Earlier read failed' }, { status: 503 })) })
   expect(result.current.view.inventoryPageCount).toBe(12)
-  expect(result.current.disconnected).toBe(true)
+  expect(result.current.disconnected).toBe(false)
+  current = { ...current, audit: { ...current.audit, status: 'COMPLETED' } }
+  await waitFor(() => expect(result.current.view.audit.status).toBe('COMPLETED'), { timeout: 5000 })
   unmount()
+})
+
+it('does not replace a failed current refresh with a superseded successful read', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  let release!: (response: Response) => void
+  const older = new Promise<Response>(resolve => { release = resolve })
+  const fetch = vi.fn().mockReturnValueOnce(older).mockResolvedValue(Response.json({ error: 'Current read failed' }, { status: 503 }))
+  vi.stubGlobal('fetch', fetch)
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource(initial.site.siteId, initial), { wrapper })
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    await act(async () => { await expect(result.current.refresh()).rejects.toThrow() })
+    await act(async () => { release(Response.json({ ...initial, inventoryPageCount: 12 })) })
+    expect(result.current.view.inventoryPageCount).toBe(initial.inventoryPageCount)
+    expect(result.current.disconnected).toBe(true)
+  } finally { unmount() }
+})
+
+it('keeps a stalled initial read from blocking recovery to a completed result', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] })
+  try {
+    const initial = siteViewFixture(); initial.outcomes = []; initial.audit.status = 'CHECKING'
+    const finished = structuredClone(initial); finished.audit.status = 'COMPLETED'; finished.inventoryPageCount = 3
+    let signal: AbortSignal | undefined
+    const fetch = vi.fn().mockImplementationOnce((_url: string, options: RequestInit) => new Promise((_resolve, reject) => {
+      signal = options.signal ?? undefined
+      signal?.addEventListener('abort', () => reject(new DOMException('Read timed out', 'AbortError')), { once: true })
+    })).mockResolvedValue(Response.json(finished))
+    vi.stubGlobal('fetch', fetch)
+    const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: {
+      provider: () => new Map(), dedupingInterval: 0, errorRetryInterval: 100, isVisible: () => true, isOnline: () => true,
+    } }, children)
+    const { result, unmount } = renderHook(() => useSiteResource('fixture-site', initial), { wrapper })
+    try {
+      await act(async () => { await vi.advanceTimersByTimeAsync(20) })
+      expect(fetch).toHaveBeenCalledTimes(1)
+      await act(async () => { await vi.advanceTimersByTimeAsync(15_000) })
+      expect(signal?.aborted).toBe(true)
+      expect(result.current.disconnected).toBe(true)
+      expect(result.current.view.audit.status).toBe('CHECKING')
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+      expect(result.current.view.audit.status).toBe('COMPLETED')
+      expect(result.current.view.inventoryPageCount).toBe(3)
+      expect(result.current.disconnected).toBe(false)
+    } finally { unmount() }
+  } finally { vi.useRealTimers() }
 })
 
 it('ignores event callbacks from a previous Site after its stream closes', async () => {

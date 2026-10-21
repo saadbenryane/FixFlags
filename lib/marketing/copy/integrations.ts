@@ -3,8 +3,8 @@ import { integrationRelease } from '@/lib/integrations/release-policy'
 export const INTEGRATIONS_PAGE = {
   hero: {
     label: 'Integrations',
-    title: 'Better with the tools you already use.',
-    body: 'Connect GitHub for your code workflow. Other connections are coming soon and will become available after testing and validation.',
+    title: 'Connections, when you need them.',
+    body: 'Start checking with your website URL. GitHub account connection is available. Other connections are coming soon.',
   },
   checkWebsite: 'Check your website',
   currentListTitle: 'What it adds',
@@ -14,9 +14,9 @@ export const INTEGRATIONS_PAGE = {
   items: [
     {
       id: 'github', status: integrationRelease('github'), title: 'GitHub', logo: '/brand/integrations/github.svg',
-      purpose: 'Code and fix handoff',
-      summary: 'Authorize your GitHub account and use FixFlags evidence in your code workflow.',
-      checks: ['Encrypted GitHub account authorization', 'Evidence-grounded fix prompts for your code workflow', 'Independent website verification after a deployed fix'],
+      purpose: 'GitHub account connection',
+      summary: 'Connect or disconnect your GitHub account. Website checks and fix prompts work without this connection.',
+      checks: ['GitHub account authorization', 'Encrypted token storage', 'Disconnect from account settings'],
       action: 'Manage GitHub connection', href: '/settings/integrations',
     },
     {

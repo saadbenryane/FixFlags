@@ -1,3 +1,4 @@
+import { captureScreenshot } from './browser/capture-screenshot'
 import { collectRenderedHtml } from './browser/rendered-html'
 import { observeRenderedCopy, type RenderedCopy } from './browser/rendered-copy'
 import { collectRenderedSearchSnapshot, type RenderedSearchSnapshot } from './search/rendered-snapshot'
@@ -350,22 +351,32 @@ async function settleProfile<T>(work: () => Promise<T>): Promise<PromiseSettledR
   catch (reason) { return { status: 'rejected', reason } }
 }
 
+export type ScreenshotCaptureOptions = {
+  consoleObservationMs?: number
+  runFlow?: boolean
+  scanAccess?: ScanAccessConfig | null
+  flowDeadlineMs?: number
+  deadline?: number
+  onInitialScreenshot?: (url: string) => void
+  collectOriginalDocument?: boolean
+  /** Progressive DOM collection must not depend on private media storage. */
+  captureMedia?: boolean
+  mediaOnly?: boolean
+  captureMotion?: boolean
+  /** Progressive motion has its own checkpoint, so other page checks publish first. */
+  deferMotionComparison?: boolean
+  collectMobile?: boolean
+  collectAccessibility?: boolean
+}
+type ProfileCaptureOptions = ScreenshotCaptureOptions & { consoleIdentityKey: string }
+
 async function captureDesktopWithFlow(
   b: Browser,
   targetUrl: string,
   auditId: string,
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
-  runFlow: boolean,
-  scanAccess?: ScanAccessConfig | null,
-  flowDeadlineMs?: number,
-  deadline?: number,
-  onInitialScreenshot?: (url: string) => void,
-  collectOriginalDocument = true,
-  captureMedia = true,
-  mediaOnly = false,
-  consoleIdentityKey?: string,
-  consoleObservationMs = 0,
+  options: ProfileCaptureOptions,
 ): Promise<
   ViewportCapture & {
     flowResult: FlowScanResult | null
@@ -373,6 +384,8 @@ async function captureDesktopWithFlow(
     formProbe: FormProbeResult | null
   }
 > {
+  const { runFlow = true, scanAccess, flowDeadlineMs, deadline, onInitialScreenshot, collectOriginalDocument = true,
+    captureMedia = true, mediaOnly = false, consoleIdentityKey, consoleObservationMs = 0, collectAccessibility = true } = options
   const timeline = createActionTimeline()
   const result: ViewportCapture & {
     flowResult: FlowScanResult | null
@@ -429,14 +442,17 @@ async function captureDesktopWithFlow(
     }, session.safetyRestrictions, deadline)
     void finishedLoad.catch(() => undefined)
     let initialCaptureElapsedMs = Date.now() - captureStartedAt
-    if (captureMedia) {
-      const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-      initialCaptureElapsedMs = Date.now() - captureStartedAt
+    if (captureMedia) try {
+      const initialBuffer = await captureScreenshot(page, { type: 'png', fullPage: false }, deadline)
       const uploading = uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey), { deadline }).then(url => {
         result.initialUrl = url
         onInitialScreenshot?.(url)
       })
       uploads.push(uploading); void uploading.catch(() => undefined)
+    } catch (error) {
+      logger.warn('Optional screenshot unavailable', { error })
+    } finally {
+      initialCaptureElapsedMs = Date.now() - captureStartedAt
     }
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
@@ -471,7 +487,7 @@ async function captureDesktopWithFlow(
     // Run axe-core on the top document + same-origin frames only.
     // Legacy mode disables cross-origin frame injection (YouTube/Calendly/etc.),
     // which otherwise flags third-party player DOM as the site's own a11y debt.
-    try {
+    if (collectAccessibility) try {
       const axeResults = await new AxeBuilder({ page })
         .options(ACCESSIBILITY_RUN_OPTIONS)
         .setLegacyMode(true)
@@ -487,13 +503,15 @@ async function captureDesktopWithFlow(
     }
     }
 
-    if (captureMedia) {
-      const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+    if (captureMedia) try {
+      const buffer = await captureScreenshot(page, { type: 'png', fullPage: false }, deadline)
       result.base64 = buffer.toString('base64')
       const uploading = uploadScreenshot(auditId, 'desktop', buffer, pageKey, { deadline }).then(url => { result.url = url })
       uploads.push(uploading); void uploading.catch(() => undefined)
+    } catch (error) {
+      logger.warn('Optional screenshot unavailable', { error })
     }
-    timeline.push('capture', captureMedia ? 'Desktop screenshot captured' : 'Rendered content inspected', {
+    timeline.push('capture', result.base64 ? 'Desktop screenshot captured' : 'Rendered content inspected', {
       screenshot: result.url,
       url: page.url(),
     })
@@ -572,14 +590,10 @@ async function captureMobileViewport(
   auditId: string,
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
-  scanAccess?: ScanAccessConfig | null,
-  deadline?: number,
-  captureMedia = true,
-  mediaOnly = false,
-  consoleIdentityKey?: string,
-  consoleObservationMs = 0,
-  captureMotion = true,
+  options: ProfileCaptureOptions,
 ): Promise<ViewportCapture> {
+  const { scanAccess, deadline, captureMedia = true, mediaOnly = false, consoleIdentityKey,
+    consoleObservationMs = 0, captureMotion = true } = options
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
   let disposeNetwork: (() => void) | null = null
@@ -622,20 +636,25 @@ async function captureMobileViewport(
     finishedLoad = waitForFinishedLoadState(page, 'mobile', captureStartedAt, initial, loadingScope, session.safetyRestrictions, deadline)
     void finishedLoad.catch(() => undefined)
     let initialCaptureElapsedMs = Date.now() - captureStartedAt
-    if (captureMedia) {
-      const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-      initialCaptureElapsedMs = Date.now() - captureStartedAt
+    if (captureMedia) try {
+      const initialBuffer = await captureScreenshot(page, { type: 'png', fullPage: false }, deadline)
       const uploading = uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey), { deadline }).then(url => { result.initialUrl = url })
       uploads.push(uploading); void uploading.catch(() => undefined)
+    } catch (error) {
+      logger.warn('Optional screenshot unavailable', { error })
+    } finally {
+      initialCaptureElapsedMs = Date.now() - captureStartedAt
     }
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
 
-    if (captureMedia) {
-      const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
+    if (captureMedia) try {
+      const buffer = await captureScreenshot(page, { type: 'png', fullPage: false }, deadline)
       result.base64 = buffer.toString('base64')
       const uploading = uploadScreenshot(auditId, 'mobile', buffer, pageKey, { deadline }).then(url => { result.url = url })
       uploads.push(uploading); void uploading.catch(() => undefined)
+    } catch (error) {
+      logger.warn('Optional screenshot unavailable', { error })
     }
 
     if (captureMedia && !mediaOnly) try {
@@ -676,21 +695,7 @@ export async function captureScreenshots(
   url: string,
   auditId: string,
   pageKey?: string,
-  options?: {
-    consoleObservationMs?: number
-    runFlow?: boolean
-    scanAccess?: ScanAccessConfig | null
-    flowDeadlineMs?: number
-    deadline?: number
-    onInitialScreenshot?: (url: string) => void
-    collectOriginalDocument?: boolean
-    /** Progressive DOM collection must not depend on private media storage. */
-    captureMedia?: boolean
-    mediaOnly?: boolean
-    captureMotion?: boolean
-    /** Progressive motion has its own checkpoint, so other page checks publish first. */
-    deferMotionComparison?: boolean
-  }
+  options?: ScreenshotCaptureOptions
 ): Promise<ScreenshotResult> {
   const generation = currentExecutionOwnership()?.generation
   if (generation && !pageKey?.endsWith('-g' + generation)) pageKey = (pageKey ?? 'primary') + '-g' + generation
@@ -702,6 +707,7 @@ export async function captureScreenshots(
   const runFlow = options?.runFlow ?? true
   const consoleIdentityKey = randomUUID()
   const scanAccess = options?.scanAccess ?? null
+  const profileOptions = { ...options, runFlow, scanAccess, consoleIdentityKey }
 
   // A browser task holds one native context at a time. Other page tasks can
   // progress when one profile is waiting on a document or renderer.
@@ -711,30 +717,15 @@ export async function captureScreenshots(
       auditId,
       pageKey,
       desktopErrors,
-      runFlow,
-      scanAccess,
-      options?.flowDeadlineMs,
-      options?.deadline,
-      options?.onInitialScreenshot,
-      options?.collectOriginalDocument ?? true,
-      options?.captureMedia ?? true,
-      options?.mediaOnly ?? false,
-      consoleIdentityKey,
-      options?.consoleObservationMs ?? 0,
+      profileOptions,
     ))
-  const mobileSettled = await settleProfile(() => captureMobileViewport(
+  const mobileSettled = options?.collectMobile === false ? null : await settleProfile(() => captureMobileViewport(
       b,
       url,
       auditId,
       pageKey,
       mobileErrors,
-      scanAccess,
-      options?.deadline,
-      options?.captureMedia ?? true,
-      options?.mediaOnly ?? false,
-      consoleIdentityKey,
-      options?.consoleObservationMs ?? 0,
-      options?.captureMotion ?? true,
+      profileOptions,
     ))
 
   let desktop: ViewportCapture & {
@@ -751,9 +742,9 @@ export async function captureScreenshots(
   }
 
   let mobile: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
-  if (mobileSettled.status === 'fulfilled') {
+  if (mobileSettled?.status === 'fulfilled') {
     mobile = mobileSettled.value
-  } else {
+  } else if (mobileSettled) {
     logger.error('mobile screenshot failed', mobileSettled.reason)
     captureFailures.push(pageCaptureFailureFromError('mobile', mobileSettled.reason))
   }
@@ -806,7 +797,7 @@ export async function captureScreenshots(
         finalUrl: desktop.consoleFinalUrl ?? captureFailures.find(failure => failure.device === 'desktop')?.finalUrl ?? null,
         errors: actionableConsoleErrors(dedupeConsoleErrors(desktopErrors)).length,
         observedMs: desktop.consoleObservedMs ?? 0, minimumMs: desktop.consoleMinimumMs ?? 0 },
-      mobile: { complete: mobileSettled.status === 'fulfilled' && mobile.consoleComplete === true && Boolean(mobile.consoleFinalUrl),
+      mobile: { complete: mobileSettled?.status === 'fulfilled' && mobile.consoleComplete === true && Boolean(mobile.consoleFinalUrl),
         profile: captureProfileKey(MOBILE_CAPTURE_PROFILE),
         finalUrl: mobile.consoleFinalUrl ?? captureFailures.find(failure => failure.device === 'mobile')?.finalUrl ?? null,
         errors: actionableConsoleErrors(dedupeConsoleErrors(mobileErrors)).length,
@@ -814,7 +805,7 @@ export async function captureScreenshots(
     },
     captureStatus: {
       desktop: options?.captureMedia === false ? 'pending' : desktop.url ? 'ok' : 'failed',
-      mobile: options?.captureMedia === false ? 'pending' : mobile.url ? 'ok' : 'failed',
+      mobile: options?.collectMobile === false || options?.captureMedia === false ? 'pending' : mobile.url ? 'ok' : 'failed',
     },
     captureFailures,
     flowResult: desktop.flowResult,

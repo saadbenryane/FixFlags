@@ -14,6 +14,7 @@ const connection = z.object({ provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']),
   status: z.enum(['not_connected', 'connected', 'mismatch', 'needs_reauth', 'revoked', 'unavailable']),
   propertyLabel: nullableText, detail: nullableText, lastSyncedAt: nullableTime })
 const flag = z.object({
+  supportingEvidenceUnreadable: z.boolean().optional(),
   attentionPolicy: z.unknown().optional(), id: text, sourceFlagId: nullableText.optional(), confidence: z.number().nullable().optional(),
   improvementId: nullableText, checkId: nullableText, rubric: text, severity: text, impactTag: nullableText,
   problem: text, evidence: text, whyItMatters: text, fix: text, pageUrl: nullableText, status: text,

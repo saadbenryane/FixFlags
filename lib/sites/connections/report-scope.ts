@@ -4,11 +4,14 @@ const scopeFields = { version: z.literal(1), propertyId: z.string().min(1).max(2
   hostnames: z.array(z.string().min(1).max(253)).min(1).max(2) }
 export const analyticsReportScopeSchema = z.object({ ...scopeFields, kind: z.literal('analytics-hostnames') }).strict()
 export const searchReportScopeSchema = z.object({ ...scopeFields, kind: z.literal('search-hostnames') }).strict()
+const analyticsPagePathSchema = z.string().min(1).max(8192).refine(value => value.startsWith('/') && !/[?#\r\n]/.test(value))
+const analyticsPageFactScopeSchema = analyticsReportScopeSchema.extend({ pagePath: analyticsPagePathSchema })
 const searchFactScopeSchema = searchReportScopeSchema.extend({ pageUrl: z.string().url().max(8192) })
 export type AnalyticsReportScope = z.infer<typeof analyticsReportScopeSchema>
+export type AnalyticsPageFactScope = z.infer<typeof analyticsPageFactScopeSchema>
 export type SearchReportScope = z.infer<typeof searchReportScopeSchema>
 export type SearchFactScope = z.infer<typeof searchFactScopeSchema>
-export type ConnectionReportScope = AnalyticsReportScope | SearchFactScope
+export type ConnectionReportScope = AnalyticsReportScope | AnalyticsPageFactScope | SearchFactScope
 export type AnalyticsAudience = { sessions?: number; activeUsers?: number; pageViews?: number }
 export type AnalyticsPage = { pagePath?: string; sessions?: number; pageViews?: number }
 export type AnalyticsReport = { pages: AnalyticsPage[]; audience: AnalyticsAudience }
@@ -89,4 +92,23 @@ export function readAnalyticsReportScope(value: unknown, propertyId: string | nu
     const expected = analyticsReportScope(host, propertyId)
     return parsed.data.hostnames.length === expected.hostnames.length && expected.hostnames.every(hostname => parsed.data.hostnames.includes(hostname)) ? parsed.data : null
   } catch { return null }
+}
+
+/** A provider dimension is evidence identity, not a URL to normalize or resolve. */
+export function analyticsPagePath(value: unknown): string | null {
+  const parsed = analyticsPagePathSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
+}
+
+export function analyticsPageFactScope(scope: AnalyticsReportScope, pagePath: string): AnalyticsPageFactScope | null {
+  const parsed = analyticsPageFactScopeSchema.safeParse({ ...scope, pagePath })
+  return parsed.success ? parsed.data : null
+}
+
+export function readAnalyticsPageFactScope(value: unknown, propertyId: string | null, host: string): AnalyticsPageFactScope | null {
+  const parsed = analyticsPageFactScopeSchema.safeParse(value)
+  if (!parsed.success) return null
+  const { pagePath, ...report } = parsed.data
+  const scope = readAnalyticsReportScope(report, propertyId, host)
+  return scope ? { ...scope, pagePath } : null
 }

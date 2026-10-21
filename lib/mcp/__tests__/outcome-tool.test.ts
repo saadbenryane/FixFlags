@@ -7,12 +7,15 @@ const stubs = vi.hoisted(() => ({
   loadSiteRecord: vi.fn(),
   listSiteOutcomes: vi.fn(),
   loadSiteOutcomeDetail: vi.fn(),
+  loadSiteOutcomeDetails: vi.fn(),
   mcpOutcomePayload: vi.fn(),
   latestAudit: vi.fn().mockResolvedValue({ id: 'audit-1' }),
   checkResults: vi.fn().mockResolvedValue({ results: [], nextCursor: null }),
+  uptime: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: { audit: { findFirst: stubs.latestAudit } } }))
+vi.mock('@/lib/uptime/queries', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/uptime/queries')>(), loadUptimeSummary: stubs.uptime }))
 vi.mock('@/lib/sites/application/check-results', () => ({ loadSiteCheckResultPage: stubs.checkResults }))
 vi.mock('@/lib/sites/application/site-execution', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/sites/application/site-execution')>(), resolveLatestAudit: stubs.latestAudit,
@@ -22,6 +25,7 @@ vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: stubs.loadSiteRecord
 vi.mock('@/lib/sites/outcomes', () => ({
   listSiteOutcomes: stubs.listSiteOutcomes,
   loadSiteOutcomeDetail: stubs.loadSiteOutcomeDetail,
+  loadSiteOutcomeDetails: stubs.loadSiteOutcomeDetails,
 }))
 vi.mock('@/lib/mcp/outcome-payload', () => ({ mcpOutcomePayload: stubs.mcpOutcomePayload }))
 
@@ -54,6 +58,7 @@ describe('MCP Outcome tool', () => {
       { id: 'outcome-generic', kind: 'GENERIC' },
     ])
     stubs.loadSiteOutcomeDetail.mockResolvedValue(detail)
+    stubs.loadSiteOutcomeDetails.mockResolvedValue([detail])
     stubs.mcpOutcomePayload.mockReturnValue(projected)
 
     registerSiteOutcomeTools(server, { id: 'user-1' } as User)
@@ -65,10 +70,12 @@ describe('MCP Outcome tool', () => {
     }
 
     expect(stubs.loadSiteRecord).toHaveBeenCalledWith('site-1')
-    expect(stubs.loadSiteOutcomeDetail).toHaveBeenCalledTimes(1)
-    expect(stubs.loadSiteOutcomeDetail).toHaveBeenCalledWith(site, 'outcome-1')
+    expect(stubs.loadSiteOutcomeDetails).toHaveBeenCalledTimes(1)
+    expect(stubs.loadSiteOutcomeDetails).toHaveBeenCalledWith(site, { excludeGeneric: true })
+    expect(stubs.listSiteOutcomes).not.toHaveBeenCalled()
+    expect(stubs.loadSiteOutcomeDetail).not.toHaveBeenCalled()
     expect(stubs.mcpOutcomePayload).toHaveBeenCalledWith(detail)
-    expect(result.structuredContent).toEqual({ siteId: 'site-1', outcomes: [projected], checkResults: [], checkResultsNextCursor: null })
+    expect(result.structuredContent).toEqual({ siteId: 'site-1', outcomes: [projected], checkResults: [], checkResultsNextCursor: null, uptime: null })
     expect(stubs.checkResults).toHaveBeenCalledWith(site, { id: 'audit-1' }, undefined)
   })
 })

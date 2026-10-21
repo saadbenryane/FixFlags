@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseMetadataFromHtml, trimMetadataForStorage } from '../metadata'
-import { runSecurityBasicsChecks } from '../checks/security'
-import { recordCheckObservations } from '../checks/observations'
+import { runSecurityBasicsChecks, securityObservations } from '../checks/security'
 import { assertionForTarget } from '../checks/verification'
 import { checkReceiptSchema } from '../checks/receipt'
 import { runAllChecks } from '../checks'
@@ -14,7 +13,7 @@ import type { TaskContext } from '../progressive/registry'
 const url = 'https://example.com/page'
 function observation(html: string) {
   const metadata = parseMetadataFromHtml(html, url)
-  const assertions = recordCheckObservations('security', { url, metadata, desktop: null, mobile: null })
+  const assertions = securityObservations(url, metadata)
   return { metadata, assertion: assertions.find(item => item.key === 'resource-transport')!, assertions }
 }
 function receipt(html: string) {
@@ -90,7 +89,7 @@ describe('shared resource transport evidence', () => {
   it('does not substitute historical image-only evidence for full resource repair proof', () => {
     const metadata = parseMetadataFromHtml('<img src="https://cdn.example/image">', url)
     delete metadata.resourceTransport
-    const assertions = recordCheckObservations('security', { url, metadata, desktop: null, mobile: null })
+    const assertions = securityObservations(url, metadata)
     expect(assertions[1]).toMatchObject({ passed: false, complete: false })
     const historical = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'security',
       pageUrl: url, passed: true, applicable: true, assertions: [{ key: 'image-transport', name: 'Images',
@@ -113,6 +112,6 @@ describe('shared resource transport evidence', () => {
     const result = checkArtifactSchema.parse(readArtifact(artifact, 'check').data)
     expect(result.flags).toEqual([])
     expect(result.receipt).toMatchObject({ complete: false, passed: false,
-      execution: { source: 'http' }, assertions: [{ key: 'https', passed: true }, { key: 'resource-transport', complete: false }] })
+      execution: { source: 'http' }, assertions: [{ key: 'https', passed: true }, { key: 'resource-transport', complete: false }, { key: 'tls-certificate', passed: true, complete: true }] })
   })
 })

@@ -9,12 +9,9 @@ import { buildBoardCards,type BoardCardView } from '@/lib/sites/board-card'
 import { projectCheckResults } from '@/lib/sites/check-results'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import { connectionCardNotes,loadSiteConnectionViews } from '@/lib/sites/connections/read'
-import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import {
-buildCoverageFacts,
 isAuditFinished,
 isAuditInFlight,
-type CoverageFact,
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { walkFinishedFromCoverage } from '@/lib/sites/first-outcome'
@@ -29,56 +26,20 @@ import type { SiteHomeView } from '../site-home'
 import { loadPerformanceEvidence } from './performance-evidence'
 import { loadSiteCaptures, loadSiteCheckedPages } from './captures'
 import { applyCardEvidence } from './card-evidence'
-import { applicableCategoryEvidence,loadCategoryEvidence,overlayCategoryCoverage } from './category-evidence'
+import { loadCategoryEvidence } from './category-evidence'
+import { projectCurrentSiteEvidence } from './current-evidence'
+import { hasUnresolvedFlagEvidence } from '@/lib/audit/attention'
 import { loadExecutionProgress } from './execution-progress'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import { loadMonitoringHistory } from './monitoring-history'
 import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from './site-execution'
 import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
-import { repairGuidanceState } from '@/lib/improvements/repair-guidance'
+import { executionPageCoverage } from '../page-coverage'
 
 export type { BoardCardView }
 
 export type { SiteHomeView } from '../site-home'
-
-function factsFromAudit(
-  audit: {
-    status: string
-    completedAt: Date | null
-    evidenceCoverage: unknown
-    failedModules?: unknown
-    failureCode?: string | null
-    triageAt?: Date | null
-    aiReviewAt?: Date | null
-    verifierExecutions?: Array<{ targetKey: string; status: string; workKind?: string | null; pageUrl?: string | null; detail?: unknown }>
-  } | null,
-  flags: SiteFlagSeed[],
-  now: Date,
-  lastKnown?: CoverageFact[] | null,
-  retainLastKnownWhileChecking?: boolean
-) {
-  return buildCoverageFacts({
-    auditStatus: audit?.status ?? 'QUEUED',
-    completedAt: audit?.completedAt ?? null,
-    now,
-    evidenceCoverage: audit?.evidenceCoverage,
-    failedModules: audit?.failedModules,
-    failureCode: audit?.failureCode,
-    triageCompleted: Boolean(audit?.triageAt),
-    extraReviewCompleted: Boolean(audit?.aiReviewAt),
-    verifierExecutions: audit?.verifierExecutions,
-    flags: flags.map((f) => ({
-      checkId: f.checkId,
-      rubric: f.rubric,
-      severity: f.severity,
-      impactTag: f.impactTag,
-      status: 'OPEN',
-    })),
-    lastKnown,
-    retainLastKnownWhileChecking,
-  })
-}
 
 async function countSitePages(site: SiteRecord): Promise<number> {
   if (site.projectId) {
@@ -123,11 +84,11 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const audit = await resolveLatestAudit(site, selection)
 
   const [
-    { flags: loadedFlags, recommendations: loadedRecommendations }, outcomes, pageCount, checkedPages,
-    projectSettings, loadedResolvedFlags, prior, categoryRuns,
+    { flags, recommendations }, outcomes, pageCount, checkedPages,
+    projectSettings, resolvedFlags, prior, categoryRuns,
   ] = await Promise.all([
     loadSiteFindings(site),
-    listSiteOutcomes(site),
+    listSiteOutcomes(site, now),
     countSitePages(site),
     audit ? loadSiteCheckedPages(audit.id) : [],
     site.projectId ? prisma.project.findUnique({
@@ -140,31 +101,13 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     }) : null,
     loadSiteResolvedFlags(site),
     site.kind === 'project' ? resolvePriorCompletedAudit(site, audit?.id ?? null, selection) : null,
-    loadCategoryEvidence(site.projectId ? [site.projectId] : []),
+    loadCategoryEvidence(site.projectId && audit ? [{ projectId: site.projectId, auditId: audit.id }] : []),
   ])
-  const guidanceAudit = audit ? { includeAi: audit.includeAi, triageAt: audit.triageAt, aiReviewAt: audit.aiReviewAt, failureCode: audit.failureCode } : null
-  const withGuidance = (flag: SiteFlagSeed): SiteFlagSeed => ({
-    ...flag,
-    repairGuidance: repairGuidanceState({ fix: flag.fix, checkId: flag.checkId, attentionPolicy: flag.attentionPolicy, audit: guidanceAudit ?? undefined }),
-  })
-  const flags = loadedFlags.map(withGuidance)
-  const recommendations = loadedRecommendations.map(withGuidance)
-  const resolvedFlags = loadedResolvedFlags.map(withGuidance)
-
   const inFlight = isAuditInFlight(audit?.status)
-  const lastKnownFacts =
-    prior != null
-      ? factsFromAudit(prior, flags, now)
-      : null
-
-  const categoryEvidence = applicableCategoryEvidence(categoryRuns, audit)
-  const coverage = overlayCategoryCoverage(factsFromAudit(
-    audit,
-    flags,
-    now,
-    lastKnownFacts,
-    Boolean(lastKnownFacts)
-  ), categoryEvidence, now, flags)
+  const { coverage, coverageMaxAgeMs, categoryEvidence, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({
+    audit, prior, flags, categories: categoryRuns, now, evidenceComplete: !recommendations.some(hasUnresolvedFlagEvidence),
+    watchInterval: site.watchInterval, watchEveryMinutes: site.watchEveryMinutes,
+  })
 
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
 
@@ -188,16 +131,21 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     site.projectId ? loadAccountChecksView(site.projectId) : undefined,
   ])
   const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
+  const pageCoverage = executionPageCoverage({ executionSpec: audit?.executionSpec, pages: checkedPages, executions: audit?.verifierExecutions })
   const health = siteCardHealth({
     inFlight,
     finished,
-    hasLastKnown: Boolean(lastKnownFacts),
+    hasLastKnown,
+    assessmentComplete,
     flags,
     coverage,
+    coverageMaxAgeMs,
     now,
     executionSpec: audit?.executionSpec,
-    pagesComplete: checkedPages.length > 0 && checkedPages.every(page => page.status === 'COMPLETED'),
-    outcomes: outcomes.map((outcome) => ({ state: outcome.state, enabled: outcome.enabled })),
+    pagesComplete: pageCoverage.complete,
+    outcomes: outcomes.map((outcome) => ({ id: outcome.id, state: outcome.state, enabled: outcome.enabled,
+      validUntil: outcome.validUntil ? new Date(outcome.validUntil) : null })),
+    uptime,
   })
   const capture = captures.find(item => item.device === 'desktop')
   const analytics = (trackingProfile && trackingProfile.status !== 'not_captured' ? trackingProfile : technologyProfile)?.technologies
@@ -208,7 +156,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const cards: BoardCardView[] = buildBoardCards({
     siteId,
     inFlight,
-    hasLastKnown: Boolean(lastKnownFacts),
+    hasLastKnown,
     health,
     coverageByArea,
     flags,
@@ -218,19 +166,19 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     checkedAt: (finished ? audit : prior)?.completedAt?.toISOString() ?? null,
     detected: { analytics },
   })
-  applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now })
+  applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now, coverageMaxAgeMs })
   for (const [area, categoryAudit] of categoryEvidence) {
     const card = cards.find(card => card.id === area)
     if (!card) continue
     const categoryInFlight = isAuditInFlight(categoryAudit.status)
     applyCardEvidence({ cards: [card], audit: { ...audit!, ...categoryAudit },
       summaryResults: projectCheckResults(categoryAudit.id, categoryAudit.verifierExecutions), inFlight: categoryInFlight,
-      pageCount, connections, connectionNotes, now })
+      pageCount, connections, connectionNotes, now, coverageMaxAgeMs })
     if (categoryInFlight) card.activity = 'checking'
   }
 
   const { presentation, watchState, watching, monitoring } = projectHomePresentation({
-    siteId, site, cards, flags, health, coverage, checkedPages, capture, audit, prior, finished, now,
+    siteId, site, cards, flags, health, coverage, pageCoverage, capture, audit, prior, finished, now,
   })
 
   const alertState = watchAlertDelivery({

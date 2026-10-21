@@ -141,11 +141,12 @@ describe('comprehensive homepage experience', () => {
   })
   it('keeps the brand, two URL entries and the sample-to-analysis path', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('heading', { level: 1, name: /Finish what\s*your AI started/ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: /Website monitoring\.\s*From problem to fix\./ })).toBeVisible()
+    expect(screen.getByRole('link', { name: C.hero.sampleAction })).toHaveAttribute('href', '#product')
     expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
-    expect(screen.getByText(C.hero.eyebrow)).toBeVisible()
     expect(screen.getByText(C.hero.body)).toBeVisible()
-    for (const benefit of C.hero.benefits) expect(screen.getByText(benefit.title)).toBeVisible()
+    const benefits = screen.getByRole('list', { name: 'What FixFlags does' })
+    for (const benefit of C.hero.benefits) expect(within(benefits).getByText(benefit.title)).toBeVisible()
     expect(screen.queryByRole('link', { name: S.exploreAction })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -291,10 +292,10 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByText('Just now')).not.toBeInTheDocument()
   })
 
-  it('links the intro to fix guidance and provides settings in the sample navigation', () => {
+  it('links the intro to the walkthrough and provides settings in the sample navigation', () => {
     render(<CareHomepage />)
     expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true }).closest('p')).toHaveTextContent(S.subtitle)
-    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true })).toHaveAttribute('href', '/how-it-works')
     expect(screen.getByText(C.hero.body)).toBeVisible()
     expect(screen.getByText(C.hero.setup)).toBeVisible()
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -303,7 +304,7 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(nav).getByRole('button', { name: 'Settings', exact: true }))
     expect(within(board).getByRole('heading', { name: 'Settings' })).toBeVisible()
     fireEvent.change(within(board).getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
-    expect(within(board).getByRole('checkbox', { name: /verified as recovered/ })).toBeDisabled()
+    expect(within(board).getByRole('checkbox', { name: /when a fix is verified/ })).toBeDisabled()
     fireEvent.click(within(board).getByRole('button', { name: 'Edit schedule', exact: true }))
     expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Check frequency' })).toHaveValue('daily')
   })
@@ -352,7 +353,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(board).getByRole('article', { name: 'Uptime' })).toHaveTextContent('Paused')
     fireEvent.click(within(board).getByRole('button', { name: 'Settings', exact: true }))
     expect(within(board).getByRole('combobox', { name: 'Email me' })).toHaveValue('OFF')
-    expect(within(board).getByRole('checkbox', { name: /verified as recovered/ })).toBeDisabled()
+    expect(within(board).getByRole('checkbox', { name: /when a fix is verified/ })).toBeDisabled()
     expect(within(board).getByRole('switch', { name: 'Test signup and signed-in pages' })).not.toBeChecked()
     expect(within(board).getByRole('button', { name: 'Resume monitoring' })).toBeVisible()
     expect(within(board).getByRole('button', { name: 'Remove Site', exact: true })).toBeDisabled()
@@ -449,7 +450,7 @@ describe('comprehensive homepage experience', () => {
     const tracking = within(coverage).getByRole('button', { name: C.checks.explore('Tracking') }).closest('article')!
     for (const page of C.checks.previews.tracking.pages) expect(within(tracking).getByText(page.page)).toBeVisible()
     expect(within(tracking).queryByText('/products')).not.toBeInTheDocument()
-    expect(within(coverage).getByText('Find obstacles in your visitors’ next steps.')).toBeVisible()
+    expect(within(coverage).getByText('Spot the steps that stop visitors moving forward.')).toBeVisible()
     expect(within(coverage).queryByText(/Stripe|Payment form missing|Script blocked/)).not.toBeInTheDocument()
     expect(screen.queryByText('Illustrative check examples')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: C.story.title })).not.toBeInTheDocument()
@@ -527,7 +528,7 @@ describe('comprehensive homepage experience', () => {
     const intro = within(product).getByRole('heading', { name: S.title }).parentElement!
     expect(guides.closest('section')).toBe(hero)
     expect(intro).toHaveTextContent(S.subtitle)
-    expect(within(intro).getByRole('link', { name: C.workflow.action })).toHaveAttribute('href', '/docs/fix-with-ai')
+    expect(within(intro).getByRole('link', { name: C.workflow.action })).toHaveAttribute('href', '/how-it-works')
     expect(entry.nextElementSibling).toHaveTextContent(C.hero.setup)
     expect(entry.nextElementSibling?.nextElementSibling).toBe(guides.parentElement)
     expect(entry.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -540,9 +541,31 @@ describe('comprehensive homepage experience', () => {
     expect(benefits.compareDocumentPosition(screen.getByRole('region', { name: C.boardAria }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
+  it('labels the email example and opens matching evidence with focus restored', async () => {
+    render(<CareHomepage />)
+    const section = screen.getByRole('region', { name: C.notifications.title })
+    expect(within(section).getByText(C.notifications.sampleLabel)).toBeVisible()
+    const details = within(section).getByText(C.notifications.detailTitle).closest('details')!
+    expect(details).not.toHaveAttribute('open')
+    fireEvent.click(within(section).getByText(C.notifications.detailTitle))
+    expect(details).toHaveAttribute('open')
+    expect(within(details).getByText(C.notifications.detailBody)).toBeVisible()
+    const opener = within(section).getByRole('button', { name: C.notifications.action })
+    fireEvent.click(opener)
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: SAMPLE_FLAGS.availability.title })).toBeVisible()
+    expect(within(dialog).getByText(SAMPLE_FLAGS.availability.observed)).toBeVisible()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
   it('shows the current and proposed integrations and opens their details', () => {
     render(<CareHomepage />)
     const section = screen.getByRole('region', { name: C.integrations.title })
+    const summary = within(section).getByText(C.integrations.detailsAction)
+    expect(summary.closest('details')).not.toHaveAttribute('open')
+    expect(within(section).getByRole('link', { name: /GitHub/ })).not.toBeVisible()
+    fireEvent.click(summary)
     expect(INTEGRATIONS_PAGE.items).toHaveLength(10)
     for (const item of INTEGRATIONS_PAGE.items) {
       const link = within(section).getByRole('link', { name: new RegExp(item.title) })

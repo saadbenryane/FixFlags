@@ -20,9 +20,9 @@ export async function observeJourneyPage(page: Page, journeyType: JourneyType, p
   return { version: 1, journeyType: journeyType as JourneyObservation['journeyType'], phase, scope: capture.scope, route, ...conditions,
     headlineVersion: 2, headlineComplete: copy.complete && copy.pageUrl === capture.scope.finalUrl &&
       conditions.headline === ((copy.h1s[0]?.length ?? 0) >= 12),
-    actionVersion: 4, actionComplete: controls.pageUrl === capture.scope.finalUrl && controls.primaryAction.complete &&
+    actionVersion: 6, actionComplete: controls.pageUrl === capture.scope.finalUrl && controls.primaryAction.complete &&
       controls.primaryAction.found === conditions.primaryAction,
-    pathVersion: 3, fieldVersion: 2,
+    pathVersion: 5, fieldVersion: 2,
     available: !restricted && !capture.restricted && documentResponse.status !== null && documentResponse.status >= 200 && documentResponse.status < 400 && viewport.content && viewport.pageUrl === capture.scope.finalUrl && page.url() === capture.scope.finalUrl && !isBotInterstitialPage({ title, cfMitigated: documentResponse.cfMitigated }) && !isBotInterstitialPage({ title: copy.h1s[0] }),
     pathComplete: controls.pageUrl === capture.scope.finalUrl && controls.pathComplete && conditions.nextPath === (controls.links.length > 0) &&
       !(controls.primaryAction.found && controls.links.length === 0) }

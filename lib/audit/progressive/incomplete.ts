@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 import { MAX_TASKS_PER_AUDIT, prescriptionResultSchema, taskArtifactSchema, taskInputSchema, taskIsSettled } from './contracts'
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
+import { settleRecordedPages } from './page-settlement'
 
 const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
 
@@ -117,6 +118,7 @@ export function logUnrecordedPrescriptionCost(auditId: string, error: unknown) {
 type CoverageTask = Pick<AuditVerifierExecution, 'id' | 'auditId' | 'workKind' | 'workInput'>
 export async function settleFailedFinalization(tx: Prisma.TransactionClient, task: CoverageTask) {
   if (task.workKind !== 'finalize') return
+  await settleRecordedPages(tx, task.auditId)
   await tx.audit.updateMany({ where: { id: task.auditId, status: { notIn: ['COMPLETED', 'FAILED'] } },
     data: { status: 'COMPLETED', progress: 100, reportCompleteness: 'PARTIAL', verdict: null,
       completedAt: new Date(), failureCode: 'FINALIZATION_INCOMPLETE', failureStage: 'finalizing',

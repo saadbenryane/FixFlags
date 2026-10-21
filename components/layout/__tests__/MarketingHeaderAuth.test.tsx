@@ -22,17 +22,17 @@ describe('MarketingHeaderAuth', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fprivate-site%3Fcategory%3Daccessibility%23evidence')
   })
 
-  it('shows Sign in and the persistent Analyze action when logged out', () => {
+  it('shows Sign in and the persistent website-check action when logged out', () => {
     render(<MarketingHeaderAuth />)
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in')
-    expect(screen.getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/new')
-    expect(screen.getByRole('link', { name: 'Analyze' })).toHaveClass('bg-brand', 'text-brand-foreground')
+    expect(screen.getByRole('link', { name: 'Check website' })).toHaveAttribute('href', '/new')
+    expect(screen.getByRole('link', { name: 'Check website' })).toHaveClass('bg-brand', 'text-brand-foreground')
   })
 
-  it('keeps the mobile-sheet Analyze action full width', () => {
+  it('keeps the mobile-sheet website-check action full width', () => {
     render(<MarketingHeaderAuth mode="mobileSheet" />)
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in')
-    expect(screen.getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/new')
+    expect(screen.getByRole('link', { name: 'Check website' })).toHaveAttribute('href', '/new')
   })
 
   it('shows only the account menu in the desktop actions when signed in', () => {
@@ -40,6 +40,6 @@ describe('MarketingHeaderAuth', () => {
     render(<MarketingHeaderAuth />)
     expect(screen.queryByRole('link', { name: 'Websites' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Analyze' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Check website' })).not.toBeInTheDocument()
   })
 })

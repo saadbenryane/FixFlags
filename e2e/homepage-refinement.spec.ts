@@ -41,7 +41,7 @@ for (const width of [320, 375, 390, 768, 1086, 1280, 1440]) for (const theme of 
     page.on('pageerror', error => errors.push(error.message))
     await page.setViewportSize({ width, height: 900 })
     await visit(page, theme)
-    await expect(page.getByRole('heading', { level: 1, name: /Finish what\s*your AI started/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /Website monitoring\.\s*From problem to fix\./ })).toBeVisible()
     for (const input of await page.getByRole('textbox', { name: 'Website URL' }).all())
       expect(await input.evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16)
     await expect(board(page).getByText(S.sampleLabel, { exact: true })).toBeVisible()

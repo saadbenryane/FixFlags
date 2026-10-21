@@ -2,6 +2,8 @@ import { AuditUrlError, safeFetchDocument } from './url'
 import { publicResponseRestriction } from './browser/page-capture'
 import { destinationContext, displayDestination, DESTINATION_VERIFICATION_RULE } from './checks/destination-evidence'
 import type { EvidenceTarget } from './evidence-targets'
+import { PublicRedirectError } from './redirect-evidence'
+import { hasMissingPageContent } from './soft-404'
 import {
   canonicalizeDestination,
   isEligiblePublicDestination,
@@ -11,6 +13,7 @@ import {
 export const OPEN_CHECK_OUTCOMES = [
   'reachable',
   'redirected',
+  'redirect_loop',
   'auth_required',
   'not_found',
   'server_error',
@@ -39,8 +42,6 @@ export type OpenCheckFetch = (
 ) => Promise<Response>
 
 const AUTH_PATH = /\/(login|log-in|signin|sign-in|sign_in|auth|account\/login)(\/|$)/i
-const SOFT_404_PATTERN =
-  /page not found|not found|doesn't exist|does not exist|404|no longer available|we couldn't find/i
 const TITLE_OR_H1 = /<title[^>]*>([\s\S]*?)<\/title>|<h1[^>]*>([\s\S]*?)<\/h1>/gi
 
 export const DEFAULT_OPEN_CHECK_CEILING = 80
@@ -75,9 +76,7 @@ export function detectSoft404(html: string, status: number | null): boolean {
   while ((match = TITLE_OR_H1.exec(html))) {
     headings.push(stripTags(match[1] || match[2] || ''))
   }
-  const headingHit = headings.some((heading) => SOFT_404_PATTERN.test(heading))
-  if (headingHit) return true
-  return SOFT_404_PATTERN.test(text.slice(0, 400)) && headings.length > 0
+  return hasMissingPageContent(headings, text)
 }
 
 export function classifyPublicGet(input: {
@@ -179,7 +178,8 @@ async function fetchOnce(
   url: string,
   timeoutMs: number,
   deadline?: number,
-): Promise<{ response: Response; html: string | null } | { error: 'timeout' | 'network' | 'blocked' }> {
+): Promise<{ response: Response; html: string | null } | { error: 'timeout' | 'network' | 'blocked' } |
+  { error: 'redirect_loop'; status: number; finalUrl: string }> {
   const remaining = Math.min(timeoutMs, (deadline ?? Infinity) - Date.now())
   if (remaining <= 0) return { error: 'timeout' }
   const { signal, cancel } = abortableTimeout(remaining)
@@ -198,6 +198,8 @@ async function fetchOnce(
     const html = contentType.includes('html') || !contentType ? (await response.text()).slice(0, 20_000) : null
     return { response, html }
   } catch (error) {
+    if (error instanceof PublicRedirectError && error.reason === 'redirect_loop')
+      return { error: 'redirect_loop', status: error.response.statusCode, finalUrl: error.response.finalUrl }
     if (error instanceof AuditUrlError) return { error: 'blocked' }
     const name = error instanceof Error ? error.name : ''
     return { error: signal.aborted || name === 'AbortError' || name === 'TimeoutError' ? 'timeout' : 'network' }
@@ -225,6 +227,9 @@ function finalizeGet(
   httpErrorsOnly = false,
 ): OpenCheckResult {
   if ('error' in get) {
+    if (get.error === 'redirect_loop') return { url: requested, canonicalUrl: canonical?.url ?? requested,
+      outcome: 'redirect_loop', status: get.status, finalUrl: get.finalUrl, shouldFlagDead: true,
+      evidence: `GET ${displayDestination(requested)} repeated its redirect route without reaching a final page response.` }
     return {
       url: requested,
       canonicalUrl: canonical?.url ?? requested,
@@ -276,10 +281,11 @@ export async function openCheckDestinations<T extends OpenCheckObservation = Ope
   const seen = new Set<string>()
   for (const url of urls) {
     if (options.origin && !isEligiblePublicDestination(url, options.origin)) continue
-    const key = canonicalizeDestination(url, options.origin)?.key ?? url
+    const destination = canonicalizeDestination(url, options.origin)
+    const key = destination?.url ?? url
     if (seen.has(key)) continue
     seen.add(key)
-    unique.push(canonicalizeDestination(url, options.origin)?.url ?? url)
+    unique.push(key)
   }
 
   const truncated = unique.length > ceiling

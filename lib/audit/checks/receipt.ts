@@ -1,6 +1,26 @@
 import { z } from 'zod'
 import type { CheckAssertion } from './assertion'
 import { CHECK_ASSERTIONS, CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import type { DeterministicFlag } from '../flag-types'
+import type { SiteCardArea } from '@/lib/sites/card-areas'
+import { currentFormFeedbackObservation } from './form-validation'
+
+/** Shared modules can observe several areas. Select admitted evidence before
+ * deriving completeness, so unrelated measurements cannot decide this result. */
+export function scopeCheckEvidence(input: {
+  module: string; flags: DeterministicFlag[]; assertions: CheckAssertion[];
+  scope?: { area?: SiteCardArea; allowedCheckIds?: readonly string[] };
+}) {
+  if (!input.scope?.allowedCheckIds) return { flags: input.flags, assertions: input.assertions }
+  const allowed = new Set(input.scope.allowedCheckIds)
+  return {
+    flags: input.flags.filter(flag => allowed.has(flag.checkId.split('::page:')[0])),
+    assertions: input.assertions.filter(assertion => {
+      const definition = CHECK_ASSERTIONS[input.module]?.[assertion.key]
+      return definition && (definition.area === input.scope?.area || definition.verifies.some(id => allowed.has(id)))
+    }),
+  }
+}
 
 export const checkAssertionSchema = z.object({
   key: z.string().min(1).max(160), name: z.string().min(1).max(300),
@@ -55,13 +75,24 @@ export function summarizeCheckAssertions(input: { passed: boolean; complete?: bo
 /** Historical receipts have no version. Only explicitly recorded, valid fields survive. */
 export function readCheckReceipt(detail: unknown) {
   const current = checkReceiptSchema.safeParse(detail)
-  if (current.success) return { ...current.data, ...summarizeCheckAssertions(current.data), legacy: false }
+  if (current.success) {
+    let qualified = current.data
+    if (qualified.module === 'form-validation') qualified = { ...qualified,
+      assertions: current.data.assertions.map(assertion => currentFormFeedbackObservation(assertion) ? assertion : { ...assertion, complete: false }),
+    }
+    // Retain genuine HTTP facts without inventing historical pixel decoding.
+    if (qualified.module === 'og-image' && qualified.assertions.some(assertion => assertion.key === 'preview-image-response' && assertion.passed) &&
+      !qualified.assertions.some(assertion => assertion.key === 'preview-image-decoding')) qualified = { ...qualified, complete: false }
+    return { ...qualified, ...summarizeCheckAssertions(qualified), legacy: false }
+  }
   if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return { passed: undefined, assertions: [], legacy: true }
   const old = detail as Record<string, unknown>
   if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true }
-  return { passed: typeof old.passed === 'boolean' ? old.passed : undefined,
-    assertions: Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
-      const parsed = checkAssertionSchema.safeParse(value)
-      return parsed.success ? [parsed.data] : []
-    }) : [], legacy: true }
+  const assertions = Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
+    const parsed = checkAssertionSchema.safeParse(value)
+    return parsed.success ? [currentFormFeedbackObservation(parsed.data) ? parsed.data : { ...parsed.data, complete: false }] : []
+  }) : []
+  const currentAssertions = assertions.some(assertion => assertion.key === 'preview-image-decoding') ? assertions
+    : assertions.map(assertion => assertion.key === 'preview-image-response' && assertion.passed ? { ...assertion, complete: false } : assertion)
+  return { passed: typeof old.passed === 'boolean' ? old.passed : undefined, assertions: currentAssertions, legacy: true }
 }

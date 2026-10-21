@@ -127,8 +127,15 @@ const RETRIABLE_TRANSACTION_CODES = new Set(['P2028', 'P2034'])
 
 type TransactionOptions = { maxWait?: number; timeout?: number; isolationLevel?: Prisma.TransactionIsolationLevel }
 
-/** A deadlock or lock timeout aborted the statement. The transaction did not commit. */
+/** Raw statements retain PostgreSQL's SQLSTATE instead of Prisma's P2034. */
+export function transactionConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2034' ||
+    error.code === 'P2010' && (error.meta?.code === '40001' || error.meta?.code === '40P01'))
+}
+
+/** A serialization failure, deadlock or lock timeout aborted the transaction. */
 export function transactionAborted(error: unknown): boolean {
+  if (transactionConflict(error)) return true
   const message = error instanceof Error ? error.message : ''
   // Prisma sometimes reports Postgres 40P01 or 55P03 as a connector error
   // rather than P2034. The statement was cancelled and the transaction aborted.
@@ -235,6 +242,23 @@ export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work:
   }
 }
 
+/** A failed physical execution cannot be revived by a delayed queue delivery.
+ * Callers may add a scope guard, but cannot weaken the ownership comparison. */
+export async function expireUnownedExecution(audit: { id: string; executionToken: string | null; executionGeneration: number },
+  now: Date, scope: Prisma.AuditWhereInput = {}): Promise<boolean> {
+  const changed = await prisma.audit.updateMany({
+    where: { AND: [scope, { id: audit.id, executionToken: audit.executionToken, executionGeneration: audit.executionGeneration,
+      OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }], status: { notIn: ['COMPLETED', 'FAILED'] } }] },
+    data: { status: 'FAILED', executionToken: null, executionLeaseUntil: null, completedAt: now,
+      failureCode: 'EXECUTION_LEASE_EXPIRED', failureStage: 'worker',
+      errorMsg: 'The worker stopped before this check completed. Retry starts a new execution; earlier evidence is preserved.' },
+  })
+  if (changed.count !== 1) return false
+  const { markOutcomeRunsCouldNotVerify } = await import('@/lib/sites/application/run-reconciliation')
+  await markOutcomeRunsCouldNotVerify(audit.id, 'EXECUTION_LEASE_EXPIRED', 'The worker stopped before this check completed.')
+  return true
+}
+
 /** Expired execution is terminal, never an invitation to repeat a protected action. */
 export async function recoverExpiredExecutions(limit = 25): Promise<number> {
   const now = new Date()
@@ -244,19 +268,6 @@ export async function recoverExpiredExecutions(limit = 25): Promise<number> {
     select: { id: true, executionToken: true, executionGeneration: true },
   })
   let recovered = 0
-  for (const audit of audits) {
-    const changed = await prisma.audit.updateMany({
-      where: { id: audit.id, executionToken: audit.executionToken, executionGeneration: audit.executionGeneration,
-        executionLeaseUntil: { lte: now }, status: { notIn: ['COMPLETED', 'FAILED'] } },
-      data: { status: 'FAILED', executionToken: null, executionLeaseUntil: null, completedAt: now,
-        failureCode: 'EXECUTION_LEASE_EXPIRED', failureStage: 'worker',
-        errorMsg: 'The worker stopped before this check completed. Retry starts a new execution; earlier evidence is preserved.' },
-    })
-    recovered += changed.count
-    if (changed.count === 1) {
-      const { markOutcomeRunsCouldNotVerify } = await import('@/lib/sites/application/run-reconciliation')
-      await markOutcomeRunsCouldNotVerify(audit.id, 'EXECUTION_LEASE_EXPIRED', 'The worker stopped before this check completed.')
-    }
-  }
+  for (const audit of audits) if (await expireUnownedExecution(audit, now, { executionLeaseUntil: { lte: now } })) recovered++
   return recovered
 }

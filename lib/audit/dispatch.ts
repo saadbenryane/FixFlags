@@ -23,12 +23,15 @@ export async function dispatchAudit(auditId: string): Promise<boolean> {
     return true
   } catch {
     const exhausted = now.getTime() >= (audit.recoveryUntil?.getTime() ?? audit.createdAt.getTime() + 60 * 60_000)
-    await prisma.audit.updateMany({ where: { id: auditId, status: 'QUEUED', dispatchState: 'PENDING', dispatchLeaseUntil: leaseUntil }, data: {
+    const deferred = await prisma.audit.updateMany({ where: { id: auditId, status: 'QUEUED', dispatchState: 'PENDING', dispatchLeaseUntil: leaseUntil }, data: {
       dispatchLeaseUntil: null, dispatchError: 'Queue admission is temporarily unavailable.',
       dispatchNextAt: new Date(now.getTime() + Math.min(60_000, 5000 * 2 ** Math.min(8, audit.dispatchAttempts))),
       ...(exhausted ? { dispatchState: 'FAILED', status: 'FAILED', failureCode: 'QUEUE_ENQUEUE_FAILED', failureStage: 'queue',
         errorMsg: 'The automatic recovery window ended before execution could start. No website verdict was established.', completedAt: now } : {}),
     } })
+    // An uncertain producer response cannot override a worker that started or
+    // another dispatch claim. Reconcile Runs only from our committed transition.
+    if (deferred.count !== 1) return false
     logger.warn('Audit queue admission will be reconciled', { auditId, exhausted })
     if (exhausted) {
       const { markOutcomeRunsCouldNotVerify } = await import('@/lib/sites/application/run-reconciliation')

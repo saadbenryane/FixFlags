@@ -340,6 +340,15 @@ describe('runStuckAuditRecoverySweep', () => {
     assert.deepEqual(result, { requeued: 0, failed: 0, checked: 0 })
   })
 
+  it('continues with another Audit after one legacy queue lookup fails', async () => {
+    mocks.auditFindMany.mockResolvedValue([{ id: 'interrupted', status: 'QUEUED', startedAt: null },
+      { id: 'other', status: 'QUEUED', startedAt: null }])
+    mocks.queueGetJob.mockRejectedValueOnce(new Error('Controlled queue lookup failure')).mockResolvedValueOnce(null)
+    expect(await runStuckAuditRecoverySweep()).toEqual({ requeued: 1, failed: 0, checked: 2 })
+    expect(mocks.queueAdd).toHaveBeenCalledOnce()
+    expect(mocks.queueAdd).toHaveBeenCalledWith('audit', { auditId: 'other' }, expect.any(Object))
+  })
+
   it('retries the query once before giving up', async () => {
     mocks.auditFindMany
       .mockRejectedValueOnce(new Error('db hiccup'))
@@ -364,8 +373,9 @@ describe('recoverCompletedImprovementProjections', () => {
 
     expect(mocks.auditFindMany).toHaveBeenCalledWith({
       where: { status: 'COMPLETED', improvementProjectedAt: null,
+        OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: expect.any(Date) } }],
         verifierExecutions: { none: { workKind: 'finalize', workState: 'RUNNING', workLeaseUntil: { gt: expect.any(Date) } } } },
-      orderBy: { completedAt: 'asc' },
+      orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
       take: 25,
       select: { id: true, parentId: true, userId: true },
     })

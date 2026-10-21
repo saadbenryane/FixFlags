@@ -26,7 +26,9 @@ export function loadingUiInDocument(waitForClear: boolean): LoadingUiSnapshot | 
     let hidden = false
     for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) {
       const style = getComputedStyle(ancestor)
-      if (style.visibility !== 'visible' || style.display === 'none' || Number(style.opacity) === 0) { hidden = true; break }
+      // Visibility is inherited and can be restored by the child. Display and
+      // opacity still suppress every descendant of the hidden ancestor.
+      if ((ancestor === element && style.visibility !== 'visible') || style.display === 'none' || Number(style.opacity) === 0) { hidden = true; break }
     }
     if (hidden || !element.closest('main, [role="main"], [class*="hero" i]') && width * height < innerWidth * innerHeight * 0.12) continue
     loadingLabel = (element.getAttribute('aria-label') || String(element.className).split(/\s+/).find(name => /skeleton|spinner|loading/i.test(name)) || element.tagName.toLowerCase()).slice(0, 160)

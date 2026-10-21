@@ -6,7 +6,7 @@
  * not POLISH = Recommendation.
  */
 
-import { hasUnreadableSupportingObservations } from './flag-observations'
+import { hasUnreadableSupportingObservations, hasUnreadableStoredSupportingObservations } from './flag-observations'
 import { searchAttentionDecision } from './search/policy'
 import { requiresContextualReview } from './prescription-policy'
 
@@ -37,6 +37,20 @@ function checkBaseId(checkId?: string | null): string {
   return (checkId ?? '').split('::page:')[0]
 }
 
+/** Raw findings retain private evidence. Validated public projections carry
+ * their server-derived readability decision explicitly. */
+export function hasUnavailableFlagEvidence(flag: CustomerFlagInput): boolean {
+  return flag.supportingEvidenceUnreadable === true || (flag.supportingEvidenceUnreadable === false
+    ? hasUnreadableSupportingObservations(flag.supportingObservations)
+    : hasUnreadableStoredSupportingObservations(flag.supportingObservations))
+}
+
+/** An unavailable important observation is a coverage gap, not a confirmed
+ * failure. Optional recommendations do not invalidate independent checks. */
+export function hasUnresolvedFlagEvidence(flag: CustomerFlagInput): boolean {
+  return hasUnavailableFlagEvidence(flag) && isCustomerFlag({ ...flag, supportingEvidenceUnreadable: false, supportingObservations: undefined })
+}
+
 /** Journey, form, and conversion checks can be Flags even when severity is POLISH. */
 export function isJourneyCritical(flag: CustomerFlagInput): boolean {
   const impact = (flag.impactTag ?? '').toUpperCase()
@@ -51,7 +65,7 @@ export function isJourneyCritical(flag: CustomerFlagInput): boolean {
  */
 export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   if (isResolvedFlagStatus(flag.status)) return false
-  if (flag.supportingEvidenceUnreadable || hasUnreadableSupportingObservations(flag.supportingObservations)) return false
+  if (hasUnavailableFlagEvidence(flag)) return false
   if (typeof flag.confidence === 'number' && flag.confidence < MIN_ATTENTION_CONFIDENCE) {
     return false
   }
@@ -83,7 +97,7 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
  */
 export function isAttentionCandidate(flag: CustomerFlagInput): boolean {
   if (isResolvedFlagStatus(flag.status)) return false
-  if (flag.supportingEvidenceUnreadable || hasUnreadableSupportingObservations(flag.supportingObservations)) return false
+  if (hasUnavailableFlagEvidence(flag)) return false
   if (isPolishSeverity(flag.severity)) return false
   if ((flag.checkId || flag.attentionPolicy) && !isCustomerFlag(flag)) return false
   if (typeof flag.confidence === 'number' && flag.confidence < MIN_ATTENTION_CONFIDENCE) {

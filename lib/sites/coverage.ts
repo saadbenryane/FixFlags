@@ -8,6 +8,7 @@ import { checkAssertionsForVersion, CHECK_MODULES } from '@/lib/audit/check-regi
 import { searchEvidence } from './search-evidence'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { isResolvedFlagStatus } from '@/lib/audit/attention'
+import { siteCoverageIsStale } from './evidence-freshness'
 
 export type CoverageFact = {
   area: SiteCardArea
@@ -24,16 +25,8 @@ export type CoverageFact = {
   incompleteReason?: string | null
 }
 
-/** A completed broad Site check is current for one weekly Watch cycle plus a day of grace. */
-export const SITE_COVERAGE_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000
-
-export function siteCoverageIsStale(checkedAt: Date | string | null, now: Date): boolean {
-  if (!checkedAt) return true
-  const checkedAtMs = checkedAt instanceof Date ? checkedAt.getTime() : Date.parse(checkedAt)
-  return !Number.isFinite(checkedAtMs) || now.getTime() - checkedAtMs >= SITE_COVERAGE_MAX_AGE_MS
-}
-
 export type SiteFlagSeed = {
+  supportingEvidenceUnreadable?: boolean
   attentionPolicy?: unknown
   id: string
   sourceFlagId?: string | null
@@ -208,6 +201,7 @@ export function buildCoverageFacts(input: {
   auditStatus: string
   completedAt: Date | null
   now: Date
+  coverageMaxAgeMs?: number
   evidenceCoverage: unknown
   failureCode?: string | null
   failedModules?: unknown
@@ -259,7 +253,7 @@ export function buildCoverageFacts(input: {
     return !receipt.legacy && 'execution' in receipt && receipt.execution?.source === 'browser-network'
   })
   for (const execution of executions) {
-    if (!execution.targetKey.startsWith('module:')) continue
+    if (!execution.targetKey.startsWith('module:') || execution.status === 'NOT_APPLICABLE') continue
     const moduleKey = execution.targetKey.slice('module:'.length)
     const receipt = readCheckReceipt(execution.detail)
     const missing = receipt.assertions.filter(assertion => assertion.complete === false)
@@ -313,7 +307,7 @@ export function buildCoverageFacts(input: {
     }
 
     if (area === 'search' && search) {
-      const stale = search.receipts.some(receipt => siteCoverageIsStale(receipt.collectedAt, input.now))
+      const stale = search.receipts.some(receipt => siteCoverageIsStale(receipt.collectedAt, input.now, input.coverageMaxAgeMs))
       const complete = search.complete && !search.excluded && !incompleteReason && !stale
       return { area, state: complete ? 'healthy' : 'unknown',
         label: stale ? SITE_BOARD_COPY.checkOutOfDate : search.excluded ? SEARCH_COPY.summary.excluded : search.complete ? SEARCH_COPY.summary.recorded : SEARCH_COPY.summary.partial,
@@ -339,7 +333,7 @@ export function buildCoverageFacts(input: {
     }
 
     if ((inFlight || input.auditStatus === 'FAILED') && input.retainLastKnownWhileChecking && prior) {
-      if (prior.state === 'healthy' && siteCoverageIsStale(prior.checkedAt, input.now)) {
+      if (prior.state === 'healthy' && siteCoverageIsStale(prior.checkedAt, input.now, input.coverageMaxAgeMs)) {
         return { ...prior, state: 'unknown' as const, label: SITE_BOARD_COPY.checkOutOfDate,
           detail: SITE_BOARD_COPY.checkOutOfDateDetail, stale: true }
       }
@@ -403,7 +397,7 @@ export function buildCoverageFacts(input: {
       }
     }
 
-    if (siteCoverageIsStale(input.completedAt, input.now)) {
+    if (siteCoverageIsStale(input.completedAt, input.now, input.coverageMaxAgeMs)) {
       return {
         area,
         state: 'unknown' as const,

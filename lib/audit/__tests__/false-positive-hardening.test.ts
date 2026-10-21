@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isDeadHref, isNonPageActionHref, classifyCtaHref } from '@/lib/audit/flow/link-scoring'
+import { isNonPageActionHref, classifyCtaHref } from '@/lib/audit/flow/link-scoring'
 import { scoreCtaCandidates } from '@/lib/audit/flow/score-cta-candidates'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
@@ -61,19 +61,15 @@ function checkIds(findings: Array<{ checkId: string }>): string[] {
 describe('mailto:/tel: are not dead links (profilium cta-dead-link false positive)', () => {
   it('classifies mailto/tel/sms as intentional actions, not placeholders', () => {
     for (const href of ['mailto:contact@profilium.co', 'tel:+15555551212', 'sms:+15555551212']) {
-      expect(isDeadHref(href)).toBe(false)
       expect(isNonPageActionHref(href)).toBe(true)
       expect(classifyCtaHref(href).isPlaceholder).toBe(false)
     }
   })
 
-  it('still treats empty, #, and javascript: hrefs as dead', () => {
-    expect(isDeadHref('')).toBe(true)
-    expect(isDeadHref('#')).toBe(true)
-    expect(isDeadHref('javascript:void(0)')).toBe(true)
-    expect(isDeadHref('about:blank')).toBe(true)
-    expect(isDeadHref('/pricing')).toBe(false)
-    expect(isDeadHref('https://app.profilium.co/signup')).toBe(false)
+  it('retains placeholder declarations without claiming their click behavior was tested', () => {
+    for (const href of ['', '#', 'javascript:void(0)', 'about:blank']) expect(classifyCtaHref(href).isPlaceholder).toBe(true)
+    for (const href of ['/pricing', 'https://app.profilium.co/signup']) expect(classifyCtaHref(href).isPlaceholder).toBe(false)
+    for (const href of ['#/signup', '#!/signup']) expect(classifyCtaHref(href)).toMatchObject({ isPlaceholder: false, isActionable: false })
   })
 
   it('does not fire cta-dead-link for a mailto or tel CTA', () => {

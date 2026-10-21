@@ -148,6 +148,7 @@ export function parsePublicHttpUrl(raw: string, base?: string): URL | null {
   try {
     const parsed = new URL(raw, base)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    if (parsed.username || parsed.password) return null
     return parsed
   } catch {
     return null
@@ -167,8 +168,6 @@ export function canonicalizeDestination(
   if (!parsed) return null
 
   parsed.hash = ''
-  parsed.username = ''
-  parsed.password = ''
   const url = parsed.toString()
   const originForFetch = parsed.origin
   parsed.hostname = normalizeSiteHost(parsed.hostname.replace(/\.$/, ''))
@@ -187,6 +186,12 @@ export function canonicalizeDestination(
 
 export function canonicalDestinationKey(raw: string, origin?: string): string | null {
   return canonicalizeDestination(raw, origin)?.key ?? null
+}
+
+/** Executable navigation identity retains supplied path, query, host and
+ * fragment conditions. Discovery grouping cannot merge admitted observations. */
+export function navigationDestinationKey(raw: string, origin?: string): string | null {
+  return parsePublicHttpUrl(raw, origin)?.href ?? null
 }
 
 export function sameCanonicalDestination(left: string, right: string): boolean {
@@ -213,13 +218,14 @@ export function reviewPathLabel(url: string): string {
 
 export function isEligiblePublicDestination(
   href: string,
-  origin: string
+  origin: string,
+  intent: 'discovery' | 'admitted' = 'discovery'
 ): boolean {
   const trimmed = href.trim()
   if (!trimmed || isHashOnlyHref(trimmed)) return false
 
   const classified = classifyCtaHref(trimmed, { baseUrl: origin })
-  if (!classified.isPageNavigation) return false
+  if (!classified.isPageNavigation && !(intent === 'admitted' && classified.isSamePageAnchor)) return false
 
   const parsed = parsePublicHttpUrl(trimmed, origin)
   if (!parsed) return false
@@ -236,25 +242,37 @@ export type EligibleLink = {
 
 export function collectEligibleDestinations(
   origin: string,
-  links: Array<{ href: string; text: string }>
+  links: Array<{ href: string; text: string }>,
+  identity: 'review' | 'request' = 'review',
 ): EligibleLink[] {
   const seen = new Set<string>()
-  const originKey = canonicalizeDestination(origin)?.key
+  const represented = new Set<string>()
+  // Representative review pages may collapse generated and locale variants.
+  // A physical HTTP observation can establish facts only about its exact URL.
+  const keyFor = (destination: CanonicalDestination) => identity === 'request' ? destination.url : destination.key
+  const source = canonicalizeDestination(origin)
+  const originKey = source && keyFor(source)
   const collected: EligibleLink[] = []
+  const variants: EligibleLink[] = []
 
   for (const link of links) {
     if (!isEligiblePublicDestination(link.href, origin)) continue
     const canonical = canonicalizeDestination(link.href, origin)
     if (!canonical) continue
-    if (originKey && canonical.key === originKey) continue
-    if (seen.has(canonical.key)) continue
-    seen.add(canonical.key)
-    collected.push({
+    const key = keyFor(canonical)
+    if (originKey && key === originKey) continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    // Additional variants must not crowd independent pages out of the bounded
+    // response budget. Every physical URL remains eligible after that breadth.
+    const target = identity === 'request' && represented.has(canonical.key) ? variants : collected
+    represented.add(canonical.key)
+    target.push({
       href: canonical.url,
       text: link.text.trim(),
       canonical,
     })
   }
 
-  return collected
+  return [...collected, ...variants]
 }

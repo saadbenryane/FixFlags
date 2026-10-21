@@ -6,12 +6,11 @@ import { monitoringHistoryMetadata, type MonitoringHistoryEntry } from '@/lib/si
 import type { SiteRecord } from '@/lib/sites/types'
 import { siteAnalysisAuditWhere } from './analysis-scope'
 import { completeOutcomeEvidence } from '../domain/outcome-proof'
-import { categoryCoverageFact } from './category-evidence'
-import { projectSiteAssessment, recordedRunFlags, recordedDiagnosticConclusion, recordedAccountConclusion } from '../assessment'
+import { projectSiteAssessment, recordedDiagnosticConclusion, recordedAccountConclusion } from '../assessment'
 import { readExecutionSpec } from '../domain/execution-spec'
-import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
-import { categoryCoverageExecutionSelect } from './site-execution'
-import { currentOutcomeState } from '../outcome-state'
+import { categoryCoverageExecutionSelect, siteCoverageExecutionSelect } from './site-execution'
+import { executionPageCoverage } from '../page-coverage'
+import { projectRecordedSiteResult } from './recorded-assessment'
 
 const historySelect = {
   id: true, parentId: true, status: true, failureCode: true, failedModules: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
@@ -23,7 +22,9 @@ const historySelect = {
   verificationAttempts: { take: 12, orderBy: { createdAt: 'desc' }, select: { id: true, outcome: true, comparable: true,
     handoffReference: true, sourceAuditId: true, verificationAuditId: true, evidenceReference: true } },
   verifierExecutions: { where: { OR: [{ workKind: 'automatic-accounts', workState: 'COMPLETED' },
-    { audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } }, OR: [...categoryCoverageExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET }] }] },
+    { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+    { audit: { executionSpec: { path: ['scope'], equals: 'SITE' } }, OR: siteCoverageExecutionSelect.where.OR },
+    { audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } }, OR: categoryCoverageExecutionSelect.where.OR }] },
     select: categoryCoverageExecutionSelect.select },
   flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true, attentionPolicy: true } },
 } satisfies Prisma.AuditSelect
@@ -36,7 +37,7 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
   const attempt = audit.verificationAttempts.find(item => item.id === target?.attemptId)
   const sourceId = attempt?.handoffReference?.startsWith('flag:') ? attempt.handoffReference.slice(5) : null
   const proof = sourceId ? proofFlags.find(item => item.id === sourceId && item.auditId === attempt?.sourceAuditId) : null
-  const linkedFlags = [...flags.map(flag => ({ id: flag.id, title: flag.problem })),
+  let linkedFlags = [...flags.map(flag => ({ id: flag.id, title: flag.problem })),
     ...(proof && !flags.some(flag => flag.problem === proof.problem) ? [{ id: proof.id, title: proof.problem }] : [])]
   const selected = audit.runRequests[0]
   const accountOnly = (audit.executionSpec as { scope?: string } | null)?.scope === 'ACCOUNT_CHECKS'
@@ -49,10 +50,12 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
     ? Boolean(selected?.assessments.length && selected.assessments.length === selected.selections.length && selected.assessments.every(assessment =>
       ['CLEAR', 'FLAG'].includes(assessment.state) && completeOutcomeEvidence(assessment.coverage, assessment.evidence)))
     : metadata.scope === 'DIAGNOSTIC' && recordedDiagnosticConclusion({ executionSpec: audit.executionSpec, audit })?.complete === true
+  const pageCoverage = executionPageCoverage({ executionSpec: audit.executionSpec, pages: audit.pages, executions: audit.verifierExecutions })
   let completionState: MonitoringHistoryEntry['completionState'] = audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt || audit.failureCode ||
     (!completedScope && Array.isArray(audit.failedModules) && audit.failedModules.length > 0) ||
-    (!completedScope && (!audit.pages.length || audit.pages.some(page => page.status !== 'COMPLETED'))) ? 'PARTIAL' : 'COMPLETED'
+    (!completedScope && !pageCoverage.complete) ? 'PARTIAL' : 'COMPLETED'
   const spec = readExecutionSpec(audit.executionSpec)
+  let flagCount = flags.length
   if (accountOnly) completionState = audit.status === 'FAILED' ? 'FAILED' : accountConclusion?.complete ? 'COMPLETED' : 'PARTIAL'
   if (metadata.scope === 'DIAGNOSTIC') {
     const diagnostic = recordedDiagnosticConclusion({ executionSpec: audit.executionSpec, audit })
@@ -62,14 +65,13 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
     metadata.result = assessment.result === 'CLEAR' ? 'CLEAR' : assessment.result === 'FLAG' ? 'FLAG' : 'COULD_NOT_VERIFY'
     completionState = audit.status === 'FAILED' ? 'FAILED' : assessment.completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL'
   }
-  if (spec?.category) {
+  if (spec?.scope === 'SITE' || spec?.category) {
     const evidenceAt = audit.completedAt ?? audit.updatedAt
-    const fact = categoryCoverageFact(audit, evidenceAt)!
-    const recorded = recordedRunFlags({ executionSpec: audit.executionSpec, audit })
-    const assessment = projectSiteAssessment({ status: audit.status, executionSpec: audit.executionSpec,
-      coverage: [fact], now: evidenceAt, flags: recorded.flags.filter(flag => isCustomerFlag({ ...flag, status: undefined })),
-      assessmentComplete: recorded.complete, checkedAt: audit.completedAt,
-      outcomes: spec.outcomes.map(outcome => ({ id: outcome.id, state: currentOutcomeState(selected?.assessments.find(item => item.outcomeId === outcome.id) ?? null, evidenceAt) })) })
+    const { assessment, findings } = projectRecordedSiteResult({ audit, now: evidenceAt, assessments: selected?.assessments ?? [] })
+    if (findings) {
+      flagCount = findings.length
+      linkedFlags = findings.flatMap(finding => finding.id ? [{ id: finding.id, title: finding.problem }] : [])
+    }
     metadata.result = assessment.result === 'FLAG' ? 'FLAG' : assessment.result === 'CLEAR' ? 'CLEAR' : 'COULD_NOT_VERIFY'
     completionState = audit.status === 'FAILED' ? 'FAILED' : assessment.completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL'
   }
@@ -77,7 +79,7 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
     completionState,
     id: audit.id, checkedAt: (audit.completedAt ?? audit.updatedAt).toISOString(),
     evidenceAt: audit.status === 'COMPLETED' ? audit.completedAt?.toISOString() ?? null : null,
-    status: audit.status === 'COMPLETED' ? 'COMPLETED' : 'FAILED', flagCount: flags.length,
+    status: audit.status === 'COMPLETED' ? 'COMPLETED' : 'FAILED', flagCount,
     flags: linkedFlags,
     ...metadata,
   }

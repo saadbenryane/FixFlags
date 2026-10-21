@@ -6,8 +6,6 @@ import { categoryExecutionRecovery, executionRecovery, type ExecutionRecovery } 
 import type { SiteCardArea } from '../card-areas'
 import { summarizeExecutionTasks, type ExecutionTaskSummary } from '../execution-summary'
 
-export const projectionNoticeSchema = z.object({ version: z.literal(1), kind: z.string(), state: z.string(),
-  taskId: z.string().nullable(), observationReference: z.string().nullable() }).strict()
 export type ExecutionProgress = {
   summary?: ExecutionTaskSummary
   recovery?: ExecutionRecovery | null

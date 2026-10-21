@@ -33,7 +33,6 @@ export function discoverOutcomePages(siteUrl: string, source: OutcomeDiscoverySo
   return [...observed].flatMap(([rawUrl, title]) => {
     const url = new URL(rawUrl)
     if (!['http:', 'https:'].includes(url.protocol) || url.hostname !== new URL(siteUrl).hostname) return []
-    url.hash = ''
     return [{ rawUrl, url: url.toString(), path: url.pathname, title }]
   })
 }

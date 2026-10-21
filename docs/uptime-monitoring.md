@@ -60,6 +60,14 @@ for a later turn, including confirmation jobs using their original failure slot.
 Target changes, resumed monitoring and expired confirmations reset the dispatch
 position as the monitor synchronizes its new work.
 
+Reconciliation treats a selected row as a hint. Under the monitor lock it reads
+the current Site and recomputes whether synchronization is still required.
+Expired confirmation cleanup cannot clear an active observation lease or erase
+a newer success or failure confirmation. Dispatch rechecks the resulting due
+times before publishing. Disposable PostgreSQL regressions interleave selection
+with actual probe execution and a Site target change, retaining the committed
+observations, pending confirmation, lease and incident history.
+
 Queue publication also revives retained failed or completed jobs when the
 database still requires their slot. A completed job can have skipped observation
 because another worker's database lease had not expired. The existing BullMQ
@@ -113,6 +121,47 @@ lifecycle status. A suspended account's earlier observations remain historical,
 while overview and detailed history both show monitoring paused.
 
 A failed origin observation schedules one confirmation after 30 seconds. Two conclusive failures open an incident. A successful observation of the same target generation records recovery. Bot challenges, access blocks, rate limits, unsafe targets, DNS infrastructure failures, and internal execution failures remain unknown. Unknown observations neither open nor recover incidents. Changing the target supersedes earlier open incidents without claiming recovery.
+
+Recognized peer-certificate refusals use this same failure and confirmation
+policy. Expired, not-yet-valid, wrong-host, explicitly untrusted self-signed,
+revoked and malformed certificate evidence retains a specific reason from the
+Node/OpenSSL error code. Messages alone cannot establish one of these failures.
+Unknown issuers, incomplete local trust and client TLS configuration remain
+unknown. A refused TLS connection records no invented HTTP status or final
+response URL. History presents the reason through its existing details view.
+The underlying TLS client still verifies certificates and hostnames normally.
+[Node certificate error definitions](https://nodejs.org/download/release/v22.23.3/docs/api/errors.html#openssl-error-codes)
+
+A disposable HTTPS fixture reproduces an expired certificate remaining unknown,
+then verifies the correction through eleven installed-worker observations with
+PostgreSQL and Redis. It serves CA-signed expired, hostname-mismatched and valid
+certificates, plus an untrusted self-signed certificate. The client trusts only
+the fixture CA for that transport, retains the recorded hostname and never
+disables certificate verification. Missing issuer trust stays unknown without
+recovering the incident. Three consecutive inconclusive observations expose the
+separate operational coverage gap once prior conclusive evidence expires. A fresh
+recognized certificate refusal clears that coverage gap while retaining the
+website incident. A valid TLS connection whose HTTP 200 body is interrupted
+also stays unknown, retaining the observed status and final URL without sending
+a recovery notification. The original underlying error retains its existing
+classification; response facts alone cannot turn that failed read into ONLINE.
+A later complete HTTPS response independently recovers it,
+and a later expiry opens the next incident. Probe history, pending outage and
+recovery receipts, original monitor identity and unchanged analysis usage are
+checked. The fixture advances its explicit clock and promotes due queue jobs;
+it proves controlled local execution, not natural production scheduling or
+notification acceptance.
+
+The worker diagnostic distinguishes overdue probes from sustained inconclusive
+observation through `inconclusiveUptimeSites`. Recent unknown state with current
+target-generation history spanning more than the ten-minute freshness window,
+and no conclusive ONLINE or FAILED observation within that window, needs operator
+attention even if every queue job completed on time. Initial and short uncertainty
+retain grace. Old generations, other targets and future observations cannot renew
+this responsibility. The existing operator uptime queue and summary use the same
+indexed, read-only cohort. Overdue work takes precedence so each Site appears
+once. This measures a current evidence gap, not historical on-time fulfillment or
+a website outage. These reads never open or recover incidents or send alerts.
 
 Overview reports 48 half-hour periods. A period is green only when all expected observations are recorded and successful. Missing or inconclusive observations remain neutral; a confirmed failure is marked separately. The 24-hour, seven-day, and 30-day history views include bounded pages of raw response evidence and incident history. Durations describe the interval between observed failure and recovery, not exact downtime. No uptime percentage is computed.
 

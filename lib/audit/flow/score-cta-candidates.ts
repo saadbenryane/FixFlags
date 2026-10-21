@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio'
 import { classifyCtaHref, isNonPageActionHref, resolveSameOrigin, scoreCtaLink } from './link-scoring'
+import { isRoutingFragment } from './flow-url'
 
 export interface RawCtaElement {
   idx: number
@@ -8,6 +9,7 @@ export interface RawCtaElement {
   role?: string | null
   text: string
   href: string | null
+  resolvedHref?: string | null
   hashTargetExists?: boolean
 }
 
@@ -16,6 +18,7 @@ export interface ScoredCtaCandidate {
   text: string
   href: string | null
   score: number
+  fragmentRoute?: boolean
 }
 
 const CTA_BUTTON_PATTERN =
@@ -26,17 +29,28 @@ export function scoreCtaCandidates(
   pageUrl: string,
   elements: RawCtaElement[]
 ): ScoredCtaCandidate[] {
-  const origin = new URL(pageUrl).origin
+  const current = new URL(pageUrl), origin = current.origin
   const candidates: ScoredCtaCandidate[] = []
 
   for (const item of elements) {
-    const href = item.href ?? ''
+    const href = item.resolvedHref ?? item.href ?? ''
+    let fragment = ''
+    try {
+      const target = new URL(href, pageUrl)
+      if (target.username || target.password) continue
+      if (current.origin === target.origin && current.pathname === target.pathname && current.search === target.search) {
+        fragment = target.hash
+      }
+    } catch { /* Invalid declarations cannot supply a fragment destination. */ }
+    const fragmentRoute = Boolean(fragment && isRoutingFragment(fragment) && !item.hashTargetExists)
     const buttonLike = item.tag === 'button' || item.tag === 'input' && ['button', 'submit'].includes(item.inputType ?? '') || item.role?.toLowerCase() === 'button'
     // mailto:/tel:/sms: links are intentional but never navigate the page, so
     // the flow scan must not select them as a page-navigation CTA candidate.
-    if ((classifyCtaHref(href, { hashTargetExists: item.hashTargetExists }).isPlaceholder || isNonPageActionHref(href)) && !buttonLike) continue
+    const placeholder = classifyCtaHref(item.href ?? href, { baseUrl: pageUrl,
+      resolvedHref: item.resolvedHref, hashTargetExists: item.hashTargetExists }).isPlaceholder
+    if ((placeholder || isNonPageActionHref(href)) && !buttonLike) continue
 
-    let score = scoreCtaLink(href, item.text)
+    let score = scoreCtaLink(item.href ?? href, item.text)
     if (score === 0 && buttonLike) {
       if (CTA_BUTTON_PATTERN.test(item.text)) {
         score = 85
@@ -50,8 +64,9 @@ export function scoreCtaCandidates(
     candidates.push({
       idx: item.idx,
       text: item.text,
-      href: href.startsWith('#') ? href : resolved ?? href ?? null,
+      href: fragment || resolved || href || null,
       score: href && href.startsWith('http') && !resolved ? score - 10 : score,
+      ...(fragmentRoute ? { fragmentRoute: true } : {}),
     })
   }
 

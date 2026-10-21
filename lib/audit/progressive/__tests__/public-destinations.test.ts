@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
 vi.mock('node:dns/promises', () => dns)
 import { evaluatorHandlers } from '../evaluators'
+import { PREVIEW_IMAGE_MAX_BYTES } from '../../checks/preview-image-response'
 import { readArtifact, serializeArtifact } from '../contracts'
 import { checkArtifactSchema } from '../results'
 import type { TaskContext } from '../registry'
@@ -13,7 +14,7 @@ import { destinationContext, DESTINATION_VERIFICATION_RULE } from '../../checks/
 import { publicHttpCapacity } from '../capacity'
 import { openCheckDestination } from '../../open-check'
 import { collectDocument } from '../../search/collect'
-import { parseMetadataFromHtml } from '../../metadata'
+import { parseMetadataFromHtml, type PageMetadata } from '../../metadata'
 
 const pageUrl = 'https://example.com/pricing'
 const fetchMock = vi.fn()
@@ -22,16 +23,16 @@ function context(module: string, metadata = healthyMeta(), page = pageUrl): Task
   const checkId = module === 'seo' ? 'broken-internal-links' : module === 'og-image' ? 'og-image-broken' : 'checkout-link-dead'
   return { audit: { id: 'after', parentId: 'before', executionSpec: { version: 1, engine: 'progressive-v1',
     targetUrl: page, environment: 'production', scope: module === 'seo' ? 'DIAGNOSTIC' : 'SITE', checks: { [checkId]: 1, 'auth-page-broken': 1 }, outcomes: [],
-    verificationTarget: module === 'seo' ? { kind: 'DIAGNOSTIC', checkId, pageUrl: page, parentAuditId: 'before', attemptId: 'attempt' } : null } } as TaskContext['audit'],
+    verificationTarget: module === 'seo' ? { kind: 'DIAGNOSTIC', checkId, pageUrl: page, parentAuditId: 'before', attemptId: 'attempt' } : null } } as unknown as TaskContext['audit'],
     task: { id: 'check:' + page } as TaskContext['task'],
     input: { pageUrl: page, position: 0, primary: true, role: 'primary', module }, deadline: Date.now() + 10_000,
     dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
       pageId: 'page', metadata, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: '<html></html>', desktopFinalUrl: page,
         desktopBase64: null, mobileBase64: null, consoleErrors: [], captureStatus: { desktop: 'ok', mobile: 'pending' }, captureFailures: [] },
-    }) } as TaskContext['task']]]) }
+    }) } as unknown as TaskContext['task']]]) }
 }
 async function checked(ctx: TaskContext) { return checkArtifactSchema.parse(readArtifact(await evaluate(ctx), 'check').data) }
-const actionMeta = (links = [{ href: '/checkout?plan=paid&token=PRIVATE_VALUE', text: 'Subscribe', rel: null }]) => healthyMeta({ links })
+const actionMeta = (links: PageMetadata['links'] = [{ href: '/checkout?plan=paid&token=PRIVATE_VALUE', text: 'Subscribe', rel: null }]) => healthyMeta({ links })
 beforeEach(() => {
   fetchMock.mockReset(); dns.resolve4.mockResolvedValue(['93.184.216.34']); dns.resolve6.mockResolvedValue([])
   vi.stubGlobal('fetch', fetchMock)
@@ -223,7 +224,7 @@ describe('guarded public destination evidence', () => {
     const before = await checked(ctx)
     expect(before.flags[0].checkId).toBe('og-image-broken')
     expect(JSON.stringify(before)).not.toContain('PRIVATE_IMAGE_VALUE')
-    fetchMock.mockImplementation(async () => new Response('image bytes', { headers: { 'content-type': 'image/png' } }))
+    fetchMock.mockImplementation(async () => new Response(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAFElEQVQImWP4r8TwX4kBhP8rMQAAI6YEhXbc9zcAAAAASUVORK5CYII=', 'base64'), { headers: { 'content-type': 'image/png' } }))
     const after = await checked(ctx)
     expect(after.receipt).toMatchObject({ complete: true, passed: true, execution: { source: 'http' } })
     expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'og-image-broken', flag: before.flags[0] })?.assertion.passed).toBe(true)
@@ -239,10 +240,15 @@ describe('guarded public destination evidence', () => {
   it('cancels a large image body at the sampling bound and refuses new requests after the deadline', async () => {
     const cancel = vi.fn()
     fetchMock.mockImplementation(async () => new Response(new ReadableStream({
-      start(controller) { controller.enqueue(new Uint8Array(100_000).fill(1)) }, cancel,
+      start(controller) { controller.enqueue(new Uint8Array(PREVIEW_IMAGE_MAX_BYTES + 1).fill(1)) }, cancel,
     }), { headers: { 'content-type': 'image/png' } }))
     const ctx = context('og-image')
-    expect((await checked(ctx)).receipt.passed).toBe(true)
+    const limited = await checked(ctx)
+    expect(limited.flags).toEqual([])
+    expect(limited.receipt).toMatchObject({ passed: false, complete: false, assertions: [
+      { key: 'preview-image-response', passed: true, complete: true },
+      { key: 'preview-image-decoding', passed: false, complete: false },
+    ] })
     expect(cancel).toHaveBeenCalledOnce()
     fetchMock.mockClear()
     const expired = await checked({ ...ctx, deadline: Date.now() - 1 })
@@ -268,7 +274,7 @@ describe('guarded public destination evidence', () => {
     ctx.audit.executionSpec = { version: 1, targetUrl: pageUrl, environment: 'production', scope: 'SITE',
       checks: { 'security-csp-missing': 1 }, outcomes: [], verificationTarget: null }
     ctx.dependencies = new Map([['http', { workKind: 'http', workState: 'COMPLETED',
-      workResult: serializeArtifact('http', { document, metadata: null }) } as TaskContext['task']]])
+      workResult: serializeArtifact('http', { document, metadata: null }) } as unknown as TaskContext['task']]])
     await expect(evaluate(ctx)).rejects.toMatchObject({ code: 'PUBLIC_ACCESS_CHALLENGE', retryable: false })
   })
 

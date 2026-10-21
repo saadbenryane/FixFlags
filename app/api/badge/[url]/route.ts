@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { generateBadgeSvg } from '@/lib/design/badge-svg'
@@ -18,7 +18,7 @@ export async function GET(
   }
 
   const withProtocol = /^https?:\/\//i.test(decoded) ? decoded : `https://${decoded}`
-  const urlResult = normalizeAuditUrl(withProtocol)
+  const urlResult = normalizeAuditNavigationUrl(withProtocol)
   const lookupUrl = urlResult.ok ? urlResult.url : withProtocol
   const domain = normalizeDomain(lookupUrl) || normalizeDomain(decoded)
 

@@ -24,7 +24,7 @@ describe('buildMcpFlagPayload', () => {
     assert.equal(payload.id, 'flag-1')
     assert.equal(payload.rubric, 'MESSAGE')
     assert.equal(payload.severity, 'POLISH')
-    assert.match(payload.whyItMatters ?? '', /Proof near the CTA/)
+    assert.equal(payload.whyItMatters, whyItMattersForCheckId('friction-no-social-proof'))
     assert.match(payload.fix, /substantiate/)
     assert.match(payload.verificationRule ?? '', /customer count|testimonial|review badge/i)
     assert.ok(payload.prompt)

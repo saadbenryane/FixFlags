@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_CHECK_IDS } from '../check-ids'
 import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { recordCheckObservations } from '../checks/observations'
+import { securityObservations } from '../checks/security'
 import { checkReceiptSchema, readCheckReceipt } from '../checks/receipt'
 import { isCustomerFlag } from '../attention'
 import type { PageMetadata } from '../metadata'
@@ -35,7 +36,8 @@ describe('registered check and evidence contracts', () => {
   })
   it('records only inspected inputs and never invents successful measurements', () => {
     const input = { url: 'https://example.com', metadata: { images: [{ src: 'http://example.com/a.png' }], hasAnalytics: false } as PageMetadata, desktop: null, mobile: null }
-    expect(recordCheckObservations('security', input).map(item => item.passed)).toEqual([true, false])
+    expect(recordCheckObservations('security', input)).toEqual([])
+    expect(securityObservations(input.url, input.metadata).map(item => item.passed)).toEqual([true, false])
     expect(recordCheckObservations('measurement', input)[0].passed).toBe(false)
     expect(recordCheckObservations('performance', input)).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: 'score', complete: false, passed: false }),

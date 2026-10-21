@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { expireUnownedExecution } from '@/lib/audit/execution-ownership'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 
 export const ACTIVE_RUN_STATUSES = ['QUEUED', 'RUNNING'] as const
@@ -13,13 +14,41 @@ export const RUN_LEASE_MS = 30 * 60 * 1000
 /** Exported so the worker renews exactly the lease the run command takes. */
 export const OUTCOME_RUN_LEASE_MS = RUN_LEASE_MS
 
+/** Only the physical executor settles unfinished progressive work. Legacy
+ * physical leases also outlive request leases. Recheck both at selection and
+ * the conditional terminal write; completed observations remain reconcilable. */
+const legacyExecutionWhere = { OR: [
+  { executionSpec: { path: ['engine'], equals: Prisma.AnyNull } },
+  { NOT: { executionSpec: { path: ['engine'], equals: 'progressive-v1' } } },
+] } satisfies Prisma.AuditWhereInput
+
+/** Released terminal executions do not need to wait for their request lease.
+ * Candidate selection and the conditional write share the same rule. */
+function recoverableRunWhere(now: Date): Prisma.RunRequestWhereInput {
+  return { AND: [{ OR: [
+    { auditId: null },
+    { audit: { status: { in: ['COMPLETED', 'FAILED'] } } },
+    { audit: legacyExecutionWhere },
+  ] }, { OR: [
+    { auditId: null },
+    { audit: { status: { in: ['COMPLETED', 'FAILED'] } } },
+    { audit: { executionLeaseUntil: null } },
+    { audit: { executionLeaseUntil: { lte: now } } },
+  ] }], status: { in: [...ACTIVE_RUN_STATUSES] }, OR: [
+    { leaseUntil: null }, { leaseUntil: { lte: now } },
+    { audit: { status: { in: ['COMPLETED', 'FAILED'] }, OR: [
+      { executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } },
+    ] } },
+  ] }
+}
+
 /**
  * A run only blocks its Site while it is genuinely in flight.
  *
  * QUEUED and RUNNING are both written before a worker has confirmed the run
  * finished, so a worker death strands the row. Reusing a stranded run would hand
- * the caller a stale audit and silently stop Watch from verifying. A live lease,
- * an admitted progressive recovery window, or a completed Audit awaiting result
+ * the caller a stale audit and silently stop Watch from verifying. A live request
+ * or physical lease, a progressive recovery window, or a completed Audit awaiting result
  * reconciliation owns the run. Historical requests without any such evidence
  * can be reclaimed even when their lease is NULL.
  *
@@ -32,8 +61,10 @@ export function activeRunWhere(projectId: string, now: Date): Prisma.RunRequestW
     projectId,
     status: { in: [...ACTIVE_RUN_STATUSES] },
     // Completed observations retain ownership until their run result commits.
-    OR: [{ leaseUntil: { gt: now } }, { audit: { status: { notIn: ['COMPLETED', 'FAILED'] },
-      recoveryUntil: { gt: now }, executionSpec: { path: ['engine'], equals: 'progressive-v1' } } },
+    OR: [{ leaseUntil: { gt: now } }, { audit: { status: { notIn: ['COMPLETED', 'FAILED'] }, OR: [
+      { executionLeaseUntil: { gt: now } },
+      { recoveryUntil: { gt: now }, executionSpec: { path: ['engine'], equals: 'progressive-v1' } },
+    ] } },
       { audit: { status: 'COMPLETED' } }],
   }
 }
@@ -62,9 +93,7 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
   const stranded = await prisma.runRequest.findMany({
     where: {
       projectId,
-      status: { in: [...ACTIVE_RUN_STATUSES] },
-      // Mirrors the inverse of activeRunWhere: anything without a live lease.
-      OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
+      ...recoverableRunWhere(now),
     },
     select: { id: true, auditId: true },
   })
@@ -77,18 +106,26 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
       try {
         const audit = await prisma.audit.findUnique({
           where: { id: run.auditId },
-          select: { status: true, executionSpec: true, recoveryUntil: true },
+          select: { id: true, projectId: true, status: true, executionSpec: true, executionToken: true, executionGeneration: true, executionLeaseUntil: true },
         })
-        if (audit && readExecutionSpec(audit.executionSpec)?.engine === 'progressive-v1' && !['COMPLETED', 'FAILED'].includes(audit.status)) {
+        if (audit && audit.projectId !== projectId) continue
+        if (audit && !['COMPLETED', 'FAILED'].includes(audit.status) &&
+          (readExecutionSpec(audit.executionSpec)?.engine === 'progressive-v1' || audit.executionLeaseUntil && audit.executionLeaseUntil > now)) {
           // Physical execution, not this historical RunRequest lease, owns recovery.
           // Keep admission serialized until its task graph has settled and reconciled.
+          continue
+        }
+        if (audit && !['COMPLETED', 'FAILED'].includes(audit.status)) {
+          // Retire the physical Audit first so a delayed delivery cannot restart
+          // it after request abandonment. A competing claim keeps ownership.
+          if (await expireUnownedExecution(audit, now, { projectId, ...legacyExecutionWhere })) reclaimed++
           continue
         }
         auditStatus = audit?.status ?? null
       } catch (error) {
         // A failed read cannot establish abandonment. Physical execution or a
         // completed observation may still own this request's result.
-        logger.warn('Run recovery deferred because its Audit could not be read', { runId: run.id, error })
+        logger.warn('Run recovery deferred because Audit ownership or settlement could not be established', { runId: run.id, error })
         continue
       }
       if (auditStatus === 'COMPLETED') {
@@ -109,13 +146,9 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
       // live run can be clobbered as abandoned.
       where: {
         id: run.id,
+        ...recoverableRunWhere(now),
         auditId: run.auditId,
-        status: { in: [...ACTIVE_RUN_STATUSES] },
-        OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
-        ...(run.auditId ? { audit: { status: { not: 'COMPLETED' }, OR: [
-          { status: 'FAILED' }, { executionSpec: { equals: Prisma.DbNull } },
-          { NOT: { executionSpec: { path: ['engine'], equals: 'progressive-v1' } } },
-        ] } } : {}),
+        ...(run.auditId ? { audit: { status: { not: 'COMPLETED' } } } : {}),
       },
       data: {
         status: 'FAILED',
@@ -133,11 +166,12 @@ export async function reclaimExpiredRuns(projectId: string, reconcileAudit: (aud
   return reclaimed
 }
 
-/** Scheduler-owned recovery also covers requests stranded before queue admission. */
+/** The scheduler reconciles released terminal executions as well as requests
+ * stranded before queue admission, using the same bounded recovery cohort. */
 export async function recoverExpiredSiteRuns(reconcileAudit: (auditId: string) => Promise<unknown>): Promise<number> {
   const now = new Date()
   const sites = await prisma.runRequest.findMany({
-    where: { status: { in: [...ACTIVE_RUN_STATUSES] }, OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }] },
+    where: recoverableRunWhere(now),
     select: { projectId: true }, orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }], take: 100,
   })
   let recovered = 0

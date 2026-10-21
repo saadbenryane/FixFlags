@@ -23,16 +23,6 @@ function dependencies(): WorkerRuntimeDependencies & {
     exit,
     validateEnvironment: () => calls.push('env'),
     preflight: async () => { calls.push('preflight') },
-    warmBrowser: async () => {
-      calls.push('browser:warm')
-    },
-    readBrowserDiagnostics: () => {
-      calls.push('browser:diagnostics')
-      return { connected: true, activeContexts: 0 }
-    },
-    touchHeartbeat: async () => {
-      calls.push('heartbeat:touch')
-    },
     clearHeartbeat: async () => {
       calls.push('heartbeat:clear')
     },
@@ -53,18 +43,7 @@ function dependencies(): WorkerRuntimeDependencies & {
 }
 
 describe('standalone worker runtime', () => {
-  it('keeps independent queues and recovery available when Chromium cannot start', async () => {
-    const deps = dependencies()
-    deps.warmBrowser = async () => { throw new Error('Chromium unavailable') }
-    deps.readBrowserDiagnostics = () => ({ connected: false, activeContexts: 0 })
-    const heartbeat = vi.fn().mockResolvedValue(undefined)
-    deps.touchHeartbeat = heartbeat
-    await createWorkerRuntime(deps).start()
-    expect(heartbeat).toHaveBeenCalledWith({ browserOk: false, activeBrowserContexts: 0 })
-    expect(deps.calls).toContain('worker:start')
-    expect(deps.calls).toContain('scheduler:start')
-  })
-  it('warms Chromium and publishes readiness before consuming jobs', async () => {
+  it('starts consumers and recovery after core preflight without another diagnostic gate', async () => {
     const deps = dependencies()
     const runtime = createWorkerRuntime(deps)
 
@@ -73,12 +52,8 @@ describe('standalone worker runtime', () => {
     expect(deps.calls).toEqual([
       'env',
       'preflight',
-      'browser:warm',
-      'browser:diagnostics',
-      'heartbeat:touch',
       'worker:start',
       'scheduler:start',
-      'heartbeat:touch',
     ])
   })
 
@@ -96,6 +71,7 @@ describe('standalone worker runtime', () => {
       'exit:0',
     ])
   })
+
 
   it('makes repeated shutdown signals idempotent', async () => {
     const deps = dependencies()
@@ -156,7 +132,6 @@ describe('standalone worker runtime', () => {
     const stopping = runtime.shutdown()
     complete()
     await Promise.all([starting, stopping])
-    expect(deps.calls).not.toContain('browser:warm')
     expect(deps.calls).not.toContain('worker:start')
     expect(deps.exit).toHaveBeenCalledOnce()
   })

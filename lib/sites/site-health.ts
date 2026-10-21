@@ -1,8 +1,11 @@
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
-import { siteCoverageIsStale, type CoverageFact } from '@/lib/sites/coverage'
+import type { CoverageFact } from '@/lib/sites/coverage'
+import { siteCoverageIsStale } from './evidence-freshness'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { CustomerOutcomeState } from '@/lib/sites/outcome-state'
 import { LEGACY_BROAD_REQUIRED_AREAS, projectSiteAssessment, type SiteAssessment } from './assessment'
+import { uptimeAssessment, type UptimeStatus } from '@/lib/uptime/status'
+import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 
 /** Starter areas that must be evidenced before the Site card can say healthy. */
 export const REQUIRED_STARTER_AREAS: SiteCardArea[] = [...LEGACY_BROAD_REQUIRED_AREAS]
@@ -20,9 +23,11 @@ export function requiredAreasUnchecked(coverage: CoverageFact[]): CoverageFact[]
  * required starter areas were never evidenced, went stale, or could not verify.
  */
 export function siteCardHealth(input: Parameters<typeof presentSiteHealth>[0]) {
+  const uptime = uptimeAssessment(input.uptime, input.now)
   const assessment = projectSiteAssessment({ ...input,
+    uptime,
     status: input.inFlight ? 'RUNNING' : input.finished ? 'COMPLETED' : 'FAILED' })
-  return { ...presentSiteHealth(input, assessment), assessment }
+  return { ...presentSiteHealth(input, assessment, uptime), assessment, uptime }
 }
 
 function presentSiteHealth(input: {
@@ -32,13 +37,21 @@ function presentSiteHealth(input: {
   flags: Array<{ severity: string }>
   coverage: CoverageFact[]
   now: Date
+  coverageMaxAgeMs?: number
   pagesComplete?: boolean
-  outcomes?: Array<{ state: CustomerOutcomeState; enabled?: boolean }>
+  assessmentComplete?: boolean
+  outcomes?: Array<{ id?: string; state: CustomerOutcomeState; enabled?: boolean; validUntil?: Date | null }>
   executionSpec?: unknown
-}, assessment: SiteAssessment): { state: CardHealthState; answer: string; statusLabel: string } {
+  uptime?: UptimeStatus | null
+}, assessment: SiteAssessment, uptime: ReturnType<typeof uptimeAssessment>): { state: CardHealthState; answer: string; statusLabel: string } {
   const open = input.flags.length
   const critical = input.flags.some((f) => f.severity === 'CRITICAL')
   const requiredAreas = assessment.requiredAreas
+
+  if (uptime?.state === 'FLAG') {
+    const label = uptime.observedState === 'offline' ? UPTIME_COPY.states.offline : SITE_BOARD_COPY.needsAttention
+    return { state: 'problem', answer: label, statusLabel: label }
+  }
 
   if (input.inFlight && !input.hasLastKnown) {
     return {
@@ -86,7 +99,7 @@ function presentSiteHealth(input: {
     state: 'attention', answer: 'A watched result needs a fix.', statusLabel: SITE_BOARD_COPY.flagStatus,
   }
 
-  if (input.coverage.some((fact) => requiredAreas.includes(fact.area) && fact.evidenced && siteCoverageIsStale(fact.checkedAt, input.now))) {
+  if (input.coverage.some((fact) => requiredAreas.includes(fact.area) && fact.evidenced && siteCoverageIsStale(fact.checkedAt, input.now, input.coverageMaxAgeMs))) {
     return {
       state: 'unknown',
       answer: SITE_BOARD_COPY.siteCheckOutOfDate,

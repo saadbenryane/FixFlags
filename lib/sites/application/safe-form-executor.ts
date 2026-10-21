@@ -5,7 +5,7 @@ import { readExecutionSpec } from '../domain/execution-spec'
 import { publicHttpCapacity } from '@/lib/audit/progressive/capacity'
 import { prisma } from '@/lib/db'
 import { decryptSecret } from '@/lib/security/crypto'
-import { normalizeAuditUrl, assertPublicAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditUrl, normalizeAuditNavigationUrl, assertPublicAuditUrl } from '@/lib/audit/url'
 import { getBrowser } from '@/lib/audit/screenshot'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
@@ -23,7 +23,7 @@ export async function reconcileSafeFixtureCleanup(input: { projectId: string; fi
     ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: input.version }),
   } })
   if (!fixture) return false
-  const target = normalizeAuditUrl(fixture.targetUrl)
+  const target = normalizeAuditNavigationUrl(fixture.targetUrl)
   if (!target.ok) return false
   const cleanup = safeExactOrigin(fixture.cleanupUrl, new URL(target.url).origin)
   if (!cleanup) return false
@@ -138,7 +138,7 @@ export function refuseSafeFormAdmission(fixture: {
     return blockedAdmission('fixture_not_authorized')
   if (input.requireAuthorization === false && !input.setupAdmitted) return blockedAdmission('fixture_setup_not_admitted')
   if (input.expectedVersion !== undefined && fixture.version !== input.expectedVersion) return blockedAdmission('fixture_changed')
-  const target = normalizeAuditUrl(input.startUrl)
+  const target = normalizeAuditNavigationUrl(input.startUrl)
   if (!target.ok || new URL(target.url).href !== new URL(fixture.targetUrl).href) return blockedAdmission('fixture_target_mismatch')
   if (new URL(target.url).protocol !== 'https:' && !(input.allowLocalhost && ['localhost', '127.0.0.1'].includes(new URL(target.url).hostname)))
     return blockedAdmission('fixture_https_required')
@@ -170,7 +170,7 @@ export async function executeSafeFormFixture(input: {
   const setupAdmitted = fixture && input.requireAuthorization === false ? await setupConsent(input.projectId, fixture.id, fixture.version) : true
   const refused = refuseSafeFormAdmission(fixture, { ...input, setupAdmitted })
   if (refused || !fixture) return refused ?? blockedAdmission('fixture_not_authorized')
-  const target = normalizeAuditUrl(input.startUrl)
+  const target = normalizeAuditNavigationUrl(input.startUrl)
   if (!target.ok) return blockedAdmission('fixture_target_mismatch')
   const origin = new URL(target.url).origin
   const resetUrl = safeExactOrigin(fixture.resetUrl, origin)!

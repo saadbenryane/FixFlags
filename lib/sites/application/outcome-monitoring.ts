@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { readExecutionSpec } from '../domain/execution-spec'
 import { readOutcomeIncident } from '../domain/outcome-incident'
 import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
+import { hasUnreadableStoredSupportingObservations } from '@/lib/audit/flag-observations'
 
 /** Notification retries and report comparisons read the committed transition,
  * rather than comparing a scoped run against unrelated report Flags. */
@@ -26,8 +27,10 @@ export async function outcomeMonitoringDiff(auditId: string, loaded?: { projectI
   const ids = [...new Set(Object.values(groups).flat())]
   const flags = ids.length ? await prisma.flag.findMany({ where: { id: { in: ids }, audit: { projectId: audit.projectId } },
     select: { id: true, checkId: true, problem: true, rubric: true, severity: true, status: true,
-      confidence: true, impactTag: true, attentionPolicy: true, pageUrl: true } }) : []
-  const byId = new Map(flags.map(flag => [flag.id, flag]))
+      confidence: true, impactTag: true, attentionPolicy: true, pageUrl: true, supportingObservations: true } }) : []
+  const byId = new Map(flags.map(({ supportingObservations, ...flag }) => [flag.id, {
+    ...flag, ...(hasUnreadableStoredSupportingObservations(supportingObservations) ? { supportingEvidenceUnreadable: true } : {}),
+  }]))
   const project = (values: string[]): FlagDiffSummaryItem[] => [...new Set(values)].flatMap(id => byId.get(id) ?? [])
   return { fixed: project(groups.fixed), inconclusive: project(groups.inconclusive), unchanged: project(groups.unchanged),
     regressed: project(groups.regressed), newIssues: project(groups.newIssues) }

@@ -25,7 +25,7 @@ Use existing semantic tokens before adding values. Add a shared token for a repe
 
 ## Identity and typography
 
-- Keep the official folded-F mark. `components/brand/Logo.tsx` combines transparent runtime PNGs with the Inter Tight wordmark, with Fix heavier than Flags. Do not invent replacement SVG geometry.
+- Keep the official folded-F mark. `public/brand/logo-mark.svg` is the cleaned trace of the owner silhouette, with flat orange fill and no outline. `components/brand/Logo.tsx` combines it with the Inter Tight wordmark, with Fix heavier than Flags. Preserve the silhouette and proportions.
 - Original owner sources and asset provenance live in [the reference index](docs/brand/reference/README.md). Use `npm run brand:icons` to derive runtime logo sizes.
 - Inter is the product UI and body face. Inter Tight is used for marketing display, prices, wordmarks and editorial Help/Docs headings. JetBrains Mono is used for code, IDs and numeric evidence, not marketing display.
 - Preserve the existing responsive heading sizes and weights. Use `text-balance` for headings, `text-pretty` for body, and `tabular-nums` for comparable numbers.

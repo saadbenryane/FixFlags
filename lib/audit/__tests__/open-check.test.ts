@@ -97,7 +97,7 @@ describe('open-check', () => {
     expect(result.shouldFlagDead).toBe(false)
   })
 
-  it('deduplicates destinations before fetching', async () => {
+  it('keeps physically different destinations even when review inventory considers them equivalent', async () => {
     let gets = 0
     const fetchImpl: OpenCheckFetch = async (_url, init) => {
       if (init?.method === 'GET' || init?.method === 'HEAD') {
@@ -110,8 +110,8 @@ describe('open-check', () => {
       ['https://example.com/a', 'https://example.com/a/', 'https://example.com/a?utm_source=x'],
       { origin: 'https://example.com/', fetchImpl }
     )
-    expect(results).toHaveLength(1)
-    expect(gets).toBeGreaterThan(0)
+    expect(results).toHaveLength(3)
+    expect(gets).toBe(3)
   })
 
   it('fetches the supplied destination rather than its normalized inventory identity', async () => {

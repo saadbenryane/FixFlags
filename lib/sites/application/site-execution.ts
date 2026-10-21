@@ -5,21 +5,29 @@ import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
 import { loadSiteAnalysisSelection } from './legacy-analysis'
 import { analysisTaskWhere } from '@/lib/audit/progressive/contracts'
+import { FLAG_COMPARISON_TARGET } from '@/lib/audit/flag-comparison'
 
-/** Both Site readers need the same compact observations, rather than full task artifacts. */
-export const siteCoverageExecutionSelect = {
-  where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' }] },
+/** Prior observations omit comparison snapshots and full task artifacts. */
+export const siteObservationExecutionSelect = {
+  where: { OR: [{ targetKey: { startsWith: 'module:' } }, { workKind: 'keyboard' },
+    { targetKey: { startsWith: 'task:' }, workKind: 'browser' }] },
   select: { id: true, targetKey: true, status: true, pageUrl: true, workKind: true, detail: true, updatedAt: true },
+} satisfies Prisma.Audit$verifierExecutionsArgs
+
+/** Current conclusions additionally require their committed comparison. */
+export const siteCoverageExecutionSelect = { ...siteObservationExecutionSelect,
+  where: { OR: [...siteObservationExecutionSelect.where.OR, { targetKey: FLAG_COMPARISON_TARGET }] },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 export const categoryCoverageExecutionSelect = {
   where: { OR: [...siteCoverageExecutionSelect.where.OR, analysisTaskWhere] },
-  select: { ...siteCoverageExecutionSelect.select, workState: true },
+  select: { ...siteCoverageExecutionSelect.select, workState: true, workDependencies: true },
 } satisfies Prisma.Audit$verifierExecutionsArgs
 
 export const siteEvidenceAuditSelect = {
   executionSpec: true,
   id: true,
+  parentId: true,
   status: true,
   progress: true,
   reviewDepth: true,
@@ -66,7 +74,7 @@ export async function resolvePriorCompletedAudit(site: SiteRecord, currentId: st
         ...(currentId ? { id: { not: currentId } } : {}),
       },
       orderBy: { completedAt: 'desc' },
-      select: siteEvidenceAuditSelect,
+      select: { ...siteEvidenceAuditSelect, verifierExecutions: siteObservationExecutionSelect },
     })
   }
   return null

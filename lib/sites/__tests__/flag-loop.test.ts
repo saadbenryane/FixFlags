@@ -4,8 +4,8 @@ import { FLAG_STATUS_LABELS } from '@/lib/marketing/copy/flags'
 import { plannedWatchJobs } from '@/lib/audit/project-watch'
 
 describe('Monitor. Flag. Fix. loop contract', () => {
-  it('locks Analyze, the core loop, Copy fix prompt, and independent Verify', () => {
-    expect(ANALYZE_CTA).toBe('Analyze')
+  it('locks the website check action, the core loop, Copy fix prompt, and independent Verify', () => {
+    expect(ANALYZE_CTA).toBe('Check website')
     expect(CORE_LOOP_LABEL).toBe('Monitor. Flag. Fix.')
     expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix prompt')
     expect(SITE_BOARD_COPY.verifyFix).toBe('Check now')

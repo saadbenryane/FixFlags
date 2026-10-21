@@ -1,37 +1,38 @@
-import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { normalizeAuditUrl } from '@/lib/audit/url'
-import { currentUptimeState, uptimeTimeline, type ProbeResult, type UptimeHistory, type UptimeProbeView, type UptimeState, type UptimeSummary } from './domain'
-import { uptimeEligible, uptimeProjectInclude } from './eligibility'
-import { uptimeHistorySchema, uptimeSummarySchema } from './contracts'
+import { uptimeTimeline, type ProbeResult, type UptimeHistory, type UptimeProbeView, type UptimeSummary } from './domain'
+import { uptimeProjectInclude } from './eligibility'
+import { uptimeCursorSchema, uptimeHistorySchema, uptimeSummarySchema } from './contracts'
+import { projectUptimeStatus, uptimeStatusMonitorSelect } from './status'
 
 function windowStart(window: UptimeHistory['window'], now: Date) {
   return new Date(now.getTime() - (window === '24h' ? 1 : window === '7d' ? 7 : 30) * 86400_000)
 }
-const projectionInclude = { project: { include: uptimeProjectInclude } } as const
+const projectionSelect = { id: true, ...uptimeStatusMonitorSelect, project: { include: uptimeProjectInclude } } as const
+
+export class InvalidUptimeCursorError extends Error {
+  constructor() { super('Invalid uptime cursor'); this.name = 'InvalidUptimeCursorError' }
+}
 
 async function readUptime(projectId: string, window: UptimeHistory['window'], cursor: string | null, now: Date, includeHistory: boolean): Promise<UptimeHistory | null> {
-  const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId }, include: projectionInclude })
+  const monitor = await prisma.uptimeMonitor.findUnique({ where: { projectId }, select: projectionSelect })
   if (!monitor) {
     const project = await prisma.project.findUnique({ where: { id: projectId }, include: uptimeProjectInclude })
     if (!project || project.deletedAt) return null
-    if (cursor) throw new Error('Invalid uptime cursor')
-    const target = normalizeAuditUrl(project.url)
-    const enabled = uptimeEligible(project)
-    return { enabled, targetUrl: target.ok ? target.url : project.url, state: enabled ? 'unknown' : 'paused',
-      lastCheckedAt: null, nextCheckAt: null, openIncidentCount: 0, segments: uptimeTimeline([], now, window),
+    if (cursor) throw new InvalidUptimeCursorError()
+    return { ...projectUptimeStatus(project, null, now), openIncidentCount: 0, segments: uptimeTimeline([], now, window),
       window, probes: [], incidents: [], nextCursor: null }
   }
   if (monitor.project.deletedAt) return null
   const target = normalizeAuditUrl(monitor.project.url)
-  const targetMatches = target.ok && target.url === monitor.targetUrl
   const from = windowStart(window, now)
   const scope = { monitorId: monitor.id, version: monitor.version, targetUrl: target.ok ? target.url : '', observedAt: { gte: from, lte: now } }
   let before: { observedAt: Date; id: string } | null = null
   if (cursor) {
-    const id = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/).parse(cursor)
-    before = await prisma.uptimeProbe.findFirst({ where: { ...scope, id }, select: { id: true, observedAt: true } })
-    if (!before) throw new Error('Invalid uptime cursor')
+    const id = uptimeCursorSchema.safeParse(cursor)
+    if (!id.success) throw new InvalidUptimeCursorError()
+    before = await prisma.uptimeProbe.findFirst({ where: { ...scope, id: id.data }, select: { id: true, observedAt: true } })
+    if (!before) throw new InvalidUptimeCursorError()
   }
   const [samples, rows, incidents, openIncidentCount] = await Promise.all([
     prisma.uptimeProbe.findMany({ where: scope, select: { scheduledAt: true, observedAt: true, attempt: true, result: true, confirmed: true }, take: 18_000, orderBy: { observedAt: 'desc' } }),
@@ -41,16 +42,13 @@ async function readUptime(projectId: string, window: UptimeHistory['window'], cu
       orderBy: { confirmedAt: 'desc' }, take: 100 }) : [],
     prisma.uptimeIncident.count({ where: { monitorId: monitor.id, version: monitor.version, recoveredAt: null, supersededAt: null } }),
   ])
-  const enabled = uptimeEligible(monitor.project)
-  const state = currentUptimeState({ enabled, state: monitor.enabled && targetMatches ? monitor.state as UptimeState : 'unknown', lastCheckedAt: targetMatches ? monitor.lastCheckedAt : null, now })
   const probes: UptimeProbeView[] = rows.slice(0, 100).map(row => ({ id: row.id, targetUrl: row.targetUrl,
     scheduledAt: row.scheduledAt.toISOString(), observedAt: row.observedAt.toISOString(), attempt: row.attempt,
     result: row.result as ProbeResult, confirmed: row.confirmed, reason: row.reason,
     statusCode: row.statusCode, durationMs: row.durationMs, finalUrl: row.finalUrl }))
   // The Site URL can change before the monitor retargets. The new URL stays
   // unknown. An open incident remains open until that retarget supersedes it.
-  return uptimeHistorySchema.parse({ enabled, targetUrl: target.ok ? target.url : monitor.project.url, state, lastCheckedAt: targetMatches ? monitor.lastCheckedAt?.toISOString() ?? null : null,
-    nextCheckAt: enabled && targetMatches ? (monitor.confirmationDueAt ?? monitor.nextProbeAt).toISOString() : null, openIncidentCount,
+  return uptimeHistorySchema.parse({ ...projectUptimeStatus(monitor.project, monitor, now), openIncidentCount,
     segments: uptimeTimeline(samples.map(row => ({ ...row, result: row.result as ProbeResult, scheduledAt: row.scheduledAt.toISOString(), observedAt: row.observedAt.toISOString() })), now, window),
     window, probes, incidents: incidents.map(row => ({ id: row.id, targetUrl: row.targetUrl, reason: row.reason,
       startedAt: row.startedAt.toISOString(), confirmedAt: row.confirmedAt.toISOString(), recoveredAt: row.recoveredAt?.toISOString() ?? null, supersededAt: row.supersededAt?.toISOString() ?? null })),

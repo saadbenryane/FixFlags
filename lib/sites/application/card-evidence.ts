@@ -9,10 +9,10 @@ import { siteEvidenceAuditSelect } from './site-execution'
 import type { loadSiteConnectionViews, connectionCardNotes } from '@/lib/sites/connections/read'
 
 type EvidenceAudit = Prisma.AuditGetPayload<{ select: typeof siteEvidenceAuditSelect }>
-export function applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now }: {
+export function applyCardEvidence({ cards, audit, summaryResults, inFlight, pageCount, connections, connectionNotes, now, coverageMaxAgeMs }: {
   cards: BoardCardView[]; audit: EvidenceAudit | null; summaryResults: SiteCheckResult[]; inFlight: boolean; pageCount: number;
   connections: Awaited<ReturnType<typeof loadSiteConnectionViews>> | null;
-  connectionNotes: ReturnType<typeof connectionCardNotes>; now: Date
+  connectionNotes: ReturnType<typeof connectionCardNotes>; now: Date; coverageMaxAgeMs?: number
 }) {
   for (const card of cards) {
     if (card.state === 'healthy' && card.openFlagCount === 0) {
@@ -62,7 +62,7 @@ export function applyCardEvidence({ cards, audit, summaryResults, inFlight, page
         card.activity = null
       }
     }
-    applySearchCardEvidence(card, audit?.verifierExecutions ?? [], inFlight, now)
+    applySearchCardEvidence(card, audit?.verifierExecutions ?? [], inFlight, now, coverageMaxAgeMs)
     if (card.id === 'search' && connectionNotes.search) card.facts = [...card.facts, connectionNotes.search].slice(0, 4)
     if (card.id === 'tracking' && connectionNotes.tracking) card.facts = [...card.facts, connectionNotes.tracking].slice(0, 4)
     if (card.id === 'search' && connections?.searchConsole.status === 'connected') card.sources = [...card.sources, 'Search Console']

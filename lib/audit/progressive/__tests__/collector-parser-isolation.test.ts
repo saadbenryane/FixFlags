@@ -7,7 +7,8 @@ import { checkArtifactSchema } from '../results'
 import type { TaskContext } from '../registry'
 import { healthyMeta } from '../../__tests__/check-fixtures'
 
-const boundary = vi.hoisted(() => ({ parse: vi.fn(), capture: vi.fn(), document: vi.fn(), access: vi.fn() }))
+const boundary = vi.hoisted(() => ({ parse: vi.fn(), capture: vi.fn(), document: vi.fn(), access: vi.fn(), consumers: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { auditVerifierExecution: { findMany: boundary.consumers } } }))
 vi.mock('../cpu', async importOriginal => ({ ...await importOriginal<typeof import('../cpu')>(), parseMetadataIsolated: boundary.parse }))
 vi.mock('../../screenshot', () => ({ captureScreenshots: boundary.capture, getAuditBrowser: vi.fn() }))
 vi.mock('../../search/collect', async importOriginal => ({ ...await importOriginal<typeof import('../../search/collect')>(), collectDocument: boundary.document }))
@@ -23,6 +24,7 @@ const context = (): TaskContext => ({ audit: { id: 'audit', executionSpec: { ver
   task: { id: 'task', workGeneration: 1 }, input: { pageUrl, position: 0, primary: true, role: 'primary' },
   deadline: Date.now() + 10_000, dependencies: new Map() } as unknown as TaskContext)
 beforeEach(() => {
+  boundary.consumers.mockReset().mockResolvedValue([])
   boundary.parse.mockReset(); boundary.capture.mockReset(); boundary.document.mockReset()
   boundary.access.mockReset().mockResolvedValue(null)
   boundary.document.mockResolvedValue({ url: pageUrl, finalUrl: pageUrl, status: 200, headers: { 'content-type': 'text/html' },
@@ -38,6 +40,16 @@ beforeEach(() => {
 })
 
 describe('browser technology checkpoint publication', () => {
+  it('uses the saved consumer cohort rather than all registered checks in the execution specification', async () => {
+    boundary.parse.mockResolvedValue(healthyMeta())
+    const ctx = context()
+    ctx.task.targetKey = 'task:p0:browser'
+    boundary.consumers.mockResolvedValue([{ workKind: 'check', workInput: { ...ctx.input, module: 'metadata' } }])
+    await collectionHandlers.find(handler => handler.kind === 'browser')!.evaluate(ctx)
+    expect(boundary.capture).toHaveBeenCalledWith(pageUrl, 'audit', expect.any(String), expect.objectContaining({
+      collectMobile: false, collectAccessibility: false,
+    }))
+  })
   it('detects from private HTML before redaction and commits the profile with the task transaction', async () => {
     boundary.parse.mockResolvedValue(healthyMeta())
     boundary.access.mockResolvedValue({ httpBasic: { username: 'PRIVATE_USER', password: 'PRIVATE_PASSWORD' } })

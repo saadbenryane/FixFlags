@@ -43,6 +43,8 @@ export type UptimeSummary = {
   lastCheckedAt: string | null
   nextCheckAt: string | null
   openIncidentCount: number
+  /** An unresolved confirmed incident for the active target generation. */
+  incidentOpen?: boolean
   segments: UptimeSegment[]
 }
 export type UptimeHistory = UptimeSummary & {

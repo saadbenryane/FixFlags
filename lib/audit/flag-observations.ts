@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { EvidenceTarget } from './evidence-targets'
+import { jsonValueSchema } from '@/lib/json-value'
 
 const targetSchema = z.object({
   kind: z.enum(['element', 'page']), source: z.literal('measured'), device: z.enum(['desktop', 'mobile']),
@@ -13,6 +14,7 @@ export const supportingObservationsSchema = z.object({
     source: z.string().nullable(), checkId: z.string().nullable(), checkVersion: z.number().int().positive().nullable(),
     pageUrl: z.string().url().nullable(), evidence: z.string(), verificationRule: z.string().nullable(),
     evidenceTargets: z.array(targetSchema),
+    attentionPolicy: jsonValueSchema.optional(),
     provenance: z.object({ auditId: z.string().min(1), taskId: z.string().min(1),
       collectedAt: z.string().datetime().nullable() }).strict().nullable(),
   }).strict()).min(1).max(5000),
@@ -29,6 +31,7 @@ export type SupportingObservationView = z.infer<typeof supportingObservationView
 type ObservationInput = {
   source?: string | null; checkId?: string | null; pageUrl?: string | null; evidence?: string;
   verificationRule?: string | null; evidenceTargets?: EvidenceTarget[]; supportingObservations?: unknown;
+  attentionPolicy?: unknown;
 }
 
 export function readSupportingObservations(value: unknown): SupportingObservations | null {
@@ -45,6 +48,9 @@ export function observationsForFlag(flag: ObservationInput, origin?: {
     source: flag.source ?? null, checkId: flag.checkId ?? null, checkVersion: origin?.checkVersion ?? null,
     pageUrl: flag.pageUrl ?? null, evidence: flag.evidence ?? '', verificationRule: flag.verificationRule ?? null,
     evidenceTargets: flag.evidenceTargets ?? [],
+    // Policy belongs to this original source, independently of the grouped
+    // Flag's current display representative. Historical items retain absence.
+    attentionPolicy: JSON.parse(JSON.stringify(flag.attentionPolicy ?? null)),
     provenance: origin ? { auditId: origin.auditId, taskId: origin.taskId, collectedAt: origin.collectedAt ?? null } : null,
   }] })
 }
@@ -75,4 +81,10 @@ export function readSupportingObservationView(value: unknown): SupportingObserva
 /** Safe presentation state; it cannot grant comparison evidence or provenance. */
 export function hasUnreadableSupportingObservations(value: unknown): boolean {
   return value != null && readSupportingObservationView(value) === null
+}
+
+/** Stored aggregates need the private source contract. A public handoff cannot
+ * substitute its missing comparison rules and provenance at this boundary. */
+export function hasUnreadableStoredSupportingObservations(value: unknown): boolean {
+  return value != null && readSupportingObservations(value) === null
 }

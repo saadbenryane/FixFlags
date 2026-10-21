@@ -7,6 +7,7 @@ import { getWorkerExecutionCounts } from '@/lib/queue/estimate'
 import { prisma } from '@/lib/db'
 import { getRateLimitRedisHealth } from '@/lib/security/rate-limit'
 import { auditDeadlineMsForDepth } from '@/lib/audit/review-depth'
+import { readMonitoringHealth } from '@/lib/health/monitoring'
 
 export const dynamic = 'force-dynamic'
 const EVENT_LOOP_LAG_LIMIT_MS = 250
@@ -15,8 +16,8 @@ const EVENT_LOOP_LAG_LIMIT_MS = 250
  * Worker/queue diagnostics. Separate from /api/health (the Railway deploy
  * healthcheck, which stays DB-only and lenient): this endpoint always returns
  * HTTP 200 with an operational snapshot so it can never gate a deploy, while
- * still making a missing or dead worker obvious. `ok` is false when Redis is
- * unreachable or the worker heartbeat is stale.
+ * still exposing unavailable execution and overdue saved monitoring obligations.
+ * This snapshot does not establish a historical fulfillment rate or delivery.
  */
 export async function GET() {
   const eventLoopStarted = performance.now()
@@ -24,7 +25,7 @@ export async function GET() {
   const eventLoopLagMs = Math.round((performance.now() - eventLoopStarted) * 10) / 10
 
   const rateLimit = getRateLimitRedisHealth()
-  const [hb, est, oldest, overdue, stalled] = await Promise.allSettled([
+  const [hb, est, oldest, overdue, stalled, monitoringResult] = await Promise.allSettled([
     readWorkerHeartbeat(),
     getWorkerExecutionCounts(),
     prisma.audit.findFirst({
@@ -39,6 +40,7 @@ export async function GET() {
       },
     }),
     readStalledJobCount(),
+    readMonitoringHealth(),
   ])
 
   const redisReachable = hb.status === 'fulfilled' || est.status === 'fulfilled'
@@ -71,15 +73,21 @@ export async function GET() {
     queue !== null && queue.activeJobs === 0 && worker.activeBrowserContexts > 0
   const excessiveEventLoopLag = eventLoopLagMs > EVENT_LOOP_LAG_LIMIT_MS
   const overdueAuditCount = overdue.status === 'fulfilled' ? overdue.value : null
-  const ok =
-    redisReachable &&
-    queue !== null &&
-    worker.alive &&
-    worker.browserOk &&
-    !duplicateLocalWorkers &&
-    !leakedBrowserContexts &&
-    !excessiveEventLoopLag &&
-    overdueAuditCount === 0
+  const monitoring = monitoringResult.status === 'fulfilled' ? monitoringResult.value : null
+  const problems = {
+    redis_unreachable: !redisReachable,
+    worker_down: !worker.alive,
+    queue_unavailable: queue === null,
+    browser_unavailable: !worker.browserOk,
+    duplicate_workers: duplicateLocalWorkers,
+    browser_context_leak: leakedBrowserContexts,
+    event_loop_lag: excessiveEventLoopLag,
+    audit_unavailable: overdueAuditCount === null,
+    audit_overdue: overdueAuditCount !== null && overdueAuditCount > 0,
+    monitoring_unavailable: monitoring === null,
+    monitoring_gaps: monitoring !== null && !monitoring.ok,
+  }
+  const status = Object.entries(problems).find(([, present]) => present)?.[0] ?? 'ok'
   const oldestAudit =
     oldest.status === 'fulfilled' && oldest.value
       ? {
@@ -92,22 +100,8 @@ export async function GET() {
       : null
 
   return NextResponse.json({
-    ok,
-    status: !redisReachable
-      ? 'redis_unreachable'
-      : !worker.alive
-        ? 'worker_down'
-        : !queue
-          ? 'queue_unavailable'
-        : duplicateLocalWorkers
-          ? 'duplicate_workers'
-          : leakedBrowserContexts
-            ? 'browser_context_leak'
-            : excessiveEventLoopLag
-              ? 'event_loop_lag'
-              : overdueAuditCount !== 0
-                ? 'audit_overdue'
-                : 'ok',
+    ok: status === 'ok',
+    status,
     redis: redisReachable ? 'ok' : 'unreachable',
     rateLimit,
     processRole: process.env.FIXFLAGS_PROCESS_ROLE ?? 'web',
@@ -118,5 +112,6 @@ export async function GET() {
     oldestAudit,
     stalledJobCount: stalled.status === 'fulfilled' ? stalled.value : null,
     overdueAuditCount,
+    monitoring,
   })
 }

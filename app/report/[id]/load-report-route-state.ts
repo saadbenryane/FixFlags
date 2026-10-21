@@ -13,7 +13,7 @@ import { toRankableFlag } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixArtifacts } from '@/lib/audit/finish-plan'
 import { loadVerificationReceiptsForReview } from '@/lib/products/workspace'
-import { hasUnreadableSupportingObservations } from '@/lib/audit/flag-observations'
+import { hasUnreadableStoredSupportingObservations } from '@/lib/audit/flag-observations'
 import type { ReportWorkspaceAuditDTO } from '@/lib/report/workspace'
 import { buildLiveExplorerModel, buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-projection'
@@ -464,7 +464,7 @@ export async function loadReportRouteState(
         severity: flag.severity,
         checkId: flag.checkId,
         attentionPolicy: flag.attentionPolicy,
-        supportingEvidenceUnreadable: hasUnreadableSupportingObservations(flag.supportingObservations),
+        supportingEvidenceUnreadable: hasUnreadableStoredSupportingObservations(flag.supportingObservations),
         impactTag: flag.impactTag,
         pageUrl: flag.pageUrl,
         confidence: flag.confidence,

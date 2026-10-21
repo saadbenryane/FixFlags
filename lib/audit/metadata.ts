@@ -16,6 +16,8 @@ export interface PageMetadata {
   testimonialBlocks?: Array<{ quote: string; attribution: string | null }>
   /** Observed document base used to resolve relative navigation declarations. */
   linkBaseUrl?: string
+  /** Address of the observed document, distinct from an author-supplied link base. */
+  documentUrl?: string
   title: string | null
   description: string | null
   ogTitle: string | null
@@ -428,6 +430,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
 
   return {
     linkBaseUrl,
+    documentUrl: url,
     title: $('title').first().text().trim() || null,
     description: $('meta[name="description"]').attr('content') || null,
     ogTitle: $('meta[property="og:title"]').attr('content') || null,

@@ -1,7 +1,8 @@
 import { z } from 'zod'
+import { cruxEvidenceSchema } from '../crux'
 import { renderedCopySchema } from '../browser/rendered-copy'
 import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
-import { publicDocumentSchema } from '../search/contracts'
+import { publicDocumentSchema, SITEMAP_DOCUMENT_LIMIT, SITEMAP_URL_LIMIT } from '../search/contracts'
 export { publicDocumentSchema } from '../search/contracts'
 import { trackingEvidenceSchema } from '../tracking/contracts'
 import { resourceTransportSchema } from '../resource-transport'
@@ -11,7 +12,7 @@ import { consoleCoverageSchema } from '../console-evidence'
 import { accessibilityEvidenceSchema } from '../browser/accessibility-evidence'
 import { captureObservationScopeSchema } from '../browser/observation-scope'
 import { motionWindowSchema } from '../checks/motion-evidence'
-import { jsonValueSchema } from './contracts'
+import { jsonValueSchema } from '@/lib/json-value'
 import { technologyCaptureSchema } from '../technology-capture'
 import { pagePreviewSchema } from '../checks/page-preview'
 import type { PageMetadata } from '../metadata'
@@ -24,6 +25,7 @@ const count = z.number().finite().nonnegative()
 export const pageMetadataSchema = z.object({
   renderedCopy: renderedCopySchema.nullable().optional(),
   linkBaseUrl: z.string().url().optional(),
+  documentUrl: z.string().url().optional(),
   title: text.nullable(), description: text.nullable(), ogTitle: text.nullable(), ogDescription: text.nullable(),
   ogImage: text.nullable(), canonical: text.nullable(), lang: text.nullable(), viewport: text.nullable(), robots: text.nullable(),
   h1s: strings, h2s: strings, images: z.array(z.object({ src: text, alt: text.nullable() }).strict()).max(10_000),
@@ -46,10 +48,7 @@ export const pageSpeedSchema = z.object({
   tapTargetAudits: tapTargetAuditsSchema.optional(),
   failedAccessibilityAudits: z.array(z.object({ id: text, title: text, score: z.number().finite().nullable() }).strict()).max(500),
   diagnostics: z.record(z.string(), jsonValueSchema), raw: z.record(z.string(), jsonValueSchema),
-  crux: z.object({ lcp: z.number().finite().nullable(), cls: z.number().finite().nullable(), fcp: z.number().finite().nullable(),
-    inp: z.number().finite().nullable(), ttfb: z.number().finite().nullable(), formFactor: text.nullable(), effectiveConnectionType: text.nullable(),
-    source: z.literal('pagespeed-loading-experience').optional(), scope: z.enum(['page', 'origin']).optional(),
-    url: z.string().url().optional(), reportingWindowDays: z.literal(28).optional() }).strict().nullable(),
+  crux: cruxEvidenceSchema.nullable(),
 }).strict() satisfies z.ZodType<PageSpeedResult>
 const object = z.record(z.string(), jsonValueSchema)
 export const screenshotSnapshotSchema = z.object({
@@ -80,8 +79,8 @@ const metadataFailureSchema = z.object({ code: z.string().regex(/^[A-Z][A-Z0-9_]
 export type MetadataFailure = z.infer<typeof metadataFailureSchema>
 export const httpArtifactSchema = z.object({ document: publicDocumentSchema, metadata: pageMetadataSchema.nullable(), metadataFailure: metadataFailureSchema.optional() }).strict()
 export const resourceArtifactSchema = z.object({
-  robots: publicDocumentSchema, sitemaps: z.array(publicDocumentSchema).max(5), sitemapUrls: z.array(z.string().url()).max(10_000),
-  complete: z.boolean(), declaredSitemaps: z.array(z.string()).max(10_000),
+  robots: publicDocumentSchema, sitemaps: z.array(publicDocumentSchema).max(SITEMAP_DOCUMENT_LIMIT), sitemapUrls: z.array(z.string().url()).max(SITEMAP_URL_LIMIT),
+  complete: z.boolean(), declaredSitemaps: z.array(z.string()).max(SITEMAP_URL_LIMIT),
 }).strict()
 export const browserArtifactSchema = z.object({ pageId: z.string().min(1), snapshot: screenshotSnapshotSchema,
   preview: pagePreviewSchema.optional(),

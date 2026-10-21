@@ -2,7 +2,7 @@
 
 import { SiteAccountChecksControls } from './SiteAccountChecksControls'
 import { SiteMonitoringSettingsPanel, SiteNotificationSettingsPanel, SiteRemovalSettingsPanel, type NotificationLevel } from './SiteSettingsPanels'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, type ReactNode } from 'react'
 import { SiteRemovalDialog } from './SiteRemovalDialog'
 import { ACCOUNT_CHECK_COPY as A } from '@/lib/marketing/copy/account-checks'
 import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
@@ -27,12 +27,14 @@ export function SiteSettingsControls({
   watch,
   initial,
   onRefresh,
+  children,
 }: {
   siteId: string
   target?: string
   watch: SiteHomeView['watch']
   initial: SiteHomeView['settings']
   onRefresh: () => Promise<unknown>
+  children?: ReactNode
 }) {
   const router = useRouter()
   const level: NotificationLevel | null = initial.notificationLevel
@@ -100,9 +102,10 @@ export function SiteSettingsControls({
       />
       <SiteNotificationSettingsPanel level={level} recovery={recovery} busy={busy} onChange={(nextLevel, nextRecovery) => void saveNotifications(nextLevel, nextRecovery)} />
 
-      <SiteAccountChecksControls siteId={siteId} initial={initial.accountChecks} onRefresh={onRefresh} />
       {busy ? <p role="status" className="text-sm">{C.settings.saving}</p> : null}
       <SiteActionFeedback message={message} error={error} siteId={siteId} />
+      <SiteAccountChecksControls siteId={siteId} initial={initial.accountChecks} onRefresh={onRefresh} />
+      {children}
       <SiteRemovalSettingsPanel busy={busy} onRemove={() => { removalOpener.current = document.activeElement as HTMLElement; setRemovalOpen(true) }} />
       <SiteRemovalDialog open={removalOpen} onOpenChange={setRemovalOpen} accounts={initial.accountChecks} busy={busy}
         onCleanup={() => void cleanupAccounts()} onRemove={remaining => void removeSite(remaining)}

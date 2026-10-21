@@ -23,11 +23,10 @@ export function SiteSettingsView({ siteId, view: initial }: { siteId: string; vi
       watch={view.watch}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <SiteSettingsControls key={`monitoring:${siteId}`} target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh} />
-      {view.site.projectId ? <SiteScanAccessSettings key={`scan-access:${view.site.projectId}`} siteId={siteId} /> : null}
-      <SiteResearchConsentSettings key={`research:${siteId}`} siteId={siteId} />
-      </div>
+      <SiteSettingsControls key={`monitoring:${siteId}`} target={view.site.url} siteId={siteId} initial={view.settings} watch={view.watch} onRefresh={refresh}>
+        {view.site.projectId ? <SiteScanAccessSettings key={`scan-access:${view.site.projectId}`} siteId={siteId} /> : null}
+        <SiteResearchConsentSettings key={`research:${siteId}`} siteId={siteId} />
+      </SiteSettingsControls>
     </SiteShell>
   )
 }

@@ -56,7 +56,8 @@ import { slowReplayAssertions, runSlowReplayChecks } from '../checks/slow-replay
 import { SLOW_REPLAY_PROFILE, type SlowReplayResult } from '../flow/slow-replay-contract'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { CaptureObservationScope } from '../browser/observation-scope'
-import { probeUptime, classifyUptimeError } from '../../uptime/probe'
+import { probeUptime } from '../../uptime/probe'
+import { classifyPublicRequestFailure } from '../http-failure'
 import { currentUptimeState, uptimeTimeline, uptimeTransition, type UptimeProbeView } from '../../uptime/domain'
 import { accountCheckAssertion, accountCheckId } from '../../sites/accounts/check-definitions'
 import type { AccountObservation } from '../../sites/accounts/contracts'
@@ -596,7 +597,7 @@ const handlers: Record<string, Handler> = {
     ]
   },
   'conversion.validation': () => {
-    const form = (overrides: Partial<FormEvidence>): FormEvidence => ({ version: 1, pageUrl: PAGE, context: 'form:catalog', selector: '#signup', label: 'Signup', disposition: 'passed', reason: 'native_validation', feedbackMs: 100, ...overrides })
+    const form = (overrides: Partial<FormEvidence>): FormEvidence => ({ version: 1, pageUrl: PAGE, context: 'form:catalog', selector: '#signup', label: 'Signup', disposition: 'passed', reason: 'native_feedback', feedbackMs: 100, ...overrides })
     const good = checkFormValidation(form({}))
     const bad = checkFormValidation(form({ disposition: 'failed', reason: 'missing_feedback', feedbackMs: null }))
     const open = checkFormValidation(form({ disposition: 'unknown', reason: 'observation_incomplete', feedbackMs: null }))
@@ -609,10 +610,10 @@ const handlers: Record<string, Handler> = {
     ]
   },
   'conversion.feedback': () => {
-    const form = (feedbackMs: number): FormEvidence => ({ version: 1, pageUrl: PAGE, context: 'form:catalog', selector: '#signup', label: 'Signup', disposition: 'passed', reason: 'native_validation', feedbackMs })
+    const form = (feedbackMs: number): FormEvidence => ({ version: 1, pageUrl: PAGE, context: 'form:catalog', selector: '#signup', label: 'Signup', disposition: 'passed', reason: 'native_feedback', feedbackMs })
     const good = checkFormValidation(form(100))
     const bad = checkFormValidation(form(1500))
-    const open = checkFormValidation(undefined)
+    const open = checkFormValidation({ ...form(0), reason: 'native_validation' })
     const failing = judge(bad.assertions, bad.flags.filter(flag => flag.checkId === 'flow-form-slow-feedback'), ['form-feedback'])
     const certified = certifies('flow-form-slow-feedback', bad.flags.find(flag => flag.checkId === 'flow-form-slow-feedback'), good.assertions, 'form-validation', 'rendered-dom')
     return [
@@ -1113,7 +1114,7 @@ const handlers: Record<string, Handler> = {
   'uptime.errors': async () => {
     const clean = await probeUptime(PAGE, async () => ({ body: 'ok', finalUrl: PAGE, statusCode: 200, headers: {}, complete: true, redirects: [] }))
     const missing = await probeUptime(PAGE, async () => { throw new AuditUrlError('missing host', 'DNS_NOT_FOUND') })
-    const unverified = classifyUptimeError(new AuditUrlError('resolver', 'DNS_UNAVAILABLE'))
+    const unverified = classifyPublicRequestFailure(new AuditUrlError('resolver', 'DNS_UNAVAILABLE'))
     if (clean.result !== 'ONLINE' || missing.reason !== 'dns_failure' || unverified.reason !== 'public_target_unverified') throw new Error('Uptime error classification changed')
     const opened = uptimeTransition({ result: missing.result, now: NOW, confirmation: true, pendingFailureAt: new Date(NOW.getTime() - 30_000), incidentOpen: false })
     const recovered = uptimeTransition({ result: clean.result, now: NOW, confirmation: false, pendingFailureAt: null, incidentOpen: true })

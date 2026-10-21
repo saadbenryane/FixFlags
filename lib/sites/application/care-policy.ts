@@ -1,4 +1,4 @@
-import { watchIntervalMinutes, type WatchInterval } from '@/lib/sites/watch-schedule'
+import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import type { Plan, SubscriptionStatus } from '@prisma/client'
 import { PLAN_DEFINITIONS, projectLimitForPlan } from '@/lib/billing/plans'
 import { hasOpenBetaAccess } from '@/lib/billing/beta-policy'
@@ -13,23 +13,6 @@ export type SiteCarePolicy = {
   maxSites: number | null
   watchIntervals: Array<WatchInterval>
   targetedVerify: boolean
-}
-
-export const OUTCOME_FRESHNESS_MINUTES = {
-  daily: 36 * 60,
-  weekly: 8 * 24 * 60,
-  manual: 8 * 24 * 60,
-} as const
-
-export function outcomeFreshnessMinutes(interval: WatchInterval | null, everyMinutes?: number | null): number {
-  if (interval === 'hourly' || interval === 'custom') return watchIntervalMinutes(interval, everyMinutes) + 12 * 60
-  return interval ? OUTCOME_FRESHNESS_MINUTES[interval] : OUTCOME_FRESHNESS_MINUTES.manual
-}
-
-/** Keep availability and configured bindings on their saved cadence. Repeating
- * the full browser/provider graph more often than daily adds avoidable work. */
-export function siteCareIntervalMinutes(interval: WatchInterval, everyMinutes?: number | null): number {
-  return Math.max(24 * 60, watchIntervalMinutes(interval, everyMinutes))
 }
 
 /**

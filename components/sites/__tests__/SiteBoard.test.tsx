@@ -615,7 +615,7 @@ describe('SiteBoard chrome', () => {
     releaseRefresh()
     await waitFor(() => expect(screen.queryByText('Check failed')).not.toBeInTheDocument())
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example', { cache: 'no-store' })
+      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }))
     })
     view.unmount()
     vi.unstubAllGlobals()
@@ -911,17 +911,17 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
     expect(screen.getByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument()
-    // Core controls keep their order; optional settings sections can follow.
-    expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 4).map((heading) => heading.textContent)).toEqual([
+    // Core controls come first. Removal follows all website settings.
+    expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 3).map((heading) => heading.textContent)).toEqual([
       'Monitoring',
       'Notifications',
       'Automatic account checks',
-      'Remove Site',
     ])
     expect(screen.queryByRole('heading', { name: 'Shopify', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Search Console', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Analytics', level: 3 })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove Site' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 2 }).at(-1)).toHaveTextContent('Remove Site')
   })
 
   it('keeps watch and All Sites for signed-in owners', async () => {

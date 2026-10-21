@@ -10,6 +10,7 @@ export type CheckDefinition = { version: number; area: SiteCardArea; module: str
 /** Explicit identities, independent of customer wording and detection policy. */
 const LEGACY_CHECK_DEFINITIONS = {
   'page-http-error': { version: 1, area: 'site', module: 'page-response', capabilities: ['public-page-response'] },
+  'page-redirect-loop': { version: 1, area: 'site', module: 'page-response', capabilities: ['public-page-response'] },
   'title-missing': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'title-too-short': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
   'title-too-long': { version: 1, area: 'search', module: 'metadata', capabilities: ["reach-title-description"] },
@@ -74,6 +75,7 @@ const LEGACY_CHECK_DEFINITIONS = {
   'broken-internal-links': { version: 1, area: 'search', module: 'seo', capabilities: ["reach-broken-links"] },
   'broken-page-anchors': { version: 1, area: 'search', module: 'seo', capabilities: ["experience-nav-anchors"] },
   'no-https': { version: 1, area: 'security', module: 'security', capabilities: ["reach-trust-signals"] },
+  'security-certificate-invalid': { version: 1, area: 'security', module: 'security', capabilities: ["reach-trust-signals"] },
   'no-privacy-policy': { version: 1, area: 'security', module: 'trust', capabilities: ["reach-trust-signals"] },
   'no-contact-info': { version: 1, area: 'security', module: 'trust', capabilities: ["reach-trust-signals"] },
   'cookie-consent-absent': { version: 2, area: 'security', module: 'trust', capabilities: ["reach-trust-signals"] },
@@ -102,7 +104,7 @@ const LEGACY_CHECK_DEFINITIONS = {
   'placeholder-copy-detected': { version: 2, area: 'conversion', module: 'slop', capabilities: ["copy-slop-placeholders"] },
   'template-default-copy': { version: 1, area: 'conversion', module: 'slop', capabilities: ["copy-slop-placeholders"] },
   'unreplaced-template-token': { version: 1, area: 'conversion', module: 'slop', capabilities: ["copy-slop-placeholders"] },
-  'cta-dead-link': { version: 1, area: 'conversion', module: 'slop', capabilities: ["copy-dead-cta-links"] },
+  'cta-dead-link': { version: 2, area: 'conversion', module: 'slop', capabilities: ["copy-dead-cta-links"] },
   'social-proof-unverifiable': { version: 1, area: 'conversion', module: 'slop', capabilities: ["copy-social-proof-quality"] },
   'form-missing-validation': { version: 2, area: 'conversion', module: 'content', capabilities: ["experience-form-feedback"] },
   'tracking-library-http-error': { version: 1, area: 'tracking', module: 'measurement', capabilities: ['measurement-analytics-scan'] },

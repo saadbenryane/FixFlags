@@ -4,7 +4,7 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/db'
 import { canonicalProductHost } from '@/lib/audit/product-intelligence'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import {
   isRailwayDeploySuccessEvent,
   parseRailwayWebhookPayload,
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!checkUrl) {
       return apiError('Check URL required. Send the x-fixflags-check-url header.', 400)
     }
-    const normalized = normalizeAuditUrl(checkUrl)
+    const normalized = normalizeAuditNavigationUrl(checkUrl)
     if (!normalized.ok) return apiError(normalized.error, 400)
 
     const apiKey = resolveWebhookApiKey(req)

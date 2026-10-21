@@ -124,22 +124,73 @@ export async function probeFormValidation(page: Page, options: {
     page.context().on('page', async popup => { requestRefused = true; await popup.close().catch(() => undefined) })
   }
   const refused = () => requestRefused || options.safetyRefused?.() === true
-  let timing: JSHandle<{ setChecker(checker: () => boolean): void; read(): number | null; elapsed(): number | null; dispose(): void }> | undefined
+  let timing: JSHandle<{ setChecker(checker: () => boolean): void; read(): number | null; elapsed(): number | null;
+    native(): { feedbackMs: number | null; complete: boolean }; dispose(): void }> | undefined
   try {
     if (options.isolated) timing = await page.evaluateHandle(({ selector, submitSelector }) => {
       const form = document.querySelector(selector)!, submit = document.querySelector(submitSelector)!
       let clickedAt: number | null = null, feedbackAt: number | null = null, checker: (() => boolean) | undefined, frame = 0
+      const invalid: Array<{ event: Event; field: HTMLElement; reporting: boolean; ambiguous: boolean }> = []
+      let truncated = false, reporting = 0, checking = 0, activationOpen = false
+      let clickEvent: Event | undefined, activationTimer: ReturnType<typeof setTimeout> | undefined
+      const originals: Array<{ prototype: object; method: string; descriptor: PropertyDescriptor; wrapped: (...args: unknown[]) => unknown }> = []
+      for (const prototype of [HTMLFormElement.prototype, HTMLInputElement.prototype, HTMLSelectElement.prototype, HTMLTextAreaElement.prototype]) {
+        for (const method of ['checkValidity', 'reportValidity']) {
+          const descriptor = Object.getOwnPropertyDescriptor(prototype, method)
+          if (!descriptor?.configurable || typeof descriptor.value !== 'function' || !Function.prototype.toString.call(descriptor.value).includes('[native code]')) continue
+          const original = descriptor.value as (...args: unknown[]) => unknown
+          const wrapped = function(this: Element, ...args: unknown[]) {
+            if (method === 'reportValidity') reporting++; else checking++
+            try { return Reflect.apply(original, this, args) }
+            finally { if (method === 'reportValidity') reporting--; else checking-- }
+          }
+          Object.defineProperty(prototype, method, { ...descriptor, value: wrapped })
+          originals.push({ prototype, method, descriptor, wrapped })
+        }
+      }
+      const rejected = (event: Event) => {
+        const field = event.target
+        if (clickedAt === null || !event.isTrusted || !(field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) || field.form !== form) return
+        const nativeActivation = activationOpen && clickEvent?.eventPhase === Event.NONE && !clickEvent.defaultPrevented &&
+          form instanceof HTMLFormElement && !form.noValidate && (submit instanceof HTMLButtonElement || submit instanceof HTMLInputElement) && !submit.formNoValidate
+        const reports = !checking && (reporting > 0 || nativeActivation)
+        if (invalid.length < 100) invalid.push({ event, field, reporting: reports, ambiguous: !checking && !reports })
+        else truncated = true
+      }
+      document.addEventListener('invalid', rejected, true)
       const inspect = () => {
         if (clickedAt !== null && feedbackAt === null && performance.now() - clickedAt <= 2000 && checker?.()) feedbackAt = performance.now()
       }
       const tick = () => { inspect(); if (clickedAt !== null && feedbackAt === null && performance.now() - clickedAt <= 2000) frame = requestAnimationFrame(tick) }
-      const clicked = (event: Event) => { if (event.isTrusted && clickedAt === null) { clickedAt = event.timeStamp; frame = requestAnimationFrame(tick) } }
+      const clicked = (event: Event) => { if (event.isTrusted && clickedAt === null) {
+        clickedAt = event.timeStamp; clickEvent = event; activationOpen = true
+        activationTimer = setTimeout(() => { activationOpen = false }, 0)
+        frame = requestAnimationFrame(tick)
+      } }
       submit.addEventListener('click', clicked, true)
       const observer = new MutationObserver(inspect)
       observer.observe(form, { subtree: true, attributes: true, childList: true, characterData: true })
       return { setChecker(value: () => boolean) { checker = value }, read() { inspect(); return clickedAt !== null && feedbackAt !== null ? feedbackAt - clickedAt : null },
         elapsed() { return clickedAt === null ? null : performance.now() - clickedAt },
-        dispose() { observer.disconnect(); cancelAnimationFrame(frame); submit.removeEventListener('click', clicked, true) } }
+        native() {
+          // Keep the Event until dispatch finishes, so target and ancestor
+          // handlers have had their chance to cancel native error reporting.
+          const observed = invalid.find(({ event, field, reporting }) => {
+            const rect = field.getBoundingClientRect(), style = getComputedStyle(field)
+            for (let parent = field.parentElement; parent; parent = parent.parentElement)
+              if (getComputedStyle(parent).opacity === '0') return false
+            return reporting && !event.defaultPrevented && field.isConnected && document.activeElement === field &&
+              rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 && rect.left < innerWidth && rect.top < innerHeight &&
+              style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0' && !field.closest('[hidden], [inert]')
+          })
+          return { feedbackMs: clickedAt !== null && observed ? Math.max(0, observed.event.timeStamp - clickedAt) : null,
+            complete: !truncated && !invalid.some(item => item.ambiguous && !item.event.defaultPrevented) }
+        },
+        dispose() { observer.disconnect(); cancelAnimationFrame(frame); submit.removeEventListener('click', clicked, true)
+          clearTimeout(activationTimer); document.removeEventListener('invalid', rejected, true); invalid.length = 0
+          for (const { prototype, method, descriptor, wrapped } of originals)
+            if (Object.getOwnPropertyDescriptor(prototype, method)?.value === wrapped) Object.defineProperty(prototype, method, descriptor)
+        } }
     }, { selector, submitSelector })
     const readState = (native: boolean) => page.evaluate(({ sel, submitSelector, native, tracker }) => {
       ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= fn => fn
@@ -147,7 +198,7 @@ export async function probeFormValidation(page: Page, options: {
       if (!form) return null
       const submit = document.querySelector(submitSelector)
       const nativeInvalid = native && !form.noValidate && (submit instanceof HTMLButtonElement || submit instanceof HTMLInputElement) &&
-        submit.form === form && !submit.formNoValidate && !form.checkValidity()
+        submit.form === form && !submit.formNoValidate && form.matches(':invalid')
       const isFeedback = (node: Element) => {
           const rect = node.getBoundingClientRect(), style = getComputedStyle(node)
           for (let parent = node.parentElement; parent; parent = parent.parentElement)
@@ -172,7 +223,7 @@ export async function probeFormValidation(page: Page, options: {
     const baseline = await readState(true)
     if (!baseline) return finish('unknown', 'form_changed')
     if (refused()) return finish('unknown', 'submission_blocked')
-    if (baseline.native && !(options.overlayOnly && overlayRecorder.activationRequired(phase))) return finish('passed', 'native_validation', 0)
+    if (baseline.native && !options.isolated) return finish('passed', 'native_validation')
     if (baseline.feedback) return finish('unknown', 'preexisting_feedback')
     let incompleteObservation = baseline.textTruncated
     const observationBudget = Math.max(0, Math.min(2000, (options.deadline ?? Date.now() + 2000) - Date.now()))
@@ -187,7 +238,7 @@ export async function probeFormValidation(page: Page, options: {
     const startedAt = Date.now()
     await submit.click({ timeout: Math.max(1, observationBudget) })
     overlayRecorder.activated(inspected)
-    if (baseline.native) return refused() ? finish('unknown', 'submission_blocked') : finish('passed', 'native_validation', 0)
+    const nativeFeedback = async () => timing ? await timing.evaluate(tracker => tracker.native()) : null
     const observedFeedback = async () => timing ? await timing.evaluate(tracker => tracker.read()) : null
     const elapsed = async () => timing ? await timing.evaluate(tracker => tracker.elapsed()) : Date.now() - startedAt
     const stopAt = options.deadline ?? startedAt + observationBudget + 2000
@@ -198,6 +249,12 @@ export async function probeFormValidation(page: Page, options: {
       if (!observed) return finish('unknown', 'form_changed')
       incompleteObservation ||= observed.textTruncated
       if (observed.suppressed) return finish('unknown', 'submit_handler_suppressed')
+      const native = await nativeFeedback()
+      incompleteObservation ||= native?.complete === false
+      if (native?.feedbackMs !== null && native?.feedbackMs !== undefined && native.feedbackMs <= observationBudget) {
+        await sleep(50)
+        return refused() ? finish('unknown', 'submission_blocked') : finish('passed', 'native_feedback', native.feedbackMs)
+      }
       const measuredFeedback = await observedFeedback()
       if (observed.feedback || measuredFeedback !== null) {
         if (timing && (measuredFeedback === null || measuredFeedback > observationBudget)) return finish('unknown', 'observation_incomplete')
@@ -210,8 +267,12 @@ export async function probeFormValidation(page: Page, options: {
       if (observedElapsed === null || observedElapsed >= observationBudget) break
       await sleep(50)
     }
+    const lateNative = await nativeFeedback()
+    incompleteObservation ||= lateNative?.complete === false
     const lateRead = await observedFeedback()
     if (refused()) return finish('unknown', 'submission_blocked')
+    if (lateNative?.feedbackMs !== null && lateNative?.feedbackMs !== undefined && lateNative.feedbackMs <= observationBudget)
+      return finish('passed', 'native_feedback', lateNative.feedbackMs)
     if (lateRead !== null && lateRead <= observationBudget) return finish('passed', 'client_feedback', lateRead)
     const observedElapsed = await elapsed()
     const conclusive = observationBudget === 2000 && observedElapsed !== null && observedElapsed >= observationBudget &&

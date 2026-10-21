@@ -51,7 +51,7 @@ describe('/pricing', () => {
     expect(screen.getAllByRole('heading', { name: 'Studio' }).length).toBeGreaterThan(0)
     expect(screen.getAllByText('$49').length).toBeGreaterThan(0)
     expect(screen.getByText(PRICING.headlineAccent)).toBeVisible()
-    expect(within(screen.getByRole('article', { name: 'Free' })).getByRole('link', { name: 'Sign up now' })).toHaveAttribute('href', '/sign-up')
+    expect(within(screen.getByRole('article', { name: 'Free' })).getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/sign-up')
     expect(screen.getByRole('link', { name: 'Join Pro waitlist' })).toHaveAttribute('href', '/waitlist/pro')
     expect(screen.getByRole('link', { name: 'Join Studio waitlist' })).toHaveAttribute('href', '/waitlist/studio')
     expect(screen.getAllByText('$99').length).toBeGreaterThan(0)
@@ -84,7 +84,8 @@ describe('/pricing', () => {
       expect(plan.getByText('Uptime monitoring')).toBeVisible()
       expect(plan.getByText('Included')).toBeVisible()
     }
-    for (const feature of PRICING.sharedFeatures) expect(screen.getByText(feature)).toBeVisible()
+    const included = screen.getByRole('region', { name: PRICING.sharedTitle })
+    for (const feature of PRICING.sharedFeatures) expect(within(included).getByText(feature)).toBeVisible()
     expect(screen.queryByText('Browser verification')).not.toBeInTheDocument()
     expect(screen.queryByText('See all plan terms')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()

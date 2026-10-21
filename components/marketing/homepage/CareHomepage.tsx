@@ -84,7 +84,7 @@ export function CareHomepage() {
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} onOpenFlag={openSampleFlag} onCopyFlag={(card, id) => void copyFlag('read', SAMPLE_FLAGS[id].prompt, card, id)} />
     <HomepageCheckCoverage />
-    <HomepageLoopSection />
+    <HomepageLoopSection onOpenFlag={trigger => { openCard('site'); setFlag('availability'); opener.current = trigger }} />
     <HomepageHandoffSection onCopy={(source, prompt) => void copyFlag(source, prompt)} copyResult={copyResult} manualPrompt={selected === null ? manualPrompt : null} />
     <HomepageIntegrationsSection />
     <HomepageFinalSection />

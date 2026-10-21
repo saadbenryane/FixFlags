@@ -11,7 +11,7 @@ export function Footer() {
     <footer className="bg-background">
       <Container
         variant="marketing"
-        className="px-5 pb-7 pt-10 sm:px-6 sm:pb-8 sm:pt-12 lg:px-12 lg:pb-9 lg:pt-8"
+        className="px-5 pb-7 pt-12 sm:px-6 sm:pb-8 sm:pt-16 lg:px-12 lg:pb-9 lg:pt-20"
       >
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.35fr_repeat(4,minmax(0,0.9fr))] lg:gap-x-7 xl:gap-x-10">
           <div className="col-span-2 space-y-4 lg:col-span-1">

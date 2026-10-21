@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { encryptSecret } from '@/lib/security/crypto'
+import { waitForEmailProviderCapacity } from '@/lib/email/provider-admission'
 
 export const receivingEventSchema = z.object({ type: z.literal('email.received'),
   data: z.object({ email_id: z.string().uuid(), to: z.array(z.string().email()).max(20), created_at: z.string().datetime().optional() }) })
@@ -61,8 +62,10 @@ export async function acceptReceivingEmail(event: z.infer<typeof receivingEventS
   // A received email cannot cross account/tenant boundaries or choose a target.
   if (accounts.length !== 1) return
   const account = accounts[0]!
+  const signal = AbortSignal.timeout(8000)
+  await waitForEmailProviderCapacity(signal)
   const response = await fetch(`https://api.resend.com/emails/receiving/${event.data.email_id}`, {
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }, redirect: 'error', signal: AbortSignal.timeout(8000), cache: 'no-store' })
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }, redirect: 'error', signal, cache: 'no-store' })
   if (!response.ok) { await response.body?.cancel(); throw new Error('Received email is temporarily unavailable') }
   const raw = JSON.parse(await boundedText(response.body, 1_048_576))
   const body = z.object({ to: z.array(z.string().email()), html: z.string().nullable().optional(), text: z.string().nullable().optional(),

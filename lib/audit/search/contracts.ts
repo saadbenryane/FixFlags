@@ -1,5 +1,11 @@
 import { z } from 'zod'
 import { renderedSearchSnapshotSchema } from './rendered-snapshot'
+import { certificateFailureSchema } from '../tls-evidence'
+
+export const SITEMAP_DOCUMENT_LIMIT = 5
+export const SITEMAP_URL_LIMIT = 10_000
+export const SEARCH_OBSERVATION_LIMIT = 500
+export const STRUCTURED_PROPERTY_LIMIT = 30
 
 export const searchSourceSchema = z.enum(['http', 'original-html', 'rendered-dom', 'robots-txt', 'sitemap', 'google-index', 'google-analytics'])
 export const searchResponsibilitySchema = z.enum(['crawl', 'indexing', 'canonical', 'presentation', 'structured-data', 'discovery', 'google'])
@@ -9,13 +15,15 @@ export const googleEvidenceSchema = z.object({ property: z.string().min(1), verd
   googleCanonical: z.string().url().optional(), userCanonical: z.string().url().optional() }).strict()
 export const markupTargetSchema = z.object({
   entityId: z.string().min(1), entityType: z.string().min(1), source: searchSourceSchema,
-  properties: z.array(z.string().min(1)).min(1).max(30),
+  properties: z.array(z.string().min(1)).min(1).max(STRUCTURED_PROPERTY_LIMIT),
 }).strict()
+const resourceKeysSchema = z.array(z.string().regex(/^[a-f0-9]{64}$/)).min(1).max(200)
 export const searchPageScopeSchema = z.object({
   pageUrl: z.string().url(), reason: z.string().min(1), version: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   sources: z.array(searchSourceSchema).min(1).max(7).optional(),
   entityTypes: z.array(z.string()).max(200).optional(), google: googleEvidenceSchema.optional(),
-  markupTargets: z.array(markupTargetSchema).max(200).optional(),
+  markupTargets: z.array(markupTargetSchema).max(SEARCH_OBSERVATION_LIMIT).optional(),
+  resourceKeys: resourceKeysSchema.optional(),
 }).strict()
 export const searchAttentionSchema = z.object({
   policy: z.literal('search'), version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
@@ -23,7 +31,8 @@ export const searchAttentionSchema = z.object({
   sources: z.array(searchSourceSchema).min(1).max(7).optional(),
   entityTypes: z.array(z.string()).max(200).optional(),
   google: googleEvidenceSchema.optional(),
-  markupTargets: z.array(markupTargetSchema).max(200).optional(),
+  markupTargets: z.array(markupTargetSchema).max(SEARCH_OBSERVATION_LIMIT).optional(),
+  resourceKeys: resourceKeysSchema.optional(),
   pageScopes: z.array(searchPageScopeSchema).min(1).max(500).optional(),
 }).strict()
 export type SearchAttention = z.infer<typeof searchAttentionSchema>
@@ -41,14 +50,15 @@ export const searchObservationSchema = z.object({
   }).strict()).max(20),
   limitation: z.string(), guidance: z.string(), entityTypes: z.array(z.string()).optional(),
   google: googleEvidenceSchema.optional(),
-  entityId: z.string().optional(), invalidProperties: z.array(z.string()).max(30).optional(),
+  entityId: z.string().optional(), invalidProperties: z.array(z.string()).max(STRUCTURED_PROPERTY_LIMIT).optional(),
+  resourceKey: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict()
 export type SearchObservation = z.infer<typeof searchObservationSchema>
 
 export const searchReceiptSchema = z.object({
   kind: z.literal('search-checks'), version: z.literal(1), auditId: z.string().min(1),
   pageUrl: z.string().url(), collectedAt: z.string().datetime(), complete: z.boolean(),
-  observations: z.array(searchObservationSchema).max(500),
+  observations: z.array(searchObservationSchema).max(SEARCH_OBSERVATION_LIMIT),
 }).strict().superRefine((receipt, context) => {
   const ids = new Set<string>()
   for (const item of receipt.observations) {
@@ -70,13 +80,21 @@ export const publicDocumentSchema = z.object({
   headers: z.record(z.string(), z.string().max(32_000)), body: z.string().max(1_000_000).nullable(), complete: z.boolean(),
   reason: z.string().nullable(), collectedAt: z.string().datetime(), redirects: z.array(z.string().url()).max(5),
   searchSnapshot: renderedSearchSnapshotSchema.optional(),
-}).strict()
+  transportFailure: certificateFailureSchema.optional(),
+}).strict().superRefine((document, context) => {
+  if (!document.transportFailure) return
+  let https = false
+  try { https = new URL(document.finalUrl).protocol === 'https:' } catch { /* URL validation reports malformed evidence. */ }
+  if (document.status !== null || document.body !== null || document.complete ||
+    Object.keys(document.headers).length > 0 || !https)
+    context.addIssue({ code: 'custom', message: 'A certificate refusal cannot establish an HTTP response' })
+})
 export const searchPageEvidenceSchema = z.object({
   auditId: z.string(), pageUrl: z.string().url(), collectedAt: z.string().datetime(), public: z.boolean(),
   collectorVersion: z.union([z.literal(1), z.literal(2)]).optional(),
   original: publicDocumentSchema, rendered: publicDocumentSchema, robots: publicDocumentSchema,
-  sitemaps: z.array(publicDocumentSchema).max(5), sitemapUrls: z.array(z.string().url()).max(10_000),
-  sitemapsComplete: z.boolean(), declaredSitemaps: z.array(z.string()).max(10_000),
+  sitemaps: z.array(publicDocumentSchema).max(SITEMAP_DOCUMENT_LIMIT), sitemapUrls: z.array(z.string().url()).max(SITEMAP_URL_LIMIT),
+  sitemapsComplete: z.boolean(), declaredSitemaps: z.array(z.string()).max(SITEMAP_URL_LIMIT),
   canonicalTargets: z.array(publicDocumentSchema).max(3),
 }).strict()
 export type PublicDocument = z.infer<typeof publicDocumentSchema>

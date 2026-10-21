@@ -12,7 +12,7 @@ import { suppressOverlappingFlags } from '../suppression'
 import { recordCheckObservations } from './observations'
 import { SEARCH_HANDLED_CHECK_IDS } from '../search/inventory'
 import { SECURITY_HEADER_LIMITATION } from './security-headers'
-import { summarizeCheckAssertions } from './receipt'
+import { scopeCheckEvidence, summarizeCheckAssertions } from './receipt'
 import { scopeRenderedPageEvidence } from './rendered-page-evidence'
 import type { DestinationCheckOptions } from './destination-evidence'
 
@@ -46,24 +46,16 @@ export async function runAllChecks(
       head: runtimeEvidence?.head,
       scope: {}, deadline: runtimeEvidence?.deadline, destinations: runtimeEvidence?.destinations, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
       accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
-      publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => {
-        const definition = check.definition.assertions[assertion.key]
-        if (!runtimeEvidence?.allowedCheckIds || definition && (definition.area === runtimeEvidence.area ||
-          definition.verifies.some(id => runtimeEvidence.allowedCheckIds!.includes(id)))) assertions.push(assertion)
-      } }
+      publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
+      record: assertion => { assertions.push(assertion) } }
     try {
       const evaluated = await check.evaluate(input)
-      let flags = runtimeEvidence?.allowedCheckIds ? evaluated.filter(flag => runtimeEvidence.allowedCheckIds!.includes(flag.checkId.split('::page:')[0])) : evaluated
-      if (check.id !== 'metadata' && check.id !== 'measurement' && check.id !== 'accessibility') assertions.push(...recordCheckObservations(check.id, {
+      if (check.id !== 'metadata' && check.id !== 'measurement' && check.id !== 'accessibility' && check.id !== 'security') assertions.push(...recordCheckObservations(check.id, {
         url, metadata, desktop, mobile, headers: responseHeaders, consoleCoverage: runtimeEvidence?.consoleCoverage,
       }))
-      if (runtimeEvidence?.allowedCheckIds) {
-        const permitted = assertions.filter(assertion => {
-          const definition = check.definition.assertions[assertion.key]
-          return definition && (definition.area === runtimeEvidence.area || definition.verifies.some(id => runtimeEvidence.allowedCheckIds!.includes(id)))
-        })
-        assertions.splice(0, assertions.length, ...permitted)
-      }
+      const admitted = scopeCheckEvidence({ module: check.id, flags: evaluated, assertions, scope: runtimeEvidence })
+      let flags = admitted.flags
+      assertions.splice(0, assertions.length, ...admitted.assertions)
       if (check.id === 'security-headers') {
         input.scope.complete = assertions.every(assertion => assertion.complete !== false)
         if (!input.scope.complete) input.scope.limitation = SECURITY_HEADER_LIMITATION

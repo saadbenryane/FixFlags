@@ -53,9 +53,10 @@ describe('captureLoadFrames', () => {
       'audit-1',
       'desktop',
       expect.any(Buffer),
-      expect.stringMatching(/^home-frame-\d+$/)
+      expect.stringMatching(/^home-frame-\d+$/),
+      { deadline: Infinity }
     )
-    expect(page.screenshot).toHaveBeenCalledWith({ type: 'png', fullPage: false })
+    expect(page.screenshot).toHaveBeenCalledWith({ type: 'png', fullPage: false, timeout: expect.any(Number) })
   })
 
   it('keeps the page url when upload returns null', async () => {
@@ -68,6 +69,22 @@ describe('captureLoadFrames', () => {
     for (const frame of frameset.frames) {
       assert.equal(frame.url, 'https://example.com/')
     }
+  })
+  it('starts no browser or storage work after the execution deadline', async () => {
+    const page = fakePage()
+    const result = await captureLoadFrames(page, 'audit-1', 'desktop', 'home', { deadline: Date.now() - 1 })
+    expect(result.frames).toEqual([])
+    expect(page.screenshot).not.toHaveBeenCalled()
+    expect(page.evaluate).not.toHaveBeenCalled()
+    expect(uploadScreenshot).not.toHaveBeenCalled()
+  })
+  it('bounds native capture and storage by the parent deadline', async () => {
+    const page = fakePage(), deadline = Date.now() + 100
+    await captureLoadFrames(page, 'audit-1', 'desktop', 'home', { deadline, maxFrames: 1 })
+    const capture = vi.mocked(page.screenshot).mock.calls[0][0]!
+    expect(capture.timeout).toBeGreaterThan(0)
+    expect(capture.timeout).toBeLessThanOrEqual(100)
+    expect(uploadScreenshot.mock.calls[0][4]).toEqual({ deadline })
   })
 
   it('continues when a screenshot throws', async () => {
@@ -148,7 +165,8 @@ describe('captureInteractionFrames', () => {
       'audit-1',
       'mobile',
       expect.any(Buffer),
-      expect.stringMatching(/^pricing-interaction-\d+$/)
+      expect.stringMatching(/^pricing-interaction-\d+$/),
+      { deadline: Infinity }
     )
   })
 
@@ -165,5 +183,13 @@ describe('captureInteractionFrames', () => {
       { preFrames: 1, postFrames: 1, postDelayMs: 0 }
     )
     assert.equal(frameset.frames.length, 2)
+  })
+  it('does not interact or collect frames after the execution deadline', async () => {
+    const page = fakePage(), interaction = vi.fn(async () => {})
+    const result = await captureInteractionFrames(page, 'audit-1', 'desktop', 'home', interaction, { deadline: Date.now() - 1 })
+    expect(result.frames).toEqual([])
+    expect(interaction).not.toHaveBeenCalled()
+    expect(page.screenshot).not.toHaveBeenCalled()
+    expect(uploadScreenshot).not.toHaveBeenCalled()
   })
 })

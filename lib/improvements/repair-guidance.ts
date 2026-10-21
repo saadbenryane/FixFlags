@@ -3,6 +3,7 @@ import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { REPAIR_GUIDANCE_COPY as C } from '@/lib/marketing/copy/repair-guidance'
 import { isConditionalInspection, isUsableFixPrompt, requiresContextualReview } from '@/lib/audit/prescription-policy'
 import type { AgentPrompts } from '@/lib/audit/flag-types'
+import { hasUnavailableFlagEvidence } from '@/lib/audit/attention'
 
 export type InspectionGuidancePlan = {
   inspection: string
@@ -42,10 +43,12 @@ export function hasRepairGuidance(fix: string | null | undefined): boolean {
 
 export type RepairGuidanceInput = Partial<AgentPrompts> & {
   fix?: string | null; checkId?: string | null; attentionPolicy?: unknown
+  supportingObservations?: unknown; supportingEvidenceUnreadable?: boolean
 }
 
 /** One task selection for individual report actions and composed editor handoffs. */
 export function effectiveRepairGuidance(input: RepairGuidanceInput): string | null {
+  if (hasUnavailableFlagEvidence(input)) return null
   if (searchAttentionDecision(input)?.reason === 'historical_intent_not_established') return SEARCH_COPY.rules.indexing.guidance
   const contextual = requiresContextualReview(input.checkId)
   const editors = [input.agentPrompt, input.cursorPrompt, input.claudePrompt, input.windsurfPrompt, input.lovablePrompt, input.boltPrompt]
@@ -64,6 +67,7 @@ export function repairGuidanceText(input: RepairGuidanceInput): string {
 export function repairGuidanceState(input: RepairGuidanceInput & {
   audit?: { includeAi?: boolean; triageAt?: Date | string | null; aiReviewAt?: Date | string | null; failureCode?: string | null }
 }): RepairGuidanceState {
+  if (hasUnavailableFlagEvidence(input)) return 'unavailable'
   if (hasRepairGuidance(repairGuidanceText(input))) return 'ready'
   const audit = input.audit
   return audit?.includeAi && audit.triageAt && !audit.aiReviewAt && !audit.failureCode ? 'pending' : 'unavailable'
