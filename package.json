@@ -112,7 +112,11 @@
     "setup": "docker compose up -d --wait --wait-timeout 60 && npm run db:generate && npm run db:migrate && npm run db:seed",
     "test:website": "FIXFLAGS_TEST_PROFILE=website vitest run",
     "test:coverage:website": "FIXFLAGS_TEST_PROFILE=website vitest run --coverage",
-    "verify:website": "node scripts/validate.mjs website"
+    "verify:website": "node scripts/validate.mjs website",
+    "growth:readiness": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/inspect-growth-readiness.ts",
+    "growth:ai-visibility": "tsx scripts/growth/evaluate-ai-visibility.ts",
+    "growth:indexnow": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/notify-indexnow.ts",
+    "growth:plugin-package": "node scripts/growth/build-chatgpt-plugin.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

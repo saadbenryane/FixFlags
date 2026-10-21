@@ -19,6 +19,24 @@ import {
 } from '../site-first-value-funnel'
 
 describe('Site first-value funnel', () => {
+  it('keeps completed analyses with missing receipts separate from active work', () => {
+    const statuses = ['COMPLETED', 'COMPLETED', 'FAILED', 'QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING']
+    const audits = statuses.map((status, index) => ({
+      id: `analysis-${index}`, userId: null, status, utmSource: null, source: 'HOMEPAGE',
+    }))
+    const starts = [...audits.map(audit => audit.id), 'missing-audit'].map(id => ({
+      idempotencyKey: `analyze_started:${id}`, properties: { anonymous: true },
+    }))
+    const funnel = calculateSiteFirstValueFunnel({
+      starts, audits, results: [{ idempotencyKey: 'analysis_completed:analysis-1' }],
+    })
+    expect(funnel).toMatchObject({
+      started: 9, firstUsefulResult: 1, completedWithoutReceipt: 1,
+      failedBeforeResult: 1, stillRunning: 5, missingAudit: 1,
+    })
+    expect(funnel.resultRate).toBe(11)
+  })
+
   it('reports completion independently of usefulness and keeps historical receipts compatible', () => {
     const result = calculateSiteFirstValueFunnel({
       starts: [{ idempotencyKey: 'analyze_started:completed', properties: { anonymous: true } }],
@@ -165,6 +183,7 @@ describe('Site first-value funnel', () => {
       claimRate: 33,
       failedBeforeResult: 1,
       stillRunning: 0,
+      completedWithoutReceipt: 0,
       missingAudit: 0,
       sources: [
         { source: 'search', started: 2, analysisCompleted: 2, firstUsefulResult: 2, claimed: 1 },

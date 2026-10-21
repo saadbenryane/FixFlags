@@ -25,6 +25,7 @@ export const FOOTER_COLUMNS = {
     { href: '/help', label: 'Help Center' },
     { href: '/faq', label: 'FAQ' },
     { href: '/blog', label: 'Blog' },
+    { href: '/guides', label: 'Website guides' },
     { href: '/tools/meta-preview', label: 'Meta Preview Tool' },
     { href: '/tools/placeholder-detector', label: 'Placeholder Copy Detector' },
   ],

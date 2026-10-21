@@ -640,7 +640,7 @@ export default async function AdminAnalyticsPage() {
             value={firstValueFunnel.failedBeforeResult.toLocaleString()}
             detail={
               <span className="text-xs text-muted-foreground">
-                {firstValueFunnel.stillRunning} pending or missing result
+                {firstValueFunnel.stillRunning} pending · {firstValueFunnel.completedWithoutReceipt} completed without a receipt
               </span>
             }
             variant="subtle"

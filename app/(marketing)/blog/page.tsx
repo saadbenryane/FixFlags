@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Image from 'next/image'
 import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import Link from 'next/link'
@@ -34,6 +35,7 @@ export default function BlogPage() {
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
           <Link href="/new" className={s.readLink}>{BLOG_PAGE.startCta}<ArrowRight size={16} aria-hidden="true" /></Link>
           <Link href="/docs" className={s.readLink}>{BLOG_PAGE.docsCta}</Link>
+          <Link href={'/guides' as Route} className={s.readLink}>{BLOG_PAGE.guidesCta}</Link>
         </div>
       </section>
     </Container>

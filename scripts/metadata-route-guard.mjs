@@ -31,6 +31,7 @@ const ROUTE_TO_PAGE = {
   '/docs/integrations/google-search-console': 'app/(docs)/docs/integrations/[integration]/page.tsx',
   '/changelog': 'app/(marketing)/changelog/page.tsx',
   '/blog': 'app/(marketing)/blog/page.tsx',
+  '/guides': 'app/(marketing)/guides/page.tsx',
   '/samples': 'app/(marketing)/samples/page.tsx',
   '/privacy': 'app/(marketing)/privacy/page.tsx',
   '/terms': 'app/(marketing)/terms/page.tsx',

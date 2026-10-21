@@ -1,3 +1,4 @@
+import { ToolEducation } from '@/components/marketing/tools/ToolEducation'
 import { MetaPreviewClient } from '@/components/marketing/tools/MetaPreviewClient'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -24,6 +25,7 @@ export default function MetaPreviewPage() {
         <Container variant="narrow" className="space-y-8">
           <main>
             <MetaPreviewClient />
+            <ToolEducation tool="meta-preview" />
           </main>
         </Container>
       </Section>

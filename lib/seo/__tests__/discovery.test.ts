@@ -1,3 +1,4 @@
+import { WEBSITE_GUIDES, GUIDE_REVIEWED_AT } from '@/lib/marketing/copy/guides'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,6 +24,13 @@ const issue = {
 }
 
 describe('technical discovery', () => {
+  it('discovers every published guide with its reviewed modification date', async () => {
+    const entries = await sitemap()
+    for (const guide of WEBSITE_GUIDES) {
+      expect(entries).toContainEqual(expect.objectContaining({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(GUIDE_REVIEWED_AT) }))
+      expect(buildLlmsTxt()).toContain(`](${baseUrl}/guides/${guide.slug})`)
+    }
+  })
   beforeEach(() => {
     vi.mocked(getIndexableIssueCheckIds).mockResolvedValue([issue])
   })
@@ -74,6 +82,7 @@ describe('technical discovery', () => {
       ...HELP_CATEGORIES.map((category) => `/help/${category.id}`),
       ...HELP_ARTICLES.map((article) => helpArticlePath(article.categoryId, article.slug)),
       ...BLOG_POSTS.map((post) => `/blog/${post.slug}`),
+      ...WEBSITE_GUIDES.map(guide => `/guides/${guide.slug}`),
     ])
     const links = [...buildLlmsTxt().matchAll(/\]\(([^)]+)\)/g)]
     expect(links.length).toBeGreaterThan(0)
