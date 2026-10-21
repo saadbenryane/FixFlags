@@ -6,7 +6,7 @@ export const HELP_CATEGORIES: readonly HelpCategory[] = [
   { id: 'sites-and-coverage', title: 'Sites and coverage', description: 'Understand what was checked, when, and where.', icon: 'flag' },
   { id: 'flags-fix-verify', title: 'Flags, Fix, Verify', description: 'Read a problem, make a change, and check the fix.', icon: 'flag' },
   { id: 'watch-and-notifications', title: 'Watch and notifications', description: 'Set a check schedule and choose your emails.', icon: 'rocket' },
-  { id: 'shopify', title: 'Shopify', description: 'Connect or disconnect your store.', icon: 'creditCard' },
+  { id: 'shopify', title: 'Shopify', description: 'Connection status and removal.', icon: 'creditCard' },
   { id: 'account-and-billing', title: 'Account and billing', description: 'Sign in and manage your plan.', icon: 'creditCard' },
   { id: 'privacy-and-security', title: 'Privacy and security', description: 'Understand saved data and account deletion.', icon: 'user' },
   { id: 'troubleshooting', title: 'Troubleshooting', description: 'Get help when a check does not finish.', icon: 'terminal' },
@@ -27,10 +27,10 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'save-your-site', categoryId: 'getting-started', title: 'Save a Site to your account',
     excerpt: "Keep your website and results in your account.", popular: true,
-    searchTokens: ['claim', 'sign up', 'sign in', 'anonymous'], updatedAt: '2026-10-13', estimatedReadMinutes: 2,
+    searchTokens: ['claim', 'sign up', 'sign in', 'anonymous'], updatedAt: '2026-10-19', estimatedReadMinutes: 2,
     body: [
       { type: "p", text: "From your website’s results page, sign in or create an account to save it. FixFlags calls your saved website a Site." },
-      { type: "p", text: "Your results stay with the website you just checked. Return to it from Sites in your account. Signing in does not start another analysis." },
+      { type: "p", text: "Your original results stay with the website you checked. Open it from Websites in your account. Saving a Site schedules monitoring. Its next check and cadence are shown in Settings." },
     ], related: ['analyze-a-website', 'sign-in-and-account-security'], relatedDocs: ['getting-started'],
   },
   {

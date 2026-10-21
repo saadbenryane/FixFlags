@@ -37,7 +37,12 @@ export const siteActionSchemas = {
   run: z.object({ runId: z.string().min(1), auditId: z.string().min(1), outcomeIds: z.array(z.string().min(1)), reused: z.boolean() }).strict(),
   outcomeEnabled: z.object({ outcome: z.object({ id: z.string().min(1), enabled: z.boolean() }).passthrough(),
     verificationQueued: z.boolean(), verificationError: z.string().nullable() }).strict(),
-  fixPrompt: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1), handoff: z.unknown().nullable() }).strict(),
+  fixPrompt: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1), handoff: z.object({
+    flagId: z.string().min(1), action: z.literal('HANDOFF_COPIED'),
+    improvementId: z.string().min(1), sourceReviewId: z.string().min(1),
+  }).passthrough() }).strict(),
+  fixPromptPreparation: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1),
+    sourceFlagId: z.string().min(1), promptHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   flagVerify: z.object({ ok: z.literal(true), accepted: z.literal(true), runId: z.string().min(1),
     runRequestId: z.string().min(1), verificationAuditId: z.string().min(1), siteId: z.string().min(1),
     parentAuditId: z.string().min(1), flagId: z.string().min(1), attemptId: z.string().min(1).nullable(),

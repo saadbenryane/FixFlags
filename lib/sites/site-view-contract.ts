@@ -76,7 +76,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   recoveryUnavailable: z.boolean().optional(),
   executionProgress: z.object({ total: count, completed: count, running: count, pending: count, recovering: count,
     unknown: count, inapplicable: count, recoveryUntil: nullableTime, eventCursor: nullableText,
-    recovery: recovery.nullable().optional(), categoryRecovery: z.record(area, recovery).optional(),
+    recovery: recovery.nullable().optional(), categoryRecovery: z.partialRecord(area, recovery).optional(),
     summary: z.object({ total: count, recorded: count, limited: count, failed: count, notApplicable: count,
       pending: count, recovering: count, state: z.enum(['active', 'finished', 'limited', 'failed']), reasons: z.array(text).max(1200) }).optional(),
     tasks: z.array(z.object({ id: text, kind: text, module: nullableText.optional(), device: z.enum(['desktop', 'mobile']).nullable().optional(),

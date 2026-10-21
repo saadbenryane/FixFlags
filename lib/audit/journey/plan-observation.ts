@@ -1,3 +1,4 @@
+import type { ProviderUsageAdmission } from '../provider-usage'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { captureAccessibilityTree } from '@/lib/audit/browser/journey-safety'
 import { discoverJourneyLinks } from './discover'
@@ -7,7 +8,7 @@ import type { ScanAccessConfig } from '@/lib/audit/scan-access'
 
 /** Collect this planner's actual page facts and close its private browser context. */
 export async function observeJourneyPlan(startUrl: string, contract: ProductContract | null,
-  scanAccess: ScanAccessConfig | null | undefined, remainingBudget: () => number) {
+  scanAccess: ScanAccessConfig | null | undefined, remainingBudget: () => number, onAttempt?: ProviderUsageAdmission) {
   const browserForPlan = await getAuditBrowser()
   const planSession = await (
     await import('@/lib/audit/browser/page-session')
@@ -41,7 +42,8 @@ export async function observeJourneyPlan(startUrl: string, contract: ProductCont
         },
         links,
       },
-      remainingBudget()
+      remainingBudget(),
+      onAttempt
     )
     return planResult
   } finally {

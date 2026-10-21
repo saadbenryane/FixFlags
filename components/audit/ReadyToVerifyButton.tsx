@@ -79,9 +79,8 @@ export function ReadyToVerifyButton({
           Ready to verify
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent header={<DialogTitle>Mark the implemented change ready to verify</DialogTitle>} className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Mark the implemented change ready to verify</DialogTitle>
           <DialogDescription>
             This records your change, not a successful result. A fresh update Review decides whether it worked.
           </DialogDescription>

@@ -1,4 +1,5 @@
 'use client'
+import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import { AdminActionButton } from './AdminActionButton'
 export function FeedbackDigestPanel() {
@@ -11,7 +12,7 @@ export function FeedbackDigestPanel() {
       </p>
       <label className="block space-y-2 text-sm">
         Window
-        <select
+        <InteractiveSelect
           className="h-11 rounded-input border bg-background px-3"
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
@@ -21,7 +22,7 @@ export function FeedbackDigestPanel() {
               {n} days
             </option>
           ))}
-        </select>
+        </InteractiveSelect>
       </label>
       <AdminActionButton action="DATA_EXPORT" targetId="feedback" input={{ days }} />
     </div>

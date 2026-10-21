@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { cn } from '@/lib/utils'
@@ -67,7 +68,7 @@ function FlagList({
                 {content}
               </Link>
             ) : (
-              <button
+              <InteractiveButton
                 type="button"
                 onClick={() => onSelectFlag?.(flag.id)}
                 title={flag.title}
@@ -78,7 +79,7 @@ function FlagList({
                 className={rowClassName}
               >
                 {content}
-              </button>
+              </InteractiveButton>
             )}
           </li>
         )

@@ -41,7 +41,7 @@ export function HelpArticleBody({ blocks }: { blocks: readonly HelpBlock[] }) {
         if (block.type === 'link') {
           return (
             <p key={i} className="text-sm">
-              <Link href={block.href as Route} className="font-medium text-brand hover:underline">
+              <Link href={block.href as Route} className="font-medium text-foreground underline underline-offset-4 decoration-muted-foreground/50 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                 {block.text}
               </Link>
             </p>

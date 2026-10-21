@@ -387,7 +387,7 @@ export const MOBILE_UX_VERIFICATION_RULES: Record<string, string> = {
   'mobile-cta-weak-label':
     'Replace vague CTA text with outcome-specific action text (e.g. "Start free trial" not "Click here").',
   'mobile-load-delay-content':
-    'Test on 3G. Confirm meaningful content renders within 2 seconds. Server-render hero content.',
+    'Blocking mobile loading UI clears within 4000ms and page content is visible under the recorded mobile conditions.',
 }
 
 const JOURNEY_VERIFY =

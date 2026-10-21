@@ -21,7 +21,7 @@ export default function DashboardLoading() {
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="flex items-center gap-4 border-b border-border/45 px-4 py-4 last:border-0 sm:px-5"
+              className="flex items-center gap-4 px-4 py-4 sm:px-5"
             >
               <Skeleton shimmer className="h-[5.25rem] w-[7.5rem] shrink-0 rounded-[var(--radius-nested-md)]" />
               <div className="min-w-0 flex-1 space-y-2">

@@ -14,6 +14,7 @@ import { SEARCH_HANDLED_CHECK_IDS } from '../search/inventory'
 import { SECURITY_HEADER_LIMITATION } from './security-headers'
 import { summarizeCheckAssertions } from './receipt'
 import { scopeRenderedPageEvidence } from './rendered-page-evidence'
+import type { DestinationCheckOptions } from './destination-evidence'
 
 export type { DeterministicFlag } from '../flag-types'
 export type { AxeViolation } from './accessibility'
@@ -33,7 +34,8 @@ export async function runAllChecks(
     head?: import('./head-metadata').HeadMetadataObservation;
     publicDocument?: import('../search/contracts').PublicDocument;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
-    allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea },
+    allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea;
+    destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'> },
 ): Promise<RunAllChecksResult> {
   if (selectedModules?.some(id => !PAGE_CHECKS.has(id))) throw new Error('Unregistered page check requested')
   const selected = [...PAGE_CHECKS.values()].filter(check => !selectedModules || selectedModules.includes(check.id))
@@ -42,7 +44,7 @@ export async function runAllChecks(
     const assertions: CheckAssertion[] = []
     const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
       head: runtimeEvidence?.head,
-      scope: {}, deadline: runtimeEvidence?.deadline, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
+      scope: {}, deadline: runtimeEvidence?.deadline, destinations: runtimeEvidence?.destinations, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
       accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
       publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations, record: assertion => {
         const definition = check.definition.assertions[assertion.key]

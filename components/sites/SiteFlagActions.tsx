@@ -97,8 +97,7 @@ export function SiteFlagActions({ siteId, flagId, initial, initialVerificationAu
       </div>
       {disconnected ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.updatesDisconnected}</p> : null}
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
-        <DialogContent>
-          <DialogTitle>{SITE_BOARD_COPY.verifyFix}</DialogTitle>
+        <DialogContent header={<DialogTitle>{SITE_BOARD_COPY.verifyFix}</DialogTitle>}>
           <DialogDescription>{SITE_BOARD_COPY.verifyDescription}</DialogDescription>
           <div className="space-y-1">
             <label htmlFor="flag-change-summary" className="text-sm font-medium">{SITE_BOARD_COPY.changeLabel}</label>

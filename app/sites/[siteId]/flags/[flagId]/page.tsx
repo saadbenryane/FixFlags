@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { CheckCircle2, ChevronLeft, CircleAlert, CircleDashed, ExternalLink, History } from 'lucide-react'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
-import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
 import { SiteShell } from '@/components/sites/SiteShell'
@@ -50,29 +49,34 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const actionFlagId = flag.sourceFlagId ?? flag.id
   const repairGuidance = flag.repairGuidance ?? repairGuidanceState(flag)
   const affectedPaths = flag.affectedPaths ?? (flag.pageUrl ? [flag.pageUrl] : [])
-  if (access.decision.role === 'owner') {
-    await recordSiteLifecycleEvent({
-      name: 'flag_opened',
-      idempotencyKey: `flag_opened:${site.projectId}:${flag.id}`,
-      userId: site.userId,
-      projectId: site.projectId,
-      properties: { area: flag.area, severity: flag.severity },
-    }).catch(() => undefined)
-    if (source === 'watch-email') {
+  async function recordOpening() {
+    if (ownsSite) {
       await recordSiteLifecycleEvent({
-        name: 'notification_returned',
-        idempotencyKey: `notification_returned:${site.projectId}:${flag.id}`,
+        name: 'flag_opened',
+        idempotencyKey: `flag_opened:${site.projectId}:${flag.id}`,
         userId: site.userId,
         projectId: site.projectId,
-        properties: { destination: 'flag' },
+        properties: { area: flag.area, severity: flag.severity },
       }).catch(() => undefined)
+      if (source === 'watch-email') {
+        await recordSiteLifecycleEvent({
+          name: 'notification_returned',
+          idempotencyKey: `notification_returned:${site.projectId}:${flag.id}`,
+          userId: site.userId,
+          projectId: site.projectId,
+          properties: { destination: 'flag' },
+        }).catch(() => undefined)
+      }
     }
   }
-  const outcomes = await listSiteOutcomes(site)
-  const connectionContext = site.projectId ? connectionLines((await loadSiteConnectionViews(site.projectId)).facts, flag.pageUrl) : []
-  const relatedOutcome = outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
-  const home = await loadSiteHome(resolvedId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
+  const [home, connectionViews] = await Promise.all([
+    loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated }),
+    site.projectId ? loadSiteConnectionViews(site.projectId) : null,
+    recordOpening(),
+  ])
   if (!home) notFound()
+  const connectionContext = connectionLines(connectionViews?.facts ?? [], flag.pageUrl)
+  const relatedOutcome = home.outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
 
   const proofId = flagRecoveryProofId({
     status: flag.status,
@@ -123,7 +127,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     <SiteShell actions={home.actions} siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" className="-ml-4 text-muted-foreground" asChild>
+          <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground" asChild>
             <Link href={`/sites/${resolvedId}?category=${flag.area}#category-${flag.area}`}>
               <ChevronLeft aria-hidden="true" />
               Back to Overview
@@ -146,11 +150,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
           <div className={`${styles.evidenceGrid} ${resolution.kind === 'open' || resolution.kind === 'verifying' ? styles.withActions : ''}`}>
             <div className="space-y-6">
               <section className="overflow-hidden rounded-[17px] border border-border bg-background shadow-sm" aria-labelledby="flag-evidence-heading">
-                <div className="flex items-center gap-3 px-5 py-4 sm:px-6">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-brand text-brand">
+                <div className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand text-brand">
                     <CircleAlert className="h-4 w-4" aria-hidden="true" />
                   </span>
-                  <div>
+                  <div className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
                     <h2 id="flag-evidence-heading" className="font-semibold">
                       {resolution.kind === 'proven' ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence}
                     </h2>
@@ -236,9 +240,9 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
             {!ownsSite ? <SiteActionContinuation availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} action="copy" /> : null}
             {ownsSite ? <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
-              <div className="flex items-center gap-3">
-                <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <h2 id="verification-history-heading" className="font-semibold">
+              <div className="flex flex-wrap items-center gap-3">
+                <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <h2 id="verification-history-heading" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] font-semibold">
                   {SITE_BOARD_COPY.verificationHistory}
                 </h2>
               </div>

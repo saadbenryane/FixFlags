@@ -84,11 +84,14 @@ test('local real analysis, claim, activation and first independent execution', a
     expect(await db.runRequest.count({ where: { projectId } })).toBe(before)
     expect((await db.project.findUnique({ where: { id: projectId } }))!.watchNextRunAt).toEqual(persisted!.watchNextRunAt)
     proof.repeatActivation = 'same run count and next scheduled time'
-    // Advance only this disposable Site's due date; keep the real weekly policy.
+    // Resume through the owner command, preserving the real weekly policy.
     // Refuse the global adapter if another local Site is due, to protect others.
     const otherDue = await db.project.count({ where: { id: { not: projectId }, watchInterval: { not: null }, watchNextRunAt: { lte: new Date() } } })
     expect(otherDue, 'No unrelated Site may be processed by this fixture').toBe(0)
-    await db.project.update({ where: { id: projectId }, data: { watchNextRunAt: new Date(0) } })
+    for (const action of ['pause', 'resume']) {
+      const changed = await page.request.post(`/api/sites/${projectId}/watch`, { data: { action } })
+      expect(changed.status(), await changed.text()).toBe(200)
+    }
     // Run the existing adapter with the same TS runtime as the worker.
     await mkdir('.cache', { recursive: true })
     const tickScript = `.cache/activation-watch-${nonce}.ts`
@@ -109,7 +112,7 @@ test('local real analysis, claim, activation and first independent execution', a
     await expect.poll(async () => (await db.runRequest.findFirst({ where: { projectId: projectId!, source: 'WATCH' }, orderBy: { requestedAt: 'desc' } }))?.status, { timeout: 150_000, intervals: [1500] }).toBe('COMPLETED')
     const scheduledRun = await db.runRequest.findFirst({ where: { projectId: projectId!, source: 'WATCH' }, orderBy: { requestedAt: 'desc' } })
     expect((await db.outcomeAssessment.findFirst({ where: { outcomeId: coverage!.id, runRequestId: scheduledRun!.id } }))?.state).toBe('CLEAR')
-    proof.scheduledExecution = 'real due-Watch processor and worker completed; only the disposable due date was advanced'
+    proof.scheduledExecution = 'normal owner pause and resume, real due-Watch processor and worker completed; no timestamp mutation'
 
     await page.keyboard.press('Escape'); await page.reload({ waitUntil: 'networkidle' })
     await expect(page.getByText('This page opened when we checked.').first()).toBeVisible()

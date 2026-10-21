@@ -63,7 +63,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
     const url = new URL(window.location.href)
     if (area) url.searchParams.set('category', area)
     else url.searchParams.delete('category')
-    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
   }
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
   function checkAction(area?: SiteCardArea, identifyArea = false) {
@@ -75,7 +75,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
       if (recovery.action === 'inspect' && area) return null
       return <Button asChild variant="outline" size="sm"><Link href={href as Route}>{SITE_ACTION_COPY.recovery[recovery.action]}</Link></Button>
     }
-    if (ownsSite) return <Button variant="outline" size="sm" className="min-h-11" aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
+    if (ownsSite) return <Button variant="outline" size="sm" className="min-h-11" data-site-return-focus="check" aria-label={name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : undefined} disabled={busy || checking || Boolean(categoryChecking) || disconnected} onClick={() => void refreshSiteEvidence(area)}>
       <RefreshCw className="h-4 w-4" aria-hidden />{busy ? SITE_BOARD_COPY.starting : checking || categoryChecking ? SITE_BOARD_COPY.checking : name && identifyArea ? SITE_BOARD_COPY.checkAreaAgain(name) : SITE_BOARD_COPY.checkAgain}
     </Button>
     if (!ownsSite && (!area || !identifyArea) && !checking && view.audit.id) return <SiteActionContinuation
@@ -130,7 +130,8 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
     monitoring: view.presentation.monitoring,
     disconnected,
   })
-  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing')
+  const showActivityPanel = Boolean(banner && banner.kind !== 'details' && banner.kind !== 'analyzing' &&
+    (banner.kind !== 'incomplete' || summaryNote))
 
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} actions={view.actions} activeRoute={viewMode} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
@@ -164,7 +165,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} summaryItems={summaryItems}
+        <SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} capturePriority summaryItems={summaryItems}
           notice={checking ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
             if (item.id === 'pages') { opener.current = document.activeElement as HTMLElement; setSelectedCard('site'); return }
@@ -193,7 +194,7 @@ export function SiteBoard({ siteId, initial, viewMode = 'home', initialCategory 
               }
               return { id: card.id, flagCount: category.flagCount,
                 healthy: !checking && displayCard.state === 'healthy' && category.flagCount === 0 && displayCard.activity !== 'checking' && !card.incompleteReason,
-                render: (layout: 'card' | 'row') => <div id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact layout={layout} card={displayCard} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={() => {
+                render: (layout: 'card' | 'row') => <div id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={() => {
                 opener.current = document.activeElement as HTMLElement
                 selectCategory(card.id)
               }} /></div> }

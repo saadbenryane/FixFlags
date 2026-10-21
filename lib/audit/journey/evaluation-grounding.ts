@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { journeyEvaluationSchema, type JourneyEvaluation } from './evaluator-schema'
 import type { JourneyStepDraft } from './types'
+import { observedJourneyActionDetail } from './action-observation'
 
 const rejectionSchema = z.object({
   kind: z.enum(['frictionPoints', 'brokenPromises', 'accessibilityBarriers']),
@@ -10,7 +11,7 @@ const rejectionSchema = z.object({
 }).strict()
 export const journeyAssessmentSchema = z.object({
   version: z.literal(1), journeyType: z.string().max(100), state: z.enum(['COMPLETE', 'INCOMPLETE']),
-  reason: z.enum(['assessed', 'unsupported_candidates', 'provider_failed', 'budget_unavailable']),
+  reason: z.enum(['assessed', 'unsupported_candidates', 'provider_failed', 'budget_unavailable', 'walk_incomplete']),
   evaluation: journeyEvaluationSchema.optional(),
   rejections: z.array(rejectionSchema).max(20),
 }).strict()
@@ -21,7 +22,7 @@ const normalized = (value: string) => value.replace(/\s+/g, ' ').trim()
 function sourceText(step: JourneyStepDraft, source: NonNullable<Candidate['evidenceRefs']>[number]['source']): string {
   switch (source) {
     case 'accessibilityTree': return step.accessibilityTree.slice(0, 12_000)
-    case 'actionDetail': return JSON.stringify(step.actionDetail)
+    case 'actionDetail': return JSON.stringify(observedJourneyActionDetail(step))
     case 'elementDescription': return step.elementDescription ?? ''
     case 'outcomeDetail': return step.outcomeDetail ?? ''
     case 'consoleErrors': return (step.consoleErrors ?? []).join('; ')

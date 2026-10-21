@@ -27,6 +27,7 @@ export const OUTCOME_DETAIL_COPY = {
 } as const
 
 export const SITE_WORKSPACE_COPY = {
+  websites: 'Websites',
   attempts: (count: number) => `${count} ${count === 1 ? 'attempt' : 'attempts'}`,
   remaining: (count: number) => `${count} ${count === 1 ? 'task' : 'tasks'} remaining`,
   milestones: { done: 'Recorded', current: 'In progress', pending: 'Queued', partial: 'Incomplete' },

@@ -2,6 +2,9 @@ import { gradeRank, severityRank } from '@/lib/utils'
 import type { FixConfidence, RankableFlag } from './flag-types'
 import type { ProductContract } from './product-contract'
 import { buildPlanBundleHeader, formatPlanItem, buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
+export { isUsableFixPrompt, LEGACY_LOCKED_PROMPT_TEXT } from './prescription-policy'
+import { effectiveRepairGuidance as resolveFixPrompt } from '@/lib/improvements/repair-guidance'
+export { effectiveRepairGuidance as resolveFixPrompt } from '@/lib/improvements/repair-guidance'
 
 export type { FixConfidence, RankableFlag } from './flag-types'
 export { AGENT_COPY_LEAD } from '@/lib/audit/editor-handoff'
@@ -298,45 +301,6 @@ export function countFlags(flags: RankableFlag[]): {
     important: groups.important.length,
     polish: groups.polish.length,
   }
-}
-
-/** Legacy signup-gate strings that were wrongly persisted as Flag evidence/fix. */
-export const LEGACY_LOCKED_PROMPT_TEXT = [
-  'Sign up',
-  'Create a free account to see evidence and fix prompts.',
-  'Sign up to see why this matters and get a fix prompt for your editor.',
-  'Sign up to get the fix prompt.',
-  'Sign up to see verification steps.',
-] as const
-
-const LEGACY_LOCKED_PROMPT_SET = new Set<string>(LEGACY_LOCKED_PROMPT_TEXT)
-
-/** True when text is a real editor prompt, not empty or a signup placeholder. */
-export function isUsableFixPrompt(prompt: string | null | undefined): prompt is string {
-  const trimmed = prompt?.trim()
-  if (!trimmed) return false
-  return !LEGACY_LOCKED_PROMPT_SET.has(trimmed)
-}
-
-export function resolveFixPrompt(flag: RankableFlag): string | null {
-  // agentPrompt/tool-specific prompts are the AI-crafted, copy-paste-ready
-  // instructions ("what users most often copy-paste into Cursor/Claude" -
-  // see lib/prompts/system-prompt.ts). `fix` is a plain-English description
-  // written for a human, not an agent, so it's only the last-resort fallback
-  // for flags that haven't gone through AI prescription yet.
-  const candidates = [
-    flag.agentPrompt,
-    flag.cursorPrompt,
-    flag.claudePrompt,
-    flag.windsurfPrompt,
-    flag.lovablePrompt,
-    flag.boltPrompt,
-    flag.fix,
-  ]
-  for (const candidate of candidates) {
-    if (isUsableFixPrompt(candidate)) return candidate.trim()
-  }
-  return null
 }
 
 export function flagHasFixPrompt(flag: RankableFlag): boolean {

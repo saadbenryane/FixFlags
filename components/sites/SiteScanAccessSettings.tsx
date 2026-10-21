@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveTextarea } from '@/components/ui/interactive-controls'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { KeyRound } from 'lucide-react'
@@ -60,7 +61,7 @@ export function SiteScanAccessSettings({ siteId }: { siteId: string }) {
         <label className="space-y-2 text-sm" htmlFor={`${id}-password`}><span>{C.password}</span><Input id={`${id}-password`} type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" maxLength={500} disabled={busy} /></label>
       </div>
       <details className="text-sm"><summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{C.advanced}</summary>
-        <div className="mt-3 space-y-4">{[{ key: 'headers', label: C.headers, value: headers, change: setHeaders }, { key: 'cookies', label: C.cookies, value: cookies, change: setCookies }].map(field => <label key={field.key} className="block space-y-2" htmlFor={`${id}-${field.key}`}><span>{field.label}</span><textarea id={`${id}-${field.key}`} value={field.value} onChange={event => field.change(event.target.value)} maxLength={100_000} rows={4} disabled={busy} spellCheck={false} className="min-h-11 w-full rounded-control border border-border bg-background p-3 font-mono text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></label>)}</div>
+        <div className="mt-3 space-y-4">{[{ key: 'headers', label: C.headers, value: headers, change: setHeaders }, { key: 'cookies', label: C.cookies, value: cookies, change: setCookies }].map(field => <label key={field.key} className="block space-y-2" htmlFor={`${id}-${field.key}`}><span>{field.label}</span><InteractiveTextarea id={`${id}-${field.key}`} value={field.value} onChange={event => field.change(event.target.value)} maxLength={100_000} rows={4} disabled={busy} spellCheck={false} className="min-h-11 w-full rounded-control border border-border bg-background p-3 font-mono text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" /></label>)}</div>
       </details>
       <label className="block space-y-2 text-sm" htmlFor={`${id}-note`}><span>{C.note}</span><Input id={`${id}-note`} value={note} onChange={event => setNote(event.target.value)} maxLength={200} disabled={busy} /></label>
       <p className="text-sm text-muted-foreground">{C.replacement}</p>

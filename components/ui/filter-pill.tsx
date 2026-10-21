@@ -3,6 +3,8 @@
 import * as React from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { InteractiveButton } from './interactive-controls'
+import { hasClientInteraction } from './client-interaction'
 
 export interface FilterPillProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean
@@ -11,13 +13,14 @@ export interface FilterPillProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 }
 
 export function FilterPill({ className, active, size = 'md', icon: Icon, children, ...props }: FilterPillProps) {
+  const Control = hasClientInteraction(props) ? InteractiveButton : 'button'
   return (
-    <button
+    <Control
       type="button"
       aria-pressed={active}
       className={cn(
-        'inline-flex shrink-0 items-center rounded-full font-medium transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-        size === 'sm' ? 'min-h-8 px-2 py-0.5 text-2xs' : 'min-h-9 px-3 py-1 text-sm',
+        'inline-flex min-h-11 min-w-11 shrink-0 items-center rounded-full font-medium transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
+        size === 'sm' ? 'px-2 py-0.5 text-2xs' : 'px-3 py-1 text-sm',
         active
           ? 'bg-accent text-foreground shadow-filter-pill'
           : 'bg-muted/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground',
@@ -27,6 +30,6 @@ export function FilterPill({ className, active, size = 'md', icon: Icon, childre
     >
       {Icon && <Icon className={cn('shrink-0', size === 'sm' ? 'h-3 w-3' : 'h-4 w-4', children ? 'mr-1' : '')} aria-hidden />}
       {children}
-    </button>
+    </Control>
   )
 }

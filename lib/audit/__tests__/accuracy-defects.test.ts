@@ -313,8 +313,9 @@ describe('managed-host security headers', () => {
     expect(flags).toHaveLength(1)
     expect(flags[0].checkId).toBe('security-headers-missing')
     expect(flags[0].severity).toBe('POLISH')
-    expect(flags[0].evidence).toMatch(/managed subdomain/i)
-    expect(flags[0].evidence).toMatch(/custom domain/i)
+    expect(flags[0].evidence).toContain('Hosting configuration was not inspected for demo.lovable.app')
+    expect(flags[0].evidence).toContain('No Content-Security-Policy header')
+    expect(flags[0].evidence).not.toMatch(/custom domain|cannot (set|configure)/i)
     // Must not emit CRITICAL CSP on managed hosts.
     expect(flags.every((f) => f.severity === 'POLISH')).toBe(true)
   })

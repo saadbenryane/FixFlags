@@ -100,7 +100,7 @@ describe('curated sample provenance', () => {
     await assert.rejects(getCuratedSampleAudit(''), UnknownCuratedObservationError)
   })
 
-  it('names worthwhile Flags and leaves the Polish canonical observation in the Report', async () => {
+  it('retains every historical sample observation without announcing heuristic judgments as established failures', async () => {
     const { audit } = await getCuratedSampleAudit()
     const messages = buildFixFlagsScanMessages({
       id: audit.id,
@@ -121,7 +121,9 @@ describe('curated sample provenance', () => {
     })
     const announced = messages.filter((item) => item.kind === 'flag').map((item) => item.flagId)
 
-    assert.ok(announced.includes('flag-experience-mobile-cta'))
+    assert.equal(audit.flags.length, 7)
+    assert.equal(announced.includes('flag-experience-mobile-cta'), false)
+    assert.equal(announced.includes('flag-message-placeholder'), false)
     assert.equal(announced.includes('flag-reach-canonical'), false)
     assert.equal(
       messages.some((item) => item.id.endsWith(':no-attention')),

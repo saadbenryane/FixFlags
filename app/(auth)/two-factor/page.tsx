@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { FormContainer } from '@/components/ui/form-field'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
@@ -41,7 +42,7 @@ function TwoFactorForm() {
         return
       }
       trackEvent('signed_in', { method: 'passkey_2fa' })
-      router.push(postLoginHref)
+      router.replace(postLoginHref)
     } catch {
       toast.error(AUTH.passkeyErrors.twoFactorCancelled)
     } finally {
@@ -63,7 +64,7 @@ function TwoFactorForm() {
       }
       trackEvent('signed_in', { method: 'backup_code' })
       // Same post-login claim path as email/OAuth.
-      router.push(postLoginHref)
+      router.replace(postLoginHref)
     } catch {
       toast.error(AUTH.twoFactor.backupCodeError)
     } finally {
@@ -101,14 +102,7 @@ function TwoFactorForm() {
           {AUTH.twoFactor.passkeyCta}
         </Button>
 
-        <div className="relative py-1">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border/60" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">{AUTH.twoFactor.backupLabel}</span>
-          </div>
-        </div>
+        <p className="py-1 text-center text-xs uppercase text-muted-foreground">{AUTH.twoFactor.backupLabel}</p>
 
         <FormContainer onSubmit={verifyBackup} className="space-y-4">
           <div className="space-y-2">
@@ -125,12 +119,11 @@ function TwoFactorForm() {
               disabled={loading !== null}
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
+          <label htmlFor="trust-device" className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              id="trust-device"
               checked={trustDevice}
-              onChange={(event) => setTrustDevice(event.target.checked)}
-              className="rounded border-border"
+              onCheckedChange={(checked) => setTrustDevice(checked === true)}
             />
             {AUTH.twoFactor.trustDevice}
           </label>

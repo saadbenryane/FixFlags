@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -200,7 +201,7 @@ export function SafeFormFixtures({ siteId, initial }: { siteId: string; initial:
             <Field label="Password field label"><Input value={draft.passwordLabel} onChange={(event) => setDraft({ ...draft, passwordLabel: event.target.value })} /></Field>
             <Field label="Synthetic password"><Input required={Boolean(draft.passwordLabel)} type="password" autoComplete="new-password" value={draft.passwordValue} onChange={(event) => setDraft({ ...draft, passwordValue: event.target.value })} /></Field>
             <Field label="Submit button name"><Input required value={draft.submitName} onChange={(event) => setDraft({ ...draft, submitName: event.target.value })} /></Field>
-            <Field label="Success check"><select className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm" value={draft.successType} onChange={(event) => setDraft({ ...draft, successType: event.target.value as Draft['successType'] })}><option value="text">Visible text</option><option value="url">Exact URL</option></select></Field>
+            <Field label="Success check"><InteractiveSelect className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm" value={draft.successType} onChange={(event) => setDraft({ ...draft, successType: event.target.value as Draft['successType'] })}><option value="text">Visible text</option><option value="url">Exact URL</option></InteractiveSelect></Field>
             <Field label={draft.successType === 'url' ? 'Success URL' : 'Success text'}><Input required type={draft.successType === 'url' ? 'url' : 'text'} value={draft.successValue} onChange={(event) => setDraft({ ...draft, successValue: event.target.value })} /></Field>
             <Field label="Reset hook URL"><Input required type="url" value={draft.resetUrl} onChange={(event) => setDraft({ ...draft, resetUrl: event.target.value })} /></Field>
             <Field label="Cleanup hook URL"><Input required type="url" value={draft.cleanupUrl} onChange={(event) => setDraft({ ...draft, cleanupUrl: event.target.value })} /></Field>

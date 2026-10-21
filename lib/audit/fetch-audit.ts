@@ -158,11 +158,21 @@ const ACTIVE_ATTACHED_STATUSES = [
   'FINALIZING',
 ] as const
 
+type AttachedWorkViewer = {
+  requestedAudit: { id: string; userId: string | null; isPublic: boolean }
+  user: { id: string } | null | undefined
+}
+
 /**
- * Follow only an in-flight attached Update review.
+ * Follow only an in-flight attached Update review authorized for this viewer.
  * Completed parent bookmarks stay on that parent; active work redirects to the child.
  */
-export async function resolveActiveAttachedWorkId(id: string): Promise<string> {
+export async function resolveActiveAttachedWorkId(id: string, viewer?: AttachedWorkViewer): Promise<string> {
+  const user = viewer ? viewer.user : (await resolveSessionUser())?.user
+  const requested = viewer?.requestedAudit ?? await prisma.audit.findUnique({
+    where: { id }, select: { id: true, userId: true, isPublic: true },
+  })
+  if (!requested || requested.id !== id || await resolveAccessForCookies(requested, user) === 'denied') return id
   let current = id
   for (let hop = 0; hop < MAX_ATTACHED_CHILD_HOPS; hop += 1) {
     const child = await prisma.audit.findFirst({
@@ -171,9 +181,9 @@ export async function resolveActiveAttachedWorkId(id: string): Promise<string> {
         status: { in: [...ACTIVE_ATTACHED_STATUSES] },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { id: true },
+      select: { id: true, userId: true, isPublic: true },
     })
-    if (!child) return current
+    if (!child || await resolveAccessForCookies(child, user) === 'denied') return current
     current = child.id
   }
   return current
@@ -236,14 +246,10 @@ export async function getProgressiveAuditForRequest(id: string) {
 
   if (!requested) return { kind: 'not_found' as const }
 
-  const accessContext = await resolveAccessForCookies(requested, session?.user)
+  let accessContext = await resolveAccessForCookies(requested, session?.user)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
-  const capabilities = resolveReviewCapabilities({
-    visibility: accessContext,
-    isAuthenticated: Boolean(session?.user),
-  })
 
-  const workId = await resolveActiveAttachedWorkId(id)
+  const workId = await resolveActiveAttachedWorkId(id, { requestedAudit: requested, user: session?.user })
   const audit =
     workId === id
       ? requested
@@ -252,6 +258,12 @@ export async function getProgressiveAuditForRequest(id: string) {
           select: progressiveAuditSelect,
         })
   if (!audit) return { kind: 'not_found' as const }
+  if (workId !== id) accessContext = await resolveAccessForCookies(audit, session?.user)
+  if (accessContext === 'denied') return { kind: 'forbidden' as const }
+  const capabilities = resolveReviewCapabilities({
+    visibility: accessContext,
+    isAuthenticated: Boolean(session?.user),
+  })
 
   if (audit.status === 'COMPLETED') {
     return {
@@ -308,20 +320,21 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'not_found' as const }
   }
 
-  const accessContext = await resolveAccessForCookies(requested, session?.user)
+  let accessContext = await resolveAccessForCookies(requested, session?.user)
   if (accessContext === 'denied') {
     return { kind: 'forbidden' as const }
   }
-  const capabilities = resolveReviewCapabilities({
-    visibility: accessContext,
-    isAuthenticated: Boolean(session?.user),
-  })
-
-  const workId = await resolveActiveAttachedWorkId(id)
+  const workId = await resolveActiveAttachedWorkId(id, { requestedAudit: requested, user: session?.user })
   const audit = workId === id ? requested : await fetchAuditRow(workId)
   if (!audit) {
     return { kind: 'not_found' as const }
   }
+  if (workId !== id) accessContext = await resolveAccessForCookies(audit, session?.user)
+  if (accessContext === 'denied') return { kind: 'forbidden' as const }
+  const capabilities = resolveReviewCapabilities({
+    visibility: accessContext,
+    isAuthenticated: Boolean(session?.user),
+  })
   const showPrescription =
     capabilities.canViewPromptBodies && Boolean(audit.aiReviewAt)
   const showDeterministicFixes = capabilities.canViewPromptBodies

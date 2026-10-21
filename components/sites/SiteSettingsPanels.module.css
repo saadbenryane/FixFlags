@@ -19,7 +19,7 @@
 .toggle > span { min-width: 0; padding-top: 10px; }
 .toggle:has(button:disabled) { color: hsl(var(--muted-foreground)); }
 .details { font-size: 12px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
-.details summary { width: fit-content; min-height: 36px; padding-block: 8px; cursor: pointer; }
+.details summary { width: fit-content; min-height: 44px; padding-block: 8px; cursor: pointer; }
 .details p { margin-top: 4px; }
 .note { margin-top: 16px; font-size: 13px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
 .results { display: grid; gap: 12px; margin: 20px 0 0; padding: 0; list-style: none; }

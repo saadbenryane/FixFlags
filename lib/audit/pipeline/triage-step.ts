@@ -9,6 +9,7 @@ import type { DeterministicFlag } from '../checks'
 import { prisma } from '@/lib/db'
 import { observationIdentity } from '@/lib/audit/flag-identity'
 import { renderedContentMetadata } from '../browser/rendered-copy'
+import { beginProviderUsage } from '../provider-usage'
 
 interface TriageStepInput {
   url: string
@@ -47,7 +48,8 @@ export async function runTriageStep(
     input.desktopBase64,
     input.mobileBase64,
     maxTimeoutMs,
-    knownObservations
+    knownObservations,
+    model => beginProviderUsage(ctx.auditId, 'triage', model)
   )
 
   await ctx.events.log({

@@ -47,9 +47,11 @@ describe('public supporting pages', () => {
     expect(screen.getByRole('button', { name: C.analyze })).toHaveAttribute('type', 'submit')
   })
 
-  it('explains account access, public reports, and safe execution plainly', () => {
+  it('explains creator privacy, historical public reports, and safe execution plainly', () => {
     render(<SecurityPage />)
-    expect(screen.getByText(/anonymous analysis can show public-safe evidence/i)).toBeVisible()
+    expect(screen.getByText(/A new analysis is private to the browser that started it/i)).toBeVisible()
+    expect(screen.getByText(/A copied link does not grant private access/i)).toBeVisible()
+    expect(screen.getByText(/Historical public reports keep their existing access policy/i)).toBeVisible()
     expect(screen.getByText(/Signup checks require an authorized, reversible test setup/)).toBeVisible()
     expect(screen.getByRole('link', { name: C.securityPage.terms })).toHaveAttribute('href', '/terms')
   })

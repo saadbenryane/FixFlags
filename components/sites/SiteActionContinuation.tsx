@@ -11,7 +11,7 @@ export function SiteActionContinuation({ availability, destination, action, comp
   compact?: boolean
 }) {
   if (availability === 'available') return null
-  return <Button asChild variant="outline" size={compact ? 'sm' : 'default'} className="min-h-11">
+  return <Button asChild variant="outline" size={compact ? 'sm' : 'default'} className="min-h-11" data-site-return-focus={action}>
     <Link href={siteContinuationHref(availability, destination) as Route}>
       {availability === 'claim' ? C.access.claim : C.access[action]}
     </Link>

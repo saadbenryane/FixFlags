@@ -4,6 +4,8 @@ import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { NAVIGATION_OBSERVATION_COPY as C } from '@/lib/marketing/copy/navigation-observations'
+import { QUALITATIVE_GUIDANCE_COPY } from '@/lib/marketing/copy/qualitative-guidance'
 
 export function runVisualHierarchyChecks(
   meta: PageMetadata | null,
@@ -25,9 +27,9 @@ export function runVisualHierarchyChecks(
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
         severity: 'IMPORTANT',
-        problem: `${captureMetrics.competingPrimaryCtaCount} equally prominent CTAs compete above the fold`,
-        evidence: `Multiple high-intent CTAs with similar visual weight: ${captureMetrics.competingPrimaryCtaLabels.slice(0, 4).map((l) => `"${l}"`).join(', ')}. Users may experience choice paralysis.`,
-        fix: '1. Designate one primary CTA as the dominant action (filled button, larger size)\n2. Make secondary actions visually distinct (outline/ghost styling, smaller)\n3. Remove CTAs that serve non-primary goals from above the fold\n4. Use visual hierarchy: primary > secondary > text link for descending prominence',
+        problem: C.competingProblem(count),
+        evidence: C.competingEvidence(captureMetrics.competingPrimaryCtaLabels),
+        fix: C.competingGuidance,
         confidence: 0.85,
         source: 'DETERMINISTIC',
       })
@@ -56,7 +58,7 @@ export function runVisualHierarchyChecks(
       severity: 'POLISH',
       problem: 'Review the captured section-heading structure',
       evidence: `${h1s.length} H1 found but no H2 section headings. Visual section boundaries and reader comprehension were not measured.`,
-      fix: '1. Add H2 section headings to break content into scannable sections\n2. Use descriptive H2s that tell the user what each section is about\n3. Maintain hierarchy: H1 → H2 → H3 → body text\n4. Each section heading should promise a specific benefit or answer a question',
+      fix: QUALITATIVE_GUIDANCE_COPY.sections,
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

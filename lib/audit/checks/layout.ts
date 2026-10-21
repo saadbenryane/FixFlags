@@ -2,6 +2,7 @@ import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { needsFirstStep, type PagePurpose } from '../page-purpose'
 import { recordObservation, type CheckRecorder } from './assertion'
+import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 
 export function runLayoutChecks(
   metrics: CaptureMetrics | null,
@@ -19,7 +20,7 @@ export function runLayoutChecks(
   // the same boundary for first-step expectations.
   if (!needsFirstStep(purpose) || metrics == null || metrics.mobilePrimaryCtaTopPx == null) {
     if (needsFirstStep(purpose)) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
-      'The measured primary action begins inside the initial mobile viewport', 'Primary action position was not measured.', undefined, true)
+      C.actionPositionExpected, 'Action position was not measured.', undefined, true)
     return []
   }
 
@@ -39,12 +40,12 @@ export function runLayoutChecks(
     scrollDepth > documentHeight
   ) {
     recordObservation(record, 'mobile-cta-position', 'Mobile action position',
-      'The measured primary action begins inside the initial mobile viewport', 'The layout measurements are unusable.', undefined, true)
+      C.actionPositionExpected, 'The layout measurements are unusable.', undefined, true)
     return []
   }
 
   recordObservation(record, 'mobile-cta-position', 'Mobile action position',
-    'The measured primary action begins inside the initial mobile viewport',
+    C.actionPositionExpected,
     `Action starts at ${scrollDepth}px in a ${viewportHeight}px viewport and ${documentHeight}px document.`, scrollDepth < viewportHeight, true)
 
   // This check promises that the CTA is hidden without scrolling. A CTA whose
@@ -54,23 +55,17 @@ export function runLayoutChecks(
     return []
   }
 
-  const ctaLabel = metrics.mobilePrimaryCtaText ? `"${metrics.mobilePrimaryCtaText}"` : 'Primary CTA'
-
-  // CRITICAL only when the CTA sits just below the fold (within ~2 screens).
-  // A CTA deep in a long-scroll page is still below the fold but reachable
-  // and a deliberate layout choice - IMPORTANT, not a conversion blocker.
-  const depthRatio = scrollDepth / viewportHeight
-  const severity: 'CRITICAL' | 'IMPORTANT' = depthRatio <= 2 ? 'CRITICAL' : 'IMPORTANT'
+  const ctaLabel = metrics.mobilePrimaryCtaText ? `"${metrics.mobilePrimaryCtaText}"` : C.recordedAction
 
   return [
     {
       checkId: 'cta-below-fold-mobile',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
-      severity,
-      problem: 'Primary CTA is hidden below the fold on mobile',
-      evidence: `Mobile ${viewportHeight}px viewport: ${ctaLabel} starts at ${scrollDepth}px scroll depth.`,
-      fix: '1. Move the primary CTA above the fold on mobile\n2. Reduce hero image height or collapse the nav\n3. Stack headline + CTA within the first screen (~850px)',
+      severity: 'POLISH',
+      problem: C.actionPositionProblem,
+      evidence: C.actionPositionEvidence(viewportHeight, ctaLabel, scrollDepth),
+      fix: C.actionPosition,
       confidence: 0.95,
       source: 'DETERMINISTIC',
     },

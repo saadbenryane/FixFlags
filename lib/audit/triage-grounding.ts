@@ -11,7 +11,7 @@ import { TRIAGE_REVIEW_COPY } from '../marketing/copy/triage-review'
 type Candidate = TriageOutput['newFlags'][number]
 type Facts = Pick<TriageContext, 'pageText' | 'metadata'> & Partial<Pick<TriageContext, 'screenshotHint' | 'url'>>
 export const triageAssessmentSchema = z.object({
-  kind: z.literal('page-triage-assessment'), version: z.literal(1), status: z.enum(['COMPLETE', 'PARTIAL']),
+  kind: z.literal('page-triage-assessment'), version: z.union([z.literal(1), z.literal(2)]), status: z.enum(['COMPLETE', 'PARTIAL']),
   candidates: z.array(z.unknown()).max(5), rejected: z.array(z.object({ index: z.number().int().nonnegative(), reason: z.string() }).strict()).max(5),
   rubrics: z.array(z.unknown()).max(3).optional(), verdict: z.string().optional(),
   admittedCount: z.number().int().nonnegative(),
@@ -29,7 +29,9 @@ function rejection(candidate: Candidate, facts: Facts): string | undefined {
   if (candidate.reviewKind === 'action-clarity' && !refs.some(ref => ref.source === 'ctaText')) return 'Action review has no recorded action reference'
   if (candidate.reviewKind === 'copy-clarity' && candidate.rubric !== 'MESSAGE') return 'Copy review belongs to the Message scope'
   if (candidate.reviewKind === 'copy-clarity' && !refs.some(ref => ['headline', 'pageText'].includes(ref.source))) return 'Copy review has no recorded headline or prose reference'
+  if (candidate.reviewKind === 'copy-clarity' && refs.some(ref => !['headline', 'pageText'].includes(ref.source))) return 'Copy review mixes visible copy with a different repair scope'
   if (candidate.reviewKind === 'search-snippet' && (candidate.rubric !== 'REACH' || !refs.some(ref => ['title', 'description'].includes(ref.source)))) return 'Search review has no corresponding metadata reference'
+  if (candidate.reviewKind === 'search-snippet' && refs.some(ref => !['title', 'description'].includes(ref.source))) return 'Search review mixes metadata with a different repair scope'
   if (candidate.reviewKind !== 'visual-hierarchy' && candidate.device !== 'none') return 'Text references cannot establish a device-specific observation'
   if (candidate.reviewKind === 'visual-hierarchy') {
     if (candidate.rubric !== 'EXPERIENCE' || new Set(refs.filter(ref => ref.source === 'ctaText' && facts.metadata.ctaTexts.includes(ref.quote)).map(ref => ref.quote)).size < 2) return 'Hierarchy review needs two distinct recorded actions'
@@ -42,6 +44,25 @@ function rejection(candidate: Candidate, facts: Facts): string | undefined {
 function normalizeReferences(refs: NonNullable<Candidate['evidenceRefs']>) {
   return [...new Map(refs.map(ref => [JSON.stringify([ref.source, ref.quote]), ref])).values()]
     .sort((a, b) => a.source.localeCompare(b.source) || a.quote.localeCompare(b.quote))
+}
+
+function scalarMetadataTargets(candidate: Candidate): Set<string> | undefined {
+  const refs = candidate.evidenceRefs ?? []
+  return candidate.reviewKind === 'search-snippet' && refs.length > 0 &&
+    refs.every(ref => ref.source === 'title' || ref.source === 'description')
+    ? new Set(refs.map(ref => ref.source)) : undefined
+}
+
+function combineScalarReviews(reviews: Candidate[]): Candidate {
+  // With two scalar fields, an overlapping union has a recorded member that
+  // already names its full scope. Keep that member's captured-value identity.
+  const ordered = [...reviews].sort((a, b) => scalarMetadataTargets(b)!.size - scalarMetadataTargets(a)!.size ||
+    a.evidence.localeCompare(b.evidence))
+  const primary = ordered[0]!
+  const supportingReviews = [...new Map(ordered.flatMap(review =>
+    review.supportingReviews ?? [{ evidence: review.evidence }]).map(review => [review.evidence, review])).values()]
+    .sort((a, b) => a.evidence.localeCompare(b.evidence))
+  return { ...groundedRecommendation(primary, normalizeReferences(ordered.flatMap(review => review.evidenceRefs!))), supportingReviews }
 }
 
 function groundedRecommendation(candidate: Candidate, refs: NonNullable<Candidate['evidenceRefs']>): Candidate {
@@ -73,7 +94,7 @@ export function assessTriageRecommendations(candidates: Candidate[], facts: Fact
     const fingerprint = recordedScalarReviewIdentity(grounded, facts)
     return [{ ...grounded, ...(fingerprint ? { fingerprint } : {}) }]
   })
-  return { admitted, assessment: { kind: 'page-triage-assessment', version: 1, status: rejected.length ? 'PARTIAL' : 'COMPLETE',
+  return { admitted, assessment: { kind: 'page-triage-assessment', version: 2, status: rejected.length ? 'PARTIAL' : 'COMPLETE',
     candidates, rejected, admittedCount: admitted.length } }
 }
 
@@ -99,19 +120,24 @@ export function deduplicateTriageRecommendations(candidates: Candidate[], native
     if (covered) continue
     // Captured title and description are scalar fields. Quote fragments are evidence,
     // not distinct targets, when the declared review concerns only those scalar fields.
-    const scalarMetadata = Boolean(page) && candidate.reviewKind === 'search-snippet' && refs.length > 0 &&
-      refs.every(ref => ref.source === 'title' || ref.source === 'description')
-    const targets = scalarMetadata ? [...new Set(refs.map(ref => ref.source))].sort() : refs
+    const scalarTargets = page ? scalarMetadataTargets(candidate) : undefined
+    const targets = scalarTargets ? [...scalarTargets].sort() : refs
     const identity = JSON.stringify([page, candidate.reviewKind, candidate.device, targets])
+    if (scalarTargets) {
+      const overlapping = [...grouped.entries()].filter(([, prior]) => {
+        const priorTargets = scalarMetadataTargets(prior)
+        return canonicalizeDestination(prior.pageUrl ?? pageUrl ?? '')?.key === page &&
+          prior.device === candidate.device && priorTargets && [...scalarTargets].some(target => priorTargets.has(target))
+      })
+      if (overlapping.length) {
+        const combined = combineScalarReviews([...overlapping.map(([, review]) => review), candidate])
+        for (const [key] of overlapping) grouped.delete(key)
+        grouped.set(JSON.stringify([page, candidate.reviewKind, candidate.device, [...scalarMetadataTargets(combined)!].sort()]), combined)
+        continue
+      }
+    }
     const prior = grouped.get(identity)
     if (!prior) { grouped.set(identity, candidate); continue }
-    if (!scalarMetadata) continue
-    const supportingReviews = [...new Map([
-      ...(prior.supportingReviews ?? [{ evidence: prior.evidence }]),
-      ...(candidate.supportingReviews ?? [{ evidence: candidate.evidence }]),
-    ].map(review => [review.evidence, review])).values()].sort((a, b) => a.evidence.localeCompare(b.evidence))
-    const combined = groundedRecommendation(prior, normalizeReferences([...(prior.evidenceRefs ?? []), ...refs]))
-    grouped.set(identity, { ...combined, supportingReviews })
   }
   return [...grouped.values()]
 }

@@ -1,3 +1,4 @@
+import { signInFixture } from './fixture-authentication'
 import { execFile } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -30,10 +31,7 @@ function requiredEnv(name: string): string {
 }
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await signInFixture(page, email, password)
 }
 
 async function signedInPage(
@@ -185,14 +183,40 @@ test.describe('credentialed revenue journeys', () => {
     expect(reportId).toBeTruthy()
     await waitForReport(page.request, reportId!)
 
-    await page.goto(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}`)
+    await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
+    const originalCategory = page.getByRole('dialog')
+    await expect(originalCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    const continuation = originalCategory.getByRole('link', { name: 'Sign in to check again', exact: true }).last()
+    await continuation.focus()
+    await originalCategory.locator('[data-dialog-scroll]').evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
+    const beforeAuth = await originalCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY, destination: location.pathname + location.search + location.hash }))
+    await expect(continuation).toBeInViewport()
+    await continuation.click()
+    await page.waitForURL(url => url.pathname === '/sign-in')
+    expect(new URL(page.url()).searchParams.get('next')).toBe(beforeAuth.destination)
+    await page.getByRole('button', { name: 'Sign up', exact: true }).click()
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Create account', exact: true }).click()
-    await page.getByRole('button', { name: 'Maybe later', exact: true }).click()
     await page.waitForURL((url) => url.pathname === `/sites/${siteId}`, {
       timeout: 45_000,
     })
+    expect(new URL(page.url()).searchParams.get('category')).toBe('site')
+    const returnedCategory = page.getByRole('dialog')
+    await expect(returnedCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await expect.poll(() => returnedCategory.evaluate((node, before) =>
+      node.contains(document.activeElement) && Math.abs(node.querySelector('[data-dialog-scroll]')!.scrollTop - before.dialogTop) <= 1 && Math.abs(scrollY - before.y) <= 1, beforeAuth), { timeout: 6000 }).toBe(true)
+    const afterAuth = await returnedCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY,
+      focusInsideCategory: node.contains(document.activeElement), destination: location.pathname + location.search + location.hash }))
+    await test.info().attach('actual-authentication-context-continuity', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ beforeAuth, afterAuth,
+      scope: 'Actual anonymous category, normal sign-in link, signup, exact claim and restored browser reading position. No storage values, application timestamps or assessment records were seeded.' })) })
+    await page.keyboard.press('Escape')
+    await expect(returnedCategory).toBeHidden()
+    await page.goBack()
+    await page.waitForURL(url => url.pathname === `/sites/${siteId}` && url.searchParams.get('category') === 'site')
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toBeHidden()
     await expect(page.getByRole('heading', { name: /Overview|Site settings|Flags/ })).toBeVisible()
     const claimedResponse = await page.request.get(`/api/sites/${siteId}`)
     expect(claimedResponse.status()).toBe(200)
@@ -353,6 +377,9 @@ test.describe('credentialed revenue journeys', () => {
       expect((await user.page.request.patch(`/api/sites/${projectId}/settings`, {
         data: { notificationLevel: 'OFF', notifyOnRecovery: false },
       })).status()).toBe(200)
+      expect((await user.page.request.post(`/api/sites/${projectId}/watch`, {
+        data: { action: 'pause' },
+      })).status()).toBe(200)
       const target = new URL(requiredEnv('E2E_DEPLOYMENT_TRIGGER_URL')).origin
       const outcomeIds: string[] = []
       for (const pathname of ['/pricing', '/checkout']) {
@@ -392,15 +419,21 @@ test.describe('credentialed revenue journeys', () => {
         data: { notificationLevel: 'FLAGS', notifyOnRecovery: true },
       })
       expect(settings.status(), await settings.text()).toBe(200)
+      const monitoringRequestedAt = new Date()
       expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
-      // This designated release fixture accelerates scheduling. It does not
-      // establish a natural production full-check cycle.
-      await fixtureDb.project.update({ where: { id: projectId }, data: { watchNextRunAt: new Date(Date.now() - 1000), watchLeaseUntil: null } })
+      // The owner command makes a paused schedule due. The real worker owns admission.
       await expect.poll(async () => fixtureDb.audit.findFirst({
         where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt }, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: { not: null } },
         select: { id: true },
       }), { timeout: 420_000, intervals: [1000] }).not.toBeNull()
       const child = await fixtureDb.audit.findFirstOrThrow({ where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt } }, orderBy: { createdAt: 'desc' } })
+      const scheduledRun = await fixtureDb.runRequest.findFirstOrThrow({
+        where: { projectId, auditId: child.id, source: 'WATCH' },
+      })
+      const scheduledAt = new Date(scheduledRun.idempotencyKey!.slice(`watch:${projectId}:`.length).split(':weekly:')[0])
+      expect(scheduledAt.getTime()).toBeGreaterThanOrEqual(monitoringRequestedAt.getTime())
+      expect(scheduledAt.getTime()).toBeLessThanOrEqual(scheduledRun.requestedAt.getTime())
+      expect(scheduledRun.idempotencyKey).toBe(`watch:${projectId}:${scheduledAt.toISOString()}:weekly:`)
       expect(child).toMatchObject({ parentId: baseline.auditId, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: expect.any(String),
         executionSpec: expect.objectContaining({ scope: 'OUTCOMES', outcomes: expect.arrayContaining(outcomeIds.map(id => expect.objectContaining({ id }))) }) })
       expect(child.watchRegressionCount).toBeGreaterThan(0)
@@ -471,6 +504,8 @@ test.describe('credentialed revenue journeys', () => {
         recoveredOutcomeId: outcomeIds[0], failingOutcomeId: outcomeIds[1], originalAssessmentId: originalPricing.id,
         recoveredFlagIds: recovery.recoveredFlagIds, failingFlagIds: failure.flagIds,
         matchingMessages: matches.length, humanReceiptOrRead: false, naturalProductionCycle: false,
+        monitoringRequestedAt: monitoringRequestedAt.toISOString(), scheduledAt: scheduledAt.toISOString(),
+        scheduledRunId: scheduledRun.id, timestampMutation: false,
       })) })
     } finally {
       try {

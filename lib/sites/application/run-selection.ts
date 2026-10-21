@@ -5,6 +5,7 @@ import { categoryAreaSchema } from '../domain/execution-spec'
 import { buildExecutionSpec,executionIntentHash } from './execution-spec'
 import type { RunInput } from './run-intent'
 import { SiteRunRefusal } from './run-refusal'
+import { snapshotOutcomeAuthorization } from '../domain/outcome-authorization'
 
 export function validateRunSelection(input: RunInput) {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
@@ -92,5 +93,6 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
     try { initialTaskPlan(executionSpec) }
     catch { throw new SiteRunRefusal(executionSpec.scope === 'CATEGORY' ? 'This category has no valid execution plan.' : 'This finding has no registered independent verifier. Its previous evidence is retained; a repair cannot be certified by this action.', 409) }
   }
-  return { selectedIds, first, fixture, auditUrl, executionSpec, requestHash }
+  return { selectedIds, first, fixture, auditUrl, executionSpec, requestHash,
+    outcomeAuthorization: snapshotOutcomeAuthorization(outcomes) }
 }

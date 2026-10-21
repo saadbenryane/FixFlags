@@ -1,5 +1,6 @@
 "use client";
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { SupportAssignment } from "./SupportAssignment";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -282,7 +283,7 @@ export function AdminInbox() {
           </p>
         )}
         {listed.data?.sessions.map((session) => (
-          <button
+          <InteractiveButton
             type="button"
             key={session.id}
             aria-pressed={selectedId === session.id}
@@ -298,7 +299,7 @@ export function AdminInbox() {
                 ? ` · ${session.unreadByAgent} unread`
                 : ""}
             </span>
-          </button>
+          </InteractiveButton>
         ))}
         {listed.data?.sessions.length === 0 && (
           <p className="p-3 text-sm text-muted-foreground">

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 
-const push = vi.hoisted(() => vi.fn())
+const replace = vi.hoisted(() => vi.fn())
 const retry = vi.hoisted(() => vi.fn())
 const useOAuthProviders = vi.hoisted(() => vi.fn())
 const authClient = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ const authClient = vi.hoisted(() => ({
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ replace }),
   useSearchParams: () => new URLSearchParams(),
 }))
 vi.mock('@/hooks/useOAuthProviders', () => ({ useOAuthProviders }))
@@ -26,7 +26,7 @@ import { AuthFlow } from '@/components/auth/AuthFlow'
 describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    push.mockReset()
+    replace.mockReset()
     authClient.signUp.email.mockReset()
     authClient.signIn.email.mockReset()
     authClient.signIn.passkey.mockReset()
@@ -155,7 +155,7 @@ describe('AuthFlow report dialog (waitlist-style, email form visible)', () => {
 describe('AuthFlow report gate (SSO/passkey default)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    push.mockReset()
+    replace.mockReset()
     authClient.signUp.email.mockReset()
     authClient.signIn.email.mockReset()
     authClient.signIn.passkey.mockReset()
@@ -231,7 +231,7 @@ describe('AuthFlow report gate (SSO/passkey default)', () => {
     await waitFor(() =>
       expect(authClient.signIn.passkey).toHaveBeenCalledWith({ autoFill: false })
     )
-    expect(push).toHaveBeenCalledWith('/post-login?next=%2Freport%2Faudit-1&from=report')
+    expect(replace).toHaveBeenCalledWith('/post-login?next=%2Freport%2Faudit-1&from=report')
   })
 
   it('prefills the email field from the audit context when the form opens', () => {
@@ -286,7 +286,7 @@ describe('AuthFlow report gate (SSO/passkey default)', () => {
         callbackURL: '/post-login?next=%2Freport%2Faudit-1&from=report',
       })
     )
-    expect(push).toHaveBeenCalledWith('/post-login?next=%2Freport%2Faudit-1&from=report')
+    expect(replace).toHaveBeenCalledWith('/post-login?next=%2Freport%2Faudit-1&from=report')
     vi.unstubAllGlobals()
   })
 })

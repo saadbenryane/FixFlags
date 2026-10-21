@@ -331,3 +331,8 @@ export const CORE_LOOP_LABEL = 'Monitor. Flag. Fix.'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
 export const BANNED_CUSTOMER_PHRASES = [/\bre-checks?\b/i, /\bunlimited re-checks?\b/i, /\bnew URL checks?\b/i, /\bjourneys per month\b/i, /\bjourneys \/ month\b/i, /\bpolish pass\b/i, /\bpolish scan\b/i] as const
+export const CLIPBOARD_COPY = {
+  success: 'Copied to clipboard',
+  failure: 'Could not copy to clipboard',
+  accountRequired: 'Create a free account to copy this fix prompt',
+} as const

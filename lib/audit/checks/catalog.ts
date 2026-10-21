@@ -39,6 +39,7 @@ import type { PublicDocument } from '../search/contracts'
 import { assessPageResponse } from './page-response'
 import { RENDERED_COPY_MODULES, RENDERED_COPY_LIMITATION, type RenderedCopy } from '../browser/rendered-copy'
 import type { HeadMetadataObservation } from './head-metadata'
+import type { DestinationCheckOptions } from './destination-evidence'
 
 export type PageCheckContext = {
   url: string; metadata: PageMetadata | null; desktop: PageSpeedResult | null; mobile: PageSpeedResult | null;
@@ -50,6 +51,7 @@ export type PageCheckContext = {
   keyboard?: KeyboardEvidence; tracking?: TrackingEvidence;
   publicDocument?: PublicDocument;
   deadline?: number;
+  destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'>;
   scope: { complete?: boolean; limitation?: string; collectedAt?: string };
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
@@ -99,7 +101,7 @@ export const PAGE_CHECKS = registerPageEvaluators([
     // Older captures retained relative declarations without their document base.
     // A current parsed base can resolve them; the page URL cannot invent it.
     if (c.head && metadata.ogImage && !metadata.linkBaseUrl && !/^[a-z][a-z0-9+.-]*:/i.test(metadata.ogImage)) metadata.ogImage = undefined
-    return runOgImageUrlCheck(c.url, metadata, { record: c.record, scope: c.scope, deadline: c.deadline })
+    return runOgImageUrlCheck(c.url, metadata, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline })
   } },
   { id: 'accessibility', evaluate: c => {
     const checked = evaluateAccessibility({ metadata: c.metadata, evidence: c.accessibilityEvidence, scope: c.renderedScope,
@@ -118,7 +120,7 @@ export const PAGE_CHECKS = registerPageEvaluators([
   { id: 'slop', evaluate: withMetadata(c => runSlopChecks(c.metadata, c.record)) },
   { id: 'measurement', evaluate: c => { const checked = runTrackingChecks(c.metadata, c.tracking, c.url);
     checked.assertions.forEach(c.record); Object.assign(c.scope, { complete: checked.complete, limitation: checked.limitation }); return checked.flags } },
-  { id: 'auth-checkout', evaluate: withMetadata(c => runAuthCheckoutChecks(c.url, c.metadata, { record: c.record, scope: c.scope, deadline: c.deadline })) },
+  { id: 'auth-checkout', evaluate: withMetadata(c => runAuthCheckoutChecks(c.url, c.metadata, { ...c.destinations, record: c.record, scope: c.scope, deadline: c.deadline })) },
   { id: 'security', evaluate: c => {
     Object.assign(c.scope, { complete: new URL(c.url).protocol !== 'https:' || c.metadata?.resourceTransport?.complete === true,
       limitation: RESOURCE_TRANSPORT_SCOPE })

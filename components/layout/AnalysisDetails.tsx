@@ -56,8 +56,7 @@ export function AnalysisDetails({ host, statusLabel, active, disconnected, activ
         <Info className="h-4 w-4" aria-hidden />
       </Button>
     </div>
-    <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-      <DialogTitle className="break-all pr-8">{host}</DialogTitle>
+    <ResponsiveDepth header={<DialogTitle className="break-all">{host}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
       <DialogDescription>{statusLabel}</DialogDescription>
       <p className={styles.currentActivity}>{disconnected ? SITE_ACTION_COPY.updatesDisconnected : task ? taskLabel(task) : active ? copy.live ?? SITE_BOARD_COPY.activityDescription : activity?.label ?? SITE_BOARD_COPY.activityDescription}</p>
       {progress ? <div className="space-y-2 text-sm text-muted-foreground">

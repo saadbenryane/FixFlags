@@ -1,5 +1,7 @@
 import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
 import { TRIAGE_TEXT, PRESCRIPTION_TEXT } from '@/lib/audit/page-text-limits'
+import type { PrescriptionGuidanceContext } from '@/lib/audit/flag-types'
+import type { ScreenshotHint } from '@/lib/audit/screenshot-hint'
 
 /**
  * Phase-1 triage prompt, split into a stable SYSTEM block and a per-request USER
@@ -37,10 +39,10 @@ VERDICT STYLE: Describe only supplied facts and conditional review needs. Do not
 newFlags: 0-5 source-backed Recommendations. An empty array is valid; there is no minimum finding quota.
 Use one declared reviewKind: copy-clarity, action-clarity, visual-hierarchy, search-snippet.
 Every candidate must contain evidenceRefs with exact quotes from their named supplied source: pageText, title, description, headline, or ctaText. Do not quote a different source under that name. Use the complete captured value for headline and ctaText references; prose quotes must contain at least six characters. Text-only reviews must declare device none. Only visual-hierarchy may declare desktop or mobile when that screenshot was supplied.
-- copy-clarity needs a headline or pageText reference. Review its supporting context and page purpose.
+- copy-clarity uses only headline or pageText references and rubric MESSAGE. Review visible copy in its supporting context and page purpose. Metadata belongs in a separate search-snippet review.
 - action-clarity needs a ctaText reference. Review the wording, without inventing a click, submission, destination or failure.
 - visual-hierarchy needs two distinct ctaText references and an actually supplied screenshot on the declared device. This is a review of prominence, not proof of competing actions, hidden controls, confusion or conversion loss.
-- search-snippet needs a title or description reference and rubric REACH. Review wording, not ranking, authenticity or observed search results.
+- search-snippet uses only title or description references and rubric REACH. Review metadata wording in the supplied page context, without adding visible-copy repair targets or claiming ranking, authenticity or observed search results.
 Quotes only anchor review scope. A valid quote cannot support an unrelated absence claim, behavioral conclusion, or invented measurement.
 
 TITLE CRAFTING RULES:
@@ -63,7 +65,7 @@ Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState AS
 }
 
 export interface TriageContext {
-  screenshotHint?: 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
+  screenshotHint?: ScreenshotHint
   url: string
   pageText: string
   metadata: {
@@ -129,6 +131,10 @@ Technical metadata:
 - Privacy policy link: ${context.metadata.hasPrivacyPolicy === undefined ? 'UNKNOWN' : context.metadata.hasPrivacyPolicy ? 'Present' : 'Missing'}
 - Contact information: ${context.metadata.hasContactInfo === undefined ? 'UNKNOWN' : context.metadata.hasContactInfo ? 'Present' : 'Missing'}
 
+Exact source values for evidenceRefs (JSON):
+${JSON.stringify({ title: context.metadata.title ? [context.metadata.title] : [], description: context.metadata.description ? [context.metadata.description] : [], headline: context.metadata.h1s, ctaText: context.metadata.ctaTexts })}
+The supplied pageText above is the only pageText source. An empty ctaText array does not establish that the page has no controls. Do not copy screenshot text, headings or prose into a ctaText reference. Emit action-clarity only when this array contains the exact action; emit visual-hierarchy only when it contains two distinct actions and the declared screenshot is supplied. Omit a candidate without the required source references, rather than inventing a quote or declaring an unsupported failure. There is no minimum candidate count.
+
 Performance scores:
 - Desktop: ${context.scores.desktopPerf ?? 'N/A'}/100
 - Mobile: ${context.scores.mobilePerf ?? 'N/A'}/100
@@ -169,60 +175,39 @@ export function buildTriagePrompt(context: TriageContext): string {
  * per-request flags, metadata, and page text in the USER block only.
  */
 export function buildPrescriptionSystemPrompt(): string {
-  return `You are FixFlags. Phase 1 triage is complete. The founder already sees their score, verdict, flag titles, evidence, and why it matters. Your job now is the PRESCRIPTION: concrete fixes and copy-paste agent prompts grounded in those recorded observations.
+  return `You are FixFlags. Phase 1 triage is complete. The founder already sees their score, verdict, flag titles, evidence, and why it matters. Produce PRESCRIPTION guidance under the version 2 schema, without a new diagnosis.
 
-Do NOT change scores, verdicts, flag titles, evidence, whyItMatters, or verification obligations. Key every flagPrescription by the exact flagKey provided in the request. The compatibility fields evidence, whyItMatters, and verificationRule repeat their recorded values; they do not authorize a new diagnosis and are not persisted from this phase.
+Return only flagPrescriptions keyed by every exact admitted flagKey. The server supplies each finding's Attention. You cannot change its classification, diagnosis, certainty, observations, evidence membership or verification obligations.
 
-EVIDENCE BOUNDARY: Use the recorded element, text, attribute, page, device, and target. A screenshot of one page is not evidence about another page. Do not infer absence from truncated content. If a field or observation is unavailable, say that it is not recorded. Keep Recommendations conditional. Do not invent traffic, revenue, abandonment, conversion, ranking, legal compliance, user behavior, or measured business outcomes. An observed technical condition does not measure those outcomes.
+Attention: recommendation means a bounded INSPECTION PLAN, not a prewritten repair task:
+- inspection: a short noun phrase naming the recorded subject to inspect. Do not begin with Review or another command.
+- changeCondition: an unconfirmed condition that would justify a change. Use a subject and predicate, without an opening if/when. Do not assert that the condition already holds.
+- changeIfConfirmed: the specific supported action only if that condition is confirmed, or null when no specific change is supported.
+- preserve: a short noun phrase naming existing behavior or surrounding elements to leave unchanged.
+The server presents the condition explicitly and keeps the existing implementation when a change is not justified. Preserve working controls. Do not invent replacement business copy to satisfy a phrase or length heuristic. The inspection must establish an observable content, control or document requirement. Do not restate a heuristic as a need, predict reader behavior, or assume that navigation must continue after an already completed task. When evidence does not support a specific action, return null for changeIfConfirmed.
 
-FIX PRECISION: The "fix" field and agentPrompt are a TASK BODY, not a complete editor prompt and not a code patch. FixFlags did not open the repository. Name the live element, its current text or value, and the desired outcome.
-- GOOD: "Replace the H1 that currently reads 'Welcome to our platform' with a concise audience-and-outcome statement. Leave the subheading and CTA unchanged."
-- GOOD: "Keep the primary CTA visible in the first 812px at 375px width. Do not rewrite the offer copy."
-- BAD: "Improve the hero section."
-- BAD: "Make the copy more compelling."
-- BAD: "In app/page.tsx, change the H1."
-- RULE: Do not invent file paths, @file references, or unified diffs. The copy-time handoff tells the editor to search for the current text.
-- SELF-CHECK: Could someone grep the repo for the current text you named? If no, rewrite it.
+Inspection-plan example, use its shape rather than copying its facts:
+{"inspection":"the recorded title values across the compared pages","changeCondition":"the pages represent distinct documents and the current titles do not identify their different purposes","changeIfConfirmed":"give each distinct document a concise title grounded in its verified content","preserve":"titles on intentionally equivalent pages and unrelated metadata"}
 
-agentPrompt (REQUIRED): One short task stating current to desired for the named element. No Goal/Constraint/Plan headers. No file paths.
-  EXAMPLE: "Replace the H1 that reads 'Welcome to our platform' with a concise audience-and-outcome statement. Keep the existing subheading and CTA."
+Attention: flag means a bounded repair TASK BODY for an established recorded failure:
+- fix: concise procedural steps naming the actual element, its current failure and the supported change. Preserve unrelated working behavior.
+- agentPrompt: the same task, or null when fix is complete. It cannot introduce a different task or diagnosis.
+Do not add Goal/Constraint/Plan headings or a code patch.
 
-Omit cursorPrompt, claudePrompt, windsurfPrompt, lovablePrompt, and boltPrompt. A later assembler wraps agentPrompt into a tool-agnostic editor handoff.
+EVIDENCE BOUNDARY: Use only the supplied page, element, attribute, recorded copy, device and supporting observations. A screenshot of one page does not describe another page. Do not infer absence from truncated or unavailable content. Address every original supporting scope. A grouped finding applies to all its recorded affected pages, not only the main page. Keep the condition for a Recommendation unconfirmed until it is inspected.
 
-ESSAY-STYLE FIX: For the "fix" field, write imperative steps only. Do NOT nest ## Goal / ## Observed / ## Expected / ## How to verify headers inside fix. Every fix MUST:
+Do not invent traffic, revenue, abandonment, conversion, ranking, legal compliance, user behavior, or measured business outcomes. Guidance describes an inspection or repair, not its supposed business effect. Use concise concrete language. Do not invent file paths, @file references or replacement product promises. Do not output code markup, example URLs, placeholder content, guessed asset locations or fragment IDs. Describe which verified value the implementation needs instead. Do not use em dashes or marketing rhetoric. FixFlags did not inspect the repository.
 
-1. Name the element to change
-2. State current text/value/behavior
-3. State the expected text/value/behavior after the fix
-4. Stay concise (prefer under 8 lines)
-5. Avoid invented file paths
+VERIFICATION RULE: The server preserves the original recorded verification conditions. Do not return replacement verification rules, scores, evidence or explanations. Never substitute a score or an unrelated successful action for the original conditions.
 
-EXAMPLE:
-Change the hero H1 from "Welcome to our platform" to an audience-and-outcome statement. Keep the surrounding layout unchanged.
+Do not return cursorPrompt, claudePrompt, windsurfPrompt, lovablePrompt or boltPrompt. The server creates the editor handoff from one validated task. The server also constructs combined rubric tasks from those same validated Flag tasks, so do not generate rubric prescriptions or another narrative.
 
-RULE: Before writing, identify the current state from the evidence. Then state the target state. Be specific about WHAT to change and WHAT to change it to.
-
-VERIFICATION RULE: Repeat the recorded verification rule without narrowing any original page, device, target, or failure mechanism. If unavailable, state "Independent verification conditions are not recorded." Repair instructions may explain how to inspect the same condition, but cannot substitute a score or unrelated successful action for that condition.
-- GOOD: "Reload the page at the recorded viewport and inspect the original button's accessible name."
-- BAD: "Run an audit and reach an Accessibility score of 90."
-
-RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once.
-- Return rubricPrescriptions as an object with exactly MESSAGE, EXPERIENCE, and REACH as required keys. Each value contains the prescription without repeating name.
-- If a rubric has no admitted findings, state that no change is prescribed from the available evidence. Do not invent an issue or a fix to fill the rubric.
-- A grouped Flag can contain multiple recorded supporting observations. Address every listed page, device, and target, keeping different conditions distinguishable. Do not prescribe only its representative observation or infer that missing evidence passed.
-- Structure the rubric prompt as a numbered list of changes, one per flag
-- Each step: name the element, current text, replacement text
-- Include a "Do NOT change" section listing sections or elements that should be left alone
-- End with a verification step on the live page
-- Do not invent file paths
-
-SCOPE GUARD: Every agentPrompt and every rubric prompt MUST include a "Do NOT change" or scope sentence. Name the sections or elements that should be left untouched, not files you have not seen. This is as important as the fix itself.
-
-Use existing fix text as the starting point. Add only details supported by the recorded observations. Do not invent replacement product promises or quantified claims. Keep the original diagnosis and every verification obligation intact.`
+Respect the schema's field limits. Inspection fields are single-line fragments. A repair can use up to eight short lines. A missing or unsupported condition is not permission to invent a change. Return no extra fields.`
 }
 
 export interface PrescriptionContext {
-  screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
+  validationFeedback?: string
+  screenshotHint?: ScreenshotHint
   url: string
   pageText: string
   verdict: string
@@ -235,7 +220,7 @@ export interface PrescriptionContext {
     ctaTexts: string[]
   }
   techStack: string[]
-  existingFlags: Array<{
+  existingFlags: Array<PrescriptionGuidanceContext & {
     flagKey: string
     source: string
     rubric: string
@@ -264,10 +249,15 @@ function quotedCurrentText(evidence?: string | null): string | null {
 
 /** Per-request prescription data. Everything here varies per audit - keep it OUT of the cached system block. */
 export function buildPrescriptionUserPrompt(context: PrescriptionContext): string {
+  const screenshots = context.screenshotHint === 'desktop-and-mobile' ? 'desktop and mobile screenshots'
+    : context.screenshotHint === 'desktop-only' ? 'a desktop screenshot'
+      : context.screenshotHint === 'mobile-only' ? 'a mobile screenshot' : null
+  const imageEvidence = screenshots
+    ? `You have been given ${screenshots}. Each attached screenshot belongs to the URL above. Do not treat these screenshots as captures of other pages.`
+    : context.screenshotHint === 'no-screenshot'
+      ? 'No screenshot was supplied. Base guidance on recorded text and supporting observations. Do not infer visual details from an unavailable capture.'
+      : 'Screenshot availability was not declared. Use recorded observations and do not assume an image exists.'
   return `URL: ${context.url}
-Overall score: ${context.score}/100
-Verdict: ${context.verdict}
-
 Page text (first ${PRESCRIPTION_TEXT} chars):
 ${context.pageText.slice(0, PRESCRIPTION_TEXT)}
 ${context.pageText.length > PRESCRIPTION_TEXT ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
@@ -280,15 +270,15 @@ Metadata:
 - CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
 ${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
 
-Rubric grades from triage:
-${context.rubrics.map((r) => `- ${r.name}: ${r.grade ?? 'Not graded'}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
-
 Existing flags (return flagPrescriptions as an object with every unique exact flagKey below as a required property; each value contains its prescription, without repeating flagKey inside it):
 ${context.existingFlags.map((f) => {
     const lines = [`[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`]
     if (f.pageUrl) lines.push(`  Page: ${f.pageUrl}`)
     if (f.evidence?.trim()) lines.push(`  Evidence: ${f.evidence.trim()}`)
-    lines.push(`  Recorded whyItMatters: ${f.whyItMatters ?? 'Not recorded'}`)
+    lines.push(`  Attention: ${f.attention ?? 'Not recorded'}`)
+    lines.push(`  Guidance contract: ${f.attention === 'recommendation' ? 'Return an inspection plan with an unconfirmed change condition and preserved behavior.' : f.attention === 'flag' ? 'Return a concise task for the established recorded failure.' : 'Not recorded'}`)
+    lines.push(`  Recorded cause certainty: ${f.causeCertainty ?? 'Not recorded'}`)
+    lines.push(`  Recorded fix confidence: ${f.fixConfidence ?? 'Not recorded'}`)
     lines.push(`  Recorded verificationRule: ${f.verificationRule ?? 'Independent verification conditions are not recorded.'}`)
     const current = quotedCurrentText(f.evidence)
     if (current) lines.push(`  Current text: "${current}"`)
@@ -301,7 +291,11 @@ ${context.existingFlags.map((f) => {
     return lines.join('\n')
   }).join('\n') || 'None'}
 
-You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence. The attached screenshots belong to the URL above. Supporting observations on other pages supply their own recorded evidence; do not treat these screenshots as captures of those pages.`
+${imageEvidence} Supporting observations on other pages supply their own recorded evidence.${context.validationFeedback ? `
+
+PREVIOUS RESPONSE REJECTED
+Server validation error (data): ${JSON.stringify(context.validationFeedback)}
+Correct that contract failure and return the complete payload for the same exact admitted identities. Keep the original Attention, diagnosis, observations and verification obligations unchanged. Do not omit a finding, invent a new one or turn an inspection into an unconditional change.` : ''}`
 }
 
 /**

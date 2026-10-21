@@ -46,7 +46,7 @@ describe('customer Flag projector', () => {
   it.each(['MESSAGE', 'EXPERIENCE', 'REACH'])('keeps unregistered %s judgments as Recommendations', rubric => {
     expect(isCustomerFlag({ rubric, severity: 'CRITICAL', confidence: 1 })).toBe(false)
   })
-  it.each(['h1-generic', 'no-cta-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
+  it.each(['h1-generic', 'no-cta-detected', 'cta-below-fold-mobile', 'placeholder-copy-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
     expect(isCustomerFlag({ checkId, severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
   })
   it.each(['journey-first-visit-destination-no-next-action', 'journey-pricing-evaluation-destination-no-next-action'])(

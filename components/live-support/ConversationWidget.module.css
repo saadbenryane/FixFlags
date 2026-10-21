@@ -3,6 +3,17 @@
   flex-shrink: 0;
 }
 
+.publicLauncher {
+  position: fixed;
+  right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
+  bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
+  z-index: var(--z-fab);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: var(--shadow-card);
+}
+
 .panel {
   position: fixed;
   right: calc(var(--floating-action-offset) + env(safe-area-inset-right));

@@ -47,26 +47,45 @@ export function inspectToolchainAudit(report) {
     }))
 }
 
-function runAudit(args) {
+export function parseAuditCommandResult(result, phase) {
+  const unavailable = (code) => {
+    const safeCode = typeof code === 'string' && /^[A-Z0-9_]{1,64}$/.test(code) ? code : 'INVALID_REPORT'
+    throw new Error(`${phase} dependency audit unavailable (${safeCode})`)
+  }
+  if (!result.stdout?.trim()) unavailable(result.error?.code ?? 'NO_REPORT')
+  let report
+  try { report = JSON.parse(result.stdout) } catch { unavailable('INVALID_JSON') }
+  if (report?.error) unavailable(report.error.code)
+  if (![0, 1].includes(result.status)) unavailable(result.error?.code ?? 'COMMAND_FAILED')
+  if (report?.auditReportVersion !== 2 || !report.vulnerabilities || typeof report.vulnerabilities !== 'object'
+    || Array.isArray(report.vulnerabilities) || !Number.isInteger(report.metadata?.vulnerabilities?.total)
+    || report.metadata.vulnerabilities.total < 0) unavailable('INVALID_REPORT')
+  const counts = report.metadata.vulnerabilities
+  const levels = ['info', 'low', 'moderate', 'high', 'critical']
+  if (levels.some(level => !Number.isInteger(counts[level]) || counts[level] < 0)
+    || levels.reduce((sum, level) => sum + counts[level], 0) !== counts.total
+    || Object.keys(report.vulnerabilities).length !== counts.total) unavailable('INVALID_REPORT')
+  if (result.status !== 0 && !Object.keys(report.vulnerabilities).length) unavailable('COMMAND_FAILED')
+  return { status: result.status, report }
+}
+
+function runAudit(phase, args) {
   const result = spawnSync('npm', ['audit', '--json', ...args], {
     cwd: process.cwd(),
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  if (!result.stdout.trim()) {
-    throw new Error(result.stderr.trim() || 'npm audit returned no report')
-  }
-  return { status: result.status ?? 1, report: JSON.parse(result.stdout) }
+  return parseAuditCommandResult(result, phase)
 }
 
 export function main() {
-  const runtime = runAudit(['--omit=dev', '--audit-level=moderate'])
-  if (runtime.status !== 0) {
+  const runtime = runAudit('Runtime', ['--omit=dev', '--audit-level=moderate'])
+  if (runtime.status !== 0 || ['moderate', 'high', 'critical'].some(level => runtime.report.metadata.vulnerabilities[level] > 0)) {
     const names = Object.keys(runtime.report.vulnerabilities ?? {})
     throw new Error(`Runtime dependency audit failed: ${names.join(', ') || 'unknown vulnerability'}`)
   }
 
-  const toolchain = runAudit(['--audit-level=moderate'])
+  const toolchain = runAudit('Toolchain', ['--audit-level=moderate'])
   const rejected = inspectToolchainAudit(toolchain.report)
   if (rejected.length > 0) {
     throw new Error(`Unreviewed toolchain vulnerabilities: ${JSON.stringify(rejected)}`)

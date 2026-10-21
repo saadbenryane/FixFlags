@@ -25,6 +25,26 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
   })
   afterAll(() => prisma.$disconnect())
 
+  it('does not expose owned or unscoped Watch alerts to a provisional Site', async () => {
+    const foreignAlert = await prisma.audit.create({ data: { url, userId, status: 'COMPLETED',
+      recheckTrigger: 'WATCH', completedAt: new Date(), watchNotificationStatus: 'FAILED',
+      watchNotificationAttempts: 5, watchNotificationAttemptCeiling: 5 } })
+    const anonymous = await prisma.audit.create({ data: { url, status: 'COMPLETED', completedAt: new Date() } })
+    const provisional = await prisma.provisionalSite.create({ data: { sessionKey: randomUUID(),
+      canonicalHost: 'example.com', url, primaryAuditId: anonymous.id } })
+    try {
+      await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED',
+        recheckTrigger: 'WATCH', completedAt: new Date(), watchNotificationStatus: 'FAILED',
+        watchNotificationAttempts: 5, watchNotificationAttemptCeiling: 5 } })
+      const home = await loadSiteHome(`p_${provisional.id}`)
+      expect(home).not.toBeNull()
+      expect(home?.watch.alert).toMatchObject({ state: 'none', status: null, attempts: 0, at: null })
+    } finally {
+      await prisma.provisionalSite.delete({ where: { id: provisional.id } })
+      await prisma.audit.deleteMany({ where: { id: { in: [anonymous.id, foreignAlert.id] } } })
+    }
+  })
+
   it('does not let delivery activity on an older alert hide a newer undelivered alert', async () => {
     const older = await prisma.audit.create({ data: { url, userId, projectId, status: 'COMPLETED', recheckTrigger: 'WATCH',
       completedAt: new Date('2026-09-01T12:00:00Z'), updatedAt: new Date('2026-10-10T12:00:00Z'),

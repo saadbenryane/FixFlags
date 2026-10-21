@@ -2,8 +2,30 @@ import { describe, expect, it } from 'vitest'
 import { readSiteHomeView } from '../site-view-contract'
 import { siteViewFixture } from './site-view-fixture'
 import { buildBoardCards } from '../board-card'
+import { categoryExecutionRecovery, executionRecovery } from '../execution-recovery'
 
 describe('authoritative Site refresh contract', () => {
+  it.each([
+    { name: 'no recovery actions', recorded: [] },
+    { name: 'one blocked protected form', recorded: [{ kind: 'flow', state: 'BLOCKED', reason: 'PROTECTED_ACTION_REQUIRES_FIXTURE' }] },
+  ])('round-trips the actual sparse category recovery producer with $name', ({ recorded }) => {
+    const fixture = siteViewFixture()
+    fixture.executionProgress = { total: recorded.length, completed: 0, running: 0, pending: 0, recovering: 0,
+      unknown: recorded.length, inapplicable: 0, recoveryUntil: null, eventCursor: null, tasks: [],
+      recovery: executionRecovery(recorded), categoryRecovery: categoryExecutionRecovery(recorded) }
+    expect(readSiteHomeView(JSON.parse(JSON.stringify(fixture)), 'fixture-site')).toEqual(fixture)
+  })
+
+  it('rejects unknown categories and malformed present recovery actions', () => {
+    const fixture = siteViewFixture()
+    const executionProgress = { total: 0, completed: 0, running: 0, pending: 0, recovering: 0,
+      unknown: 0, inapplicable: 0, recoveryUntil: null, eventCursor: null, tasks: [] }
+    for (const categoryRecovery of [
+      { invented: { action: 'retry', reasons: [] } }, { site: { action: 'pretend_success', reasons: [] } },
+      { site: { action: 'retry', reasons: 'unknown' } }, { site: null },
+    ]) expect(() => readSiteHomeView({ ...fixture, executionProgress: { ...executionProgress, categoryRecovery } }, 'fixture-site')).toThrow()
+  })
+
   it('preserves the physical action identity separately from a grouped incident link', () => {
     const fixture = siteViewFixture()
     fixture.cards = buildBoardCards({ siteId: 'fixture-site', inFlight: false, hasLastKnown: false,

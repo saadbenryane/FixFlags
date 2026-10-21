@@ -9,6 +9,7 @@ import { SampleFixPrompt } from '@/components/marketing/public-site/SampleFixPro
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { getCuratedSampleAudit, UnknownCuratedObservationError } from '@/lib/marketing/curated-sample'
+import { effectiveRepairGuidance } from '@/lib/improvements/repair-guidance'
 
 export const metadata = buildPageMetadata('samples', '/samples')
 const C = PUBLIC_SITE_COPY.samplePage
@@ -26,7 +27,8 @@ export default async function SamplesPage({ searchParams }: {
   }
   const flag = audit.flags.find(item => item.checkId === 'cta-below-fold-mobile')
   const screenshot = audit.screenshots.find(item => item.device === 'MOBILE')
-  if (!flag || !screenshot || !flag.agentPrompt || !flag.verificationRule) notFound()
+  const prompt = flag ? effectiveRepairGuidance(flag) : null
+  if (!flag || !screenshot || !prompt || !flag.verificationRule) notFound()
 
   return <>
     <PublicPageIntro page="/samples" label={C.label} title={C.title} body={C.body} />
@@ -41,7 +43,7 @@ export default async function SamplesPage({ searchParams }: {
           <div className="min-w-0 space-y-8 [overflow-wrap:anywhere]">
             <section><h3 className="text-lg font-semibold">{C.observed}</h3><p className="mt-3 leading-7 text-muted-foreground">{flag.evidence}</p></section>
             <section><h3 className="text-lg font-semibold">{C.fix}</h3><p className="mt-3 leading-7 text-muted-foreground">{flag.fix}</p></section>
-            <section className="rounded-card bg-muted/30 p-6"><h3 className="mb-4 text-lg font-semibold">{C.prompt}</h3><SampleFixPrompt prompt={flag.agentPrompt} /></section>
+            <section className="rounded-card bg-muted/30 p-6"><h3 className="mb-4 text-lg font-semibold">{C.prompt}</h3><SampleFixPrompt prompt={prompt} /></section>
             <section><h3 className="text-lg font-semibold">{C.verification}</h3><p className="mt-3 font-medium leading-7">{flag.verificationRule}</p><p className="mt-3 leading-7 text-muted-foreground">{C.verificationBody}</p></section>
           </div>
         </div>

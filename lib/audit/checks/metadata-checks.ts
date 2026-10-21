@@ -2,7 +2,8 @@ import type { RuntimeHeadMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import { safeFetchDocument } from '../url'
-import { isBotInterstitialDocument } from '../browser/page-capture'
+import { previewImageResponse } from './preview-image-response'
+import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
 export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
@@ -107,7 +108,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'IMPORTANT',
       problem: 'No image is specified for link previews',
       evidence: 'No <meta property="og:image"> tag found in <head>. A sharing service may choose a fallback; its rendered preview was not tested.',
-      fix: '1. Choose an image that represents this page (1200×630px is a common size)\n2. Add <meta property="og:image" content="https://yourdomain.com/og.png"> to the page head, or set the equivalent field in your framework\n3. Confirm the image loads publicly and check the preview in the sharing services you use',
+      fix: C.previewImage,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -121,7 +122,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'POLISH',
       problem: 'og:title is missing',
       evidence: 'No <meta property="og:title"> tag found',
-      fix: '1. Add <meta property="og:title" content="..."> to the page head\n2. Set it to match the page title (50-60 characters)\n3. Verify it renders correctly in the Twitter Card validator',
+      fix: C.previewTitle,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -135,7 +136,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'POLISH',
       problem: 'og:description is missing',
       evidence: 'No <meta property="og:description"> tag found',
-      fix: '1. Add <meta property="og:description"> to the page head\n2. Set it to match the meta description\n3. Keep it under 200 characters for clean link previews',
+      fix: C.previewDescription,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -202,9 +203,9 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       rubric: 'REACH',
       impactTag: 'SEO',
       severity: 'POLISH',
-      problem: 'Favicon is missing',
+      problem: 'No favicon link is declared',
       evidence: 'No link rel="icon" or apple-touch-icon found in <head>',
-      fix: '1. Generate a 32x32 PNG or ICO favicon\n2. Add <link rel="icon" href="/favicon.ico"> to <head>\n3. Add <link rel="apple-touch-icon" href="/apple-touch-icon.png"> for iOS',
+      fix: C.favicon,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -235,14 +236,13 @@ export async function runOgImageUrlCheck(
   let observed = 'The declared image URL could not be resolved.'
   if (!invalid) {
     try {
-      const response = await safeFetchDocument(imageUrl, { timeoutMs: 5000, deadline: options.deadline,
-        maxBytes: 64_000, accept: 'image/*' })
-      const status = response.statusCode, contentType = response.headers['content-type']?.toLowerCase() ?? ''
-      const restricted = status === 401 || status === 403 || status === 429 ||
-        isBotInterstitialDocument({ body: response.body, headers: response.headers, status })
-      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.body.length > 0
+      const init = { timeoutMs: 5000, deadline: options.deadline, maxBytes: 64_000, accept: 'image/*' }
+      const response = options.observeImage ? await options.observeImage(imageUrl, init)
+        : previewImageResponse(await (options.fetchDocument ?? safeFetchDocument)(imageUrl, init))
+      const status = response.statusCode, contentType = response.contentType, restricted = response.restriction !== null
+      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
       broken = !restricted && (status >= 400 || status >= 200 && status < 300 &&
-        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && response.body.length === 0))
+        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && !response.hasContent))
       complete = passed || broken
       observed = `GET HTTP ${status}${contentType ? `, ${contentType.slice(0, 120)}` : ', no content type'}. ${restricted ? 'Access to the normal image response was not established. ' : ''}${limitation}`
     } catch { observed = 'No public image response was obtained. Network errors and scanner refusals remain unknown.' }

@@ -229,7 +229,7 @@ export function Header({
                           </span>
                         </NavLink>
                       ))}
-                      <div className="mt-4 space-y-3 border-t pt-4">
+                      <div className="mt-4 space-y-3 pt-4">
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Theme</span>
                           <ThemeToggle />

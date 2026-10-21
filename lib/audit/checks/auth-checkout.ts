@@ -1,6 +1,7 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
-import { openCheckDestination } from '../open-check'
+import { openCheckDestination, type OpenCheckObservation } from '../open-check'
+import type { CheckAssertion } from './assertion'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 import { resolvedPageLinks } from './public-links'
 
@@ -18,6 +19,16 @@ const PAYMENT_HOST_RE =
   /(buy\.stripe\.com|checkout\.stripe\.com|paypal\.com|paddle\.com|lemonsqueezy\.com|gumroad\.com|chargebee\.com)/i
 
 type LinkKind = 'auth' | 'checkout'
+
+/** The same GET result the collector records. A missing result is not a successful destination. */
+export function actionDestinationObservation(sourceUrl: string, url: string, kind: LinkKind, result?: OpenCheckObservation): CheckAssertion {
+  const passed = Boolean(result && result.outcome !== 'blocked' && result.status !== null && result.status >= 200 && result.status < 300)
+  const conclusive = Boolean(result && (passed || result.shouldFlagDead))
+  return { key: kind + '-destination', name: kind === 'checkout' ? 'Checkout link response' : 'Sign-in link response',
+    expected: 'The public destination responds to GET without a missing-page or server error',
+    observed: `${displayDestination(url)}: ${!result || result.status === null ? result?.outcome ?? 'not checked' : `GET HTTP ${result.status} (${result.outcome})`}. Interactive and authenticated behavior was not tested.`,
+    passed, complete: conclusive, context: destinationContext(sourceUrl, url) }
+}
 
 function classifyLink(link: { href: string; text: string }): LinkKind | null {
   const haystack = `${link.href} ${link.text}`
@@ -54,21 +65,19 @@ export async function runAuthCheckoutChecks(
   }
   const deadline = Math.min(options.deadline ?? Infinity, Date.now() + 8_000)
   let complete = candidates.length <= MAX_LINK_CHECKS
-  await Promise.all(candidates.slice(0, MAX_LINK_CHECKS).map(async ({ url, kind }) => {
-    const result = await openCheckDestination(url, { timeoutMs: FETCH_TIMEOUT_MS, deadline, httpErrorsOnly: true })
-    const passed = result.outcome !== 'blocked' && result.status !== null && result.status >= 200 && result.status < 300
-    const conclusive = passed || result.shouldFlagDead
-    const context = destinationContext(pageUrl, url)
-    options.record?.({ key: kind + '-destination', name: kind === 'checkout' ? 'Checkout link response' : 'Sign-in link response',
-      expected: 'The public destination responds to GET without a missing-page or server error',
-      observed: `${displayDestination(url)}: ${result.status === null ? result.outcome : `GET HTTP ${result.status} (${result.outcome})`}. Interactive and authenticated behavior was not tested.`,
-      passed, complete: conclusive, context })
-    if (!conclusive) complete = false
+  const responses = await Promise.all(candidates.slice(0, MAX_LINK_CHECKS).map(async ({ url, kind }) => {
+    const result = await (options.openDestination ?? openCheckDestination)(url, { timeoutMs: FETCH_TIMEOUT_MS, deadline, httpErrorsOnly: true })
+    return { url, kind, result }
+  }))
+  for (const { url, kind, result } of responses) {
+    const assertion = actionDestinationObservation(pageUrl, url, kind, result)
+    options.record?.(assertion)
+    if (!assertion.complete) complete = false
     if (result.shouldFlagDead) {
       ;(kind === 'checkout' ? deadCheckout : deadAuth).push(displayDestination(url))
-      targets[kind].push({ kind: 'page', source: 'measured', device: 'desktop', label: 'Public destination response', context })
+      targets[kind].push({ kind: 'page', source: 'measured', device: 'desktop', label: 'Public destination response', context: assertion.context! })
     }
-  }))
+  }
   destinationScope(options, complete, 'GET responses cover up to eight distinct public action destinations. Network errors, scanner refusals, access restrictions and untested destinations remain unknown. No login, checkout or payment is submitted.')
 
   const findings: DeterministicFlag[] = []

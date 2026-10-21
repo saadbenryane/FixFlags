@@ -25,13 +25,13 @@
 .periods li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; }
 .sectionTitle { margin: 10px 0; font-size: 14px; font-weight: 600; }
 .incidents, .probes { padding: 0; margin: 0; list-style: none; }
-.incidents li { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 12px 0; border-bottom: 1px solid hsl(var(--border) / .65); font-size: 12px; }
+.incidents li { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 12px 0; font-size: 12px; }
 .incidents strong { width: 100%; font-size: 13px; font-weight: 550; }
 .incidents span { overflow-wrap: anywhere; }
 .incidents :is(p, time) { color: hsl(var(--muted-foreground)); }
 .incidents p { width: 100%; }
 .probes { max-height: 320px; overflow: auto; overscroll-behavior: contain; }
-.probes li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid hsl(var(--border) / .5); font-size: 12px; }
+.probes li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 10px 0; font-size: 12px; }
 .probes time, .probes small { color: hsl(var(--muted-foreground)); }
 .probes small { width: 100%; font-size: 11px; }
 @media (max-width: 639px) { .card { padding-inline: 14px; } .marks { gap: 2px; } }

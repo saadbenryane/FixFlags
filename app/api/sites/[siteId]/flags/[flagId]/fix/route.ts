@@ -1,16 +1,16 @@
-import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
-import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { NextRequest, NextResponse } from 'next/server'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { COPIED_HANDOFF_CLIENT } from '@/lib/improvements/handoff-contract'
 import { z } from 'zod'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
-import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
+import { loadSiteFlagCopyTask } from '@/lib/sites/application/flag-copy-task'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { requireSiteOwner } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { EDITOR_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
-import { boardFlagPrompt } from '@/lib/sites/board-card'
 
 const schema = z.object({
-  action: z.enum(['copy']),
+  action: z.enum(['prepare', 'copy']),
+  promptHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 })
 
 export async function POST(
@@ -26,33 +26,22 @@ export async function POST(
     const body = schema.safeParse(await req.json().catch(() => ({})))
     if (!body.success) return apiError('Invalid action', 400)
 
-    const detail = await loadSiteBoardFlag(access.decision.site.siteId, flagId)
-    if (!detail) return apiError('Flag not found', 404)
-    if (detail.flag.supportingEvidenceUnreadable) return apiError(EDITOR_EVIDENCE_COPY.unreadable, 422)
-    if (!hasRepairGuidance(detail.flag.fix)) return apiError(SITE_ACTION_COPY.repairGuidance[detail.flag.repairGuidance === 'pending' ? 'pending' : 'unavailable'], 422)
-    const prompt = boardFlagPrompt({
-      problem: detail.flag.problem,
-      whyItMatters: detail.flag.whyItMatters,
-      evidence: detail.flag.evidenceMissing ? null : detail.flag.evidence,
-      fix: detail.flag.fix,
-      pageUrl: detail.flag.pageUrl,
-      affectedPaths: detail.flag.affectedPaths,
-      journeyName: detail.flag.relatedOutcome?.name,
-      expectedBehavior: detail.flag.expectedBehavior,
-      supportingObservations: detail.flag.supportingObservations,
-    })
-
-    if (!prompt) return apiError(EDITOR_EVIDENCE_COPY.unreadable, 422)
+    const task = await loadSiteFlagCopyTask(access.decision.site.siteId, flagId,
+      body.data.action === 'copy' ? body.data.promptHash : undefined)
+    if (body.data.action === 'prepare') return NextResponse.json({ ok: true, ...task })
     const recorded = await executeSiteCommand({
       type: 'RECORD_FIX_HANDOFF',
-      flagId: detail.flag.sourceFlagId ?? detail.flag.id,
+      flagId: task.sourceFlagId,
       userId,
       builder: 'copy',
+      client: body.data.promptHash ? COPIED_HANDOFF_CLIENT : undefined,
     })
     const handoff = 'handoff' in recorded ? recorded.handoff : null
+    if (!handoff) return apiError(SITE_ACTION_COPY.invalidResponse, 500)
 
-    return NextResponse.json({ ok: true, prompt, handoff })
+    return NextResponse.json({ ok: true, prompt: task.prompt, handoff })
   } catch (error) {
+    if (error instanceof SiteRunRefusal) return apiError(error.message, error.status, { code: error.code })
     return handleRouteError(error)
   }
 }

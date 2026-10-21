@@ -56,6 +56,7 @@ function availabilityRun() {
     selections: [{
       outcome: {
         id: 'page-1',
+        authorizationRevision: 1,
         kind: 'AVAILABILITY',
         bindings: [{
           ...binding,
@@ -168,6 +169,7 @@ describe('availability Outcome execution', () => {
       selections: [{
         outcome: {
           id: 'page-1',
+          authorizationRevision: 1,
           kind: 'AVAILABILITY',
           bindings: [{
             ...binding,

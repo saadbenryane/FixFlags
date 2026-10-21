@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -390,7 +391,7 @@ export function WorkspaceChatPanel({
     <TooltipProvider>
       <section
         className={cn(
-          'flex h-full min-h-0 flex-col overflow-hidden border-r border-border/50 bg-background',
+          'flex h-full min-h-0 flex-col overflow-hidden bg-background',
           className,
         )}
         aria-label="Agent"
@@ -554,7 +555,7 @@ export function WorkspaceChatPanel({
 
         {newScan ? (
           <form
-            className="space-y-2 border-t border-border/40 p-3"
+            className="space-y-2 p-3"
             onSubmit={(event) => { event.preventDefault(); void startScan() }}
           >
             <div className="flex min-w-0 gap-2">
@@ -570,17 +571,17 @@ export function WorkspaceChatPanel({
               <Button type="submit" loading={loading} disabled={!scanUrl.trim()}>{chatCopy.startAction}</Button>
             </div>
             {scanError ? <p role="alert" className="text-xs text-destructive">{scanError}</p> : null}
-            <button type="button" className="min-h-11 text-xs text-muted-foreground hover:text-foreground" onClick={() => setNewScan(false)}>
+            <InteractiveButton type="button" className="min-h-11 text-xs text-muted-foreground hover:text-foreground" onClick={() => setNewScan(false)}>
               {chatCopy.returnToReport}
-            </button>
+            </InteractiveButton>
           </form>
         ) : historyError && canChat ? (
-          <div className="space-y-3 border-t border-border/40 p-3">
+          <div className="space-y-3 p-3">
             <p role="alert" className="text-xs text-destructive">{historyError}</p>
             <Button variant="outline" className="w-full" onClick={() => void loadConversation()}>{chatCopy.retry}</Button>
           </div>
         ) : meta.exhausted && canChat ? (
-          <div className="space-y-3 border-t border-border/40 p-3">
+          <div className="space-y-3 p-3">
             <p className="text-xs text-muted-foreground">{chatCopy.allowanceBody}</p>
             <Button asChild className="w-full"><Link href="/pricing">{chatCopy.allowanceAction}</Link></Button>
           </div>
@@ -595,19 +596,19 @@ export function WorkspaceChatPanel({
                 aria-label={chatCopy.suggestionsLabel}
               >
                 {[chatCopy.cannedFirst, chatCopy.cannedUnresolved].map((chip) => (
-                  <button
+                  <InteractiveButton
                     key={chip}
                     type="button"
                     className="min-h-9 rounded-full bg-muted/50 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     onClick={() => void send(chip)}
                   >
                     {chip}
-                  </button>
+                  </InteractiveButton>
                 ))}
               </div>
             ) : null}
             <form
-              className="border-t border-border/40 p-2"
+              className="p-2"
               onSubmit={(event) => { event.preventDefault(); void send(input) }}
             >
               <div className="flex min-w-0 items-center gap-2">

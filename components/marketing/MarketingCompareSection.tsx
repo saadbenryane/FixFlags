@@ -46,7 +46,7 @@ function CompareRows() {
           {copy.columns.map(column => <col key={column.id} className="w-[14.5%] sm:w-[16%]" />)}
         </colgroup>
         <thead>
-          <tr className="border-b border-border/60">
+          <tr className="bg-muted/35">
             <th scope="col" className="px-3 py-3 text-[10px] font-medium text-muted-foreground sm:px-5 sm:py-4 sm:text-xs">
               {copy.capabilityLabel}
             </th>
@@ -62,8 +62,8 @@ function CompareRows() {
           </tr>
         </thead>
         <tbody>
-          {copy.rows.map((row) => (
-            <tr key={row.id} className="border-b border-border/50 last:border-b-0">
+          {copy.rows.map((row, index) => (
+            <tr key={row.id} className={index % 2 === 0 ? 'bg-muted/20' : undefined}>
               <th scope="row" className="px-3 py-3 text-left align-middle text-[11px] font-medium leading-snug text-foreground text-pretty sm:px-5 sm:py-4 sm:text-sm">
                 {row.capability}
               </th>

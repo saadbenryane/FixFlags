@@ -1,11 +1,13 @@
 import type { Audit, AuditVerifierExecution } from '@prisma/client'
 import type { TaskArtifact, TaskInput, TaskKind } from './contracts'
 import type { Prisma } from '@prisma/client'
+import type { NativeHttpEvidence } from '../native-http-evidence'
 
 export type TaskContext = {
   audit: Audit; task: AuditVerifierExecution; input: TaskInput; deadline: number;
   dependencies: Map<string, AuditVerifierExecution>;
   signal?: AbortSignal;
+  replayHttpEvidence?: NativeHttpEvidence;
 }
 export type TaskHandler = {
   kind: TaskKind; replay: 'read_only' | 'idempotent' | 'protected';

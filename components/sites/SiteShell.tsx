@@ -13,6 +13,7 @@ import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
+import { useSiteNavigationContinuity } from '@/hooks/useSiteNavigationContinuity'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { cn } from '@/lib/utils'
 import { CustomerMain, customerMobileBarClass } from '@/components/layout/customer-frame'
@@ -69,6 +70,7 @@ function SiteShellContent({
   children: ReactNode
 }) {
   const { user } = useMe()
+  useSiteNavigationContinuity(siteId)
   const signedIn = Boolean(user)
   const ownsSite = actions.ownership === 'owner'
   const showSettings = true
@@ -100,7 +102,7 @@ function SiteShellContent({
       <div className={styles.tabletNavigation}>
         <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
           <SheetTrigger asChild><Button variant="outline" size="sm"><Menu size={16} aria-hidden />{SITE_WORKSPACE_COPY.siteMenu}</Button></SheetTrigger>
-          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all pr-6">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
+          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
             {navigation('Website drawer', () => setNavigationOpen(false))}
           </SheetContent>
         </Sheet>

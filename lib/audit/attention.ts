@@ -8,6 +8,7 @@
 
 import { hasUnreadableSupportingObservations } from './flag-observations'
 import { searchAttentionDecision } from './search/policy'
+import { requiresContextualReview } from './prescription-policy'
 
 export const MIN_ATTENTION_CONFIDENCE = 0.65
 export const MAX_ATTENTION_ITEMS = 3
@@ -56,6 +57,7 @@ export function isCustomerFlag(flag: CustomerFlagInput): boolean {
   }
   const search = searchAttentionDecision(flag)
   if (search) return search.kind === 'flag'
+  if (requiresContextualReview(flag.checkId)) return false
   // These identities record attributes or phrase matches. They do not prove
   // behavioral failure, even when a historical collector gave higher severity.
   if (['form-missing-validation', 'h1-generic', 'no-cta-detected', 'journey-signup-too-many-fields', 'journey-funnel-timeout', 'journey-funnel-dead-end',

@@ -91,7 +91,7 @@ describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
       runRequestAdmission: expect.objectContaining({
         projectId: 'project-1', source: 'WEB', selections: undefined,
-        context: { action: 'run_site_care' },
+        context: { action: 'run_site_care', outcomeAuthorization: { version: 1, outcomes: [] } },
       }),
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({

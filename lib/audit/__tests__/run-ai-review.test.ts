@@ -30,6 +30,7 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.auditUpdateMany, findUniqueOrThrow: async () => ({ executionGeneration: 1 }) },
     $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: async () => [{ id: 'a1', lifecycleStatus: 'ACTIVE', deletedAt: null, cleanup: false }], audit: { update: mocks.auditUpdate } }),
     user: { findUnique: mocks.userFindUnique },
+    auditPipelineEvent: { findFirst: async () => null },
   },
 }))
 
@@ -72,7 +73,8 @@ vi.mock('@/lib/audit/technology-profile', () => ({
   technologyNamesForPrompt: mocks.technologyNamesForPrompt,
 }))
 
-import { runAiReview } from '../run-ai-review'
+import { runAiReview as runScopedAiReview } from '../run-ai-review'
+import { freezePrescriptionScope } from '../prescription-scope'
 import { PartialPrescriptionError } from '../judge-prescription'
 import { JudgeContractError } from '../validate-judge-output'
 import { mergeSupportingObservations, observationsForFlag } from '../flag-observations'
@@ -122,7 +124,7 @@ function resetMocks(): void {
   mocks.loadAuditScreenshotBase64.mockResolvedValue({ desktopBase64: 'aGk=', mobileBase64: null })
   mocks.loadTechnologyProfile.mockResolvedValue({})
   mocks.technologyNamesForPrompt.mockReturnValue(['Next.js'])
-  mocks.flagKeyForRow.mockReturnValue('key-1')
+  mocks.flagKeyForRow.mockImplementation((flag: { checkId?: string | null }) => flag.checkId ?? '')
   mocks.runPrescriptionWithRetry.mockResolvedValue(PRESCRIPTION)
   mocks.mergePrescriptionResults.mockResolvedValue(undefined)
   mocks.tryResolveEvidenceAnchorsForAudit.mockResolvedValue(undefined)
@@ -130,9 +132,21 @@ function resetMocks(): void {
   mocks.logPipelineEvent.mockResolvedValue(undefined)
 }
 
+async function runAiReview(auditId: string, deadline?: number, keys?: readonly string[]) {
+  const recorded = await mocks.auditFindUnique()
+  const flags = (recorded?.flags ?? []).map((flag: { id: string; checkId?: string | null; fingerprint?: string | null }) => ({ ...flag, checkId: flag.checkId ?? null, fingerprint: flag.fingerprint ?? null }))
+  return runScopedAiReview(auditId, deadline, keys, freezePrescriptionScope(flags, keys))
+}
+
 describe('runAiReview', () => {
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
+
+  it('refuses an unfrozen task before reading evidence or calling a provider', async () => {
+    await expect(runScopedAiReview('a1')).rejects.toThrow('PRESCRIPTION_SCOPE_MISSING')
+    expect(mocks.auditFindUnique).not.toHaveBeenCalled()
+    expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
+  })
 
   it('sends all original supporting scopes to prescription without private comparison fields or invented grades', async () => {
     const supportingObservations = mergeSupportingObservations([0, 1].map(index => observationsForFlag({
@@ -155,6 +169,18 @@ describe('runAiReview', () => {
     await assert.rejects(() => runAiReview('a1'), /supporting observations could not be read/)
     assert.equal(mocks.runPrescriptionWithRetry.mock.calls.length, 0)
     assert.equal(mocks.mergePrescriptionResults.mock.calls.length, 0)
+  })
+
+  it('passes recorded native guidance and server-owned Recommendation classification to the provider', async () => {
+    const fix = 'Review the intended action before changing the existing Checkout label.'
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, flags: [{ ...AUDIT.flags[0], checkId: 'no-cta-detected',
+      severity: 'POLISH', fix, causeCertainty: 'OBSERVED', fixConfidence: 'LOW' }] })
+    await runAiReview('a1')
+    const finding = mocks.runPrescriptionWithRetry.mock.calls[0][0].existingFlags[0]
+    assert.equal(finding.fix, fix)
+    assert.equal(finding.attention, 'recommendation')
+    assert.equal(finding.causeCertainty, 'OBSERVED')
+    assert.equal(finding.fixConfidence, 'LOW')
   })
 
   it('throws when the audit is missing', async () => {
@@ -246,7 +272,7 @@ describe('runAiReview', () => {
       where: { id: 'a1' },
       data: { includeAi: true },
     })
-    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output)
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ scope: expect.objectContaining({ version: 1 }) }))
     expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ auditId: 'a1' }))
   })
 
@@ -272,7 +298,7 @@ describe('runAiReview', () => {
     const cause = new JudgeContractError('expected 2 flag prescriptions, got 1')
     mocks.runPrescriptionWithRetry.mockRejectedValue(new PartialPrescriptionError(PRESCRIPTION, cause))
     await expect(runAiReview('a1')).rejects.toBe(cause)
-    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, { rubrics: false })
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ rubrics: false, scope: expect.objectContaining({ version: 1 }) }))
     expect(mocks.finalizeAudit).not.toHaveBeenCalled()
   })
 
@@ -284,13 +310,13 @@ describe('runAiReview', () => {
     ] })
     const usage = await runAiReview('a1', undefined, ['key-1'])
     expect(mocks.runPrescriptionWithRetry.mock.calls[0][0].existingFlags.map((flag: { flagKey: string }) => flag.flagKey)).toEqual(['key-1'])
-    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, { rubrics: false })
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ rubrics: false, scope: expect.objectContaining({ version: 1 }) }))
     expect(mocks.finalizeAudit).not.toHaveBeenCalled()
     expect(usage).toMatchObject({ inputTokens: 10, outputTokens: 5, model: 'gpt-4o-mini' })
   })
 
   it('refuses a prescription task aimed at a Flag that was not recorded', async () => {
-    mocks.flagKeyForRow.mockReturnValue('key-1')
+    mocks.flagKeyForRow.mockImplementation((flag: { checkId?: string | null }) => flag.checkId ?? '')
     await expect(runAiReview('a1', undefined, ['missing'])).rejects.toThrow('PRESCRIPTION_FLAGS_MISSING')
     expect(mocks.runPrescriptionWithRetry).not.toHaveBeenCalled()
     expect(mocks.mergePrescriptionResults).not.toHaveBeenCalled()

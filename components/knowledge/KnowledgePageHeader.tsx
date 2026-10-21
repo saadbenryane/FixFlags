@@ -38,9 +38,9 @@ export function KnowledgePageHeader({
       </nav>
       {meta ? <p className="mt-3 text-xs text-muted-foreground">{meta}</p> : null}
       {title ? (
-        <header className={description ? 'mt-6 border-b border-border/60 pb-8' : 'mt-6'}>
+        <header className={description ? 'mt-6 pb-8' : 'mt-6'}>
           {eyebrow ? (
-            <p className="mb-3 font-mono text-xs font-semibold uppercase tracking-label text-brand">
+            <p className="mb-3 font-mono text-xs font-semibold uppercase tracking-label text-muted-foreground">
               {eyebrow}
             </p>
           ) : null}

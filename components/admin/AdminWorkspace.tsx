@@ -71,8 +71,7 @@ export function AdminWorkspace({ children }: { children: React.ReactNode }) {
         <Logo variant="lockup" size="sm" href="/admin" />
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogTitle>Admin workspace</DialogTitle>
+        <DialogContent header={<DialogTitle>Admin workspace</DialogTitle>}>
           <DialogDescription>Choose an area to work in.</DialogDescription>
           {links()}
           <Link href="/dashboard">Open app</Link>

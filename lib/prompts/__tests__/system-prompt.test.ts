@@ -76,7 +76,7 @@ const basicPrescriptionContext: PrescriptionContext = {
 }
 
 describe('system-prompt triage contract', () => {
-  it('preserves every supporting observation in prescription context and keeps an absent grade unknown', () => {
+  it('preserves every supporting observation without importing rubric judgments into repair guidance', () => {
     const context: PrescriptionContext = { ...basicPrescriptionContext,
       rubrics: [{ name: 'REACH', grade: null, score: null, summary: 'No recorded grade' }],
       existingFlags: [{ ...basicPrescriptionContext.existingFlags[0], supportingObservations: [0, 1].map(index => ({
@@ -87,7 +87,7 @@ describe('system-prompt triage contract', () => {
     const prompt = buildPrescriptionUserPrompt(context)
     for (const value of ['page-0', 'page-1', 'check-0', 'check-1', 'Original supporting evidence 0', 'Original supporting evidence 1',
       'Target: desktop', 'Target: mobile', '#control-0', '#control-1']) assert.ok(prompt.includes(value), value)
-    assert.match(prompt, /REACH: Not graded/)
+    assert.doesNotMatch(prompt, /Rubric grades|REACH: Not graded/)
     assert.doesNotMatch(prompt, /REACH: F|\(0\/100\)/)
   })
   it('asks triage for evidence and whyItMatters without fix prompts', () => {
@@ -112,8 +112,9 @@ describe('system-prompt triage contract', () => {
 
   it('prescription system prompt requires scope guards', () => {
     const system = buildPrescriptionSystemPrompt()
-    assert.match(system, /Do NOT change/i)
-    assert.match(system, /SCOPE/i)
+    assert.match(system, /cannot change its classification, diagnosis, certainty, observations, evidence membership or verification obligations/i)
+    assert.match(system, /Preserve unrelated working behavior/)
+    assert.match(system, /Address every original supporting scope/)
   })
 
   it('prescription system prompt asks for a task body, not six tool dialects or invented files', () => {
@@ -122,7 +123,9 @@ describe('system-prompt triage contract', () => {
     assert.match(system, /Do not invent file paths/)
     assert.doesNotMatch(system, /@app\/page\.tsx/)
     assert.doesNotMatch(system, /cursorPrompt \(REQUIRED\)/)
-    assert.match(system, /Omit cursorPrompt/)
+    assert.match(system, /Do not return cursorPrompt/)
+    assert.match(system, /INSPECTION PLAN/)
+    assert.match(system, /keeps the existing implementation when a change is not justified/)
   })
 
   it('prescription user prompt includes page URL, evidence, and quoted current text', () => {
@@ -149,7 +152,7 @@ describe('system-prompt triage contract', () => {
   it('prescription system prompt requires verification steps', () => {
     const system = buildPrescriptionSystemPrompt()
     assert.match(system, /VERIFICATION RULE/i)
-    assert.match(system, /Reload the page/i)
+    assert.match(system, /preserves the original recorded verification conditions/i)
     assert.match(system, /Do not invent traffic, revenue, abandonment, conversion/)
     assert.doesNotMatch(system, /10K|thousands of link clicks|kills the social sharing loop|10x faster/)
   })
@@ -173,6 +176,15 @@ describe('system-prompt triage contract', () => {
 })
 
 describe('buildTriageUserPrompt', () => {
+  it('keeps exact source membership when visible prose mentions an action absent from the CTA inventory', () => {
+    const prompt = buildTriageUserPrompt({ ...basicTriageContext,
+      pageText: 'View equipment. Review your pack and checkout.',
+      metadata: { ...basicTriageContext.metadata, h1s: ['Equipment, "pricing"'], ctaTexts: [] } })
+    const source = prompt.split('Exact source values for evidenceRefs (JSON):\n')[1].split('\n')[0]
+    assert.deepEqual(JSON.parse(source), { title: ['Example'], description: ['A fine example'], headline: ['Equipment, "pricing"'], ctaText: [] })
+    assert.match(prompt, /empty ctaText array does not establish that the page has no controls/)
+    assert.match(prompt, /There is no minimum candidate count/)
+  })
   it('renders URL, metadata, scores, and deterministic flags', () => {
     const prompt = buildTriageUserPrompt(basicTriageContext)
     assert.match(prompt, /https:\/\/example\.com/)
@@ -251,16 +263,26 @@ describe('buildTriageUserPrompt', () => {
 })
 
 describe('buildPrescriptionUserPrompt', () => {
-  it('renders URL, score, verdict, metadata, tech stack, rubrics, and flags', () => {
+  it('supplies recorded certainty and Recommendation policy without recycling prior task instructions', () => {
+    const prompt = buildPrescriptionUserPrompt({ ...basicPrescriptionContext, existingFlags: [{
+      ...basicPrescriptionContext.existingFlags[0], attention: 'recommendation', causeCertainty: 'OBSERVED', fixConfidence: 'LOW',
+      fix: 'Review the intended visitor action before changing the existing Checkout label.',
+    }] } as PrescriptionContext)
+    assert.doesNotMatch(prompt, /Recorded fix:/)
+    assert.doesNotMatch(prompt, /Review the intended visitor action before changing the existing Checkout label/)
+    assert.match(prompt, /Attention: recommendation/)
+    assert.match(prompt, /Recorded cause certainty: OBSERVED/)
+    assert.match(prompt, /Recorded fix confidence: LOW/)
+  })
+
+  it('supplies recorded facts and task identities without scoring narratives', () => {
     const prompt = buildPrescriptionUserPrompt(basicPrescriptionContext)
     assert.match(prompt, /https:\/\/example\.com/)
-    assert.match(prompt, /72\/100/)
-    assert.match(prompt, /Solid foundation/)
+    assert.doesNotMatch(prompt, /72\/100|Solid foundation/)
     assert.match(prompt, /Title: Example/)
     assert.match(prompt, /Next\.js/)
     assert.match(prompt, /Tailwind CSS/)
-    assert.match(prompt, /MESSAGE: C/)
-    assert.match(prompt, /62\/100/)
+    assert.doesNotMatch(prompt, /MESSAGE: C|62\/100/)
     assert.match(prompt, /flagKey=flag-1/)
     assert.match(prompt, /desktop and mobile screenshots/)
   })
@@ -277,13 +299,13 @@ describe('buildPrescriptionUserPrompt', () => {
     assert.match(prompt, /None/)
   })
 
-  it('handles null rubric scores', () => {
+  it('keeps a rubric summary out of prescription facts', () => {
     const ctx: PrescriptionContext = {
       ...basicPrescriptionContext,
       rubrics: [{ name: 'REACH', grade: 'F', score: null, summary: 'Missing social proof' }],
     }
     const prompt = buildPrescriptionUserPrompt(ctx)
-    assert.match(prompt, /REACH: F/)
+    assert.doesNotMatch(prompt, /REACH: F|Missing social proof/)
     assert.doesNotMatch(prompt, /null\/100/)
   })
 
@@ -317,6 +339,8 @@ describe('buildPrescriptionPrompt (back-compat combined)', () => {
   it('includes both system and user sections', () => {
     const prompt = buildPrescriptionPrompt(basicPrescriptionContext)
     assert.match(prompt, /You are FixFlags/)
-    assert.match(prompt, /72\/100/)
+    assert.match(prompt, /URL: https:\/\/example\.com/)
+    assert.match(prompt, /flagKey=flag-1/)
+    assert.doesNotMatch(prompt, /72\/100/)
   })
 })

@@ -309,9 +309,16 @@ export function buildBoardCards(input: {
     const firstFlag = areaFlags[0]
     const isProblem = (fact?.state ?? 'unknown') === 'problem' && Boolean(firstFlag)
     const state = fact?.state ?? 'unknown'
+    const statusOverride = isProblem
+      ? SITE_BOARD_COPY.flagStatus
+      : fact?.stale
+        ? SITE_BOARD_COPY.checkOutOfDate
+        : state === 'unknown' && (fact?.evidenced || fact?.incompleteReason)
+          ? SITE_BOARD_COPY.siteCoverageIncomplete
+          : null
     const status =
       boardCardHeaderText(state, activity, fact?.checkedAt ?? input.checkedAt) ??
-      boardCardStatusText(state, activity, isProblem ? SITE_BOARD_COPY.flagStatus : fact?.stale ? SITE_BOARD_COPY.checkOutOfDate : null)
+      boardCardStatusText(state, activity, statusOverride)
     const outcomeName = isProblem ? outcomeNameForFlag(input.outcomes, firstFlag) : null
     const problem: BoardCardProblem | null =
       isProblem && firstFlag

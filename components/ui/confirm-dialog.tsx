@@ -50,11 +50,10 @@ export function useConfirm() {
 
   const confirmDialog = (
     <Dialog open={options !== null} onOpenChange={(open) => { if (!open) settle(false) }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" header={options ? <DialogTitle>{options.title}</DialogTitle> : null}>
         {options && (
           <>
             <DialogHeader>
-              <DialogTitle>{options.title}</DialogTitle>
               {options.description && (
                 <DialogDescription>{options.description}</DialogDescription>
               )}

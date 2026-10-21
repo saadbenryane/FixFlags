@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -58,13 +59,13 @@ export function SiteMonitoringMenu({ label, state, nextCheck, onManage, manageHr
   }, [open])
 
   return <div ref={root} className={styles.control} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}>
-    <button ref={trigger} type="button" className={styles.trigger} data-state={state} aria-label={`${C.title}: ${label}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(current => !current)}>
+    <InteractiveButton ref={trigger} type="button" className={styles.trigger} data-state={state} aria-label={`${C.title}: ${label}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(current => !current)}>
       <Radio size={15} aria-hidden /><span>{label}</span><ChevronDown size={13} aria-hidden />
-    </button>
+    </InteractiveButton>
     {open ? <div ref={panel} id={id} role="region" aria-label={C.title} className={styles.panel} style={position}>
       <strong>{C.title}</strong>
       <p>{typeof nextCheck === 'function' ? nextCheck() : nextCheck}</p>
-      {onManage ? <button type="button" className={styles.manage} onClick={() => { setOpen(false); onManage() }}>{C.edit}</button>
+      {onManage ? <InteractiveButton type="button" className={styles.manage} onClick={() => { setOpen(false); onManage() }}>{C.edit}</InteractiveButton>
         : manageHref ? <Link className={styles.manage} href={manageHref} onClick={() => setOpen(false)}>{manageLabel}</Link> : null}
     </div> : null}
   </div>

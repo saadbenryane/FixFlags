@@ -117,7 +117,10 @@ describe('redactCompletedPrivateReportData', () => {
 })
 
 describe('resolveActiveAttachedWorkId', () => {
-  beforeEach(() => resetMocks())
+  beforeEach(() => {
+    resetMocks()
+    mocks.findUnique.mockResolvedValue({ id: 'parent-1', userId: 'user-1', isPublic: false })
+  })
   afterEach(() => vi.restoreAllMocks())
 
   it('stays on the requested id when there is no attached child', async () => {
@@ -135,6 +138,20 @@ describe('resolveActiveAttachedWorkId', () => {
     assert.equal(await resolveActiveAttachedWorkId('parent-1'), 'parent-1')
     expectFindFirstActiveChild('parent-1')
   })
+
+  it('does not reveal attached work through a denied parent', async () => {
+    mocks.resolveAuditAccess.mockResolvedValue('denied')
+    mocks.findFirst.mockResolvedValueOnce({ id: 'private-child', userId: 'another-user', isPublic: false })
+    assert.equal(await resolveActiveAttachedWorkId('parent-1'), 'parent-1')
+    assert.equal(mocks.findFirst.mock.calls.length, 0)
+  })
+
+  it('does not borrow public parent access for a private child', async () => {
+    mocks.findUnique.mockResolvedValue({ id: 'parent-1', userId: null, isPublic: true })
+    mocks.findFirst.mockResolvedValueOnce({ id: 'private-child', userId: 'another-user', isPublic: false })
+    mocks.resolveAuditAccess.mockImplementation(async audit => audit.id === 'parent-1' ? 'public_viewer' : 'denied')
+    assert.equal(await resolveActiveAttachedWorkId('parent-1'), 'parent-1')
+  })
 })
 
 function expectFindFirstActiveChild(parentId: string) {
@@ -146,7 +163,7 @@ function expectFindFirstActiveChild(parentId: string) {
       },
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    select: { id: true },
+    select: { id: true, userId: true, isPublic: true },
   })
 }
 
@@ -246,6 +263,23 @@ describe('getProgressiveAuditForRequest', () => {
     }
   })
 
+  it('uses the selected child access when projecting progressive data', async () => {
+    mocks.findUnique.mockResolvedValueOnce(row).mockResolvedValueOnce({ ...row, id: 'child-public',
+      userId: 'another-user', isPublic: true,
+      performanceData: { actionTimeline: [{ label: 'private child context' }] },
+      productContract: { purpose: 'Private child purpose', firstValueJourney: 'Sign up', criticalOutcomes: ['buy'] } })
+    mocks.findFirst.mockResolvedValueOnce({ id: 'child-public', userId: 'another-user', isPublic: true })
+    mocks.resolveAuditAccess.mockImplementation(async audit => audit.id === 'a1' ? 'owner' : 'public_viewer')
+    const result = await getProgressiveAuditForRequest('a1')
+    assert.equal(result.kind, 'progressive')
+    if (result.kind === 'progressive') {
+      assert.equal(result.accessContext, 'public_viewer')
+      assert.equal(result.capabilities.canViewPrivateProductContext, false)
+      assert.deepEqual(result.audit.actionTimeline, [])
+      assert.equal(result.audit.productContract, null)
+    }
+  })
+
   it('derives pending capture state for queued audits without stored state', async () => {
     mocks.findUnique.mockResolvedValue({ ...row, status: 'QUEUED', screenshots: [] })
     const result = await getProgressiveAuditForRequest('a1')
@@ -336,6 +370,20 @@ describe('getGatedAuditForRequest', () => {
       assert.equal(result.accessContext, 'owner')
       assert.equal(result.showPrescription, true)
       assert.equal(result.showDeterministicFixes, true)
+    }
+  })
+
+  it('does not carry parent prompt privileges into a public child', async () => {
+    mocks.findUnique.mockResolvedValueOnce(fullRow).mockResolvedValueOnce({ ...fullRow, id: 'child-public',
+      userId: 'another-user', isPublic: true })
+    mocks.findFirst.mockResolvedValueOnce({ id: 'child-public', userId: 'another-user', isPublic: true })
+    mocks.resolveAuditAccess.mockImplementation(async audit => audit.id === 'a1' ? 'owner' : 'public_viewer')
+    const result = await getGatedAuditForRequest('a1')
+    assert.equal(result.kind, 'ok')
+    if (result.kind === 'ok') {
+      assert.equal(result.accessContext, 'public_viewer')
+      assert.equal(result.showPrescription, false)
+      assert.equal(result.showDeterministicFixes, false)
     }
   })
 

@@ -114,6 +114,34 @@ export function mergeRuntimeHeadMetadata(
 
 export type MetadataMode = 'crawler' | 'rendered'
 
+/** Published privacy and contact signals. Hidden, script, style and template
+ * text is already removed from the contact inputs. */
+export function publishedTrustSignals(input: {
+  anchors: ReadonlyArray<{ text: string; href: string }>
+  publishedText: string
+  publishedHrefs: readonly string[]
+  jsonLd: readonly unknown[]
+}) {
+  const hasPrivacyPolicy = input.anchors.some(anchor => {
+    const text = anchor.text.toLowerCase()
+    const href = anchor.href.toLowerCase()
+    return text.includes('privacy') || href.includes('privacy')
+  })
+  const publishedText = input.publishedText.toLowerCase()
+  const publishedHrefs = input.publishedHrefs.map(href => href.toLowerCase())
+  const hasContactInfoFromText = publishedText.includes('contact') || publishedText.includes('@') ||
+    publishedText.search(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) !== -1 ||
+    publishedHrefs.some(href => href.includes('contact') || href.startsWith('mailto:') || href.startsWith('tel:'))
+  const hasContactInfoFromJsonLd = input.jsonLd.some(item => {
+    if (!item || typeof item !== 'object') return false
+    const record = item as Record<string, unknown>
+    if (record.email || record.contactPoint) return true
+    const text = JSON.stringify(record).toLowerCase()
+    return text.includes('"email"') || text.includes('contactpoint')
+  })
+  return { hasPrivacyPolicy, hasContactInfo: hasContactInfoFromText || hasContactInfoFromJsonLd }
+}
+
 export function parseMetadataFromHtml(html: string, url: string, mode: MetadataMode = 'crawler'): PageMetadata {
   // Resource declarations use the scripting-enabled parse, so fallback and
   // template contents cannot become claims about live resource requests.
@@ -330,35 +358,16 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
       attribution: attribution.replace(/\s+/g, ' ').trim().slice(0, 1200) || null }
   }).filter(block => block.quote)
 
-  // Privacy policy detection
-  const hasPrivacyPolicy = !!(
-    $('a').filter((_, el) => {
-      const text = $(el).text().toLowerCase()
-      const href = ($(el).attr('href') || '').toLowerCase()
-      return text.includes('privacy') || href.includes('privacy')
-    }).length > 0
-  )
-
-  // Contact info detection - check body text, visible links, and JSON-LD structured data
-
+  // Privacy and contact use one predicate. Rendered destination probes call it
+  // with the live document when the saved HTML no longer fits.
   const contactBody = $('body').clone()
   contactBody.find('script,style,template,[hidden]').remove()
-  const publishedText = contactBody.text().toLowerCase()
-  const publishedLinks = contactBody.find('a[href]').toArray().map(element => ($(element).attr('href') ?? '').toLowerCase())
-  const hasContactInfoFromText = !!(
-    publishedText.includes('contact') ||
-    publishedText.includes('@') ||
-    publishedText.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) ||
-    publishedLinks.some(href => href.includes('contact') || /^mailto:|^tel:/.test(href))
-  )
-  const hasContactInfoFromJsonLd = jsonLd.some((item) => {
-    if (!item || typeof item !== 'object') return false
-    const obj = item as Record<string, unknown>
-    if (obj.email || obj.contactPoint) return true
-    const str = JSON.stringify(obj).toLowerCase()
-    return str.includes('"email"') || str.includes('contactpoint')
+  const { hasPrivacyPolicy, hasContactInfo } = publishedTrustSignals({
+    anchors: $('a').toArray().map(element => ({ text: $(element).text(), href: $(element).attr('href') || '' })),
+    publishedText: contactBody.text(),
+    publishedHrefs: contactBody.find('a[href]').toArray().map(element => $(element).attr('href') ?? ''),
+    jsonLd,
   })
-  const hasContactInfo = hasContactInfoFromText || hasContactInfoFromJsonLd
 
   const hasFavicon = $(
     'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'

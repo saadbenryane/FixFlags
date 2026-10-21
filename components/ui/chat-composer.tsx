@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveTextarea } from '@/components/ui/interactive-controls'
 import { useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +15,7 @@ export function ChatComposer({ value, onChange, label, placeholder, maxLength, d
     textarea.current.style.height = 'auto'
     textarea.current.style.height = `${Math.min(144, Math.max(44, textarea.current.scrollHeight))}px`
   }, [value])
-  return <textarea ref={textarea} value={value} aria-label={label} placeholder={placeholder} rows={1} maxLength={maxLength}
+  return <InteractiveTextarea ref={textarea} value={value} aria-label={label} placeholder={placeholder} rows={1} maxLength={maxLength}
     disabled={disabled} onChange={event => onChange(event.target.value)}
     onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
     onKeyDown={event => {

@@ -4,6 +4,7 @@ export const SITE_ACTION_COPY = {
   repairGuidance: {
     pending: 'Fix guidance is still being written. The evidence on this page is ready to read.',
     unavailable: 'This finding has recorded evidence, and fix guidance is not available yet. Check again from Overview.',
+    changed: 'This repair task changed. Copy the updated prompt again.',
     label: { pending: 'Writing guidance', unavailable: 'Guidance unavailable' },
     refresh: 'Refresh guidance', overview: 'Open Overview',
   },

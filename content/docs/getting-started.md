@@ -35,11 +35,11 @@ A **Check again** action starts a new check now. It does not turn on scheduled m
 
 <!-- generated:public-offer -->
 
-## Shopify connection
+## Connections
 
 Connections are optional. You can start with your website address alone.
 
-[Integrations](/integrations) are coming soon, with GitHub first. Public website analysis and monitoring do not require a connected tool.
+[GitHub account authorization](/docs/integrations/github) is available. It does not inspect code or open pull requests. Other [integrations](/integrations) are coming soon until testing and validation. Public website analysis and monitoring do not require a connected tool.
 
 ## Get help
 

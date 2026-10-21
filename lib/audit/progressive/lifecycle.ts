@@ -24,6 +24,7 @@ import type { JourneyFindingDraft } from '../journey/types'
 import { durableCheckId } from '../flag-identity'
 import { runCheckedPageSearch } from '../search/workflow'
 import { evaluateCorridorConsistency } from '../checks/corridor-consistency'
+import { CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import { pagePreviewSchema, pagePreviewForComparison } from '../checks/page-preview'
 import { runBoundOutcomeExecutions } from '@/lib/sites/application/checkout-execution'
 import { reconcileSafeFixtureCleanup, executeSafeFormFixture, safeFormExecutionResultSchema } from '@/lib/sites/application/safe-form-executor'
@@ -44,6 +45,7 @@ import type { TaskContext, TaskHandler } from './registry'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { enqueuePendingAiReview } from '../enqueue-ai-review'
 import { runAiReview, type PrescriptionRunUsage } from '../run-ai-review'
+import { PrescriptionScopeChanged } from '../prescription-scope'
 import { JudgeContractError } from '../validate-judge-output'
 import { admitAiObservation } from '../ai-observation-identity'
 
@@ -199,8 +201,10 @@ export const lifecycleHandlers: TaskHandler[] = [
     validateResult: artifact => { prescriptionResultSchema.parse(artifact.data) },
     async evaluate(context) {
       let usage: PrescriptionRunUsage = { inputTokens: 0, outputTokens: 0, model: '', cacheReadTokens: 0, cacheWriteTokens: 0 }
-      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys) }
+      if (!context.input.prescriptionScope) throw new TaskFailure('PRESCRIPTION_SCOPE_MISSING', false)
+      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys, context.input.prescriptionScope) }
       catch (error) {
+        if (error instanceof PrescriptionScopeChanged) throw new TaskFailure('PRESCRIPTION_SCOPE_CHANGED', false)
         if (error instanceof JudgeContractError) throw new TaskFailure('AI_CONTRACT_INVALID', false)
         throw error
       }
@@ -289,13 +293,18 @@ export const lifecycleHandlers: TaskHandler[] = [
       await commitFindings(context, artifact, tx)
     },
     async evaluate(context) {
+      const spec = readExecutionSpec(context.audit.executionSpec)
+      const selected = Object.entries(spec?.checks ?? {}).filter(([id]) => CHECK_REGISTRY[id]?.module === 'corridor')
+      if (selected.some(([id, version]) => CHECK_REGISTRY[id]?.version !== version))
+        throw new TaskFailure('CHECK_VERSION_UNAVAILABLE', false)
       const pages = await recordedPageEvidence(context.audit.id)
       const search = await runCheckedPageSearch(pages.flatMap(page => page.searchReceipt ? [page.searchReceipt] : []))
-      const corridor = evaluateCorridorConsistency(pages.map(page => pagePreviewForComparison(page, page.primary ? 'primary' : 'linked')))
+      const corridor = evaluateCorridorConsistency(selected.length ? pages.map(page => pagePreviewForComparison(page, page.primary ? 'primary' : 'linked')) : [])
       const receipts = [...corridor.assertions].map(([pageUrl, assertions]) => checkReceiptSchema.parse({
         kind: 'site-module-check', version: 1, module: 'corridor', pageUrl, applicable: assertions.some(assertion => assertion.disposition !== 'observed'),
         complete: assertions.every(assertion => assertion.complete), passed: assertions.every(assertion => assertion.complete && (assertion.disposition === 'observed' || assertion.passed)), assertions,
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: CHECK_MODULES.corridor.version,
+          checkVersions: Object.fromEntries(selected), source: 'rendered-dom', collectedAt: new Date().toISOString() },
       }))
       return serializeArtifact('cross-page', crossPageSchema.parse({ flags: [...search, ...corridor.flags], receipts }))
     },

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { Prisma, type OutcomeAssessmentState, type SiteOutcomeKind } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
-import type { OutcomeAssessmentState, SiteOutcomeKind } from '@prisma/client'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, checkoutResultCopy, customerBindingResult, outcomeStatusLabel } from '@/lib/sites/outcome-state'
@@ -181,6 +181,15 @@ describe('loadSiteOutcomeDetail newest execution', () => {
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: { audit: { select: { executionSpec: true } } },
+    })
+    expect(mocks.assessmentFindFirst).toHaveBeenCalledWith({
+      where: {
+        outcomeId: 'outcome-1',
+        state: 'CLEAR',
+        evidence: { path: ['supersededByAssessmentId'], equals: Prisma.AnyNull },
+      },
+      orderBy: { assessedAt: 'desc' },
+      select: { assessedAt: true },
     })
     expect(detail).not.toBeNull()
     expect(detail?.state).toBe('CLEAR')

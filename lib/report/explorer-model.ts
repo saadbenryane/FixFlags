@@ -193,12 +193,12 @@ function mapLiveFlag(
     copyFixPrompt,
     toolPrompts: mayShowPrompt && fixPrompt
       ? {
-          universal: flag.agentPrompt,
-          cursor: flag.cursorPrompt,
-          claude: flag.claudePrompt,
-          windsurf: flag.windsurfPrompt,
-          lovable: flag.lovablePrompt,
-          bolt: flag.boltPrompt,
+          universal: flag.agentPrompt ? fixPrompt : null,
+          cursor: flag.cursorPrompt ? fixPrompt : null,
+          claude: flag.claudePrompt ? fixPrompt : null,
+          windsurf: flag.windsurfPrompt ? fixPrompt : null,
+          lovable: flag.lovablePrompt ? fixPrompt : null,
+          bolt: flag.boltPrompt ? fixPrompt : null,
         }
       : {},
     verificationRule: flag.verificationRule ?? null,
@@ -389,7 +389,7 @@ function mapSampleFlag(
     toolPrompts: {},
     verificationRule: flag.verificationRule,
     affectedDevices: flag.affectedDevices,
-    hasFixPrompt: mayShowPrompt && Boolean(flag.fixPrompt || flag.agentPrompt || flag.fix),
+    hasFixPrompt: mayShowPrompt && Boolean(handoff),
     pageUrl: flag.pageUrl ?? null,
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
     occurrenceCount: 1,
@@ -411,7 +411,7 @@ export function buildSampleExplorerModel(
     severity: flag.severity as RankableFlag['severity'],
     problem: flag.title,
     evidence: flag.evidence,
-    fix: flag.fixPrompt,
+    fix: flag.fix,
     agentPrompt: flag.agentPrompt,
     pageUrl: flag.pageUrl,
   }))

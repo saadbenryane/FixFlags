@@ -79,3 +79,4 @@
 @media (prefers-reduced-motion: reduce) {
   .navLink, .path { transition: none; }
 }
+.headingAnchor { display: block; scroll-margin-top: calc(var(--header-height-marketing) + 24px); }

@@ -1,4 +1,5 @@
 'use client'
+import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import type { LeadStatus } from '@prisma/client'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,7 +19,7 @@ export function LeadEditor({
     <div className="space-y-4">
       <label className="block space-y-2 text-sm">
         Status
-        <select
+        <InteractiveSelect
           className="h-11 w-full rounded-input border bg-background px-3"
           value={status}
           onChange={(e) => setStatus(e.target.value as LeadStatus)}
@@ -28,7 +29,7 @@ export function LeadEditor({
               {s}
             </option>
           ))}
-        </select>
+        </InteractiveSelect>
       </label>
       <label htmlFor="lead-notes" className="block space-y-2 text-sm">
         Notes

@@ -56,7 +56,7 @@ describe('integration guides', () => {
       const guide = render(await IntegrationGuide(props))
       expect(screen.getByRole('link', { name: 'Integration guides' })).toHaveAttribute('href', '/docs/integrations')
       expect(screen.getByRole('heading', { name: 'Connect', level: 2 })).toHaveAttribute('id', 'connect')
-      expect(screen.getByRole('link', { name: 'Open your Sites' })).toHaveAttribute('href', '/dashboard')
+      expect(screen.getByRole('link', { name: 'Open Websites' })).toHaveAttribute('href', '/dashboard')
       expect((await generateMetadata(props)).alternates?.canonical).toContain(`/docs/integrations/${integration}`)
       guide.unmount()
     }

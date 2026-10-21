@@ -117,6 +117,8 @@ const STILL_OPEN = new Set(['OPEN', 'REGRESSED', 'IGNORED'])
  * The audit id a recovery may cite. Pass attempts newest first, matching
  * loadSiteFlagDetail. The Flag's own resolvedInId wins. When that is absent,
  * a VERIFIED improvement may cite the newest comparable IMPROVED attempt.
+ * An unverified loaded status cites nothing. The completed audit was already
+ * rejected, and showing it would disagree with the inbox.
  */
 export function flagRecoveryProofId(input: {
   status: string
@@ -126,6 +128,7 @@ export function flagRecoveryProofId(input: {
   attempts: Array<{ outcome: string | null; comparable: boolean | null; verificationAuditId: string | null;
     sourceAuditId?: string; handoffReference?: string | null }>
 }): string | null {
+  if (input.status === 'UNVERIFIED') return null
   if (input.resolvedInId) return input.resolvedInId
   if (input.status !== 'VERIFIED') return null
   const improved = input.attempts.find(
@@ -141,6 +144,7 @@ export function flagRecoveryProofId(input: {
 }
 
 function proofNote(input: FlagResolutionInput): FlagProofNote | null {
+  if (input.status === 'UNVERIFIED') return null
   const proof = input.proof
   const proofId = input.resolvedInId ?? (input.status === 'VERIFIED' ? input.attemptProofId ?? null : null)
   if (!proofId || !proof) return null
@@ -165,8 +169,9 @@ function proofNote(input: FlagResolutionInput): FlagProofNote | null {
  * or, only when that is absent and the loaded status is VERIFIED, the improved
  * attempt's verification audit. The detail status is often PROPOSED or VERIFIED,
  * so the proof is not limited to the flag-row value FIXED. An open, regressed,
- * or ignored Flag stays open even if a proof object is passed in. A recorded
- * proof id, or a VERIFIED status, without a completed match, is unverified.
+ * or ignored Flag stays open even if a proof object is passed in. An unverified
+ * loaded status stays unverified even when that completed audit is supplied.
+ * A recorded proof id, or a VERIFIED status, without a completed match, is unverified.
  * Verifying is only the persisted attempt that has not finished, and it keeps
  * the last completed check visible.
  */

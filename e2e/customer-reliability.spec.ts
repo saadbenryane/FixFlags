@@ -89,10 +89,13 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
       }
       await page.setViewportSize({ width: 1440, height: 900 })
     }
-    // Advance only this fixture's schedule; refuse to process other Sites.
+    // Resume this fixture through the owner command; refuse to process other Sites.
     expect(await db.project.count({ where: { id: { not: projectId }, watchInterval: { not: null }, watchNextRunAt: { lte: new Date() } } })).toBe(0)
     await control({ broken: true, rejectNextEmail: true })
-    await db.project.update({ where: { id: projectId }, data: { watchNextRunAt: new Date(0) } })
+    for (const action of ['pause', 'resume']) {
+      const changed = await page.request.post(`/api/sites/${projectId}/watch`, { data: { action } })
+      expect(changed.status(), await changed.text()).toBe(200)
+    }
     // The isolated runtime owns scheduler invocation, rather than the shared worker.
     const scheduled = await page.request.post(`${runtime.fixtureOrigin}/tick`, { headers: { Authorization: `Bearer ${runtime.token}` }, data: { projectId } })
     expect(scheduled.ok(), await scheduled.text()).toBe(true)

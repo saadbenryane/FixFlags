@@ -4,9 +4,10 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { DialogTrigger } from './dialog'
 
 const Sheet = DialogPrimitive.Root
-const SheetTrigger = DialogPrimitive.Trigger
+const SheetTrigger = DialogTrigger
 const SheetClose = DialogPrimitive.Close
 const SheetPortal = DialogPrimitive.Portal
 
@@ -28,10 +29,10 @@ SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 const sheetVariants = {
   side: {
     right:
-      "inset-y-0 right-0 h-full w-3/4 max-w-sm border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
-    left: "inset-y-0 left-0 h-full w-3/4 max-w-sm border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+      "inset-y-0 right-0 h-full w-3/4 max-w-sm  data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+    left: "inset-y-0 left-0 h-full w-3/4 max-w-sm  data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
     bottom:
-      "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-card border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+      "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-card data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
   },
 }
 
@@ -56,7 +57,7 @@ const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      <SheetClose className="absolute right-4 top-4 rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none">
+      <SheetClose className="absolute right-2 top-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetClose>
@@ -66,7 +67,7 @@ const SheetContent = React.forwardRef<
 SheetContent.displayName = DialogPrimitive.Content.displayName
 
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />
+  <div className={cn("flex flex-col space-y-2 pr-12 text-center sm:text-left", className)} {...props} />
 )
 SheetHeader.displayName = "SheetHeader"
 

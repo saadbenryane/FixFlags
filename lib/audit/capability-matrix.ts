@@ -1,5 +1,6 @@
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 import { CHECK_DEFINITIONS } from './check-registry'
+import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 
 /** How a capability is evaluated in the FixFlags pipeline. */
 export type AuditTool =
@@ -89,7 +90,7 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     id: 'message-trust-psychology',
     dimension: 'MESSAGE',
     category: 'trust',
-    label: 'Authority signals, claim substantiation & contact',
+    label: C.trustContextLabel,
     tool: 'html-parse',
     status: 'live',
 
@@ -163,10 +164,10 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     id: 'copy-slop-placeholders',
     dimension: 'MESSAGE',
     category: 'copy',
-    label: 'Placeholder / lorem / TODO copy',
+    label: C.placeholderLabel,
     tool: 'html-parse',
     status: 'live',
-
+    notes: C.placeholderScope,
   },
   {
     id: 'copy-dead-cta-links',
@@ -388,12 +389,12 @@ const CAPABILITY_DEFINITIONS: Omit<AuditCapability, 'checkIds'>[] = [
     id: 'experience-mobile-cta-fold',
     dimension: 'EXPERIENCE',
     category: 'layout',
-    label: 'Primary CTA above fold on mobile',
+    label: C.actionPositionLabel,
     tool: 'browser-capture',
     status: 'live',
 
     verify: 'npm run dev:all + full audit',
-    notes: 'Uses CaptureMetrics from mobile Playwright viewport.',
+    notes: C.actionPositionScope,
   },
   {
     id: 'experience-auth-checkout',

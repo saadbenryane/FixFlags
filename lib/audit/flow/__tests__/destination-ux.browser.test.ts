@@ -108,10 +108,23 @@ run('native destination observations', () => {
       await page.goto('https://example.com/signup')
       const ux = await runDestinationUXProbes(page, 'Subscribe', '/subscribe')
       expect(ux).toMatchObject({ contentComplete: false, controlsComplete: true, hasPrimaryCTA: true,
-        trustSignals: { hasPrivacyPolicy: null, hasContactInfo: null, isHttps: true },
+        trustSignals: { hasPrivacyPolicy: false, hasContactInfo: null, isHttps: true },
         loadQuality: { timeToContentMs: null, hadStuckLoading: null, layoutShift: null } })
       const flags = runFlowUXChecks({ status: 'success', ctaText: 'Subscribe', finalUrl: page.url(), destinationUX: ux } as FlowScanResult)
-      expect(flags).toEqual([])
+      expect(flags.map(flag => flag.checkId)).toEqual(['flow-destination-no-privacy'])
+    } finally { await context.close() }
+  })
+
+  it('reads privacy and contact from the open document when saved HTML is too large', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      await page.route('**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Large destination</title><main>' +
+        '<h1>Subscribe to team planning</h1><p>' + 'x'.repeat(1_000_001) + '</p><a href="/privacy">Privacy policy</a><a href="mailto:help@example.com">Email support</a></main>' }))
+      await page.goto('https://example.com/signup')
+      const ux = await runDestinationUXProbes(page, 'Subscribe', '/subscribe')
+      expect(ux.trustSignals).toEqual({ hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true })
+      expect(runFlowUXChecks({ status: 'success', ctaText: 'Subscribe', finalUrl: page.url(), destinationUX: ux } as FlowScanResult)).toEqual([])
     } finally { await context.close() }
   })
 })

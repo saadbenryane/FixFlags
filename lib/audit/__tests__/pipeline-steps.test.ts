@@ -7,6 +7,10 @@ import { healthyMeta } from './check-fixtures'
 vi.mock('../judge-triage', () => ({
   runTriageWithRetry: vi.fn(),
 }))
+vi.mock('../provider-usage', async importOriginal => ({
+  ...await importOriginal<typeof import('../provider-usage')>(),
+  beginProviderUsage: vi.fn(),
+}))
 
 const { auditFindUnique, flagFindMany } = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
@@ -21,6 +25,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { runTriageWithRetry } from '../judge-triage'
+import { beginProviderUsage } from '../provider-usage'
 import { runTriageStep } from '../pipeline/triage-step'
 
 // ── tryPartialFinalize mocks ─────────────────────────────────────
@@ -117,7 +122,13 @@ describe('runTriageStep', () => {
       input.mobileBase64,
       expect.any(Number),
       undefined,
+      expect.any(Function),
     )
+    const recordResponse = vi.fn(async () => undefined)
+    vi.mocked(beginProviderUsage).mockResolvedValueOnce(recordResponse)
+    const admission = vi.mocked(runTriageWithRetry).mock.calls[0][9]!
+    await expect(admission('gpt-4o-mini')).resolves.toBe(recordResponse)
+    expect(beginProviderUsage).toHaveBeenCalledWith('test-audit', 'triage', 'gpt-4o-mini')
     expect(result).toBe(mockResult)
   })
 

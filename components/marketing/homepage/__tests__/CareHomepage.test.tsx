@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
 import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS } from '@/lib/marketing/copy/care-homepage'
@@ -68,13 +68,14 @@ describe('comprehensive homepage experience', () => {
   it('returns to the same page result and scroll position after reading a Flag', async () => {
     render(<CareHomepage />)
     const dialog = openCategory('Pages')
-    dialog.scrollTop = 320
+    const scrollBody = dialog.querySelector<HTMLElement>('[data-dialog-scroll]')!
+    scrollBody.scrollTop = 320
     fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /contact' }))
     await waitFor(() => expect(within(dialog).getByRole('heading', { name: SAMPLE_FLAGS.contact.title })).toHaveFocus())
-    expect(dialog.scrollTop).toBe(0)
+    expect(scrollBody.scrollTop).toBe(0)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to Pages' }))
     await waitFor(() => expect(within(dialog).getByRole('button', { name: 'View Flag for /contact' })).toHaveFocus())
-    expect(dialog.scrollTop).toBe(320)
+    expect(scrollBody.scrollTop).toBe(320)
   })
 
   it('keeps keyboard focus in the board when a detected tool opens Integrations', async () => {
@@ -393,7 +394,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).queryByText(S.unresolved)).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
-    expect(within(dialog).getByRole('link', { name: 'Learn about MCP' })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
+    expect(within(dialog).getByRole('link', { name: 'How to fix with AI' })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(opener).toHaveFocus())
   })
@@ -414,7 +415,7 @@ describe('comprehensive homepage experience', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
     const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
-    expect(within(handoff).getByRole('link', { name: 'Learn about MCP' })).toHaveAttribute('href', '/docs/fix-with-ai#what-is-mcp')
+    expect(within(handoff).getByRole('link', { name: 'How to fix with AI' })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
     expect(await screen.findByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
@@ -487,15 +488,19 @@ describe('comprehensive homepage experience', () => {
   })
 
   it('copies the displayed pricing-page guidance without resolving the sample Flag', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
+    let finishCopy!: () => void
+    const clipboardResult = new Promise<void>(resolve => { finishCopy = resolve })
+    const writeText = vi.fn().mockReturnValue(clipboardResult)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<CareHomepage />)
     const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
     for (const fact of C.actions.promptFacts) expect(within(handoff).getByText(fact.value)).toBeVisible()
     expect(within(handoff).getByRole('heading', { name: C.actions.promptTitle })).toBeVisible()
     fireEvent.click(within(handoff).getByRole('button', { name: C.story.copy }))
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
-    expect(within(handoff).getByRole('status')).toHaveTextContent(C.story.copied)
+    expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt)
+    expect(within(handoff).queryByRole('status')).not.toBeInTheDocument()
+    await act(async () => { finishCopy() })
+    expect(await within(handoff).findByRole('status')).toHaveTextContent(C.story.copied)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '3 Flags', exact: true })).toBeVisible()
   })

@@ -4,9 +4,9 @@
 .handoff { padding-top: 80px; padding-bottom: 80px; background: hsl(var(--muted) / .48); }
 .handoffGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 88px); }
 .handoffIntro { max-width: 510px; }
-.mcpAction { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; margin-top: 24px; padding: 11px 18px; border-radius: var(--radius-control); background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 13px; font-weight: 600; }
-.mcpAction:hover { background: hsl(var(--brand-hover)); }
-.mcpAction:active { transform: scale(.98); }
+.guidanceAction { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; margin-top: 24px; padding: 11px 18px; border-radius: var(--radius-control); background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font-size: 13px; font-weight: 600; }
+.guidanceAction:hover { background: hsl(var(--brand-hover)); }
+.guidanceAction:active { transform: scale(.98); }
 .prompt { min-width: 0; padding: 30px; border: 1px solid hsl(var(--border)); border-radius: 16px; background: hsl(var(--background)); box-shadow: 0 16px 42px hsl(var(--foreground) / .045); }
 .promptHeading { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--brand-strong)); }
 .promptHeading > svg { color: hsl(var(--brand)); }
@@ -85,7 +85,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .integrationField li { animation: none; }
-  .copyButton:active, .integrationLink:active, .integrationCard:active, .mcpAction:active { transform: none; }
+  .copyButton:active, .integrationLink:active, .integrationCard:active, .guidanceAction:active { transform: none; }
 }
 .loopSection > h2 { max-width: 700px; margin-inline: auto; font-size: clamp(30px, 3.7vw, 48px); font-weight: 600; letter-spacing: -.04em; line-height: 1.14; }
 .loop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-block: 40px 24px; text-align: left; }

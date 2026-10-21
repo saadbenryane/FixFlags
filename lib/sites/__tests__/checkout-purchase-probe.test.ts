@@ -177,6 +177,7 @@ function mockCheckoutRun(startUrl: string) {
     selections: [{
       outcome: {
         id: 'outcome-1',
+        authorizationRevision: 1,
         kind: 'CHECKOUT',
         bindings: [{
           key: 'checkout-browser-v1',

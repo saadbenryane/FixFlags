@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export const EXECUTION_LEASE_MS = 90_000
@@ -41,6 +41,26 @@ export async function claimExecution(auditId: string, { projectionOnly = false, 
   return { auditId, token, generation: audit.executionGeneration }
 }
 
+const OWNERSHIP_WATCH_MS = 1_000
+
+/** The ledger can exhaust or replace an attempt while its browser work is still open. */
+async function executionStillOwned(owner: ExecutionOwnership): Promise<boolean> {
+  if (owner.signal?.aborted) return false
+  if (owner.taskId) {
+    const task = await prisma.auditVerifierExecution.findFirst({
+      where: { id: owner.taskId, auditId: owner.auditId, workToken: owner.token,
+        workGeneration: owner.generation, workState: 'RUNNING' },
+      select: { id: true },
+    })
+    return task !== null
+  }
+  const audit = await prisma.audit.findFirst({
+    where: { id: owner.auditId, executionToken: owner.token, executionGeneration: owner.generation },
+    select: { id: true },
+  })
+  return audit !== null
+}
+
 export async function renewExecution(owner: ExecutionOwnership): Promise<boolean> {
   if (owner.signal?.aborted) return false
   const now = new Date()
@@ -60,14 +80,17 @@ export async function renewExecution(owner: ExecutionOwnership): Promise<boolean
   return renewed.count === 1
 }
 
-/** The guard and the write share a transaction and hold the Audit row lock. */
+/** The guard and the write share a transaction. The Site row is a shared fence.
+ * The Audit row stays exclusive so status and score updates keep one order. */
 async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: ExecutionOwnership): Promise<void> {
   assertExecutionActive(owner)
   // Commands and workers share Project -> Audit -> task lock order. Removal
   // can fence queued work without deadlocking an account reservation.
+  // FOR SHARE blocks Site removal without queueing every observation behind
+  // one project writer. The task row stays exclusive for its own commit.
   const projects = await tx.$queryRaw<Array<{ id: string; deletedAt: Date | null; lifecycleStatus: string; cleanup: boolean }>>`
     SELECT p."id", p."deletedAt", u."lifecycleStatus", (a."executionSpec"#>>'{scope}'='ACCOUNT_CHECKS' AND a."executionSpec"#>>'{accountChecks,mode}'='cleanup') AS cleanup FROM "projects" p JOIN "users" u ON u.id=p."userId" JOIN "audits" a ON a."projectId" = p."id"
-    WHERE a."id" = ${owner.auditId} FOR UPDATE OF p
+    WHERE a."id" = ${owner.auditId} FOR SHARE OF p
   `
   if (projects.some(project => !project.cleanup && (project.deletedAt || project.lifecycleStatus !== 'ACTIVE'))) throw new ExecutionOwnershipLost()
   if (owner.taskId) {
@@ -97,12 +120,47 @@ async function assertExecutionOwner(tx: Prisma.TransactionClient, owner: Executi
   if (rows.length !== 1) throw new ExecutionOwnershipLost()
 }
 
+const MAX_TRANSACTION_ATTEMPTS = 5
+const RETRIABLE_TRANSACTION_CODES = new Set(['P2028', 'P2034'])
+// An interactive timeout already held its locks for the whole budget.
+// Repeating that wait piles every other Site write behind it.
+
+type TransactionOptions = { maxWait?: number; timeout?: number; isolationLevel?: Prisma.TransactionIsolationLevel }
+
+/** A deadlock or lock timeout aborted the statement. The transaction did not commit. */
+export function transactionAborted(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : ''
+  // Prisma sometimes reports Postgres 40P01 or 55P03 as a connector error
+  // rather than P2034. The statement was cancelled and the transaction aborted.
+  if (/40P01|55P03|deadlock detected|lock timeout|Transaction already closed|write conflict or a deadlock/i.test(message)) return true
+  return error instanceof Prisma.PrismaClientKnownRequestError && RETRIABLE_TRANSACTION_CODES.has(error.code)
+}
+
+function exhaustedTransaction(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : ''
+  return /timeout for this transaction was/i.test(message)
+}
+
+/** A write conflict, lock timeout, or expired interactive transaction aborts
+ * the attempt. Retry it before the worker discards a finished observation. */
+async function runTransaction<T>(write: (tx: Prisma.TransactionClient) => Promise<T>, options?: TransactionOptions): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await prisma.$transaction(write, options)
+    } catch (error) {
+      if (!transactionAborted(error) || attempt + 1 >= MAX_TRANSACTION_ATTEMPTS || exhaustedTransaction(error) && attempt >= 1) throw error
+      const ceiling = Math.min(400, 50 * 2 ** attempt)
+      await new Promise(resolve => setTimeout(resolve, ceiling / 2 + Math.random() * ceiling / 2))
+    }
+  }
+}
+
 export async function executionWrite<T>(write: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   const owner = ownership.getStore()
   // Commands outside worker execution retain their existing transactional boundary.
   if (!owner) return write(prisma)
   assertExecutionActive(owner)
-  return prisma.$transaction(async tx => {
+  return runTransaction(async tx => {
     await assertExecutionOwner(tx, owner)
     assertExecutionActive(owner)
     const result = await write(tx)
@@ -113,11 +171,11 @@ export async function executionWrite<T>(write: (tx: Prisma.TransactionClient) =>
 
 export async function executionTransaction<T>(
   write: (tx: Prisma.TransactionClient) => Promise<T>,
-  options?: { maxWait?: number; timeout?: number; isolationLevel?: Prisma.TransactionIsolationLevel },
+  options?: TransactionOptions,
 ): Promise<T> {
   const owner = ownership.getStore()
   assertExecutionActive(owner)
-  return prisma.$transaction(async tx => {
+  return runTransaction(async tx => {
     if (owner) await assertExecutionOwner(tx, owner)
     assertExecutionActive(owner)
     const result = await write(tx)
@@ -127,25 +185,42 @@ export async function executionTransaction<T>(
 }
 
 export async function withExecutionOwnership<T>(owner: ExecutionOwnership, work: () => Promise<T>): Promise<T> {
+  const cancel = new AbortController()
   const inherited = ownership.getStore()?.signal
-  const signal = owner.signal && inherited && owner.signal !== inherited ? AbortSignal.any([owner.signal, inherited]) : owner.signal ?? inherited
-  const activeOwner = signal ? { ...owner, signal } : owner
+  const external = owner.signal && inherited && owner.signal !== inherited ? AbortSignal.any([owner.signal, inherited]) : owner.signal ?? inherited
+  const signal = external ? AbortSignal.any([cancel.signal, external]) : cancel.signal
+  const activeOwner = { ...owner, signal }
   assertExecutionActive(activeOwner)
   let lost = false
   let renewing = false
+  let watching = false
+  const releaseLost = () => {
+    if (lost || signal.aborted) return
+    lost = true
+    // Close the browser context. An exhausted task must not keep the slot.
+    // The reason is read by the deadline listener. Passing the Error here
+    // also surfaces it as an unhandled rejection from abort().
+    cancel.abort()
+  }
   const timer = setInterval(() => {
     if (renewing || lost) return
     renewing = true
-    void renewExecution(activeOwner).then(ok => { lost = !ok }).catch(() => { lost = true }).finally(() => { renewing = false })
+    void renewExecution(activeOwner).then(ok => { if (!ok) releaseLost() }).catch(() => undefined).finally(() => { renewing = false })
   }, EXECUTION_LEASE_MS / 3)
+  const watch = setInterval(() => {
+    if (watching || lost) return
+    watching = true
+    void executionStillOwned(activeOwner).then(ok => { if (!ok) releaseLost() }).catch(() => undefined).finally(() => { watching = false })
+  }, OWNERSHIP_WATCH_MS)
   timer.unref?.()
-  const stopRenewing = () => { clearInterval(timer) }
-  signal?.addEventListener('abort', stopRenewing, { once: true })
+  watch.unref?.()
+  const stopRenewing = () => { clearInterval(timer); clearInterval(watch) }
+  signal.addEventListener('abort', stopRenewing, { once: true })
   try {
     return await ownership.run(activeOwner, work)
   } finally {
-    clearInterval(timer)
-    signal?.removeEventListener('abort', stopRenewing)
+    stopRenewing()
+    signal.removeEventListener('abort', stopRenewing)
     if (owner.taskId) {
       await prisma.auditVerifierExecution.updateMany({
         where: { id: owner.taskId, workToken: owner.token, workGeneration: owner.generation },

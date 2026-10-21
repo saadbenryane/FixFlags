@@ -485,8 +485,22 @@ describe('createImprovementAttempt', () => {
 })
 
 describe('recordFlagImprovementAttempt', () => {
-  it('does not materialize or record a copied handoff without repair guidance', async () => {
-    mocks.flagFindFirst.mockResolvedValue({ ...flag, fix: '', improvementOccurrence: null,
+  it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('refuses an unconditional historical %s handoff before creating any receipt', async checkId => {
+    const recorded = { ...flag, checkId, fix: 'Replace the recorded content and move the action.', improvementOccurrence: null,
+      audit: { id: 'audit-1', projectId: 'project-1', productContract: null } }
+    const before = structuredClone(recorded)
+    mocks.flagFindFirst.mockResolvedValue(recorded)
+    await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
+      .rejects.toThrow('Repair guidance is unavailable')
+    expect(mocks.improvementCreateMany).not.toHaveBeenCalled()
+    expect(mocks.cycleEventUpsert).not.toHaveBeenCalled()
+    expect(mocks.attemptCreate).not.toHaveBeenCalled()
+    expect(recorded).toEqual(before)
+  })
+  it.each(['', 'Sign up', 'Create a free account to see evidence and fix prompts.',
+    'Sign up to see why this matters and get a fix prompt for your editor.', 'Sign up to get the fix prompt.',
+    'Sign up to see verification steps.'])('does not record a handoff for missing guidance or a historical signup gate: %j', async fix => {
+    mocks.flagFindFirst.mockResolvedValue({ ...flag, fix, improvementOccurrence: null,
       audit: { id: 'audit-1', projectId: 'project-1', productContract: null } })
     await expect(recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' }))
       .rejects.toThrow('Repair guidance is unavailable')
@@ -595,6 +609,16 @@ describe('recordFlagImprovementAttempt', () => {
         idempotencyKey: 'handoff-copied:flag-1',
       }),
     }))
+  })
+
+  it('accepts the same complete editor-only task exposed by the report without changing historical source', async () => {
+    const recorded = { ...ownedFlag, checkId: 'buttons-no-text', fix: '', cursorPrompt: 'Restore the recorded button label.' }
+    const before = structuredClone(recorded)
+    mocks.flagFindFirst.mockResolvedValue(recorded)
+    const result = await recordFlagImprovementAttempt({ flagId: 'flag-1', userId: 'user-1', builder: 'copy', action: 'HANDOFF_COPIED' })
+    expect(result).toMatchObject({ action: 'HANDOFF_COPIED', attemptId: null })
+    expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ type: 'HANDOFF_COPIED' }) }))
+    expect(recorded).toEqual(before)
   })
 
   it('requires and persists a structured rejection reason', async () => {

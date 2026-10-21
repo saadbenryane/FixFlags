@@ -17,6 +17,7 @@ import {
 import { SITE_LIFECYCLE_EVENTS } from '@/lib/analytics/site-events'
 import { loadSiteFirstValueFunnel } from '@/lib/analytics/site-first-value-funnel'
 import { loadWatchLaunchReadiness } from '@/lib/analytics/watch-launch-readiness'
+import { ADMIN_COPY } from '@/lib/marketing/copy/admin'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
@@ -562,8 +563,8 @@ export default async function AdminAnalyticsPage() {
                 variant="subtle"
               />
               <MetricCard
-                label="Journeys with useful evidence"
-                value={(firstValueFunnel.landing.firstUsefulResultSessions ?? 0).toLocaleString()}
+                label={ADMIN_COPY.analytics.landingCompletedAnalysis}
+                value={(firstValueFunnel.landing.completedAnalysisSessions ?? 0).toLocaleString()}
                 detail={
                   <span className="text-xs text-muted-foreground">
                     {firstValueFunnel.landing.resultRate === null
@@ -601,12 +602,13 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Anonymous Site first-value cohort (started in the last 30 days)</SectionTitle>
+        <SectionTitle>{ADMIN_COPY.analytics.completionCohort}</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
           Each start is fixed by its immutable server event, then matched to the same check&apos;s
           completed analysis and later account claim. Claiming a Site never removes its start from
           this denominator.
         </p>
+        <p className="max-w-4xl text-sm text-muted-foreground">{ADMIN_COPY.analytics.completionMeaning}</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Anonymous Sites started"
@@ -614,8 +616,8 @@ export default async function AdminAnalyticsPage() {
             variant="subtle"
           />
           <MetricCard
-            label="Completed analysis"
-            value={firstValueFunnel.firstUsefulResult.toLocaleString()}
+            label={ADMIN_COPY.analytics.completedAnalysis}
+            value={firstValueFunnel.analysisCompleted.toLocaleString()}
             detail={
               <span className="text-xs text-muted-foreground">
                 {firstValueFunnel.resultRate}% of starts
@@ -634,7 +636,7 @@ export default async function AdminAnalyticsPage() {
             variant="subtle"
           />
           <MetricCard
-            label="Failed before useful result"
+            label={ADMIN_COPY.analytics.failedBeforeCompletion}
             value={firstValueFunnel.failedBeforeResult.toLocaleString()}
             detail={
               <span className="text-xs text-muted-foreground">
@@ -668,7 +670,7 @@ export default async function AdminAnalyticsPage() {
                       <span className="truncate text-muted-foreground">{row.source}</span>
                       <span className="text-right font-mono tabular-nums">{row.started}</span>
                       <span className="text-right font-mono tabular-nums">
-                        {row.firstUsefulResult}
+                        {row.analysisCompleted}
                       </span>
                       <span className="text-right font-mono tabular-nums">{row.claimed}</span>
                     </div>

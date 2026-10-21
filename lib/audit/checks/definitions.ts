@@ -5,7 +5,7 @@ import { JOURNEY_ASSERTIONS } from './journey-definitions'
 
 export type AssertionDefinition = { area: SiteCardArea; verifies: readonly string[] }
 export type PageCheckDefinition = {
-  version: 1 | 2 | 3; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
+  version: 1 | 2 | 3 | 4; area: SiteCardArea; name: string; source: 'DETERMINISTIC';
   input: 'metadata' | 'headers' | 'http' | 'performance' | 'mobile' | 'browser' | 'accessibility' | 'keyboard' | 'console';
   evaluator: string; resultSchema: 'site-module-check-v1'; requiredEvidence: readonly string[];
   assertions: Readonly<Record<string, AssertionDefinition>>; timeoutMs: number; replaySafety: 'read_only' | 'protected';
@@ -156,7 +156,7 @@ export const PAGE_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition
     'claim-support-signals': assertion('conversion', ['trust-unsupported-claims']),
     'direct-contact-signals': assertion('conversion', ['trust-no-direct-contact']),
     'internal-navigation-count': assertion('conversion', ['trust-no-internal-links']),
-  }), version: 3 },
+  }), version: 4 },
   layout: define('layout', 'conversion', 'Layout', 'browser', {
     'mobile-cta-position': assertion('conversion', ['cta-below-fold-mobile']),
   }),
@@ -191,11 +191,18 @@ export const POST_CLICK_ASSERTIONS = {
   'destination-content-timing': ['flow-cta-blank-destination', 'flow-destination-slow-load'],
   'destination-loading-ui': ['flow-cta-stuck-loading', 'flow-destination-stuck-loading'],
 } as const
+export const DESTINATION_CONTENT_ASSERTIONS = {
+  'destination-headline': ['flow-destination-no-headline'],
+  'destination-next-action': ['flow-destination-no-cta'],
+  'destination-promise': ['flow-cta-message-mismatch'],
+  'destination-action-count': ['flow-destination-cta-overload'],
+  'destination-form-privacy': ['flow-destination-no-privacy'],
+} as const
 export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefinition>> = {
   corridor: { ...define('corridor', 'conversion', 'Cross-page previews', 'browser', {
     'preview-titles': assertion('conversion', ['corridor-og-title-drift']),
     'preview-descriptions': assertion('conversion', ['corridor-og-description-drift']),
-  }), requiredEvidence: ['compared-rendered-pages'] },
+  }), version: 2, requiredEvidence: ['compared-rendered-pages'] },
   'mobile-navigation': { ...define('mobile-navigation', 'conversion', 'Mobile navigation', 'browser', {
     'mobile-navigation': assertion('conversion', ['flow-mobile-menu-broken']),
   }), requiredEvidence: ['native-mobile-navigation'], timeoutMs: 15_000 },
@@ -216,6 +223,8 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
   flow: { ...define('flow', 'conversion', 'Public primary action', 'browser',
     { ...Object.fromEntries(Object.entries(PRIMARY_ACTION_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
       ...Object.fromEntries(Object.entries(POST_CLICK_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
+      'destination-trust': assertion('conversion', ['flow-cta-destination-no-trust']),
+      ...Object.fromEntries(Object.entries(DESTINATION_CONTENT_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
       'pricing-navigation': assertion('conversion', ['flow-pricing-nav-broken']) }),
     requiredEvidence: ['public-primary-action'] },
   'form-validation': { ...define('form-validation', 'conversion', 'Form validation', 'browser', {

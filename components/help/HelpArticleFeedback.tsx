@@ -25,7 +25,7 @@ export function HelpArticleFeedback({ articleSlug }: { articleSlug: HelpArticleS
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-6">
+    <div className="flex flex-wrap items-center gap-3 pt-6">
       <p className="text-sm font-medium text-foreground">Was this helpful?</p>
       <div className="flex gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => submit(true)}>

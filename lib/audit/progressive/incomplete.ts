@@ -1,3 +1,4 @@
+import { sumPrescriptionResponses } from '../prescription-usage'
 import { getUserFacingAuditError } from '../user-facing-errors'
 import { Prisma, type AuditVerifierExecution } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -90,7 +91,11 @@ export async function recordSettledPrescriptionCost(auditId: string) {
     select: { workState: true, workResult: true },
     take: MAX_TASKS_PER_AUDIT + 1,
   })
-  const usage = summedPrescriptionUsage(tasks)
+  if (tasks.some(task => !taskIsSettled(task.workState))) return
+  const responses = await prisma.auditPipelineEvent.findMany({ where: { auditId, event: { in: ['prescription_provider_attempt', 'prescription_provider_response'] } },
+    orderBy: { sequence: 'asc' }, select: { event: true, detail: true } })
+  const measured = responses.length ? sumPrescriptionResponses(responses) : null
+  const usage = measured ?? summedPrescriptionUsage(tasks)
   if (!usage) return
   await persistAuditRunCost(auditId, {
     durationMs: 0,
@@ -101,6 +106,7 @@ export async function recordSettledPrescriptionCost(auditId: string) {
     llmCacheReadTokens: usage.cacheReadTokens,
     llmCacheWriteTokens: usage.cacheWriteTokens,
     phase: 'prescription',
+    ...(measured ? { llmMeasurements: measured.measurements, llmUsageComplete: measured.complete } : {}),
   })
 }
 

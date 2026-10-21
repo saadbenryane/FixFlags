@@ -6,40 +6,31 @@ import { productTransaction } from '@/lib/billing/product-transaction'
 
 const conflict = () => new Prisma.PrismaClientKnownRequestError('Concurrent admission', { code: 'P2034', clientVersion: 'test' })
 describe('concurrent Site admission', () => {
-  beforeEach(() => { vi.useFakeTimers(); vi.spyOn(Math, 'random').mockReturnValue(0) })
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
-  it('retries a serialization conflict with a fresh admission transaction', async () => {
-    transaction.mockReset().mockRejectedValueOnce(conflict()).mockResolvedValueOnce('site')
+  beforeEach(() => { transaction.mockReset() })
+  afterEach(() => { vi.restoreAllMocks() })
+  it('admits through one serializable execution transaction', async () => {
+    transaction.mockResolvedValueOnce('site')
     const admission = vi.fn()
-    const started = Date.now()
-    const result = productTransaction(admission)
-    await vi.runAllTimersAsync()
-    await expect(result).resolves.toBe('site')
-    expect(Date.now() - started).toBe(25)
-    expect(transaction).toHaveBeenCalledTimes(2)
-    expect(transaction).toHaveBeenLastCalledWith(admission, { isolationLevel: 'Serializable' })
+    await expect(productTransaction(admission)).resolves.toBe('site')
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(transaction).toHaveBeenCalledWith(admission, { isolationLevel: 'Serializable' })
   })
   it('does not retry a capacity refusal or other application error', async () => {
     const error = new Error('One website during open beta')
-    transaction.mockReset().mockRejectedValue(error)
+    transaction.mockRejectedValue(error)
     await expect(productTransaction(vi.fn())).rejects.toBe(error)
     expect(transaction).toHaveBeenCalledTimes(1)
   })
-  it('bounds retries when contention does not resolve', async () => {
-    transaction.mockReset().mockRejectedValue(conflict())
-    const started = Date.now()
-    const failed = expect(productTransaction(vi.fn())).rejects.toMatchObject({ name: 'ProductAdmissionBusy', code: 'ADMISSION_BUSY', cause: { code: 'P2034' } })
-    await vi.runAllTimersAsync()
-    await failed
-    expect(Date.now() - started).toBe(375)
-    expect(transaction).toHaveBeenCalledTimes(5)
+  it('reports admission busy when the shared transaction retry is exhausted', async () => {
+    transaction.mockRejectedValue(conflict())
+    await expect(productTransaction(vi.fn())).rejects.toMatchObject({ name: 'ProductAdmissionBusy', code: 'ADMISSION_BUSY', cause: { code: 'P2034' } })
+    expect(transaction).toHaveBeenCalledTimes(1)
   })
-  it.each(['P2002', 'P2028'])('never retries an unrelated database error: %s', async code => {
+  it.each(['P2002', 'P2028'])('never treats an unrelated database error as admission contention: %s', async code => {
     const error = new Prisma.PrismaClientKnownRequestError('Other failure', { code, clientVersion: 'test' })
-    transaction.mockReset().mockRejectedValue(error)
+    transaction.mockRejectedValue(error)
     await expect(productTransaction(vi.fn())).rejects.toBe(error)
     expect(transaction).toHaveBeenCalledTimes(1)
-    expect(vi.getTimerCount()).toBe(0)
   })
 
 })

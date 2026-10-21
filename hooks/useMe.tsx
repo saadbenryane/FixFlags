@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -122,7 +123,7 @@ export function MeProvider({
     error: null,
   })
   const [claimUpgrade, setClaimUpgrade] = useState<ClaimUpgrade | null>(sharedClaimUpgrade)
-  const loadedRef = useRef(initiallyResolved)
+  const settledRef = useRef(initiallyResolved)
   const requestRef = useRef<Promise<{ user?: MeUser | null } | null> | null>(null)
 
   useEffect(() => {
@@ -135,26 +136,34 @@ export function MeProvider({
   }, [])
 
   const load = useCallback(async (force = false) => {
-    if (!force && loadedRef.current) return { user: state.user }
+    if (!force && settledRef.current) return { user: state.user }
     if (requestRef.current) return requestRef.current
 
-    setState((current) => ({ ...current, isLoading: true, error: null }))
+    // Background session updates must preserve content that is still hydrating.
+    startTransition(() => {
+      setState((current) => ({ ...current, isLoading: true, error: null }))
+    })
     requestRef.current = fetch('/api/me')
       .then(async (response) => {
         if (!response.ok) throw new Error(AUTH.me.loadError)
         const data = await response.json()
-        loadedRef.current = true
-        setState((current) => ({
-          ...current,
-          user: data.user ?? null,
-          isLoading: false,
-          error: null,
-        }))
+        settledRef.current = true
+        startTransition(() => {
+          setState((current) => ({
+            ...current,
+            user: data.user ?? null,
+            isLoading: false,
+            error: null,
+          }))
+        })
         return data
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : AUTH.me.loadError
-        setState((current) => ({ ...current, isLoading: false, error: message }))
+        settledRef.current = true
+        startTransition(() => {
+          setState((current) => ({ ...current, isLoading: false, error: message }))
+        })
         return null
       })
       .finally(() => {
@@ -164,6 +173,7 @@ export function MeProvider({
     return requestRef.current
   }, [state.user])
 
+  const ensureLoaded = useCallback(() => load(false), [load])
   const refresh = useCallback(() => load(true), [load])
 
   const claimAnonymous = useCallback(async (options?: { showToast?: boolean }) => {
@@ -183,7 +193,7 @@ export function MeProvider({
         return null
       }
       const data = await response.json()
-      loadedRef.current = true
+      settledRef.current = true
       publishClaimUpgrade(null)
       setState({
         user: data.user ?? null,
@@ -216,12 +226,12 @@ export function MeProvider({
     () => ({
       ...state,
       claimUpgrade,
-      ensureLoaded: () => load(false),
+      ensureLoaded,
       refresh,
       claimAnonymous,
       dismissClaimUpgrade,
     }),
-    [claimAnonymous, claimUpgrade, dismissClaimUpgrade, load, refresh, state]
+    [claimAnonymous, claimUpgrade, dismissClaimUpgrade, ensureLoaded, refresh, state]
   )
 
   return <MeContext.Provider value={value}>{children}</MeContext.Provider>

@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveInput, InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import { MONITORING_SCHEDULE_COPY as C } from '@/lib/marketing/copy/monitoring'
 import { Button } from '@/components/ui/button'
@@ -34,28 +35,27 @@ export function MonitoringScheduleEditor({ open, onOpenChange, schedule, availab
   const interval = scheduleInterval(selected)
   const supported = sample || interval === null || availableIntervals.includes(interval)
 
-  return <ResponsiveDepth open={open} onOpenChange={value => { if (!busy) onOpenChange(value) }}>
-    <DialogTitle>{C.title}</DialogTitle>
+  return <ResponsiveDepth header={<DialogTitle>{C.title}</DialogTitle>} open={open} onOpenChange={value => { if (!busy) onOpenChange(value) }}>
     <DialogDescription>{C.description}</DialogDescription>
     {sample ? <p className="text-sm text-muted-foreground">{C.sample}</p> : null}
     <form className="space-y-4" onSubmit={event => { event.preventDefault(); if (valid && supported && !busy && !loading && !loadError) onSave(selected) }}>
       <label className="grid gap-2 text-sm font-medium">{C.frequency}
-        <select className="min-h-11 rounded-control border border-border bg-background px-3" value={choice} disabled={busy || loading || Boolean(loadError)} onChange={event => setChoice(event.target.value as Choice)}>
+        <InteractiveSelect className="min-h-11 rounded-control border border-border bg-background px-3" value={choice} disabled={busy || loading || Boolean(loadError)} onChange={event => setChoice(event.target.value as Choice)}>
           <option value="daily">{C.daily}</option>
           <option value="hourly">{C.hourly}</option>
           <option value="weekly">{C.weekly}</option>
           <option value="custom">{C.custom}</option>
           <option value="off">{C.off}</option>
-        </select>
+        </InteractiveSelect>
       </label>
       {choice === 'custom' ? <div className="grid grid-cols-2 gap-3">
         <label className="grid gap-2 text-sm font-medium">{C.every}
-          <input type="number" min={1} max={365} step={1} className="min-h-11 w-full rounded-control border border-border bg-background px-3" value={every} disabled={busy} onChange={event => setEvery(event.target.value)} />
+          <InteractiveInput type="number" min={1} max={365} step={1} className="min-h-11 w-full rounded-control border border-border bg-background px-3" value={every} disabled={busy} onChange={event => setEvery(event.target.value)} />
         </label>
         <label className="grid gap-2 text-sm font-medium">{C.unit}
-          <select className="min-h-11 rounded-control border border-border bg-background px-3" value={unit} disabled={busy} onChange={event => setUnit(event.target.value as typeof unit)}>
+          <InteractiveSelect className="min-h-11 rounded-control border border-border bg-background px-3" value={unit} disabled={busy} onChange={event => setUnit(event.target.value as typeof unit)}>
             <option value="hours">{C.hours}</option><option value="days">{C.days}</option><option value="weeks">{C.weeks}</option>
-          </select>
+          </InteractiveSelect>
         </label>
       </div> : null}
       {loading ? <p role="status" className="text-sm text-muted-foreground">{C.loading}</p> : loadError ? <div role="status"><p className="text-sm">{loadError}</p><Button type="button" variant="outline" className="mt-2" onClick={onRetry}>{C.retry}</Button></div> : !valid ? <p role="status" className="text-sm">{C.invalid}</p> : !supported ? <p role="status" className="text-sm text-muted-foreground">{C.unavailable}</p> : <p className="text-sm text-muted-foreground">{selected ? C.checks(scheduleLabel(selected)) : C.paused}</p>}

@@ -9,7 +9,7 @@ export function HelpRelatedDocs({ article }: { article: HelpArticle }) {
   if (pages.length === 0) return null
 
   return (
-    <div className="space-y-2 border-t border-border/60 pt-6">
+    <div className="space-y-2 pt-6">
       <Heading as="h2" className="text-lg">
         Learn more in Docs
       </Heading>
@@ -18,7 +18,7 @@ export function HelpRelatedDocs({ article }: { article: HelpArticle }) {
           <li key={page.key}>
             <Link
               href={page.path as Route}
-              className="text-sm font-medium text-brand hover:underline"
+              className="text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground/50 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               {page.title}
             </Link>

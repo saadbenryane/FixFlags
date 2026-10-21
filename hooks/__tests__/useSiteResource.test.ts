@@ -4,6 +4,23 @@ import { SWRConfig } from 'swr'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useSiteResource } from '../useSiteResource'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
+import { categoryExecutionRecovery } from '@/lib/sites/execution-recovery'
+
+it('accepts a successful refresh with the actual sparse recovery map and keeps updates available', async () => {
+  const initial = siteViewFixture(); initial.outcomes = []
+  const updated = { ...initial, inventoryPageCount: initial.inventoryPageCount + 1,
+    executionProgress: { total: 0, completed: 0, running: 0, pending: 0, recovering: 0, unknown: 0, inapplicable: 0,
+      recoveryUntil: null, eventCursor: null, tasks: [], categoryRecovery: categoryExecutionRecovery([]) } }
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json(updated)))
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, unmount } = renderHook(() => useSiteResource('fixture-site', initial), { wrapper })
+  try {
+    await waitFor(() => expect(result.current.view.inventoryPageCount).toBe(updated.inventoryPageCount))
+    expect(result.current.view.executionProgress?.categoryRecovery).toEqual({})
+    expect(result.current.disconnected).toBe(false)
+  } finally { unmount() }
+})
 
 it('keeps updating after analysis finishes until the independent result arrives, then stops polling', async () => {
   const pending = siteViewFixture()

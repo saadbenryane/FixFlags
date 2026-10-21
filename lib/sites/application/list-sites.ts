@@ -108,6 +108,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
                 status: true,
                 id: true,
                 auditId: true,
+                fingerprint: true,
                 resolvedInId: true,
                 affectedPaths: true,
                 severity: true,

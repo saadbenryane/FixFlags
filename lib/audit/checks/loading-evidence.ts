@@ -16,16 +16,20 @@ export function loadingContext(value: LoadingObservation | undefined): string | 
   const key = captureObservationKey(observation.data.scope)
   return key === 'unknown' ? undefined : 'loading:' + observation.data.device + ':' + key
 }
-export function loadingDelayObservation(window: PageLoadExperience, threshold: number, key = 'loading-delay'): CheckAssertion {
+export function loadingDelayObservation(window: PageLoadExperience, threshold: number, key = 'loading-delay', advisoryPass = false): CheckAssertion {
   const context = window.observation?.device === window.device ? loadingContext(window.observation) : undefined
   const failed = window.loadingVisibleAtInitial && !window.loadingVisibleAtFinal && window.loadingClearedMs !== null && window.loadingClearedMs > threshold
   const passed = !window.loadingVisibleAtFinal && (!window.loadingVisibleAtInitial || window.loadingClearedMs !== null && window.loadingClearedMs <= threshold)
   const comparablePass = passed && window.observation?.ready === true && window.observation.contentVisible === true
+  const recordedPass = Boolean(context && comparablePass)
+  // A cleared advisory window stays measured. It cannot certify recovery.
+  const advisory = advisoryPass && recordedPass || !context && !window.observation
   return { key, name: 'Initial loading UI (' + window.device + ')', expected: `Blocking initial loading UI clears within ${threshold}ms and page content is visible`,
     observed: `${window.device}: initial loading ${window.loadingVisibleAtInitial}, final loading ${window.loadingVisibleAtFinal}, cleared at ${window.loadingClearedMs ?? 'unknown'}ms. ` +
       (window.observation?.contentVisible ? 'Viewport content was observed.' : 'Viewport content is unproven.'),
-    passed: Boolean(context && comparablePass), complete: Boolean(context && (failed || comparablePass)),
-    ...(context ? { context } : window.observation ? {} : { disposition: 'observed' as const }) }
+    passed: recordedPass, complete: Boolean(context && (failed || comparablePass)),
+    ...(context ? { context } : {}),
+    ...(advisory ? { disposition: 'observed' as const } : {}) }
 }
 export function blockingLoadingObservation(metrics: CaptureMetrics | null): CheckAssertion {
   const context = loadingContext(metrics?.loadingObservation)

@@ -155,7 +155,7 @@ const VISUAL_TARGET_LABELS: Record<string, string> = {
   'robots-blocks-indexing': 'Search indexing (whole page)',
   'canonical-missing': 'Canonical URL (whole page)',
   'no-structured-data': 'Structured data (whole page)',
-  'cta-below-fold-mobile': 'Primary call-to-action button',
+  'cta-below-fold-mobile': 'Recorded call-to-action control',
   'flow-no-cta-found': 'Primary call-to-action',
   'no-cta-detected': 'Primary call-to-action area',
   'loading-indicator-stuck': 'Loading spinner or skeleton',

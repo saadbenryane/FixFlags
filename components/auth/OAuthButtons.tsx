@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
@@ -118,10 +117,8 @@ export function OAuthButtons({
         )}
       </div>
       {!hideDivider ? (
-        <div className="flex items-center gap-3">
-          <Separator className="flex-1" />
+        <div className="flex justify-center py-1">
           <span className="text-xs text-muted-foreground">{AUTH.oauth.separator}</span>
-          <Separator className="flex-1" />
         </div>
       ) : null}
     </>

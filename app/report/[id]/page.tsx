@@ -30,9 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const { audit } = envelope
 
-  const isShareableOg = audit.isPublic || audit.userId === null
-
-  if (!isShareableOg) {
+  if (!audit.isPublic) {
     return {
       title: `${BRAND.name} report unavailable`,
       robots: { index: false, follow: false },

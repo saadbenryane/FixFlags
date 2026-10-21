@@ -1,3 +1,4 @@
+import { beginProviderUsage, type ProviderUsageAdmission, type ProviderUsagePhase } from '../provider-usage'
 import { executionWrite } from '@/lib/audit/execution-ownership'
 import { prisma } from '@/lib/db'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
@@ -70,35 +71,50 @@ export async function runJourneyReviewsForAudit(
   let findingCount = 0
   const remaining = () => Math.max(5_000, options.deadline - Date.now())
   const aiGuard = createJourneyAIGuard()
+  let usageUnknown = false
+  const admitUsage = (phase: ProviderUsagePhase): ProviderUsageAdmission => async model => {
+    const permission = aiGuard.canCall(4_000)
+    if (usageUnknown || !permission.allowed) throw new Error(`Journey provider admission refused: ${usageUnknown ? 'usage unknown' : permission.reason}`)
+    const record = await beginProviderUsage(auditId, phase, model)
+    return async usage => {
+      await record(usage)
+      if (usage) aiGuard.tokenBudget.record(usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0), usage.outputTokens)
+      else usageUnknown = true
+    }
+  }
 
   for (const journeyRun of journeyRuns) {
     const journeyType = journeyRun.journeyType
-    if (Date.now() >= options.deadline - 8_000) break
+    if (Date.now() >= options.deadline - 8_000) {
+      options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'budget_unavailable', rejections: [] })
+      break
+    }
     try {
       let plan = null as Awaited<ReturnType<typeof planJourney>>['plan'] | null
       let plannerUsage = null as Awaited<ReturnType<typeof planJourney>>['usage'] | null
+      let planningIncomplete: 'provider_failed' | 'budget_unavailable' | null = null
       if (journeyType === 'multi-step-funnel' && isPlannerProviderConfigured()) {
         const planGuard = aiGuard.canCall(4_000)
         if (!planGuard.allowed) {
+          planningIncomplete = 'budget_unavailable'
           logger.info('Skipping journey planner', { reason: planGuard.reason, journeyType })
         } else {
         try {
           const planResult = await observeJourneyPlan(startUrl, contract, options.scanAccess,
-            () => Math.min(JOURNEY_BUDGET_MS, remaining()))
+            () => Math.min(JOURNEY_BUDGET_MS, remaining()), admitUsage('journey_planner'))
           plan = planResult.plan
           plannerUsage = planResult.usage
           logger.info('Journey planner succeeded', { journeyType, goal: plan.goal,
             steps: plan.steps.length, confidence: plan.confidence })
         } catch (err) {
-          logger.warn('Journey planner failed, falling back to deterministic', {
+          planningIncomplete = 'provider_failed'
+          logger.warn('Journey plan unavailable; collecting native observations separately', {
             journeyType,
             err: String(err),
           })
           aiGuard.recordOutcome(0, 0, err)
         }
-        if (plannerUsage) {
-          aiGuard.recordOutcome(plannerUsage.inputTokens, plannerUsage.outputTokens)
-        }
+        if (plan) aiGuard.recordOutcome(0, 0, plannerUsage ? undefined : new Error('Provider usage unavailable'))
         }
       }
 
@@ -123,7 +139,13 @@ export async function runJourneyReviewsForAudit(
       const findings = await persistJourneyResult(auditId, result, undefined, options.allowedCheckIds, Boolean(options.onOverlayObservations || options.onPageObservations))
       findingCount += findings.length
 
-      if (journeyType === 'multi-step-funnel' && result.steps.length >= 3 && !result.blockedReason) {
+      if (planningIncomplete || result.blockedReason || result.status !== 'COMPLETED' || (journeyType === 'multi-step-funnel' && result.steps.length < 3)) {
+        options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: planningIncomplete ?? 'walk_incomplete', rejections: [] })
+        await logPipelineEvent(auditId, { stage: 'JOURNEY_REVIEW', event: 'assessment_partial', status: 'partial',
+          detail: `${journeyType}: ${planningIncomplete ?? result.blockedReason ?? result.status}; recorded observations retained` })
+      }
+
+      if (journeyType === 'multi-step-funnel' && !planningIncomplete && result.status === 'COMPLETED' && result.steps.length >= 3 && !result.blockedReason) {
         const evalGuard = aiGuard.canCall(4_000)
         if (!evalGuard.allowed) {
           options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'budget_unavailable', rejections: [] })
@@ -140,7 +162,8 @@ export async function runJourneyReviewsForAudit(
               summary: result.abandonedReason ?? `Completed ${result.steps.length} steps`,
               purpose,
             },
-            Math.min(JOURNEY_BUDGET_MS, remaining())
+            Math.min(JOURNEY_BUDGET_MS, remaining()),
+            admitUsage('journey_evaluator')
           )
           const assessed = assessJourneyEvaluation(evalResult.evaluation, result.steps, journeyType)
           options.onAssessment?.(assessed.assessment)
@@ -162,15 +185,16 @@ export async function runJourneyReviewsForAudit(
             }, undefined, options.allowedCheckIds)
             findingCount += persisted.length
           }
-          await executionWrite(tx => tx.journeyReview.updateMany({
+          const evaluatorUsage = evalResult.usage
+          if (evaluatorUsage) await executionWrite(tx => tx.journeyReview.updateMany({
             where: { auditId, journeyType },
             data: {
-              evaluatorInputTokens: evalResult.usage.inputTokens,
-              evaluatorOutputTokens: evalResult.usage.outputTokens,
-              evaluatorModel: evalResult.usage.model,
+              evaluatorInputTokens: evaluatorUsage.inputTokens,
+              evaluatorOutputTokens: evaluatorUsage.outputTokens,
+              evaluatorModel: evaluatorUsage.model,
             },
           }))
-          aiGuard.recordOutcome(evalResult.usage.inputTokens, evalResult.usage.outputTokens)
+          aiGuard.recordOutcome(0, 0, evalResult.usage ? undefined : new Error('Provider usage unavailable'))
         } catch (err) {
           options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'provider_failed', rejections: [] })
           await logPipelineEvent(auditId, { stage: 'JOURNEY_REVIEW', event: 'assessment_partial', status: 'partial', detail: `${journeyType}: evaluator failed; native observations retained` })
@@ -180,6 +204,7 @@ export async function runJourneyReviewsForAudit(
         }
       }
     } catch (err) {
+      options.onAssessment?.({ version: 1, journeyType, state: 'INCOMPLETE', reason: 'walk_incomplete', rejections: [] })
       logger.error('Journey review failed', { journeyType, err })
     }
   }

@@ -5,6 +5,8 @@ import type { AdminActor } from '@/lib/auth/require-admin'
 import { adminRead } from './workspace-queries'
 import { adminPagination, readAdminListQuery } from './list-query'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
+import { countGuidanceGaps, guidanceGapRows } from './guidance-operations'
+import { ADMIN_COPY } from '@/lib/marketing/copy/admin'
 export const OPERATION_QUEUES = [
   { id: 'schedules', label: 'Overdue monitoring schedules' },
   { id: 'tasks', label: 'Incomplete execution history' },
@@ -12,6 +14,7 @@ export const OPERATION_QUEUES = [
   { id: 'uptime', label: 'Overdue uptime probes' },
   { id: 'uptime-alerts', label: 'Failed uptime notifications' },
   { id: 'watch-alerts', label: 'Failed monitoring notifications' },
+  { id: 'guidance', label: ADMIN_COPY.operations.guidance },
 ] as const
 export async function loadOperations(actor: AdminActor, params: { queue?: string; page?: string }) {
   const queue = OPERATION_QUEUES.some((q) => q.id === params.queue) ? params.queue! : 'schedules',
@@ -47,6 +50,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       db.uptimeMonitor.count({ where: uptime }),
       db.uptimeNotification.count({ where: uptimeAlerts }),
       db.audit.count({ where: watchAlerts }),
+      countGuidanceGaps(db),
     ])
     const index = OPERATION_QUEUES.findIndex((q) => q.id === queue),
       total = counts[index],
@@ -69,6 +73,10 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       targetId: string
       auditId?: string
     }> = []
+    if (queue === 'guidance')
+      rows = (await guidanceGapRows(db, slice)).map(row => ({
+        ...row, state: ADMIN_COPY.operations.guidanceUnavailable, action: null, targetId: row.auditId,
+      }))
     if (queue === 'schedules')
       rows = (
         await db.project.findMany({

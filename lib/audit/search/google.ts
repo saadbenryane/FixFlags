@@ -27,6 +27,20 @@ function providerObservation(pageUrl: string, input: {
     limitation: C.googleLimit, guidance: rule.guidance, google: input.google })
 }
 
+/** Provider rows stay observations. A low click-through rate is a recommendation, not a certified outage. */
+export function searchAnalyticsObservations(input: { pageUrl: string; property: string; collectedAt: string; dateRange: string; rows: GscSearchRow[] }): SearchObservation[] {
+  const observations = [providerObservation(input.pageUrl, { checkId: 'search-google-performance', source: 'google-analytics', disposition: 'observed',
+    reason: 'bounded_search_rows_recorded', collectedAt: input.collectedAt, locator: 'Search Analytics, exact page filter',
+    google: { property: input.property, dateRange: input.dateRange },
+    observed: `${input.rows.length} query rows recorded for ${input.dateRange}. The API returns a bounded sample; empty rows do not prove zero traffic.` })]
+  const opportunity = input.rows.filter(row => row.impressions >= 100 && row.position < 10 && row.ctr < 0.02).sort((a, b) => b.impressions - a.impressions)[0]
+  if (opportunity) observations.push(providerObservation(input.pageUrl, { checkId: 'low-ctr', source: 'google-analytics', disposition: 'observed',
+    reason: 'query_ctr_opportunity', attention: 'recommendation', collectedAt: input.collectedAt, locator: 'Search Analytics query row',
+    google: { property: input.property, dateRange: input.dateRange },
+    observed: `Query "${opportunity.keys[0]}": ${opportunity.impressions} impressions, ${opportunity.clicks} clicks, ${(opportunity.ctr * 100).toFixed(1)}% CTR, position ${opportunity.position.toFixed(1)}. Window: ${input.dateRange}.` }))
+  return observations
+}
+
 function failed(pageUrl: string, failure: Failure, source: 'google-index' | 'google-analytics', collectedAt: string) {
   return providerObservation(pageUrl, { checkId: source === 'google-index' ? 'search-google-index' : 'search-google-performance',
     source, disposition: 'unknown', reason: failure, observed: C.googleFailures[failure], collectedAt, locator: 'provider response' })
@@ -153,15 +167,7 @@ export async function runGoogleSearchForAudit(input: {
           observations.push(failed(page.url, 'MALFORMED_PROVIDER_RESPONSE', 'google-analytics', collectedAt))
           rows = []
         } else {
-        observations.push(providerObservation(page.url, { checkId: 'search-google-performance', source: 'google-analytics', disposition: 'observed',
-          reason: 'bounded_search_rows_recorded', collectedAt, locator: 'Search Analytics, exact page filter',
-          google: { property: access.property, dateRange },
-          observed: `${rows.length} query rows recorded for ${dateRange}. The API returns a bounded sample; empty rows do not prove zero traffic.` }))
-        const opportunity = rows.filter(row => row.impressions >= 100 && row.position < 10 && row.ctr < 0.02).sort((a, b) => b.impressions - a.impressions)[0]
-        if (opportunity) observations.push(providerObservation(page.url, { checkId: 'low-ctr', source: 'google-analytics', disposition: 'observed',
-          reason: 'query_ctr_opportunity', attention: 'recommendation', collectedAt, locator: 'Search Analytics query row',
-          google: { property: access.property, dateRange },
-          observed: `Query "${opportunity.keys[0]}": ${opportunity.impressions} impressions, ${opportunity.clicks} clicks, ${(opportunity.ctr * 100).toFixed(1)}% CTR, position ${opportunity.position.toFixed(1)}. Window: ${dateRange}.` }))
+        observations.push(...searchAnalyticsObservations({ pageUrl: page.url, property: access.property, collectedAt, dateRange, rows }))
         }
       } else if (analyticsRequested && performance.status === 'rejected') observations.push(failed(page.url, failureCode(performance.reason), 'google-analytics', collectedAt))
       for (const settled of [index, performance]) if (settled.status === 'rejected' && settled.reason instanceof SearchConsoleError)

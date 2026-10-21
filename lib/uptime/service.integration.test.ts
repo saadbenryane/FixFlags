@@ -232,8 +232,28 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     expect(await db().uptimeNotification.count()).toBe(1)
     vi.setSystemTime(new Date(originTime.getTime() + 5 * 60_000))
     await executeUptimeProbe({ ...job, scheduledAt: new Date().toISOString() }, async () => online)
-    expect((await db().uptimeIncident.findFirstOrThrow()).recoveredAt).not.toBeNull()
+    const recovered = await db().uptimeIncident.findFirstOrThrow()
+    expect(recovered.recoveredAt).toEqual(new Date(originTime.getTime() + 5 * 60_000))
     expect(await db().uptimeNotification.count()).toBe(2)
+    const recurrenceAt = new Date(originTime.getTime() + 10 * 60_000)
+    vi.setSystemTime(recurrenceAt)
+    await executeUptimeProbe({ ...job, scheduledAt: recurrenceAt.toISOString() }, async () => failed)
+    expect(await db().uptimeIncident.count({ where: { monitorId: monitor.id } })).toBe(1)
+    const confirmRecurrence = vi.fn(async () => failed)
+    await executeUptimeProbe({ ...job, scheduledAt: recurrenceAt.toISOString(), attempt: 2 }, confirmRecurrence)
+    expect(confirmRecurrence).not.toHaveBeenCalled()
+    vi.setSystemTime(new Date(recurrenceAt.getTime() + 30_000))
+    await executeUptimeProbe({ ...job, scheduledAt: recurrenceAt.toISOString(), attempt: 2 }, confirmRecurrence)
+    const incidents = await db().uptimeIncident.findMany({ where: { monitorId: monitor.id }, orderBy: { startedAt: 'asc' } })
+    expect(incidents.map(incident => incident.recoveredAt)).toEqual([recovered.recoveredAt, null])
+    expect(incidents[1].id).not.toBe(incidents[0].id)
+    const notifications = await db().uptimeNotification.findMany()
+    expect(notifications).toHaveLength(3)
+    expect(notifications).toEqual(expect.arrayContaining([
+      expect.objectContaining({ incidentId: incidents[0].id, kind: 'DOWN' }),
+      expect.objectContaining({ incidentId: incidents[0].id, kind: 'RECOVERED' }),
+      expect.objectContaining({ incidentId: incidents[1].id, kind: 'DOWN' }),
+    ]))
   })
 
   it('retains an incident across inconclusive observations', async () => {

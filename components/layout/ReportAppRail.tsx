@@ -36,7 +36,7 @@ export function ReportAppRail({
     <TooltipProvider delayDuration={150}>
       <aside
         className={cn(
-          'hidden w-16 shrink-0 flex-col border-r border-border/50 bg-background md:flex',
+          'hidden w-16 shrink-0 flex-col bg-background md:flex',
           className,
         )}
         aria-label="App"
@@ -63,7 +63,7 @@ export function ReportMobileNav({ showAdmin }: { showAdmin?: boolean }) {
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>
-        <div className="flex h-[var(--header-height)] shrink-0 items-center border-b border-border/40 px-4">
+        <div className="flex h-[var(--header-height)] shrink-0 items-center px-4">
           <Logo variant="lockup" size="md" href="/" />
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-4">

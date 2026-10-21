@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import type { Route } from 'next'
 
 import { useEffect, useState } from 'react'
@@ -300,7 +301,7 @@ export function PlanPickerDialog({
             aria-hidden
             className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30"
           />
-          <div className="sticky top-0 z-content flex items-start justify-between gap-3 border-b border-border/40 bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
+          <div className="sticky top-0 z-content flex items-start justify-between gap-3 bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
             <div>
               <SheetTitle className="text-base font-semibold tracking-heading text-foreground">
                 {PRICING.pickerTitle}
@@ -309,14 +310,14 @@ export function PlanPickerDialog({
                 {PRICING.pickerSubtitle}
               </SheetDescription>
             </div>
-            <button
+            <InteractiveButton
               type="button"
               onClick={() => handleOpenChange(false)}
               aria-label={SYSTEM_COPY.actions.close}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <X className="h-4 w-4" aria-hidden />
-            </button>
+            </InteractiveButton>
           </div>
           <div className="flex-1 px-5 py-5">{body}</div>
         </SheetContent>
@@ -327,7 +328,10 @@ export function PlanPickerDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-3xl overflow-y-auto overscroll-contain p-5 sm:p-6 [&>button]:hidden"
+        header={<DialogTitle className="text-lg font-semibold tracking-heading text-foreground">
+              {PRICING.pickerTitle}
+            </DialogTitle>}
+        className="max-w-3xl"
         onEscapeKeyDown={
           lockDismissal ? (event) => event.preventDefault() : undefined
         }
@@ -338,24 +342,9 @@ export function PlanPickerDialog({
           lockDismissal ? (event) => event.preventDefault() : undefined
         }
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <DialogTitle className="text-lg font-semibold tracking-heading text-foreground">
-              {PRICING.pickerTitle}
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-sm text-muted-foreground">
+        <DialogDescription className="mt-1 text-sm text-muted-foreground">
               {PRICING.pickerSubtitle}
             </DialogDescription>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleOpenChange(false)}
-            aria-label={SYSTEM_COPY.actions.close}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
         <div className="mt-5">{body}</div>
         {busyPlan ? (
           <div className="mt-4 flex items-center justify-center gap-2 text-2xs text-muted-foreground">
