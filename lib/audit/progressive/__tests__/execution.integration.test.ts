@@ -158,6 +158,7 @@ run('migrated progressive execution', () => {
   let headerMode: 'failed' | 'partial' | 'challenge' | 'forbidden' | 'rate-limited' | 'redirected' | 'healthy' = 'failed'
   let transportMode: 'http' | 'https' | 'unavailable' = 'http'
   let headerTitleMissing = false
+  let repairSiteHeaders = false
   let headerPolicyOverrides: Record<string, string> | null = null
   let slowReplayMode: 'delayed' | 'healthy' | 'challenge' | 'competing' = 'delayed'
   let loadingUiClearMs: number | null = 1000
@@ -718,6 +719,9 @@ run('migrated progressive execution', () => {
       if (req.url === '/') res.statusCode = availabilityStatus
       if (req.url === '/independent-page') res.statusCode = otherAvailabilityStatus
       if (availabilityChallenged && req.url === '/') res.setHeader('cf-mitigated', 'challenge')
+      if (repairSiteHeaders && req.url === '/' && headerMode === 'healthy') {
+        for (const [key, value] of Object.entries(healthyHeaders)) res.setHeader(key, value)
+      }
       res.end('<!doctype html><html lang="en"><head><title>Execution fixture</title><link rel="canonical" href="/canonical"></head><body><main><h1>Execution fixture</h1></main><footer>Cloudflare and CAPTCHA resources</footer></body></html>')
     }
   })
@@ -969,6 +973,9 @@ run('migrated progressive execution', () => {
 
   it('rechecks categories on the real ledger without replacing full-site analysis or resolving unrelated Flags', async () => {
     releaseResources()
+    // The source Flag can group headers on both the entry page and discovered root.
+    // Its recovery requires repaired responses at every originally failing URL.
+    repairSiteHeaders = true
     const transport = fixtureTransport()
     try {
       await getAuditTaskQueue('browser').resume(); await resumeExternalQueues()
@@ -1019,13 +1026,12 @@ run('migrated progressive execution', () => {
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: securityFlag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
       headerMode = 'healthy'
       const repair = await recheck('security', 'category-security-repaired')
-      const recoveryDetail = await prisma.auditVerifierExecution.findMany({ where: { auditId: repair.auditId!, workKind: { in: ['check', 'finalize'] } }, select: { targetKey: true, detail: true } })
-      expect(await prisma.flag.findUniqueOrThrow({ where: { id: securityFlag.id } }), JSON.stringify({ source: securityFlag, recovery: recoveryDetail })).toMatchObject({ status: 'FIXED', resolvedInId: repair.auditId })
+      expect(await prisma.flag.findUniqueOrThrow({ where: { id: securityFlag.id } })).toMatchObject({ status: 'FIXED', resolvedInId: repair.auditId })
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: searchFlag.id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
       headerMode = 'failed'
       const recurrence = await recheck('security', 'category-security-recurrence')
       expect(await prisma.flag.findFirstOrThrow({ where: { auditId: recurrence.auditId!, checkId: securityFlag.checkId } })).toMatchObject({ status: 'REGRESSED' })
-    } finally { headerMode = 'failed'; transport.mockRestore() }
+    } finally { repairSiteHeaders = false; headerMode = 'failed'; transport.mockRestore() }
   }, 100_000)
 
   it('recovers an unacted customer incident across all original occurrences and preserves recurrence', async () => {
