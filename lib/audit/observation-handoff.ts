@@ -13,4 +13,3 @@ export function supportingObservationLines(value: unknown): string[] {
     ...item.references.map(target => `   ${E.target}: ${target.device}, ${target.label}${target.selector ? ` (${target.selector})` : ''}`),
   ])]
 }
-

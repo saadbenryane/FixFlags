@@ -187,4 +187,3 @@ export async function recordJourneyResult(
 
   return findingsToRecord
 }
-
