@@ -68,6 +68,20 @@ export const searchReceiptSchema = z.object({
 })
 export type SearchReceipt = z.infer<typeof searchReceiptSchema>
 
+export type RecordedSearchExecution = {
+  targetKey: string; detail?: unknown; status?: string; pageUrl?: string | null; auditId?: string;
+}
+
+/** Recorded completion and ownership constrain the receipt, independently of
+ * its optimistic summary. Missing legacy ledger fields cannot be invented. */
+export function readRecordedSearchReceipt(execution: Omit<RecordedSearchExecution, 'targetKey'>): SearchReceipt | null {
+  if (execution.status !== undefined && execution.status !== 'COMPLETED') return null
+  const parsed = searchReceiptSchema.safeParse(execution.detail)
+  if (!parsed.success || execution.pageUrl !== undefined && execution.pageUrl !== parsed.data.pageUrl ||
+    execution.auditId !== undefined && execution.auditId !== parsed.data.auditId) return null
+  return parsed.data
+}
+
 export const searchVerifierSchema = z.object({
   kind: z.literal('search-verifier'), version: z.literal(1), auditId: z.string(), pageUrl: z.string().url(),
   checkId: z.string(), verdict: z.enum(['passed', 'failed', 'unknown']), comparable: z.boolean(),
