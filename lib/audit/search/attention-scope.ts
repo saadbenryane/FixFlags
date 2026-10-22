@@ -2,8 +2,8 @@ import { searchAttentionSchema, searchPageScopeSchema, type SearchAttention } fr
 
 /** New producers bind recovery requirements to the page that supplied them. */
 export function pageScopedSearchAttention(policy: SearchAttention, pageUrl: string): SearchAttention {
-  const { reason, sources, entityTypes, google, markupTargets } = policy
-  return { ...policy, pageScopes: [searchPageScopeSchema.parse({ pageUrl, version: policy.version, reason, sources, entityTypes, google, markupTargets })] }
+  const { reason, sources, entityTypes, google, markupTargets, resourceKeys } = policy
+  return { ...policy, pageScopes: [searchPageScopeSchema.parse({ pageUrl, version: policy.version, reason, sources, entityTypes, google, markupTargets, resourceKeys })] }
 }
 
 /** Keep every original scope through repeated finding projections. Historical

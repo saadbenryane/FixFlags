@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 import { analyticsReportScope, analyticsWatchedPagePaths, ANALYTICS_PAGE_LIMIT, searchReportScope, searchPageFilter, searchPropertyCoversUrl, type SearchReportScope, type AnalyticsReportScope, type AnalyticsReport } from './report-scope'
 import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
 import { SITE_CONNECTION_COPY as C } from '@/lib/marketing/copy/site-connections'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 import {
   chooseAnalyticsProperty,
   chooseSearchProperty,
@@ -401,7 +402,7 @@ export async function completeGoogleConnection(input: {
   const parsed = readConnectionState(input.state)
   if (!parsed || parsed.userId !== input.sessionUserId) return { error: 'This connection link expired. Start again from Integrations.' }
   const host = await input.hostForProject(parsed.projectId, parsed.userId)
-  if (!host) return { error: 'Site not found' }
+  if (!host) return { error: SITE_ERRORS.notFound }
   const client = input.client ?? liveGoogleClient()
   const tokens = await client.exchangeCode(input.code)
   const connection = await prisma.siteConnection.upsert({

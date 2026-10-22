@@ -11,7 +11,7 @@ import {
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { canonicalProductHost } from '@/lib/audit/product-intelligence'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       return apiError('Enter a project name and valid public URL', 400, { code: 'INVALID_PROJECT' })
   }
 
-  const target = normalizeAuditUrl(parsed.data.url)
+  const target = normalizeAuditNavigationUrl(parsed.data.url)
   if (!target.ok) return apiError('Enter a project name and valid public URL', 400, { code: 'INVALID_PROJECT' })
   const canonicalHost = canonicalProductHost(target.url)
   const canonicalUrl = new URL(target.url).origin

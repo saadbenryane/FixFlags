@@ -4,11 +4,11 @@ import { cn } from '@/lib/utils'
 
 export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
 
-/** 3× retina rasters. Transparent PNG derived from the owner mark JPEG. */
+/** The cleaned owner mark stays sharp at every display density. */
 const MARK = {
-  sm: { src: '/brand/logo-mark-sm.png', pixel: 72, display: 24 },
-  md: { src: '/brand/logo-mark-md.png', pixel: 84, display: 28 },
-  lg: { src: '/brand/logo-mark-lg.png', pixel: 96, display: 32 },
+  sm: { width: 15, height: 24 },
+  md: { width: 17, height: 28 },
+  lg: { width: 20, height: 32 },
 } as const
 
 const WORD_CLASS = {
@@ -30,13 +30,13 @@ function Mark({ size }: { size: LogoSize }) {
   const asset = MARK[size]
   return (
     <Image
-      src={asset.src}
+      src="/brand/logo-mark.svg"
       alt=""
-      width={asset.pixel}
-      height={asset.pixel}
+      width={asset.width}
+      height={asset.height}
       unoptimized
       className="shrink-0 object-contain"
-      style={{ width: asset.display, height: asset.display }}
+      style={{ width: asset.width, height: asset.height }}
     />
   )
 }
@@ -60,7 +60,7 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
   const content = (
     <span
       className={cn(
-        'inline-flex min-w-max items-center gap-2 overflow-visible whitespace-nowrap text-foreground',
+        'inline-flex min-w-max items-center gap-1.5 overflow-visible whitespace-nowrap text-foreground',
         className
       )}
     >

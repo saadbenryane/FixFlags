@@ -60,8 +60,7 @@ export function SiteActivityPanel({ activity, disconnected, children, onRetry, r
     {children}
     </> : events.length > 0 || children ? <Button variant="ghost" size="sm" onClick={() => setShowActivity(true)}>{SITE_BOARD_COPY.activityTitle}</Button> : null}
     <Dialog open={showActivity} onOpenChange={setShowActivity}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto">
-        <DialogTitle>{SITE_BOARD_COPY.activityTitle}</DialogTitle>
+      <DialogContent header={<DialogTitle>{SITE_BOARD_COPY.activityTitle}</DialogTitle>} className="max-h-[85dvh]">
         <DialogDescription>{SITE_BOARD_COPY.activityDescription}</DialogDescription>
         {compact ? children : null}
         <ol className="space-y-4">{events.map((event, index) => <li key={`${event.at}:${index}`}><p className="text-sm font-medium">{event.label}</p><p className="mt-1 text-xs text-muted-foreground">{formatEvidenceTimestamp(event.at)}</p></li>)}</ol>

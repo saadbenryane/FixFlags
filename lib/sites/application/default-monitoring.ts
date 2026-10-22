@@ -4,9 +4,9 @@ import { resolveEffectiveEntitlements, type EffectiveEntitlements } from '@/lib/
 import { toStoredWatchInterval, fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { bindingForConfirmedKind } from '@/lib/sites/outcomes'
 import { expectationForKind } from '@/lib/sites/outcome-kinds'
-import { outcomeFreshnessMinutes } from './care-policy'
+import { outcomeFreshnessMinutes } from '../evidence-freshness'
 import { productTransaction } from '@/lib/billing/product-transaction'
-import { deferMonitoringSetup, monitoringSetupDue, monitoringSetupOrder } from './monitoring-setup'
+import { deferMonitoringSetup, initialMonitoringSitesWhere, monitoringSetupDue, monitoringSetupOrder } from './monitoring-setup'
 import { logger } from '@/lib/logger'
 import { systemClock, type Clock } from '@/lib/time/clock'
 
@@ -62,8 +62,7 @@ export async function ensureDefaultMonitoring(tx: Prisma.TransactionClient, proj
 /** Bounded worker upkeep covers existing Sites without a customer browser session. */
 export async function initializeDefaultMonitoring(limit: number, clock: Clock = systemClock) {
   const selectedAt = clock.now()
-  const eligible: Prisma.ProjectWhereInput = { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' },
-    watchInterval: null, watchNextRunAt: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null }
+  const eligible = initialMonitoringSitesWhere()
   const projects = await prisma.project.findMany({
     where: { ...eligible, ...monitoringSetupDue(selectedAt) },
     select: { id: true, userId: true, url: true, monitoringSetupRetryAt: true }, orderBy: monitoringSetupOrder, take: limit,

@@ -21,7 +21,7 @@ export function HelpArticleList({
           {heading ?? HELP_CENTER.popularHeading}
         </Heading>
       )}
-      <ul className="divide-y divide-border/60 rounded-card glass-surface shadow-card overflow-hidden">
+      <ul className="space-y-2 rounded-card glass-surface shadow-card overflow-hidden">
         {articles.map((article) => (
           <li key={article.slug}>
             <Link

@@ -15,6 +15,17 @@ import {
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 
 describe('flow CTA discovery scoring', () => {
+  it('uses native resolved destinations and admits routing syntax for interaction without inventing a DOM target', () => {
+    const source = 'https://example.com/'
+    const resolved = scoreCtaCandidates(source, [{ idx: 0, tag: 'a', href: '#details', resolvedHref: source + 'signup#details', text: 'Get started' }])
+    assert.equal(resolved[0].href, source + 'signup#details')
+    const route = scoreCtaCandidates(source, [{ idx: 0, tag: 'a', href: '#/signup', resolvedHref: source + '#/signup', hashTargetExists: false, text: 'Get started' }])
+    assert.equal(route[0].fragmentRoute, true)
+    assert.equal(route[0].href, '#/signup')
+    assert.equal(scoreCtaCandidates(source, [{ idx: 0, tag: 'a', href: source + '#missing', hashTargetExists: false, text: 'Get started' }]).length, 0)
+    assert.equal(scoreCtaCandidates(source, [{ idx: 0, tag: 'a', href: '#details', resolvedHref: 'https://user:secret@example.com/signup#details', text: 'Get started' }]).length, 0)
+  })
+
   it('ranks signup CTA above footer links', () => {
     const html = `
       <body>

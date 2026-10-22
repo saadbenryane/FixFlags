@@ -17,6 +17,15 @@ function receipt(observation: PrimaryActionEvidence) {
     execution: { auditId: 'after', taskId: 'flow', checkVersion: 1, source: 'rendered-dom', collectedAt: '2026-10-12T12:00:00.000Z' } })
 }
 describe('primary action repair evidence', () => {
+  it('does not certify resolved-destination detection corrections as customer repairs', () => {
+    const missing = evidence({ candidateCount: 0, controlContext: null, presenceVersion: 4, candidateComplete: true })
+    const historical = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: missing })[0]
+    const current = receipt(evidence({ presenceVersion: 5, candidateComplete: true }))
+    expect(scopedAssertionForTarget({ receipt: current, checkId: historical.checkId, flag: historical })).toBeUndefined()
+    const fresh = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: { ...missing, presenceVersion: 5 } })[0]
+    expect(scopedAssertionForTarget({ receipt: current, checkId: fresh.checkId, flag: fresh })?.assertion.passed).toBe(true)
+  })
+
   it('keeps positive action failures independently of page-purpose availability and withholds unclassified absence', () => {
     const absent = evidence({ candidateCount: 0, controlContext: null, clicked: false })
     expect(primaryActionAssertions(absent, null)[0]).toMatchObject({ complete: false, passed: false })
@@ -46,6 +55,14 @@ describe('primary action repair evidence', () => {
   it('recognizes declared button roles as primary actions without treating arbitrary text as a control', () => {
     const elements = extractCtaElementsFromHtml('<div role="button">Get started</div><div>Get started</div>')
     expect(scoreCtaCandidates(pageUrl, elements)).toHaveLength(1)
+  })
+  it('does not certify detector corrections for referenced labels as customer repairs', () => {
+    const missing = evidence({ candidateCount: 0, controlContext: null, presenceVersion: 3, candidateComplete: true })
+    const historical = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: missing })[0]
+    const current = receipt(evidence({ presenceVersion: 4, candidateComplete: true }))
+    expect(scopedAssertionForTarget({ receipt: current, checkId: historical.checkId, flag: historical })).toBeUndefined()
+    const fresh = runFlowChecks({ status: 'no_cta', steps: [], finalUrl: pageUrl, actionEvidence: { ...missing, presenceVersion: 4 } })[0]
+    expect(scopedAssertionForTarget({ receipt: current, checkId: fresh.checkId, flag: fresh })?.assertion.passed).toBe(true)
   })
   it('binds a recorded error and its independent repair to the original control', () => {
     const before = runFlowChecks({ status: 'error_response', steps: [], finalUrl: pageUrl + 'start', httpStatus: 404,

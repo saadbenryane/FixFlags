@@ -51,6 +51,7 @@ import { requestSiteRun } from '@/lib/sites/application/run-requests'
 
 const ownedOutcome = {
   id: 'outcome-1',
+  authorizationRevision: 1,
   kind: 'CHECKOUT',
   environment: 'production',
   projectId: 'project-1',

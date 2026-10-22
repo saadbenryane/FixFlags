@@ -13,6 +13,20 @@ function row(assessment: unknown) {
       selections: [{ outcome: { name: 'The page loads' } }], assessments: [assessment] }] }
 }
 describe('scope completion in monitoring history', () => {
+  it('keeps an uncollected broad page in the historical completion denominator', () => {
+    const targetUrl = 'https://example.com/', peer = targetUrl + 'pricing'
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl,
+      environment: 'production', checks: { 'no-https': 1 }, outcomes: [], verificationTarget: null, monitoringPages: [targetUrl, peer] })
+    const audit = { ...row(null), parentId: null, executionSpec: spec, runRequests: [], pages: [{ url: targetUrl, status: 'COMPLETED' }], verifierExecutions: [
+      { targetKey: 'projection:flag-comparison', status: 'COMPLETED', detail: { kind: 'flag-comparison', version: 1, auditId: 'audit', parentAuditId: null,
+        summary: { newIssues: [], unchanged: [], regressed: [], fixed: [], inconclusive: [] } } },
+      { targetKey: 'module:security', status: 'COMPLETED', detail: { kind: 'site-module-check', version: 1, module: 'security', applicable: true, passed: true,
+        pageUrl: targetUrl, assertions: ['https', 'image-transport'].map(key => ({ key, name: key, expected: 'Safe', observed: 'Observed', passed: true, complete: true })) } },
+    ] }
+    expect(projectHistory(audit as never, [])).toMatchObject({ scope: 'SITE', completionState: 'PARTIAL' })
+    expect(projectHistory({ ...audit, pages: [...audit.pages, { url: peer, status: 'COMPLETED' }] } as never, []))
+      .toMatchObject({ completionState: 'COMPLETED' })
+  })
   it('does not let unavailable account behavior become a complete account history entry', () => {
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'ACCOUNT_CHECKS', targetUrl: 'https://example.com/',
       environment: 'production', checks: {}, outcomes: [], verificationTarget: null, accountChecks: { revision: 2, mode: 'routine' } })
@@ -49,7 +63,8 @@ describe('scope completion in monitoring history', () => {
       summary: { fixed: [], inconclusive: [], unchanged: [], regressed: [], newIssues: [] } } }
     const audit = { ...row(null), parentId: 'full', evidenceCoverage: {}, executionSpec: spec,
       runRequests: [], pages: [{ url: spec.targetUrl, status: 'COMPLETED' }],
-      verifierExecutions: [receipt, comparison, ...initialTaskPlan(spec).map(task => ({ targetKey: 'task:' + task.key, status: 'COMPLETED', workState: 'COMPLETED' }))] }
+      verifierExecutions: [receipt, comparison, ...initialTaskPlan(spec).map(task => ({ targetKey: 'task:' + task.key, status: 'COMPLETED',
+        workKind: task.kind, workState: 'COMPLETED', workDependencies: task.dependencies }))] }
     expect(projectHistory(audit as never, [])).toMatchObject({ scope: 'CATEGORY', targetLabel: 'Security', result: 'CLEAR', completionState: 'COMPLETED' })
     audit.verifierExecutions = [receipt, comparison]
     expect(projectHistory(audit as never, [])).toMatchObject({ result: 'COULD_NOT_VERIFY', completionState: 'PARTIAL' })

@@ -1,5 +1,6 @@
 import { RENDERED_HTML_LIMIT } from '../browser/rendered-html'
 import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import { executionTransaction } from '../execution-ownership'
 import { captureScreenshots } from '../screenshot'
 import { mergeRuntimeHeadMetadata, trimMetadataForStorage } from '../metadata'
@@ -9,7 +10,7 @@ import { fetchPageSpeedData, toStoredPageSpeedResult, PAGESPEED_TASK_TIMEOUT_MS 
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { httpArtifactSchema, browserArtifactSchema, captureArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
 import type { MetadataFailure } from './snapshots'
-import { serializeArtifact, readArtifact, TaskFailure } from './contracts'
+import { MAX_TASKS_PER_AUDIT, serializeArtifact, readArtifact, TaskFailure } from './contracts'
 import type { TaskHandler } from './registry'
 import { parseMetadataIsolated } from './cpu'
 import { getAuditBrowser } from '../screenshot'
@@ -25,6 +26,8 @@ import { observeCapturedTechnologies } from '../technology-capture'
 import { persistTechnologyObservations } from '../technology-profile'
 import { capturedPagePreview } from '../checks/page-preview'
 import { capturedHeadMetadata } from '../checks/head-metadata'
+import { browserCollectionRequirements } from './browser-requirements'
+import { PAGE_COLLECTION_UNAVAILABLE } from '@/lib/marketing/copy/page-evidence'
 
 /** Parsing enriches an already collected document. A bounded local retry can
  * replace a crashed parser without repeating its HTTP or browser observation. */
@@ -36,6 +39,20 @@ async function collectMetadata(html: string, url: string, deadline: number, mode
       const metadataFailure: MetadataFailure = { code: error instanceof TaskFailure ? error.code : 'METADATA_PARSE_FAILED', attempts }
       return { metadata: null, metadataFailure }
     }
+  }
+}
+
+/** Browser and capture tasks can insert the same page together. The committed row wins. */
+async function openAuditPage(auditId: string, pageUrl: string, position: number, role: string) {
+  const where = { auditId_normalizedUrl: { auditId, normalizedUrl: pageUrl } }
+  const create = { auditId, url: pageUrl, normalizedUrl: pageUrl, position, role, status: 'CAPTURING' as const }
+  try {
+    return await executionTransaction(tx => tx.auditPage.upsert({ where, create, update: {} }))
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
+    const existing = await prisma.auditPage.findUnique({ where })
+    if (!existing) throw error
+    return existing
   }
 }
 
@@ -91,8 +108,8 @@ export const collectionHandlers: TaskHandler[] = [
     async evaluate(context) {
       // This collector observes only public responses. Credentialed captures remain isolated.
       const document = await collectDocument(context.input.pageUrl, context.deadline)
-      if (document.status === null) throw new TaskFailure('HTTP_COLLECTION_UNAVAILABLE', true)
-      const metadata = document.status >= 200 && document.status < 300 && document.complete && document.body && /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')
+      if (document.status === null && !document.transportFailure) throw new TaskFailure('HTTP_COLLECTION_UNAVAILABLE', true)
+      const metadata = document.status !== null && document.status >= 200 && document.status < 300 && document.complete && document.body && /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')
         ? await collectMetadata(document.body, document.finalUrl, context.deadline) : { metadata: null }
       return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata }))
     },
@@ -102,19 +119,22 @@ export const collectionHandlers: TaskHandler[] = [
     validateResult: artifact => { browserArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const pageUrl = new URL(context.input.pageUrl).toString()
-      const page = await executionTransaction(tx => tx.auditPage.upsert({
-        where: { auditId_normalizedUrl: { auditId: context.audit.id, normalizedUrl: pageUrl } },
-        create: { auditId: context.audit.id, url: pageUrl, normalizedUrl: pageUrl,
-          position: context.input.position, role: context.input.role, status: 'CAPTURING' }, update: {},
-      }))
+      const page = await openAuditPage(context.audit.id, pageUrl, context.input.position, context.input.role)
       const access = await resolveAuditScanAccess(context.audit.id)
       const spec = readExecutionSpec(context.audit.executionSpec)
       const consoleObservationMs = requestedConsoleWindow(spec, pageUrl)
+      const consumers = context.task.targetKey?.startsWith('task:')
+        ? await prisma.auditVerifierExecution.findMany({ where: { auditId: context.audit.id,
+          workDependencies: { has: context.task.targetKey.slice(5) } },
+          select: { workKind: true, workInput: true }, take: MAX_TASKS_PER_AUDIT + 1 }) : []
+      if (consumers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('TASK_GRAPH_LIMIT', false)
+      const requirements = browserCollectionRequirements(consumers)
       // DOM and semantics have no private-storage dependency. Media has its own
       // checkpoint and recovery window, so an upload outage cannot erase this input.
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `p${context.input.position}-g${context.task.workGeneration}`, { runFlow: false, scanAccess: access, deadline: context.deadline,
-          collectOriginalDocument: false, captureMedia: false, consoleObservationMs, captureMotion: motionRequested(spec), deferMotionComparison: true })
+          collectOriginalDocument: false, captureMedia: false, consoleObservationMs, captureMotion: motionRequested(spec), deferMotionComparison: true,
+          ...requirements })
       const htmlWithinBudget = captured.desktopHtml && Buffer.byteLength(captured.desktopHtml) <= RENDERED_HTML_LIMIT
       const parsed = htmlWithinBudget ? await collectMetadata(captured.desktopHtml!, captured.desktopFinalUrl ?? pageUrl, context.deadline, 'rendered') : { metadata: null }
       const head = capturedHeadMetadata(captured)
@@ -126,7 +146,7 @@ export const collectionHandlers: TaskHandler[] = [
           status: metadata ? 'CHECKING' : 'FAILED', title: metadata?.title,
           ...(metadata ? { htmlMetadata: trimMetadataForStorage(metadata) as never } : {}),
           consoleErrors: captured.consoleErrors as Prisma.InputJsonValue,
-          ...(!metadata ? { failureCode: 'BROWSER_SCOPE_UNAVAILABLE', failureMessage: 'Rendered content could not be inspected. Public response results remain available.' } : {}),
+          ...(!metadata ? { failureCode: 'BROWSER_SCOPE_UNAVAILABLE', failureMessage: PAGE_COLLECTION_UNAVAILABLE } : {}),
         } })
         if (context.input.primary && metadata) await tx.audit.update({ where: { id: context.audit.id }, data: {
           htmlMetadata: trimMetadataForStorage(metadata) as never, consoleErrors: captured.consoleErrors as Prisma.InputJsonValue,
@@ -153,11 +173,7 @@ export const collectionHandlers: TaskHandler[] = [
     validateResult: artifact => { captureArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const pageUrl = new URL(context.input.pageUrl).toString()
-      const page = await executionTransaction(tx => tx.auditPage.upsert({
-        where: { auditId_normalizedUrl: { auditId: context.audit.id, normalizedUrl: pageUrl } },
-        create: { auditId: context.audit.id, url: pageUrl, normalizedUrl: pageUrl,
-          position: context.input.position, role: context.input.role, status: 'CAPTURING' }, update: {},
-      }))
+      const page = await openAuditPage(context.audit.id, pageUrl, context.input.position, context.input.role)
       const captured = await captureScreenshots(pageUrl, context.audit.id,
         `capture-p${context.input.position}-g${context.task.workGeneration}`, {
           runFlow: false, scanAccess: await resolveAuditScanAccess(context.audit.id), deadline: context.deadline,

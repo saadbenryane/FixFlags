@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger'
 import { emailLayout, escapeEmailHtml } from '@/lib/email/layout'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
-import { notificationEmailBody, notificationEmailSnapshotSchema, sendNotificationEmail } from '@/lib/email/notification-delivery'
+import { NOTIFICATION_REQUEST_TIMEOUT_MS, assertNotificationReplayWindow, prepareNotificationReplay, notificationEmailBody, notificationEmailSnapshotSchema, notificationRetryAt, sendNotificationEmail } from '@/lib/email/notification-delivery'
 import { getAppUrl } from '@/lib/get-app-url'
 
 const uptimeEmailSchema = notificationEmailSnapshotSchema.extend({
@@ -57,13 +57,7 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           lastError: 'Delivery confirmation expired after the final attempt', leaseUntil: null } })
         continue
       }
-      const leaseUntil = new Date(attemptAt.getTime() + 60_000)
-      // Compare current permission at the physical claim, after the batch read.
-      const claimed = await prisma.uptimeNotification.updateMany({ where: {
-        ...available, ...permission,
-      }, data: { status: 'SENDING', attempts: { increment: 1 }, leaseUntil } })
-      if (!claimed.count) continue
-      const ownedClaim = { id: receipt.id, status: 'SENDING', attempts: receipt.attempts + 1, leaseUntil }
+      let preparation: { payload: z.infer<typeof uptimeEmailSchema> } | { error: unknown }
       try {
         if (!resend) throw new Error('Uptime email delivery is not configured')
         const scope = { ownerId: project.userId, projectId: project.id, incidentId: incident.id,
@@ -79,14 +73,31 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
           const body = receipt.kind === 'DOWN' ? UPTIME_COPY.email.downBody(incident.targetUrl, incident.confirmedAt.toISOString(), href)
             : UPTIME_COPY.email.recoveryBody(incident.targetUrl, incident.recoveredAt!.toISOString(), href)
           payload = uptimeEmailSchema.parse({ version: 1, ...scope,
+            firstAttemptAt: receipt.attempts === 0 ? currentTime().toISOString() : undefined,
             from: process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`,
             to: project.user.email, subject, text: body, tags: [],
             html: emailLayout(body.split('\n\n').map(paragraph => `<p>${escapeEmailHtml(paragraph)}</p>`).join('')) })
-          const saved = await prisma.uptimeNotification.updateMany({ where: { ...ownedClaim, deliveryPayload: { equals: Prisma.DbNull } },
-            data: { deliveryPayload: payload } })
-          if (saved.count !== 1) continue
         }
-        const providerId = await sendNotificationEmail(resend, notificationEmailBody(payload), `uptime-${receipt.id}`)
+        preparation = { payload: prepareNotificationReplay(payload, currentTime(), receipt.kind === 'RECOVERED'
+          ? incident.recoveredAt ?? incident.confirmedAt : incident.confirmedAt) }
+      } catch (error) { preparation = { error } }
+      const leaseUntil = new Date(currentTime().getTime() + 60_000)
+      // Freeze the exact body in the same conditional write as permission and
+      // attempt ownership. No later payload write can bypass a changed recipient.
+      const claimed = await prisma.uptimeNotification.updateMany({ where: {
+        ...available, ...permission, deliveryPayload: { equals: receipt.deliveryPayload ?? Prisma.DbNull },
+      }, data: { status: 'SENDING', attempts: { increment: 1 }, leaseUntil,
+        ...('payload' in preparation ? { deliveryPayload: preparation.payload } : {}) } })
+      if (!claimed.count) continue
+      const ownedClaim = { id: receipt.id, status: 'SENDING', attempts: receipt.attempts + 1, leaseUntil }
+      try {
+        if ('error' in preparation) throw preparation.error
+        if (!resend) throw new Error('Uptime email delivery is not configured')
+        // A slow database response must not start a request that can outlive its claim.
+        if (leaseUntil.getTime() - currentTime().getTime() <= NOTIFICATION_REQUEST_TIMEOUT_MS)
+          throw new Error('Notification claim has insufficient time for provider delivery')
+        assertNotificationReplayWindow(preparation.payload.firstAttemptAt, currentTime())
+        const providerId = await sendNotificationEmail(resend, notificationEmailBody(preparation.payload), `uptime-${receipt.id}`)
         await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {
           status: 'SENT', sentAt: currentTime(), providerId, lastError: null, leaseUntil: null,
         } })
@@ -94,7 +105,7 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
         logger.error('Uptime notification delivery failed', { receiptId: receipt.id, error: error instanceof Error ? error.message : 'delivery unavailable' })
         await prisma.uptimeNotification.updateMany({ where: ownedClaim, data: {
           status: 'FAILED', lastError: error instanceof Error ? error.message.slice(0, 500) : 'Delivery unavailable', leaseUntil: null,
-          nextAttemptAt: new Date(currentTime().getTime() + Math.min(6 * 60 * 60_000, 5 * 60_000 * 2 ** receipt.attempts)),
+          nextAttemptAt: notificationRetryAt(receipt.attempts + 1, currentTime()),
         } })
       }
     } catch (error) {

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   txFindUniqueOrThrow: vi.fn(),
   bindingUpdateMany: vi.fn(),
   bindingUpsert: vi.fn(),
+  taskFindMany: vi.fn(),
 }))
 
 const tx = {
@@ -23,6 +24,7 @@ const tx = {
     updateMany: mocks.bindingUpdateMany,
     upsert: mocks.bindingUpsert,
   },
+  auditVerifierExecution: { findMany: mocks.taskFindMany },
 }
 
 vi.mock('@/lib/db', () => ({
@@ -78,10 +80,11 @@ describe('confirmSiteOutcome semantic identity', () => {
     vi.clearAllMocks()
     mocks.transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx))
     mocks.lockOutcome.mockResolvedValue([{ id: 'outcome-1' }])
-    mocks.txFindFirst.mockResolvedValue({ id: 'outcome-1', name: 'Contact support', kind: 'GENERIC', confirmedAt: null })
+    mocks.txFindFirst.mockResolvedValue({ id: 'outcome-1', name: 'Contact support', kind: 'GENERIC', confirmedAt: null, bindings: [] })
     mocks.txUpdateMany.mockResolvedValue({ count: 1 })
     mocks.bindingUpdateMany.mockResolvedValue({ count: 0 })
     mocks.bindingUpsert.mockResolvedValue({ id: 'binding-1' })
+    mocks.taskFindMany.mockResolvedValue([])
     mocks.txFindUniqueOrThrow.mockResolvedValue(row({
       name: 'Checkout',
       inferenceSource: 'user',
@@ -128,7 +131,10 @@ describe('confirmSiteOutcome semantic identity', () => {
     await confirmSiteOutcome({ site, outcomeId: 'outcome-1', confirmed: true, kind: 'CHECKOUT' })
 
     expect(mocks.transaction).toHaveBeenCalledTimes(1)
-    expect(mocks.lockOutcome).toHaveBeenCalledTimes(1)
+    const locks = mocks.lockOutcome.mock.calls.map(([query]) => Array.isArray(query) ? query.join('?') : query.sql as string)
+    expect(locks[0]).toContain('FROM projects')
+    expect(locks[1]).toContain('FROM audits')
+    expect(locks[2]).toContain('FROM "site_outcomes"')
     expect(mocks.bindingUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ outcomeId: 'outcome-1', key: { not: 'checkout-browser-v1' } }),
       data: { enabled: false },
@@ -144,6 +150,7 @@ describe('confirmSiteOutcome semantic identity', () => {
       name: 'A customer can buy the annual plan',
       kind: 'CHECKOUT',
       confirmedAt,
+      bindings: [],
     })
     mocks.txFindUniqueOrThrow.mockResolvedValue(row({
       name: 'A customer can buy the annual plan',

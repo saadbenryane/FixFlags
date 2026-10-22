@@ -1,9 +1,11 @@
 import { Prisma } from '@prisma/client'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
+import { newestRecordedFlag } from '@/lib/sites/flag-resolution'
 import { comparableOutcomeCoverage } from '../domain/outcome-proof'
 import { outcomeIncidentTransition, readOutcomeIncident } from '../domain/outcome-incident'
 import { readExecutionSpec } from '../domain/execution-spec'
+import { hasCurrentCheckoutEvidence } from '../domain/outcome-evaluation'
 
 type AssessmentInput = Prisma.OutcomeAssessmentUncheckedCreateInput & {
   projectId: string; bindingKeys: string[]; failureFlagIds: string[]; outcomeKind: string
@@ -32,7 +34,8 @@ export async function persistOutcomeAssessment(input: AssessmentInput) {
       evidence: { path: ['supersededByAssessmentId'], equals: Prisma.AnyNull },
       assessedAt: { lte: input.assessedAt as Date }, runRequest: { projectId, requestedAt: { lt: request.requestedAt } },
     }, orderBy: [{ runRequest: { requestedAt: 'desc' } }, { assessedAt: 'desc' }, { id: 'desc' }], take: 50 })
-    let before = previous.find(row => comparableOutcomeCoverage(row.coverage, input.coverage)) ?? null
+    let before = previous.find(row => comparableOutcomeCoverage(row.coverage, input.coverage) &&
+      (outcomeKind !== 'CHECKOUT' || row.state !== 'CLEAR' || hasCurrentCheckoutEvidence(row.coverage))) ?? null
     if (before?.state === 'FLAG' && before.improvementId && !readOutcomeIncident(before.evidence) && bindingKeys.length === 1) {
       const sourceRun = await tx.runRequest.findUnique({ where: { id: before.runRequestId }, select: {
         executionSpec: true, selections: { select: { outcomeId: true } },
@@ -62,16 +65,27 @@ export async function persistOutcomeAssessment(input: AssessmentInput) {
       incident.recoveredFlagIds = []
     }
     if (!superseding && incident.transition === 'recovery' && incident.incidentRunRequestId) {
-      const roots = await tx.flag.findMany({ where: { id: { in: incident.recoveredFlagIds }, audit: { projectId },
-        status: { in: ['OPEN', 'REGRESSED'] } }, select: { id: true } })
-      incident.recoveredFlagIds = roots.map(flag => flag.id)
-      // Match the recorded incident through its assessments. This resolves long
-      // outages without copying an ever-growing Flag list into each receipt.
-      await tx.flag.updateMany({ where: { audit: { projectId, outcomeAssessments: { some: {
-        outcomeId: input.outcomeId, evidence: { path: ['incident', 'incidentRunRequestId'], equals: incident.incidentRunRequestId },
-      } } }, fingerprint: { in: bindingKeys.map(key => outcomeFlagFingerprint(input.outcomeId, key)) },
-        status: { in: ['OPEN', 'REGRESSED'] } }, data: { status: 'FIXED', resolvedInId: input.auditId } })
-      if (roots.length) await tx.flag.updateMany({ where: { id: { in: roots.map(flag => flag.id) }, audit: { projectId },
+      const fingerprints = bindingKeys.map(key => outcomeFlagFingerprint(input.outcomeId, key))
+      const incidentWhere = { outcomeId: input.outcomeId, evidence: { path: ['incident', 'incidentRunRequestId'], equals: incident.incidentRunRequestId } }
+      const openFlags = await tx.flag.findMany({ where: { status: { in: ['OPEN', 'REGRESSED'] }, OR: [
+        { id: { in: incident.recoveredFlagIds }, audit: { projectId } },
+        { audit: { projectId, outcomeAssessments: { some: incidentWhere } }, fingerprint: { in: fingerprints } },
+      ] }, select: { id: true, fingerprint: true, createdAt: true } })
+      // The receipt names the capture the inbox links to, one per binding.
+      // Every open capture of the incident is still resolved below.
+      const byIdentity = new Map<string, typeof openFlags>()
+      for (const flag of openFlags) {
+        const key = flag.fingerprint ?? flag.id
+        byIdentity.set(key, [...(byIdentity.get(key) ?? []), flag])
+      }
+      incident.recoveredFlagIds = [...byIdentity.values()].flatMap(group => {
+        const newest = newestRecordedFlag(group)
+        return newest ? [newest.id] : []
+      }).slice(0, 100)
+      await tx.flag.updateMany({ where: { audit: { projectId, outcomeAssessments: { some: incidentWhere } },
+        fingerprint: { in: fingerprints }, status: { in: ['OPEN', 'REGRESSED'] } },
+        data: { status: 'FIXED', resolvedInId: input.auditId } })
+      if (openFlags.length) await tx.flag.updateMany({ where: { id: { in: openFlags.map(flag => flag.id) }, audit: { projectId },
         status: { in: ['OPEN', 'REGRESSED'] } }, data: { status: 'FIXED', resolvedInId: input.auditId } })
       await tx.improvement.updateMany({ where: { projectId, outcomeId: input.outcomeId,
         occurrences: { some: { flag: { audit: { projectId, outcomeAssessments: { some: {

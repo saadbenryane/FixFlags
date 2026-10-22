@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -18,12 +19,12 @@ import {
 import { type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
 import {
   boardFindingTitle,
-  boardCardFreshnessText,
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { flagCountLabel } from '@/lib/sites/presentation'
 import styles from './BoardCard.module.css'
 
@@ -86,7 +87,7 @@ export function BoardSummaryStrip({ items, label = 'Website status summary', onS
     <dl className={styles.summaryStrip}>
       {items.map(item => <div key={item.id ?? item.label} className={`${styles.summaryItem} ${styles[`summary-${item.state}`]} ${item.id === 'monitoring' ? styles.summaryMonitoring : item.id === 'pages' ? styles.summaryPages : ''}`}>
         <dt>{item.label}</dt>
-        <dd>{item.value}{onSelect && <button type="button" className={styles.summaryAction} aria-label={`${item.value} ${item.label}${item.detail ? `. ${item.accessibleDetail ?? item.detail}` : ''}`} onClick={() => onSelect(item)} />}</dd>
+        <dd>{item.value}{onSelect && <InteractiveButton type="button" className={styles.summaryAction} aria-label={`${item.value} ${item.label}${item.detail ? `. ${item.accessibleDetail ?? item.detail}` : ''}`} onClick={() => onSelect(item)} />}</dd>
         {item.detail ? <dd className={styles.summaryDetail}>{item.detail}</dd> : null}
       </div>)}
     </dl>
@@ -103,7 +104,7 @@ export function BoardStatus({ state, label, text = label, count = 0, onOpen, sho
   const content = <>{count > 0 ? <><span className={styles.flagCount}>{count} {count === 1 ? 'Flag' : 'Flags'}</span>{state === 'checking' ? <span>{text}</span> : null}</> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
   const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
   return onOpen
-    ? <button type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</button>
+    ? <InteractiveButton type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</InteractiveButton>
     : <span className={className} title={label}>{content}</span>
 }
 
@@ -182,7 +183,7 @@ export function BoardCard({
   const previewFlags = flags ?? []
   const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
   const hiddenPreviewCount = Math.max(0, previewFlags.length - visiblePreviewFlags.length)
-  const freshnessLabel = freshness ?? boardCardFreshnessText(checkedAt ?? null)
+  const freshnessLabel = freshness ?? formatEvidenceTimestamp(checkedAt)
   const cardFooter = footer ?? (compact && state === 'healthy' && !checking ? freshnessLabel : null)
 
   if (layout === 'row') {
@@ -193,23 +194,24 @@ export function BoardCard({
       {freshnessLabel && !checking ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
       <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${checking && count > 0 ? `${flagCountLabel(count)}. ` : ''}${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /></span>
     </span>
-    const recovery = incompleteReason && !checking ? <div className={styles.rowRecovery}>
-      <p>{incompleteReason}</p>
+    const recoveryText = previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail) ? incompleteReason : null
+    const recovery = incompleteReason && !checking && (recoveryText || recoveryAction) ? <div className={styles.rowRecovery}>
+      {recoveryText ? <p>{recoveryText}</p> : null}
       {recoveryAction}
     </div> : null
     if (previewFlags.length > 0) {
       return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>
-        {onOpen ? <button type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</button>
+        {onOpen ? <InteractiveButton type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</InteractiveButton>
           : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
         {rowMeta}
         <ul className={styles.rowFlagList}>
           {previewFlags.map(flag => {
             const guidance = flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance] : null
             return <li key={flag.id}>
-            {flag.onOpen ? <button type="button" className={styles.rowFlagName} onClick={flag.onOpen}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</button>
+            {flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagName} onClick={flag.onOpen}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</InteractiveButton>
               : <Link className={styles.rowFlagName} href={flag.href as Route}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</Link>}
             <span className={styles.rowFlagActions}>{flag.copyAction ? <span className={styles.rowCopyAction}>{flag.copyAction}</span> : null}
-              {flag.onOpen ? <button type="button" className={styles.rowFlagOpen} onClick={flag.onOpen} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></button>
+              {flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagOpen} onClick={flag.onOpen} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></InteractiveButton>
                 : <Link className={styles.rowFlagOpen} href={flag.href as Route} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></Link>}
             </span>
           </li> })}
@@ -220,19 +222,19 @@ export function BoardCard({
     const resultContent = <>
       <span className={styles.rowResultCopy}>
         <strong>{answer}</strong>
-        {detail ? <span>{detail}</span> : null}
+        {detail && detail !== answer ? <span>{detail}</span> : null}
       </span>
       {(href || onOpen) ? <span className={styles.rowArrow}><ArrowRight size={17} aria-hidden="true" /></span> : null}
     </>
     return <article className={rowClassName} aria-label={name}>
-      {onOpen ? <button type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</button>
+      {onOpen ? <InteractiveButton type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</InteractiveButton>
         : href ? <Link className={styles.rowTitleButton} href={href as Route} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</Link>
           : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
       {rowMeta}
       {clear ? null : href && !onOpen ? href.startsWith('#') || href.startsWith('http')
         ? <a className={styles.rowResultAction} href={href} aria-label={`View ${name} details`}>{resultContent}</a>
         : <Link className={styles.rowResultAction} href={href as Route} aria-label={`View ${name} details`}>{resultContent}</Link>
-        : onOpen ? <button type="button" className={styles.rowResultAction} onClick={onOpen} aria-label={`View ${name} details`}>{resultContent}</button>
+        : onOpen ? <InteractiveButton type="button" className={styles.rowResultAction} onClick={onOpen} aria-label={`View ${name} details`}>{resultContent}</InteractiveButton>
           : <span className={styles.rowResultAction}>{resultContent}</span>}
       {recovery}
     </article>
@@ -301,7 +303,7 @@ export function BoardCard({
 
   if (onOpen) {
     return (
-      <button type="button" className={className} onClick={onOpen} aria-label={`Open ${name}`}>
+      <InteractiveButton type="button" className={className} onClick={onOpen} aria-label={`Open ${name}`}>
         {header}
         <span className={styles.body}>
           {body}
@@ -314,7 +316,7 @@ export function BoardCard({
             <ArrowRight size={17} aria-hidden="true" />
           </span>
         </span>
-      </button>
+      </InteractiveButton>
     )
   }
 
@@ -328,6 +330,7 @@ export function BoardCard({
 
 export function ProductBoardCard({
   card,
+  freshness,
   onOpen,
   renderFlagCopy,
   recoveryAction,
@@ -335,6 +338,7 @@ export function ProductBoardCard({
   layout = 'card',
 }: {
   card: BoardCardView
+  freshness?: string
   onOpen?: () => void
   renderFlagCopy?: (flag: BoardCardFlagChip) => React.ReactNode
   recoveryAction?: React.ReactNode
@@ -370,6 +374,7 @@ export function ProductBoardCard({
       flags={card.flagChips.map(flag => ({ ...flag, copyAction: renderFlagCopy?.(flag) }))}
       sources={card.sources}
       checkedAt={card.checkedAt}
+      freshness={freshness}
       layout={layout}
     />
   )

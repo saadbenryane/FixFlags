@@ -13,10 +13,14 @@ import { CONFIRMABLE_OUTCOME_KINDS, type ConfirmableOutcomeKind } from '@/lib/si
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
+import { findReusableVerificationRun, loadRunSourceEnvironment, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
 import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 import { assertAttemptReplay } from '@/lib/improvements/attempt-intent'
+import { handoffProtocolSuffix } from '@/lib/improvements/handoff-contract'
+import { ownedSiteContext } from '@/lib/sites/domain/site-context'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 
 export type SiteCommand =
   | {
@@ -43,6 +47,7 @@ export type SiteCommand =
       flagId: string
       userId: string
       builder: string
+      client?: string
     }
   | {
       type: 'VERIFY_FLAG'
@@ -60,14 +65,14 @@ export async function executeSiteCommand(command: SiteCommand) {
   switch (command.type) {
     case 'CONFIRM_PAGE_AVAILABILITY': {
       const site = await loadSiteRecord(command.siteId)
-      if (!site) return { ok: false as const, error: 'Site not found' }
+      if (!site) return { ok: false as const, error: SITE_ERRORS.notFound }
       const outcome = await confirmPageAvailability(site)
       if (!outcome) return { ok: false as const, error: 'Outcome not found' }
       return { ok: true as const, outcome }
     }
     case 'CONFIRM_OUTCOME': {
       const site = await loadSiteRecord(command.siteId)
-      if (!site) return { ok: false as const, error: 'Site not found' }
+      if (!site) return { ok: false as const, error: SITE_ERRORS.notFound }
       // A kind is the execution mechanism that will verify the Outcome, not a
       // label. Confirming without one writes an agreement FixFlags can never
       // verify, and leaves the Outcome kind 'GENERIC', which the Site surfaces
@@ -132,7 +137,7 @@ export async function executeSiteCommand(command: SiteCommand) {
     }
     case 'RENAME_OUTCOME': {
       const site = await loadSiteRecord(command.siteId)
-      if (!site) return { ok: false as const, error: 'Site not found' }
+      if (!site) return { ok: false as const, error: SITE_ERRORS.notFound }
       const outcome = await renameSiteOutcome({
         site,
         outcomeId: command.outcomeId,
@@ -147,25 +152,27 @@ export async function executeSiteCommand(command: SiteCommand) {
         flagId: command.flagId,
         userId: command.userId,
         builder: command.builder,
+        client: command.client,
         action: 'HANDOFF_COPIED',
       })
       await recordSiteLifecycleEvent({
         name: 'fix_handoff',
-        idempotencyKey: `fix-handoff:${command.userId}:${command.flagId}:${command.builder}`,
+        idempotencyKey: `fix-handoff:${command.userId}:${command.flagId}:${command.builder}${handoffProtocolSuffix(command.client)}`,
         userId: command.userId,
-        properties: { channel: command.builder },
+        properties: { channel: command.builder, client: command.client },
       })
       return { ok: true as const, handoff }
     }
     case 'VERIFY_FLAG': {
-      const initialSite = await loadSiteRecord(command.siteId)
-      if (!initialSite?.projectId || initialSite.userId !== command.userId) return { ok: false as const, error: 'Claim this Site before verifying a fix.' }
+      const initialRecord = await loadSiteRecord(command.siteId)
+      if (!initialRecord) throw new SiteNotFound()
+      const { site: initialSite } = ownedSiteContext(initialRecord, command.userId)
       const initialFlag = await loadSiteFlagDetail(initialSite, command.flagId)
       if (!initialFlag) return { ok: false as const, error: 'Flag not found' }
       const source = command.source ?? 'WEB'
       const requestedKey = command.idempotencyKey ?? (command.attemptId ? `flag-verify:${command.attemptId}` : undefined)
       if (requestedKey) {
-        const reusable = await findReusableRun({
+        const reusable = await findReusableVerificationRun({
           projectId: initialSite.projectId,
           source,
           idempotencyKey: requestedKey,
@@ -184,6 +191,8 @@ export async function executeSiteCommand(command: SiteCommand) {
             : originalFlag.checkId !== target.checkId || originalFlag.pageUrl !== target.pageUrl)) {
             throw new SiteRunRefusal('This request key belongs to another Flag attempt.', 409)
           }
+          const environment = await loadRunSourceEnvironment(initialSite.projectId, attempt.sourceAuditId)
+          if (environment !== reusable.environment) throw new SiteRunRefusal('Verification receipt environment does not match its source', 409)
           if (!command.attemptId) assertAttemptReplay({ userId: command.userId, sourceAuditId: attempt.sourceAuditId,
             handoffReference: attempt.handoffReference, changeSummary: command.changeSummary }, attempt)
           return {
@@ -214,13 +223,14 @@ export async function executeSiteCommand(command: SiteCommand) {
             changeSummary: command.changeSummary,
             client: source.toLowerCase(),
           })
-      const { site, flag, attemptId } = await requireSiteFlagAttempt({
+      const { site, flag, attemptId, attempt } = await requireSiteFlagAttempt({
         siteId: command.siteId,
         flagId: command.flagId,
         attemptId: recorded.attemptId,
         userId: command.userId,
       })
       const idempotencyKey = command.idempotencyKey ?? `flag-verify:${attemptId}`
+      const environment = await loadRunSourceEnvironment(site.projectId!, attempt.sourceAuditId)
 
       if (flag.outcomeId) {
         const started = await requestOutcomeRun({
@@ -229,6 +239,7 @@ export async function executeSiteCommand(command: SiteCommand) {
           userId: command.userId,
           source,
           idempotencyKey,
+          environment,
           verificationAttemptId: attemptId,
           parentAuditId: flag.sourceAuditId,
           verificationTarget: {
@@ -264,6 +275,7 @@ export async function executeSiteCommand(command: SiteCommand) {
       const started = await requestSiteRun({
         projectId: site.projectId!,
         outcomeIds: [],
+        environment,
         userId: command.userId,
         source,
         idempotencyKey,

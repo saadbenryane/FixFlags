@@ -18,8 +18,8 @@ describe('assertAuditAccess', () => {
     assert.equal(mockUserFindUnique.mock.calls.length, 0)
   })
 
-  it('always allows anonymous/unclaimed audits, without a DB lookup', async () => {
-    await assertAuditAccess({ userId: null, isPublic: false }, 'someone-else')
+  it('denies private unclaimed audits without signed creator proof, without a DB lookup', async () => {
+    await assert.rejects(() => assertAuditAccess({ userId: null, isPublic: false }, 'someone-else'), /Unauthorized/)
     assert.equal(mockUserFindUnique.mock.calls.length, 0)
   })
 

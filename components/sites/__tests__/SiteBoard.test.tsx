@@ -13,7 +13,7 @@ import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY } from '@/lib/marketing/c
 import { checkoutResultCopy, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const SITE_PATH = '/sites/p_example'
@@ -30,6 +30,7 @@ const push = vi.hoisted(() => vi.fn())
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh: vi.fn() }),
   usePathname: () => SITE_PATH,
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }))
 
 const signedInUser = {
@@ -216,6 +217,13 @@ function openFlag(partial: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
 }
 
 describe('SiteBoard chrome', () => {
+  it('renders category freshness from the same server projection as its recorded scope', () => {
+    const initial = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'unknown', checkedAt: '2026-10-19T12:00:00Z' })] })
+    initial.presentation.categories[0].freshness = SITE_PRESENTATION_COPY.freshness.minutes(2)
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
+    expect(screen.getByText(SITE_PRESENTATION_COPY.freshness.minutes(2))).toBeVisible()
+  })
+
   it('offers one site-wide Check again action for an incomplete analysis', async () => {
     const initial = boardView()
     const view = boardView({
@@ -227,7 +235,8 @@ describe('SiteBoard chrome', () => {
     vi.stubGlobal('fetch', fetchMock)
     try {
       render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
-      expect(within(screen.getByRole('region', { name: 'Analysis incomplete' })).getByRole('status')).toHaveTextContent('Analysis incomplete')
+      expect(screen.getAllByText('Analysis incomplete')).toHaveLength(1)
+      expect(screen.queryByRole('region', { name: 'Analysis incomplete' })).not.toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: 'Check again', exact: true })).toHaveLength(1)
       fireEvent.click(screen.getByRole('button', { name: 'Check again', exact: true }))
       expect(await screen.findByText('Try again later.')).toBeVisible()
@@ -606,7 +615,7 @@ describe('SiteBoard chrome', () => {
     releaseRefresh()
     await waitFor(() => expect(screen.queryByText('Check failed')).not.toBeInTheDocument())
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example', { cache: 'no-store' })
+      expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }))
     })
     view.unmount()
     vi.unstubAllGlobals()
@@ -902,17 +911,17 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
     expect(screen.getByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument()
-    // Core controls keep their order; optional settings sections can follow.
-    expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 4).map((heading) => heading.textContent)).toEqual([
+    // Core controls come first. Removal follows all website settings.
+    expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 3).map((heading) => heading.textContent)).toEqual([
       'Monitoring',
       'Notifications',
       'Automatic account checks',
-      'Remove Site',
     ])
     expect(screen.queryByRole('heading', { name: 'Shopify', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Search Console', level: 3 })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Analytics', level: 3 })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove Site' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 2 }).at(-1)).toHaveTextContent('Remove Site')
   })
 
   it('keeps watch and All Sites for signed-in owners', async () => {

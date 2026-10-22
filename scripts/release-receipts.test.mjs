@@ -98,6 +98,11 @@ function passingWatchEvidence(overrides = {}) {
 }
 
 describe('release evidence receipts', () => {
+  it('requires the guarded legacy-column PostgreSQL checks in the foundation stage', () => {
+    const persistence = releaseStageCommands('foundation').find(([label]) => label === 'website-persistence')
+    assert.ok(persistence?.[2].includes('lib/audit/__tests__/legacy-scan-access-migration.integration.test.ts'))
+    assert.ok(persistence?.[2].includes('lib/improvements/handoff-custody.integration.test.ts'))
+  })
   it('requires website proof and rejects mixed profiles, missing journeys and paid stages', () => {
     assert.equal(releaseProfile({}), 'free-launch')
     assert.throws(() => releaseProfile({ RELEASE_PROFILE: 'unknown' }), /Unknown release profile/)

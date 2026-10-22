@@ -1,6 +1,9 @@
-import { AuditUrlError, safeFetchDocument } from '@/lib/audit/url'
+import { safeFetchDocument } from '@/lib/audit/url'
 import { publicResponseRestriction } from '@/lib/audit/browser/page-capture'
 import type { ProbeObservation } from './domain'
+import { PublicResponseBodyError } from '@/lib/audit/http-evidence'
+import { classifyPublicRequestFailure } from '@/lib/audit/http-failure'
+import { PublicRedirectError } from '@/lib/audit/redirect-evidence'
 
 type Document = Awaited<ReturnType<typeof safeFetchDocument>>
 
@@ -13,19 +16,6 @@ export function classifyUptimeResponse(document: Document): Pick<ProbeObservatio
   return { result: 'UNKNOWN', reason: 'redirect_unresolved' }
 }
 
-export function classifyUptimeError(error: unknown): Pick<ProbeObservation, 'result' | 'reason'> {
-  if (error instanceof AuditUrlError) {
-    return error.code === 'DNS_NOT_FOUND' ? { result: 'FAILED', reason: 'dns_failure' }
-      : { result: 'UNKNOWN', reason: 'public_target_unverified' }
-  }
-  const source = error instanceof Error ? error : null
-  const cause = source?.cause as { code?: string } | undefined
-  const code = cause?.code ?? (source as Error & { code?: string } | null)?.code
-  if (['ENOTFOUND', 'ENODATA', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT'].includes(code ?? ''))
-    return { result: 'FAILED', reason: code === 'ENOTFOUND' || code === 'ENODATA' ? 'dns_failure' : code?.includes('TIMEOUT') || code === 'ETIMEDOUT' ? 'response_timeout' : 'connection_failed' }
-  return { result: 'UNKNOWN', reason: 'probe_unavailable' }
-}
-
 export async function probeUptime(url: string, fetchDocument = safeFetchDocument): Promise<ProbeObservation> {
   let started: number | null = null
   const duration = () => started === null ? 0 : Date.now() - started
@@ -35,6 +25,8 @@ export async function probeUptime(url: string, fetchDocument = safeFetchDocument
     return { ...classifyUptimeResponse(document), statusCode: document.statusCode,
       durationMs: duration(), finalUrl: document.finalUrl }
   } catch (error) {
-    return { ...classifyUptimeError(error), statusCode: null, durationMs: duration(), finalUrl: null }
+    const bodyError = error instanceof PublicResponseBodyError || error instanceof PublicRedirectError ? error : null
+    return { ...classifyPublicRequestFailure(error),
+      statusCode: bodyError?.response.statusCode ?? null, durationMs: duration(), finalUrl: bodyError?.response.finalUrl ?? null }
   }
 }

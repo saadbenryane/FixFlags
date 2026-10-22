@@ -35,7 +35,9 @@ describe('registered check and evidence contracts', () => {
   })
   it('records only inspected inputs and never invents successful measurements', () => {
     const input = { url: 'https://example.com', metadata: { images: [{ src: 'http://example.com/a.png' }], hasAnalytics: false } as PageMetadata, desktop: null, mobile: null }
-    expect(recordCheckObservations('security', input).map(item => item.passed)).toEqual([true, false])
+    // Native Security collection owns response and resource evidence. A supplied
+    // URL and an image declaration alone cannot establish those observations.
+    expect(recordCheckObservations('security', input)).toEqual([])
     expect(recordCheckObservations('measurement', input)[0].passed).toBe(false)
     expect(recordCheckObservations('performance', input)).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: 'score', complete: false, passed: false }),
@@ -51,6 +53,6 @@ describe('registered check and evidence contracts', () => {
   it('validates new receipts and strips malformed historical assertions and private fields', () => {
     expect(checkReceiptSchema.safeParse({ kind: 'site-module-check', version: 1, module: 'metadata', pageUrl: 'https://example.com', passed: true, applicable: true }).success).toBe(true)
     expect(readCheckReceipt({ version: 2, passed: true }).passed).toBeUndefined()
-    expect(readCheckReceipt({ secret: 'never expose', assertions: [{ key: 'bad', passed: true }] })).toEqual({ passed: undefined, assertions: [], legacy: true })
+    expect(readCheckReceipt({ secret: 'never expose', assertions: [{ key: 'bad', passed: true }] })).toEqual({ passed: undefined, complete: false, assertions: [], legacy: true, unavailable: true })
   })
 })

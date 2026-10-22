@@ -140,3 +140,12 @@ test('every gated MCP path is one the gate actually withholds', () => {
     assert.ok(source.includes(`'${prefix}'`), `${prefix} is guarded but not withheld`)
   }
 })
+
+
+test('rejects MCP fragment promotion and parked agent-access claims in public discovery', () => {
+  for (const source of ["href: '/docs/fix-with-ai#what-is-mcp'", "label: 'Learn about MCP'", "features: ['Agent access']"]) {
+    assert.ok(powerToolVisibilityFailures({ proxySource: proxyHonouringGate(),
+      discoverySources: { 'lib/marketing/copy/homepage.ts': source }, mcpGateSource: mcpGate() })
+      .some(failure => failure.includes('links to a parked')))
+  }
+})

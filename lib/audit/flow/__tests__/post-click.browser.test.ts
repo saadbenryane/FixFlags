@@ -8,6 +8,27 @@ import { runFlowChecks } from '../../checks/flow'
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('native post-click loading observations', () => {
   afterAll(closeBrowser)
+  it('classifies a bot challenge before spending the destination loading window', async () => {
+    const context = await (await getAuditBrowser()).newContext()
+    try {
+      const page = await context.newPage()
+      await page.route('**', route => route.fulfill({
+        headers: { 'cf-mitigated': 'challenge' },
+        body: route.request().url().endsWith('/start')
+          ? '<!doctype html><title>Useful team planning</title><main><h1>Plan projects with your team</h1><a href="/signup">Get started</a></main>'
+          : '<!doctype html><title>Just a moment...</title><h1>Verify you are human</h1>',
+      }))
+      await page.goto('https://example.com/start')
+      const started = Date.now()
+      const result = await runFlowScan(page, 'challenge-loading-fixture', page.url(), {
+        mode: 'destination', captureSteps: false, includeFormValidation: false, includeMobileNavigation: false,
+      })
+      expect(result).toMatchObject({ status: 'skipped', actionEvidence: { response: 'challenge', clicked: true } })
+      expect(result.postClickMetrics).toBeUndefined()
+      expect(Date.now() - started).toBeLessThan(4_000)
+    } finally { await context.close() }
+  }, 15_000)
+
   it('includes a delayed document response without labeling the prior page as a blank screen', async () => {
     const context = await (await getAuditBrowser()).newContext()
     try {

@@ -38,7 +38,9 @@ describe('operator security contracts', () => {
       requireRecentAdminAuthentication(actor, new Date('2026-10-13T11:59:00Z')),
     ).toThrow()
   })
-  it('rejects missing and foreign origins', () => {
+  it.each(['https://fixflags.com', 'https://validation.example.test'])('rejects missing, foreign and forged request origins for %s', origin => {
+    vi.stubEnv('BETTER_AUTH_URL', origin)
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', origin)
     expect(() =>
       requireAdminOrigin(new Request('https://fixflags.com/api/admin/actions')),
     ).toThrow()
@@ -52,10 +54,13 @@ describe('operator security contracts', () => {
     expect(() =>
       requireAdminOrigin(
         new Request('https://fixflags.com/api/admin/actions', {
-          headers: { origin: 'https://fixflags.com' },
+          headers: { origin },
         }),
       ),
     ).not.toThrow()
+    expect(() => requireAdminOrigin(new Request('https://attacker.invalid/api/admin/actions', {
+      headers: { origin: 'https://attacker.invalid' },
+    }))).toThrow()
   })
   it('removes secret fields and credential patterns from durable detail', () => {
     expect(

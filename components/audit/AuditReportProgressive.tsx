@@ -426,7 +426,7 @@ export function AuditReportProgressive({
     return (
       <div className={`${WORKSPACE_VIEWPORT_CLASS} motion-safe:animate-soft-reveal`}>
         {queuedWarnings ? (
-          <div className="shrink-0 space-y-3 border-b border-border/40 px-4 py-3">
+          <div className="shrink-0 space-y-3 px-4 py-3">
             {queuedWarnings}
           </div>
         ) : null}
@@ -439,7 +439,7 @@ export function AuditReportProgressive({
     return (
       <div className={`${WORKSPACE_VIEWPORT_CLASS} motion-safe:animate-soft-reveal`}>
         {queuedWarnings ? (
-          <div className="shrink-0 space-y-3 border-b border-border/40 px-4 py-3">
+          <div className="shrink-0 space-y-3 px-4 py-3">
             {queuedWarnings}
           </div>
         ) : null}

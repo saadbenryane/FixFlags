@@ -1,10 +1,11 @@
+import { CHECK_REGISTRY } from '../../check-registry'
 import { describe, expect, it } from 'vitest'
 import { pricingNavigationAssertions, type PricingNavigationEvidence } from '../pricing-navigation-evidence'
 import { runFlowChecks } from '../../checks/flow'
 import { scopedAssertionForTarget } from '../../checks/verification'
 import { checkReceiptSchema } from '../../checks/receipt'
 
-const context = 'flow:pricing:v1:' + 'a'.repeat(64)
+const context = 'flow:pricing:v2:' + 'a'.repeat(64)
 const evidence: PricingNavigationEvidence = { context, complete: true, passed: false, reason: 'missing-section' }
 function flag() {
   return runFlowChecks({ status: 'skipped', steps: [], finalUrl: 'https://example.com/', multiStep: {
@@ -15,7 +16,7 @@ function flag() {
 function receipt(observed: PricingNavigationEvidence) {
   return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'flow', pageUrl: 'https://example.com/', applicable: true,
     complete: false, passed: false, assertions: pricingNavigationAssertions(observed), execution: {
-      auditId: 'after', taskId: 'pricing-task', checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString(),
+      auditId: 'after', taskId: 'pricing-task', checkVersion: CHECK_REGISTRY['flow-pricing-nav-broken'].version, source: 'rendered-dom', collectedAt: new Date().toISOString(),
     } })
 }
 describe('original pricing navigation evidence', () => {
@@ -40,5 +41,11 @@ describe('original pricing navigation evidence', () => {
     expect(scopedAssertionForTarget(input)).toBeUndefined()
     expect(scopedAssertionForTarget({ ...input, receipts: [receipt(other)] })?.assertion.passed).toBe(true)
     expect(scopedAssertionForTarget({ ...input, receipts: [receipt({ ...other, passed: false })] })?.assertion.passed).toBe(false)
+  })
+  it('does not call the corrected CSS interpretation a repair of an old observation', () => {
+    const source = flag()
+    const oldRule = 'Public pricing navigation v1: independently exercise the original rendered navigation control under the same page, capture and access conditions.'
+    expect(scopedAssertionForTarget({ receipt: receipt({ ...evidence, passed: true, reason: 'visible-section' }),
+      checkId: source.checkId, flag: { ...source, verificationRule: oldRule, evidenceTargets: source.evidenceTargets!.map(target => ({ ...target, context: target.context!.replace('flow:pricing:v2:', 'flow:pricing:v1:') })) } })).toBeUndefined()
   })
 })

@@ -21,3 +21,12 @@ it('binds whitelisted measurement conditions without retaining provider URLs, qu
 it('records unavailable historical conditions as unknown', () => {
   expect(performanceMeasurement({ fetchTime: 'not-a-date', lighthouseVersion: 12 }, 'desktop')).toMatchObject({ measuredAt: null, lighthouseVersion: null, formFactor: null, throttlingMethod: null })
 })
+it.each([
+  ['https://example.com/pricing', 'https://example.com/pricing/'],
+  ['https://example.com/?return=', 'https://example.com/?return=/'],
+])('keeps distinct requested and final measurement resources: %s', (left, right) => {
+  const measured = (requestedUrl: string, finalUrl: string) => performanceMeasurement({ requestedUrl, finalUrl,
+    lighthouseVersion: '13.0', configSettings: { formFactor: 'desktop', throttlingMethod: 'simulate' } }, 'desktop').scope!
+  expect(measured(left, left).requestedKey).not.toBe(measured(right, left).requestedKey)
+  expect(measured(left, left).finalKey).not.toBe(measured(left, right).finalKey)
+})

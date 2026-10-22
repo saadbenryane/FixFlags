@@ -33,9 +33,8 @@ const REFERRER_POLICIES = new Set(['no-referrer', 'no-referrer-when-downgrade', 
   'strict-origin', 'origin-when-cross-origin', 'strict-origin-when-cross-origin', 'unsafe-url'])
 
 /**
- * Builder / PaaS managed hostnames where response headers like CSP/HSTS are not
- * settable without a custom domain + reverse proxy. Findings here are POLISH
- * with an explicit constraint note rather than CRITICAL conversion blockers.
+ * Managed hosting names are context for the existing advisory presentation.
+ * A hostname cannot establish which response headers its owner can configure.
  */
 export const MANAGED_HOST_SUFFIXES = [
   '.lovable.app',
@@ -65,7 +64,7 @@ export function isManagedHostingHostname(hostname: string): boolean {
 }
 
 function managedHostConstraintNote(hostname: string): string {
-  return `Not settable on managed subdomain (${hostname}); requires custom domain + proxy config.`
+  return `Hosting configuration was not inspected for ${hostname}. Check which response headers the application or platform can configure.`
 }
 
 /** RFC 6797 directives share one interpretation for detection and recovery.
@@ -217,7 +216,7 @@ export function runSecurityHeaderChecks(
       problem: 'No Content-Security-Policy header',
       evidence:
         'No Content-Security-Policy header found. A CSP is defense-in-depth that limits which scripts and resources can run, reducing the blast radius if a script injection ever occurs.',
-      fix: "Add a Content-Security-Policy header. Start with: Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+      fix: 'Review the scripts, styles and resource origins the page needs. Test a Content-Security-Policy-Report-Only policy before enforcing Content-Security-Policy, then confirm that the existing page and customer tasks still work. Use nonces or hashes for required inline scripts rather than copying an untested policy.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -577,9 +576,7 @@ export function runSecurityHeaderChecks(
         severity: 'POLISH' as const,
         problem: `${items.length} security header hardening gaps`,
         evidence: `Hardening gaps (core CSP/HSTS/XCTO/frame already present or handled separately): ${names}.${managedNote}`,
-        fix: managedHostname
-          ? 'These hardening headers usually cannot be set on a managed builder subdomain. Connect a custom domain and configure Referrer-Policy, COOP/COEP/CORP, and Permissions-Policy on your DNS/proxy/CDN.'
-          : 'Add defense-in-depth headers that are still missing: Referrer-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy, and/or Permissions-Policy as appropriate. Tighten HSTS with includeSubDomains/preload only after subdomains are ready. Do not treat this as missing CSP, HSTS, XCTO, or frame protection.',
+        fix: 'Review application and platform response-header settings. Add defense-in-depth headers that are still missing: Referrer-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy, and/or Permissions-Policy as appropriate. Test resource loading and cross-origin interactions before enforcing restrictions. Tighten HSTS with includeSubDomains/preload only after subdomains are ready. Do not treat this as missing CSP, HSTS, XCTO, or frame protection.',
         confidence: 1.0,
         source: 'DETERMINISTIC' as const,
       }, items.map(item => item.checkId)),
@@ -619,11 +616,9 @@ export function runSecurityHeaderChecks(
       rubric: 'REACH' as const,
       impactTag: 'TRUST' as const,
       severity: 'POLISH' as const,
-      problem: `${coreFindings.length} core security headers are missing or weak`,
+      problem: coreFindings.length === 1 ? '1 core security header is missing or weak' : `${coreFindings.length} core security headers are missing or weak`,
       evidence: `Missing or weak core headers: ${names}. These headers provide defense-in-depth against common web vulnerabilities.${hardeningNote}${managedNote}`,
-      fix: managedHostname
-        ? 'These headers usually cannot be set on a managed builder subdomain. Connect a custom domain and configure CSP/HSTS/Permissions-Policy on your DNS/proxy/CDN, or in the host platform\'s custom-header settings.'
-        : `Add the following HTTP response headers: ${fixParts.join('; ')}. Start with restrictive defaults and relax as needed. X-Frame-Options: SAMEORIGIN already satisfies clickjacking protection when present.`,
+      fix: `Review the application or platform response-header settings for ${fixParts.join('; ')}. Test CSP in report-only mode and confirm that required resources and customer tasks work before enforcing it. Check the HTTPS and subdomain configuration before changing HSTS. X-Frame-Options: SAMEORIGIN already satisfies the recorded frame-protection check when present.`,
       confidence: 1.0,
       source: 'DETERMINISTIC' as const,
     }

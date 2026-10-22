@@ -18,7 +18,7 @@ const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe 
 run('Cross-page preview worker verification', () => {
   const userId = 'preview-' + randomUUID(), projectId = 'preview-' + randomUUID()
   const origin = 'https://example.com', urls = ['/', '/pricing', '/features'].map(path => origin + path)
-  let mode: 'failed' | 'partial' | 'missing' | 'healthy' | 'without-descriptions' = 'failed'
+  let mode: 'failed' | 'partial' | 'missing' | 'healthy' | 'without-titles' | 'without-descriptions' = 'failed'
   let worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
     if (request.url === '/robots.txt') { response.end('User-agent: *\nAllow: /'); return }
@@ -27,12 +27,12 @@ run('Cross-page preview worker verification', () => {
       response.end('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls.map(url => '<url><loc>' + url + '</loc></url>').join('') + '</urlset>'); return
     }
     if (mode === 'missing' && request.url === '/features') { response.writeHead(503); response.end('Unavailable'); return }
-    const unique = mode === 'healthy' || mode === 'without-descriptions' || mode !== 'failed' && request.url === '/pricing'
+    const unique = mode === 'healthy' || mode === 'without-titles' || mode === 'without-descriptions' || mode !== 'failed' && request.url === '/pricing'
     const title = unique ? 'Useful information ' + request.url : 'Shared preview title'
     const description = mode === 'without-descriptions' ? '' : unique ? 'Specific preview description for ' + request.url : 'The same long description used on every page.'
     response.setHeader('content-type', 'text/html')
     response.end('<!doctype html><html lang="en"><head><title>' + (mode === 'failed' ? 'Shared document title' : 'Page ' + request.url) + '</title><meta name="description" content="Useful service information.">' +
-      '<meta property="og:title" content="' + title + '"><meta property="og:description" content="' + description + '"></head>' +
+      (mode === 'without-titles' ? '' : '<meta property="og:title" content="' + title + '">') + '<meta property="og:description" content="' + description + '"></head>' +
       '<body><main><h1>Useful service information</h1><p>Read about the service and its prices.</p><a href="/pricing">Prices</a><a href="/features">Features</a>' +
       (request.url === '/features' ? '<div hidden>' + 'x'.repeat(1_100_000) + '</div>' : '') + '</main></body></html>')
   })
@@ -96,7 +96,7 @@ run('Cross-page preview worker verification', () => {
     const flag = flags.find(item => item.checkId === 'corridor-og-title-drift')!
     expect(flag.affectedPaths).toEqual(expect.arrayContaining(urls))
     expect(flag.evidenceTargets).toHaveLength(2)
-    for (const state of ['partial', 'missing', 'healthy'] as const) {
+    for (const state of ['partial', 'missing', 'without-titles', 'healthy'] as const) {
       mode = state
       const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'preview-fix-' + state,
         changeSummary: 'Give each original page a distinct preview title' })
@@ -105,11 +105,18 @@ run('Cross-page preview worker verification', () => {
       await complete(result.auditId!)
       const attempt = await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })
       expect(attempt.outcome).toBe(state === 'healthy' ? 'IMPROVED' : state === 'partial' ? 'UNCHANGED' : 'INCONCLUSIVE')
+      if (state === 'without-titles') {
+        expect(attempt.comparable).toBe(false)
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).not.toMatchObject({ status: 'FIXED' })
+        const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: result.auditId!, targetKey: 'module:corridor' } })
+        expect(receipts.flatMap(receipt => checkReceiptSchema.parse(receipt.detail).assertions).filter(assertion => assertion.key === 'preview-titles'))
+          .toEqual(expect.arrayContaining([expect.objectContaining({ complete: true, disposition: 'observed', passed: false })]))
+      }
       const tasks = await prisma.auditVerifierExecution.findMany({ where: { auditId: result.auditId!, targetKey: { startsWith: 'task:' } } })
       expect(tasks.map(task => task.workKind).sort()).toEqual(['browser', 'browser', 'browser', 'cross-page', 'finalize'])
       if (state === 'healthy') {
         const proof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: result.auditId!, targetKey: 'check:corridor-og-title-drift' } })
-        expect(checkVerifierSchema.parse(proof.detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom' })
+        expect(checkVerifierSchema.parse(proof.detail)).toMatchObject({ verdict: 'passed', source: 'rendered-dom', checkVersion: 2 })
         const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: result.auditId!, targetKey: 'module:corridor' } })
         expect(receipts.flatMap(receipt => checkReceiptSchema.parse(receipt.detail).assertions).filter(assertion => assertion.key === 'preview-titles')).toHaveLength(3)
       }

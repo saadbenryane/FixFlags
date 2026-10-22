@@ -5,6 +5,7 @@ import { closeBrowser, getAuditBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { actionPanelOpened, visibleActionPanels } from './action-panels'
+import { runFlowScan } from './run-flow-scan'
 
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('native same-page action panels', () => {
@@ -47,6 +48,17 @@ run('native same-page action panels', () => {
         document.querySelector('aside')!.append(form.cloneNode(true)); form.remove()
       })
       expect(actionPanelOpened(before, await visibleActionPanels(page))).toBeNull()
+    })
+  })
+  it('observes a declared next-step panel that restores inherited visibility', async () => {
+    await inspect('<!doctype html><html><body><main><h1>Plan useful projects with your team</h1><p>Choose the next step for your project.</p>' +
+      '<button id="start" aria-controls="next">Get started</button><div style="visibility:hidden"><section id="next" style="visibility:visible" hidden><h2>Choose a project</h2><a href="#choice">Continue</a></section></div>' +
+      '<script>start.onclick=()=>document.getElementById("next").hidden=false</script></main></body></html>', async page => {
+      await page.locator('#start').click()
+      expect(await page.locator('#next').evaluate(element => element.checkVisibility({ opacityProperty: true, visibilityProperty: true }))).toBe(true)
+      await page.locator('#next').evaluate(element => { (element as HTMLElement).hidden = true })
+      const result = await runFlowScan(page, 'native-panel-visibility', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+      expect(result.actionEvidence).toMatchObject({ clicked: true, navigation: 'changed', samePageProgress: 'declared-panel' })
     })
   })
 

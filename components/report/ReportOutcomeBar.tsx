@@ -94,7 +94,7 @@ export function ReportOutcomeBar({
       </div>
 
       {history ? (
-        <div className="w-full min-w-0 border-t border-border/35 py-2">
+        <div className="w-full min-w-0 py-2">
           <ScoreHistoryChart
             history={history}
             currentAuditId={model.identity.auditId}
@@ -105,7 +105,7 @@ export function ReportOutcomeBar({
       ) : null}
 
       {updateDiff && !loading ? (
-        <div className="space-y-2 border-t border-border/35 py-3">
+        <div className="space-y-2 py-3">
           <RecheckDiffStrip summary={updateDiff} />
           {scoreNote ? (
             <p className="text-sm text-muted-foreground">{scoreNote}</p>
@@ -115,7 +115,7 @@ export function ReportOutcomeBar({
 
       {loading ? (
         <div
-          className="border-t border-border/35 px-4 pb-3 pt-2.5"
+          className="px-4 pb-3 pt-2.5"
           role="status"
           aria-label="Scan progress"
           aria-live="polite"

@@ -61,8 +61,9 @@ describe('canAccessAudit', () => {
     expect(canAccessAudit(makeAudit({ isPublic: true }), null)).toBe(true)
   })
 
-  it('returns true for audit with null userId', () => {
-    expect(canAccessAudit(makeAudit({ userId: null, isPublic: false }), null)).toBe(true)
+  it('does not grant a private unclaimed audit to an arbitrary viewer', () => {
+    expect(canAccessAudit(makeAudit({ userId: null, isPublic: false }), null)).toBe(false)
+    expect(canAccessAudit(makeAudit({ userId: null, isPublic: false }), { id: 'another-user' })).toBe(false)
   })
 
   it('returns true when session user owns the audit', () => {
@@ -158,6 +159,16 @@ describe('resolveAuditAccess', () => {
       undefined
     )
     expect(result).toBe('public_viewer')
+  })
+
+  it('keeps a private unclaimed audit available to its signed claim holder', async () => {
+    expect(await resolveAuditAccess(makeAudit({ userId: null }), null, undefined, ['audit-1']))
+      .toBe('anonymous_teaser')
+  })
+
+  it.each([null, { id: 'another-user' }])('denies a private unclaimed audit without its claim: %j', async viewer => {
+    expect(await resolveAuditAccess(makeAudit({ userId: null }), viewer, undefined, ['other-audit']))
+      .toBe('denied')
   })
 
   it('returns public_viewer when audit is public and the viewer is not the owner', async () => {

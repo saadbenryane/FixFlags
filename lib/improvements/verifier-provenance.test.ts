@@ -34,7 +34,7 @@ describe('verifier execution provenance', () => {
         auditId_targetKey_scopeKey: {
           auditId: 'review-2',
           targetKey: 'check:cta-dead-link',
-          scopeKey: 'page:https://example.com',
+          scopeKey: 'page:https://example.com/#pricing',
         },
       },
       create: expect.objectContaining({ status: 'COMPLETED' }),
@@ -45,7 +45,8 @@ describe('verifier execution provenance', () => {
     expect(verifierTargetKey({ source: 'AI', checkId: null, fingerprint: null })).toBeNull()
     expect(verifierTargetKey({ source: 'AI', checkId: null, fingerprint: 'evidence-1' }))
       .toBe('ai:evidence-1')
-    expect(verifierScopeKey('https://example.com/pricing/')).toBe('page:https://example.com/pricing')
+    expect(verifierScopeKey('https://example.com/pricing/')).toBe('page:https://example.com/pricing/')
+    expect(verifierScopeKey('https://example.com/pricing/')).not.toBe(verifierScopeKey('https://example.com/pricing'))
   })
 
   it('records positive coverage only for the exact targeted page checker', async () => {

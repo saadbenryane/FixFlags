@@ -32,4 +32,4 @@ An expired authorization request needs a new connection. If setup is unavailable
 
 ## Get help
 
-Read [Help](/help) or [Open your Sites](/dashboard). Other integrations remain [coming soon](/integrations).
+Read [Help](/help) or [Open Websites](/dashboard). Other integrations remain [coming soon](/integrations).

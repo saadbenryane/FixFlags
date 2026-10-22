@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { selectWatchEmailDelivery, watchEmailProviderBody, watchEmailSelection } from '../watch-delivery'
+import { prepareNotificationReplay } from '../notification-delivery'
 
 const auditId = 'audit-1'
 const baseKey = 'fixflags-watch-audit-1-v1'
@@ -37,12 +38,17 @@ describe('Watch delivery selections', () => {
   })
 
   it('reuses an earlier immutable delivery when its selection is permitted again', () => {
-    const first = select(fresh())
-    const narrow = select(fresh([critical], [], 'Critical only'), first)
+    const started = new Date('2026-10-20T12:00:00Z')
+    const first = prepareNotificationReplay(select(fresh()), started, started)
+    const later = new Date(started.getTime() + 25 * 3600_000)
+    const narrow = select({ ...fresh([critical], [], 'Critical only'), firstAttemptAt: later.toISOString() }, first)
+    expect(narrow.firstAttemptAt).toBe(later.toISOString())
     const restored = select(fresh([important, critical], [recovered], 'Changed template'), narrow)
     expect(restored.deliveryKey).toBe(baseKey)
     expect(watchEmailProviderBody(restored)).toEqual(watchEmailProviderBody(first))
     expect(restored.previous).toHaveLength(1)
+    expect(restored.firstAttemptAt).toBe(first.firstAttemptAt)
+    expect(() => prepareNotificationReplay(restored, later, later)).toThrow('idempotency window')
   })
 
   it('keeps broad legacy retries compatible without inventing recorded finding identities', () => {

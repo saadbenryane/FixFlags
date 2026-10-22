@@ -7,6 +7,7 @@ import {
   siteAccessHttpStatus,
   type SiteAccessDecision,
 } from '@/lib/sites/access'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 
 /** Resolve the current Site viewer from session + anon visitor key + claim cookie. */
 export async function currentSiteViewer(): Promise<{
@@ -36,7 +37,7 @@ export async function requireSiteAccess(siteId: string): Promise<
     return {
       ok: false,
       status: siteAccessHttpStatus(decision),
-      message: 'Site not found',
+      message: SITE_ERRORS.notFound,
     }
   }
   return { ok: true, decision }

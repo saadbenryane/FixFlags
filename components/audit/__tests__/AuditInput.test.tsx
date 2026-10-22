@@ -139,7 +139,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
-    const retryButton = screen.getByRole('button', { name: /Analyze/i })
+    const retryButton = screen.getByRole('button', { name: /Check website/i })
     expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
 
@@ -211,6 +211,24 @@ describe('AuditInput scan handoff', () => {
   })
 
   it.each([
+    ['default', 'https://example.com/pricing/', 'https://example.com/pricing/'],
+    ['landing', 'https://example.com/?return=/checkout/', 'https://example.com/?return=/checkout/'],
+    ['landing', 'https://example.com/#/pricing/', 'https://example.com/#/pricing/'],
+    ['default', '  example.com/plans/  ', 'https://example.com/plans/'],
+  ] as const)('preserves the supplied destination in the %s form: %s', async (variant, entered, expected) => {
+    startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'exact-url-site', reportId: 'exact-url-report' })
+    render(<MeProvider initialUser={null}><AuditInput variant={variant} idSuffix="-exact-destination" /></MeProvider>)
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: entered } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff).toHaveBeenCalledWith(expect.objectContaining({
+      url: expected, body: expect.objectContaining({ url: expected }),
+    }))
+  })
+
+  it.each([
     ['hero', '-hero-success'],
     ['final', '-final-success'],
   ] as const)('normalizes and hands off a valid URL from the %s form', async (placement, idSuffix) => {
@@ -236,9 +254,9 @@ describe('AuditInput scan handoff', () => {
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
     expect(startScanWithHandoff).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: 'https://example.com',
+        url: 'https://example.com/',
         body: expect.objectContaining({
-          url: 'https://example.com',
+          url: 'https://example.com/',
           source: 'homepage',
         }),
         navigate: expect.any(Function),
@@ -267,7 +285,7 @@ describe('AuditInput scan handoff', () => {
       await screen.findAllByText('Create a free account to continue')
     ).not.toHaveLength(0)
     expect(
-      screen.getAllByText(/already used your anonymous Site check/i).length
+      screen.getAllByText(/A free account adds fix prompts, saved results, and scheduled monitoring/i).length
     ).toBeGreaterThan(0)
   })
 
@@ -298,9 +316,9 @@ describe('AuditInput scan handoff', () => {
       </MeProvider>,
     )
 
-    const submit = await screen.findByRole('button', { name: /Analyze/i })
+    const submit = await screen.findByRole('button', { name: /Check website/i })
     expect(submit.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
-    expect(submit.textContent).toMatch(/Analyze/)
+    expect(submit.textContent).toMatch(/Check website/)
   })
 })
 
@@ -429,16 +447,16 @@ describe('AuditInput post-signup handoff', () => {
     startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site-1' })
   })
 
-  it('resumes the handed-off URL exactly once across a remount', async () => {
+  it.each(['https://example.com', 'https://example.com/plans/?return=/account/#/pricing/'])('resumes the handed-off URL exactly once across a remount: %s', async url => {
     const first = render(
       <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
-        <AuditInput idSuffix="-handoff" initialUrl="https://example.com" autoStart />
+        <AuditInput idSuffix="-handoff" initialUrl={url} autoStart />
       </MeProvider>,
     )
 
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(1))
     expect(startScanWithHandoff).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://example.com' })
+      expect.objectContaining({ url, body: expect.objectContaining({ url }) })
     )
 
     // The real round trip remounts the page (post-login -> dashboard), so the
@@ -446,7 +464,7 @@ describe('AuditInput post-signup handoff', () => {
     first.unmount()
     render(
       <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
-        <AuditInput idSuffix="-handoff-remount" initialUrl="https://example.com" autoStart />
+        <AuditInput idSuffix="-handoff-remount" initialUrl={url} autoStart />
       </MeProvider>,
     )
 

@@ -11,9 +11,9 @@ export const primaryActionEvidenceSchema = z.object({
   version: z.literal(1), pageContext: z.string().regex(/^flow:page:[a-f0-9]{64}$/),
   controlContext: z.string().regex(/^flow:control:[a-f0-9]{64}$/).nullable(),
   candidateCount: z.number().int().min(0).max(10000), clicked: z.boolean(), clickBlocked: z.boolean(),
-  candidateComplete: z.boolean().optional(), presenceVersion: z.union([z.literal(2), z.literal(3)]).optional(),
+  candidateComplete: z.boolean().optional(), presenceVersion: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
   navigation: z.enum(['changed', 'same', 'unknown']),
-  samePageProgress: z.enum(['declared-panel', 'semantic-panel']).optional(),
+  samePageProgress: z.enum(['declared-panel', 'semantic-panel', 'rendered-route']).optional(),
   response: z.enum(['healthy', 'error', 'restricted', 'challenge', 'unknown']),
   responseExpected: z.boolean(),
   httpStatus: z.number().int().min(100).max(599).nullable(),
@@ -44,7 +44,8 @@ export function primaryActionAssertions(evidence: PrimaryActionEvidence | undefi
   assertions.push({ key: 'primary-action-navigation', name: 'Primary action advances',
     expected: 'The original action reaches a page or opens an observed next step',
     observed: restricted ? 'The action reached an access restriction; its intended destination remains unknown.' : evidence.navigation === 'changed'
-      ? evidence.samePageProgress === 'semantic-panel' ? 'A visible dialog or form with an available next step appeared after the click.'
+      ? evidence.samePageProgress === 'rendered-route' ? 'The declared browser route rendered different page content and a new heading after the click.'
+        : evidence.samePageProgress === 'semantic-panel' ? 'A visible dialog or form with an available next step appeared after the click.'
         : evidence.samePageProgress === 'declared-panel' ? 'The click opened the control’s declared panel.' : 'The click changed the browser URL.' : evidence.navigation === 'same'
         ? 'The declared navigation completed its observation window without advancing.' : 'No conclusive action advancement was recorded.',
     passed: !restricted && evidence.navigation === 'changed', complete: !restricted && evidence.navigation !== 'unknown', context: evidence.controlContext })

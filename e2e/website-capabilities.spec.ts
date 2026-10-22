@@ -1,3 +1,4 @@
+import { signInFixture } from './fixture-authentication'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { ACCOUNT_CHECK_COPY } from '@/lib/marketing/copy/account-checks'
 import type { SiteHomeView } from '@/lib/sites/site-home'
@@ -19,7 +20,7 @@ async function home(request: APIRequestContext, siteId: string): Promise<Home> {
   expect(response.status(), await response.text()).toBe(200)
   return response.json()
 }
-async function control(request: APIRequestContext, data: Record<string, boolean>) {
+async function control(request: APIRequestContext, data: Record<string, boolean | number>) {
   const response = await request.post(required('E2E_DEPLOYMENT_TRIGGER_URL'), {
     headers: { authorization: `Bearer ${required('E2E_DEPLOYMENT_TRIGGER_TOKEN')}` }, data,
   })
@@ -43,10 +44,7 @@ test.describe('controlled website capabilities', () => {
     test.skip(process.env.E2E_CREDENTIALED !== 'true', 'Requires the designated credentialed verification environment')
     const origin = new URL(required('RELEASE_ENV_URL'))
     if (['fixflags.com', 'www.fixflags.com'].includes(origin.hostname)) throw new Error('Capability fixtures must never target production')
-    await page.goto('/sign-in')
-    await page.getByLabel('Email').fill(required('E2E_CAPABILITY_OWNER_EMAIL'))
-    await page.getByLabel('Password', { exact: true }).fill(required('E2E_CAPABILITY_OWNER_PASSWORD'))
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await signInFixture(page, required('E2E_CAPABILITY_OWNER_EMAIL'), required('E2E_CAPABILITY_OWNER_PASSWORD'))
     await page.waitForURL(url => !url.pathname.startsWith('/sign-in'))
   })
 
@@ -73,26 +71,52 @@ test.describe('controlled website capabilities', () => {
   test('[journey:automatic-account-lifecycle] real email verification, identity reuse and cleanup after opt-out', async ({ page }) => {
     test.setTimeout(900_000)
     const siteId = required('E2E_CAPABILITY_SITE_ID')
-    const saved = await page.request.patch(`/api/sites/${siteId}/settings`, { data: { accountChecksEnabled: true } })
-    expect(saved.status()).toBe(200)
-    const key = `account-lifecycle:${required('RELEASE_RUN_ID')}`
-    const admitted = await run(page.request, siteId, 'account-checks', { action: 'retest' }, key)
-    const first = accounts(await home(page.request, siteId))
-    expect(first.accounts.filter(account => account.purpose === 'retained')).toEqual([expect.objectContaining({ state: 'ACTIVE' })])
-    expect(first.accounts.filter(account => account.purpose === 'disposable')).toEqual([expect.objectContaining({ state: 'DELETED' })])
-    for (const kind of ['signup', 'verification', 'signed_in', 'deletion'])
-      expect(first.results).toContainEqual(expect.objectContaining({ kind, state: 'verified' }))
-    const replay = await page.request.post(`/api/sites/${siteId}/account-checks`, { headers: { 'Idempotency-Key': key }, data: { action: 'retest' } })
-    expect(replay.status()).toBe(200)
-    expect((await replay.json()).runId).toBe(admitted.runId)
-    await run(page.request, siteId, 'account-checks', { action: 'retest' }, `account-reuse:${required('RELEASE_RUN_ID')}`)
-    expect(accounts(await home(page.request, siteId)).accounts.find(account => account.purpose === 'retained')?.email)
-      .toBe(first.accounts.find(account => account.purpose === 'retained')!.email)
-    expect((await page.request.patch(`/api/sites/${siteId}/settings`, { data: { accountChecksEnabled: false } })).status()).toBe(200)
-    expect(accounts(await home(page.request, siteId)).canCleanup).toBe(true)
-    expect((await page.request.post(`/api/sites/${siteId}/account-checks`, { headers: { 'Idempotency-Key': 'refused-retest' }, data: { action: 'retest' } })).status()).toBe(409)
-    await run(page.request, siteId, 'account-checks', { action: 'cleanup' }, `account-cleanup:${required('RELEASE_RUN_ID')}`)
-    expect(accounts(await home(page.request, siteId)).accounts.every(account => account.state === 'DELETED')).toBe(true)
+    await control(page.request, { sessionTtlSeconds: 60 })
+    try {
+      const saved = await page.request.patch(`/api/sites/${siteId}/settings`, { data: { accountChecksEnabled: true } })
+      expect(saved.status()).toBe(200)
+      const key = `account-lifecycle:${required('RELEASE_RUN_ID')}`
+      const admitted = await run(page.request, siteId, 'account-checks', { action: 'retest' }, key)
+      const first = accounts(await home(page.request, siteId))
+      expect(first.accounts.filter(account => account.purpose === 'retained')).toEqual([expect.objectContaining({ state: 'ACTIVE' })])
+      expect(first.accounts.filter(account => account.purpose === 'disposable')).toEqual([expect.objectContaining({ state: 'DELETED' })])
+      for (const kind of ['signup', 'verification', 'signed_in', 'deletion'])
+        expect(first.results).toContainEqual(expect.objectContaining({ kind, state: 'verified' }))
+      const replay = await page.request.post(`/api/sites/${siteId}/account-checks`, { headers: { 'Idempotency-Key': key }, data: { action: 'retest' } })
+      expect(replay.status()).toBe(200)
+      expect((await replay.json()).runId).toBe(admitted.runId)
+      const retainedEmail = first.accounts.find(account => account.purpose === 'retained')!.email
+      const targetSessions = async () => {
+        const response = await page.request.get(required('E2E_DEPLOYMENT_TRIGGER_URL'), {
+          headers: { authorization: `Bearer ${required('E2E_DEPLOYMENT_TRIGGER_TOKEN')}` },
+        })
+        expect(response.status()).toBe(200)
+        const body = await response.json() as { sessions: Array<{ email: string; expiresAt: string; expired: boolean; deleted: boolean }> }
+        return body.sessions.filter(session => session.email === retainedEmail)
+      }
+      const beforeExpiry = await targetSessions()
+      expect(beforeExpiry.length).toBeGreaterThan(0)
+      expect(beforeExpiry.every(session => !session.deleted)).toBe(true)
+      await expect.poll(async () => {
+        const sessions = await targetSessions()
+        return sessions.length > 0 && sessions.every(session => session.expired && !session.deleted)
+      }, { timeout: 120_000, intervals: [2000] }).toBe(true)
+      const expired = await targetSessions()
+      await run(page.request, siteId, 'account-checks', { action: 'retest' }, `account-reuse:${required('RELEASE_RUN_ID')}`)
+      expect(accounts(await home(page.request, siteId)).accounts.find(account => account.purpose === 'retained')?.email)
+        .toBe(retainedEmail)
+      const renewed = await targetSessions()
+      expect(Math.max(...renewed.map(session => new Date(session.expiresAt).getTime())))
+        .toBeGreaterThan(Math.max(...expired.map(session => new Date(session.expiresAt).getTime())))
+      await test.info().attach('natural-retained-session-expiry', { contentType: 'application/json',
+        body: Buffer.from(JSON.stringify({ targetSessionLifetimeSeconds: 60, beforeExpiry, expired, renewed,
+          timestampMutation: false, scope: 'Natural controlled-target session expiry followed by normal retained-account reauthentication.' })) })
+      expect((await page.request.patch(`/api/sites/${siteId}/settings`, { data: { accountChecksEnabled: false } })).status()).toBe(200)
+      expect(accounts(await home(page.request, siteId)).canCleanup).toBe(true)
+      expect((await page.request.post(`/api/sites/${siteId}/account-checks`, { headers: { 'Idempotency-Key': 'refused-retest' }, data: { action: 'retest' } })).status()).toBe(409)
+      await run(page.request, siteId, 'account-checks', { action: 'cleanup' }, `account-cleanup:${required('RELEASE_RUN_ID')}`)
+      expect(accounts(await home(page.request, siteId)).accounts.every(account => account.state === 'DELETED')).toBe(true)
+    } finally { await control(page.request, { sessionTtlSeconds: 3600 }) }
   })
 
   test('[journey:uptime-lifecycle] natural probe cadence, confirmed outage and independent recovery', async ({ page }) => {

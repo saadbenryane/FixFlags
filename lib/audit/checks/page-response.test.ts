@@ -18,6 +18,19 @@ const receipt = (page: string, response: PublicDocument) => {
 }
 
 describe('public page response assessment', () => {
+  it('requires a repeated recorded route and independently reobserves the original request for loop recovery', () => {
+    const looping = document({ body: null, status: 302, complete: false, reason: 'redirect_loop',
+      headers: { location: pageUrl }, redirects: [pageUrl] })
+    const flag = assessPageResponse(pageUrl, looping).flags[0]
+    expect(flag).toMatchObject({ checkId: 'page-redirect-loop' })
+    expect(scopedAssertionForTarget({ checkId: flag.checkId, flag, receipt: receipt(pageUrl, looping) })?.assertion.passed).toBe(false)
+    expect(scopedAssertionForTarget({ checkId: flag.checkId, flag, receipt: receipt(pageUrl, document()) })?.assertion.passed).toBe(true)
+    for (const response of [document({ ...looping, reason: 'redirect_limit' }), document({ ...looping, redirects: [] }),
+      document({ ...looping, headers: { location: '/another-page' } }), document({ ...looping, headers: { location: pageUrl, 'set-cookie': 'visitor=allowed' } })]) {
+      expect(assessPageResponse(pageUrl, response)).toMatchObject({ flags: [], complete: false })
+      expect(scopedAssertionForTarget({ checkId: flag.checkId, flag, receipt: receipt(pageUrl, response) })).toBeUndefined()
+    }
+  })
   it.each([404, 410, 500, 502, 503])('flags an observed HTTP %s without requiring rendered content', status => {
     const checked = assessPageResponse(pageUrl, document({ status }))
     expect(checked).toMatchObject({ complete: true, assertions: [{ complete: true, passed: false }] })

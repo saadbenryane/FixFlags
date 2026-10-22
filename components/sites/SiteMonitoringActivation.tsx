@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -103,15 +104,15 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
       {status && !open ? <p role="status" className="mt-3 text-sm">{status}</p> : null}
       {view.watch.lastError ? <p className="mt-3 text-sm text-muted-foreground">{C.needsAttention} <Link href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link></p> : null}
     </section>
-    <ResponsiveDepth className="content-start motion-reduce:!animate-none" open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); if (!exploring.current) trigger.current?.focus(); exploring.current = false }}>
-      <DialogTitle>{scheduled && page ? C.reviewTitle : C.setupTitle}</DialogTitle><DialogDescription>{scheduled && page ? C.reviewBody : C.setupBody}</DialogDescription>
+    <ResponsiveDepth header={<DialogTitle>{scheduled && page ? C.reviewTitle : C.setupTitle}</DialogTitle>} className="content-start motion-reduce:!animate-none" open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); if (!exploring.current) trigger.current?.focus(); exploring.current = false }}>
+      <DialogDescription>{scheduled && page ? C.reviewBody : C.setupBody}</DialogDescription>
       {!owner || authRequired ? <div className="space-y-4"><h3 className="font-semibold">{authRequired ? C.signInAgain : C.claimTitle}</h3><p className="text-sm text-muted-foreground">{C.claimBody}</p><div className="flex flex-wrap gap-2"><Button asChild variant="brand"><Link href={signUpHref}>{C.signUp}</Link></Button><Button asChild variant="outline"><Link href={signedInHref}>{C.signIn}</Link></Button></div></div> : <>
         <div className="py-4"><h3 className="text-sm font-semibold">{C.page}</h3><p className="mt-1 break-all text-sm">{view.site.url}</p><p className="mt-2 text-sm text-muted-foreground">{C.expectation}</p>
           {ready.filter(item => item.id !== page?.id).length ? <div className="mt-4"><h3 className="text-sm font-semibold">{C.existing}</h3><ul className="mt-2 space-y-1 text-sm">{ready.filter(item => item.id !== page?.id).map(item => <li key={item.id}>{item.name}</li>)}</ul></div> : null}
         </div>
         {scheduled && page ? <div className="space-y-3 text-sm"><p>{pageAnswer}</p><dl className="grid gap-3 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">{C.last}</dt><dd>{page.lastVerifiedAt ? formatEvidenceTimestamp(page.lastVerifiedAt) : C.notRun}</dd></div><div><dt className="text-xs text-muted-foreground">{C.next}</dt><dd>{formatEvidenceTimestamp(view.watch.nextRunAt!)}</dd></div></dl></div> : null}
         {loadError ? <div role="status"><p>{C.unavailable}</p><p className="mt-1 text-sm text-muted-foreground">{C.unavailableBody}</p><Button variant="outline" className="mt-3" onClick={() => setReload(value => value + 1)}>{C.retry}</Button></div> : intervals === null ? <p role="status" className="text-sm text-muted-foreground">{C.loading}</p> : intervals.length === 0 ? <p role="status">{C.readiness}</p> : <>
-          <label className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium" htmlFor="monitoring-cadence">{C.cadence}<select id="monitoring-cadence" className="min-h-11 rounded-control border border-border bg-background px-3" value={cadence} disabled={busy || (scheduled && !needsSetup)} onChange={event => setCadence(event.target.value as Cadence)}>{intervals.map(item => <option value={item} key={item}>{item === 'daily' ? C.daily : C.weekly}</option>)}</select></label>
+          <label className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium" htmlFor="monitoring-cadence">{C.cadence}<InteractiveSelect id="monitoring-cadence" className="min-h-11 rounded-control border border-border bg-background px-3" value={cadence} disabled={busy || (scheduled && !needsSetup)} onChange={event => setCadence(event.target.value as Cadence)}>{intervals.map(item => <option value={item} key={item}>{item === 'daily' ? C.daily : C.weekly}</option>)}</InteractiveSelect></label>
           <p className="text-sm leading-relaxed text-muted-foreground">{view.settings.notificationLevel === 'OFF' ? C.noEmails : view.settings.notificationLevel === 'CRITICAL_ONLY' ? C.criticalEmails : C.emails}{view.settings.notificationLevel !== 'OFF' && view.settings.notifyOnRecovery ? ` ${C.recoveryEmails}` : ''}</p>
           {status ? <p ref={resultFocus} tabIndex={-1} role="status" className="rounded-control bg-muted p-3 text-sm leading-relaxed focus-visible:outline focus-visible:outline-ring">{status}</p> : null}
           {result?.ok && result.interval ? <p className="text-sm">{C.scheduled(result.interval, result.everyMinutes)}</p> : null}

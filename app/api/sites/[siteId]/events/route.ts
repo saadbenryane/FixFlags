@@ -1,6 +1,7 @@
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { apiError } from '@/lib/api/errors'
-import { decodeEventCursor, encodeEventCursor, readSiteEvents, projectionNoticeSchema } from '@/lib/sites/application/execution-progress'
+import { decodeEventCursor, encodeEventCursor, readSiteEvents } from '@/lib/sites/application/execution-progress'
+import { projectionNoticeSchema } from '@/lib/sites/execution-events'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

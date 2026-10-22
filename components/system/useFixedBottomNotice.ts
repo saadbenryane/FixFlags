@@ -7,11 +7,16 @@ const notices = new Map<HTMLElement, number>()
 
 function updateInsets() {
   let offset = 0
-  for (const [element] of [...notices.entries()].sort((a, b) => a[1] - b[1])) {
+  const visible = [...notices.entries()].filter(([element]) => {
+    if (element.getBoundingClientRect().height > 0) return true
+    element.style.removeProperty('--bottom-notice-offset')
+    return false
+  }).sort((a, b) => a[1] - b[1])
+  for (const [element] of visible) {
     element.style.setProperty('--bottom-notice-offset', `${offset}px`)
     offset += element.getBoundingClientRect().height + 12
   }
-  const inset = Math.max(0, ...[...notices.keys()].map(element => {
+  const inset = Math.max(0, ...visible.map(([element]) => {
     const box = element.getBoundingClientRect()
     return box.height > 0 ? window.innerHeight - box.top : 0
   }))

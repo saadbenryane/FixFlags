@@ -7,7 +7,7 @@ Use a page visitors can open without signing in. If your website is still only o
 ## Analyze a website
 
 1. Open [Add website](/new), or use the address field on the homepage.
-2. Paste your website address and select **Analyze**.
+2. Paste your website address and select **Check your website**.
 3. Stay on the results page while FixFlags checks your website.
 
 The results are grouped into areas such as Pages, Search, and Performance. A **Flag** is a problem that needs attention. Open one to see what happened and how to fix it.
@@ -35,11 +35,11 @@ A **Check again** action starts a new check now. It does not turn on scheduled m
 
 <!-- generated:public-offer -->
 
-## Shopify connection
+## Connections
 
 Connections are optional. You can start with your website address alone.
 
-[Integrations](/integrations) are coming soon, with GitHub first. Public website analysis and monitoring do not require a connected tool.
+[GitHub account authorization](/docs/integrations/github) is available. It does not inspect code or open pull requests. Other [integrations](/integrations) are coming soon until testing and validation. Public website analysis and monitoring do not require a connected tool.
 
 ## Get help
 

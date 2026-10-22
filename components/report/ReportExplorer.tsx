@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Info } from 'lucide-react'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
@@ -373,7 +374,7 @@ export function ReportExplorer({
     <div className="flex min-h-0 min-w-0 flex-col @[40rem]/pane:h-full">
       <div className="min-h-0 flex-1 list-none overflow-y-auto scrollbar-thin @[40rem]/pane:pr-2 [&_ul]:list-none [&_li]:list-none">
         {hideListHeading ? null : (
-          <div className="mb-3 border-b border-border/30 pb-3">
+          <div className="mb-3 pb-3">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-foreground">
                 {REPORT_COPY.explorer.topFlagsTitle}
@@ -420,15 +421,15 @@ export function ReportExplorer({
       {flagCount > 0 && fixLoopFlags.length > 5 ? (
         <footer
           data-flag-list-footer
-          className="shrink-0 border-t border-border/30 pt-3"
+          className="shrink-0 pt-3"
         >
-          <button
+          <InteractiveButton
             type="button"
             onClick={() => setShowAll((value) => !value)}
             className="flex min-h-11 w-full items-center justify-center rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}
-          </button>
+          </InteractiveButton>
         </footer>
       ) : null}
     </div>
@@ -486,7 +487,7 @@ export function ReportExplorer({
             id="selected-flag-detail"
             aria-live="polite"
             aria-atomic="true"
-            className="flex min-h-0 min-w-0 flex-col border-t border-border/30 pt-5 @[40rem]/pane:border-t-0 @[40rem]/pane:pt-0"
+            className="flex min-h-0 min-w-0 flex-col pt-5 @[40rem]/pane:pt-0"
           >
             {detailPane}
           </div>

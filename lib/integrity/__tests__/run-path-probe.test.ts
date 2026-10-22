@@ -129,6 +129,17 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     expect(result.steps.at(-1)?.destinationUrl).toBe(`${origin}/checkout/${mode}`)
   }, 30_000)
 
+  it.each([['direct', 'empty'], ['cart', 'empty'], ['direct', 'challenge'], ['direct', 'disabled']])('requires usable checkout after %s navigation to %s', async (entry, mode) => {
+    const result = await runPathProbe({ runId: `top-level-${entry}-${mode}-${Date.now()}`, url: `${origin}/top-level-${entry}-${mode}/`, allowLocalhost: true, browser, confirmRed: false })
+    expect(result.finalUrl).toBe(`${origin}/checkout/${mode}`)
+    expect(result.attempts[0].outcome.httpStatus).toBe(200)
+    expect(result.attempts[0].outcome.buyControlClicked).toBe(true)
+    expect(result.attempts[0].outcome.reachedCheckout).toBe(false)
+    expect(result.health).toBe('UNKNOWN')
+    expect(result.reason).toBe('checkout_surface_unavailable')
+    expect(result.steps.at(-1)?.label).toBe('failure')
+  }, 30_000)
+
   it('returns UNKNOWN when the page has no buy control', async () => {
     const result = await runPathProbe({
       runId: `unknown-${Date.now()}`,
@@ -161,6 +172,13 @@ async function listenFixtures(): Promise<{ origin: string; close: () => Promise<
 
 async function serveFixture(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const raw = (request.url ?? '/').split('?')[0]
+  if (raw.startsWith('/top-level-')) {
+    const mode = raw.match(/-(empty|challenge|disabled)\/$/)?.[1] ?? 'empty'
+    response.writeHead(200, { 'Content-Type': 'text/html' })
+    response.end(raw.startsWith('/top-level-direct-') ? `<h1>Canvas Tote</h1><a href="/checkout/${mode}">Buy now</a>`
+      : `<h1>Canvas Tote</h1><button id="add" onclick="document.querySelector('#cart').hidden=false">Add to cart</button><div id="cart" hidden>Your cart (1)<a href="/checkout/${mode}">Checkout</a></div>`)
+    return
+  }
   if (['/hidden-cart/', '/transparent-cart/', '/branding-text/', '/branding-frame/', '/branding-visible-frame/', '/embedded-checkout/', '/embedded-hidden/', '/embedded-empty/', '/embedded-challenge/', '/embedded-unavailable/'].includes(raw)) {
     const mode = raw.slice(1, -1)
     const markup = mode === 'hidden-cart' ? '<div id="CartDrawer" hidden>Your cart (1)<a href="/checkout">Checkout</a></div>'
@@ -178,7 +196,8 @@ async function serveFixture(request: IncomingMessage, response: ServerResponse):
   if (raw.startsWith('/checkout/')) {
     response.writeHead(raw.endsWith('/unavailable') ? 503 : 200, { 'Content-Type': 'text/html' })
     response.end(raw.endsWith('/unavailable') ? '<h1>Checkout is unavailable</h1>'
-      : raw.endsWith('/challenge') ? '<h1>Checking your browser</h1><input type="email">' : '<h1>Checkout</h1><p>Loading</p>')
+      : raw.endsWith('/challenge') ? '<h1>Checking your browser</h1><input type="email">'
+        : raw.endsWith('/disabled') ? '<h1>Checkout</h1><input type="email" disabled>' : '<h1>Checkout</h1><p>Loading</p>')
     return
   }
   const failure = raw.match(/^\/(http-failure|visible-error)(?:\/|$)/)?.[1]

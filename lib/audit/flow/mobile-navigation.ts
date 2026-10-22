@@ -24,11 +24,7 @@ function readNavigation(input: { selectors?: string[] }) {
   function visible(element: Element) {
     const rect = element.getBoundingClientRect()
     if (!element.isConnected || rect.width <= 0 || rect.height <= 0 || rect.right <= 0 || rect.left >= innerWidth || element.closest('[hidden],[inert],[aria-hidden="true"]')) return false
-    for (let node: Element | null = element; node; node = node.parentElement) {
-      const style = getComputedStyle(node)
-      if (style.display === 'none' || style.visibility !== 'visible' || Number(style.opacity) === 0) return false
-    }
-    return true
+    return element.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && getComputedStyle(element).contentVisibility !== 'hidden'
   }
   const name = (element: Element) => (element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent || element.tagName)
     .replace(/\s+/g, ' ').trim().slice(0, 160)

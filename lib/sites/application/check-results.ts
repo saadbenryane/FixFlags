@@ -117,7 +117,7 @@ export async function loadSiteCheckResultPage(site: SiteRecord,
   if (!needsSnapshot || !id || !site.projectId && !site.primaryAuditId)
     return readSiteCheckResultPage(prisma, site, latestAudit, rawCursor, categoryEvidence, filter)
   const categories = categoryEvidence ?? (typeof latestAudit === 'object' && latestAudit
-    ? applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [site.projectId] : []), latestAudit) : new Map<CategoryArea, CategoryEvidenceAudit>())
+    ? applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [{ projectId: site.projectId, auditId: latestAudit.id }] : []), latestAudit) : new Map<CategoryArea, CategoryEvidenceAudit>())
   // The visible page and its total belong to one database snapshot, including
   // a run that is still recording observations. Count is not coverage or health.
   return prisma.$transaction(async tx => {
@@ -138,7 +138,7 @@ async function readSiteCheckResultPage(database: ResultDatabase, site: SiteRecor
   const latestAuditId = typeof latestAudit === 'string' ? latestAudit : latestAudit?.id ?? null
   if (!latestAuditId || (!site.projectId && !site.primaryAuditId)) return { results: [], nextCursor: null, total: 0 }
   const categories = categoryEvidence ?? (typeof latestAudit === 'object' && latestAudit
-    ? applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [site.projectId] : []), latestAudit) : new Map<CategoryArea, CategoryEvidenceAudit>())
+    ? applicableCategoryEvidence(await loadCategoryEvidence(site.projectId ? [{ projectId: site.projectId, auditId: latestAudit.id }] : []), latestAudit) : new Map<CategoryArea, CategoryEvidenceAudit>())
   const categoryIds = [...categories.values()].map(audit => audit.id)
   const currentIds = [latestAuditId, ...categoryIds]
   const snapshot = createHash('sha256').update(JSON.stringify([site.siteId ?? site.projectId ?? site.primaryAuditId, latestAuditId, filter.area ?? null, filter.pageUrl ?? null,

@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/billing/beta-policy', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/billing/beta-policy')>(), OPEN_BETA_ACCESS: false, hasOpenBetaAccess: () => false,
 }))
-import type { PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 
 const fixture = vi.hoisted(() => ({ db: null as PrismaClient | null, send: vi.fn() }))
 vi.mock('@/lib/db', async () => {
@@ -37,6 +37,55 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     try { await fixture.db?.user.deleteMany({ where: { email: { endsWith: '@uptime-test.example' } } }) }
     finally { await fixture.db?.$disconnect() }
   })
+  it.each([false, true])('does not replay an uncertain delivery after provider deduplication expires (legacy: %s)', async legacy => {
+    const { receipt } = await receiptFixture()
+    fixture.send.mockResolvedValueOnce({ data: null, error: { message: 'Uncertain provider response' } })
+    await deliverUptimeNotifications(now)
+    const original = await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })
+    if (legacy) {
+      const payload = { ...(original.deliveryPayload as Prisma.JsonObject) }; delete payload.firstAttemptAt
+      await db().uptimeNotification.update({ where: { id: receipt.id }, data: { deliveryPayload: payload } })
+    }
+    vi.setSystemTime(new Date(now.getTime() + 25 * 3600_000))
+    await deliverUptimeNotifications(new Date())
+    expect(fixture.send).toHaveBeenCalledOnce()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
+      status: 'FAILED', providerId: null, sentAt: null, lastError: expect.stringContaining('idempotency window'),
+    })
+  })
+  it.each(['legacy-retry', 'old-first-delivery'] as const)('permits a safe %s without renewing a prior attempt', async mode => {
+    const { receipt } = await receiptFixture()
+    if (mode === 'legacy-retry') {
+      fixture.send.mockResolvedValueOnce({ data: null, error: { message: 'Uncertain provider response' } })
+      await deliverUptimeNotifications(now)
+      const recorded = await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })
+      const payload = { ...(recorded.deliveryPayload as Prisma.JsonObject) }; delete payload.firstAttemptAt
+      await db().uptimeNotification.update({ where: { id: receipt.id }, data: { deliveryPayload: payload } })
+    }
+    vi.setSystemTime(new Date(now.getTime() + (mode === 'legacy-retry' ? 1 : 25) * 3600_000))
+    await deliverUptimeNotifications(new Date())
+    expect(fixture.send).toHaveBeenCalledTimes(mode === 'legacy-retry' ? 2 : 1)
+    const result = await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })
+    expect(result).toMatchObject({ status: 'SENT', providerId: 'provider-receipt' })
+    expect((result.deliveryPayload as Prisma.JsonObject).firstAttemptAt).toBe(
+      mode === 'legacy-retry' ? now.toISOString() : new Date().toISOString())
+  })
+  it('rechecks provider retention after a slow claim while its lease remains valid', async () => {
+    const { receipt } = await receiptFixture()
+    fixture.send.mockResolvedValueOnce({ data: null, error: { message: 'Uncertain provider response' } })
+    await deliverUptimeNotifications(now)
+    vi.setSystemTime(new Date(now.getTime() + 24 * 3600_000 - 25_000))
+    const update = db().uptimeNotification.updateMany.bind(db().uptimeNotification)
+    const admission = vi.spyOn(db().uptimeNotification, 'updateMany').mockImplementation(async input => {
+      const result = await update(input)
+      if (result.count && input.data.status === 'SENDING') vi.setSystemTime(Date.now() + 10_000)
+      return result
+    })
+    try { await deliverUptimeNotifications(new Date()) } finally { admission.mockRestore() }
+    expect(fixture.send).toHaveBeenCalledOnce()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
+      status: 'FAILED', attempts: 2, sentAt: null, lastError: expect.stringContaining('idempotency window') })
+  })
   it('claims delivery once across concurrent sweeps and uses a stable provider key', async () => {
     const { receipt } = await receiptFixture()
     await Promise.all([deliverUptimeNotifications(now), deliverUptimeNotifications(now)])
@@ -44,6 +93,64 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
     expect(fixture.send).toHaveBeenCalledOnce()
     expect(fixture.send.mock.calls[0][1]).toEqual(expect.objectContaining({ idempotencyKey: `uptime-${receipt.id}`, signal: expect.any(AbortSignal) }))
     expect((await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).status).toBe('SENT')
+  })
+  it.each(['preferences', 'recipient'] as const)('rejects a %s change at frozen-body admission', async change => {
+    const { user, project, receipt } = await receiptFixture()
+    const update = db().uptimeNotification.updateMany.bind(db().uptimeNotification)
+    let changed = false
+    const admission = vi.spyOn(db().uptimeNotification, 'updateMany').mockImplementation(async input => {
+      if (!changed && input.data.deliveryPayload) {
+        changed = true
+        if (change === 'preferences') await db().project.update({ where: { id: project.id }, data: { notificationLevel: 'OFF' } })
+        else await db().user.update({ where: { id: user.id }, data: { email: 'changed@uptime-test.example' } })
+      }
+      return update(input)
+    })
+    try { await deliverUptimeNotifications(now) } finally { admission.mockRestore() }
+    expect(changed).toBe(true)
+    expect(fixture.send).not.toHaveBeenCalled()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
+      status: 'PENDING', attempts: 0, deliveryPayload: null, leaseUntil: null, providerId: null })
+  })
+  it('does not start a provider request after a delayed claim consumes its request window', async () => {
+    const { receipt } = await receiptFixture()
+    const update = db().uptimeNotification.updateMany.bind(db().uptimeNotification)
+    const admission = vi.spyOn(db().uptimeNotification, 'updateMany').mockImplementation(async input => {
+      const result = await update(input)
+      if (result.count && input.data.status === 'SENDING') vi.setSystemTime(Date.now() + 45_000)
+      return result
+    })
+    try { await deliverUptimeNotifications(now) } finally { admission.mockRestore() }
+    expect(fixture.send).not.toHaveBeenCalled()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
+      status: 'FAILED', attempts: 1, providerId: null, leaseUntil: null,
+      nextAttemptAt: new Date(Date.now() + 5 * 60_000) })
+  })
+  it('cannot replace a body changed after selection or consume its attempt', async () => {
+    const { receipt } = await receiptFixture()
+    const update = db().uptimeNotification.updateMany.bind(db().uptimeNotification)
+    let replacement: Prisma.InputJsonObject | undefined
+    const admission = vi.spyOn(db().uptimeNotification, 'updateMany').mockImplementation(async input => {
+      if (!replacement && input.data.deliveryPayload) {
+        replacement = { ...input.data.deliveryPayload as Prisma.InputJsonObject, subject: 'Another frozen message' }
+        await db().uptimeNotification.update({ where: { id: receipt.id }, data: { deliveryPayload: replacement } })
+      }
+      return update(input)
+    })
+    try { await deliverUptimeNotifications(now) } finally { admission.mockRestore() }
+    expect(replacement).toBeDefined()
+    expect(fixture.send).not.toHaveBeenCalled()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
+      status: 'PENDING', attempts: 0, deliveryPayload: replacement, leaseUntil: null })
+  })
+  it('retains bounded failed attempts when the recorded payload cannot be validated', async () => {
+    const { receipt } = await receiptFixture()
+    await db().uptimeNotification.update({ where: { id: receipt.id }, data: { maxAttempts: 1, deliveryPayload: { version: 999 } } })
+    await deliverUptimeNotifications(now)
+    await deliverUptimeNotifications(new Date(now.getTime() + 5 * 60_000))
+    expect(fixture.send).not.toHaveBeenCalled()
+    expect(await db().uptimeNotification.findUniqueOrThrow({ where: { id: receipt.id } })).toMatchObject({
+      status: 'FAILED', attempts: 1, deliveryPayload: { version: 999 }, leaseUntil: null, providerId: null })
   })
   it('keeps later delivery leases live after earlier provider requests consume the batch clock', async () => {
     const batch = []

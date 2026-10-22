@@ -1,3 +1,14 @@
+/**
+ * Site errors.
+ *
+ * A Site the caller does not own is not found for that caller. The message is
+ * the same everywhere a route, a tool, or a service reports that, so the answer
+ * never changes shape with the surface that produced it.
+ */
+export const SITE_ERRORS = {
+  notFound: 'Site not found',
+} as const
+
 export const AUDIT_ERRORS = {
   checkFailedTitle: 'Check failed',
   admissionBusy: 'This website request could not finish. Try again in a moment.',

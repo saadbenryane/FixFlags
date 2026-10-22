@@ -263,7 +263,7 @@ export function MadeWithProfile({
         </div>
 
         {groups.length > 0 ? (
-          <details className="group border-t border-border/35">
+          <details className="group">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-sm font-medium outline-none transition-colors duration-200 hover:bg-muted/35 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-6 [&::-webkit-details-marker]:hidden">
               <span>{MADE_WITH_COPY.viewEvidence}</span>
               <ChevronDown

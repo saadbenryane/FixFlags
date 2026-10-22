@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveInput } from '@/components/ui/interactive-controls'
 import { useId, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
@@ -157,7 +158,7 @@ export function RequestDemoForm({ initialPlan }: RequestDemoFormProps) {
 
             <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden>
               <label htmlFor={honeypotId}>Company</label>
-              <input
+              <InteractiveInput
                 id={honeypotId}
                 name="company"
                 tabIndex={-1}

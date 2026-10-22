@@ -1,3 +1,4 @@
+import { sumPrescriptionResponses } from '../prescription-usage'
 import { getUserFacingAuditError } from '../user-facing-errors'
 import { Prisma, type AuditVerifierExecution } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -7,6 +8,7 @@ import { logger } from '@/lib/logger'
 import { MAX_TASKS_PER_AUDIT, prescriptionResultSchema, taskArtifactSchema, taskInputSchema, taskIsSettled } from './contracts'
 import { checkReceiptSchema } from '../checks/receipt'
 import { searchReceiptSchema } from '../search/contracts'
+import { settleRecordedPages } from './page-settlement'
 
 const PRESCRIPTION_TERMINAL = new Set(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])
 
@@ -90,7 +92,11 @@ export async function recordSettledPrescriptionCost(auditId: string) {
     select: { workState: true, workResult: true },
     take: MAX_TASKS_PER_AUDIT + 1,
   })
-  const usage = summedPrescriptionUsage(tasks)
+  if (tasks.some(task => !taskIsSettled(task.workState))) return
+  const responses = await prisma.auditPipelineEvent.findMany({ where: { auditId, event: { in: ['prescription_provider_attempt', 'prescription_provider_response'] } },
+    orderBy: { sequence: 'asc' }, select: { event: true, detail: true } })
+  const measured = responses.length ? sumPrescriptionResponses(responses) : null
+  const usage = measured ?? summedPrescriptionUsage(tasks)
   if (!usage) return
   await persistAuditRunCost(auditId, {
     durationMs: 0,
@@ -101,6 +107,7 @@ export async function recordSettledPrescriptionCost(auditId: string) {
     llmCacheReadTokens: usage.cacheReadTokens,
     llmCacheWriteTokens: usage.cacheWriteTokens,
     phase: 'prescription',
+    ...(measured ? { llmMeasurements: measured.measurements, llmUsageComplete: measured.complete } : {}),
   })
 }
 
@@ -111,6 +118,7 @@ export function logUnrecordedPrescriptionCost(auditId: string, error: unknown) {
 type CoverageTask = Pick<AuditVerifierExecution, 'id' | 'auditId' | 'workKind' | 'workInput'>
 export async function settleFailedFinalization(tx: Prisma.TransactionClient, task: CoverageTask) {
   if (task.workKind !== 'finalize') return
+  await settleRecordedPages(tx, task.auditId)
   await tx.audit.updateMany({ where: { id: task.auditId, status: { notIn: ['COMPLETED', 'FAILED'] } },
     data: { status: 'COMPLETED', progress: 100, reportCompleteness: 'PARTIAL', verdict: null,
       completedAt: new Date(), failureCode: 'FINALIZATION_INCOMPLETE', failureStage: 'finalizing',

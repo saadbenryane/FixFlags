@@ -25,7 +25,7 @@ import type {
   WalkOutcome,
 } from './types'
 import { captureWalkStep, persistWalkVideo } from './video'
-import { observeCheckoutFrame, checkoutFrameChanged } from './checkout-frame'
+import { observeCheckoutDocument, observeCheckoutFrame, checkoutFrameChanged } from './checkout-frame'
 
 const CLICK_TIMEOUT_MS = 8_000
 const AFTER_CLICK_MS = 1_200
@@ -130,9 +130,7 @@ async function runAttempt(
     await captureWalkStep(page, 'landing', steps, stepPngs)
 
     if (isCheckoutUrl(page.url())) {
-      outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
-      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
-      outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
+      await observeMainCheckout(page, outcome)
       await captureWalkStep(page, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
       return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
@@ -164,10 +162,8 @@ async function runAttempt(
     finalUrl = page.url()
 
     if (isCheckoutUrl(page.url())) {
-      outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
-      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
+      await observeMainCheckout(page, outcome)
       outcome.cartUpdated = true
-      outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
       await captureWalkStep(page, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
       return await finishAttempt({ recordingDir: videoDir, deadline: options.deadline, runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
@@ -195,10 +191,13 @@ async function runAttempt(
     finalUrl = page.url()
     const embedded = isCheckoutUrl(page.url()) ? null : await observeCheckoutFrame(page, navigationResponses)
     if (isCheckoutUrl(page.url()) || embedded) {
-      if (embedded && !isCheckoutUrl(page.url())) outcome.httpStatus = embedded.status
-      outcome.checkoutErrorVisible = embedded?.error || await pageShowsCheckoutError(page)
-      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400 &&
-        (isCheckoutUrl(page.url()) || Boolean(embedded?.usable && checkoutFrameChanged(previousCheckoutFrame, embedded)))
+      if (embedded) {
+        outcome.httpStatus = embedded.status
+        outcome.checkoutErrorVisible = embedded.error || await pageShowsCheckoutError(page)
+        outcome.reachedCheckout = !outcome.checkoutErrorVisible && embedded.status < 400 &&
+          embedded.usable && checkoutFrameChanged(previousCheckoutFrame, embedded)
+        outcome.checkoutSurfaceUnavailable = !outcome.reachedCheckout && !outcome.checkoutErrorVisible
+      } else await observeMainCheckout(page, outcome)
       outcome.cartUpdated = true
       outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
       await captureWalkStep(page, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
@@ -244,6 +243,15 @@ async function runAttempt(
       finalUrl,
     }
   }
+}
+
+async function observeMainCheckout(page: Page, outcome: WalkOutcome): Promise<void> {
+  const observation = await observeCheckoutDocument(page.mainFrame())
+  outcome.checkoutErrorVisible = observation?.error ?? false
+  outcome.reachedCheckout = Boolean(observation?.usable && !observation.error &&
+    outcome.httpStatus !== null && outcome.httpStatus >= 200 && outcome.httpStatus < 400)
+  outcome.checkoutSurfaceUnavailable = !outcome.reachedCheckout && !outcome.checkoutErrorVisible
+  outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
 }
 
 async function finishAttempt(input: {

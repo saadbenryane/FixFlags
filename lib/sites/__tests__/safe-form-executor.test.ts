@@ -209,6 +209,27 @@ describe('Safe Form executor', () => {
     expect(mocks.createAuditPage).not.toHaveBeenCalled()
   })
 
+  it('does not extend fixture consent to a different browser route on the same document', async () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    expect(await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id,
+      startUrl: fixture.targetUrl + '#/other-form', allowLocalhost: false }))
+      .toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_target_mismatch' })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(mocks.createAuditPage).not.toHaveBeenCalled()
+  })
+
+  it('opens the exact authorized browser route and keeps hook requests on their HTTP endpoints', async () => {
+    const targetUrl = 'https://example.com/#/signup'
+    mocks.fixtureFindFirst.mockResolvedValue({ ...fixture, targetUrl })
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({ ok: true }))
+    vi.stubGlobal('fetch', fetch)
+    expect(await executeSafeFormFixture({ projectId: 'site-1', fixtureId: fixture.id, startUrl: targetUrl, allowLocalhost: false }))
+      .toMatchObject({ disposition: 'SUCCEEDED', detail: { cleanupStatus: 'succeeded' } })
+    expect(mocks.createAuditPage).toHaveBeenCalledWith(expect.anything(), targetUrl, expect.anything())
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([fixture.resetUrl, fixture.cleanupUrl])
+  })
+
   it('blocks a form whose encrypted values cannot be read instead of guessing', async () => {
     mocks.fixtureFindFirst.mockResolvedValue({ ...fixture, encryptedValues: '{not json' })
     const result = await executeSafeFormFixture({

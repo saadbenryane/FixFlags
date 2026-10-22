@@ -1,3 +1,4 @@
+import { WEBSITE_GUIDES } from './copy/guides'
 import { BLOG_POSTS, BRAND, SITE_URL } from './copy'
 import { INDEXABLE_ROUTES, LLMS_SECTIONS, LLMS_TXT_PATH } from './seo-routes'
 
@@ -32,5 +33,5 @@ export function buildLlmsTxt(options: { hasReviewedResearch?: boolean } = {}): s
 
 /** Paths indexed for sitemap guard checks (marketing pages + llms.txt). */
 export function sitemapPaths(options: { hasReviewedResearch?: boolean } = {}): string[] {
-  return [...INDEXABLE_ROUTES.filter((route) => route.path !== '/issues' || options.hasReviewedResearch).map((r) => r.path), LLMS_TXT_PATH]
+  return [...INDEXABLE_ROUTES.filter((route) => route.path !== '/issues' || options.hasReviewedResearch).map((r) => r.path), ...WEBSITE_GUIDES.map(guide => `/guides/${guide.slug}`), LLMS_TXT_PATH]
 }

@@ -1,3 +1,4 @@
+import { siteVerification } from '@/lib/marketing/site-verification'
 import type { Metadata, Viewport } from 'next'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter-tight/wght.css'
@@ -13,7 +14,6 @@ import { fontVariables } from '@/lib/design/fonts'
 import { bodyFont, displayFont } from './fonts'
 import { ANALYTICS_CONSENT_BOOTSTRAP } from '@/lib/analytics/consent'
 
-const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -24,9 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SEO.home.title,
   description: SEO.home.description,
-  ...(googleSiteVerification
-    ? { verification: { google: googleSiteVerification } }
-    : {}),
+  verification: siteVerification(),
   manifest: '/manifest.webmanifest',
   openGraph: {
     title: BRAND.name,
@@ -44,12 +42,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon-32.png', type: 'image/png', sizes: '32x32' },
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+      { url: '/favicon.ico?v=20261021', sizes: '16x16 32x32 48x48' },
+      { url: '/icon-32.png?v=20261021', type: 'image/png', sizes: '32x32' },
+      { url: '/icon.svg?v=20261021', type: 'image/svg+xml', sizes: 'any' },
     ],
-    apple: '/apple-icon.png',
+    apple: [{ url: '/apple-touch-icon-v2.png', type: 'image/png', sizes: '180x180' }],
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',

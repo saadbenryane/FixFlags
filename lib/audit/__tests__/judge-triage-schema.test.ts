@@ -28,6 +28,7 @@ function collectOpenAIStrictSchemaIssues(
   const record = node as Record<string, unknown>
   if ('nullable' in record) issues.push({ path, issue: 'uses OpenAPI nullable keyword' })
   if ('format' in record) issues.push({ path, issue: 'uses unsupported format keyword' })
+  if ('oneOf' in record) issues.push({ path, issue: 'uses unsupported oneOf keyword' })
 
   if (record.type === 'object') {
     if (record.additionalProperties !== false) {

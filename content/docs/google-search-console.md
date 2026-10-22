@@ -40,4 +40,4 @@ Select **Disconnect Google Search Console** in the Site’s Integrations to remo
 
 Email [hello@fixflags.com](mailto:hello@fixflags.com) with the Site and saved connection details. Do not send passwords, access tokens, or customer data.
 
-[Open your Sites](/dashboard) to use independent website checks.
+[Open Websites](/dashboard) to use independent website checks.

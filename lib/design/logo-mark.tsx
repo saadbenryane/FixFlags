@@ -23,9 +23,9 @@ export function getOfficialLogoMarkDataUrl(): string {
 }
 
 /**
- * Official FixFlags mark from the brand sheet raster.
- * Do not invent geometry, pass `src` from `getOfficialLogoMarkDataUrl()` in OG routes,
- * or omit `src` in browser React where `/brand/logo-mark.png` is used via `Logo`.
+ * Official FixFlags mark, rasterized from the cleaned owner vector.
+ * Pass `src` from `getOfficialLogoMarkDataUrl()` in OG routes.
+ * Browser Logo components use the vector directly.
  */
 export function LogoMarkSvg({ width = 40, height = 40, className, src }: LogoMarkProps) {
   const imageSrc = src ?? '/brand/logo-mark.png'

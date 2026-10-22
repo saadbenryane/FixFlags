@@ -90,7 +90,7 @@ export function WorkspaceBrowserPanel({
         className="min-h-0 flex-1"
       />
       {!desktop && !mobile && bothFailed ? (
-        <p className="shrink-0 border-t border-border/40 px-4 py-2 text-sm text-muted-foreground">
+        <p className="shrink-0 px-4 py-2 text-sm text-muted-foreground">
           {REPORT_COPY.workspace.playback.empty(url)}
         </p>
       ) : null}

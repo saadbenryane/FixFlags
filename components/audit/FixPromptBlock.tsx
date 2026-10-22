@@ -45,6 +45,7 @@ interface FixPromptBlockProps {
 }
 
 const markdownComponents = {
+  hr: () => <div aria-hidden="true" className="h-6" />,
   h1: ({ children }: { children?: ReactNode }) => (
     <h3 className="mt-4 mb-1.5 text-sm font-semibold tracking-heading text-foreground first:mt-0">
       {children}
@@ -203,7 +204,7 @@ export function FixPromptBlock({
             mShellRadius
           )}
         >
-          <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-1.5">
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5">
             <span className="meta-label text-muted-foreground">Markdown</span>
             <div className="flex items-center gap-1">
               {!promptUnavailable && !hideActions ? (
@@ -250,7 +251,7 @@ export function FixPromptBlock({
             <PromptBody prompt={clipboardPrompt} label={label} rows={rows} clamp={clamp} />
           )}
           {!promptUnavailable ? (
-            <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
+            <div className="flex justify-end gap-2 px-3 py-2">
               <PromptActionRow
                 prompt={clipboardPrompt}
                 showCursorAction={false}

@@ -40,6 +40,16 @@ describe('public link observations', () => {
     const metadata = parseMetadataFromHtml('<base href="/docs/"><a href="next">Details</a>', page)
     expect(publicLinkUrls(page, metadata)).toEqual([page + 'docs/next'])
   })
+  it('excludes actual same-document sections after a redirect while retaining cross-document base destinations', () => {
+    const source = page + 'old', reached = page + 'docs/'
+    const metadata = parseMetadataFromHtml('<a href="#details">Details</a>', reached)
+    expect(publicLinkUrls(source, metadata)).toEqual([])
+    const inventory = capturedPageLinks({ renderedSearchSnapshot: { finalUrl: reached, documentBaseUrl: reached, sections: {
+      links: { html: '<a href="#details">Details</a>', complete: true, observed: 1, limit: 2000, reason: null },
+    } } }, null)!
+    expect(publicLinkUrls(source, inventory)).toEqual([])
+    expect(publicLinkUrls(source, { ...inventory, linkBaseUrl: page + 'plans/' })).toEqual([page + 'plans/'])
+  })
   it('uses the bounded native inventory independently of whole-page metadata', () => {
     const inventory = capturedPageLinks({ renderedSearchSnapshot: { documentBaseUrl: page + 'docs/', sections: {
       links: { html: '<a href="next?a=1&amp;b=2">Plans &amp; prices</a>', complete: true, observed: 1, limit: 2000, reason: null },

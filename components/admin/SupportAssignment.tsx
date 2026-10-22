@@ -1,4 +1,5 @@
 'use client'
+import { InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useId, useState } from 'react'
 import useSWR from 'swr'
 import { Input } from '@/components/ui/input'
@@ -40,7 +41,7 @@ export function SupportAssignment({
         <label htmlFor={`${id}-choice`} className="block">
           Administrator
         </label>
-        <select
+        <InteractiveSelect
           id={`${id}-choice`}
           className="h-11 w-full rounded-input border bg-background px-3"
           value={selected}
@@ -52,7 +53,7 @@ export function SupportAssignment({
               {operator.name ?? operator.email}
             </option>
           ))}
-        </select>
+        </InteractiveSelect>
         {data?.hasMore && (
           <p className="text-xs text-muted-foreground">
             Refine the search to see more administrators.

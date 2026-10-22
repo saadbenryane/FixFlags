@@ -46,6 +46,18 @@ it('shows only the recorded expectation from the same owned Site', async () => {
   expect(detail?.expectedBehavior).toBe('A customer can reach checkout from the product page.')
   expect(detail?.relatedOutcome).toEqual({ id: 'outcome-1', name: 'Checkout' })
 })
+it('shows a committed outcome recovery as proven for the owned checkout flag', async () => {
+  const captured = await mocks.flag()
+  mocks.flag.mockResolvedValue({ ...captured, status: 'FIXED', resolvedInId: 'recovery', fingerprint: 'outcome:v1:outcome-1:browser' })
+  mocks.proofs.mockResolvedValue([{ id: 'recovery', projectId: 'project-1', completedAt: new Date('2026-10-12T12:00:00Z'),
+    executionSpec: { engine: 'progressive-v1', version: 1, targetUrl: 'https://shop.test/checkout', environment: 'production', scope: 'OUTCOMES',
+      checks: {}, outcomes: [], verificationTarget: null }, verifierExecutions: [],
+    outcomeAssessments: [{ state: 'CLEAR', outcomeId: 'outcome-1', evidence: { reason: 'reached', incident: {
+      version: 1, transition: 'recovery', incidentRunRequestId: 'source-run', rootFlagIds: ['captured-flag'], flagIds: [],
+      recoveredFlagIds: ['captured-flag'], previousAssessmentId: 'before' } } }],
+  }])
+  expect(await loadSiteFlagDetail(site, 'improvement-1')).toMatchObject({ status: 'FIXED', verificationState: 'verified', sourceFlagId: 'captured-flag' })
+})
 it('keeps unsupported historical journey recovery unverified even when an Audit completed', async () => {
   const captured = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...captured, status: 'FIXED', resolvedInId: 'recovery' })
@@ -109,7 +121,7 @@ it.each([
   const recorded = await mocks.flag()
   mocks.flag.mockResolvedValue({ ...recorded, fix, audit })
   const detail = await loadSiteFlagDetail(site, 'captured-flag')
-  expect(detail).toMatchObject({ repairGuidance: expected, fix, sourceAuditId: recorded.auditId, evidence: recorded.evidence })
+  expect(detail).toMatchObject({ repairGuidance: expected, fix: fix.trim(), sourceAuditId: recorded.auditId, evidence: recorded.evidence })
 })
 
 it('keeps established historical indexing guidance and its action availability consistent without changing the stored finding', async () => {
@@ -117,5 +129,23 @@ it('keeps established historical indexing guidance and its action availability c
   const snapshot = structuredClone(recorded)
   mocks.flag.mockResolvedValue(recorded)
   expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: SEARCH_COPY.rules.indexing.guidance, repairGuidance: 'ready' })
+  expect(recorded).toEqual(snapshot)
+})
+
+it.each(['placeholder-copy-detected', 'cta-below-fold-mobile'])('withholds unconditional historical %s guidance without rewriting recorded evidence', async checkId => {
+  const recorded = { ...(await mocks.flag()), checkId, fix: 'Replace the recorded content and move the action.', audit: { failureCode: 'AI_REVIEW_FAILED' } }
+  const snapshot = structuredClone(recorded)
+  mocks.flag.mockResolvedValue(recorded)
+  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: '', repairGuidance: 'unavailable', evidence: recorded.evidence })
+  expect(recorded).toEqual(snapshot)
+})
+
+it('keeps a complete historical editor-only task usable in Site actions without changing its source row', async () => {
+  const task = 'Restore the recorded button label and preserve its working action.'
+  const recorded = { ...(await mocks.flag()), checkId: 'buttons-no-text', fix: '', cursorPrompt: task,
+    audit: { failureCode: 'AI_REVIEW_FAILED' } }
+  const snapshot = structuredClone(recorded)
+  mocks.flag.mockResolvedValue(recorded)
+  expect(await loadSiteFlagDetail(site, 'captured-flag')).toMatchObject({ fix: task, repairGuidance: 'ready', evidence: recorded.evidence })
   expect(recorded).toEqual(snapshot)
 })

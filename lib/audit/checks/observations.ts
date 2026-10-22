@@ -1,7 +1,7 @@
 import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
+import { readCruxMetric } from '../crux'
 import type { CheckAssertion } from './assertion'
-import { securityObservations } from './security'
 import { RESOURCE_CHECK_POLICIES, resourceAuditContext, type ResourceAudit } from '../pagespeed-opportunities'
 import { securityHeaderObservations } from './security-headers'
 import { publicTrustObservations } from './trust'
@@ -39,11 +39,11 @@ function recordResourceObservations(data: PageSpeedResult | null, url: string): 
 }
 
 export function recordInpObservation(mobile: PageSpeedResult): CheckAssertion {
-  const complete = mobile.crux?.inp !== null && mobile.crux?.inp !== undefined
+  const field = readCruxMetric(mobile.crux, 'inp'), complete = field !== null
   return { key: 'inp', name: 'Mobile field responsiveness', expected: 'CrUX p75 INP is at most 200ms',
-    observed: complete ? `CrUX p75 INP ${mobile.crux!.inp}ms, ${mobile.crux!.scope ?? 'unknown scope'} scope${mobile.crux!.url ? ` (${mobile.crux!.url})` : ''}, trailing ${mobile.crux!.reportingWindowDays ?? 28} days. This window does not verify an immediate repair.`
+    observed: field ? `CrUX p75 INP ${field.value}ms, ${field.cohort.scope ?? 'unknown scope'} scope${field.cohort.url ? ` (${field.cohort.url})` : ''}, trailing ${field.cohort.reportingWindowDays ?? 28} days. This window does not verify an immediate repair.`
       : 'No CrUX INP measurement is available. Current responsiveness remains unknown.',
-    passed: complete && mobile.crux!.inp! <= 200, complete, disposition: 'observed' }
+    passed: field !== null && field.value <= 200, complete, disposition: 'observed' }
 }
 
 /** Positive observations come from inspected inputs, never from missing Flags. */
@@ -61,7 +61,6 @@ export function recordCheckObservations(module: string, input: {
     result.push(...Object.values(publicTrustObservations(input.metadata)))
   }
   if (module === 'console') result.push(...consoleObservations(input.consoleCoverage))
-  if (module === 'security') result.push(...securityObservations(input.url, input.metadata))
   if (module === 'measurement') {
     if (!input.metadata) throw new Error('Analytics markup is unavailable')
     record('analytics-markup', 'Analytics configuration in HTML', 'An analytics snippet is present in the captured HTML',

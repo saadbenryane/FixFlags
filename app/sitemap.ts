@@ -1,3 +1,4 @@
+import { GUIDE_REVIEWED_AT, WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
 import type { MetadataRoute } from 'next'
 import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy'
 import { INDEXABLE_ROUTES, LLMS_TXT_PATH } from '@/lib/marketing/seo-routes'
@@ -44,6 +45,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.5,
     })
+  }
+
+  for (const guide of WEBSITE_GUIDES) {
+    pages.push({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: new Date(GUIDE_REVIEWED_AT), changeFrequency: 'monthly', priority: 0.7 })
   }
 
   const issues = await getIndexableIssueCheckIds().catch(() => {

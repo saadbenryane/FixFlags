@@ -3,7 +3,7 @@ import {
   checkoutProbeVerdict,
   isTerminalOrderUrl,
   purchaseAttemptSucceeded,
-  storedAttemptIsPurchaseWalk,
+  stepRecordsBuyAction,
 } from '@/lib/integrity/purchase'
 import type { PathProbeResult, WalkOutcome } from '@/lib/integrity/types'
 
@@ -100,17 +100,10 @@ describe('purchase attempt', () => {
   })
 
   it('recognizes a stored buy and ignores a checkout label without one', () => {
-    expect(storedAttemptIsPurchaseWalk([
-      { actionType: 'add_to_cart', actionDetail: { label: 'add_to_cart' } },
-    ])).toBe(true)
-    expect(storedAttemptIsPurchaseWalk([
-      { actionType: 'click', actionDetail: { text: 'Add to cart' } },
-    ])).toBe(true)
-    expect(storedAttemptIsPurchaseWalk([
-      { actionType: 'navigate', actionDetail: { label: 'landing' } },
-      { actionType: 'checkout', actionDetail: { label: 'checkout' } },
-    ])).toBe(false)
-    expect(storedAttemptIsPurchaseWalk([])).toBe(false)
+    expect(stepRecordsBuyAction({ actionType: 'add_to_cart', actionDetail: { label: 'add_to_cart' } })).toBe(true)
+    expect(stepRecordsBuyAction({ actionType: 'click', actionDetail: { text: 'Add to cart' } })).toBe(true)
+    expect(stepRecordsBuyAction({ actionType: 'navigate', actionDetail: { label: 'landing' } })).toBe(false)
+    expect(stepRecordsBuyAction({ actionType: 'checkout', actionDetail: { label: 'checkout' } })).toBe(false)
   })
 
   it('recognizes payment, thank-you, and order-complete URLs', () => {

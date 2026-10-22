@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { InteractiveInput, InteractiveSelect } from '@/components/ui/interactive-controls'
+import { useId, useState } from 'react'
 import { AdminActionButton } from './AdminActionButton'
 export function SiteControls({
   id,
@@ -18,6 +19,7 @@ export function SiteControls({
   accountsEnabled: boolean
   remainingAccounts: number
 }) {
+  const fieldId = useId()
   const [cadence, setCadence] = useState(interval?.toLowerCase() ?? 'off'),
     [minutes, setMinutes] = useState(everyMinutes ?? 60),
     [notifications, setNotifications] = useState(notificationLevel),
@@ -29,20 +31,20 @@ export function SiteControls({
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Monitoring</h2>
         <div className="grid items-end gap-3 sm:grid-cols-3">
-          <label className="space-y-1 text-sm">
+          <label htmlFor={`${fieldId}-cadence`} className="space-y-1 text-sm">
             Schedule
-            <select className={field} value={cadence} onChange={(e) => setCadence(e.target.value)}>
+            <InteractiveSelect id={`${fieldId}-cadence`} className={field} value={cadence} onChange={(e) => setCadence(e.target.value)}>
               {['off', 'weekly', 'daily', 'hourly', 'custom'].map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
               ))}
-            </select>
+            </InteractiveSelect>
           </label>
           {cadence === 'custom' && (
-            <label className="space-y-1 text-sm">
+            <label htmlFor={`${fieldId}-minutes`} className="space-y-1 text-sm">
               Every minutes
-              <input
+              <InteractiveInput id={`${fieldId}-minutes`}
                 type="number"
                 min={5}
                 max={10080}
@@ -64,9 +66,9 @@ export function SiteControls({
       </section>
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Notifications and test accounts</h2>
-        <label className="block space-y-1 text-sm">
+        <label htmlFor={`${fieldId}-notifications`} className="block space-y-1 text-sm">
           Notification level
-          <select
+          <InteractiveSelect id={`${fieldId}-notifications`}
             className={field}
             value={notifications}
             onChange={(e) => setNotifications(e.target.value)}
@@ -74,18 +76,18 @@ export function SiteControls({
             <option value="FLAGS">Flags</option>
             <option value="CRITICAL_ONLY">Critical only</option>
             <option value="OFF">Off</option>
-          </select>
+          </InteractiveSelect>
         </label>
-        <label className="flex gap-2 text-sm">
-          <input
+        <label htmlFor={`${fieldId}-notify-recovery`} className="flex gap-2 text-sm">
+          <InteractiveInput id={`${fieldId}-notify-recovery`}
             type="checkbox"
             checked={notifyRecovery}
             onChange={(e) => setNotifyRecovery(e.target.checked)}
           />
           Notify on recovery
         </label>
-        <label className="flex gap-2 text-sm">
-          <input
+        <label htmlFor={`${fieldId}-accounts`} className="flex gap-2 text-sm">
+          <InteractiveInput id={`${fieldId}-accounts`}
             type="checkbox"
             checked={accounts}
             onChange={(e) => setAccounts(e.target.checked)}

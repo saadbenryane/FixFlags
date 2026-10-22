@@ -3,6 +3,7 @@ import { evaluateSearch, searchFindings, SEARCH_CHECK_DEFINITIONS, validateSearc
 import { isCustomerFlag } from '../../attention'
 import { searchReceiptSchema } from '../contracts'
 import { document, evidence, PAGE } from './fixtures'
+import { assessSearchRecovery } from '../recovery'
 
 describe('Search responsibilities and classification', () => {
   it.each([403, 404, 429, 503])('does not mistake an HTTP %s error document for published page content', async status => {
@@ -69,6 +70,49 @@ describe('Search responsibilities and classification', () => {
   it('does not turn robots server failure into permission to crawl', async () => {
     const result = await evaluateSearch(evidence(undefined, { robots: document('server failure', { status: 503 }) }))
     expect(result.find(item => item.checkId === 'search-crawl-access')?.disposition).toBe('unknown')
+  })
+  it.each(['https://cdn.example.net/rules.txt', 'http://example.com/rules.txt', 'https://example.com:8443/rules.txt'])
+    ('applies redirected robots rules to their original authority: %s', async finalUrl => {
+      const url = PAGE + 'robots.txt'
+      const evaluate = (body: string) => evaluateSearch(evidence(undefined, { robots: document(body, {
+        url, finalUrl, redirects: [url], headers: { 'content-type': 'text/plain' },
+      }) }), null, ['crawl'])
+      expect((await evaluate('User-agent: *\nAllow: /')).find(item => item.checkId === 'search-crawl-access'))
+        .toMatchObject({ disposition: 'passed', reason: 'crawl_allowed', evidence: [{ url: finalUrl }] })
+      expect((await evaluate('User-agent: *\nDisallow: /')).find(item => item.checkId === 'search-crawl-access'))
+        .toMatchObject({ disposition: 'observed', reason: 'declared_crawl_restriction', evidence: [{ url: finalUrl }] })
+    })
+  it.each([200, 404])('does not borrow another initial authority\'s robots response: HTTP %s', async status => {
+    const result = await evaluateSearch(evidence(undefined, { robots: document('User-agent: *\nAllow: /', {
+      url: 'https://other.example.net/robots.txt', finalUrl: PAGE + 'robots.txt', status,
+      redirects: ['https://other.example.net/robots.txt'],
+    }) }), null, ['crawl'])
+    expect(result.find(item => item.checkId === 'search-crawl-access')?.disposition).toBe('unknown')
+  })
+  it('preserves direct-rule recovery semantics when the same robots request moves to another host', async () => {
+    const read = async (body: string, finalUrl = PAGE + 'robots.txt', previous?: ReturnType<typeof searchReceiptSchema.parse>) => {
+      const input = evidence(undefined, { robots: document(body, { url: PAGE + 'robots.txt', finalUrl,
+        redirects: finalUrl === PAGE + 'robots.txt' ? [] : [PAGE + 'robots.txt'] }) })
+      const observations = await evaluateSearch(input, previous, ['crawl'])
+      return searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: 'robots', pageUrl: PAGE,
+        collectedAt: input.collectedAt, complete: !observations.some(item => item.disposition === 'unknown'), observations })
+    }
+    const before = await read('User-agent: *\nAllow: /')
+    const failed = await read('User-agent: *\nDisallow: /', undefined, before)
+    const flag = searchFindings(failed.observations).find(flag => flag.checkId === 'search-crawl-access')!
+    expect(flag).toBeDefined()
+    const repaired = await read('User-agent: *\nAllow: /', 'https://cdn.example.net/rules.txt')
+    expect(assessSearchRecovery(repaired, flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const blocked = await read('User-agent: *\nDisallow: /', 'https://cdn.example.net/rules.txt', before)
+    expect(assessSearchRecovery(blocked, flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: true, verdict: 'failed' })
+  })
+  it('keeps parser resource limits unknown instead of diagnosing a valid sitemap as broken', async () => {
+    const sitemap = document('<urlset>' + '<extension>'.repeat(300) + 'content' + '</extension>'.repeat(300) + '</urlset>',
+      { url: PAGE + 'sitemap.xml' })
+    const result = await evaluateSearch(evidence(undefined, { sitemaps: [sitemap], declaredSitemaps: [sitemap.url], sitemapsComplete: false }), null, ['discovery'])
+    expect(result.find(item => item.checkId === 'search-sitemap-invalid'))
+      .toMatchObject({ disposition: 'unknown', reason: 'sitemap_parse_unavailable' })
+    expect(searchFindings(result)).toEqual([])
   })
   it('allows a reachable cross-domain canonical', async () => {
     const target = document('Public article', { url: 'https://publisher.example/article', finalUrl: 'https://publisher.example/article' })

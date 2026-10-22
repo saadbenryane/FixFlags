@@ -150,12 +150,38 @@ export const triageOutputSchema = z
 export type TriageOutput = z.infer<typeof triageOutputSchema>
 
 /** New provider admissions use one strict contract on both providers. */
-export const triageProviderOutputSchema = triageOutputSchema.extend({
-  newFlags: z.array(triageOutputSchema.shape.newFlags.element.omit({ supportingReviews: true, fingerprint: true }).extend({
-    reviewKind: triageReviewKindSchema,
+const providerRecommendationSchema = triageOutputSchema.shape.newFlags.element
+  .omit({ supportingReviews: true, fingerprint: true }).extend({
     evidenceRefs: z.array(triageEvidenceRefSchema).min(1).max(6),
     device: z.enum(['desktop', 'mobile', 'none']),
-  })).max(5),
+  })
+
+export const triageProviderOutputSchema = triageOutputSchema.extend({
+  newFlags: z.array(z.union([
+    providerRecommendationSchema.extend({
+      reviewKind: z.literal('copy-clarity'),
+      rubric: z.literal('MESSAGE'),
+      device: z.literal('none'),
+      evidenceRefs: z.array(triageEvidenceRefSchema.extend({ source: z.enum(['headline', 'pageText']) })).min(1).max(6),
+    }),
+    providerRecommendationSchema.extend({
+      reviewKind: z.literal('search-snippet'),
+      rubric: z.literal('REACH'),
+      device: z.literal('none'),
+      evidenceRefs: z.array(triageEvidenceRefSchema.extend({ source: z.enum(['title', 'description']) })).min(1).max(6),
+    }),
+    providerRecommendationSchema.extend({
+      reviewKind: z.literal('action-clarity'),
+      device: z.literal('none'),
+      evidenceRefs: z.array(triageEvidenceRefSchema.extend({ source: z.literal('ctaText') })).min(1).max(6),
+    }),
+    providerRecommendationSchema.extend({
+      reviewKind: z.literal('visual-hierarchy'),
+      rubric: z.literal('EXPERIENCE'),
+      device: z.enum(['desktop', 'mobile']),
+      evidenceRefs: z.array(triageEvidenceRefSchema.extend({ source: z.literal('ctaText') })).min(2).max(6),
+    }),
+  ])).max(5),
 }).strict()
 
 const baseJsonSchema = toJsonSchema(triageProviderOutputSchema)

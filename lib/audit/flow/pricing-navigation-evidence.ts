@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { CheckAssertion } from '../checks/assertion'
 
 export const PRICING_NAVIGATION_RULE = 'Public pricing navigation v1: independently exercise the original rendered navigation control under the same page, capture and access conditions.'
-export const pricingNavigationContextSchema = z.string().regex(/^flow:pricing:v1:[a-f0-9]{64}$/)
+export const pricingNavigationContextSchema = z.string().regex(/^flow:pricing:v[12]:[a-f0-9]{64}$/)
 export const pricingNavigationEvidenceSchema = z.object({
   context: pricingNavigationContextSchema, complete: z.boolean(), passed: z.boolean(),
   reason: z.enum(['visible-section', 'page-reached', 'missing-section', 'disabled', 'no-advance', 'http-error', 'unavailable', 'unexpected-destination', 'original-missing']),

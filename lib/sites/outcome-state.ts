@@ -2,8 +2,9 @@ import type { OutcomeAssessmentState } from '@prisma/client'
 import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import type { CustomerOutcomeState } from './domain/outcome-states'
 
-export type CustomerOutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
+export type { CustomerOutcomeState }
 
 /** Shown until reconcile stores an assessment. Home does not treat this placeholder as a result. */
 export const UNASSESSED_OUTCOME_SUMMARY = 'Not verified yet.'

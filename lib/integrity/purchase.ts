@@ -41,13 +41,6 @@ export function isTerminalOrderUrl(url: string | null | undefined): boolean {
   }
 }
 
-/** A stored review is a purchase walk only when one of its steps used a buy control. */
-export function storedAttemptIsPurchaseWalk(
-  steps: readonly StoredPurchaseStep[] | null | undefined,
-): boolean {
-  return (steps ?? []).some(stepRecordsBuyAction)
-}
-
 export function stepRecordsBuyAction(step: StoredPurchaseStep): boolean {
   if (step.actionType === 'add_to_cart' || step.label === 'add_to_cart') return true
   const texts: string[] = []

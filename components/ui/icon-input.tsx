@@ -13,10 +13,11 @@ export interface IconInputProps extends React.InputHTMLAttributes<HTMLInputEleme
   label: string
   error?: string
   fieldVariant?: keyof typeof fieldVariants
+  trailing?: React.ReactNode
 }
 
 export const IconInput = React.forwardRef<HTMLInputElement, IconInputProps>(
-  ({ icon, label, error, fieldVariant = "default", className, id, ...props }, ref) => {
+  ({ icon, label, error, fieldVariant = "default", className, id, trailing, ...props }, ref) => {
     const inputId = id ?? label.toLowerCase().replace(/\s+/g, "-")
     const errorId = error ? `${inputId}-error` : undefined
 
@@ -34,10 +35,11 @@ export const IconInput = React.forwardRef<HTMLInputElement, IconInputProps>(
             id={inputId}
             aria-describedby={errorId}
             aria-invalid={!!error}
-            className={cn("pl-11", fieldVariants[fieldVariant], className)}
+            className={cn("pl-11", trailing && "pr-12", fieldVariants[fieldVariant], className)}
             placeholder={props.placeholder ?? label}
             {...props}
           />
+          {trailing ? <div className="absolute inset-y-0 right-0 flex items-center">{trailing}</div> : null}
         </div>
         {error && (
           <p id={errorId} className="text-xs text-destructive px-1">

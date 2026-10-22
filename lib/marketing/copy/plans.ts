@@ -11,7 +11,7 @@ export const PLANS = [
     outcome: 'All features included during open beta',
     audits: 'No usage limits during beta', products: '1 website',
     features: ['1 website', 'All supported features', 'Any supported monitoring schedule', 'No usage limits during beta'],
-    cta: 'Sign up now', href: '/sign-up', highlight: true, badge: 'Open beta',
+    cta: 'Start free', href: '/sign-up', highlight: true, badge: 'Open beta',
     availability: 'Available now', priceLabel: 'During open beta',
     accountModel: 'One website. Full access during open beta.',
   },
@@ -77,18 +77,18 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
 ] as const
 
 export const PRICING = {
-  plansTitle: 'Plans', label: 'Open beta', headline: 'The full product. Free during open beta.',
-  headlineLead: 'The full product.', headlineAccent: 'Free during open beta.',
-  subhead: 'One website. All supported features. No usage limits during beta.',
-  signupCta: 'Sign up now', signupHref: '/sign-up', signupNote: 'No credit card. No automatic charge.',
+  plansTitle: 'Plans', label: 'Open beta', headline: 'Website monitoring. Free during open beta.',
+  headlineLead: 'Website monitoring.', headlineAccent: 'Free during open beta.',
+  subhead: 'One website. All supported features and schedules. No usage limits during beta.',
+  signupCta: 'Start free', signupHref: '/sign-up', signupNote: 'No credit card. No automatic charge.',
   trustBadge: 'Full access on one website',
   assurances: ['No credit card.', 'No automatic charge.', 'We’ll tell you before the beta offer changes.'] as const,
   studioLine: 'Need another website?', studioCta: 'Join the paid-plan waitlist', studioHref: '/waitlist',
   sharedTitle: 'Included in every check',
-  sharedFeatures: ['Website analysis', 'Flags and evidence', 'Fix guidance', 'Independent rechecks', 'Monitoring history'] as const,
+  sharedFeatures: ['Website checks', 'Problems and evidence', 'Fix guidance', 'Fresh checks after fixes', 'Monitoring history'] as const,
   sharedNote: 'The full suite across your configured website coverage.',
   compareTitle: 'Compare plans', compareLabel: 'Available now and coming soon',
-  compareBody: 'Start with the full product on one website. Paid plans are coming soon for more websites and ongoing care.',
+  compareBody: 'Start free on one website. Paid plans for more websites are coming soon.',
   compareNote: 'During open beta, all supported features and schedules are free on one website, with no usage limits. Pro and Studio show the planned paid offer. Update-triggered checks require an integration and are not available yet.',
   coverageLink: 'Understand monitoring coverage', connectionsLink: 'See the supported integrations', faqTitle: 'Pricing questions',
   upgradeSteps: 'Join the waitlist. No subscription or charge.', upgradeStepsLoggedIn: 'Join the waitlist. No subscription or charge.', checkoutRedirecting: 'Opening waitlist…',
@@ -106,7 +106,7 @@ export const DEMO_PAGE = {
   eyebrow: 'Request a demo',
   headline: 'Explore FixFlags for your websites.',
   subhead:
-    'Tell us the website and the plan. We will email you to set a time. We are not charging yet.',
+    'Show us your website. We’ll email you to arrange a walkthrough of the checks, alerts, and fix guidance.',
   nameLabel: 'Name',
   namePlaceholder: 'Your name',
   emailLabel: 'Work email',
@@ -191,7 +191,7 @@ export const BILLING_ACTION_COPY = {
 export const UPSELLS = {
   anon: {
     headline: 'Save this Site',
-    body: 'Create a free account to save this Site and unlock its fix prompts. Open beta includes all supported schedules on one website.',
+    body: 'Save your results, unlock fix prompts, and start scheduled monitoring. Free during open beta on one website.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },

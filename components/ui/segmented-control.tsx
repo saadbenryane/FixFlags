@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import * as React from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
@@ -116,7 +117,7 @@ export function SegmentedControl({
             {item.label}
           </Link>
         ) : (
-          <button
+          <InteractiveButton
             key={item.value}
             {...tabProps}
             ref={(node) => { tabRefs.current[index] = node }}
@@ -125,7 +126,7 @@ export function SegmentedControl({
             onClick={() => onValueChange(item.value)}
           >
             {item.label}
-          </button>
+          </InteractiveButton>
         )
       })}
     </div>

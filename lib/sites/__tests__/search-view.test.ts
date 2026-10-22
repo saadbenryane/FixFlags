@@ -5,6 +5,10 @@ import type { SearchObservation, SearchReceipt } from '@/lib/audit/search/contra
 import { SEARCH_DEFINITIONS } from '@/lib/audit/search/definitions'
 import { SEARCH_COPY as C } from '@/lib/marketing/copy/search'
 import { applyCardEvidence } from '../application/card-evidence'
+import { siteCoverageMaxAgeMs } from '../evidence-freshness'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { buildCoverageFacts } from '../coverage'
+import { projectCheckResults } from '../check-results'
 
 const collectedAt = '2026-10-12T10:00:00.000Z'
 const now = new Date(collectedAt)
@@ -26,6 +30,36 @@ function receipt(overrides: Partial<SearchReceipt> = {}): SearchReceipt {
 }
 
 describe('Search evidence recovery', () => {
+  it.each(['malformed', 'unsupported', 'failed', 'running', 'wrong-page'] as const)('retains a %s recorded Search obligation instead of borrowing healthy peer evidence', state => {
+    const search = card(), peer = pageUrl + 'about'
+    const passed = (pageUrl: string) => receipt({ pageUrl, observations: [observation({ pageUrl, disposition: 'passed',
+      reason: 'allowed', observed: 'The public crawl declaration allows this page' })] })
+    const failed = { targetKey: 'module:search', status: state === 'failed' ? 'FAILED' : state === 'running' ? 'RUNNING' : 'COMPLETED',
+      pageUrl: peer, detail: state === 'malformed' ? null : state === 'unsupported' ? { ...receipt(), version: 99 }
+        : passed(state === 'wrong-page' ? pageUrl : peer) }
+    const executions = [{ targetKey: 'module:search', status: 'COMPLETED', pageUrl, detail: passed(pageUrl) }, failed]
+    applySearchCardEvidence(search, executions, false, now)
+    expect(search).toMatchObject({ state: 'unknown', answer: C.summary.partial, incompleteReason: expect.any(String) })
+    expect(buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now, flags: [], evidenceCoverage: { metadata: true },
+      verifierExecutions: [failed] }).find(fact => fact.area === 'search')).toMatchObject({ state: 'unknown', evidenced: false })
+    expect(projectCheckResults('a', [{ ...failed, id: 'broken-search', updatedAt: now }])
+      .some(result => result.status === 'passed')).toBe(false)
+    expect(projectCheckResults('a', [{ ...failed, id: 'broken-search', updatedAt: now }]))
+      .toMatchObject([{ kind: 'execution', status: state === 'failed' ? 'failed' : 'unknown', historical: false }])
+  })
+  it('keeps the current care expiry visible through the complete Search card projection', () => {
+    const search = card({ state: 'unknown' })
+    const audit = { status: 'COMPLETED', startedAt: now, failureCode: null,
+      verifierExecutions: [{ targetKey: 'module:search', detail: receipt() }] }
+    const input = { cards: [search], audit: audit as unknown as Parameters<typeof applyCardEvidence>[0]['audit'],
+      summaryResults: [], inFlight: false, pageCount: 1, connections: null, connectionNotes: {} }
+    const later = new Date(now.getTime() + 2 * 86400_000)
+    applyCardEvidence({ ...input, now: later, coverageMaxAgeMs: siteCoverageMaxAgeMs('daily') })
+    expect(search).toMatchObject({ state: 'unknown', answer: SITE_BOARD_COPY.checkOutOfDate, checkedAt: collectedAt })
+    search.state = 'healthy'
+    applyCardEvidence({ ...input, now: later })
+    expect(search).toMatchObject({ state: 'healthy', answer: C.summary.recorded })
+  })
   it('names missing responsibilities even when all recorded parts passed', () => {
     const search = card()
     applySearchCardEvidence(search, [{ targetKey: 'module:search-presentation', detail: receipt() }], false, now)

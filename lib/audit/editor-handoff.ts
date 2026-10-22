@@ -12,6 +12,7 @@ import { visualTargetLabel } from '@/lib/marketing/evidence-regions'
 import { readSupportingObservationView } from './flag-observations'
 import { supportingObservationLines } from './observation-handoff'
 import { EDITOR_EVIDENCE_COPY as E } from '@/lib/marketing/copy/verification-evidence'
+import { effectiveRepairGuidance as resolvedTask } from '@/lib/improvements/repair-guidance'
 
 export const EDITOR_FINDING_LEAD =
   'This is a FixFlags finding from the live page, not a guess about your repo.'
@@ -21,14 +22,6 @@ export const EDITOR_PLAN_ALL_LEAD =
 
 /** Aggregate copy lead. Finding first, then plan-all. */
 export const AGENT_COPY_LEAD = `${EDITOR_FINDING_LEAD}\n\n${EDITOR_PLAN_ALL_LEAD}`
-
-const LEGACY_LOCKED = new Set([
-  'Sign up',
-  'Create a free account to see evidence and fix prompts.',
-  'Sign up to see why this matters and get a fix prompt for your editor.',
-  'Sign up to get the fix prompt.',
-  'Sign up to see verification steps.',
-])
 
 export interface EditorHandoffContext {
   url?: string | null
@@ -176,25 +169,6 @@ export function buildPlanBundleHeader(context: EditorHandoffContext): string {
   )
   lines.push('')
   return lines.join('\n')
-}
-
-function resolvedTask(flag: RankableFlag): string | null {
-  const candidates = [
-    flag.agentPrompt,
-    flag.cursorPrompt,
-    flag.claudePrompt,
-    flag.windsurfPrompt,
-    flag.lovablePrompt,
-    flag.boltPrompt,
-    flag.fix,
-  ]
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim()
-    if (!trimmed) continue
-    if (LEGACY_LOCKED.has(trimmed)) continue
-    return trimmed
-  }
-  return null
 }
 
 function verificationFor(flag: RankableFlag): string | null {

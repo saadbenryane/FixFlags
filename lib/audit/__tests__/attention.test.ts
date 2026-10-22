@@ -4,9 +4,29 @@ import {
   isCustomerFlag,
   isWorthwhileAttentionFlag,
   MIN_ATTENTION_CONFIDENCE,
+  hasUnresolvedFlagEvidence,
 } from '@/lib/audit/attention'
+import { observationsForFlag, publicSupportingObservations } from '@/lib/audit/flag-observations'
 
 describe('attention judgment', () => {
+  it('distinguishes private native evidence, legacy absence and validated public display state', () => {
+    const finding = { checkId: 'no-https', severity: 'IMPORTANT', confidence: 1 }
+    const recorded = observationsForFlag({ ...finding, source: 'DETERMINISTIC', evidence: 'Original response', pageUrl: 'https://example.com/' },
+      { auditId: 'audit', taskId: 'task', checkVersion: 1, collectedAt: '2026-10-20T12:00:00.000Z' })
+    const publicView = publicSupportingObservations(recorded)
+    expect(isCustomerFlag({ ...finding, supportingObservations: recorded })).toBe(true)
+    expect(isCustomerFlag({ ...finding, supportingObservations: null })).toBe(true)
+    expect(isCustomerFlag({ ...finding, supportingObservations: publicView })).toBe(false)
+    expect(isCustomerFlag({ ...finding, supportingObservations: publicView, supportingEvidenceUnreadable: false })).toBe(true)
+    for (const supportingObservations of [{ version: 99, items: [] }, [], publicView]) {
+      expect(isCustomerFlag({ ...finding, supportingObservations })).toBe(false)
+      expect(hasUnresolvedFlagEvidence({ ...finding, supportingObservations })).toBe(true)
+    }
+    expect(hasUnresolvedFlagEvidence({ ...finding, supportingEvidenceUnreadable: true, status: 'IGNORED' })).toBe(false)
+    expect(hasUnresolvedFlagEvidence({ ...finding, checkId: 'title-too-long', supportingEvidenceUnreadable: true })).toBe(false)
+    expect(hasUnresolvedFlagEvidence({ ...finding, checkId: 'form-contact-failed', severity: 'POLISH', impactTag: 'CONVERSION',
+      supportingEvidenceUnreadable: true })).toBe(true)
+  })
   it('keeps confirmed Important and Critical Flags as Attention candidates', () => {
     expect(isAttentionCandidate({ severity: 'CRITICAL' })).toBe(true)
     expect(isAttentionCandidate({ severity: 'IMPORTANT', confidence: 0.9 })).toBe(true)
@@ -46,7 +66,7 @@ describe('customer Flag projector', () => {
   it.each(['MESSAGE', 'EXPERIENCE', 'REACH'])('keeps unregistered %s judgments as Recommendations', rubric => {
     expect(isCustomerFlag({ rubric, severity: 'CRITICAL', confidence: 1 })).toBe(false)
   })
-  it.each(['h1-generic', 'no-cta-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
+  it.each(['h1-generic', 'no-cta-detected', 'cta-below-fold-mobile', 'placeholder-copy-detected'])('keeps heuristic %s signals advisory, including historical severity', checkId => {
     expect(isCustomerFlag({ checkId, severity: 'IMPORTANT', confidence: 1, impactTag: 'CONVERSION' })).toBe(false)
   })
   it.each(['journey-first-visit-destination-no-next-action', 'journey-pricing-evaluation-destination-no-next-action'])(

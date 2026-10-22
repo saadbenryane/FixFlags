@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import type { SiteRecord } from '@/lib/sites/types'
-import { includeLegacySiteAnalyses } from './analysis-scope'
+import { siteEvidenceAuditWhere } from './analysis-scope'
 
 export async function loadLegacySiteAnalysisIds(projectIds: string[]) {
   if (!projectIds.length) return []
@@ -13,5 +13,5 @@ export async function loadLegacySiteAnalysisIds(projectIds: string[]) {
 export async function loadSiteAnalysisSelection(site: SiteRecord) {
   const legacyIds = site.kind === 'provisional' && site.primaryAuditId ? [site.primaryAuditId]
     : await loadLegacySiteAnalysisIds(site.projectId ? [site.projectId] : [])
-  return { legacyIds, where: includeLegacySiteAnalyses(legacyIds) }
+  return { legacyIds, where: siteEvidenceAuditWhere(legacyIds, 'production') }
 }

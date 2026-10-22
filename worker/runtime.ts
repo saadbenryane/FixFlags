@@ -12,9 +12,6 @@ export interface WorkerRuntimeLogger {
 export interface WorkerRuntimeDependencies {
   validateEnvironment(): void
   preflight(): Promise<void>
-  warmBrowser(): Promise<void>
-  readBrowserDiagnostics(): { connected: boolean; activeContexts: number }
-  touchHeartbeat(update: { browserOk: boolean; activeBrowserContexts: number; queueState?: 'idle' }): Promise<void>
   beginShutdown?(): Promise<void>
   releaseOwnership?(): Promise<void>
   clearHeartbeat(): Promise<void>
@@ -31,7 +28,6 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
   let worker: WorkerHandle | null = null
   let scheduler: ReturnType<WorkerRuntimeDependencies['startScheduler']>
   let shuttingDown = false, startPromise: Promise<void> | undefined, stopPromise: Promise<void> | undefined
-  let publishedHeartbeat = false
 
   async function runStart() {
     if (shuttingDown) return
@@ -39,19 +35,8 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     dependencies.logger.info('Worker starting')
     await dependencies.preflight()
     if (shuttingDown) return
-    await dependencies.warmBrowser().catch(error => {
-      dependencies.logger.warn('Browser unavailable; independent work and automatic browser recovery remain active', {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    })
-    if (shuttingDown) return
-    const browser = dependencies.readBrowserDiagnostics()
-    await dependencies.touchHeartbeat({ browserOk: browser.connected, activeBrowserContexts: browser.activeContexts })
-    publishedHeartbeat = true
-    if (shuttingDown) return
     worker = dependencies.startWorker()
     scheduler = dependencies.startScheduler()
-    await dependencies.touchHeartbeat({ browserOk: browser.connected, activeBrowserContexts: browser.activeContexts, queueState: 'idle' })
     dependencies.logger.info('Worker ready, listening for audit jobs')
   }
   function start() { return startPromise ??= runStart() }
@@ -68,7 +53,7 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
       // While queues drain, their normal idle heartbeat timer may already be closed.
       let heartbeatWrite: Promise<void> | undefined
       const stoppingHeartbeat = () => {
-        if (!publishedHeartbeat || heartbeatWrite) return heartbeatWrite
+        if (!worker || heartbeatWrite) return heartbeatWrite
         heartbeatWrite = dependencies.beginShutdown?.()
           .catch(error => dependencies.logger.error('Stopping heartbeat failed', error))
           .finally(() => { heartbeatWrite = undefined })

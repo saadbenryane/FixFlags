@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -107,7 +108,7 @@ export function ProductWatchControls({
         {(['weekly', ...(canDaily ? ['daily'] : []), null] as Interval[]).map((option) => {
           const label = option === 'weekly' ? PRODUCT_WATCH_COPY.weekly : option === 'daily' ? PRODUCT_WATCH_COPY.daily : PRODUCT_WATCH_COPY.off
           return (
-            <button
+            <InteractiveButton
               key={option ?? 'off'}
               type="button"
               role="radio"
@@ -117,7 +118,7 @@ export function ProductWatchControls({
               className="min-h-11 min-w-11 rounded-full border border-border bg-card px-3 py-2 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-checked:border-brand aria-checked:bg-brand aria-checked:text-brand-foreground"
             >
               {label}
-            </button>
+            </InteractiveButton>
           )
         })}
       </div>

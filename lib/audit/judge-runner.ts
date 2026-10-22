@@ -8,11 +8,12 @@ import { logger } from '@/lib/logger'
 
 const openAiApiKey = getOpenAIProviderKey()
 
+// Application attempts own retries, deadlines and provider-consumption custody.
 export const anthropic = hasAnthropicProviderKey()
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 })
   : null
 
-export const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null
+export const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey, maxRetries: 0 }) : null
 
 export const MAX_RETRIES = 3
 export const RETRY_DELAY_MS = 2000

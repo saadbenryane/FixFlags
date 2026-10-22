@@ -38,7 +38,7 @@ export default async function NarrativeDocsPage({
   const markdown = await readDocsMarkdown(page)
   return (
     <DocsPageFrame page={page}>
-      <DocsMarkdown>{markdown}</DocsMarkdown>
+      <DocsMarkdown headings={page.headings}>{markdown}</DocsMarkdown>
     </DocsPageFrame>
   )
 }

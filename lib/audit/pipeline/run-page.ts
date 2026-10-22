@@ -295,7 +295,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const head = capturedHeadMetadata(screenshots)
   const metadataFromHtml = mergeRuntimeHeadMetadata(
     screenshots.desktopHtml
-      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl, 'rendered')
+      ? parseMetadataFromHtml(screenshots.desktopHtml, screenshots.desktopFinalUrl ?? normalizedUrl, 'rendered')
       : await fetchAndParseMetadata(normalizedUrl, {
           headers: scanAccessToFetchHeaders(ctx.scanAccess, normalizedUrl),
         }),

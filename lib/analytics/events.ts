@@ -43,6 +43,7 @@ export type FunnelEvent =
   | 'managed_subscription'
   | 'marketing_page_view'
   | 'marketing_interaction'
+  | 'tool_interaction'
   | 'waitlist_joined'
   | 'requested_demo'
   | 'shopify_install_started'
@@ -65,6 +66,14 @@ export type FunnelEvent =
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared' | 'product'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
+
+export type AcquisitionTool = 'meta-preview' | 'placeholder-detector'
+export type ToolResultOutcome =
+  | 'succeeded'
+  | 'api_error'
+  | 'application_error'
+  | 'network_error'
+  | 'response_error'
 
 type EventParams = {
   landing_view: {
@@ -164,6 +173,11 @@ type EventParams = {
     journey_id?: string
     action: 'navigate' | 'expand' | 'copy'
     target: string
+  }
+  tool_interaction: {
+    tool: AcquisitionTool
+    outcome: 'submitted' | ToolResultOutcome
+    journey_id?: string
   }
   waitlist_joined: { plan: string; source?: string }
   requested_demo: { plan: string; source?: string }
@@ -300,5 +314,17 @@ export function trackMarketingPageView(page: string) {
     journey_id: readOrCreateAnalyticsJourneyId() ?? undefined,
     device: deviceClass(),
     ...utmParams(),
+  })
+}
+
+/** Tool telemetry accepts only finite labels, never submitted or returned content. */
+export function trackToolInteraction(
+  tool: AcquisitionTool,
+  outcome: 'submitted' | ToolResultOutcome,
+) {
+  trackEvent('tool_interaction', {
+    tool,
+    outcome,
+    journey_id: readOrCreateAnalyticsJourneyId() ?? undefined,
   })
 }

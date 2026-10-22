@@ -15,12 +15,16 @@ describe('Site action responses', () => {
     await expect(fetchSiteAction('/api/sites/site/settings')).rejects.toThrow(SITE_ACTION_COPY.interrupted)
   })
   it('requires operation-specific success fields, not an empty envelope', async () => {
-    for (const operation of ['settings', 'outcome', 'watch', 'authorize', 'run', 'outcomeEnabled', 'fixPrompt'] as const)
+    for (const operation of ['settings', 'outcome', 'watch', 'authorize', 'run', 'outcomeEnabled', 'fixPrompt', 'fixPromptPreparation'] as const)
       await expect(readSiteActionResponse(Response.json({ ok: true }), operation)).rejects.toThrow(SITE_ACTION_COPY.invalidResponse)
     await expect(readSiteActionResponse(Response.json({ ok: true, notificationLevel: 'FLAGS', notifyOnRecovery: true }), 'settings'))
       .resolves.toMatchObject({ ok: true, notificationLevel: 'FLAGS' })
     for (const setting of [{ accountChecksEnabled: false }, { notifyOnRecovery: false }])
       await expect(readSiteActionResponse(Response.json({ ok: true, ...setting }), 'settings')).resolves.toMatchObject(setting)
+  })
+  it.each([null, {}, { flagId: 'flag-1' }])('does not treat a missing copied-handoff receipt as success: %j', async handoff => {
+    await expect(readSiteActionResponse(Response.json({ ok: true, prompt: 'A complete repair task.', handoff }), 'fixPrompt'))
+      .rejects.toThrow(SITE_ACTION_COPY.invalidResponse)
   })
   it('owns submission before React renders pending state', async () => {
     const controller = createSiteActionController()

@@ -51,9 +51,8 @@ export function KeepReportEmail({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent header={<DialogTitle>{REPORT_COPY.keepReport.title}</DialogTitle>} className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{REPORT_COPY.keepReport.title}</DialogTitle>
           <DialogDescription>
             {saved ? REPORT_COPY.keepReport.saved : REPORT_COPY.keepReport.helper}
           </DialogDescription>

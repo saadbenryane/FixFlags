@@ -1,3 +1,5 @@
+import { TLS_CERTIFICATE_LABELS } from './tls'
+
 export const UPTIME_COPY = {
   renderedVerification: 'Rendered-page verification', renderedLimitation: 'Existing page verification uses separate browser evidence. Availability probes do not verify or recover these findings.',
   confirmed: 'Confirmed', scheduled: 'Scheduled',
@@ -14,8 +16,9 @@ export const UPTIME_COPY = {
   recorded: 'Recorded', target: 'Checked URL', response: 'Response', duration: 'Response time',
   results: { ONLINE: 'Successful response', FAILED: 'Failed response', UNKNOWN: 'Unknown' },
   reasons: { response_received: 'Response received', response_error: 'Response error', dns_failure: 'Domain did not resolve', connection_failed: 'Connection failed',
+    ...TLS_CERTIFICATE_LABELS,
     response_timeout: 'Response timed out', rate_limited: 'Rate limited', access_blocked: 'Access blocked', public_target_unverified: 'Public target could not be verified',
-    redirect_unresolved: 'Redirect could not be verified', probe_unavailable: 'Observation unavailable' },
+    redirect_loop: 'Redirect loop', redirect_unresolved: 'Redirect could not be verified', probe_unavailable: 'Observation unavailable' },
   confirmationPending: 'Confirmation pending', recovered: 'Back online', incidentOpen: 'Confirmed unavailable',
   targetChanged: 'Target changed. Recovery was not verified.', lastChecked: 'Last checked',
   openIncidents: (count: number) => `${count} open ${count === 1 ? 'incident' : 'incidents'}`,

@@ -19,6 +19,11 @@ export function isSamePageHashHref(href: string | null | undefined): href is str
   return typeof href === 'string' && href.startsWith('#') && href.length > 1
 }
 
+/** Hash-router syntax is an interaction candidate, never proof of a working route. */
+export function isRoutingFragment(href: string): boolean {
+  return /^#(?:\/|!)/.test(href)
+}
+
 export function serializeFlowData(result: {
   status: string
   steps: Array<{ label: string; screenshotUrl: string | null; url: string }>

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { liveGoogleClient } from './google'
-import { analyticsReportScope, analyticsWatchedPagePaths, readAnalyticsReportScope, searchReportScope, searchPageFilter, searchFactScope, readSearchFactScope } from './report-scope'
+import { analyticsPageFactScope, readAnalyticsPageFactScope, analyticsReportScope, analyticsWatchedPagePaths, readAnalyticsReportScope, searchReportScope, searchPageFilter, searchFactScope, readSearchFactScope } from './report-scope'
 
 afterEach(vi.unstubAllGlobals)
 describe('Search Console Site report scope', () => {
   it('filters the exact hostname aliases before the provider selects top page/query rows', async () => {
-    const transport = vi.fn(async () => new Response(JSON.stringify({ rows: [{ keys: ['https://shop.example/pricing', 'plans'], impressions: 10 }] })))
+    const transport = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ rows: [{ keys: ['https://shop.example/pricing', 'plans'], impressions: 10 }] })))
     vi.stubGlobal('fetch', transport)
     const scope = searchReportScope('www.shop.example', 'sc-domain:shop.example')
     expect(await liveGoogleClient().querySearch('fixture-access', scope, { startDate: '2026-09-01', endDate: '2026-09-28' }))
@@ -37,8 +37,19 @@ describe('Analytics Site report scope', () => {
     expect(readAnalyticsReportScope(scope, scope.propertyId, 'checkout.shop.example')).toBeNull()
     expect(readAnalyticsReportScope(null, scope.propertyId, 'shop.example')).toBeNull()
   })
+  it('requires the actual reported page dimension before attributing Analytics to a page', () => {
+    const scope = analyticsReportScope('shop.example', 'properties/123')
+    const fact = analyticsPageFactScope(scope, '/pricing/')!
+    expect(readAnalyticsPageFactScope(fact, scope.propertyId, 'shop.example')).toEqual(fact)
+    expect(readAnalyticsPageFactScope(scope, scope.propertyId, 'shop.example')).toBeNull()
+    expect(readAnalyticsReportScope(scope, scope.propertyId, 'shop.example')).toEqual(scope)
+    expect(readAnalyticsPageFactScope(fact, 'properties/456', 'shop.example')).toBeNull()
+    expect(readAnalyticsPageFactScope(fact, scope.propertyId, 'other.example')).toBeNull()
+    for (const path of ['(not set)', 'https://other.example/pricing', '/pricing?query=one', '/pricing#section'])
+      expect(analyticsPageFactScope(scope, path)).toBeNull()
+  })
   it('sends the hostname filter before page aggregation and keeps missing metrics unknown', async () => {
-    const request = vi.fn(async () => new Response(JSON.stringify({ reports: [{ dimensionHeaders: [{ name: 'pagePath' }], metricHeaders: [{ name: 'screenPageViews' }, { name: 'sessions' }], rows: [
+    const request = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ reports: [{ dimensionHeaders: [{ name: 'pagePath' }], metricHeaders: [{ name: 'screenPageViews' }, { name: 'sessions' }], rows: [
       { dimensionValues: [{ value: '/pricing' }], metricValues: [{ value: '24' }, { value: '12' }] },
       { dimensionValues: [{ value: '/missing' }], metricValues: [] },
     ] }, { metricHeaders: [{ name: 'activeUsers' }, { name: 'screenPageViews' }, { name: 'sessions' }], rows: [{ metricValues: [{ value: '3' }, { value: '40' }, { value: '8' }] }] }] }), { status: 200 }))

@@ -39,8 +39,9 @@ async function session(request) {
 }
 async function sessionCookie(accountId) {
   const raw = randomBytes(32).toString('hex'), hash = digest(raw)
-  await db.$executeRaw`INSERT INTO release_target_sessions (token_hash, account_id, expires_at) VALUES (${hash}, ${accountId}, now() + interval '1 hour')`
-  return `__Host-release-target=${raw}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`
+  const lifetime = (await settings()).sessionTtlSeconds ?? 3600
+  await db.$executeRaw`INSERT INTO release_target_sessions (token_hash, account_id, expires_at) VALUES (${hash}, ${accountId}, now() + ${lifetime} * interval '1 second')`
+  return `__Host-release-target=${raw}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${lifetime}`
 }
 function page(response, content, config, status = 200) {
   response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
@@ -72,13 +73,25 @@ const server = createServer(async (request, response) => {
       if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return json(response, 403, { error: 'Unauthorized' })
       if (request.method === 'POST') {
         const update = JSON.parse(await body(request)), current = await settings()
+        if (update.sessionTtlSeconds !== undefined) {
+          if (!Number.isInteger(update.sessionTtlSeconds) || update.sessionTtlSeconds < 60 || update.sessionTtlSeconds > 3600)
+            return json(response, 400, { error: 'Session lifetime must be 60 to 3600 seconds' })
+          current.sessionTtlSeconds = update.sessionTtlSeconds
+        }
+        if (update.signupResponseDelayMs !== undefined) {
+          if (!Number.isInteger(update.signupResponseDelayMs) || update.signupResponseDelayMs < 0 || update.signupResponseDelayMs > 30000)
+            return json(response, 400, { error: 'Signup response delay must be 0 to 30000 milliseconds' })
+          current.signupResponseDelayMs = update.signupResponseDelayMs
+        }
         for (const key of ['broken', 'missingTitle', 'outage', 'deletionUnavailable', 'brokenPricing', 'unlabelledSearch']) if (typeof update[key] === 'boolean') current[key] = update[key]
         await db.$executeRaw`UPDATE release_target_settings SET value = ${JSON.stringify(current)}::jsonb WHERE id = 1`
       }
       const counts = await db.$queryRaw`SELECT count(*)::int AS total, count(*) FILTER (WHERE deleted_at IS NULL)::int AS remaining,
         count(*) FILTER (WHERE verified_at IS NOT NULL)::int AS verified, count(*) FILTER (WHERE provider_email_id IS NOT NULL)::int AS sent FROM release_target_accounts`
       const budget = (await db.$queryRaw`SELECT used FROM release_target_email_budget WHERE id = 1`)[0]
-      return json(response, 200, { configuration: await settings(), accounts: counts[0], emailBudget: { limit: emailBudget, used: budget.used } })
+      const sessions = await db.$queryRaw`SELECT a.email, s.expires_at AS "expiresAt", s.expires_at <= now() AS expired,
+        a.deleted_at IS NOT NULL AS deleted FROM release_target_sessions s JOIN release_target_accounts a ON a.id = s.account_id`
+      return json(response, 200, { configuration: await settings(), accounts: counts[0], emailBudget: { limit: emailBudget, used: budget.used }, sessions })
     }
     const config = await settings()
     if (config.outage) return page(response, '<h1>Controlled outage</h1>', config, 503)
@@ -111,6 +124,7 @@ const server = createServer(async (request, response) => {
       const receipt = await sent.json()
       if (!sent.ok || !receipt.id) return page(response, '<h1>Email verification unavailable</h1><p>The provider did not accept this message.</p>', config, 503)
       await db.$executeRaw`UPDATE release_target_accounts SET provider_email_id = ${receipt.id} WHERE id = ${id}`
+      if (config.signupResponseDelayMs) await new Promise(resolve => setTimeout(resolve, config.signupResponseDelayMs))
       return page(response, '<h1>Check your inbox</h1><p>Verify your email to continue.</p>', config)
     }
     if (url.pathname === '/verify') {

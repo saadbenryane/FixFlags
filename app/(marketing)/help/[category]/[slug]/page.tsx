@@ -63,7 +63,7 @@ export default async function HelpArticlePage({ params }: Props) {
           <HelpRelatedDocs article={article} />
 
           {related.length > 0 && (
-            <div className="space-y-3 border-t border-border/60 pt-8">
+            <div className="space-y-3 pt-8">
               <Heading as="h2" className="text-lg">
                 {HELP_CENTER.relatedHeading}
               </Heading>
@@ -72,7 +72,7 @@ export default async function HelpArticlePage({ params }: Props) {
                   <li key={r.slug}>
                     <Link
                       href={helpArticlePath(r.categoryId, r.slug) as Route}
-                      className="text-sm font-medium text-brand hover:underline"
+                      className="text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground/50 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       {r.title}
                     </Link>

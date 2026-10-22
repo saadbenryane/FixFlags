@@ -10,6 +10,25 @@ const page = { evaluate: async (fn: () => unknown) => fn() } as unknown as Page
 beforeEach(() => { document.documentElement.innerHTML = '<head></head><body></body>' })
 
 describe('bounded rendered Search sections', () => {
+  it('excludes dormant descendants before charging a section budget', async () => {
+    document.head.innerHTML = '<title>Useful title</title><template><meta name="robots" content="noindex"></template>'
+    const dormant = document.createElement('noscript')
+    for (let index = 0; index < 100; index++) {
+      const meta = document.createElement('meta')
+      meta.name = 'robots'; meta.content = 'noindex'; dormant.append(meta)
+    }
+    document.body.append(dormant)
+    const published = document.createElement('script')
+    published.type = 'application/ld+json'; published.textContent = '{"@type":"Product"}'
+    const hidden = document.createElement('div'); hidden.hidden = true; hidden.append(published)
+    document.body.append(hidden)
+    const snapshot = await collectRenderedSearchSnapshot(page)
+    expect(snapshot.sections.indexing).toMatchObject({ observed: 0, complete: true, html: '' })
+    expect(snapshot.sections.structured).toMatchObject({ observed: 1, complete: true })
+    expect(snapshot.sections.structured.html).toContain('Product')
+    expect(snapshot.sections.metadata.html).not.toContain('noindex')
+  })
+
   it('retains the native base for isolated canonical sections and fences earlier detector evidence', async () => {
     document.head.innerHTML = '<base href="https://example.com/catalog/"><link rel="canonical" href="item">'
     const snapshot = await collectRenderedSearchSnapshot(page)
@@ -39,7 +58,7 @@ describe('bounded rendered Search sections', () => {
     expect(Object.values(snapshot.sections).every(section => section.complete)).toBe(true)
     const collected = evidence('', { collectorVersion: 2, rendered: recordedDocument(null, { searchSnapshot: snapshot, complete: false, reason: 'document_truncated' }) })
     const observations = await evaluateSearch(collected)
-    expect(observations.find(item => item.checkId === 'title-missing' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'passed', observed: 'Useful title', checkVersion: 2 })
+    expect(observations.find(item => item.checkId === 'title-missing' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'passed', observed: 'Useful title', checkVersion: 3 })
     expect(observations.find(item => item.checkId === 'search-discovery-links')).toMatchObject({ source: 'rendered-dom', disposition: 'observed' })
     expect(observations.find(item => item.checkId === 'search-structured-invalid' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'passed' })
     expect(collected.rendered.complete).toBe(false)
@@ -82,6 +101,7 @@ describe('bounded rendered Search sections', () => {
       collectedAt: new Date().toISOString(), complete: false, observations }
     const policy = { policy: 'search', version: 1, kind: 'flag', reason: 'title_empty', sources: ['rendered-dom'] }
     expect(assessSearchRecovery(receipt, 'title-missing', policy)).toMatchObject({ comparable: false, verdict: 'unknown' })
-    expect(assessSearchRecovery(receipt, 'title-missing', { ...policy, version: 2 })).toMatchObject({ comparable: true, verdict: 'passed' })
+    expect(assessSearchRecovery(receipt, 'title-missing', { ...policy, version: 2 })).toMatchObject({ comparable: false, verdict: 'unknown' })
+    expect(assessSearchRecovery(receipt, 'title-missing', { ...policy, version: 3 })).toMatchObject({ comparable: true, verdict: 'passed' })
   })
 })

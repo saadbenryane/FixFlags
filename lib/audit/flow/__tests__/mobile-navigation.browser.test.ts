@@ -9,6 +9,42 @@ import { mobileNavigationFlags } from '../mobile-navigation-evidence'
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('native mobile navigation', () => {
   afterAll(closeBrowser)
+  it.each([
+    { label: 'restored child visibility', parent: 'visibility:hidden', panel: 'visibility:visible', visible: true },
+    { label: 'ordinary visible navigation', parent: '', panel: '', visible: true },
+    { label: 'inherited hidden visibility', parent: 'visibility:hidden', panel: '', visible: false },
+    { label: 'transparent ancestor', parent: 'opacity:0', panel: 'opacity:1', visible: false },
+    { label: 'display suppression', parent: 'display:none', panel: 'display:block', visible: false },
+    { label: 'suppressed ancestor contents', parent: 'content-visibility:hidden', panel: '', visible: false },
+  ])('$label agrees with actual rendered links', async scenario => {
+    const server = createServer((_request, response) => {
+      response.setHeader('content-type', 'text/html')
+      response.end('<!doctype html><title>Useful website service</title><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<header><button type="button" aria-controls="navigation" aria-expanded="false" onclick="const panel=document.getElementById(\'navigation\');panel.hidden=!panel.hidden;this.setAttribute(\'aria-expanded\',String(!panel.hidden))">Menu</button>' +
+        '<div style="' + scenario.parent + '"><nav id="navigation" aria-label="Main" style="' + scenario.panel + '" hidden>' +
+        Array.from({ length: 6 }, (_, i) => '<a href="/feature-' + i + '">Feature ' + i + '</a>').join(' ') +
+        '</nav></div></header><main><h1>Useful service for teams</h1><p>Choose public information for your team.</p></main>')
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const url = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+      const session = await createAuditPage(await getAuditBrowser(), url, { profile: MOBILE_CAPTURE_PROFILE, allowLocalhost: true, journeySafe: true, deadline: Date.now() + 12_000 })
+      try {
+        await session.page.getByRole('button', { name: 'Menu', exact: true }).tap()
+        const native = await session.page.locator('#navigation a').first().evaluate(element => {
+          const rect = element.getBoundingClientRect()
+          return element.checkVisibility({ opacityProperty: true, visibilityProperty: true }) &&
+            element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))
+        })
+        expect(native).toBe(scenario.visible)
+        await session.page.getByRole('button', { name: 'Menu', exact: true }).tap()
+        const observed = await collectMobileNavigation(session.page, Date.now() + 6000)
+        expect(observed.complete).toBe(true)
+        expect(observed.observations[0].opened).toBe(scenario.visible)
+        expect(mobileNavigationFlags(observed.observations, url)).toHaveLength(scenario.visible ? 0 : 1)
+      } finally { session.disposeNetwork(); await session.page.context().close() }
+    } finally { server.closeAllConnections(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) }
+  })
   it('observes missing and failed openers, working portals, compact navigation and refused mutations', async () => {
     let mode = 'missing', submissions = 0
     const links = Array.from({ length: 6 }, (_, index) => `<a href="/feature-${index}?token=PRIVATE_NAVIGATION_VALUE">Feature ${index}</a>`).join('')

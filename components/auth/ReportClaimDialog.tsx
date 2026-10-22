@@ -42,8 +42,7 @@ export function ReportClaimDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain p-5 sm:p-6">
-        <DialogTitle className="sr-only">{copy.title}</DialogTitle>
+      <DialogContent header={<DialogTitle className="sr-only">{copy.title}</DialogTitle>} className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md">
         <DialogDescription className="sr-only">{copy.body}</DialogDescription>
         <Suspense fallback={<p role="status" className="py-8 text-center text-sm text-muted-foreground">{AUTH.reportGate.preparingOptions}</p>}>
           <AuthFlow

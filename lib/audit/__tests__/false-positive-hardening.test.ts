@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isDeadHref, isNonPageActionHref, classifyCtaHref } from '@/lib/audit/flow/link-scoring'
+import { isNonPageActionHref, classifyCtaHref } from '@/lib/audit/flow/link-scoring'
 import { scoreCtaCandidates } from '@/lib/audit/flow/score-cta-candidates'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
@@ -61,19 +61,15 @@ function checkIds(findings: Array<{ checkId: string }>): string[] {
 describe('mailto:/tel: are not dead links (profilium cta-dead-link false positive)', () => {
   it('classifies mailto/tel/sms as intentional actions, not placeholders', () => {
     for (const href of ['mailto:contact@profilium.co', 'tel:+15555551212', 'sms:+15555551212']) {
-      expect(isDeadHref(href)).toBe(false)
       expect(isNonPageActionHref(href)).toBe(true)
       expect(classifyCtaHref(href).isPlaceholder).toBe(false)
     }
   })
 
-  it('still treats empty, #, and javascript: hrefs as dead', () => {
-    expect(isDeadHref('')).toBe(true)
-    expect(isDeadHref('#')).toBe(true)
-    expect(isDeadHref('javascript:void(0)')).toBe(true)
-    expect(isDeadHref('about:blank')).toBe(true)
-    expect(isDeadHref('/pricing')).toBe(false)
-    expect(isDeadHref('https://app.profilium.co/signup')).toBe(false)
+  it('retains placeholder declarations without claiming their click behavior was tested', () => {
+    for (const href of ['', '#', 'javascript:void(0)', 'about:blank']) expect(classifyCtaHref(href).isPlaceholder).toBe(true)
+    for (const href of ['/pricing', 'https://app.profilium.co/signup']) expect(classifyCtaHref(href).isPlaceholder).toBe(false)
+    for (const href of ['#/signup', '#!/signup']) expect(classifyCtaHref(href)).toMatchObject({ isPlaceholder: false, isActionable: false })
   })
 
   it('does not fire cta-dead-link for a mailto or tel CTA', () => {
@@ -98,7 +94,7 @@ describe('mailto:/tel: are not dead links (profilium cta-dead-link false positiv
 })
 
 describe('scroll-depth sanity caps (profilium 10243px on 812px viewport)', () => {
-  it('never reports CRITICAL for a CTA far beyond two screens of scroll', () => {
+  it('retains deep action measurements as contextual review', () => {
     const flags = runLayoutChecks(
       captureMetrics({
         mobilePrimaryCtaTopPx: 10243,
@@ -108,10 +104,12 @@ describe('scroll-depth sanity caps (profilium 10243px on 812px viewport)', () =>
       })
     )
     expect(checkIds(flags)).toContain('cta-below-fold-mobile')
-    expect(flags[0]?.severity).toBe('IMPORTANT')
+    expect(flags[0]?.severity).toBe('POLISH')
+    expect(flags[0]?.evidence).toContain('10243px')
+    expect(flags[0]?.fix).toContain('If ')
   })
 
-  it('keeps CRITICAL for a CTA just below the fold', () => {
+  it('does not infer a blocked journey from an action just below the fold', () => {
     const flags = runLayoutChecks(
       captureMetrics({
         mobilePrimaryCtaTopPx: 900,
@@ -120,7 +118,8 @@ describe('scroll-depth sanity caps (profilium 10243px on 812px viewport)', () =>
         mobileDocumentHeight: 4000,
       })
     )
-    expect(flags[0]?.severity).toBe('CRITICAL')
+    expect(flags[0]?.severity).toBe('POLISH')
+    expect(flags[0]?.evidence).toContain('900px')
   })
 
   it('suppresses the flag when the measurement is impossible (beyond document height)', () => {

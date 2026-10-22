@@ -7,6 +7,7 @@ const ROOT = process.cwd()
 const EVENT_ALIASES: Record<string, string> = {
   trackLandingView: 'landing_view',
   trackMarketingPageView: 'marketing_page_view',
+  trackToolInteraction: 'tool_interaction',
 }
 
 const SKIP_FILES = new Set([

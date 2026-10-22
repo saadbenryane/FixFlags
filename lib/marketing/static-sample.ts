@@ -10,6 +10,7 @@ import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { originalFixture } from '@/lib/demo/fixtures/original'
 import { DEMO_BRAND } from '@/lib/demo/brand'
+import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 
 const SAMPLE_URL = DEMO_BRAND.sampleUrl
 
@@ -69,8 +70,8 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     problem: 'Primary CTA is hidden below the fold on mobile',
     evidence: 'On mobile (375×812), the primary CTA starts below the first screen and requires scrolling.',
     whyItMatters: 'People can miss the main next step, which can reduce conversions.',
-    fix: 'Reduce the mobile hero height and place the primary CTA in the first viewport.',
-    agentPrompt: 'At 375px, reduce the hero media height and keep the primary CTA visible within the first 812px.',
+    fix: C.actionPosition,
+    agentPrompt: null,
     verificationRule: 'At 375×812, the primary CTA is visible without scrolling.',
     pageUrl: null,
   },
@@ -97,8 +98,8 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     problem: 'Feature copy contains placeholder language',
     evidence: `The first feature description starts with “${originalFixture.features[0]?.description ?? 'Lorem ipsum'}”.`,
     whyItMatters: 'Placeholder copy prevents visitors from evaluating the feature.',
-    fix: 'Replace placeholder language with a specific pre-flight-check outcome.',
-    agentPrompt: 'Replace the first feature description with a specific customer outcome and remove all placeholder wording.',
+    fix: C.placeholder,
+    agentPrompt: null,
     verificationRule: 'No placeholder wording remains in the rendered feature section.',
     pageUrl: null,
   },

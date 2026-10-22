@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveInput, InteractiveSelect } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
@@ -73,9 +74,9 @@ function ConfirmKind({
         {choices.includes('SIGNUP') ? (
           <label className="mt-3 block max-w-sm text-sm font-medium">
             Safe Signup fixture
-            <select className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3" value={fixtureId} onChange={(event) => setFixtureId(event.target.value)}>
+            <InteractiveSelect className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3" value={fixtureId} onChange={(event) => setFixtureId(event.target.value)}>
               {fixtures.map((fixture) => <option key={fixture.id} value={fixture.id}>{fixture.name}</option>)}
-            </select>
+            </InteractiveSelect>
           </label>
         ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -144,7 +145,7 @@ function RenameOutcome({ siteId, outcome }: { siteId: string; outcome: SiteOutco
       <label className="sr-only" htmlFor={`outcome-name-${outcome.id}`}>
         {OUTCOME_CONFIRMATION.nameLabel}
       </label>
-      <input
+      <InteractiveInput
         id={`outcome-name-${outcome.id}`}
         value={name}
         onChange={(event) => setName(event.target.value)}

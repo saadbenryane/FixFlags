@@ -1,3 +1,4 @@
+import { captureScreenshot } from '../browser/capture-screenshot'
 import { type ScanAccessConfig } from '../scan-access'
 import { randomUUID } from 'node:crypto'
 import { auditPageObservation } from '../browser/observation-scope'
@@ -9,6 +10,9 @@ import { createOverlayInteractionRecorder, type OverlayInteractionRecorder, type
 import type { OverlayObservation, OverlayTarget } from '../checks/overlay-evidence'
 import { resolveSameOrigin, isIntentionalExternalCta, isSameSiteOrigin } from './link-scoring'
 import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
+import { observeRenderedCopy, type RenderedCopy } from '../browser/rendered-copy'
+import { readLoadingUi } from '../browser/loading-ui'
+import { hasMissingPageContent } from '../soft-404'
 import { anchorFromViewportRect } from './flow-evidence'
 import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
@@ -126,8 +130,7 @@ async function captureFlowStep(
 ): Promise<FlowScanStep> {
   let screenshotUrl: string | null = null
   try {
-    const buffer = (await page.screenshot({ type: 'png', fullPage: false,
-      ...(deadline ? { timeout: Math.max(1, deadline - Date.now()) } : {}) })) as Buffer
+    const buffer = await captureScreenshot(page, { type: 'png', fullPage: false, timeout: 1500 }, deadline)
     screenshotUrl = await uploadScreenshot(auditId, 'desktop', buffer, `${pageKey}-flow-${stepIndex}`, { deadline })
   } catch (err) {
     logger.error('Flow step screenshot failed', err)
@@ -217,7 +220,7 @@ async function runFlowScanWithinBudget(
   const discovered = await discoverFlowCtasWithFallback(page, pageUrl), candidates = discovered.candidates
   const actionEvidence: PrimaryActionEvidence = { version: 1,
     pageContext: primaryPageContext(pageUrl, page.url(), page.viewportSize(), auditPageObservation(page)?.scope), controlContext: null,
-    candidateCount: candidates.length, candidateComplete: discovered.complete || candidates.length > 0, presenceVersion: 3,
+    candidateCount: candidates.length, candidateComplete: discovered.complete || candidates.length > 0, presenceVersion: 5,
     clicked: false, clickBlocked: false, navigation: 'unknown', response: 'unknown', responseExpected: false, httpStatus: null }
   const originalActions = options.expectedOverlayTargets?.filter(target => target.kind === 'cta' && target.context.split(':')[3].startsWith('primary_action'))
   const originalIndexes = originalActions?.length ? await page.evaluate(selectors => selectors.flatMap(selector => {
@@ -258,6 +261,7 @@ async function runFlowScanWithinBudget(
   let clickResponse: BrowserResponse | null = null
   let beforeInspection: OverlayInspection | undefined
   let panelsBefore: ActionPanelObservation[] | null = null
+  let routeBefore: RenderedCopy | null = null
   let postClick: ReturnType<typeof startPostClickObservation> | undefined
   const recordDocumentResponse = (response: BrowserResponse) => {
     const request = response.request()
@@ -309,6 +313,7 @@ async function runFlowScanWithinBudget(
     }
     if (options.overlayOnly && !options.overlayRecorder?.activationRequired('primary_action')) return { status: 'success', steps, finalUrl: page.url(), ...ctaMeta }
     panelsBefore = await visibleActionPanels(page)
+    if (cta.fragmentRoute) routeBefore = await observeRenderedCopy(page).catch(() => null)
 
     // Bound the Playwright click itself. For real navigable hrefs, arm
     // waitForNavigation before the click so we do not miss the response.
@@ -383,7 +388,8 @@ async function runFlowScanWithinBudget(
   if (options.mode === 'primary' && clickResponse) await page.waitForLoadState('domcontentloaded', {
     timeout: Math.max(1, Math.min(1500, started + deadlineMs - Date.now())),
   }).catch(() => undefined)
-  actionEvidence.response = (await observeNavigationResponse(page, clickResponse)).state
+  const navigationObservation = await observeNavigationResponse(page, clickResponse)
+  actionEvidence.response = navigationObservation.state
   if (actionEvidence.response === 'error') {
     postClick?.cancel()
     actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) ? 'changed' : !skipNavigationWait ? 'same' : 'unknown'
@@ -393,11 +399,26 @@ async function runFlowScanWithinBudget(
     return { status: 'error_response', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
   }
   const declaredPanelOpened = Boolean(cta.controls && !panelWasVisible && await controlledPanelVisible(page, cta.controls))
-  const semanticPanelOpened = !urlsMeaningfullyChanged(landingUrl, page.url())
+  const declaredRouteReached = Boolean(cta.fragmentRoute && cta.href && new URL(cta.href, landingUrl).href === page.url())
+  const semanticPanelOpened = !urlsMeaningfullyChanged(landingUrl, page.url()) || declaredRouteReached
     ? actionPanelOpened(panelsBefore, await visibleActionPanels(page)) : false
-  if (declaredPanelOpened || semanticPanelOpened) actionEvidence.samePageProgress = declaredPanelOpened ? 'declared-panel' : 'semantic-panel'
-  actionEvidence.navigation = urlsMeaningfullyChanged(landingUrl, page.url()) || declaredPanelOpened || semanticPanelOpened ? 'changed'
-    : !skipNavigationWait && semanticPanelOpened !== null ? 'same' : 'unknown'
+  const routeAfter = navigationObservation.copy
+  const loading = cta.fragmentRoute ? await readLoadingUi(page).catch(() => null) : null
+  const routeSurfaceReady = Boolean(routeAfter && routeAfter.pageUrl === page.url() && loading?.readyState === 'complete' &&
+    !loading.loadingVisible && !hasMissingPageContent([...routeAfter.h1s, ...(loading.title ? [loading.title] : [])], routeAfter.pageText))
+  const beforeHeadings = new Set([...(routeBefore?.h1s ?? []), ...(routeBefore?.h2s ?? [])])
+  const renderedRoute = Boolean(declaredRouteReached && routeBefore?.complete && routeBefore.pageUrl === landingUrl &&
+    routeAfter?.complete && routeAfter.pageUrl === page.url() && routeAfter.pageText.trim() && routeAfter.pageText !== routeBefore.pageText &&
+    [...routeAfter.h1s, ...routeAfter.h2s].some(heading => !beforeHeadings.has(heading)) &&
+    routeSurfaceReady)
+  const routePanelOpened = routeSurfaceReady && (declaredRouteReached || page.url() === landingUrl) && (declaredPanelOpened || semanticPanelOpened)
+  if ((declaredPanelOpened || semanticPanelOpened) && (!cta.fragmentRoute || clickResponse || routePanelOpened))
+    actionEvidence.samePageProgress = declaredPanelOpened ? 'declared-panel' : 'semantic-panel'
+  if (renderedRoute) actionEvidence.samePageProgress = 'rendered-route'
+  actionEvidence.navigation = cta.fragmentRoute && !clickResponse
+    ? renderedRoute || routePanelOpened ? 'changed' : 'unknown'
+    : urlsMeaningfullyChanged(landingUrl, page.url()) || declaredPanelOpened || semanticPanelOpened ? 'changed'
+      : !skipNavigationWait && semanticPanelOpened !== null ? 'same' : 'unknown'
   if (actionEvidence.response === 'restricted' || actionEvidence.response === 'challenge') {
     postClick?.cancel()
     return { status: 'skipped', steps, finalUrl: page.url(), httpStatus: clickResponseStatus, ...ctaMeta }
@@ -407,6 +428,9 @@ async function runFlowScanWithinBudget(
     : await captureFlowStep(page, auditId, 1, 'After click', options.pageKey, started + deadlineMs))
 
   const finalUrl = page.url()
+
+  if (cta.fragmentRoute && !clickResponse && actionEvidence.navigation === 'unknown')
+    return { status: 'skipped', steps, finalUrl, postClickMetrics, ...ctaMeta }
 
   const destinationUX = options.mode !== 'primary' && urlsMeaningfullyChanged(landingUrl, finalUrl)
     ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, postClickMetrics)
@@ -439,7 +463,9 @@ async function runFlowScanWithinBudget(
     if (isSamePageHashHref(cta.href)) {
       const scrolledToAnchor = await page.evaluate((hash) => {
         ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-        const el = document.querySelector(hash)
+        let id: string
+        try { id = decodeURIComponent(hash.slice(1)) } catch { return false }
+        const el = document.getElementById(id) ?? document.querySelector('a[name="' + CSS.escape(id) + '"]')
         if (!el) return false
         const rect = el.getBoundingClientRect()
         return rect.top < window.innerHeight && rect.bottom > 0
@@ -484,14 +510,9 @@ async function controlledPanelVisible(page: Page, controls: string) {
     return ids.trim().split(/\s+/).some(id => {
       const panel = document.getElementById(id)
       if (!panel) return false
-      const rect = panel.getBoundingClientRect(), style = getComputedStyle(panel)
-      let node: Element | null = panel
-      while (node) {
-        const ancestor = getComputedStyle(node)
-        if (ancestor.display === 'none' || ancestor.visibility === 'hidden' || ancestor.opacity === '0') return false
-        node = node.parentElement
-      }
-      return rect.width > 0 && rect.height > 0 && rect.top < innerHeight && rect.bottom > 0 && rect.left < innerWidth && rect.right > 0 && style.visibility !== 'hidden'
+      const rect = panel.getBoundingClientRect()
+      return panel.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && getComputedStyle(panel).contentVisibility !== 'hidden' && rect.width > 0 && rect.height > 0 &&
+        rect.top < innerHeight && rect.bottom > 0 && rect.left < innerWidth && rect.right > 0
     })
   }, controls).catch(() => false)
 }

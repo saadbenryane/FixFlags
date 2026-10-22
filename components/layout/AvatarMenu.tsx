@@ -15,6 +15,7 @@ import {
 import { useMe, type MeUser } from '@/hooks/useMe'
 import { planLabel } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 
 function getInitials(name: string | null | undefined, email: string): string {
   const trimmedName = name?.trim()
@@ -61,10 +62,11 @@ export function AvatarMenu({
         <button
           type="button"
           className={cn(
-            'inline-flex rounded-full transition-transform duration-150 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+            'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition-transform duration-150 ease-out hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
             className
           )}
           aria-label="Account menu"
+          data-site-return-focus="account"
         >
           <Avatar
             fallback={getInitials(user.name, user.email)}
@@ -86,7 +88,7 @@ export function AvatarMenu({
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="gap-2">
             <Boxes className="h-4 w-4" />
-            Sites
+            {SITE_WORKSPACE_COPY.websites}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

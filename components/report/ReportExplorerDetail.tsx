@@ -174,7 +174,7 @@ export function FlagDetailPane({
             <FlagMetaPills flag={flag} />
           </div>
           {showPromptFooter ? (
-            <div data-flag-prompt-row className="mt-4 border-t border-border/30 pt-4">
+            <div data-flag-prompt-row className="mt-4 pt-4">
               {showPromptRow ? (
                 <FlagPromptRow
                   flag={flag}

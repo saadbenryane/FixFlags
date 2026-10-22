@@ -14,6 +14,20 @@ const friction = (type: JourneyEvaluation['frictionPoints'][number]['type']) => 
   description: 'Review the next action', evidence: 'The recorded page offers Create account.', severity: 'POLISH' as const,
   rubric: 'EXPERIENCE' as const, impactTag: 'FRICTION' as const, evidenceRefs: [ref('button "Create account"')] })
 describe('journey assessment evidence custody and condition validation', () => {
+  it('excludes historical planner expectations from prompt facts and admissible evidence', () => {
+    const expectedResult = 'Signup clearly presents fields and successful account creation.'
+    const planned = { ...step, actionType: 'evaluate', actionDetail: { planTarget: 'Signup page', expectedResult } }
+    const candidate = { ...friction('confusion'), evidenceRefs: [ref('button "Create account"'),
+      { stepNumber: 1, source: 'actionDetail' as const, quote: expectedResult }] }
+    const result = assessJourneyEvaluation({ ...empty(), frictionPoints: [candidate] }, [planned])
+    expect(result.evaluation.frictionPoints).toEqual([])
+    expect(result.assessment.rejections[0].reason).toBe('reference_mismatch')
+    expect(planned.actionDetail.expectedResult).toBe(expectedResult)
+    const prompt = buildEvaluatorUserPrompt({ url: step.url, journeyType: 'multi-step-funnel', goalAchieved: false, steps: [planned], summary: '' })
+    expect(prompt).not.toContain(expectedResult)
+    expect(prompt).not.toContain('planTarget')
+    expect(prompt).toContain(step.accessibilityTree)
+  })
   it('rejects nonexistent steps and legacy unanchored narrative on new admission', () => {
     const unanchored = { ...friction('confusion'), evidenceRefs: undefined }
     const evaluation = { ...empty(), frictionPoints: [unanchored, { ...friction('confusion'), stepNumber: 99 }] }
@@ -96,6 +110,7 @@ describe('journey assessment evidence custody and condition validation', () => {
     expect(journeyEvaluationProviderSchema.safeParse({ ...empty(), frictionPoints: [{ ...friction('confusion'), evidenceRefs: undefined }] }).success).toBe(false)
   })
   it('retains incomplete assessments in the task envelope independently of native completed evidence', () => {
+    expect(hasIncompleteJourneyAssessment({ data: { assessments: [{ version: 1, journeyType: 'multi-step-funnel', state: 'INCOMPLETE', reason: 'walk_incomplete', rejections: [] }] } })).toBe(true)
     const assessment = assessJourneyEvaluation({ ...empty(), frictionPoints: [friction('missing-feedback')] }, [step]).assessment
     expect(hasIncompleteJourneyAssessment({ data: { assessments: [assessment], pageReceipts: [{ complete: true }] } })).toBe(true)
     expect(hasIncompleteJourneyAssessment({ data: { assessments: [{ version: 2 }] } })).toBe(true)

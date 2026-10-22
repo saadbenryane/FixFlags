@@ -225,6 +225,70 @@ describe('wrapAuditJobError', () => {
 })
 
 describe('startWorker', () => {
+  it('starts browser recovery without holding admitted jobs behind the pending launch', async () => {
+    mocks.getBrowserDiagnostics.mockReturnValue({ connected: false, activeContexts: 0 })
+    let finish!: () => void
+    mocks.getAuditBrowser.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve }))
+    const { startWorker } = await import('@/lib/queue/worker')
+    const worker = startWorker()
+    try {
+      expect(mocks.getAuditBrowser).toHaveBeenCalledOnce()
+      mocks.runAudit.mockResolvedValue(undefined)
+      prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
+      await capturedProcessor!(makeJob())
+      expect(mocks.runAudit).toHaveBeenCalledWith('audit-abc')
+    } finally {
+      finish(); await worker.close()
+      mocks.getBrowserDiagnostics.mockReturnValue({ connected: true, activeContexts: 0 })
+    }
+  })
+
+  it('does not fail admitted work when its diagnostic heartbeat is rejected', async () => {
+    const { startWorker } = await import('@/lib/queue/worker')
+    const worker = startWorker()
+    mocks.touchWorkerHeartbeat.mockRejectedValueOnce(new Error('Diagnostic write unavailable'))
+    mocks.runAudit.mockResolvedValue(undefined)
+    prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
+    try {
+      await expect(capturedProcessor!(makeJob())).resolves.toBeUndefined()
+      expect(mocks.runAudit).toHaveBeenCalledWith('audit-abc')
+      expect(mocks.logger.warn).toHaveBeenCalledWith('Best-effort operation failed', expect.objectContaining({
+        operation: 'worker_heartbeat', phase: 'active', error: 'Diagnostic write unavailable',
+      }))
+    } finally { await worker.close() }
+  })
+
+  it('does not delay admitted work while a diagnostic heartbeat is pending', async () => {
+    const { startWorker } = await import('@/lib/queue/worker')
+    const worker = startWorker()
+    let finish!: () => void
+    mocks.touchWorkerHeartbeat.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve }))
+    mocks.runAudit.mockResolvedValue(undefined)
+    prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
+    const processing = capturedProcessor!(makeJob())
+    try { await vi.waitFor(() => expect(mocks.runAudit).toHaveBeenCalledWith('audit-abc')) }
+    finally { finish(); await processing; await worker.close() }
+  })
+
+  it('does not publish a late browser recovery after intake closes', async () => {
+    mocks.getBrowserDiagnostics.mockReturnValue({ connected: false, activeContexts: 0 })
+    let finish!: () => void
+    mocks.getAuditBrowser.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve }))
+    const { startWorker } = await import('@/lib/queue/worker')
+    const worker = startWorker()
+    await worker.close()
+    const published = mocks.touchWorkerHeartbeat.mock.calls.length
+    try {
+      expect(mocks.getAuditBrowser).toHaveBeenCalledOnce()
+      finish()
+      await Promise.resolve(); await Promise.resolve()
+      expect(mocks.touchWorkerHeartbeat).toHaveBeenCalledTimes(published)
+    } finally {
+      finish()
+      mocks.getBrowserDiagnostics.mockReturnValue({ connected: true, activeContexts: 0 })
+    }
+  })
+
   it('keeps publishing truthful idle heartbeats during repeated browser recovery failures', async () => {
     vi.useFakeTimers()
     mocks.getBrowserDiagnostics.mockReturnValue({ connected: false, activeContexts: 0 })
@@ -233,8 +297,8 @@ describe('startWorker', () => {
     const worker = startWorker()
     try {
       await vi.advanceTimersByTimeAsync(40_000)
-      expect(mocks.touchWorkerHeartbeat.mock.calls.filter(([update]) => update.queueState === 'idle' && update.browserOk === false)).toHaveLength(2)
-      expect(mocks.getAuditBrowser).toHaveBeenCalledTimes(2)
+      expect(mocks.touchWorkerHeartbeat.mock.calls.filter(([update]) => update.queueState === 'idle' && update.browserOk === false)).toHaveLength(3)
+      expect(mocks.getAuditBrowser).toHaveBeenCalledTimes(3)
     } finally {
       await worker.close()
       mocks.getBrowserDiagnostics.mockReturnValue({ connected: true, activeContexts: 0 })
@@ -260,6 +324,7 @@ describe('startWorker', () => {
     expect(mocks.touchWorkerHeartbeat).toHaveBeenCalledWith({
       browserOk: true,
       activeBrowserContexts: 0,
+      queueState: 'idle',
     })
   })
 

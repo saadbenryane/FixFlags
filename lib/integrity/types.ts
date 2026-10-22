@@ -8,6 +8,7 @@ export type PathReasonCode =
   | 'buy_control_unclickable'
   | 'add_to_cart_noop'
   | 'checkout_error'
+  | 'checkout_surface_unavailable'
   | 'no_buy_control'
   | 'bot_wall'
   | 'password_gate'
@@ -38,6 +39,7 @@ export interface WalkOutcome {
   pageUnavailable: boolean
   failedStep: PathStepLabel | null
   safetyRefused?: boolean
+  checkoutSurfaceUnavailable?: boolean
 }
 
 export interface PathProbeAttempt {

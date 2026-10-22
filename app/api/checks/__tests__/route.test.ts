@@ -83,6 +83,12 @@ describe('POST /api/checks - billing gating enforcement', () => {
     })
   })
 
+  it('passes the supplied browser route into shared admission without replacing it with its document', async () => {
+    const url = 'https://example.com/app/#/pricing'
+    expect((await POST(postReq({ url }))).status).toBe(201)
+    expect(checkAndPlan).toHaveBeenCalledWith(expect.objectContaining({ url }))
+  })
+
   it('returns 402 AUTH_REQUIRED when createAndEnqueueAudit rejects anon teaser', async () => {
     checkAndPlan.mockRejectedValue(
       new AuditLimitError('AUTH_REQUIRED', {

@@ -126,11 +126,11 @@ describe('probeFormValidation', () => {
     document.body.innerHTML = '<main><p>No form here</p></main>'
     assert.equal((await probeFormValidation(makePage())).formValidation, 'skipped')
   })
-  it('reports the actual native constraint observation for empty required fields', async () => {
+  it('retains native constraint evidence without inventing feedback timing in a non-isolated probe', async () => {
     document.body.innerHTML = '<main><form><input name="email" type="email" required><button type="submit">Subscribe</button></form></main>'
     const result = await probeFormValidation(makePage())
     assert.equal(result.formValidation, 'ok')
-    assert.equal(result.feedbackMs, 0)
+    assert.equal(result.feedbackMs, null)
     assert.equal(result.evidence?.reason, 'native_validation')
   })
   it('skips forms without required fields', async () => {

@@ -1,9 +1,12 @@
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { loadEffectiveEntitlements } from '@/lib/billing/effective-entitlements'
 import { prisma } from '@/lib/db'
+import { ANALYSIS_RECOVERY_MS } from './progressive/contracts'
 import { dispatchAudit } from './dispatch'
 import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import type { SiteRecord } from '@/lib/sites/types'
 import { AuditStatus, Prisma } from '@prisma/client'
 import type { RecheckTrigger } from '@prisma/client'
@@ -15,7 +18,7 @@ import {
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
-import { assertPublicAuditUrl } from '@/lib/audit/url'
+import { assertPublicNavigationUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
 import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/check-limit'
 import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
@@ -29,6 +32,8 @@ import {
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
+import { canonicalProductHost } from '@/lib/audit/product-intelligence'
+import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { ensureSiteForAudit } from '@/lib/sites/ensure-site'
 import { admitScanAccess } from './scan-access-store'
 import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
@@ -44,6 +49,7 @@ import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
 import type { Plan } from '@prisma/client'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { assertAdminDomainActor, type AdminDomainActor } from '@/lib/admin/domain-actor'
+import { assertScheduledClaim, staleScheduledClaim, type ScheduledRunClaim, type ScheduledClaimProject } from '@/lib/sites/application/scheduled-admission'
 
 export interface CreateAuditOptions {
   url: string
@@ -83,6 +89,7 @@ export interface CreateAuditOptions {
   /** Existing tenant-owned request attached atomically before the Audit job is enqueued. */
   runRequestId?: string
   runRequestAdmission?: Prisma.RunRequestUncheckedCreateInput
+  scheduledClaim?: ScheduledRunClaim
   executionSpec?: ExecutionSpec
   operator?: AdminDomainActor
   /** Internal retry admission, authorized against this exact terminal Audit by its transport. */
@@ -153,10 +160,10 @@ async function assertParentAuditAllowed(
   parentId: string,
   userId: string | null | undefined,
   retryParent = false,
-): Promise<{ id: string; userId: string | null; status: AuditStatus; reviewDepth: number; isPublic: boolean }> {
+): Promise<{ id: string; userId: string | null; projectId: string | null; status: AuditStatus; reviewDepth: number; isPublic: boolean }> {
   const parent = await prisma.audit.findUnique({
     where: { id: parentId },
-    select: { id: true, userId: true, status: true, reviewDepth: true, isPublic: true },
+    select: { id: true, userId: true, projectId: true, status: true, reviewDepth: true, isPublic: true },
   })
 
   if (!parent) {
@@ -202,7 +209,7 @@ async function resolveStoredReviewDepth(options: {
 export async function createAndEnqueueAudit(
   options: CreateAuditOptions
 ): Promise<CreateAuditResult> {
-  const url = (await assertPublicAuditUrl(options.url)).toString()
+  const url = (await assertPublicNavigationUrl(options.url)).toString()
   const attribution = options.attribution
   const userId = options.userId ?? null
 
@@ -230,22 +237,15 @@ export async function createAndEnqueueAudit(
     userId,
   })
 
-  let projectId: string | null = null
-  if (userId) {
-    if (options.parentId) {
-      const parent = await prisma.audit.findUnique({
-        where: { id: options.parentId },
-        select: { projectId: true },
-      })
-      projectId = parent?.projectId ?? null
-    }
-    if (!projectId) {
-      const existing = await prisma.project.findUnique({
-        where: { userId_canonicalHost: { userId, canonicalHost: new URL(url).hostname } },
-        select: { id: true },
-      })
-      projectId = existing?.id ?? null
-    }
+  let projectId: string | null = options.runRequestAdmission?.projectId ?? parentAudit?.projectId ?? null
+  if (options.runRequestAdmission && parentAudit?.projectId && parentAudit.projectId !== projectId)
+    throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
+  if (userId && !projectId) {
+    const existing = await prisma.project.findUnique({
+      where: { userId_canonicalHost: { userId, canonicalHost: canonicalProductHost(url) } },
+      select: { id: true },
+    })
+    projectId = existing?.id ?? null
   }
 
   const resolvedScanAccess = options.scanAccess ?? null
@@ -259,11 +259,10 @@ export async function createAndEnqueueAudit(
   const data = {
     url,
     userId,
-    // Anonymous analysis retains its public-report contract. Owned Site runs
-    // and credentialed captures contain tenant evidence, not public shares.
-    isPublic: !options.runRequestId && !options.runRequestAdmission && !resolvedScanAccess &&
-      (!userId || Boolean(options.retryParent)) &&
-      (!options.retryParent || parentAudit?.isPublic === true),
+    // New evidence is private from admission. Explicit retries retain an
+    // existing public report's visibility without publishing new first checks.
+    isPublic: Boolean(options.retryParent && parentAudit?.isPublic === true &&
+      !options.runRequestId && !options.runRequestAdmission && !resolvedScanAccess),
     projectId,
     scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,
     parentId: options.parentId ?? null,
@@ -280,7 +279,7 @@ export async function createAndEnqueueAudit(
     status: 'QUEUED' as const,
     progress: PIPELINE_PROGRESS.QUEUED,
     executionSpec: { ...executionSpec, reviewDepth, scanAccess: { kind: resolvedScanAccess ? 'explicit' : 'public', origin: new URL(url).origin } } as Prisma.InputJsonValue,
-    recoveryUntil: new Date(Date.now() + 60 * 60_000),
+    recoveryUntil: new Date(Date.now() + ANALYSIS_RECOVERY_MS),
     dispatchState: 'PENDING' as const,
     dispatchNextAt: new Date(Date.now() + Math.max(0, options.delayMs ?? 0)),
     includeAi,
@@ -323,7 +322,29 @@ export async function createAndEnqueueAudit(
       const cleanup = Boolean(options.operator && executionSpec.scope === 'ACCOUNT_CHECKS' && executionSpec.accountChecks?.mode === 'cleanup')
       const policy = await loadEffectiveEntitlements(userId,tx)
       if(!policy || !policy.available && !cleanup) throw new ParentAuditError('This account cannot start new work.',403)
-      if (!cleanup) {
+      if (options.scheduledClaim && !options.runRequestAdmission) throw staleScheduledClaim()
+      if (options.runRequestAdmission) {
+        // An existing Site command retains its selected identity. Only new-URL
+        // admission may create or restore a Site through hostname resolution.
+        const [ownedProject] = await tx.$queryRaw<Array<ScheduledClaimProject & { id: string; canonicalHost: string | null }>>`
+          SELECT "id", "url", "canonicalHost", "watchInterval", "watchEveryMinutes",
+            "watchNextRunAt", "watchLastAttemptAt", "watchLeaseUntil" FROM "projects"
+          WHERE "id" = ${options.runRequestAdmission.projectId} AND "userId" = ${userId}
+            AND (${cleanup} OR "deletedAt" IS NULL)
+          FOR UPDATE
+        `
+        if (options.scheduledClaim) {
+          if (!ownedProject || !isWatchReview || options.runRequestAdmission.source !== 'WATCH' ||
+            !['SITE', 'OUTCOMES'].includes(executionSpec.scope) || !policy.watchIntervals.includes(options.scheduledClaim.interval))
+            throw staleScheduledClaim()
+          assertScheduledClaim(ownedProject, options.scheduledClaim)
+        }
+        if (!ownedProject) throw new SiteNotFound()
+        if (!cleanup && canonicalProductHost(url) !== (ownedProject.canonicalHost ?? canonicalProductHost(ownedProject.url)))
+          throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
+        projectId = ownedProject.id
+        if (!cleanup) await ensureDefaultMonitoring(tx, projectId, userId)
+      } else if (!cleanup) {
         try {
           const ownedProject = await ensureProductProject(userId, url, tx)
           if (options.parentId && projectId && projectId !== ownedProject.id) {
@@ -337,7 +358,7 @@ export async function createAndEnqueueAudit(
           throw error
         }
       }
-      if(cleanup && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new ParentAuditError('Cleanup Site not found.',404)
+      if(cleanup && !options.runRequestAdmission && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new SiteNotFound()
       const user = await rollUserUsagePeriod(tx, userId)
       if (!user) throw new Error('User not found')
       if (options.operator && projectId) await assertAdminDomainActor(options.operator, userId, projectId, tx)
@@ -510,7 +531,7 @@ export async function createAndEnqueueAudit(
       })
     })
   } else {
-    audit = await prisma.$transaction(async (tx) => {
+    audit = await executionTransaction(async (tx) => {
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(
           hashtextextended(${`fixflags:anon-url-reuse:${visitorKey}:${url}`}, 0)
@@ -536,7 +557,7 @@ export async function createAndEnqueueAudit(
         const owned = await tx.audit.findFirst({
           where: {
             id: ownedAuditId,
-            isPublic: true,
+            userId: null,
             ...(options.retryParent ? { parentId: options.parentId } : {}),
             AND: [
               { status: { not: 'FAILED' } },

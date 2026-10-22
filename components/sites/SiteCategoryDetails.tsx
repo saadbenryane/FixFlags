@@ -31,11 +31,11 @@ export function SiteCategoryDetails({ selected, selectedFlags, selectedRecommend
   onClose: () => void; restoreFocus: () => void;
 }) {
   const SelectedIcon = selected ? BOARD_CARD_ICONS[selected.id] : null
-  return (      <ResponsiveDepth open={Boolean(selected)} onOpenChange={(open) => { if (!open) onClose() }} onCloseAutoFocus={(event) => {
+  return (      <ResponsiveDepth header={<DialogTitle className="flex items-center gap-3 text-2xl">{SelectedIcon ? <span className="inline-flex h-10 w-10 items-center justify-center rounded-control bg-muted"><SelectedIcon className="h-5 w-5" aria-hidden /></span> : null}{selected?.name}</DialogTitle>} continuationContext="category" open={Boolean(selected)} onOpenChange={(open) => { if (!open) onClose() }} onCloseAutoFocus={(event) => {
           event.preventDefault()
           restoreFocus()
         }}>
-          <DialogTitle className="flex items-center gap-3 pr-12 text-2xl">{SelectedIcon ? <span className="inline-flex h-10 w-10 items-center justify-center rounded-control bg-muted"><SelectedIcon className="h-5 w-5" aria-hidden /></span> : null}{selected?.name}</DialogTitle>
+
       {confirmedOutcomes.filter(outcome => !(outcome.kind === 'AVAILABILITY' && outcome.inferenceSource !== 'user' && outcome.name === 'This page loads')).filter(outcome => selected?.id === (outcome.kind === 'AVAILABILITY' ? 'site' : 'conversion')).map((outcome) => (
         <OutcomeSummaryCard
           key={outcome.id}

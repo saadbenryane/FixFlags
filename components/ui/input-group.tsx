@@ -1,5 +1,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+import { InteractiveButton, InteractiveInput } from './interactive-controls'
+import { hasClientInteraction } from './client-interaction'
 
 export type InputGroupProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -21,8 +23,9 @@ export function InputGroup({ className, ...props }: InputGroupProps) {
 export type InputGroupInputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 export const InputGroupInput = React.forwardRef<HTMLInputElement, InputGroupInputProps>(
-  ({ className, ...props }, ref) => (
-    <input
+  ({ className, ...props }, ref) => {
+    const Control = hasClientInteraction(props) ? InteractiveInput : 'input'
+    return <Control
       ref={ref}
       className={cn(
         'h-12 min-h-12 min-w-0 flex-1 rounded-[calc(var(--radius-control)-2px)] border-0 bg-transparent px-3.5 py-0 text-base leading-none shadow-none',
@@ -32,27 +35,28 @@ export const InputGroupInput = React.forwardRef<HTMLInputElement, InputGroupInpu
       )}
       {...props}
     />
-  )
+  }
 )
 InputGroupInput.displayName = 'InputGroupInput'
 
 export type InputGroupButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>
 
 export const InputGroupButton = React.forwardRef<HTMLButtonElement, InputGroupButtonProps>(
-  ({ className, ...props }, ref) => (
-    <button
+  ({ className, ...props }, ref) => {
+    const Control = hasClientInteraction(props) ? InteractiveButton : 'button'
+    return <Control
       ref={ref}
       type="button"
       className={cn(
         'inline-flex h-12 min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-[calc(var(--radius-control)-2px)] px-5 text-base font-semibold',
         'transition-[color,background-color,box-shadow,transform] duration-200 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-        'disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]',
+        'disabled:pointer-events-none disabled:opacity-50',
         'sm:w-auto sm:min-w-[10.5rem] sm:px-6',
         className
       )}
       {...props}
     />
-  )
+  }
 )
 InputGroupButton.displayName = 'InputGroupButton'

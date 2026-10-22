@@ -4,13 +4,13 @@ import { normalizeVerifierUrl } from '@/lib/improvements/verifier-scope'
 /** Share scope and freshness rules between explicit fixes and automatic recovery. */
 export function assessSearchRecovery(receipt: SearchReceipt, checkId: string, attentionPolicy: unknown, originalPageUrl?: string | null, originalPages?: readonly string[]) {
   const policy = searchAttentionSchema.safeParse(attentionPolicy)
-  if (!policy.success && attentionPolicy && typeof attentionPolicy === 'object' && 'policy' in attentionPolicy && attentionPolicy.policy === 'search')
+  if (!policy.success && attentionPolicy != null)
     return { comparable: false, verdict: 'unknown' as const, observationIds: receipt.observations.filter(item => item.checkId === checkId).map(item => item.id) }
   if (policy.success && policy.data.pageScopes) {
     const scopes = policy.data.pageScopes.filter(scope => normalizeVerifierUrl(scope.pageUrl) === normalizeVerifierUrl(receipt.pageUrl))
     if (!scopes.length) return { comparable: false, verdict: 'unknown' as const, observationIds: receipt.observations.filter(item => item.checkId === checkId).map(item => item.id) }
     const results = scopes.map(scope => assessScope(receipt, checkId, { ...policy.data, version: scope.version ?? policy.data.version, reason: scope.reason,
-      sources: scope.sources, entityTypes: scope.entityTypes, google: scope.google, markupTargets: scope.markupTargets }))
+      sources: scope.sources, entityTypes: scope.entityTypes, google: scope.google, markupTargets: scope.markupTargets, resourceKeys: scope.resourceKeys }))
     const comparable = results.every(result => result.comparable)
     return { comparable, verdict: !comparable ? 'unknown' as const : results.some(result => result.verdict === 'failed') ? 'failed' as const : 'passed' as const,
       observationIds: [...new Set(results.flatMap(result => result.observationIds))] }
@@ -26,13 +26,17 @@ function assessScope(receipt: SearchReceipt, checkId: string, attentionPolicy: u
   const policy = searchAttentionSchema.safeParse(attentionPolicy)
   const sources = policy.success ? policy.data.sources ?? [] : []
   const targets = policy.success ? policy.data.markupTargets ?? [] : []
+  const resources = policy.success ? policy.data.resourceKeys ?? [] : []
+  const resourceCheck = checkId === 'sitemap-missing' || checkId === 'search-sitemap-invalid'
   // Nested and unrelated entities have their own observations. Repair concerns
   // every recorded failing entity, type, source and property on this page.
   const observations = receipt.observations.filter(item => item.checkId === checkId && (!sources.length || sources.includes(item.source)) &&
+    (!resources.length || Boolean(item.resourceKey && resources.includes(item.resourceKey))) &&
     (!targets.length || targets.some(target => item.entityId === target.entityId && item.entityTypes?.includes(target.entityType) && item.source === target.source)))
   const expectedTypes = policy.success ? policy.data.entityTypes ?? [] : []
   const typesObserved = new Set(observations.flatMap(item => item.entityTypes ?? []))
   const comparable = observations.length > 0 && !receipt.observations.some(item => item.reason === 'observation_limit') &&
+    (!resourceCheck || resources.length > 0) && resources.every(key => observations.some(item => item.resourceKey === key)) &&
     (checkId !== 'search-structured-feature' || targets.length > 0) &&
     observations.every(item => item.checkVersion === (policy.success ? policy.data.version : 1)) &&
     observations.every(item => item.disposition !== 'unknown' && item.disposition !== 'not_applicable') &&

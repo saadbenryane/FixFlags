@@ -111,7 +111,7 @@ export default async function BillingPage() {
             {user.subscriptionStatus === 'CANCELED' ? copy.canceledBody : copy.unpaidBody}
           </Callout>
         )}
-        <dl className="grid gap-3 border-t border-border/60 pt-5 text-sm sm:grid-cols-3">
+        <dl className="grid gap-3 pt-5 text-sm sm:grid-cols-3">
           <div><dt className="text-xs text-muted-foreground">Websites</dt><dd className="mt-1 font-medium">{siteCount}{siteLimit !== null ? ` of ${siteLimit}` : ''}</dd></div>
           <div><dt className="text-xs text-muted-foreground">{copy.cadenceLabel}</dt><dd className="mt-1 font-medium">{betaAccess ? copy.betaCadence : isPaid ? 'Daily monitoring' : 'Weekly monitoring'}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Billing status</dt><dd className="mt-1 font-medium">{copy.state[accountState]}</dd></div>
@@ -136,7 +136,7 @@ export default async function BillingPage() {
         </div>
 
         {hasStripeCustomer ? (
-          <div className="space-y-2 border-t border-border/60 pt-4">
+          <div className="space-y-2 pt-4">
             <p className="text-xs text-muted-foreground">{copy.historyInvoicesHint}</p>
             <div className="flex flex-wrap items-center gap-3">
               <ManageSubscriptionButton label={copy.historyViewInvoices} />

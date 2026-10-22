@@ -27,7 +27,11 @@ Category finalization records deterministic evidence without requiring screensho
 or an AI summary. Shared collectors commit only admitted findings and repair
 assertions. Comparisons preserve the preceding category attempt and original
 full-site observations, including recommendations without an Improvement.
-The board and website list overlay only the applicable category's current evidence.
+The board, website list and check results request category evidence for the exact
+owned broad-analysis ID they are presenting. Selection matches its environment
+before reducing each category to its latest attempt. A newer recheck of another
+inventory, including a retained retry, cannot hide the relevant attempt and
+restore an older healthy answer. Independent account reads remain batched.
 Failed, missing or unfinished required work cannot reuse an older passing answer.
 API, MCP and category history use the immutable comparison and shared assessment.
 History also reads each finding's recorded Search attention policy when deriving
@@ -39,6 +43,279 @@ Provider responses in this fixture are simulated; this does not establish live
 Google acceptance.
 Local worker acceptance covers Search rechecks, Security repair and recurrence;
 live-provider and production acceptance remain separate requirements.
+
+Site and category page responsibility share `sites/page-coverage.ts`. The recorded
+scope includes admitted pages, actual page observations and discovered browser
+task intent. A collector interrupted before creating an AuditPage leaves that
+page in the denominator and in the next admitted monitoring or category cohort,
+even after its navigation link disappears. Admission retains the existing URL
+eligibility and page budget. Overview, account list, run results, category coverage
+and monitoring history use the same completeness calculation. Counts do not
+fabricate a page observation or a collection time for an uncollected URL.
+The disposable worker fixture reproduces both a newly discovered page and a
+previously retained page with neither collector able to create its row. It checks
+the current customer views, subsequent scheduled collection, category repair and
+recurrence. These are local execution results, not production monitoring proof.
+
+Broad source selection belongs to the owned Site and requested environment,
+rather than an exact match with its configured entry URL. The latest admitted
+broad scope supplies Site cohort priority, independently of collection status.
+Category rechecks retain their latest completed source as the comparison anchor.
+`sites/application/monitoring-responsibility.ts` combines earlier admitted broad
+entries, native page rows, planned browser URLs and valid frozen monitoring page
+intent. A later independent claim cannot retire an earlier branch by becoming
+the newest report. Responsibility also survives collection failure and signup
+before the original analysis finishes. These are obligations to check, never
+successful observations or permission to reuse an old conclusion.
+
+`sites/application/analysis-scope.ts` owns environment provenance for source
+selection, scheduled freshness, comparison and diagnostic recovery history.
+An Audit's explicit environment is authoritative. If that field is absent or
+null, its RunRequests must agree on their typed environment and any frozen
+environment. Conflicting or malformed records cannot establish context. Only
+history without any RunRequest retains the legacy production default. The SQL
+projection and ORM selection have independent native database parity checks.
+
+The default Site overview, account summary, current check results and broad trend
+select production evidence through one shared selector. A newer staging analysis
+cannot replace that source, including while active or failed, or through a legacy
+RunRequest snapshot. Conflicting legacy environment records establish no current
+source. Explicit run reads and activity history retain those analyses under
+their original identity and conclusions. This changes source selection, not the
+meaning or authorization of an explicitly configured Outcome.
+
+Legacy broad RunRequest snapshots also supply retained page and behavior intent
+when the original Audit has no scope snapshot. Missing environment is resolved
+in the read projection; the original records remain unchanged. New execution
+rebuilds current checks, bindings and authorization rather than copying them.
+Flag verification automatically inherits its original attempt's source
+environment. Replay checks both the recorded verifier and original source,
+including after the durable issue advances to a later occurrence. Production
+observations cannot close a legacy staging incident. This adds no environment
+choice to the customer workflow, storage table or execution queue.
+
+The ledger reader projects and deduplicates scope in PostgreSQL and transfers
+bounded batches. It skips history when the current compatible cohort fills the
+existing page budget. Rejected URLs do not consume that budget. Tenant, broad
+intent and environment constrain the source query; existing public URL rules
+still constrain every selected destination. Historical monitoring intent decodes
+independently of unrelated binding configuration. New executions rebuild their
+own current check and binding contracts. Claiming does not rewrite the original
+specification, page observations or completion time. A URL-first analysis can
+start on a pricing page while the claimed Site remains configured at its origin.
+
+Broad and category admission freeze `monitoringBehaviors`, the selected page
+and public-behavior pairs already admitted for continuing care. Public action,
+pricing navigation, slow replay and journeys remain distinct. The shared
+`publicPageBehaviors` policy supplies both the new execution snapshot and the
+task graph. A category admitted before its first task rows therefore retains its
+new responsibility. A later Watch keeps a discovered-page action without adding
+unrelated slow replay or journeys to that page. Existing entry-role snapshots
+remain supported by the historical decoder; new admission no longer writes them.
+
+`sites/application/monitoring-responsibility.ts` combines broad entry intent,
+recorded broad and category task scope, and compatible frozen behavior scope.
+Failed and unfinished tasks remain obligations, not proof that a check passed.
+Targeted verification and privileged binding task history cannot expand this
+public-behavior cohort. Current tenant, environment, URL eligibility, page budget
+and access admission still apply. The entry-only history reader was replaced,
+and no separate care table, queue or customer setting was introduced. Derived
+selection does not change command or retry identity. Site-wide bindings remain
+once per Outcome, independently of the number of behavior pages.
+
+Journey selection receives the page's own committed metadata. It no longer
+rereads primary-page HTML metadata for a retained entry. Evaluator usage updates
+include the original entry URL, and walkthrough timeline reads and merges share
+the existing execution fence so independent entry tasks cannot lose each other's
+observations. A local signed-claim worker fixture exercises an original entry
+interaction and walkthrough under a root Watch, unchanged and improved repair,
+and recurrence. Retained slow-replay admission is separately covered by the graph
+contract; this fixture does not establish its native execution or production care.
+
+Page and behavior history share a partial index over admitted `task:` rows,
+keyed by Audit ID and work kind. Browser, flow, slow replay and journey selection
+can avoid unrelated evaluator and receipt history. URLs stay outside the key so
+long admitted navigation values cannot introduce a B-tree tuple-width failure.
+Two separate concurrent migration statements create the shared index and retire
+the older browser-only index. The populated disposable fixture confirms that
+another write can commit while the build waits for an existing writer. Its
+24,001 synthetic rows yield about 400 examined browser rows and 800 behavior
+rows, rather than 24,000 behavior-query row visits before the index. These are
+bounded workload and migration proofs, not 24,001 actual checks, a latency
+promise or deployed database acceptance.
+
+Full-review planning distinguishes an admitted navigation from a discovery
+group. `navigationDestinationKey` retains the supplied path, trailing slash,
+query ordering and values, host and fragment conditions. Explicit retained
+navigations do not merge merely because discovery considers their inventory
+keys equivalent. Newly discovered candidates keep their existing grouping,
+importance order, plan depth and ceiling. The progressive coordinator and
+compatibility runner compare actual planned navigation identities when deciding
+whether a page has already run. The progressive initial graph already seeds
+frozen retained URLs independently. Planner truncation now compares eligible
+and selected navigations from that same selection pass, without a second scope
+reconstruction.
+
+URL admission uses `normalizeAuditNavigationUrl` and
+`assertPublicNavigationUrl` for a supplied browser destination. The shared
+public URL parser retains fragment state while keeping protocol, credential,
+hostname, DNS and public-address checks. `normalizeAuditUrl` and
+`assertPublicAuditUrl` retain their HTTP-document role, excluding fragments
+from transport. Basic HTTP uptime and hook requests keep that document scope.
+This follows the distinction between client-side fragment interpretation and
+resource retrieval in [RFC 3986 section 3.5](https://www.rfc-editor.org/rfc/rfc3986#section-3.5).
+
+The shared URL form trims surrounding whitespace and supplies HTTPS when no
+scheme is present. It preserves the remainder of the customer's destination,
+including trailing path slashes, query values and fragment routes. Removing
+slashes from the entire string changed those destinations before server
+admission. Post-signup resume uses the same submission path, retains the
+canonical root slash and starts the handed-off URL once across remounts.
+
+An explicitly admitted absolute fragment route remains eligible when another
+state on the same document becomes the next target. Discovery still excludes
+section-only candidates according to its existing bounded policy. Observed
+SitePage identities, Outcome targets and inferred purchase starts retain their
+full browser URL. Authorized Safe Form targets require that same navigation;
+a different fragment cannot inherit fixture consent. Reset and cleanup hooks
+retain their existing HTTP endpoints and authorization rules.
+
+Progressive finalization settles page lifecycle independently of optional AI,
+screenshots and performance measurements. A matching committed browser artifact
+with parsed metadata completes its own active page row; HTTP-only metadata,
+uncommitted collection or a different page identity cannot establish collection
+success. For collected rows, unknown completeness becomes partial, and known
+completeness remains unchanged. Remaining active rows settle as unavailable collection. Existing
+terminal pages and source artifacts remain intact. Site, category, diagnostic,
+replayed completion and exhausted finalization use this same settlement instead
+of the former category-only completion loop.
+
+Current Site overview and account-list evidence share
+`sites/application/current-evidence.ts`. It selects the latest broad attempt,
+retains prior observations during interruption, applies category evidence against
+the same baseline and uses current active findings. The readers no longer prepare
+coverage independently. Prior-observation reads omit comparison snapshots and
+full task artifacts they do not consume.
+
+A completed progressive analysis can still be publishing its findings. Its
+comparison receipt must match the Audit and its original parent before current
+views can report Clear. Category evidence uses the same publication boundary.
+Missing or invalid publication remains inconclusive without hiding known Flags
+or discarding collected observations. Historical run and monitoring conclusions
+use the immutable comparison, original scope and evidence at completion, so later
+repairs affect current attention without rewriting the earlier verdict. A
+disposable PostgreSQL fixture reproduces the former API/overview disagreement,
+checks missing and mismatched publication across the overview, list, API and
+history, then verifies recovery after a matching receipt appears. Reads leave
+the Audit and findings unchanged. This establishes local projection behavior,
+not collection or production-provider acceptance.
+
+New progressive Site and category publications also freeze their Site conclusion
+inside the existing comparison receipt. Its versioned descriptor retains required
+areas, completeness, gaps, observation and validity times, and a hash of the exact
+admitted specification. Customer Flag membership references the comparison's
+immutable entries, retaining their original wording without copying source
+evidence into another store. `sites/application/recorded-assessment.ts` now owns
+the shared interpretation for run APIs and monitoring history, replacing their
+separate broad and category preparation.
+
+Historical conclusions do not consult later detector or attention policy. Current
+Site overview and account-list assurance still require evidence compatible with
+current policy. Run reads can expose expiry against the original deadline;
+history evaluates the published conclusion at its original completion time.
+Invalid or mismatched conclusion data withholds a successful historical answer
+without concealing valid comparison findings. Existing comparisons without this
+descriptor retain their legacy evidence interpretation. Reads never backfill an
+original conclusion or rewrite a publication whose policy was not recorded.
+Local database cases exercise both Site and category detector upgrades and later
+corrections to mutable Flag rows. The worker fixture separately exercises signed
+claiming, default uptime, independent repair and recurrence through seven runs.
+Provider and deployed-state verification remain separate.
+
+Stored supporting observations must satisfy their private source contract.
+Reduced Site and comparison projections retain a server-derived unreadability
+marker without copying the private payload. A public observation summary cannot
+supply missing private verification rules or provenance. Important unreadable
+observations withhold both confirmed attention and a healthy conclusion across
+current views, run publication, history and Watch classification. Optional
+recommendations do not invalidate independently observed checks. Guidance uses
+the same availability boundary, including its pending state. Valid native and
+supported legacy findings retain their established classification. Older
+immutable comparisons without the marker retain their historical interpretation;
+reads do not retrofit an original evidence decision that was never recorded.
+Editor and plan handoffs accept the private stored envelope, or a redacted public
+view accompanied by that server-derived readability decision. An unmarked public
+view cannot establish private evidence custody. Malformed public observations
+remain unavailable even when the marker says the private source was readable.
+The Site copy service derives this decision before formatting the public view.
+
+The existing `/api/health/worker` diagnostic also checks current saved monitoring
+obligations through `sites/application/monitoring-operations.ts`, shared with
+operator summaries and detailed queues. Overdue schedules, overdue independent
+uptime probes and failed delivery records prevent an apparently healthy result
+from a live worker with an idle queue. The monitoring read uses a consistent,
+read-only snapshot with bounded database waits. Unavailable evidence remains
+unavailable. One ordered problem selection owns both `ok` and `status`. The
+endpoint remains HTTP 200 and does not gate deployment readiness. Its aggregate
+snapshot establishes current gaps, not a historical fulfillment rate, receipt of
+email, complete default-monitor coverage or external alerting configuration.
+
+Uptime operational selection starts from active Sites rather than existing
+monitor rows. It includes a committed Site whose automatic monitor is absent
+after the Site-creation grace, even when its next broad check is in the future.
+Existing overdue monitor eligibility remains intact. Operator counts, the
+paginated uptime queue and worker diagnostics share that predicate. The existing
+Site reconciliation action can admit the missing monitor through the normal
+uptime scheduler. No second setup or recovery path was introduced. A newly
+admitted probe closes the setup gap, but the Site's uptime remains unknown until
+an actual observation arrives. Removed Sites, inactive owners and Sites without
+committed care cannot create a missing-monitor obligation through this read.
+
+Shared page modules select admitted findings and assertions through
+`checks/receipt.ts` before deriving a category result. Ordinary page evaluation,
+specialized interaction and PageSpeed evaluation, and receipt publication use
+the same selector. The mobile module's Performance assertions cannot inherit a
+Conversion tap-target gap, and its Conversion assertions cannot inherit missing
+or failed performance measurements. Applicable failures and missing evidence
+remain in their own category. Broad checks keep all of their original
+requirements. Independent repair still requires the original observation's
+measurement conditions; excluding unrelated assertions does not supply missing
+comparison evidence.
+
+Repair-guidance state belongs to the finding's source Audit. Flag queries load
+that small state alongside their original evidence, and the shared Flag builder
+owns both usable guidance text and readiness. A newer broad analysis cannot
+make an older finding pending or unavailable. Site reads no longer overwrite
+individual readiness from the latest broad Audit. Pending projected guidance
+keeps existing Site polling active after analysis completion; settled work
+returns to the ordinary cadence. Flag actions accept live readiness only for
+the same source occurrence. A changed terminal state or explanation refreshes
+the existing Server Component content once per publication, retaining the
+verification draft and layout. Exact historical Flags absent from the current
+Site projection use settled prescription notices from their own source Audit
+and validated reconnects to request a fresh detail read. The shared notice
+contract lives in `sites/execution-events.ts`; client observers accept only its
+validated public fields. A notice cannot make guidance ready. Observer changes
+reuse the existing Site stream, and access revocation stops queued callbacks.
+No second polling loop or detail endpoint was added. Manual refresh remains
+available when transport is unavailable.
+
+Pages presentation combines collection coverage with its own unresolved findings.
+Completing every admitted page does not clear a Pages finding. Those findings
+retain attention while later collection is incomplete, stale or in progress;
+findings in other areas remain separate from the Pages conclusion.
+
+Site resource reads settle overlapping attempts against the newest validated
+read of the same Site before publishing data or errors to SWR. An obsolete
+rejection cannot restore a cached failure after a successful refresh and stop
+normal polling. A failed current refresh remains a failure, including when an
+older request later succeeds. Each HTTP read has a fifteen-second abort bound
+covering fetch and response-body reading; existing SWR retry and reconnect
+behavior then recover without another retry loop. Navigation fences retain the
+original Site identity, and malformed projections leave the dated view intact.
+Focused hook and settings checks reproduce recovery after both an obsolete
+failure and a stalled initial read. They do not establish the cause of a live
+disconnect or production proxy behavior.
 
 Owned Site admission persists automatic public availability through the existing
 Outcome and binding contract. Free defaults to weekly checks; eligible paid
@@ -52,6 +329,13 @@ Retry writes retain the original owner, target and setup-state fences, rather th
 using the owner's pause or monitoring-error fields. Successful setup clears the
 retry; no analysis credit or uptime incident is created by setup failure. These defaults do not depend on
 email delivery configuration or an active customer browser session.
+
+Automatic Site setup runs as an independent bounded callback in the existing
+worker scheduler, with the same five-second startup and thirty-second sweep.
+Due Site admission no longer invokes the setup batch. A new Site waiting on a
+database lock cannot delay an already configured Site's due admission. Setup
+retains its existing transactions, retry field and pause fences; each callback
+remains single-flight and drains through the existing scheduler shutdown.
 
 Legacy Project deletion uses the same locked Site removal command as current
 Site and operator callers. Remaining test accounts require the same exact
@@ -69,16 +353,248 @@ routes, ownership transfer during blocked writes, account acknowledgement,
 replacement admission and all three restoration paths. These are local proofs,
 not evidence that ambiguous historical legacy rows were classified or changed.
 
+Commands for an existing Site lock its selected Project under the current owner
+inside the admission transaction. They do not repeat new-URL identity resolution
+or restore a removed Site. Target hostname checks retain the existing canonical
+identity policy while execution preserves the configured protocol, www and port.
+The original parent must belong to that same Site. Scheduled admission also
+validates the exact target, cadence, due tick, attempt and unexpired scheduler
+lease against that locked row before creating either ledger. Changed claims are
+cancelled without a monitoring failure or retry. Previously admitted receipts
+remain replayable without creating work or changing the owner's saved schedule.
+
+Scheduled care delegates current overlap and receipt replay to shared Site
+admission. An Audit status alone cannot strand the next check. Older Watch
+executions without active request ownership remain protected by their physical
+lease or admitted progressive recovery window. Shared request recovery also
+recognizes legacy physical leases, including renewal before its conditional
+retirement write. Unowned legacy execution is fenced Failed through the existing
+physical expiry mechanism before its request settles, so a delayed queue delivery
+cannot restart it. New progressive ownership and completed observations cannot be
+retired by that legacy recovery. Completed observations remain reconcilable.
+`SITE_RUN_IN_PROGRESS` defers the claimed schedule without incrementing failure
+counts or erasing earlier failure information. A failed deferral write remains
+isolated to that Site. Existing claim fences, backoff and history stay intact.
+
+Replaying an unadvanced schedule tick requires a non-failed request and an
+available, non-failed Audit on the same Site. A failed, missing or foreign
+execution cannot count as a successful enqueue. The existing scheduler backoff
+then admits fresh care under current authorization. Reuse after a concurrent
+admission receives the same check; ordinary new admissions add no lookup.
+Request recovery also reconciles released terminal Audits before the longer
+request lease expires. Selection, global recovery and conditional settlement
+share that eligibility rule. A live physical lease remains protected.
+
+After shared execution admission, the Site's next-run clock and the admitted
+RunRequest's private schedule context commit in one transaction. This also covers
+a compatible manual execution serving due care. The context records the due
+tick, attempt, cadence, prior failure count and a hash of the configured target,
+without copying its URL or scheduler lease. Caller context cannot set this
+reserved field. Receipt replay does not re-enable a paused Site.
+
+Admission preserves earlier execution failures. Normal terminal reconciliation
+and the bounded Watch recovery pass use one completion projector. A matching
+failed execution schedules the existing 15-minute, one-hour or six-hour backoff,
+capped at the earlier normal due time. A matching completed execution clears
+the execution failure streak. Selection and the conditional write both protect
+the current owner, target, cadence, due time, attempt, lease and failure count.
+They preserve a newer pause, transfer or schedule decision and make concurrent
+recovery idempotent. An interrupted projection remains recoverable from the
+existing receipt. Historical receipts without the schedule context retain
+their records and ordinary cadence; no missing obligation is invented.
+Execution completion alone does not establish complete website observation or
+healthy findings. Evidence freshness and unavailable checks remain separate.
+
+Recorded analysis tasks that settle `EXHAUSTED` and `FAILED` also trigger that
+completion backoff, even if their containing Run and Audit completed. The
+shared recorded-completeness module owns the ORM and SQL interruption cohort.
+Selection and settlement check the same task condition. Historical task gaps,
+findings and the containing completed receipt stay intact. Blocked work,
+inapplicable capabilities, completed inconclusive observations and prescription
+enrichment do not by themselves enter this execution retry path.
+
+Scheduled scope selection reads the newest terminal broad analysis in the
+existing care window, with a bounded interrupted-task lookup. A failed execution
+or exhausted broad obligation requires a fresh broad attempt instead of being
+treated as reusable collection. An older completed analysis cannot conceal the
+newer interruption. A binding-only interruption still reuses compatible fresh broad
+collection and admits the currently authorized bindings. Each fresh attempt
+uses ordinary admission, authorization and execution limits; it does not reopen
+or extend the old task graph's recovery budget. Persistent failures retain
+backoff rather than clearing the streak at admission.
+
+`sites/application/scheduled-scope.ts` owns that source selection and its renewal
+time. When a narrow Outcome run reuses broad evidence, schedule advancement
+rechecks the source inside the locked transaction and chooses the earlier of the
+ordinary cadence and that source's original renewal time. The existing one-minute
+scheduler tolerance applies to both scope selection and renewal. A missing source
+leaves broad work due. A narrow run cannot renew a broad observation or add a full
+new period to its lifetime. The chosen date uses the existing immutable schedule
+context; replay retains it. No second timer or stored monitoring state is added.
+Controlled database fixtures advance the actual scheduler through four saved
+cadences and verify that renewal admits a broad run. They separately preserve a
+failed broad retry beside an older completed source. These establish scheduling
+and admission, not successful webpage collection or sustained production care.
+
+The source is selected by owned Site and production environment before reuse
+eligibility is evaluated. An entry-URL predicate cannot hide a newer failed or
+exhausted Site analysis behind older matching evidence. A completed source may
+cover another entry only through its recorded pages and compatible admitted
+scope. Queries, fragments, protocol and port keep their original identities.
+Freshness also consults `monitoring-responsibility.ts`, the same bounded ledger
+projection used by broad admission. An older analysis retained after the latest
+collection can add an unobserved responsibility; it requires broad work rather
+than borrowing that collection's timestamp. A missing or incompatible source
+does not fall back to an older healthy branch. These checks add no new schedule,
+responsibility store or customer control, and leave historical evidence unchanged.
+
+If compatible broad evidence is still fresh but no enabled Outcome has an
+enabled required binding, there is no narrow execution to admit. The scheduler
+rechecks the source and that shared selection inside the existing Site authority
+lock. It advances to the earlier of the normal cadence and original broad
+renewal, without an Audit, RunRequest, queue delivery, alert or new observation
+time. Its enqueue count remains zero. A newly enabled responsibility or an
+unavailable source instead enters normal admission. Pause, ownership, account,
+target, cadence and exact claim checks still apply. Disabled responsibilities
+stay disabled, while independent uptime continues. Disposable PostgreSQL cases
+exercise these configurations, authority changes, stale replay and renewal;
+the uptime callback supplies controlled local evidence rather than a real
+website or provider observation.
+
+The shared bounded transaction retry recognizes raw PostgreSQL serialization
+and deadlock SQLSTATEs as well as Prisma's write-conflict error. It retries the
+whole transaction and reads the current Site again; unrelated raw SQL failures
+are not retried. Disposable PostgreSQL fixtures reproduce pause and removal
+during admission, a pause after the transaction's initial snapshot, replaced
+claims, expiry and executable URL preservation. The worker fixture separately
+exercises signed claim, default uptime, independent repair, recurrence and
+operator replay. These are local proofs, not production scheduling evidence.
+
 Monitoring controls share `sites/application/monitoring-settings.ts` across Site,
 legacy Product, MCP and operator callers. Its conditional Site update fences the
 current owner, non-deletion, cadence and due state; enabling also checks account
 lifecycle. Schedule and Outcome freshness commit together, including within an
 admitted operator transaction. Repeated saves of an active cadence preserve its
-due work, lease and retry history. Paused monitoring resumes immediately using
+due work, lease and retry history. Changing cadence makes the first check due
+immediately, including when slowing the schedule. The fresh observation receives
+the new policy's validity window before ordinary cadence resumes. An old short
+window cannot otherwise bridge an entire newly selected weekly period.
+Paused monitoring resumes immediately using
 the current saved cadence. Pause retains that cadence without depending on
 Redis or account-policy availability. Disposable PostgreSQL fixtures exercise
 concurrent transfer, removal, suspension and cadence edits, plus rollback of
 both writes after a real database constraint failure.
+
+Current watched-result assessment shares `sites/outcome-assessment.ts` across
+Outcome views and account summaries. It validates the current binding and fixture
+revisions, then caps validity at both the recorded deadline and the observation
+time plus the current freshness window. Tightening care cannot leave a weekly
+observation Clear under an hourly policy; loosening care cannot extend an already
+expired observation's original validity. Site assessment receives this same
+effective deadline. The overview captures one clock for its Outcome views.
+Historical run and timeline evidence retain their original deadlines and rows.
+Disposable PostgreSQL cases exercise cadence changes, current stale state,
+recovery after a fresh recorded observation and unchanged historical assessments.
+The installed worker fixture additionally admits hourly and weekly transitions
+from the command-generated due date, collects actual controlled availability
+responses and writes fresh assessments with the corresponding thirteen-hour and
+eight-day validity windows. Earlier assessment rows remain unchanged. This is
+local worker evidence, not sustained production monitoring or provider acceptance.
+
+Current broad and category evidence use the same pure freshness policy in
+`sites/evidence-freshness.ts`. Daily care expires broad assurance after thirty-six
+hours. Hourly and shorter custom schedules retain that window because broad
+collection has a daily execution floor; their explicit bindings retain their own
+faster cadence and freshness. Longer custom care uses its broad interval plus
+twelve hours, capped at the original eight-day maximum. Weekly and unscheduled
+evidence retain that original maximum. Current source selection passes one window
+through area coverage, category overlays, overall assessment and Search card
+presentation. Fresh uptime cannot renew another area's observation. Published
+historical conclusions retain their recorded deadlines. This changes no schedule,
+commercial allowance, stored evidence or customer control. A disposable PostgreSQL
+case reproduces old broad evidence remaining Clear after switching to daily care,
+then verifies consistent stale state, renewal by a fresh observation and unchanged
+historical receipts. Focused contracts exercise exact expiry, category and Search
+presentation and the earliest assessment deadline.
+
+Watch state uses the reader's captured clock and the saved due commitment.
+A next-run date more than the five-minute monitoring grace overdue is
+Delayed, even without a recorded scheduler error. Customer and operator overdue
+queries share that threshold; a configured date alone cannot establish current
+monitoring coverage. Reads do not advance or repair the saved schedule. Operator
+summary counts and detailed queues share one set of monitoring predicates,
+excluding removed Sites and inactive owners while retaining overdue uptime work
+and unconfirmed deliveries independently of the broad analysis schedule. Pending
+Watch alerts become operational gaps after the original completed observation
+exceeds the five-minute monitoring grace, with creation time only as a fallback
+for undated historical records. Pending uptime alerts use their saved due time.
+SENDING receipts become gaps when their lease expires; a missing historical
+lease uses the same age grace. Live claims and fresh pending work remain
+excluded. `undeliveredWatchAlerts` and `undeliveredUptimeAlerts` include these
+stalled receipts and recorded failures without relabeling their actual status.
+The existing operator queues distinguish waiting, failed delivery and overdue
+confirmation. Diagnostic reads never change the receipt. Migrated
+PostgreSQL fixtures reproduce the former Watching/overdue disagreement and the
+hidden uptime work after pausing broad checks, then verify current state,
+recovery and unchanged schedule rows. These checks do not prove live scheduling
+or external notification delivery.
+
+`audit/watch-notification-source.ts` owns the completed-Watch source boundary
+used by classification, delivery selection and pending-alert diagnostics.
+Watch admission records PENDING before execution, so that marker alone cannot
+establish an overdue email. Queued, unfinished and failed executions do not
+enter the pending-alert cohort. Completed partial observations still await
+classification. Recorded FAILED and expired SENDING deliveries retain their
+own operational uncertainty, including historical rows with unavailable source
+metadata. Actual run-admission fixtures reproduce four false alert gaps and
+verify consistent diagnostic, operator queue and summary results without
+rewriting those receipts. Existing delivery-ledger and installed scheduler
+fixtures retain retries, backoff, immutable bodies and provider deduplication.
+Controlled provider responses remain separate from real acceptance or inbox
+delivery.
+
+Initial automatic setup is also an owed monitoring commitment. The shared
+`initialMonitoringSitesWhere` predicate selects active, untouched Sites for
+worker setup and overdue operational reads. After the existing five-minute
+Site-creation grace, a missing initial schedule enters `overdueSchedules`, even
+while `monitoringSetupRetryAt` defers the next attempt. The existing schedule
+queue shows the original creation time and awaits automatic setup; it does not
+offer a due-run action before a schedule exists. Paused controls, prior attempts,
+prior monitoring observations, removed Sites and inactive owners remain
+excluded. Reads create no setup, execution or observation. The existing upkeep
+path still owns retry and initialization. Native database fixtures reproduce a
+false healthy diagnostic, then exercise actual setup and queued admission after
+retry. The initial setup gap clears while missing uptime remains visible, since
+admission cannot establish a website observation. No query, timer, field, metric
+or customer control was added; existing summary and queue consumers share the
+broadened obligation cohort.
+
+A failed scheduled check retains an operational gap during retry backoff. The
+shared predicate counts `interruptedSchedules` separately from `overdueSchedules`:
+an active scheduled Site with a recorded failure and error stays interrupted
+while its retry is not overdue. The cohorts are disjoint, so the existing
+operator schedule queue and summary count each Site once. A future retry does
+not offer a reconciliation action that cannot yet run; normal due work retains
+that action. New admission alone does not clear the gap. Existing scheduled
+completion owns recovery, while notification gaps retain their independent
+receipts. Paused schedules, stopped care, removed Sites and inactive owners stay
+excluded. The diagnostic and standalone operator summary share one bounded,
+read-only repeatable snapshot in `sites/application/monitoring-operations.ts`;
+operator queue reads reuse their existing snapshot. These are current saved
+obligations, not a historical fulfillment percentage or proof of live delivery.
+
+Site admission runs one bounded pass of 20 due Sites per worker every thirty
+seconds, with its first pass five seconds after startup. Per-Site attempt and
+lease predicates, followed by the locked admission transaction, own concurrency.
+The redundant global Site-admission rate window was removed; one slow pass still
+cannot overlap itself within a worker. Independent notification and provider
+maintenance use their own timers. Admission frequency, the customer's
+saved plan cadence and the five-minute overdue grace are separate policies.
+Two real SQL sweeps selecting the same cohort admit each Site once, including
+identical attempt timestamps. An installed-scheduler PostgreSQL fixture admits
+61 due Sites in four bounded passes before the grace expires. Its downstream
+admission is controlled, so it proves local scheduling and ownership rather than
+website collection throughput or production capacity.
 
 Operator reconciliation checks its scoped grant before scheduler changes and
 passes the operator through scheduled admission. A new RunRequest records the
@@ -96,6 +612,47 @@ slot. Disposable PostgreSQL and installed BullMQ worker fixtures verify this
 fairness and recovery with controlled HTTP responses; they do not establish
 production scheduling or external-provider behavior.
 
+Due monitor selection skips physically locked rows before applying its batch
+limit, so a busy monitor cannot repeatedly consume the available cohort. The
+short selection releases its locks before queue publication. Atomic attempt
+updates and generation synchronization independently skip a row that becomes
+busy after selection, retaining its existing due fields for another sweep.
+This uses PostgreSQL's
+[queue-oriented row-lock behavior](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE),
+without a new lease, timer or recovery ledger. Publication retains the original
+owner, active-account, non-deleted Site, target, due-state and worker-lease guards.
+Only actual probe execution supplies observations or advances the probe due time.
+Controlled installed-runtime fixtures hold the earlier monitor's row lock with a
+batch limit of one. The later Site is observed through Redis and the worker,
+then the original monitor resumes after release, including target-generation
+synchronization. Separate database cases introduce the lock after selection.
+These are local contention and recovery observations, not production capacity or
+sustained uptime proof.
+
+The uptime runtime likewise schedules monitor initialization independently from
+due probe dispatch. Both use the same existing eligibility, generation and
+retry rules. `scheduleUptimeProbes` remains the explicit maintenance command
+that composes these shared operations, including selected operator setup. It
+does not define a second dispatcher. An installed-runtime PostgreSQL lock case
+keeps an existing monitor observing through the real Redis queue and worker
+while another monitor's creation is blocked, then completes that setup and its
+first probe. HTTP responses are controlled in that fixture. Alerts, retention
+and shutdown remain independent of slow setup, with admitted setup included in
+the existing shutdown drain.
+
+Recognized peer-certificate validation failures are conclusive uptime failures,
+subject to the existing independent confirmation before an incident. The saved
+reason distinguishes expiry, validity time, hostname mismatch, explicit
+self-signed trust refusal, revocation and malformed certificate evidence.
+Unknown issuers, local TLS configuration, safety refusals and uncoded error
+messages remain unknown. A TLS refusal does not fabricate an HTTP status or
+response URL. Existing probe, incident, notification and presentation ownership
+remains unchanged. A disposable HTTPS fixture exercises eight actual observations
+through the installed uptime worker, PostgreSQL and Redis, including unchanged
+failure, uncertain trust, distinct peer failures, successful HTTPS recovery and
+recurrence. Its controlled clock and queue promotion do not prove sustained
+wall-clock scheduling. TLS and hostname verification stay enabled throughout.
+
 Uptime queue recovery also revives a retained terminal job when its persisted
 slot remains due. Exhausted worker attempts and completed jobs that skipped an
 unexpired database lease cannot permanently strand that slot. Replay retains
@@ -111,6 +668,17 @@ slugs while retaining their original IDs, bindings and history. Matching labels
 do not authorize merging responsibilities. Duplicate page associations merge
 without violating their unique keys. Scheduled Watch selects production
 Outcomes; a staging responsibility cannot prevent production uptime admission.
+
+Observed page projection and automatic purchase-start inference share the same
+apex/www hostname identity as Site admission. The original observed URL remains
+the page and binding target, including host spelling, path, query and fragment.
+This does not equate the responses from those URLs or widen credential grants.
+Other subdomains and lookalike domains remain excluded. Recorded-fact PostgreSQL
+fixtures prove page associations and automatic checkout inference in both
+directions, preserve owner-edited bindings during replay, and carry the exact
+current binding into Watch admission. Signup inference retains its separate
+authorization boundary. Source Audit evidence and page IDs are preserved; these
+fixtures do not constitute fresh website visits or purchase completion.
 
 Scheduled Site care uses the existing broad task graph when the configured
 production target needs fresh Site evidence. Daily and weekly schedules repeat
@@ -164,6 +732,24 @@ fixtures reproduce one-Site batches across interruption and retry, and exercise
 concurrent control and ownership changes. Admission is controlled in those
 fixtures; webpage execution remains covered by the separate native worker cases.
 
+Worker startup validates the database and queue before starting consumers and
+maintenance. Chromium startup and later recovery share the consumer's existing
+nonblocking, single-flight path. The process supervisor no longer waits for a
+browser or publishes a second startup heartbeat. Browser readiness remains
+false until the physical browser is connected. The shared browser manager owns
+launch and shutdown cleanup; late recovery cannot publish after intake closes.
+
+Worker diagnostics use the existing bounded Redis RPC connection, including its
+five-second command deadline. They do not use BullMQ's persistent blocking
+connection policy. Delayed or rejected per-job diagnostics cannot prevent an
+admitted job from executing, and failures remain logged. Cleanup disconnects the
+diagnostic client even if deleting its heartbeat fails. A disposable Redis pause
+fixture exercises the physical deadline and deletion after the delayed write;
+focused runtime fixtures exercise pending browser startup, late completion and
+draining. The migrated application fixture also retains signed claiming,
+automatic uptime, independent repair and recurrence. These are local proofs,
+not production uptime or live-provider acceptance.
+
 Execution recovery also isolates pending Audit dispatch, coordinator admission,
 individual task delivery and each existing Audit graph. A failed claim or read
 retains its intent and cannot abort later items in the bounded batch. Active
@@ -176,6 +762,14 @@ recovery of previously admitted graphs. Disposable PostgreSQL and real Redis
 worker fixtures exercise claim and read failures, independent execution, lease
 exclusion and subsequent retries; native application fixtures separately verify
 broad partial coverage, recovery and recurrence.
+An ambiguous queue acknowledgement does not establish failed execution. When
+Audit dispatch records failure or deferral, its guarded transition must actually
+commit before it reconciles the customer Run. A worker that has started, or a
+newer dispatch claim, owns the subsequent decision. Disposable PostgreSQL and
+Redis cases reproduce both stale-producer failure paths and retain their Runs,
+while an undelivered admission still owned after expiry settles as failed. The
+started case uses the real execution claim and fenced commit in a controlled
+queue consumer; it stops before website collection.
 Recovery settles expired dependencies before evaluating readiness, using only
 the transitions it committed. A dependent that precedes its inputs in stored
 order can proceed in the same sweep. Retryable crashes retain their delay and
@@ -194,18 +788,190 @@ resource deadlines, and protected retries still require reconciliation before
 another effect. Disposable worker fixtures verify queue progress, late-write
 denial, transaction rollback, exhausted retries and protected reconciliation.
 
-Progressive graph admission uses a bounded cross-worker window, independently of
-legacy whole-audit concurrency. `AUDIT_ACTIVE_GRAPH_LIMIT` defaults to eight;
-HTTP, browser, provider and evaluator queues retain their own physical limits.
-A waiting provider no longer consumes the sole local coordinator's effective
-analysis capacity. The existing admission lock bounds concurrent reservations,
-coordinator replay preserves task identity, and scheduled recovery admits waiting
-work after a slot opens. Public availability retains its reserved admission path.
+Progressive graphs no longer compete for a global analysis slot. That gate
+blocked independent HTTP checks when eight earlier analyses waited on provider
+delivery. Physical queues retain their own worker limits, and each resource now
+has an independent cross-worker delivery window of four times its configured
+concurrency, with a minimum of eight. Further work remains in the existing task
+ledger. The retired `AUDIT_ACTIVE_GRAPH_LIMIT` setting and availability-only
+admission exception were removed. Availability has its own resource window.
+
+`delivery-window.ts` reserves an eligible task under a short resource-specific
+transaction lock before Redis is contacted. Existing dispatch state, lease and
+generation provide the reservation. `FAILED` means unconfirmed delivery and
+retains that reservation after a crash or lost acknowledgement; it does not
+establish failed execution or a website problem. Reconciliation inspects the
+same generation and job identity. Successful acknowledgement becomes `SENT`.
+Waiting for capacity rotates the due record without consuming an execution
+attempt or recording an error. Normal task completion drains newly available
+capacity through the existing handoff. Background recovery remains the backstop.
+Completed or failed execution cannot consume live delivery capacity.
+
+Task routing is declared once in `queues.ts`; JavaScript delivery and SQL
+reservation accounting derive from those same ordered rules. A concurrent
+partial index isolates reservations from unclaimed work and historical evidence.
+No task artifacts enter the capacity query. The populated local case reads eight
+reservations with 8,000 unclaimed and 16,000 completed tasks present.
 `AUDIT_WORKER_CONCURRENCY=1 node scripts/verify-progressive-execution.mjs --only lib/audit/progressive/__tests__/admission.integration.test.ts`
-verifies independent HTTP collection and Security findings alongside paused
-provider work, concurrent bounded admission, replay and recovery in disposable
-PostgreSQL and Redis. This is local scheduling evidence, not production capacity
-or provider acceptance.
+verifies independent HTTP collection and Security findings at a full provider
+window, routing parity, concurrent bounded delivery, coordinator replay and
+recovery in disposable PostgreSQL and Redis. Delivery fixtures separately retain
+lost acknowledgements and drain waiting work exactly once. These are local
+scheduling proofs, not production capacity or provider acceptance. The live
+reservation bound does not measure stale Redis rows for already retired work.
+
+The same recovery pass also retires obsolete unclaimed deliveries. It inspects
+bounded waiting, paused, prioritized, delayed and waiting-child entries in each
+actual task queue, then batches a small ledger projection containing identity,
+generation, task state and Audit status. It removes deliveries with no remaining
+ledger, mismatched identity or generation, settled tasks, failed Audits, or
+completed Audits whose task cannot run after completion. Valid historical
+provider routing remains usable. Live retries and valid finalization or
+prescription work are preserved.
+
+Cleanup looks past the configured live delivery window before applying its
+per-resource removal bound. A paused valid cohort cannot conceal retired jobs
+behind it under that window. Older oversized cohorts retain their authority
+until they drain or retire. Actual queue inspection also finds orphaned records
+and deliveries arriving after an earlier cleanup pass, without a cleanup table,
+cursor, receipt field or new timer. PostgreSQL evidence and verdicts are never
+changed by cleanup. Finished transport records retain normal BullMQ retention.
+Removal disables recursive child deletion, and BullMQ's atomic lock check
+protects a job claimed after the cleanup read.
+
+Cleanup runs alongside normal graph recovery. Each resource has its own bounded
+pass; read or removal failure cannot stop an independent queue or live recovery.
+Native database and Redis fixtures exercise retirement, preserved history,
+current retries, historical routing, concurrent cleanup, orphaned records,
+bounded progress at a full live window, late acknowledgement and active locks.
+
+Preview-image and sign-in/checkout destination checks, including targeted public
+link verification, use the existing HTTP task queue. Network waits no longer
+occupy slots for evaluating already collected evidence. The disposable
+`http-evaluator-isolation` fixture holds native destination responses open while
+the installed worker commits an independent Security finding, then releases the
+responses and retains the original destination failures. Resource limits, task
+identities and evidence comparison rules stay shared with ordinary execution.
+
+Public link observation uses exact requested URL identity, excluding fragments.
+Representative deeper-review identity still collapses locale, generated query,
+www and trailing-slash variants for its existing page budget. Discovery,
+targeted verification and the HTTP batch opener now retain those distinct
+physical requests in their shared link inventory. Representatives precede
+additional variants so repeated links cannot displace independent pages from
+the existing bounded request budget. Unchecked requests remain unknown. Native
+HTTP fixtures reproduce missed variant failures, verify every original failed
+URL independently, recognize recurrence and exercise the same request ceiling.
+
+The shared link resolver applies the observed document base to fragment
+references before deciding whether they stay within a document. A published
+`<base href="/plans/">` can make `href="#details"` address a different HTTP
+document. Those destinations now participate in discovery and public response
+checks. Parsed metadata retains its observed `documentUrl` separately from
+`linkBaseUrl`; native link sections use their recorded final URL. This preserves
+same-document section exclusions after redirects. The metadata contract accepts
+historical records without the new optional field. Same-site eligibility,
+HTTP fragment removal, request budgets and recovery evidence rules are unchanged.
+See the [HTML base element](https://html.spec.whatwg.org/multipage/semantics.html#the-base-element).
+
+Public destination identity rejects embedded credentials before discovery
+grouping. It cannot remove credentials and observe the resulting anonymous URL
+as if it were the supplied target. Those links remain outside automatic public
+checks; explicit authorized captures retain their existing grant boundary.
+The real HTTP regression verifies that no substitute public request occurs.
+
+Search resource collection shares its sitemap document and URL limits with the
+persisted evidence schemas. Each page-location and declared-sitemap inventory
+uses one execution-wide budget, with duplicates counted once. Larger valid
+inventories retain their collected documents and bounded positive observations
+while coverage remains incomplete, rather than failing the entire resource task.
+Declaration membership uses a Set across robots and child indexes, avoiding
+repeated scans of a growing list. Native collector fixtures exercise overlapping
+and overflowing multi-file inventories, excessive declarations and malformed XML.
+
+Search public-document reads also decode gzip file content before text parsing,
+as supported by the [sitemap protocol](https://www.sitemaps.org/protocol.html).
+The existing public HTTP transport owns this decoding, retaining URL validation,
+redirects, admission and the execution deadline. Compressed input and streamed
+decoded output both retain the document byte bound. HTTP transport compression
+is not decoded twice. Corrupt streams and output limits leave unknown evidence;
+fully collected invalid XML still supplies the existing syntax failure. Native
+HTTP fixtures cover compressed indexes, child files, transport encoding and both
+failure boundaries without contacting external websites.
+
+The shared sitemap parser decodes XML's predefined entities and numeric character
+references once, before interpreting a page or child-sitemap URL. CDATA and URL
+percent escapes retain their literal meaning. Collection and evaluation use that
+same parser, so query delimiters do not become `amp;` parameter names or accidental
+URL fragments. The parser's installed entity decoder is declared directly,
+configured for XML references only, and rejects undeclared names and prohibited
+XML characters. DTD and custom-entity declarations remain refused before parsing.
+Parser resource limits leave unknown evidence instead of diagnosing invalid XML.
+Existing requested-resource identities remain immutable: correcting a parser's
+earlier request target cannot certify that the historical target was repaired.
+A disposable application/worker fixture executes six real checks through
+PostgreSQL, Redis and Chromium, detecting a listed query page's noindex conflict,
+refusing an unchanged fix, verifying repair and recurrence, then independently
+verifying recovery of the original decoded child-sitemap URL. Its controlled
+transport does not establish Google acceptance or production collection.
+
+The same transport decodes text once after decompression, using the installed
+HTML encoding sniffer now declared as a direct dependency. BOM, transport,
+HTML meta and XML encoding declarations retain their precedence. Undeclared
+documents keep the existing UTF-8 default. Encoded bytes and decompressed bytes
+remain bounded before decoding; source text and requested URLs are preserved
+without serializing a reconstructed DOM. Native HTTP fixtures cover Latin and
+Japanese encodings, UTF-16, conflicting declarations and compressed resources.
+They also collect and flag an actual non-ASCII link, independently observe its
+repair through the shared verifier, and detect its recurrence at the same URL.
+These local observations do not establish external-site or provider behavior.
+
+Sitemap findings retain hashed requested-resource identities alongside their
+page scopes. The same Search comparator supplies explicit verification and
+automatic recovery, requiring every original failed resource to be observed
+conclusively. Another valid sitemap, a changed query, a missing original or an
+unavailable response cannot certify repair. Grouping findings preserves each
+page's resource requirements, and the finding evidence identifies all recorded
+failed files. Historical findings without resource identity remain readable but
+cannot acquire new repair authority from a later inventory. Focused fixtures
+exercise partial evidence, reordered complete repairs, recurrence and the shared
+Flag recovery gate. Existing stored receipts and findings are not rewritten.
+
+Supporting observations also freeze each source's comparison policy before
+grouping or incremental publication. Recovery uses that original policy, rather
+than the current Flag representative's policy. The existing observation ledger
+therefore retains distinct rendered, original-response, resource and provider
+requirements without another projection store. Public observation views omit
+the private policy. Unknown policy formats and historical observations missing
+policy custody cannot borrow fresh verification authority. A disposable database
+fixture publishes controlled native Search observations incrementally, reads the
+persisted policies and exercises the shared verification decision for incomplete,
+unchanged and recovered conditions. Collection is controlled in this fixture;
+it does not claim worker, browser or live-provider execution.
+
+Report comparison, current incident reads and fix reconciliation prepare one
+private recovery snapshot per selected Audit. They validate and index the
+recorded receipts once, then compare each original condition against those
+facts. No parsed snapshot or verdict is cached across database reads. Findings
+sharing a page and check still retain separate policy, version, resource and
+capture requirements. Incident selection and legacy Outcome membership also use
+scoped indexes instead of repeatedly scanning all historical rows. Focused
+comparison fixtures preserve partial, failed and unavailable decisions across
+the supported sources. The disposable worker fixtures retain signed claiming,
+default uptime, exact recovery across original occurrences and recurrence.
+Local timing confirms reduced repeated parsing; it is not production capacity
+or live-provider acceptance.
+
+URL admission, HTTP sockets and the managed browser proxy share one public-IP
+classifier using exact subnet membership. Ordinary public addresses adjacent to
+reserved IPv4 ranges and the IPv6 documentation prefix remain eligible. Reserved
+IPv6 ranges and non-public embedded IPv4 endpoints remain refused, including at
+connection-time DNS validation. Eligibility does not establish reachability.
+The combined claim and monitoring fixture uses controlled public DNS outside
+TEST-NET-3, independently of real DNS availability. Native HTTP and Chromium
+fixtures separately establish connection refusal after a public preflight and
+preserve permitted local fixture transport. The address policy and registry
+references live in `SECURITY.md`.
 
 Checked pages assess their recorded public GET independently of rendered content.
 Missing pages and server errors create a `page-http-error` Flag through the shared
@@ -281,12 +1047,44 @@ an invented origin. Missing impressions or clicks stay unknown; an empty report
 retains earlier dated context. Provider top rows are context, not exhaustive
 Search coverage or a Site total.
 
+Page context compares the Search fact's full recorded URI with the requested
+page, preserving protocol, hostname, port, trailing slash and query conditions.
+A shared display-path normalizer no longer joins unrelated Search URLs or
+collapses distinct Analytics paths. Analytics page facts now also retain the
+original `pagePath` dimension in their existing recorded scope. Site audience
+aggregates retain their separate property and hostname scope. Legacy Analytics
+page facts without that original dimension remain stored but cannot provide
+exact page context; normal refresh can collect a newly scoped observation.
+Invalid dimension values such as `(not set)` do not invent a recorded page.
+
+Search card context describes a reported page, while page-specific Search lines
+require an exact URI. Analytics lines describe the provider's path aggregate,
+which can include query variants inside the recorded Site aliases. This follows
+Google's distinct [Search page URI](https://developers.google.com/webmaster-tools/v1/searchanalytics/query)
+and [Analytics pagePath](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)
+definitions. Controlled provider transport through disposable PostgreSQL verifies
+refresh, saved original dimensions, owner reads, retained unavailable context,
+separate audience totals and refusal of borrowed page counts. It does not
+establish real Google property behavior or production refresh.
+
 An unavailable context report does not prevent independent URL inspection using
 the current grant. Revoked, mismatched or reauthentication-required connections
 still cannot execute it. Sixteen disposable-database connection fixtures cover
 both provider adapters, persisted scope, current readers, retained dates, explicit
 zero and credential races. Focused inspection tests also cover independent access
 and refused credentials. Real Search Console acceptance remains external.
+
+Public Search does not require a Search Console connection. When neither a Site
+connection nor matching historical account access exists, its Google module
+receipts use NOT_APPLICABLE while retaining unknown NOT_CONNECTED observations.
+Anonymous URL-first checks do not read private provider configuration. Historical
+account properties apply only to their covered pages and are not refreshed for
+an unrelated Site. A Site-specific revoked, mismatched or expired grant remains
+an applicable evidence gap and never falls through to broader legacy access.
+An admitted provider diagnostic explicitly requires that evidence, even after
+configuration is removed; missing access cannot certify recovery. Finalization
+and shared current coverage exclude NOT_APPLICABLE responsibilities without
+using them as positive evidence. Existing historical receipts stay unchanged.
 
 Admission reads saved website access under the owning Site lock and seals that
 decision in the execution specification. A child uses current saved access,
@@ -313,6 +1111,16 @@ comparison scope is missing, but neither a new fix verification nor Watch can
 use unknown scope as recovery proof. Metrics-based layout comparisons retain
 both the desktop document and mobile observation. Existing control, loading,
 network, accessibility and HTTP contracts remain their own evidence sources.
+Progressive receipt producers share `progressive/check-execution.ts` for
+admitted detector method identity. Native flow, mobile navigation, form,
+tracking, overlays, slow replay, discovery, journeys, account observations,
+cross-page evaluation and CPU checks use the same recorded version map.
+The receipt wrapper version remains separate from each detector's admitted
+version. Unsupported admitted versions are not relabeled as current methods;
+checks absent from the execution cannot borrow an auxiliary observation.
+Standalone historical receipt adapters retain their existing decoding. Neither
+stored source receipts nor completed verification attempts are rewritten.
+
 For a finding affecting several pages, every original page condition must be
 observed in the same execution and check version. A historical page finding
 without native conditions cannot borrow a new scoped receipt. Advisory content
@@ -384,6 +1192,135 @@ health. Missing response evidence remains unknown. A later HTTP response retains
 the original issue identity as recurrence. Findings redact query and fragment
 values from displayed URLs, and historical original-HTML receipts remain readable.
 
+Public certificate refusals now survive the shared HTTP collection boundary as
+typed evidence. The transport retains the last attempted public redirect hop and
+its recognized Node/OpenSSL certificate code, without serializing raw errors or
+certificate objects. The document still has no HTTP status, headers or body and
+remains incomplete. Its schema rejects contradictory response claims. Normal
+certificate validation is explicitly enabled on the public dispatcher. A known
+certificate refusal completes collection as an observed transport failure instead
+of repeatedly retrying an unknown collection error; unrelated missing facts
+remain unavailable.
+
+`audit/http-failure.ts` now owns public request-failure classification for both
+uptime and the rendered availability binding. Recognized missing DNS, refused or
+reset connections, transport timeouts and explicit peer-certificate refusals can
+establish unavailable reachability. Resolver uncertainty, local trust or TLS
+configuration, safety refusals and generic execution errors remain unknown. The
+rendered binding confirms failure with its existing second independent attempt
+before publishing a Flag. An uncertain confirmation withholds the Flag and keeps
+the existing execution-recovery path. Known failures no longer exhaust retries as
+missing evidence. Stored attempt details retain only selected response facts and
+the observation time, never native error objects. Repair guidance names the
+observed cause and reuses certificate guidance. A successful HTTP response whose
+configured rendered surface is missing receives distinct, accurate findings.
+Recovery still requires a fresh successful public response and the matching
+rendered surface. The native certificate fixture exercises six scoped availability
+runs, beside the existing six public Security runs: confirmed refusal, unchanged
+certificate, HTTP 200 with missing content, uncertain local trust, independent
+rendered recovery and recurring Improvement identity. The direct HTTPS Site is
+separate from the Security redirect fixture. Chromium response routing is local;
+the HTTP stage retains actual TLS validation against a disposable CA.
+
+Bounded redirect exhaustion also retains its last actual HTTP response and
+source chain through `audit/redirect-evidence.ts`. A redirect loop requires the
+last request and destination to repeat an observed route within the existing
+limit. Every observed hop must use an automatic redirect status, and cookie or
+explicit challenge handling withholds that conclusion. Unique long chains,
+nonstandard redirect behavior and refused targets remain unknown. The existing
+request, redirect, public-network and deadline limits are unchanged. This follows
+the distinction between cyclical redirection and a fixed redirect limit in
+[RFC 9110 section 15.4](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4).
+
+The collected document remains incomplete, with no invented response body.
+Pages can nevertheless publish the observed failure as `page-redirect-loop`.
+The shared destination collector also carries positive loop evidence to linked
+pages and sign-in or checkout destinations. Availability bindings retain their
+independent confirmation attempt, and uptime retains its two-probe confirmation,
+incident continuity, recovery and recurrence. Existing reason details provide
+specific repair guidance without additional customer controls.
+
+An intermediate response cannot certify final-page Security headers or TLS
+recovery. Those consumers share the unresolved-redirect predicate. Independent
+header observations after an interrupted final response body retain their
+existing evidence boundary. A new page-loop finding recovers only after a fresh
+successful public GET to the original affected URL; a long chain, cookie-handshake
+loop or unavailable ending cannot certify repair. Source receipts and historical
+conclusions are retained, without a schema migration or another collector.
+
+The `security` registration declares its HTTP input directly. The ordinary
+registered evaluator owns protocol, certificate and applicable resource
+observations for both progressive and compatibility execution. The former
+progressive Security branch and secondary observation adapter were removed.
+Uptime uses the same certificate classifier, and both surfaces share the existing
+reason labels. New `security-certificate-invalid` findings retain the original
+request identity, the reached hostname, native repair guidance and a hashed
+request scope. Displayed evidence removes query values. A certificate refusal
+cannot invent missing response-header findings or a successful protocol repair.
+Historical observations are not rewritten or given a new admitted check.
+
+Operational uptime responsibility also distinguishes a due job from a useful
+observation. The shared monitoring read model derives sustained inconclusive
+coverage from the existing target-generation probe history, using its scoped time
+index. The monitor must have recent unknown or pending-confirmation state and older current-target evidence,
+with no ONLINE or confirmed FAILED observation in the ten-minute freshness window.
+New targets and brief uncertainty retain grace; different targets, prior generations
+and future observations cannot supply coverage. The worker diagnostic exposes
+`inconclusiveUptimeSites` separately from overdue execution. The operational
+uptime cohort begins with active Sites whose saved care remains enabled. A stored
+inactive monitor cannot remove that responsibility: after its due-time grace it
+is overdue and ordinary admission reactivates it. Conversely, an obsolete enabled
+monitor does not create a probe obligation after care is fully off. Pausing broad
+analysis retains the cadence and independent uptime responsibility. Reads leave
+activation and evidence untouched. Disposable PostgreSQL cases exercise both
+disagreements, grace, shared operator counts and scheduler recovery.
+The uptime queue and summary use the same SQL cohort, with overdue work taking precedence
+and each Site appearing once. Monitoring count preparation is shared with the other
+operational gaps. Reads retain their original bounded, read-only snapshot and expose
+only aggregate diagnostic facts. No additional state store, index, timer, customer
+setting or website incident mechanism was introduced.
+
+A FAILED primary probe without its existing confirmation marker cannot renew
+conclusive assurance. Repeated failed primaries and inconclusive confirmations
+retain a coverage gap during both checking and unknown state, without opening an
+incident from uncertainty. Actual scheduler and executor cycles with controlled
+observations prove the shared diagnostic, operator queue and summary retain the
+gap until ONLINE or confirmed FAILED evidence arrives. Raw probes and monitor
+history remain unchanged by those reads. A confirmed failure retains the normal
+incident and notification behavior; it clears uncertainty rather than claiming
+that the website is healthy. Seventeen controlled executor observations cover
+both recovery paths through migrated PostgreSQL. These do not establish real
+transport or production confirmation behavior.
+
+Current uptime assurance requires a finite observation time at or before the
+reader's captured clock and within the existing ten-minute freshness window.
+Future last-check times stay unavailable in current summaries.
+Future samples remain absent from the current timeline and cannot establish
+Online or Offline. Shared incident selection also requires an already observed
+confirmation and treats future recovery or supersession as unresolved at that
+clock. Uptime history, Site summaries and MCP lists use the same predicate and
+read clock. History projections withhold future end markers while the stored
+incident and probe records remain untouched. A known outage therefore remains
+attention-worthy until its recovery is available to the read. A controlled
+executor and real database/MCP fixture creates failure, confirmation and recovery,
+then moves only the reader clock to prove continuity and later visibility of the
+original recovery without rewriting it. This does not establish production clock
+health or continuous availability between probes.
+
+Certificate recovery requires a fresh verified HTTPS response for the same
+original request. An unavailable transport, an HTTP downgrade, a changed query,
+another page or an unscoped historical observation cannot supply that proof.
+Other incomplete HTML observations do not erase a conclusive certificate result.
+The disposable application/worker fixture starts with an HTTP URL redirecting to
+an expired HTTPS endpoint. Six actual runs cover URL admission, actionable owner
+handoff, unchanged failure, unknown issuer trust, downgrade refusal, HTTPS repair
+and recurrence. The owner run API and saved Improvement attempts agree. Browser
+and provider collection are deliberately unavailable and settled through their
+recorded recovery deadlines, without claiming those capabilities passed. The
+separate uptime fixture retains eight real TLS observations and its incident
+history. These are controlled local proofs, not deployed certificate observations
+or natural production scheduling.
+
 Site health uses the shared resolved-Flag predicate. Open, unchanged, regressed
 and unverified findings continue to require attention even beside newer passing
 evidence. Fixed and ignored findings do not contribute to current counts or
@@ -427,6 +1364,30 @@ alert. Comparable successful execution of every required binding closes the
 incident, and a later failure records recurrence. Configuration, environment,
 version and fixture changes cannot certify an earlier failure as repaired.
 
+Bound availability applies one response policy to the initial public HTTP probe
+and the actual browser navigation. The existing isolated session retains HTML
+error documents so their status can be distinguished from scanner restrictions.
+A private main-frame response listener follows document changes during settling,
+including JavaScript redirects; subresources and child frames cannot supply page
+status. The response must match the observed document URL, preserving path and
+query identity while allowing a same-document fragment. Missing responses,
+changed documents, authentication, rate limits and challenges stay inconclusive.
+Ordinary browser HTTP failures require the existing second independent attempt
+before a Flag. A 200 from the separate HTTP client cannot override them.
+
+Binding receipts retain each client's status and final URL without storing the
+page body. The listener is removed and its context closed after every attempt.
+The existing shared challenge policy checks response headers and bounded rendered
+HTML before website failure classification. A disposable worker fixture verifies
+a successful HTTP probe beside actual browser 503s, a 200-to-503 JavaScript
+redirect, header and content challenges, independent repair and recurring identity.
+Owner run results agree with the saved attempts and the source evidence remains
+unchanged. These are local controlled website observations, not production
+monitoring or live network acceptance. Playwright distinguishes a received HTTP
+error response from a failed navigation transport; the response status remains
+available for inspection.
+[Playwright navigation responses](https://playwright.dev/docs/api/class-page#page-goto).
+
 Authorized Signup fixtures submit once and observe their declared text, visible
 target or exact destination within a bounded eight-second window. A success
 signal already present before submission, an exhausted execution budget, a
@@ -439,11 +1400,32 @@ Public form validation runs independently from the CTA walk. An isolated browser
 allows local validation handlers, prevents native submission and denies outbound
 requests, popups and live transports during the probe. Worker, clipboard and
 dialog restrictions make dependent observations inconclusive. Required fields
-with existing values are not submitted. Native constraint rejection or newly
-visible form feedback supplies positive evidence; blocked requests, preexisting
-feedback, changed forms and incomplete observation do not prove a failure or repair.
-Feedback timing and the full negative observation window use the browser's click
-clock, so driver acknowledgement delays cannot manufacture slow or missing feedback.
+with existing values are not submitted. The probe activates the selected submit
+control rather than treating a false `checkValidity()` return as visible feedback.
+Native feedback requires uncanceled interactive reporting on a visible, focused
+invalid control owned by that form. Trusted default activation and explicit
+`reportValidity()` calls are distinguished from `checkValidity()` through temporary
+native-method wrappers, restored when the probe ends. Baseline validity reads use
+`:invalid`, avoiding invalid-event side effects before the action. Canceled native
+messages need newly visible replacement feedback; a full observation without
+either produces a scoped finding. Unclassified reporting, blocked requests,
+preexisting feedback, changed forms and incomplete observation do not prove a
+failure or repair. Feedback timing, including delayed native reporting, and the
+full negative observation window use the browser's click clock, so driver
+acknowledgement delays cannot manufacture slow or missing feedback.
+
+Constraint-only observations retain their known rejection fact but have no
+invented feedback timing. The shared receipt reader qualifies the exact historical
+native-shortcut representation as incomplete for current assurance, and the scoped
+verifier excludes it as repair proof. Raw receipts and published history remain
+unchanged. Independently observed client feedback and fresh native reporting retain
+the original form identity and comparable repair criteria. These observations
+establish interactive browser reporting under the fixture conditions, not native
+popup pixel fidelity, complete form accessibility or successful business submission.
+The browser API distinction is explicit: `checkValidity()` checks constraints;
+`reportValidity()` also reports uncanceled failures.
+[MDN validity checks](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/checkValidity),
+[MDN interactive reporting](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/reportValidity).
 Captured metadata also assigns each field and submit control to its actual HTML
 form owner, including external `form` associations, empty or unresolved owners
 and first-ID collisions. One inventory supplies field counts, declared-validation
@@ -460,8 +1442,15 @@ controls associated with `form="..."` outside the form subtree. It excludes
 controls owned by another form, inspects and activates the same visible
 submitter, and honors that submitter's `formnovalidate` setting. External fields'
 explicit error references remain scoped to their owning form. The form context
-includes the native-ownership detector policy; earlier subtree-only observations
-cannot certify recovery under the corrected detector. Controlled Chromium and
+includes the native-ownership detector policy, field kinds, logical requiredness
+and native constraint participation. Making a required field optional, disabling
+it directly or through a fieldset, or making it read-only cannot borrow feedback
+from another field to certify recovery. Replacing custom validation on an
+`aria-required` field with native `required` validation remains comparable.
+Earlier contexts without these obligations remain historical and cannot certify
+recovery under the corrected detector. These are bounded form-level empty-field
+observations, not proof of every field's validation or successful submission.
+Controlled Chromium and
 disposable worker fixtures exercise associated fields, unchanged validation and
 independent repair without transmitting a submission. These establish local
 behavior, not real account creation, provider delivery or production acceptance.
@@ -551,6 +1540,21 @@ same scoped proof logic for automatic recovery and explicit fix verification.
 Rolling field INP does not prove an immediate repair. Unsupported proof stays
 inconclusive even when the surrounding module succeeds.
 
+PageSpeed field evidence retains its page and origin response records together.
+Each metric selects its own available page value before recorded origin context,
+preserving that record's URL and reporting scope. A page LCP measurement cannot
+hide available origin INP, and a malformed sibling metric cannot erase valid
+measurements. Explicit `origin_fallback` records remain origin context, following
+the [provider contract](https://developers.google.com/speed/docs/insights/rest/v5/pagespeedapi/runpagespeed#PagespeedApiLoadingExperienceV5).
+Stored artifacts, findings and assertions use one shared field-evidence schema
+and reader. Historical single-record evidence stays readable with its original
+scope, including unknown scope; it cannot acquire new comparison authority.
+The disposable provider HTTP, database, queue and worker fixture records origin
+INP beside page LCP, persists both cohorts and retains explicit origin fallback.
+Failed and improved rolling INP values remain observations, and all three fresh
+repair attempts remain inconclusive instead of certifying an immediate repair.
+Those controlled responses do not establish real-provider availability or data.
+
 Legacy and progressive performance execution share explicit score, LCP, CLS and
 resource observations for each device. Missing or invalid lab metrics record
 incomplete assertions rather than disappearing from a receipt. Progressive
@@ -591,6 +1595,15 @@ fixture discovers a page and then exercises scheduled recovery and same-incident
 recurrence after its link disappears. Its explicit PageSpeed refusal leaves
 Performance unavailable, without manufacturing successful measurements.
 
+Category rechecks use that same bounded recorded cohort from their selected
+broad source, including admitted pages whose interrupted collection created no
+page row. Broad and category admission share source selection and page-scope
+validation. The category, source Audit and selected URLs remain frozen for replay;
+unrelated responsibilities and environments remain outside the execution.
+The native worker fixture exhausts both page collectors before row creation,
+independently repairs the original finding through a category recheck, then
+recognizes scheduled recurrence under the same Improvement identity.
+
 Response-header detection and observations share their inspected configuration
 predicates. Single findings and consolidated core or hardening findings retain
 the exact originally failed header responsibilities and hashed final response
@@ -601,6 +1614,18 @@ the duration recommended by its original finding. Other independently proved
 header repairs remain useful while an unrelated declaration is unknown. Header
 presence and declarations do not establish policy effectiveness or browser HSTS
 preload-list enrollment. Historical unscoped rollups remain inconclusive.
+
+Section-link evaluation selects the active document from its recorded browser
+scope, while the requested URL retains finding ownership. Relative destinations
+still resolve against the captured document base, which may intentionally point
+elsewhere. The compatibility page pipeline now parses rendered HTML against the
+reached URL rather than the original request. Progressive evaluation already
+passes its reached URL; the shared evaluator no longer depends on that caller
+interpretation. A different redirect target, changed base or removed original
+link cannot establish repair of the original fragment. Existing capture and
+fragment identities retain their verification rule and historical decoding.
+This follows the [HTML fragment target algorithm](https://html.spec.whatwg.org/multipage/browsing-the-web.html#scroll-to-fragid),
+which compares the destination with the document URL before inspecting its target.
 
 HSTS duration, subdomain and preload observations share one directive parser.
 Names match complete case-insensitive tokens, quoted values retain their own
@@ -770,9 +1795,39 @@ Public destination checks share the guarded GET collector. Discovery, sign-in,
 checkout and preview-image probes validate public DNS and every redirect, bound
 HTTP capacity and body samples, and honor their execution deadline during DNS
 resolution. HEAD success does not certify a destination. Transport errors,
-access restrictions and scanner refusals remain unknown. Preview-image response
-and content-type evidence do not establish full image decoding or a platform's
-rendered preview.
+access restrictions and scanner refusals remain unknown. The same public
+transport now returns either decoded document text or unchanged resource bytes;
+capacity, DNS, redirect, credential-origin, body and deadline policies have one
+owner. Binary image data no longer passes through document-text decoding.
+
+Preview images retain response facts independently of their pixel observation.
+Complete PNG, JPEG, WebP and GIF buffers receive first-frame decoding through the
+installed image library, bounded to 5MB, 16 million pixels and at most two seconds
+of processing within the execution budget. A readable header is insufficient:
+the pipeline forces pixel evaluation before recording success. Unsupported formats,
+partial buffers, pixel limits and execution limits remain unknown. SVG and other
+document loaders are excluded before the decoder, and no external image resource
+or local file is opened by that path. The collected bytes and decoded pixels are
+discarded; private native HTTP snapshots retain only bounded response, format,
+dimension and disposition facts. Evaluator replay consumes those frozen facts
+without another image request. These observations do not establish sharing-platform
+rendering, caches, later animation frames or complete support for every image format.
+[Sharp input safety and formats](https://sharp.pixelplumbing.com/api-constructor/),
+[Sharp processing timeout](https://sharp.pixelplumbing.com/api-output/#timeout).
+
+A corrupt-image finding keeps the existing check identity and recommendation
+priority. Its decoding assertion has a distinct condition hash for the same page
+and image destination. An old response-only receipt cannot certify that repair.
+Historical HTTP observations still support their original response criterion;
+current receipt interpretation withholds full image assurance when decoding was
+never observed. Raw receipts and published history remain unchanged. Owner action
+starts the existing Improvement cycle. A native Chromium reproduction rejects
+corrupt PNG bytes that the former HTTP-only check accepted. A disposable application
+and worker fixture observes unchanged data, unsupported evidence, independent
+pixel recovery and Watch recurrence under the same Improvement identity. Ordinary
+journey execution remains enabled; provider and media limits are recorded
+explicitly. These are local observations, not production network, provider or
+social-platform acceptance.
 
 Public link discovery commits source-page scoped response assertions alongside
 its findings, using the same response classification as targeted repair. Shared
@@ -782,6 +1837,23 @@ source page, and each originally failed destination must provide comparable GET
 proof before the Flag closes. Removed links, changed destinations and access
 restrictions remain inconclusive. Recurrence reopens the existing Improvement
 and preserves the original Flag's resolution.
+
+Deeper discovery reuses conclusive public GET observations from its completed
+first discovery dependency in the same Audit. Both phases retain the existing
+private native HTTP evidence format, with hashed exact request identities and
+no additional raw URLs, response bodies or headers. The second checkpoint
+records the original task and observation time when it reuses evidence. Missing,
+repeated, restricted or otherwise inconclusive observations require fresh
+collection. Different request conditions cannot share evidence. Foreign,
+unreadable or historical checkpoints without these facts retain bounded fresh
+collection and unknown untested scope.
+
+Each phase's existing GET ceiling applies to new requests. A full first-page
+inventory no longer spends the entire second budget repeating known responses
+while leaving newly discovered links untested. Response assertions use the same
+shared classifier and include both reused facts and new observations. New
+analyses and independent repair runs still collect fresh evidence; no global
+cache, new dispatcher or parallel observation store was added.
 
 Discovery and targeted public-link repair read the existing bounded native anchor
 section independently of whole-document metadata. They share its captured
@@ -883,6 +1955,20 @@ their own task, source and time; they are not a pixel-perfect claim about a sepa
 DOM observation. AI explanation consumes committed results and captures downstream
 and cannot establish an assertion or recovery.
 
+Browser collection reads the saved tasks that depend on that exact collector,
+selecting only their kind and input within the execution graph limit. Module
+contracts determine whether axe and mobile evidence are needed; the broader
+ExecutionSpec check catalog alone cannot establish the admitted consumer scope.
+Metadata, Search and tracking can retain desktop evidence without unrelated axe
+or mobile work. Accessibility retains axe, native layout and motion retain mobile,
+and console rechecks retain both devices and axe to preserve their original error
+window. Unknown task kinds, unknown module contracts and historical contexts use
+complete collection. An omitted profile has incomplete console coverage and no
+metrics; skipped axe has no accessibility result. Neither is a successful check.
+Existing broad consumers retain their full observations, and private media keeps
+its separate two-profile task. Capture functions share named options instead of
+positional flags. No additional collector or persisted scope is introduced.
+
 Private object storage shares a ten-second operation budget across signing,
 retries, upload and response-body consumption. Cleanup listing and deletion share
 one thirty-second budget. An earlier execution deadline or caller cancellation
@@ -908,12 +1994,42 @@ document readiness retains eight seconds. Title absence remains inspectable
 evidence and cannot occupy browser capacity for the driver's default timeout.
 
 Local Search responsibilities have separate task checkpoints and receipts.
+Current Search coverage and displayed results share the recorded receipt reader.
+An explicit ledger status must be completed, and any recorded page and Audit
+identity must match the receipt. Malformed, unsupported, failed, running and
+mismatched rows remain unfinished responsibilities even beside healthy peer-page
+evidence. They cannot disappear from completeness when decoding fails. Existing
+historical receipts retain only the ownership fields they actually recorded.
 Robots collection settles before sitemap expansion; crawl checks depend on HTTP
 and robots only. Presentation and markup use original and rendered page sources;
 canonical checks additionally fetch only their declared targets on the HTTP queue.
+Rendered canonical declarations do not supply target HTTP availability. The History
+API can change a document's URL without requesting that destination, while the
+capture still retains its earlier navigation status. Canonical collection therefore
+reuses only a complete original public HTTP response whose reached URL matches the
+declared target. This includes self-canonicals and actually requested redirect hops.
+Other targets receive their own bounded public GET, even if the rendered URL matches.
+Interrupted target bodies remain incomplete. Existing receipts retain their recorded
+conclusions; the correction governs fresh execution and independent verification.
+The native Chromium and installed-worker fixture exercises an HTTP 200 document
+using `replaceState` to display a canonical target that independently returns 404,
+then verifies unchanged refusal, interrupted-target uncertainty, repair and recurrence.
+This establishes public response availability, not Google's canonical selection.
 Indexing and discovery consume sitemap evidence for their policy comparisons.
 Google indexed-version evaluation consumes the indexing receipt, independently of
 canonical targets, markup parsing and the Search summary. Analytics remains independent.
+
+Robots evaluation distinguishes fetch provenance from rule authority. A redirect
+can move `robots.txt` to another host, scheme or port, but its rules still govern
+the original request authority. The shared evaluator constructs its parser with
+the recorded initial URL and retains the reached URL and redirect chain as
+evidence. A response requested for another initial origin remains unknown,
+including a 4xx response that would otherwise imply no crawl restriction. Existing
+rule matching, deliberate exclusions, regression attention and recovery semantics
+remain in place. Six native application/worker runs establish an allowed baseline,
+a redirected restriction, unchanged and unavailable repair refusal, fresh recovery
+and recurrence, while the source receipt remains unchanged. This evaluates public
+rules, not actual Google crawling. [Robots redirect scope](https://www.rfc-editor.org/rfc/rfc9309.html#section-2.3.1.2)
 
 Cross-page preview checks retain separate title and description assertions for
 each compared pair. Findings keep both pages and their native capture conditions,
@@ -1009,6 +2125,27 @@ The evaluator sanitizes and reads available context once, rather than cloning
 the page for every entity. Independent markup failures survive that missing
 context without becoming successful whole-page coverage.
 
+Search uses one observation bound for evaluator results, compatibility workflows
+and aggregate receipts. When evidence exceeds the 500-record receipt budget,
+observed failures take priority over guidance and healthy observations. Retained
+records keep their source order, and an explicit coverage gap prevents incomplete
+evidence from certifying recovery. Exactly 500 complete records require no gap.
+Structured entities with many invalid properties use multiple 30-property records
+instead of discarding the evaluator result. Repair policies can retain one target
+per recorded observation, including both original and rendered source evidence.
+
+Search finding evidence carries every admitted actionable entity and property
+record, qualified by the original or rendered source and published entity
+identifier. Resource findings retain every admitted failing document URL.
+Syntax findings include the recorded failing block locations and excerpts,
+instead of replacing those failures with an entity-count summary.
+Repair handoffs use this same recorded evidence through the existing public
+supporting-observation view. They do not export private comparison policies or
+task provenance, and presentation excerpt limits cannot remove repair scope.
+The installed-worker structured-data fixture exercises the actual owner copy
+service, retaining all 208 admitted targets, the late breadcrumb property and
+both HTML sources while excluding private provenance and comparison policies.
+
 Property repair compares every originally recorded entity identifier, type,
 source and invalid property. Unrelated nested types outside feature validation
 cannot prevent that original property's evaluation or supply replacement proof.
@@ -1016,7 +2153,9 @@ A different entity remains inconclusive, and historical feature Flags without
 recorded property targets cannot acquire them retroactively. A disposable native
 worker fixture retains simultaneous syntax and price failures under a bounded
 text section, recognizes unchanged and changed-entity attempts, verifies the
-original Product price and preserves its recurring Improvement during Watch.
+original Product price, 101 independent URLs and 45 breadcrumb positions. It
+refuses a partial repair beyond the first property record and preserves the
+recurring Improvement during Watch.
 
 The disposable Google worker fixture performs a real category baseline, records a
 new soft 404 with an excluded verdict, refuses stale or changed-property repair
@@ -1113,6 +2252,18 @@ continues across redirects; other origins receive ordinary public request header
 Redirect responses are cancelled before the next admitted request. Response-body
 timeouts after headers arrive remain incomplete body evidence and cannot establish
 a missing-response outage. Physical local HTTP fixtures exercise both consumers.
+An interrupted response stream or file decompression now carries its already
+observed status, headers, final URL, redirect chain and bounded text prefix through
+the same transport error boundary. Compressed undecoded bytes remain unavailable
+text. Public document collection stores those facts with `complete: false` and
+`response_body_unavailable`, without storing the native error or retrying them as
+a missing response. Independent header and connection checks can use the response;
+page response, content and sitemap interpretation still require their existing
+complete evidence. HTML compatibility, destination, image and rendered-availability
+consumers retain their body-error path. Automatic uptime retains the actual
+status and final URL while classifying the original transport error, so partial
+HTTP 200 evidence cannot establish recovery. The existing confirmation, incident,
+notification and recurrence ledgers remain the only owners of those transitions.
 
 Menu item focus includes DOM focus and valid aria-activedescendant. Orientation
 selects the tested arrow directions. Menu traversal samples items within the
@@ -1302,6 +2453,63 @@ Every original source scope must pass before resolution. A subsequent Watch
 failure records regression on the same Improvement and retains the first Flag's
 verified resolution. This controlled fixture does not establish production
 transport, external-provider acceptance or notification delivery.
+
+The public GET collector retains whether its HTML is complete. Content-sensitive
+checks inspect successful HTML up to the same 1 MB allowance as the standard
+public-document collector. HTTP-only checks, non-HTML resources, error responses
+and header-declared challenges retain a 20 KB prefix. The shared transport selects
+that budget from the final response before reading its body, within the existing
+request, capacity, redirect and deadline ownership. It cannot certify the absence
+of a missing-page response beyond the selected bound. An observed missing-page
+heading inside the prefix still supplies failure evidence. Public sign-in paths
+do not bypass this content boundary. `publicGetSucceeded` supplies one positive
+response predicate to public links, action-link responses and page responses;
+an unknown HTTP 200 cannot become passing evidence in a downstream consumer.
+Native HTTP fixtures reproduce late error headings, retained positive failures,
+sign-in paths and independent HTTP-only/binary behavior. The actual worker
+journey reproduces a false IMPROVED result, then verifies inconclusive truncated
+content, complete repair and recurrence under the same incident. The request
+count, network boundary and historical evidence stay intact.
+No extra request, browser collection, check, queue or customer control was added.
+Native HTTP replay of existing archived website fixtures proves useful complete
+inspection beyond 20 KB. Unending prefix-only responses prove cancellation, and
+invalid budgets cannot retain transport ownership. Responses beyond the document
+allowance remain inconclusive rather than successful.
+
+Public destination collection reuses each available worker slot as soon as its
+current request finishes. It does not wait for an entire fixed batch to complete
+before admitting later destinations. The existing concurrency, request ceiling,
+physical HTTP capacity, ordering and deadlines remain. A stalled request cannot
+reserve the other slots. An interrupted adapter observation remains unknown
+while independent responses survive. Private native HTTP evidence records that
+unavailable destination result explicitly, matching the existing unavailable
+image-response representation, so replay restores the same uncertainty without
+another request. A missing replay input still fails custody validation. Native
+HTTP fixtures prove a later missing destination is observed within the existing
+deadline while the first request is stalled, with at most two active requests in
+the selected two-slot scenario. A separate controlled adapter interruption proves
+continued collection and exact evidence replay. These fixtures do not establish
+production throughput or sustained monitoring capacity.
+
+Missing-page interpretation uses the shared active HTML document parser. Script
+and style text, comments, dormant templates and scripting-disabled fallback
+content cannot supply document headings. Character references are decoded before
+the existing missing-page wording and text-window rules run. This replaces the
+independent raw tag regular expression without changing the selected budgets.
+Public link observations use detector version two. The existing
+recorded-version comparison refuses to certify repair across that interpretation
+change while retaining historical conclusions under their recorded versions.
+HTML distinguishes raw text, escapable text and template document fragments;
+literal heading markup inside those scopes is not a document heading.
+[HTML syntax and document boundaries](https://html.spec.whatwg.org/dev/syntax.html)
+The native worker scenario retains encoded missing-page headings and missing
+headings after a 100 KB prefix during unchanged repair. It verifies a complete
+healthy response of that size that retains dormant error markup, and recognizes
+the next real failure under the same Improvement. Its nine
+actual admissions also retain restriction, removed-declaration and incomplete
+content uncertainty. A focused recorded-receipt case verifies both refusal of
+cross-version repair and preservation of historical conclusions.
+
 Relative public action, preview-image and canonical destinations use the active
 document base. Metadata and declared resource transport share its scripting-enabled
 parser, so bases inside templates or fallback content cannot redirect inspection.
@@ -1315,7 +2523,19 @@ Search sections retain the native `document.baseURI`, independently of whole-pag
 HTML availability. Historical isolated canonical sections without a recorded base
 remain unknown unless complete document HTML is available. Canonical observations
 use detector version 3, preventing this parser correction from certifying repairs
-of historical findings. Other Search detector versions remain unchanged.
+of historical findings.
+Public Search presentation, indexing, canonical and structured-data interpretation
+now share the active HTML document boundary. Templates and scripting-disabled
+fallback descendants cannot supply published directives, structured entities or
+properties, page titles or discovery links. The original collected source stays
+intact. Embedded Microdata and RDFa receive source with only those parser-located
+fragments removed, preserving the original document or fragment shape and entity
+subject. Native rendered sections exclude dormant descendants before charging
+their item budgets. Hidden published declarations remain eligible, and active
+body robots directives still apply. Affected HTML observations use detector
+version 3; existing sitemap resource and crawl interpretation retain their prior
+versions. Earlier findings remain readable, but their disappearance after this
+detector correction cannot establish a customer repair.
 The disposable Chromium and worker fixture exercises a foreign base, inert base
 declarations, failed destinations, changed-base uncertainty and independent repair,
 including the canonical target. Provider and production behavior remain separate.
@@ -1327,6 +2547,36 @@ actions, disabled native and ARIA controls, and a dead end repaired by its decla
 visible panel. Source identity, recorded fix attempts, Flag closure and first
 resolution survive these transitions. Deeper destination semantics, unsupported
 action types and extended live behavior retain their separate verification limits.
+
+Primary-action selection uses the browser-resolved destination and the active
+document address. A fragment can address another document through its HTML base,
+and a custom routing fragment is an interaction candidate rather than evidence
+of a placeholder. Native primary probes exercise those candidates under the
+existing read-only policy. The shared declaration classifier also supplies static
+placeholder checks, journey entry selection and destination controls. The old
+`isDeadHref` wrapper is removed; declaration shape cannot establish that a click
+works. Bare placeholders and ordinary missing section targets retain their
+existing meaning. This follows [HTML fragment navigation](https://html.spec.whatwg.org/multipage/browsing-the-web.html#navigating-to-a-fragment)
+and [document base resolution](https://html.spec.whatwg.org/multipage/semantics.html#the-base-element).
+
+For a custom route without a main-frame response, a URL change alone cannot
+establish progress. The existing action probe compares bounded rendered copy
+before the click with the copy already collected for its navigation observation.
+A matching declared route can establish a content transition through changed
+rendered text and a new heading, with ready document state and no recognized
+loading or missing-page surface. Independently observed declared or semantic
+panels retain their own native progression proof. Missing or truncated copy
+cannot prove a content transition. URL-only changes, cancelled handlers,
+unmatched routes and unavailable observations remain incomplete. HTTP response
+evidence is never fabricated, and these observations do not establish business
+completion. Original HTTP soft-404 checks and rendered route qualification now
+share their existing missing-page wording rule instead of duplicating it.
+
+Embedded credentials are excluded before public activation and cannot create an
+anonymous substitute request. Their exclusion makes absence incomplete, while
+independent eligible controls can still run. Journey path inspection retains
+unknown routing limits independently of a known primary control. No new collector,
+queue, router framework or customer setting is introduced.
 Completed failed main-frame responses finish the primary action before optional
 loading and destination inspection. The error-step screenshot has a one-second
 budget and cannot replace the observed HTTP failure with a timeout. Challenge
@@ -1440,6 +2690,13 @@ responsibility before reconciliation resumes. Flag closure and fix verification
 consume the same recorded recovery predicate, including source requirements,
 assertions and check versions. A partial unrelated module cannot certify repair
 or invalidate an independently completed responsibility.
+The baseline reads each Improvement's latest qualifying occurrence and all
+unresolved original Flags directly. Pending and inconclusive attempts do not
+reload their source Audits' complete finding graphs. The same original source
+checks apply regardless of repair-history length. A disposable worker fixture
+retains an older repair through 25 inconclusive attempts, independent recovery
+of both source occurrences and subsequent recurrence. It also checks the unacted
+case, without inventing a customer repair or rewriting the original history.
 After both diagnostic and bound projections commit, finalization records the
 comparison once under `projection:flag-comparison` in the existing execution
 ledger. This is a comparison projection, not a verifier assertion or another
@@ -1500,6 +2757,24 @@ page, mobile-only evidence after desktop refusal, an unavailable mobile window,
 redirect comparability, complete repair, recurrence and bounded console floods.
 These observations cover recorded windows, not every later interaction or
 JavaScript execution state.
+
+Site admission retains console windows from its compatible recorded execution
+snapshot before merging newly observed error horizons. The bounded recent-Flag
+lookup cannot retire a known window just because newer unrelated history fills
+that lookup. Historical whole-run minima remain a fallback for later discovered
+pages; per-page minima can extend that window. Recorded per-page windows remain
+available to discovery without causing those pages to be collected by themselves.
+Execution preparation uses the actual admitted check set, so Conversion rechecks
+do not acquire console waits they never evaluate. Existing source selection,
+browser limits, method identities and comparison rules still apply. No second
+history scan, query, state store or customer control was added.
+
+A later healthy comparison preserves an already fixed Flag's original
+`resolvedInId`. Continued health is a new observation, not a replacement for the
+run that independently verified recovery. Those closed rows do not need another
+recovery-receipt read. Unresolved conditions still require their own comparable
+evidence, and recurrence retains the original incident identity.
+
 Accessibility collection retains each actual axe rule's passed, failed,
 unresolved or inapplicable outcome, with engine version and the desktop capture
 scope. The shared Accessibility evaluator consumes native rule evidence even
@@ -1510,9 +2785,20 @@ inspection. Mixed passing and unresolved nodes retain the unresolved result;
 one observed failure can still establish that the responsibility fails.
 The collector projects failure text, selectors and fix details into the existing
 finding contract. Transient engine internals, including undefined contrast
-parser fields, cannot interrupt durable snapshot storage. Top-level iframe
-attributes remain the Site's responsibility; nodes inside embedded frames retain
-their existing scope limit.
+parser fields, cannot interrupt durable snapshot storage. The existing legacy-mode
+collector limits frame injection to same-origin documents. Its outcomes remain
+intact through summaries, findings and verification. A selector-name heuristic
+cannot establish frame ownership, so no evaluator filters native nodes based on
+words such as iframe. Top-level iframe attributes remain the Site's responsibility,
+including the titles of cross-origin embeds. Native target arrays preserve frame
+levels and nested shadow-root paths, following the
+[axe result contract](https://github.com/dequelabs/axe-core/blob/develop/doc/API.md).
+Fix evidence labels these boundaries explicitly. Screenshot geometry traverses
+open shadow roots and skips descendant-frame coordinates, which it cannot locate
+in the top document. Current native summaries record the corrected same-origin
+policy through the existing snapshot schema. Their comparison contexts differ
+from historical summaries, preventing this interpretation change from certifying
+an older finding as repaired. Historical source evidence remains unchanged.
 The portable WCAG rule inventory follows the installed engine and existing
 rule-to-finding aliases. Rules emitted by the selected WCAG policy have
 registered execution identities and verification assertions. Missing rules or changed
@@ -1598,6 +2884,37 @@ Site admission, independent privacy-link repair and scheduled recurrence. Static
 name counters remain supplemental; rendered Accessibility proof still comes from
 its native engine and recorded source conditions.
 
+Form-name fallback requires nonempty name content and a real label relationship.
+An empty label, whitespace-only ARIA label or missing reference cannot certify a
+repair. Explicit labels retain first-ID identity; an implicit label belongs to
+its first labelable control unless its `for` attribute targets another control.
+Textarea contents and select options cannot supply the enclosing label's name.
+Inputs, buttons and links share the same cached name-content and ARIA-reference
+checks, replacing the separate input attribute-presence shortcut. Script text and
+unreferenced hidden descendants do not supply a name. Explicitly referenced
+hidden subtrees retain their supported naming behavior, and empty references can
+fall back to other valid name sources. Reference traversal does not follow another
+ARIA chain or recurse through a self-reference. These remain captured HTML
+signals, not a complete accessible-name implementation or conformance result.
+
+New metadata and durable snapshots retain control-name policy version 2. Only
+those HTML name assertions receive the corresponding context identity. Older
+zero counters remain insufficient positive evidence, including when a worker
+resumes an earlier capture. The existing receipt reader and scoped verifier share
+one qualifier for saved positive counters. Original stored values and meaningful
+failures remain intact. A corrected detector cannot be credited as an old HTML
+finding's repair; native axe contexts retain their existing comparison rules.
+
+Thirty-eight native browser cases compare supported relationships with Chromium.
+An independent axe 4.12.1 label observation checks missing name, nominal empty-label
+repair, actual named repair and recurrence. The shared evaluator receives HTML
+and a controlled PageSpeed fixture for that comparison, leaving its native rule
+evidence unavailable. Only the scoped HTML responsibility can pass; the automated
+Accessibility result remains incomplete. The installed application and worker
+regression separately retains independent native observations through unavailable
+metadata, repair and recurrence. These establish local behavior, not production
+screen-reader coverage or complete accessibility assurance.
+
 The shared public HTTP transport bounds resource admission separately from its
 response budget. A caller's absolute execution deadline still limits both phases.
 Local contention cannot shorten the website's configured response window and then
@@ -1658,6 +2975,17 @@ The disposable worker fixture exercises native style gaps, complete observations
 unchanged advisory repair limits, and resumption of an older conflicting receipt.
 Independent positive criteria on the same partial receipt remain usable for their
 original scoped repairs.
+
+Unversioned historical module receipts use that same summary calculation after
+qualifying their individual observations. Explicit incompleteness, execution
+failure, unreadable assertion lists and older positive observations missing
+required evidence cannot retain a conflicting passing aggregate. Readable
+assertions remain available, including independent positive facts. Supported
+historical aggregate-only results retain their recorded meaning without gaining
+positive completeness or a missing aggregate. Coverage honors historical gaps
+without promoting historical receipts into current scoped repair proof. Site
+overview, account list, paginated results and MCP use these shared projections;
+published run results and stored receipts are not rewritten by reads.
 
 The shared page evaluator accepts unavailable metadata without substituting an
 empty document. Registrations that consume whole-document fields explicitly
@@ -1785,9 +3113,18 @@ Loading clearance begins as soon as the initial DOM observation records blocking
 UI. Its browser timestamp is independent of screenshots, media uploads, protocol
 acknowledgement, document readiness and title waits. The initial frame timestamp
 excludes upload time. Desktop and mobile collectors, their clearance waits and
-mobile layout metrics share one loading predicate, including viewport position,
-ancestor visibility and the distinction between a blocking main loader and a
-small background loader. Unavailable clearance remains unknown. The
+mobile layout metrics and destination loading share one loading predicate,
+including viewport position and the distinction between a blocking main loader
+and a small background loader. The loader's computed visibility determines its
+inherited CSS visibility: a visible child can override a hidden ancestor. Ancestor
+display suppression and opacity still exclude the descendant. Native Chromium
+fixtures establish the visible, hit-testable child and retain both inherited-hidden
+and non-overridable hiding cases. The existing application/worker repair cycle
+uses the same visible-child condition for slow, stuck, unchanged, recovered and
+recurring observations. This expands observation of real blockers; the loading
+thresholds, scope identities and historical records remain unchanged.
+[MDN CSS visibility](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/visibility).
+Unavailable clearance remains unknown. The
 `records browser loading clearance` Chromium fixture checks fast, slow and
 persistent loaders with delayed titles and nonblocking loading elements; the
 media-delay regression reproduced a 500ms clearance incorrectly reported as
@@ -1901,16 +3238,22 @@ visible child may override inherited visibility. An incomplete rendered-copy
 walk leaves the headline condition unknown. Primary action evidence requires a visible, enabled
 control in the viewport. Signup field observations exclude hidden ancestors.
 Journey action presence, route discovery, flow selection, pricing, destination
-controls and mobile action measurements share one bounded rendered control inventory. Labels exclude hidden
-descendants, and conversion-intent scoring uses those rendered labels. Plain conversion links do not require a special
+controls and mobile action measurements share one bounded rendered control inventory. Visible captions exclude hidden
+descendants. Controls without a visible caption can use bounded `aria-labelledby`
+references, including explicitly referenced hidden labels. Hidden descendants of
+visible referenced labels stay excluded, and editable reference values remain
+unavailable. Conversion-intent scoring uses these captions. Plain conversion links do not require a special
 URL or CSS class. Generic enabled buttons, button roles and styled action links
 retain their presence semantics. Inert and invisible controls cannot establish
 presence; a visible child may override inherited visibility. Action assertion
 contexts include the detector version, so this correction cannot certify repair
 of historical action findings. Missing-flow-action and journey-path assertions
-also version their corrected detectors. Native-input discovery uses journey action
-version 4 and flow presence version 3; older versions remain readable but cannot
-certify these corrected presence findings as repaired. Rendered headline contexts carry their own
+also version their corrected detectors. Referenced-label discovery uses journey action
+version 5, journey path version 4, flow presence version 4 and destination control
+version 2. Resolved fragment declarations use journey action version 6, journey
+path version 5, flow presence version 5 and destination control version 3;
+`cta-dead-link` uses check version 2. Older versions remain readable but cannot
+certify these detector corrections as customer repairs. Rendered headline contexts carry their own
 detector version. Unchanged response, timing and form conditions retain their
 comparable contexts.
 Signup field observations exclude button, submit, reset and image activation
@@ -1945,6 +3288,21 @@ offscreen controls. These are local page-condition results. They do not prove
 successful account creation, conversion rates, AI judgments or real-provider
 behavior.
 
+Pricing-section, mobile-navigation and declared primary-panel observations use
+Chromium's native `Element.checkVisibility` with opacity and CSS visibility
+checks. A child's restored visibility is observable, while zero-opacity,
+display-suppressed and content-suppressed ancestors remain excluded. Existing
+geometry, inert/hidden controls, accessibility exclusions and per-probe viewport
+rules still apply. A section or panel with its own hidden contents is not a
+useful revealed destination even when its empty box is painted. Pricing fragment
+conditions use `flow:pricing:v2` so the detector correction cannot certify an old
+section repair; HTTP pricing destinations retain their original v1 conditions.
+Mobile detector version 2 and its matching rule distinguish current native paint
+evidence from the earlier hand-written visibility interpretation. Raw receipts
+and published history remain unchanged. Native fixtures observe both visible
+child restoration and content suppression, and installed worker fixtures retain
+unchanged failures, independent recovery and recurring finding identity.
+
 Mobile navigation uses an independent `flow` task with module
 `mobile-navigation`. It creates the 375px mobile browser profile with touch
 input enabled and uses a native tap to open menus. Capture identity includes the
@@ -1959,7 +3317,7 @@ links within 1500ms is recorded as a failure. An undeclared opener whose intende
 panel cannot be established remains unknown. Compact visible navigation remains
 supported; the existing full-navigation-without-a-menu criterion is retained.
 
-`Mobile navigation observation v1` freezes the panel and capture conditions,
+`Mobile navigation observation v2` freezes the panel and capture conditions,
 and records hashed link identities. It does not persist link query credentials.
 Independent repair requires every originally recorded link to remain present
 and visible. Removing a link, changing its destination, losing the original
@@ -2041,7 +3399,14 @@ earlier receipts.
 Site coverage applies incomplete module receipts, failed module ownership, local
 Search responsibilities and Tracking delivery limits before deriving overall
 health. Category cards and account summaries consume these same facts. A current
-observation in one area cannot establish a Clear Site while another required
+registered page or action receipt that cannot be decoded remains unavailable;
+collection summary bits cannot replace it. Readable legacy assertions remain
+accessible, while a partly unreadable receipt keeps an unknown aggregate. A
+completed Audit with an unfinished module cannot establish fulfilled coverage.
+These read projections preserve the raw receipts and immutable published run
+conclusions. Restored usable evidence can restore current assurance without
+rewriting the earlier conclusion.
+An observation in one area cannot establish a Clear Site while another required
 area or recorded page is unresolved. Confirmed Flags remain actionable alongside
 incomplete evidence. Completed partial reports retain the existing recheck action,
 including runs with no fatal failure code. The independent Search worker fixture
@@ -2061,6 +3426,12 @@ and date in history. Pagination is bounded and tied to this evidence selection;
 a cursor from a different selection cannot relabel older evidence as current.
 HTTP and MCP readers select the full-site baseline explicitly, so a newer
 diagnostic or category execution cannot replace its identity.
+Category completeness follows the persisted finalization dependencies rather
+than regenerating a plan with the current planner. Every recorded obligation
+must be reachable and complete or have a settled exclusion. Missing tasks,
+cycles, orphaned work and unfinished dependencies retain an incomplete result.
+The Site, run API and history read the same compact task dependencies without
+loading full artifacts. Planner changes cannot add or remove historical work.
 
 Diagnostic run results use the exact admitted repair attempt, source Audit,
 verification Audit and immutable evidence reference. Comparable recovery is
@@ -2080,12 +3451,44 @@ Verification keeps its idempotency key after an uncertain response. Site refresh
 validates the complete projection and matching identity before replacing the
 recorded view; malformed responses retain visible disconnected evidence.
 
+Outcome lists, details, confirmations and rename receipts select linked page
+URLs and ownership through the same `outcomePageProjection` relation shape.
+Their builder preserves page order but emits IDs and URLs only for pages still
+owned by that Outcome's current Project or unclaimed provisional Site. A claimed
+page cannot remain readable through an old provisional association. The former
+per-Outcome page-ID lookup is removed. Lists no longer issue an additional page
+lookup for every Outcome, and command receipts use the same interpretation.
+Freshness, binding evidence and history continue through the existing pure
+presentation functions. Signed-claim database fixtures retain valid page context
+after duplicate-page migration and preserve Outcome identity and evidence.
+
+Single and batch Outcome details use the same reader. MCP no longer reads a
+summary list and then reloads each Outcome individually. PostgreSQL first selects
+the bounded detail references: 20 recent assessments and runs, 20 binding
+attempts, 50 binding executions, and the existing 20 occurrences and attempts
+per Improvement. The last accepted successful assessment is selected separately
+from the recent history window. ORM hydration is restricted to those IDs, rather
+than relying on multi-parent relation `take`, which the observed query engine
+applied after unrestricted history reads. Hydration cannot present a selected
+success that was superseded before its record arrived. The pure detail builder
+continues to own binding comparability, recovery guidance and timeline wording.
+Run selections fetch only their consumed identity, status, request date, error
+and Audit reference. A SQL-traced PostgreSQL fixture verifies per-parent bounds
+and consistent single/batch views; installed MCP protocol fixtures retain the
+same evidence and explicit unverified states.
+The overview's Outcome list and account summary use the same bounded reference
+foundation with one assessment and run per Outcome. Their lightweight selection
+omits execution, attempt and Improvement history. The account reader scopes its
+cohort to its already-authorized Project IDs and enabled Outcomes. Empty
+selections do not issue a second hydration read.
+
 Explicit Site refreshes await the validated HTTP read and write it to the
 requested Site's explicit cache key. Revalidation resolving with retained data
 is not proof of a fresh read. A callback captured before navigation cannot
 replace the next Site's cached view or connection state; closed event streams
-cannot update the next view. A late failed request preserves newer validated
-facts while exposing the transport failure. Settings, monitoring, account-check
+cannot update the next view. Superseded requests settle from the newest read
+of the same Site, so an old rejection cannot reinstate a cached error after a
+successful refresh. Settings, monitoring, account-check
 preferences and connection controls derive their values from this shared view,
 without copied initial state. Successful writes await its refresh. If the write
 was accepted but refresh failed, the interface retains recorded values and
@@ -2093,6 +3496,63 @@ states that refresh is pending. Notification writes include only edited fields,
 preserving independent preferences changed elsewhere. Revoked provider records
 retain their property and observation date without another disconnect action.
 Focused resource and component fixtures exercise these transitions and failures.
+
+Composed Flag pages use `SiteResourceBoundary` to share one resource owner
+between the live analysis sidebar and Flag actions. That owner controls reads,
+polling, refresh ordering and the event connection. Consumers share failures
+and validated data, and can observe source notices without opening another
+connection. Nested actions reuse the enclosing Site owner; standalone actions
+retain their own scoped owner. Changing Sites replaces the owner, while
+removing a child leaves its siblings connected. Overview and settings already
+own a single resource and retain their existing ownership. This is local view
+composition, without a global connection registry or additional polling loop.
+
+Current owner Site health and account summaries also require the eligible
+Site's current uptime evidence. `uptime/status.ts` shares target matching,
+monitor eligibility, freshness and unresolved incident scope between uptime
+reads and account summaries. One shared monitor selection reads current status
+and small unresolved incident descriptors with Site rows, without fetching probe
+history for every website. Fresh confirmed downtime uses the existing Offline
+label and attention treatment, even while a separate analysis runs. Missing,
+pending, inconclusive or stale reachability evidence cannot support Clear.
+A confirmed unresolved incident still needs attention after an inconclusive probe
+or a stale observation. Current reachability stays Unknown, and the existing
+Needs attention label preserves the distinction rather than claiming fresh
+downtime. The current assessment retains that reachability gap beside the known
+incident. Missing probes cannot expire the unresolved incident.
+
+The additive `incidentOpen` fact requires an eligible active Site, the exact
+monitor target and generation, and a confirmation no later than the read time.
+An internally disabled monitor cannot revoke that active Site responsibility;
+turning Site care off still removes the active uptime obligation.
+Recovered, superseded, other-target and old-generation incidents cannot supply
+current attention. During a pending retarget, historical open-incident counts
+remain available without attributing the old outage to the new target. Summary,
+history, owner views and MCP share this interpretation. Disposable PostgreSQL
+execution confirms initial failure, independent confirmation, inconclusive and
+stale attention, unchanged incident and notification records, actual recovery and
+recurrence. Observation callbacks and notification delivery are controlled in
+this fixture; it does not establish production reachability or email delivery.
+Turning Site care off contributes no active uptime obligation. Pausing broad
+analysis alone retains independent uptime care. Reachability recovery
+removes only its own constraint, leaving unrelated findings and missing evidence
+intact. The assessment does not invent Flags or change their counts. Recorded
+run results and monitoring history retain their original conclusions. Pages
+uses the run's own activity rather than the overall Site result to describe its
+ongoing analysis, independently of current uptime attention.
+
+The existing owner-scoped MCP `list_sites` read includes automatic uptime from
+the shared lightweight projection. `list_outcomes` includes the application's
+uptime summary even when no Outcome is configured. Optional `uptimeWindow` and
+`uptimeCursor` request the same bounded probe and incident history as the private
+application route. The response states its HTTP scope and rendered-verification
+limit. The history cursor is separate from `resultCursor` and must belong to the
+authorized monitor, target generation and requested window. Invalid cursors
+return `INVALID_UPTIME_CURSOR` with a read-only restart call. The private route
+and MCP share the cursor schema and typed reader error. Reads never start probes,
+create findings, consume analysis credits or substitute HTTP success for browser
+repair verification. Installed MCP client/server fixtures exercise these facts
+over in-memory transport, separately from deployed authentication and transport.
 
 Default monitoring resolves the effective account policy from the same scoped
 transaction read as Site identity. Active plan grants contribute to the default
@@ -2328,6 +3788,35 @@ stuck-Audit pass. Scheduler leases renew and release atomically by ownership tok
 Site, report and MCP reads return persisted state without initiating either path.
 Progressive recovery windows are not legacy `AUDIT_DEADLINE_MS` call budgets.
 
+Legacy Audit recovery, completed-result publication and expired Site RunRequest
+recovery use independent two-minute callbacks and distributed claim windows.
+Each callback retains its own overlap guard. A failed or slow legacy operation
+cannot stop completed findings or abandoned requests from being reconciled, and
+a failed individual legacy candidate does not end its remaining batch.
+
+Completed-result recovery excludes live Audit claims and live finalizers before
+applying its batch limit. It selects the least recently touched candidates,
+using the existing status/activity index and deterministic ID ordering. Fenced
+execution claims and releases already advance that activity clock, so an oldest
+failed publication yields to untouched work on the next pass. Completion dates,
+evidence and the canonical idempotent projector stay unchanged. Disposable
+PostgreSQL cases reproduce starvation behind a failed oldest result and a held
+claim, verify later publication, then recover the original interrupted result.
+An owned progressive case publishes its missing comparison while retaining
+incomplete coverage and an inconclusive Site result. These are local recovery
+proofs, not production scheduling or notification-provider acceptance.
+
+Expired Site request recovery also excludes unfinished progressive Audits before
+applying its batch limit. Their physical executor owns settlement even after the
+historical request lease or recovery window expires. One shared eligibility
+predicate governs sweep selection, per-Site selection and the guarded terminal
+write. It explicitly includes missing and null historical engine metadata, since
+negating a JSON-path comparison does not include SQL nulls. A renewed lease, a
+completed observation or newly acquired progressive ownership prevents the
+abandonment write. Local PostgreSQL cases recover both abandoned and completed
+requests beyond 100 protected rows, retain those physical executions, and
+exercise historical null variants and ownership changes during recovery.
+
 ## Environment variables
 
 | Variable                               | Purpose                                              |
@@ -2348,7 +3837,23 @@ Progressive recovery windows are not legacy `AUDIT_DEADLINE_MS` call budgets.
 | `GET /api/health/ready`   | Strict database, Redis, worker, Chromium, R2, AI, PageSpeed, auth, billing, email, and Product Watch readiness; returns 503 on any missing launch capability |
 | `GET /api/health/ai`      | Provider keys + triage schema loaded                                                                                                                         |
 | `GET /api/health/browser` | Chromium + R2 connectivity                                                                                                                                   |
-| `GET /api/health/worker`  | Redis + worker heartbeat                                                                                                                                     |
+| `GET /api/health/worker`  | Redis, worker, queues, browser, execution deadlines and current monitoring obligations                                                                        |
+
+Worker execution diagnostics use `health/execution.ts` for one bounded,
+read-only repeatable snapshot of the oldest unfinished Audit and overdue work.
+Progressive work uses its recorded recovery deadline or original admission-time
+fallback, independently of whether a worker ever started it. The dispatcher and
+task engine use that same recovery-window foundation. Legacy execution retains
+its depth-dependent budget, with creation time only for never-started work.
+Terminal observations and post-completion enrichment stay outside the overdue
+execution cohort. A contended or unavailable read exposes null evidence and
+`audit_unavailable`; it cannot invent zero overdue work. The route uses one
+captured clock for execution and monitoring. HTTP 200, response fields and
+deployment-readiness separation remain unchanged. Disposable PostgreSQL cases
+exercise the actual route with controlled healthy infrastructure, expired queues,
+stored and fallback deadlines, valid longer execution, legacy depths, terminal
+history and an actual ledger lock. They do not establish deployed worker health
+or sustained production monitoring.
 
 ## Debugging runbook
 
@@ -2378,6 +3883,17 @@ Progressive recovery windows are not legacy `AUDIT_DEADLINE_MS` call budgets.
 
 ## Browser capture (production)
 
+All audit `Page.screenshot` calls share `browser/capture-screenshot.ts`. The helper
+uses Playwright's native operation timeout, capped at five seconds and shortened
+by the caller's deadline. Journey and public-flow frames use a 1.5-second cap.
+Expired work does not start a physical capture. Load-frame sampling also respects
+its observation window, and frame uploads inherit the existing execution deadline.
+No race abandons a live screenshot while claiming its browser capacity is free.
+Optional viewport capture failures retain independently collected DOM,
+accessibility, console and layout facts; missing images remain failed media.
+A controlled native font request demonstrates capture timeout, continued page
+interaction, retained journey assessment and later healthy capture.
+
 Production scans use **Playwright + Chromium** only (`lib/audit/screenshot.ts`, `lib/audit/browser/page-session.ts`). Do not use chrome-devtools-mcp, chrome-devtools-axi, or conversational browser agents on the audit path.
 
 `browser/context-lifetime.ts` owns capacity admission, native context allocation,
@@ -2397,7 +3913,7 @@ repair and recurrence. These results establish local behavior, not production ac
 
 | Step                         | Where                        | Notes                                                                                                                                                               |
 | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Desktop + mobile screenshots | `captureScreenshots`         | Parallel pages; desktop required                                                                                                                                    |
+| Desktop + mobile screenshots | `captureScreenshots`         | One native profile at a time; desktop required                                                                                                                                    |
 | CTA flow scan                | Deferred primary desktop session | `runFlowScan` after checks when the current deadline allows; failures → `skipped`                                                                                                                                 |
 | Slow 3G replay               | `pipeline/run-page.ts`       | `runSlowReplay` when deadline budget > 30s                                                                                                                          |
 | Network engagement           | Desktop + mobile sessions    | Merged `networkFailures`; `journeySafe` on flow capture                                                                                                             |
@@ -2475,7 +3991,32 @@ Site alert selection follows completed-check chronology, then stable creation an
 
 Watch parent lookup normalizes the selected URL with the same function used at Audit creation. A canonical Site root without a slash must match its persisted root-page Audit. `WATCH` provenance is retained even without a completed parent; finalization then classifies current observations as new, with no invented recovery. The retry sweep also includes those first Watch alerts.
 
+Watch retries run bounded passes every thirty seconds, starting six seconds after
+worker initialization. Each alert's saved `watchNotificationNextAttemptAt` owns
+its backoff, replacing the former global four-minute rate window and five-minute
+timer. Null retains immediate eligibility for historical and initial work. Due
+and inactive-lease predicates apply before the batch limit, with oldest activity
+and identity ordering. Local passes cannot overlap; conditional database claims
+protect delivery across workers. Direct delivery also respects the selected due
+time and compares it again in the claim, so an intervening deferral cannot be
+bypassed. Watch and uptime share exponential backoff starting five minutes after
+a failed attempt and capped at six hours. Unreadable classification receives a
+thirty-second deferral without consuming a provider attempt, conditional on its
+selected status, attempt count, lease and due time. Acceptance and opt-out clear
+the saved due time. No separate retry queue or global batch owner is required.
+
 Notification selection applies current Site preferences to both the count and the exact Flag destination. OFF also disables recovery messages. Confidence and impact survive diff projection. Provider rejection and missing delivery configuration consume bounded claims; a confirmed provider ID records SENT, which proves acceptance rather than inbox delivery.
+
+Watch and uptime prepare the exact message before claiming delivery. One
+conditional write freezes that body, checks the previously selected payload,
+rechecks current permission and consumes the bounded attempt. There is no
+separate payload write after permission admission. Invalid preparation retains
+the original payload and uses the existing failed-attempt policy. A claim
+delayed by database contention cannot start a provider call unless its full
+20-second request window remains. Disposable database regressions reproduce
+permission changes at body persistence, concurrent claims, changed payloads,
+invalid preparation and delayed admission. The existing worker and installed-SDK
+fixture also preserves exact retry bodies, keys and late-acceptance fencing.
 
 Classification cannot overwrite a live sender or confirmed acceptance. A claim
 compares the observed attempt count, and terminal delivery writes require that
@@ -2489,6 +4030,22 @@ stale classification reads, late rejection and acceptance after reclamation,
 live and expired opt-outs, exact recipients and Flag links through the installed
 SDK with a controlled HTTP boundary. This establishes local ledger and SDK
 behavior, not real-provider acceptance or inbox delivery.
+
+All shared Resend SDK requests and automatic-account receiving retrieval use
+one team-wide capacity boundary before physical transport. Resend's default
+allowance is 10 requests per second across every team API key. The existing
+atomic Redis lock spaces application requests by 125 milliseconds, leaving
+headroom. Web and worker clients use the same key, without retaining credentials
+or reserving an unbounded future queue. Admission waits at most five seconds
+and fails closed if Redis cannot establish capacity. Cancellation and late Redis
+replies cannot authorize a later request. No delivery status, message body or
+idempotency key is changed by admission. Existing notification retry ledgers own
+failed attempts. Their 20-second request deadline includes this wait; receiving
+retrieval similarly retains one eight-second total deadline. Two disposable
+Redis/SDK cases exercise separate clients with different keys and an unanswered
+admission command. They establish local pacing and cancellation, not real team
+capacity, outside API consumers or provider acceptance.
+[Resend usage limits](https://resend.com/docs/api-reference/rate-limit)
 
 Notification retry batches exclude inactive accounts and removed Sites before
 applying the batch limit. Classification itself requires a completed, dated
@@ -2520,6 +4077,17 @@ restrictive preferences require an exact current body or a new scoped message.
 Selection and delivery history never enter the provider's email body. The
 existing attempt ceiling, ownership fencing and confirmed acceptance remain
 shared across these selections.
+
+Each immutable delivery also records its first-attempt time in that same claim.
+Resend retains idempotency keys for 24 hours. A replay must fit its complete
+20-second request within that window, checked both before claiming and before
+calling the provider. A late ambiguous delivery remains FAILED with unconfirmed
+acceptance; its key is never rotated to bypass expired deduplication. Historical
+snapshots without this metadata use the original observation time as a
+conservative bound. A first delivery with no previous attempt starts its own
+window even when the observation is older. Restoring an earlier Watch selection
+retains that selection's original time. This private metadata never enters the
+provider body. [Resend idempotency retention](https://resend.com/docs/dashboard/emails/idempotency-keys)
 The migrated worker fixture also saves a scoped revision of a historical
 message and retries that exact body and key through the installed SDK after
 another owner-name change. Focused selection tests cover critical-only and
@@ -2539,6 +4107,26 @@ drawer cannot suppress a real failed Add to cart action. Controlled Chromium
 fixtures exercise branding, hidden frames and drawers, usable embedded entry,
 loading, challenge and HTTP failure. The database and worker cycle uses these
 observations with unavailable media and retains independent repair and recurrence.
+
+Top-level checkout uses that same bounded surface observation. A checkout URL
+and HTTP 200 do not establish usable checkout entry. Blank, loading, challenged
+or disabled surfaces remain `checkout_surface_unavailable`, without a customer
+Flag or the generic interrupted-probe retry path. Known HTTP failures and visible
+checkout errors retain their existing failure semantics. Native Chromium fixtures
+cover direct Buy navigation, cart-to-checkout navigation and usable entry.
+
+Binding receipts record `checkout-entry-v2` separately from customer configuration
+versions. Current health, binding evidence and the last successful verification
+require that positive proof. Recorded URL-only conclusions remain in history.
+Reconciliation cannot upgrade an older success during interruption recovery, and
+a diagnostic JourneyReview cannot substitute for the binding execution receipt.
+That receipt already owns idempotency. A stricter success evaluator can verify
+recovery from a genuine older failure under the same admitted responsibility;
+an older URL-only Clear cannot establish the healthy interval before recurrence.
+Disposable PostgreSQL cases preserve both boundaries without changing history.
+The real application, queue and worker cycle keeps the original Flag open through
+blank checkout, independently verifies usable checkout, then preserves recurrence.
+These are local browser and execution observations, not production or payment proof.
 
 Recorded repairs share the existing Improvement Attempt and cycle ledger across Site, API and MCP paths. A request key identifies one declared repair within its Improvement. Exact retries return the original receipt, including completed outcomes, without another attempt or event. A changed declaration under that key returns `FIX_INTENT_MISMATCH` (HTTP 409). Historical receipts without a recorded request hash retain their original receipt; their original payload cannot be reconstructed. Commit and deployment references are declared provenance, not proof that those changes were deployed.
 
@@ -2561,6 +4149,16 @@ external MCP client.
 The `20261012060000_fix_attempt_commit_reference` migration persists commit references, freezes keyed or admitted repair intent in PostgreSQL, and removes the older constraint limiting a source to one pending repair. Distinct repairs may coexist while an earlier verifier runs. The database protects source, builder, handoff, references, description and request identity after freezing. Legacy unkeyed, unadmitted drafts retain guarded preparation updates. Native conflict-safe materialization preserves existing Improvement and occurrence history under concurrent first-fix requests.
 
 Reconciliation selects the attempt named by a targeted run, rather than whichever pending repair happens to be newest. Recording and projection share an Improvement lock. A result updates its attempt and original incident proof; only the latest repair updates the Improvement's current verification status. The original Flag's first confirmed resolution remains intact. Board and detail show checking only for an admitted, unfinished verification of the current source scope in the same Site, including interrupted finalization. History evaluates each attempt's own admitted scope. A readiness record alone does not establish checking.
+
+Result publication conditionally updates only a pending or inconclusive attempt
+under that same lock. An observation prepared before another run settled the
+repair cannot overwrite its conclusive outcome, verification reference or
+evidence. A rejected stale write does not update incident state, the Improvement,
+cycle events, lifecycle telemetry or verified learning. Existing original-scope
+rules still allow independent recovery of an inconclusive attempt. A subsequent
+monitoring failure creates a recurring occurrence in the same Improvement while
+retaining the successful repair's original receipt. This uses the existing
+attempt and cycle ledgers without another result store or workflow.
 
 Verification resolves the repair's recorded source Flag and Audit within the owned
 Site, even after monitoring adds a newer occurrence to its durable Improvement.
@@ -2594,6 +4192,30 @@ unmatched original member. Explicit verification and automatic recovery use the
 same comparator. Controlled HTTP, disposable database, queue and worker fixtures
 exercise failed, inconclusive and fully repaired header states. These establish
 local behavior, not production acceptance.
+
+Page recovery, Search comparison, verifier persistence, Performance measurement
+conditions and Tracking page identities share `improvements/verifier-scope.ts`.
+It preserves path, query delimiters and browser fragments: `/pricing`,
+`/pricing/`, `/#/pricing/` and `/#/help` retain their own observation scopes.
+The existing bare-root key, host and default-port normalization are unchanged.
+Verification coverage no longer has its own lossy normalizer. Redirect
+equivalence requires observed protocol evidence, rather than removing a slash
+from every serialized URL. See [RFC 3986 section 6.2.4](https://www.rfc-editor.org/rfc/rfc3986.html#section-6.2.4).
+
+Historical receipts and scope keys are retained. Their full recorded page URL
+continues to supply exact comparison scope when available. An old opaque
+measurement hash cannot reconstruct a path delimiter or fragment removed before
+hashing; missing comparable conditions remain inconclusive. Fresh evidence uses
+the shared exact identity. Representative discovery selection may still group
+similar destinations for bounded review, while admitted physical requests and
+recovery evidence retain their original URLs.
+
+Finding ownership also uses the exact navigation key. A native finding on one
+fragment state cannot suppress an independent page observation merely because
+both states share their HTTP document. Tracking phase keys and measurement
+conditions retain the same page scope. Historical immutable comparisons are not
+rewritten, and an old fragment-free receipt cannot acquire missing browser-state
+proof through normalization.
 
 Flag detail, current attention and Site summaries distinguish the Improvement's
 repair workflow from each captured occurrence. A legacy `VERIFIED` workflow can

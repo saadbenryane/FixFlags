@@ -42,6 +42,54 @@ function context(data: PageSpeedResult, module = 'performance', device?: 'mobile
 }
 
 describe('progressive Performance evidence', () => {
+  async function categoryMeasurement(data: PageSpeedResult, area: 'performance' | 'conversion') {
+    const scoped = context(data, 'mobile')
+    scoped.audit.executionSpec = { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: pageUrl,
+      environment: 'production', category: { area, sourceAuditId: 'original', pages: [pageUrl] },
+      checks: Object.fromEntries(Object.entries(CHECK_REGISTRY).filter(([, definition]) => definition.module === 'mobile' && definition.area === area)
+        .map(([id, definition]) => [id, definition.version])), outcomes: [], verificationTarget: null }
+    return checkArtifactSchema.parse(readArtifact(await evaluate(scoped), 'check').data)
+  }
+
+  it('does not make Performance depend on unavailable Conversion evidence from the same provider response', async () => {
+    const data = measurement({ tapTargetAudits: [] })
+    const scoped = await categoryMeasurement(data, 'performance')
+    expect(scoped.receipt).toMatchObject({ passed: true, complete: true })
+    expect(scoped.receipt.assertions.some(assertion => assertion.key === 'tap-targets')).toBe(false)
+    const broad = checkArtifactSchema.parse(readArtifact(await evaluate(context(data, 'mobile')), 'check').data)
+    expect(broad.receipt).toMatchObject({ passed: false, complete: false })
+  })
+
+  it.each(['unavailable', 'failing'] as const)('keeps Conversion independent of %s performance measurements', async scenario => {
+    const data = measurement(scenario === 'unavailable' ? { score: null, lcp: null, cls: null, resourceAudits: [] }
+      : { score: 30, lcp: 6000, cls: 0.9 })
+    const scoped = await categoryMeasurement(data, 'conversion')
+    expect(scoped.flags).toEqual([])
+    expect(scoped.receipt).toMatchObject({ passed: true, complete: true })
+    expect(scoped.receipt.assertions.map(assertion => assertion.key)).toEqual(['tap-targets'])
+    const broad = checkArtifactSchema.parse(readArtifact(await evaluate(context(data, 'mobile')), 'check').data)
+    expect(broad.receipt.passed).toBe(false)
+  })
+
+  it('retains an applicable category failure and its comparable repair without unrelated requirements', async () => {
+    const failed = await categoryMeasurement(measurement({ score: null, lcp: null, cls: null, resourceAudits: [],
+      tapTargetAudits: readTapTargetAudits({ 'target-size': { score: 0 } }) }), 'conversion')
+    expect(failed.flags.map(flag => flag.checkId)).toEqual(['tap-targets-small'])
+    expect(failed.receipt).toMatchObject({ passed: false, complete: true })
+    const repaired = await categoryMeasurement(measurement({ score: null, lcp: null, cls: null, resourceAudits: [] }), 'conversion')
+    expect(scopedAssertionForTarget({ receipt: repaired.receipt, flag: failed.flags[0], checkId: 'tap-targets-small' })?.assertion)
+      .toMatchObject({ passed: true, complete: true })
+    const changed = await categoryMeasurement(measurement({ diagnostics: { measurement: performanceMeasurement({
+      requestedUrl: pageUrl, finalUrl: pageUrl, lighthouseVersion: '14.0.0',
+      configSettings: { formFactor: 'mobile', throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } },
+    }, 'mobile') } }), 'conversion')
+    expect(changed.receipt).toMatchObject({ passed: true, complete: true })
+    expect(scopedAssertionForTarget({ receipt: changed.receipt, flag: failed.flags[0], checkId: 'tap-targets-small' })).toBeUndefined()
+    const missing = await categoryMeasurement(measurement({ tapTargetAudits: [] }), 'conversion')
+    expect(missing.receipt).toMatchObject({ passed: false, complete: false })
+    expect(scopedAssertionForTarget({ receipt: missing.receipt, flag: failed.flags[0], checkId: 'tap-targets-small' })).toBeUndefined()
+  })
+
   it.each([
     { module: 'performance', strategy: 'desktop' as const, checkId: 'perf-score-critical', failure: { score: 35 } },
     { module: 'performance', strategy: 'desktop' as const, checkId: 'unused-js-large', failure: {

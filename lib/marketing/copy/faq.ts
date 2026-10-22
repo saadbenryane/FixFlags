@@ -10,7 +10,7 @@ export const FAQ_PAGE = {
   title: 'Frequently asked questions',
   guidesLead: 'Prefer step-by-step guides?',
   subhead:
-    'How FixFlags checks a live website, what a Flag means, and what is free.',
+    'Getting started, fixing problems, and keeping your website checked.',
 } as const
 
 export type FaqEntry = {
@@ -30,7 +30,7 @@ export function faqEntryAnchor(question: string): string {
 export const FAQ: readonly FaqEntry[] = [
   {
     question: 'How do I start?',
-    answer: 'Enter a public website URL for your first analysis. Save the same Site to your account to keep its results and start its default monitoring schedule. A Site you previously paused stays paused.',
+    answer: 'Enter your public website URL for a free check. Save the website as a Site in your account to keep the results, unlock fix prompts, and start its default monitoring schedule. A Site you previously paused stays paused.',
     learnMore: { href: '/docs/getting-started', label: 'Get started' },
   },
   {
@@ -40,7 +40,7 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'What is a Flag?',
-    answer: 'A Flag is an important problem with evidence: what happened, where it happened, and what should happen instead. Suggestions and areas without enough evidence remain distinct.',
+    answer: 'A Flag is a problem that needs attention. It shows what happened, where it happened, and what should happen instead, with evidence and fix guidance. Suggestions and areas without enough evidence remain separate.',
     learnMore: { href: '/help/flags-fix-verify/read-a-flag', label: 'Read a Flag' },
   },
   {
@@ -50,8 +50,18 @@ export const FAQ: readonly FaqEntry[] = [
   },
   {
     question: 'How do I verify a fix?',
-    answer: 'Publish the change, then select Check now on the same Flag. This returns to Monitor: FixFlags checks the same live behavior again. The Flag closes only when fresh evidence confirms recovery. Your saved monitoring schedule continues independently.',
+    answer: 'Publish the change, then select Check now on the same Flag. FixFlags checks the same page or action again. The Flag closes only when fresh evidence confirms recovery. Your saved monitoring schedule continues independently.',
     learnMore: { href: '/docs/fix-with-ai', label: 'Fix and verify' },
+  },
+  {
+    question: 'Who makes the fixes?',
+    answer: 'You, your developer, or your AI tool. FixFlags provides the evidence and fix prompt. Review and publish the change, then check again to see whether it worked.',
+    learnMore: { href: '/docs/fix-with-ai', label: 'Fix with your AI' },
+  },
+  {
+    question: 'Do I have to keep running checks?',
+    answer: 'Save a new Site to start its default schedule. FixFlags keeps checking and can email you about new problems and confirmed fixes. Change or pause the schedule in Settings.',
+    learnMore: { href: '/docs/site-care#watch', label: 'Set up monitoring' },
   },
   {
     question: 'When does monitoring start?',

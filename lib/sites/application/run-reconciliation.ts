@@ -1,3 +1,4 @@
+import { reconcileScheduledCompletions } from './scheduled-completion'
 import { persistOutcomeAssessment } from './outcome-incidents'
 import { readOutcomeIncident } from '../domain/outcome-incident'
 import { executionWrite } from '@/lib/audit/execution-ownership'
@@ -10,6 +11,7 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { validateBindingForOutcome } from './binding-config'
 import { logger } from '@/lib/logger'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { bindingEvaluator, recordedBindingEvaluator } from '../domain/outcome-evaluation'
 
 export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<void> {
   const requests = await prisma.runRequest.findMany({
@@ -57,13 +59,18 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
       {
         const verdict = assessRequiredBindings(
           requiredBindings.map((binding) => ({ key: binding.key, required: binding.required, version: binding.version })),
-          executions.map((execution) => ({
-            key: execution.bindingKey,
-            disposition: execution.disposition,
-            reason: execution.reason,
-            version: execution.bindingVersion ?? (execution.detail && typeof execution.detail === 'object' && !Array.isArray(execution.detail)
-              && typeof execution.detail.bindingVersion === 'number' ? execution.detail.bindingVersion : undefined),
-          })),
+          executions.map((execution) => {
+            const binding = requiredBindings.find(binding => binding.key === execution.bindingKey)
+            const expected = bindingEvaluator(admitted?.kind ?? outcome.kind, binding?.mechanism ?? execution.mechanism ?? '')
+            const changed = execution.disposition === 'SUCCEEDED' && expected !== recordedBindingEvaluator(execution.detail)
+            return {
+              key: execution.bindingKey,
+              disposition: changed ? 'BLOCKED' as const : execution.disposition,
+              reason: changed ? 'evaluation_changed' : execution.reason,
+              version: execution.bindingVersion ?? (execution.detail && typeof execution.detail === 'object' && !Array.isArray(execution.detail)
+                && typeof execution.detail.bindingVersion === 'number' ? execution.detail.bindingVersion : undefined),
+            }
+          }),
         )
         const checkoutBinding = requiredBindings.find((binding) => binding.mechanism === 'BROWSER_JOURNEY' && outcome.kind === 'CHECKOUT')
         const review = checkoutBinding ? request.audit?.journeyReviews[0] : null
@@ -135,7 +142,9 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
               bindings: requiredBindings.map((binding) => {
                 const validated = validateBindingForOutcome(outcome.kind, binding.mechanism, binding.config)
                 const fixture = admitted?.bindings.find(item => item.key === binding.key)?.fixture
+                const evaluator = recordedBindingEvaluator(executions.find(execution => execution.bindingKey === binding.key)?.detail)
                 return { key: binding.key, mechanism: binding.mechanism, version: binding.version, ...(fixture ? { fixture } : {}),
+                  ...(evaluator ? { evaluator } : {}),
                   config: validated.success ? validated.data.config : null, scope: binding.scope }
               }) as unknown as Prisma.InputJsonArray,
             },
@@ -179,6 +188,9 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
         leaseUntil: null,
       },
     }))
+    if (request.context && typeof request.context === 'object' && 'scheduled' in request.context)
+      await reconcileScheduledCompletions(1, undefined, { projectId: request.projectId, runId: request.id })
+        .catch(error => logger.warn('Scheduled completion deferred after run settlement', { runId: request.id, error }))
   }
 }
 
@@ -238,5 +250,8 @@ export async function markOutcomeRunsCouldNotVerify(
         leaseUntil: null,
       },
     }))
+    if (request.context && typeof request.context === 'object' && 'scheduled' in request.context)
+      await reconcileScheduledCompletions(1, undefined, { projectId: request.projectId, runId: request.id })
+        .catch(error => logger.warn('Scheduled completion deferred after run settlement', { runId: request.id, error }))
   }
 }

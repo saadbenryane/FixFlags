@@ -1,5 +1,6 @@
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
 import { scheduleFromWatch, scheduleLabel } from './monitoring-schedule'
+import { monitoringIsOverdue } from './monitoring-freshness'
 export type WatchBoardState = 'off' | 'watching' | 'paused' | 'delayed' | 'quota'
 
 export function watchBoardState(input: {
@@ -7,6 +8,7 @@ export function watchBoardState(input: {
   nextRunAt: Date | string | null
   lastError: string | null
   consecutiveFailures: number
+  now: Date
 }): WatchBoardState {
   const nextRunAt = input.nextRunAt
   const error = input.lastError ?? ''
@@ -15,7 +17,7 @@ export function watchBoardState(input: {
   if (input.interval && !nextRunAt) return 'paused'
   if (quota && input.interval) return 'quota'
   if (input.consecutiveFailures > 0 || (error && input.interval && nextRunAt)) return 'delayed'
-  if (input.interval && nextRunAt) return 'watching'
+  if (input.interval && nextRunAt) return monitoringIsOverdue(nextRunAt, input.now) ? 'delayed' : 'watching'
   return 'off'
 }
 
@@ -29,7 +31,7 @@ export function watchBoardLabel(state: WatchBoardState, interval: WatchInterval 
   return 'Not monitored'
 }
 
-/** True only after a successful schedule write (interval + next run). */
+/** A configured schedule is covered only while its due commitment is current. */
 export function watchIsCovered(state: WatchBoardState): boolean {
   return state === 'watching'
 }

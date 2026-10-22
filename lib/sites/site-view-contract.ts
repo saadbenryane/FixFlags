@@ -4,16 +4,19 @@ import { z } from 'zod'
 import type { SiteHomeView } from './application/queries'
 import { siteCheckResultSchema } from './check-results'
 import { watchIntervalSchema } from './watch-schedule'
+import { SITE_CARD_AREAS } from './card-areas'
+import { CUSTOMER_OUTCOME_STATES } from './domain/outcome-states'
 
 const text = z.string(), nullableText = text.nullable(), count = z.number().int().nonnegative()
 const time = z.string().datetime({ offset: true }), nullableTime = time.nullable()
 const date = z.union([z.date(), time]).transform(value => new Date(value)).nullable()
-const area = z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility'])
+const area = z.enum(SITE_CARD_AREAS)
 const health = z.enum(['healthy', 'attention', 'problem', 'unknown', 'checking'])
 const connection = z.object({ provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']), configured: z.boolean(),
   status: z.enum(['not_connected', 'connected', 'mismatch', 'needs_reauth', 'revoked', 'unavailable']),
   propertyLabel: nullableText, detail: nullableText, lastSyncedAt: nullableTime })
 const flag = z.object({
+  supportingEvidenceUnreadable: z.boolean().optional(),
   attentionPolicy: z.unknown().optional(), id: text, sourceFlagId: nullableText.optional(), confidence: z.number().nullable().optional(),
   improvementId: nullableText, checkId: nullableText, rubric: text, severity: text, impactTag: nullableText,
   problem: text, evidence: text, whyItMatters: text, fix: text, pageUrl: nullableText, status: text,
@@ -76,7 +79,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   recoveryUnavailable: z.boolean().optional(),
   executionProgress: z.object({ total: count, completed: count, running: count, pending: count, recovering: count,
     unknown: count, inapplicable: count, recoveryUntil: nullableTime, eventCursor: nullableText,
-    recovery: recovery.nullable().optional(), categoryRecovery: z.record(area, recovery).optional(),
+    recovery: recovery.nullable().optional(), categoryRecovery: z.partialRecord(area, recovery).optional(),
     summary: z.object({ total: count, recorded: count, limited: count, failed: count, notApplicable: count,
       pending: count, recovering: count, state: z.enum(['active', 'finished', 'limited', 'failed']), reasons: z.array(text).max(1200) }).optional(),
     tasks: z.array(z.object({ id: text, kind: text, module: nullableText.optional(), device: z.enum(['desktop', 'mobile']).nullable().optional(),
@@ -96,7 +99,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
     kind: z.enum(['GENERIC', 'CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY']), criticality: z.enum(['CRITICAL', 'IMPORTANT', 'INFORMATIONAL']),
     environment: text, enabled: z.boolean(), staleAfterMinutes: count, expectation: nullableText,
     bindings: z.array(z.object({ key: text, required: z.boolean(), scope: z.json(), mechanism: text, version: count })), coverage: z.json(),
-    state: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY', 'STALE']), summary: text, lastVerifiedAt: nullableTime,
+    state: z.enum(CUSTOMER_OUTCOME_STATES), summary: text, lastVerifiedAt: nullableTime,
     validUntil: nullableTime, flagId: nullableText, latestRunId: nullableText, running: z.boolean(),
   })),
   checkResults: z.array(siteCheckResultSchema).max(100).optional(), checkResultsNextCursor: nullableText.optional(),

@@ -60,7 +60,7 @@ vi.mock('@/lib/billing/credits', () => ({
   wouldBlockNewCheckWithCredits: vi.fn(async () => ({ allowed: true })),
 }))
 vi.mock('@/lib/audit/url', () => ({
-  assertPublicAuditUrl: vi.fn(async (url: string) => new URL(url)),
+  assertPublicNavigationUrl: vi.fn(async (url: string) => new URL(url)),
 }))
 vi.mock('@/lib/audit/scan-access', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/audit/scan-access')>(),

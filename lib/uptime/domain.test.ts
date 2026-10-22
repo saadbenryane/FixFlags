@@ -23,6 +23,10 @@ describe('recorded Uptime transitions', () => {
     expect(currentUptimeState({ enabled: true, state: 'online', lastCheckedAt: new Date(now.getTime() - 11 * 60_000), now })).toBe('unknown')
     expect(currentUptimeState({ enabled: false, state: 'online', lastCheckedAt: now, now })).toBe('paused')
   })
+  it.each([new Date(now.getTime() + 1), new Date(now.getTime() + 3600_000), new Date(NaN)])('does not establish current uptime from an unusable observation time: %s', lastCheckedAt => {
+    expect(currentUptimeState({ enabled: true, state: 'online', lastCheckedAt, now })).toBe('unknown')
+    expect(currentUptimeState({ enabled: false, state: 'online', lastCheckedAt, now })).toBe('paused')
+  })
   it('keeps missing periods unknown and consolidates confirmation attempts into their original slot', () => {
     const probes = Array.from({ length: 6 }, (_, index) => ({ scheduledAt: new Date(now.getTime() - (6 - index) * 5 * 60_000).toISOString(),
       observedAt: new Date(now.getTime() - (6 - index) * 5 * 60_000).toISOString(), attempt: 1, result: 'ONLINE' as const, confirmed: false }))

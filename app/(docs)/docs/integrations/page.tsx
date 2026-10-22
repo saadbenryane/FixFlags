@@ -7,5 +7,5 @@ const page = getDocsPage('integrations')
 export const metadata = buildDocsMetadata(page)
 
 export default async function IntegrationsDocsPage() {
-  return <DocsPageFrame page={page}><DocsMarkdown>{await readDocsMarkdown(page)}</DocsMarkdown></DocsPageFrame>
+  return <DocsPageFrame page={page}><DocsMarkdown headings={page.headings}>{await readDocsMarkdown(page)}</DocsMarkdown></DocsPageFrame>
 }

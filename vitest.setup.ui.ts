@@ -47,3 +47,12 @@ beforeEach(() => {
     }))
   )
 })
+
+// JSDOM has no layout engine. Real browser observations prove dialog geometry.
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  })
+})

@@ -2,8 +2,32 @@ import { describe, expect, it } from 'vitest'
 import { parseMetadataFromHtml } from '../metadata'
 import { runMessagingClarityChecks } from './messaging-clarity'
 import { isCustomerFlag } from '../attention'
+import { runVisualHierarchyChecks } from './visual-hierarchy'
+import { runTrustPsychologyChecks } from './trust-psychology'
+import type { CaptureMetrics } from '../capture-metrics'
 
 describe('messaging context and certainty', () => {
+  it('keeps sampled action prominence separate from unmeasured visitor behavior', () => {
+    const metrics = { competingPrimaryCtaCount: 2, competingPrimaryCtaComplete: true,
+      competingPrimaryCtaLabels: ['Add to cart', 'Search equipment'] } as CaptureMetrics
+    const finding = runVisualHierarchyChecks(null, metrics).find(flag => flag.checkId === 'hierarchy-competing-actions')!
+    expect(finding.problem).toContain('captured viewport')
+    expect(finding.evidence).toContain('Add to cart')
+    expect(finding.evidence).toContain('task completion and visitor understanding were not established')
+    expect(finding.evidence).not.toMatch(/choice paralysis|conversion loss/i)
+    expect(finding.fix).toContain('equal prominence is intentional')
+    expect(isCustomerFlag(finding)).toBe(false)
+  })
+
+  it('does not infer an absent customer journey from one recorded internal link', () => {
+    const meta = parseMetadataFromHtml('<h1>Outdoor equipment for hiking</h1><p>Choose equipment for your next trip.</p><a href="/signup">Get started free</a>', 'https://example.com/')
+    const finding = runTrustPsychologyChecks(meta, undefined, 'https://example.com/').find(flag => flag.checkId === 'trust-no-internal-links')!
+    expect(finding.evidence).toContain('1 same-site navigation link')
+    expect(finding.evidence).toContain('runtime actions and the need for further navigation were not established')
+    expect(finding.evidence).not.toMatch(/no path to explore/i)
+    expect(finding.fix).toContain('Preserve completed-task pages')
+    expect(isCustomerFlag(finding)).toBe(false)
+  })
   it('uses the observed supporting introduction rather than requiring the audience in the headline', () => {
     const meta = parseMetadataFromHtml('<h1>The platform</h1><p>Plan releases for engineering teams.</p>', 'https://example.com/')
     expect(runMessagingClarityChecks(meta).map(flag => flag.checkId)).toContain('messaging-weak-value-prop')

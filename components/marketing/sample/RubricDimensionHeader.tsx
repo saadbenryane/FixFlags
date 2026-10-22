@@ -5,9 +5,9 @@ import { rubricIcon, rubricTint } from '@/lib/rubric-icons'
 import { cn } from '@/lib/utils'
 
 const RUBRIC_WASH = {
-  MESSAGE: { border: 'border-brand/40', wash: 'bg-brand/[0.06]' },
-  EXPERIENCE: { border: 'border-success/40', wash: 'bg-success/[0.06]' },
-  REACH: { border: 'border-info/40', wash: 'bg-info/[0.06]' },
+  MESSAGE: { wash: 'bg-brand/[0.06]' },
+  EXPERIENCE: { wash: 'bg-success/[0.06]' },
+  REACH: { wash: 'bg-info/[0.06]' },
 } as const
 
 type RubricKey = keyof typeof RUBRIC_WASH
@@ -36,8 +36,7 @@ export function RubricDimensionHeader({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-card border-l-[3px] px-3 py-2.5',
-        wash.border,
+        'flex items-start gap-3 rounded-card px-3 py-2.5',
         wash.wash,
         className
       )}

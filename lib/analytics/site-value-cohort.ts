@@ -1,6 +1,7 @@
 import { attemptMatchesCycle, cycleMatchesSource, independentCycleResult,
   type AcquisitionAudit, type AcquisitionClaim, type AcquisitionCycle } from './acquisition-value-cohort'
 
+export type SiteValueFollowupDays = 7 | 28
 export type ValueSite = { id: string; userId: string; createdAt: Date; deletedAt: Date | null }
 export type ValueRun = { projectId: string; requestedByUserId: string | null; source: string; status: string; environment: string;
   requestedAt: Date; completedAt: Date | null; auditId: string | null }
@@ -10,7 +11,9 @@ const inWindow = (date: Date, start: Date, end: Date) => valid(date) && date >= 
 
 /** Retained Site usage after its first recorded exact claim, independent of first-scan repair source. */
 export function calculateSiteValueCohort(input: { claims: AcquisitionClaim[]; sites: ValueSite[]; audits: AcquisitionAudit[];
-  runs: ValueRun[]; cycles: AcquisitionCycle[]; since: Date; now: Date }) {
+  runs: ValueRun[]; cycles: AcquisitionCycle[]; since: Date; now: Date; followupDays?: SiteValueFollowupDays }) {
+  const followupDays = input.followupDays ?? 7
+  if (followupDays !== 7 && followupDays !== 28) throw new Error('Invalid Site follow-up duration')
   if (!valid(input.since) || !valid(input.now) || input.since > input.now) throw new Error('Invalid Site value window')
   const first = new Map<string, AcquisitionClaim>()
   for (const claim of [...input.claims].sort((a,b) => a.createdAt.getTime()-b.createdAt.getTime())) {
@@ -30,7 +33,7 @@ export function calculateSiteValueCohort(input: { claims: AcquisitionClaim[]; si
   for (const claim of first.values()) {
     if (claim.createdAt < input.since) continue
     coverage.firstRecordedClaims++
-    const end = new Date(claim.createdAt.getTime()+7*DAY)
+    const end = new Date(claim.createdAt.getTime()+followupDays*DAY)
     if (end > input.now) { coverage.immatureSites++; continue }
     counts.sites++
     const site = sites.get(claim.projectId!)
@@ -82,12 +85,12 @@ export function calculateSiteValueCohort(input: { claims: AcquisitionClaim[]; si
   }
   const partial = coverage.unavailableOwnerLinks+coverage.invalidClaimLinks+coverage.rejectedRuns+coverage.rejectedRepairEvidence > 0
   return { version: 1, status: partial?'partial':'available', unit:'Site with first recorded exact analysis claim',
-    cohortStart:input.since.toISOString(), asOf:input.now.toISOString(), followupDays:7, counts, coverage,
+    cohortStart:input.since.toISOString(), asOf:input.now.toISOString(), followupDays, counts, coverage,
     observedSharesPct:Object.fromEntries(Object.entries(counts).filter(([key])=>key!=='sites').map(([key,value])=>
       [key, !partial && counts.sites ? Math.round(value/counts.sites*10000)/100:null])), databaseWritten:false,
     limitations:[
       'First recorded exact claim is not necessarily the first-ever Site claim or a new customer. Pre-existing Sites are counted separately.',
-      'Only complete seven-day Site cohorts enter counts. Missing or inconsistent evidence withholds shares.',
+      `Only complete ${followupDays}-day Site cohorts enter counts. Missing or inconsistent evidence withholds shares.`,
       'Repair proof follows each actual source audit and attempt, including later monitoring sources. Current owner and Site links must match.',
       'A completed monitor after improvement proves another check ran, not continued recovery or lack of recurrence.',
       'Owner-attributed WEB follow-up after one day is observed requested usage, not proof of a human return or paid retention.',

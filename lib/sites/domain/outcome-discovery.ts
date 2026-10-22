@@ -1,4 +1,5 @@
 import type { ConfirmableOutcomeKind } from '../outcome-kinds'
+import { normalizeSiteHost } from '@/lib/utils/url-helpers'
 
 type ObservedJourney = { journeyType: string; startUrl: string; steps: Array<{ url: string }> }
 type OutcomeDiscoverySource = { pages: Array<{ url: string; title: string | null }>; journeyReviews: ObservedJourney[] }
@@ -25,6 +26,7 @@ function classifyJourneyType(journeyType: string): ConfirmableOutcomeKind | null
 
 /** Preserve raw observed identity while admitting only pages on this Site. */
 export function discoverOutcomePages(siteUrl: string, source: OutcomeDiscoverySource) {
+  const siteHost = normalizeSiteHost(new URL(siteUrl).hostname)
   const observed = new Map(source.pages.map(page => [page.url, page.title]))
   for (const journey of source.journeyReviews) {
     observed.set(journey.startUrl, observed.get(journey.startUrl) ?? null)
@@ -32,8 +34,7 @@ export function discoverOutcomePages(siteUrl: string, source: OutcomeDiscoverySo
   }
   return [...observed].flatMap(([rawUrl, title]) => {
     const url = new URL(rawUrl)
-    if (!['http:', 'https:'].includes(url.protocol) || url.hostname !== new URL(siteUrl).hostname) return []
-    url.hash = ''
+    if (!['http:', 'https:'].includes(url.protocol) || normalizeSiteHost(url.hostname) !== siteHost) return []
     return [{ rawUrl, url: url.toString(), path: url.pathname, title }]
   })
 }

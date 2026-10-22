@@ -24,10 +24,11 @@ describe('journey planner collection lifetime', () => {
     const response = { plan: { goal: 'Follow the observed path' }, usage: { inputTokens: 10 } }
     fixture.plan.mockResolvedValue(response)
     const budget = vi.fn(() => { expect(fixture.evaluate).toHaveBeenCalledTimes(2); return 1200 })
-    expect(await observeJourneyPlan('https://example.test/', null, undefined, budget)).toEqual(response)
+    const admission = vi.fn()
+    expect(await observeJourneyPlan('https://example.test/', null, undefined, budget, admission)).toEqual(response)
     expect(fixture.plan).toHaveBeenCalledWith(expect.objectContaining({ initialTree: 'Recorded accessibility tree',
       metadata: { title: 'Recorded title', description: 'Recorded description', h1s: ['Recorded heading'] },
-      links: [{ href: 'https://example.test/pricing', text: 'Pricing' }] }), 1200)
+      links: [{ href: 'https://example.test/pricing', text: 'Pricing' }] }), 1200, admission)
     expect(fixture.dispose).toHaveBeenCalledOnce()
     expect(fixture.close).toHaveBeenCalledOnce()
   })

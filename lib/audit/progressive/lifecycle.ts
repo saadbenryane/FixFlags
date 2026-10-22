@@ -1,3 +1,4 @@
+import { admittedCheckVersions, checkExecution } from './check-execution'
 import { journeyAssessmentSchema, hasIncompleteJourneyAssessment, type JourneyAssessment } from '../journey/evaluation-grounding'
 import { Prisma, type AuditVerifierExecution } from '@prisma/client'
 import { z } from 'zod'
@@ -12,7 +13,7 @@ import { browserEvidence, captureEvidence, searchArtifactSchema } from './evalua
 import { flagSchema, commitFindings, recordedTaskFindings } from './results'
 import { asReviewDepth, planReviewTargets, openCheckCeilingForDepth, buildReviewCoverage } from '../review-depth'
 import { openCheckDestinations } from '../open-check'
-import { canonicalizeDestination } from '../url-identity'
+import { navigationDestinationKey } from '../url-identity'
 import { capturedPageLinks, publicLinkObservations, publicLinkUrls, resolvedPageLinks } from '../checks/public-links'
 import { renderedSearchSnapshotSchema } from '../search/rendered-snapshot'
 import { checkReceiptSchema } from '../checks/receipt'
@@ -44,13 +45,18 @@ import type { TaskContext, TaskHandler } from './registry'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { enqueuePendingAiReview } from '../enqueue-ai-review'
 import { runAiReview, type PrescriptionRunUsage } from '../run-ai-review'
+import { PrescriptionScopeChanged } from '../prescription-scope'
 import { JudgeContractError } from '../validate-judge-output'
 import { admitAiObservation } from '../ai-observation-identity'
+import { settleRecordedPages } from './page-settlement'
+import { nativeHttpCollection, nativeHttpEvidenceSchema, recordedPublicDestinations } from '../native-http-evidence'
 
 const findingsSchema = z.object({ flags: z.array(flagSchema).max(500) }).strict()
 const crossPageSchema = findingsSchema.extend({ receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const discoverySchema = z.object({ flags: z.array(flagSchema).max(500),
   pages: z.array(z.string().url()).max(24), openCheckCount: z.number().int().nonnegative().max(120), truncated: z.boolean(),
+  httpEvidence: nativeHttpEvidenceSchema.optional(),
+  reusedHttpEvidence: z.object({ taskId: z.string().min(1), evaluatedAt: z.string().datetime() }).strict().optional(),
   receipts: z.array(checkReceiptSchema).max(24).optional() }).strict()
 const bindingSchema = z.object({ executed: z.boolean(), outcomeId: z.string(), bindingKey: z.string() }).strict()
 const journeySchema = z.object({ findingCount: z.number().int().nonnegative(), assessments: z.array(journeyAssessmentSchema).max(6).optional(), flags: z.array(flagSchema).max(500).optional(), overlayReceipts: z.array(checkReceiptSchema).max(100).optional(), pageReceipts: z.array(checkReceiptSchema).max(100).optional() }).strict()
@@ -199,8 +205,10 @@ export const lifecycleHandlers: TaskHandler[] = [
     validateResult: artifact => { prescriptionResultSchema.parse(artifact.data) },
     async evaluate(context) {
       let usage: PrescriptionRunUsage = { inputTokens: 0, outputTokens: 0, model: '', cacheReadTokens: 0, cacheWriteTokens: 0 }
-      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys) }
+      if (!context.input.prescriptionScope) throw new TaskFailure('PRESCRIPTION_SCOPE_MISSING', false)
+      try { usage = await runAiReview(context.audit.id, context.deadline, context.input.prescriptionFlagKeys, context.input.prescriptionScope) }
       catch (error) {
+        if (error instanceof PrescriptionScopeChanged) throw new TaskFailure('PRESCRIPTION_SCOPE_CHANGED', false)
         if (error instanceof JudgeContractError) throw new TaskFailure('AI_CONTRACT_INVALID', false)
         throw error
       }
@@ -250,11 +258,11 @@ export const lifecycleHandlers: TaskHandler[] = [
       const existing = await loadTaskGraph(context.audit.id)
       const allPlans: TaskPlan[] = existing.map(task => ({ kind: task.workKind as TaskPlan['kind'], key: task.targetKey.slice(5),
         scope: task.scopeKey, input: task.workInput as TaskPlan['input'], dependencies: task.workDependencies }))
-      const known = new Set(existing.filter(task => task.workKind === 'browser').map(task => canonicalizeDestination(task.pageUrl!)?.key))
+      const known = new Set(existing.filter(task => task.workKind === 'browser').map(task => task.pageUrl ? navigationDestinationKey(task.pageUrl) : null))
       let nextPosition = existing.filter(task => task.workKind === 'browser').length
-      for (const url of plan.reviewUrls) if (!known.has(canonicalizeDestination(url)?.key) && nextPosition < 24) {
+      for (const url of plan.reviewUrls) if (!known.has(navigationDestinationKey(url)) && nextPosition < 24) {
         allPlans.push(...pageTaskPlan({ pageUrl: url, primary: false, position: nextPosition++, role: 'linked' }, spec))
-        known.add(canonicalizeDestination(url)?.key)
+        known.add(navigationDestinationKey(url))
       }
       if (depth === 3 && context.input.module !== 'second' && !allPlans.some(task => task.key === 'discovery:second')) allPlans.push({ kind: 'discovery', key: 'discovery:second', scope: 'site:second',
         input: { ...context.input, module: 'second' }, dependencies: ['discovery', ...allPlans.filter(task => task.input.position > 0 && ['browser', 'http'].includes(task.kind)).map(task => task.key)] })
@@ -264,20 +272,37 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
       // Extend summary dependencies before this discovery checkpoint becomes settled.
       await persistTaskPlan(context.audit.id, allPlans)
-      const opened = await openCheckDestinations(plan.openCheckUrls, {
+      const http = nativeHttpCollection()
+      const prior = context.input.module === 'second' ? context.dependencies.get('discovery') : undefined
+      let readRecorded: ReturnType<typeof recordedPublicDestinations> | undefined
+      let priorHttp: z.infer<typeof nativeHttpEvidenceSchema> | undefined
+      if (prior?.auditId === context.audit.id && prior.targetKey === 'task:discovery' && prior.workKind === 'discovery' &&
+        prior.workState === 'COMPLETED' && prior.status === 'COMPLETED') {
+        // Older or unreadable checkpoints cannot supply missing HTTP facts.
+        try {
+          priorHttp = discoverySchema.parse(readArtifact(prior.workResult, 'discovery').data).httpEvidence
+          if (priorHttp) readRecorded = recordedPublicDestinations(priorHttp)
+        } catch { /* Fresh collection retains the existing bounded fallback. */ }
+      }
+      const reused = plan.openCheckUrls.flatMap(url => readRecorded?.(url, { origin: spec.targetUrl }) ?? [])
+      const covered = new Set(reused.map(result => result.url))
+      const opened = await openCheckDestinations(plan.openCheckUrls.filter(url => !covered.has(url)), {
         origin: spec.targetUrl, ceiling: openCheckCeilingForDepth(depth),
-        deadline: context.deadline,
+        deadline: context.deadline, openDestination: http.options.openDestination,
       })
+      const collectedAt = http.options.collectedAt()
+      const responses = [...reused, ...opened.results]
       const sources = context.input.module === 'second' ? pages : primary ? [primary] : []
       const observations = sources.map(page => {
         const urls = page.navigation ? publicLinkUrls(page.url, page.navigation) : []
-        const checked = publicLinkObservations(page.url, urls, opened.results, Boolean(page.navigation && page.navigation.complete !== false))
+        const checked = publicLinkObservations(page.url, urls, responses, Boolean(page.navigation && page.navigation.complete !== false))
         return { ...checked, receipt: checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'seo',
           pageUrl: page.url, passed: checked.complete && checked.flags.length === 0, applicable: true,
           assertions: checked.assertions, complete: checked.complete, limitation: checked.limitation,
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() } }) }
+          execution: checkExecution(context, 'seo', 'http', collectedAt) }) }
       })
       return serializeArtifact('discovery', discoverySchema.parse({ pages: plan.reviewUrls,
+        httpEvidence: http.snapshot(), ...(reused.length ? { reusedHttpEvidence: { taskId: prior!.id, evaluatedAt: priorHttp!.evaluatedAt } } : {}),
         openCheckCount: opened.results.length, truncated: plan.truncated || opened.truncated || !primary?.navigation || sources.some(page => page.navigation?.complete !== true),
         flags: observations.flatMap(result => result.flags), receipts: observations.map(result => result.receipt) }))
     },
@@ -289,13 +314,14 @@ export const lifecycleHandlers: TaskHandler[] = [
       await commitFindings(context, artifact, tx)
     },
     async evaluate(context) {
+      const selected = admittedCheckVersions(context.audit.executionSpec, 'corridor')
       const pages = await recordedPageEvidence(context.audit.id)
       const search = await runCheckedPageSearch(pages.flatMap(page => page.searchReceipt ? [page.searchReceipt] : []))
-      const corridor = evaluateCorridorConsistency(pages.map(page => pagePreviewForComparison(page, page.primary ? 'primary' : 'linked')))
+      const corridor = evaluateCorridorConsistency(Object.keys(selected).length ? pages.map(page => pagePreviewForComparison(page, page.primary ? 'primary' : 'linked')) : [])
       const receipts = [...corridor.assertions].map(([pageUrl, assertions]) => checkReceiptSchema.parse({
         kind: 'site-module-check', version: 1, module: 'corridor', pageUrl, applicable: assertions.some(assertion => assertion.disposition !== 'observed'),
         complete: assertions.every(assertion => assertion.complete), passed: assertions.every(assertion => assertion.complete && (assertion.disposition === 'observed' || assertion.passed)), assertions,
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+        execution: checkExecution(context, 'corridor', 'rendered-dom'),
       }))
       return serializeArtifact('cross-page', crossPageSchema.parse({ flags: [...search, ...corridor.flags], receipts }))
     },
@@ -335,7 +361,8 @@ export const lifecycleHandlers: TaskHandler[] = [
       }
     },
     async evaluate(context) {
-      if (!browserEvidence(context)?.metadata) throw new TaskFailure('JOURNEY_PAGE_UNAVAILABLE', false)
+      const metadata = browserEvidence(context)?.metadata
+      if (!metadata) throw new TaskFailure('JOURNEY_PAGE_UNAVAILABLE', false)
       const spec = readExecutionSpec(context.audit.executionSpec), target = spec?.verificationTarget
       const phases = spec?.verificationScopes?.find(scope => scope.pageUrl === context.input.pageUrl)?.overlayPhases?.filter(phase => phase.startsWith('journey_'))
       const sources = target?.kind === 'DIAGNOSTIC' ? await prisma.flag.findMany({ where: { auditId: target.parentAuditId,
@@ -360,7 +387,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const assessments: JourneyAssessment[] = []
       const pages: JourneyObservation[] = [], findings: JourneyFindingDraft[] = []
       const findingCount = await runJourneyReviewsForAudit(context.audit.id, context.input.pageUrl,
-        { included: true, deadline: context.deadline, scanAccess: await resolveAuditScanAccess(context.audit.id),
+        { included: true, deadline: context.deadline, metadata, scanAccess: await resolveAuditScanAccess(context.audit.id),
           ...(spec ? { allowedCheckIds: Object.keys(spec.checks) } : {}),
           ...(phases?.length ? { overlayPhases: phases, overlayExpectedTargets: expected, allowedCheckIds: Object.keys(spec!.checks) } : {}),
           ...(journeyTarget ? { expectedJourneyConditions: conditions, allowedCheckIds: Object.keys(spec!.checks) } : {}),
@@ -370,8 +397,8 @@ export const lifecycleHandlers: TaskHandler[] = [
           onPageObservations: found => pages.push(...found), onJourneyFindings: found => findings.push(...found) })
       return serializeArtifact('journeys', journeySchema.parse({ findingCount, assessments,
         flags: [...observations.flatMap(runObservedOverlayChecks), ...nativeJourneyFlags(findings)],
-        pageReceipts: journeyReceipts(pages, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
-        overlayReceipts: overlayCheckReceipts(observations, { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }) }))
+        pageReceipts: journeyReceipts(pages, checkExecution(context, 'journeys', 'rendered-dom')),
+        overlayReceipts: overlayCheckReceipts(observations, checkExecution(context, 'overlays', 'rendered-dom')) }))
     },
   },
   { kind: 'judge', replay: 'read_only', timeoutMs: 75_000,
@@ -399,6 +426,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const latest = await prisma.audit.findUniqueOrThrow({ where: { id: context.audit.id }, select: { id: true, status: true, parentId: true,
         reportCompleteness: true, executionSpec: true, completedAt: true, startedAt: true, createdAt: true, url: true } })
       if (latest.status === 'COMPLETED') {
+        await executionWrite(tx => settleRecordedPages(tx, latest.id))
         await persistImprovementCycle(latest.id, latest.parentId)
         await enqueuePendingAiReview(latest.id)
         return serializeArtifact('finalize', { status: 'COMPLETED', partial: latest.reportCompleteness !== 'FULL' })
@@ -409,13 +437,14 @@ export const lifecycleHandlers: TaskHandler[] = [
         take: MAX_TASKS_PER_AUDIT, select: { workResult: true } })
       if (journeyAssessments.some(task => hasIncompleteJourneyAssessment(task.workResult))) failed.push('journey-evaluation')
       const incomplete = await prisma.auditVerifierExecution.findMany({ where: { auditId: latest.id,
-        targetKey: { startsWith: 'module:' }, OR: [
+        targetKey: { startsWith: 'module:' }, status: { not: 'NOT_APPLICABLE' }, OR: [
           { detail: { path: ['complete'], equals: false } },
           { detail: { path: ['assertions'], array_contains: [{ complete: false }] } },
           { detail: { path: ['failed'], equals: true } },
         ] },
         take: MAX_TASKS_PER_AUDIT, select: { targetKey: true } })
       failed.push(...incomplete.map(receipt => receipt.targetKey.slice('module:'.length)))
+      await executionWrite(tx => settleRecordedPages(tx, latest.id))
       const spec = readExecutionSpec(latest.executionSpec)
       if (spec && spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') {
         // A configured action does not need an unrelated page scan, screenshot,
@@ -450,8 +479,6 @@ export const lifecycleHandlers: TaskHandler[] = [
           llmInputTokens: 0, llmOutputTokens: 0, llmModel: 'none',
           pagespeedCalls: pages.reduce((count, page) => count + Number(Boolean(page.desktop)) + Number(Boolean(page.mobile)), 0), pagesReviewed: pages.length })
         await executionWrite(async tx => {
-          for (const page of pages) await tx.auditPage.updateMany({ where: { auditId: latest.id, url: page.url, status: { not: 'FAILED' } },
-            data: { status: 'COMPLETED' } })
           await tx.audit.update({ where: { id: latest.id }, data: {
             status: 'COMPLETED', progress: 100, verdict: null,
             reportCompleteness: failed.length ? 'PARTIAL' : 'FULL', failedModules: [...new Set(failed)],

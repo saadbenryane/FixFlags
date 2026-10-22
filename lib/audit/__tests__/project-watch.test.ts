@@ -1,5 +1,6 @@
 import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { prisma } from '@/lib/db'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Resend } from 'resend'
 
@@ -52,6 +53,7 @@ vi.mock('@/lib/sites/application/scheduled-runs', () => ({
 }))
 vi.mock('@/lib/sites/application/default-monitoring', () => ({ initializeDefaultMonitoring: mocks.initializeDefaultMonitoring,
   ensureDefaultMonitoring: mocks.ensureDefaultMonitoring }))
+vi.mock('@/lib/sites/application/scheduled-completion', () => ({ reconcileScheduledCompletions: async () => 0 }))
 vi.mock('@/lib/billing/product-transaction', () => ({ productTransaction: (operation: (tx: object) => unknown) => operation({}) }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
@@ -105,6 +107,7 @@ describe('Product Watch', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
   })
@@ -151,7 +154,7 @@ describe('Product Watch', () => {
     expect(await setProjectWatch({ projectId: 'project-1', userId: 'user-1', interval: 'weekly' })).toEqual({ ok: true })
   })
 
-  it('admits the next due Site and saves both schedules without waiting for Google context', async () => {
+  it('delegates both due admissions without waiting for Google context', async () => {
     mocks.projectFindMany.mockResolvedValue([project, { ...project, id: 'project-2' }])
     let finish!: () => void
     mocks.refreshGoogleContext.mockReturnValue(new Promise<void>(resolve => { finish = resolve }))
@@ -159,7 +162,7 @@ describe('Product Watch', () => {
     try {
       await vi.waitFor(() => expect(mocks.requestScheduledSiteRun).toHaveBeenCalledTimes(2), { timeout: 200, interval: 10 })
       expect(await scheduling).toMatchObject({ enqueued: 2, errors: 0 })
-      expect(mocks.projectUpdateMany.mock.calls.filter(([input]) => input.data.watchConsecutiveFailures === 0)).toHaveLength(2)
+      expect(mocks.projectUpdateMany.mock.calls.filter(([input]) => input.data.watchConsecutiveFailures === 0)).toHaveLength(0)
       expect(mocks.refreshGoogleContext).not.toHaveBeenCalled()
     } finally {
       finish()
@@ -246,9 +249,10 @@ describe('Product Watch', () => {
     })
     await processDueProjectWatches(20, { clock: fixedClock(now) })
     expect(liveLease).toEqual(replacement)
-    const completion = mocks.projectUpdateMany.mock.calls.find(([call]) => call.data.watchConsecutiveFailures === 0)![0]
-    expect(completion.where).toMatchObject({ userId: project.userId, deletedAt: null,
-      user: { lifecycleStatus: 'ACTIVE' }, watchLeaseUntil: new Date('2026-10-11T09:10:00.000Z') })
+    expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ claim: {
+      attemptedAt: now, leaseUntil: new Date('2026-10-11T09:10:00.000Z'),
+    } }))
+    expect(mocks.projectUpdateMany.mock.calls.some(([call]) => call.data.watchNextRunAt !== undefined)).toBe(false)
   })
 
   it.each([['hourly', undefined, 'HOURLY'], ['custom', 180, 'CUSTOM'], ['custom', 4320, 'CUSTOM']] as const)('saves %s monitoring with its duration', async (interval, everyMinutes, stored) => {
@@ -263,14 +267,14 @@ describe('Product Watch', () => {
     expect(mocks.projectUpdateMany).not.toHaveBeenCalled()
   })
 
-  it('advances a custom worker schedule by its saved duration', async () => {
+  it('retains the custom duration for the shared admission commit', async () => {
     const now = new Date('2026-10-11T09:00:00.000Z')
     mocks.projectFindMany.mockResolvedValue([{ ...project, watchInterval: 'CUSTOM', watchEveryMinutes: 180, watchNextRunAt: now }])
     mocks.auditFindFirst.mockResolvedValue(null)
     mocks.siteOutcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
     expect(await processDueProjectWatches(20, { clock: fixedClock(now) })).toMatchObject({ enqueued: 1 })
     expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ interval: 'custom', everyMinutes: 180, now }))
-    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchNextRunAt: new Date('2026-10-11T12:00:00.000Z') }) }))
+    expect(mocks.projectUpdateMany.mock.calls.some(([call]) => call.data.watchNextRunAt !== undefined)).toBe(false)
   })
 
   it('pauses hourly monitoring when the account no longer allows it', async () => {
@@ -393,7 +397,7 @@ describe('Product Watch', () => {
     }))
   })
 
-  it('does not enqueue an overlapping scheduled re-check', async () => {
+  it('retains a physically owned legacy Watch without using status alone as ownership', async () => {
     mocks.auditFindFirst.mockResolvedValueOnce({ id: 'active-child' })
 
     const result = await processDueProjectWatches(20, {
@@ -401,11 +405,39 @@ describe('Product Watch', () => {
     })
 
     expect(result).toEqual({ processed: 1, enqueued: 0, errors: 0 })
+    expect(mocks.auditFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      runRequests: { none: { status: { in: ['QUEUED', 'RUNNING'] } } },
+      OR: expect.arrayContaining([{ executionLeaseUntil: { gt: expect.any(Date) } }]),
+    }) }))
     expect(mocks.requestScheduledSiteRun).not.toHaveBeenCalled()
     expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: 'project-1' }),
       data: expect.objectContaining({ watchNextRunAt: expect.any(Date) }),
     }))
+  })
+
+  it('defers shared-admission contention without reporting an execution failure', async () => {
+    mocks.requestScheduledSiteRun.mockRejectedValue(new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS'))
+    const at = new Date('2026-08-25T00:00:00Z')
+    expect(await processDueProjectWatches(20, { clock: fixedClock(at) })).toEqual({ processed: 1, enqueued: 0, errors: 0 })
+    expect(mocks.projectUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
+      watchLeaseUntil: null, watchNextRunAt: new Date(at.getTime() + 15 * 60_000),
+    } }))
+    expect(mocks.projectUpdateMany.mock.calls.some(([input]) => input.data.watchConsecutiveFailures !== undefined)).toBe(false)
+  })
+
+  it('continues to another Site when a busy deferral cannot be persisted', async () => {
+    const at = new Date('2026-08-25T00:00:00Z'), retry = new Date(at.getTime() + 15 * 60_000)
+    mocks.projectFindMany.mockResolvedValue([project, { ...project, id: 'project-2' }])
+    mocks.requestScheduledSiteRun.mockRejectedValueOnce(new SiteRunRefusal('Another Site run is already in progress', 409, 'SITE_RUN_IN_PROGRESS'))
+      .mockResolvedValueOnce({ runId: 'run-2', auditId: 'audit-2', outcomeIds: [], reused: false })
+    mocks.projectUpdateMany.mockImplementation(async input => {
+      if (input.where.id === 'project-1' && input.data.watchNextRunAt?.getTime() === retry.getTime())
+        throw new Error('Controlled busy deferral persistence failure')
+      return { count: 1 }
+    })
+    expect(await processDueProjectWatches(20, { clock: fixedClock(at) })).toEqual({ processed: 2, enqueued: 1, errors: 1 })
+    expect(mocks.requestScheduledSiteRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-2' }))
   })
 
   it('delegates the original saved tick and cadence to scheduled Site care', async () => {
@@ -587,6 +619,27 @@ describe('Product Watch', () => {
     } }))
   })
 
+  it('excludes unreadable failures and recoveries while delivering a valid sibling finding', async () => {
+    mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+      recheckTrigger: 'WATCH', completedAt: new Date(), watchRegressionCount: null, watchRecoveryCount: null,
+      watchNotificationStatus: 'PENDING', watchNotificationAttemptCeiling: 5, watchNotificationAttempts: 0,
+      user: { lifecycleStatus: 'ACTIVE', email: 'owner@example.com' }, project: { notificationLevel: 'FLAGS', notifyOnRecovery: true } }))
+    const finding = { checkId: 'no-https', severity: 'IMPORTANT', confidence: 1, status: 'OPEN', rubric: 'REACH' }
+    mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [{ ...finding, id: 'invalid-repair', problem: 'Unsupported recovery', supportingEvidenceUnreadable: true }],
+      inconclusive: [], unchanged: [], regressed: [{ ...finding, id: 'invalid-failure', problem: 'Unsupported regression', supportingEvidenceUnreadable: true }],
+      newIssues: [{ ...finding, id: 'valid-failure', problem: 'Genuine recorded failure' }] })
+    await notifyWatchRegression(null, 'child-1')
+    expect(mocks.sendEmail).toHaveBeenCalledOnce()
+    const message = mocks.sendEmail.mock.calls[0][0]
+    expect(message.subject).toBe('Needs attention on example.com: 1 Flag')
+    expect(message.text).toContain('Genuine recorded failure')
+    expect(message.text).not.toContain('Unsupported')
+    expect(message.html).not.toContain('Recovery verified')
+    expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: {
+      watchRegressionCount: 1, watchRecoveryCount: 0, watchNotificationStatus: 'PENDING',
+    } }))
+  })
+
   it.each(['QUEUED', 'CHECKING', 'FAILED', 'undated'])('refuses classification and delivery for an incomplete Watch: %s', async state => {
     mocks.auditFindUnique.mockResolvedValue(completedWatch({ id: 'child-1', projectId: 'project-1', recheckTrigger: 'WATCH',
       status: state === 'undated' ? 'COMPLETED' : state, completedAt: state === 'undated' ? null : new Date(),
@@ -720,6 +773,8 @@ describe('Product Watch', () => {
     const important = { id: 'important', checkId: 'title-missing', problem: 'Search title is missing', rubric: 'SEO', severity: 'IMPORTANT', confidence: 0.95, status: 'OPEN' }
     const critical = { ...important, id: 'critical', checkId: 'journey-checkout-failed', problem: 'Checkout <failed>', severity: 'CRITICAL' }
     beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-10-10T13:00:00Z'))
       mocks.auditFindUnique.mockResolvedValue(completedWatch({
         id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
         recheckTrigger: 'WATCH', completedAt: new Date('2026-10-10T12:00:00Z'),
@@ -817,6 +872,7 @@ describe('Product Watch', () => {
     })
 
     it('retries a provider rejection through the scheduler with the same delivery key', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
       // Exercise the installed SDK's HTTP error contract without sending mail.
       const providerFetch = vi.fn()
         .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -846,6 +902,7 @@ describe('Product Watch', () => {
       expect(child.watchNotifiedAt).toBeUndefined()
       expect(mocks.recordSiteLifecycleEvent).not.toHaveBeenCalled()
 
+      vi.setSystemTime(child.watchNotificationNextAttemptAt)
       expect(await retryPendingWatchNotifications()).toBe(1)
 
       expect(child.watchNotificationStatus).toBe('SENT')
@@ -948,7 +1005,7 @@ describe('Product Watch', () => {
         where: expect.objectContaining({ id: 'broken-child', watchNotificationAttempts: 2,
           OR: [{ watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
             { watchNotificationStatus: 'SENDING', OR: [{ watchNotificationLeaseUntil: null }, { watchNotificationLeaseUntil: { lte: expect.any(Date) } }] }] }),
-        data: { updatedAt: expect.any(Date), watchNotificationLastError: 'Notification classification could not complete' },
+        data: { watchNotificationNextAttemptAt: expect.any(Date), watchNotificationLastError: 'Notification classification could not complete' },
       }))
       expect(mocks.sendEmail).not.toHaveBeenCalled()
     })
@@ -974,6 +1031,8 @@ describe('Product Watch', () => {
     })
 
     beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-07-22T13:00:00Z'))
       mocks.auditFindUnique.mockResolvedValue(strandedChild)
       mocks.getFlagDiffSummary.mockResolvedValue({
         fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
@@ -1053,11 +1112,11 @@ describe('Product Watch', () => {
       )
     })
 
-    it.each([new Date(Date.now() - 60_000), null])('terminalizes an inactive final claim without risking a sixth send: %s', async expired => {
+    it.each(['expired', 'missing'])('terminalizes an inactive final claim without risking a sixth send: %s', async lease => {
       mocks.auditFindUnique.mockResolvedValue(completedWatch({
         ...strandedChild,
         watchNotificationAttemptCeiling:5,watchNotificationAttempts: 5,
-        watchNotificationLeaseUntil: expired,
+        watchNotificationLeaseUntil: lease === 'expired' ? new Date(Date.now() - 60_000) : null,
       }))
 
       await notifyWatchRegression('parent-1', 'child-1')
@@ -1075,6 +1134,7 @@ describe('Product Watch', () => {
           watchNotificationStatus: 'FAILED',
           watchNotificationLastError: 'Delivery confirmation expired after the final attempt',
           watchNotificationLeaseUntil: null,
+          watchNotificationNextAttemptAt: null,
         },
       })
       const claim = mocks.auditUpdateMany.mock.calls.find(([call]) =>

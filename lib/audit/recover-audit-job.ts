@@ -314,10 +314,14 @@ export interface ImprovementProjectionRecoveryResult {
 export async function recoverCompletedImprovementProjections(
   limit = IMPROVEMENT_PROJECTION_RECOVERY_LIMIT
 ): Promise<ImprovementProjectionRecoveryResult> {
+  const now = new Date()
   const audits = await prisma.audit.findMany({
     where: { status: 'COMPLETED', improvementProjectedAt: null,
-      verifierExecutions: { none: { workKind: 'finalize', workState: 'RUNNING', workLeaseUntil: { gt: new Date() } } } },
-    orderBy: { completedAt: 'asc' },
+      OR: [{ executionLeaseUntil: null }, { executionLeaseUntil: { lte: now } }],
+      verifierExecutions: { none: { workKind: 'finalize', workState: 'RUNNING', workLeaseUntil: { gt: now } } } },
+    // Claims and fenced releases already advance activity. A failed oldest
+    // completion must yield its next bounded turn to untouched work.
+    orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
     take: Math.max(1, Math.min(limit, IMPROVEMENT_PROJECTION_RECOVERY_LIMIT)),
     select: { id: true, parentId: true, userId: true },
   })
@@ -381,9 +385,13 @@ export async function runStuckAuditRecoverySweep(): Promise<StuckAuditSweepResul
   let requeued = 0
   let failed = 0
   for (const audit of stuckAudits) {
-    const result = await recoverStuckAuditOnCron(audit.id, audit)
-    if (result === 'requeued') requeued++
-    if (result === 'force_failed') failed++
+    try {
+      const result = await recoverStuckAuditOnCron(audit.id, audit)
+      if (result === 'requeued') requeued++
+      if (result === 'force_failed') failed++
+    } catch (error) {
+      logger.error('Audit recovery interrupted; remaining candidates will continue', { auditId: audit.id, error })
+    }
   }
 
   return { requeued, failed, checked: stuckAudits.length }

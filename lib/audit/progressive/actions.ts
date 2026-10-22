@@ -1,3 +1,4 @@
+import { checkExecution } from './check-execution'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
 import { getAuditBrowser } from '../screenshot'
@@ -7,7 +8,10 @@ import { resolveAuditScanAccess } from '../scan-access-store'
 import { runFlowScan, type FlowScanResult } from '../flow/run-flow-scan'
 import { postClickMetricsSchema } from '../flow/post-click-probes'
 import { runFlowChecks } from '../checks/flow'
-import { postClickAssertions, POST_CLICK_CHECKS, POST_CLICK_VERIFICATION_RULE, postClickActionContext } from '../checks/flow-post-click'
+import { POST_CLICK_CHECKS, POST_CLICK_VERIFICATION_RULE, postClickActionContext } from '../checks/flow-post-click'
+import { destinationTrustActionContext, DESTINATION_TRUST_VERIFICATION_RULE } from '../checks/flow-destination-trust'
+import { destinationContentActionContext, DESTINATION_CONTENT_CHECKS, DESTINATION_CONTENT_VERIFICATION_RULE } from '../checks/flow-destination-content'
+import { assembleFlowModuleCheck } from '../checks/flow-module-receipt'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import { detectPagePurpose, needsFirstStep } from '../page-purpose'
 import { runSlowReplay } from '../flow/slow-replay-probe'
@@ -33,8 +37,8 @@ import { collectOverlayObservation } from '../browser/overlay-observation'
 import { overlayObservationSchema, overlayAssertions, overlayTargetSchema, runObservedOverlayChecks, OVERLAY_CHECKS, scopedOverlayRule, scopedOverlayResult, overlayCheckReceipts, overlayReceiptScope, type OverlayTarget } from '../checks/overlay-evidence'
 import { createOverlayInteractionRecorder } from '../browser/overlay-interaction'
 import { capturePageKey } from '../browser/observation-scope'
-import { PRIMARY_ACTION_CHECKS, PRIMARY_ACTION_VERIFICATION_RULE, primaryActionAssertions } from '../flow/primary-action-evidence'
-import { PRICING_NAVIGATION_RULE, pricingNavigationTargetSchema, pricingNavigationAssertions } from '../flow/pricing-navigation-evidence'
+import { PRIMARY_ACTION_CHECKS, PRIMARY_ACTION_VERIFICATION_RULE } from '../flow/primary-action-evidence'
+import { PRICING_NAVIGATION_RULE, pricingNavigationTargetSchema } from '../flow/pricing-navigation-evidence'
 import { collectMobileNavigation } from '../flow/mobile-navigation'
 import { MOBILE_NAVIGATION_RULE, readMobileNavigationTarget, mobileNavigationAssertions, mobileNavigationFlags, mobileNavigationObservationSchema } from '../flow/mobile-navigation-evidence'
 
@@ -77,7 +81,7 @@ export const actionHandlers: TaskHandler[] = [
         kind: 'site-module-check', version: 1, module: 'overlays', pageUrl: context.input.pageUrl, applicable: true,
         complete: assertions.every(assertion => assertion.complete === true), passed: assertions.every(assertion => assertion.passed), assertions,
         limitation: 'Initial viewport controls only. No control is clicked, no form is submitted and no consent decision is made.',
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+        execution: checkExecution(context, 'overlays', 'rendered-dom'),
       }) })
     },
   },
@@ -113,7 +117,7 @@ export const actionHandlers: TaskHandler[] = [
             navigationReceipt: { kind: 'site-module-check', version: 1, module: 'mobile-navigation', pageUrl: context.input.pageUrl,
               applicable: observed.applicable, complete: observed.complete, passed: observed.complete && assertions.every(assertion => assertion.passed), assertions,
               limitation: 'Bounded 375px navigation panels and local menu opening. Links are observed for visibility, never followed; unsupported controls, embedded documents and unobserved original links remain unknown.',
-              execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() } } }))
+              execution: checkExecution(context, 'mobile-navigation', 'rendered-dom') } }))
         } finally { session.disposeNetwork(); await session.page.context().close() }
       }
       const overlayDiagnostic = diagnostic?.kind === 'DIAGNOSTIC' && Object.values(OVERLAY_CHECKS).some(id => id === diagnostic.checkId.split('::page:')[0])
@@ -152,12 +156,12 @@ export const actionHandlers: TaskHandler[] = [
           const checked = checkFormValidation(probe.evidence)
           const overlays = scopedOverlayResult('form', probe.formOverlay, probe.formLabel, probe.formOverlayObservation).map(flag => ({ ...flag, pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl }))
           return serializeArtifact('flow', flowSchema.parse({ flags: [...checked.flags, ...overlays], formEvidence: probe.evidence,
-            overlayReceipts: overlayCheckReceipts(recorder.observations(), { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
+            overlayReceipts: overlayCheckReceipts(recorder.observations(), checkExecution(context, 'overlays', 'rendered-dom')),
             result: { status: 'success', steps: [], finalUrl: session.page.url(), ctaText: null, ctaHref: null },
             formReceipt: overlayDiagnostic ? undefined : { kind: 'site-module-check', version: 1, module: 'form-validation', pageUrl: probe.evidence?.pageUrl ?? context.input.pageUrl,
               applicable: checked.applicable, complete: checked.complete, passed: checked.complete && checked.flags.length === 0,
               assertions: checked.assertions, ...(!checked.complete ? { limitation: 'Empty-field form validation could not be observed safely.' } : {}),
-              execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+              execution: checkExecution(context, 'form-validation', 'rendered-dom'),
             } }))
         } finally { session.disposeNetwork(); await session.page.context().close() }
       }
@@ -165,10 +169,13 @@ export const actionHandlers: TaskHandler[] = [
       const target = readExecutionSpec(context.audit.executionSpec)?.verificationTarget
       const targetedPrimary = target?.kind === 'DIAGNOSTIC' && PRIMARY_ACTION_CHECKS.some(id => id === target.checkId.split('::page:')[0])
       const targetedLoading = target?.kind === 'DIAGNOSTIC' && POST_CLICK_CHECKS.includes(target.checkId.split('::page:')[0])
+      const checkIdentity = target?.kind === 'DIAGNOSTIC' ? target.checkId.split('::page:')[0] : ''
+      const targetedTrust = checkIdentity === 'flow-cta-destination-no-trust'
+      const targetedContent = DESTINATION_CONTENT_CHECKS.includes(checkIdentity)
       const targetedPricing = target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] === 'flow-pricing-nav-broken'
       const pricingOnly = targetedPricing || context.input.module === 'pricing-navigation'
       let expectedActionContexts: string[] | undefined
-      if ((targetedPrimary || targetedLoading || targetedPricing) && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
+      if ((targetedPrimary || targetedLoading || targetedTrust || targetedContent || targetedPricing) && target?.kind === 'DIAGNOSTIC' && target.checkId.split('::page:')[0] !== 'flow-no-cta-found') {
         const flags = await prisma.flag.findMany({ where: { auditId: target.parentAuditId, audit: { projectId: context.audit.projectId }, checkId: target.checkId },
           take: 100, select: { evidenceTargets: true, verificationRule: true } })
         const contexts = flags.flatMap(flag => !Array.isArray(flag.evidenceTargets) ? [] : flag.evidenceTargets.flatMap(value => {
@@ -178,6 +185,12 @@ export const actionHandlers: TaskHandler[] = [
           }
           if (targetedLoading) {
             const context = flag.verificationRule === POST_CLICK_VERIFICATION_RULE ? postClickActionContext(value) : undefined
+            return context ? [context] : []
+          }
+          if (targetedTrust || targetedContent) {
+            const context = targetedTrust
+              ? flag.verificationRule === DESTINATION_TRUST_VERIFICATION_RULE ? destinationTrustActionContext(value) : undefined
+              : flag.verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE ? destinationContentActionContext(value) : undefined
             return context ? [context] : []
           }
           if (flag.verificationRule !== PRIMARY_ACTION_VERIFICATION_RULE) return []
@@ -202,7 +215,7 @@ export const actionHandlers: TaskHandler[] = [
             ...(overlayDiagnostic ? { captureSteps: false, overlayOnly: true, expectedOverlayTargets: originalOverlays.filter(target => ['primary_action', 'pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))),
               includeFormValidation: originalOverlays.some(target => target.context.split(':')[3].startsWith('flow_form_validation')),
               mode: !originalOverlays.some(target => ['pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))) ? 'primary' : undefined } : {}),
-            ...(targetedPrimary || targetedLoading ? { mode: targetedLoading ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
+            ...(targetedPrimary || targetedLoading || targetedTrust || targetedContent ? { mode: targetedLoading || targetedTrust || targetedContent ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
             ...(pricingOnly ? { mode: 'pricing', captureSteps: false, expectedPricingContexts: expectedActionContexts } : {}) })
         if (protectedActionRefused) throw new TaskFailure('PROTECTED_ACTION_REQUIRES_FIXTURE', false)
         if (result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
@@ -214,22 +227,16 @@ export const actionHandlers: TaskHandler[] = [
         const flags = [...measured.flags, ...actionFlags,
           ...runNetworkEngagementChecks(session.networkFailures, session.formProbe)].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
         if (context.input.primary && !pricingOnly) await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
-        const applicable = pricingOnly ? Boolean(result.multiStep?.pricingEvidence) || targetedPricing || result.multiStep?.pricingComplete === false : !result.actionEvidence || result.actionEvidence.candidateCount > 0 || actionRequired !== false
-        const primaryAssertions = primaryActionAssertions(result.actionEvidence, actionRequired)
-        const assertions = [...primaryAssertions, ...postClickAssertions(result.postClickMetrics, result.finalUrl, result.actionEvidence),
-          ...pricingNavigationAssertions(result.multiStep?.pricingEvidence)]
-        const destinationComplete = !result.destinationUX || result.destinationUX.contentComplete !== false && result.destinationUX.controlsComplete !== false
-        const complete = pricingOnly ? !applicable || assertions.length > 0 && assertions.every(assertion => assertion.complete === true)
-          : !applicable || primaryAssertions.length === 4 && destinationComplete && assertions.every(assertion => assertion.complete === true)
+        const flowCheck = assembleFlowModuleCheck({ result, actionRequired, actionFlags, pricingOnly, targetedPricing })
         return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking, receipt: {
           kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: context.input.pageUrl, applicable: true,
           passed: measured.flags.length === 0 && measured.complete, complete: measured.complete, limitation: measured.limitation, assertions: measured.assertions,
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'browser-network', collectedAt: new Date().toISOString() },
-        }, overlayReceipts: overlayCheckReceipts(result.overlayObservations ?? [], { auditId: context.audit.id, taskId: context.task.id, collectedAt: new Date().toISOString() }),
-        flowReceipt: overlayDiagnostic ? undefined : { kind: 'site-module-check', version: 1, module: 'flow', pageUrl: context.input.pageUrl, applicable,
-          passed: complete && actionFlags.length === 0 && assertions.every(assertion => assertion.passed), complete, assertions,
+          execution: checkExecution(context, 'measurement', 'browser-network'),
+        }, overlayReceipts: overlayCheckReceipts(result.overlayObservations ?? [], checkExecution(context, 'overlays', 'rendered-dom')),
+        flowReceipt: overlayDiagnostic ? undefined : { kind: 'site-module-check', version: 1, module: 'flow', pageUrl: context.input.pageUrl, applicable: flowCheck.applicable,
+          passed: flowCheck.passed, complete: flowCheck.complete, assertions: flowCheck.assertions,
           limitation: 'Public action observations cover the recorded page and control. Unsupported responses, changed controls, unsafe actions and intended business completion remain separate or unknown.',
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+          execution: checkExecution(context, 'flow', 'rendered-dom'),
         } }))
       } finally { session.disposeNetwork(); await session.page.context().close() }
     },
@@ -265,7 +272,7 @@ export const actionHandlers: TaskHandler[] = [
         receipt: { kind: 'site-module-check', version: 1, module: 'slow-replay', pageUrl, applicable: true, complete,
           passed: complete && assertions.every(assertion => assertion.passed), assertions,
           limitation: 'Bounded top-level mobile viewport text, decoded main image and recognized-action timing on simulated 3G. Unclassified graphics, sampling gaps, missing controls and other devices remain separate or unknown.',
-          execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
+          execution: checkExecution(context, 'slow-replay', 'rendered-dom'),
         } }))
     },
   },

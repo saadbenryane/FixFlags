@@ -43,7 +43,7 @@ export function DocsPageFrame({
           </div>
         </article>
         {page.headings.length > 2 ? (
-          <aside className={s.contents}>
+          <div className={s.contents}>
             <div className={s.contentsInner}>
               <p className={s.groupTitle}>
                 On this page
@@ -63,7 +63,7 @@ export function DocsPageFrame({
                 </ul>
               </nav>
             </div>
-          </aside>
+          </div>
         ) : null}
       </div>
     </>

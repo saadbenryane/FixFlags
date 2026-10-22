@@ -75,7 +75,7 @@ describe('SiteSettingsControls Watch', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/sites/site-1/settings', expect.objectContaining({
       method: 'PATCH', body: JSON.stringify({ notificationLevel: 'OFF' }),
     }))
-    expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: /when a fix is verified/ })).toBeDisabled()
     expect(refresh).toHaveBeenCalled()
   })
 
@@ -85,7 +85,7 @@ describe('SiteSettingsControls Watch', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
     expect(await screen.findByText('Settings could not be saved.')).toBeVisible()
     expect(screen.getByRole('combobox', { name: 'Email me' })).toHaveValue('FLAGS')
-    expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: /when a fix is verified/ })).toBeEnabled()
     expect(refresh).not.toHaveBeenCalled()
   })
 

@@ -69,9 +69,9 @@ export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
   // losing its original comparison against the Site entry page.
   for (const [primary, page] of ordered.flatMap((first, index) => ordered.slice(index + 1).map(other => [first, other] as const))) {
     if (page.url === primary.url) continue
-    const primaryTitle = normalizeText(primary.ogTitle || primary.title)
+    const primaryTitle = normalizeText(primary.ogTitle)
     const primaryDesc = normalizeText(primary.ogDescription)
-    const pageTitle = normalizeText(page.ogTitle || page.title)
+    const pageTitle = normalizeText(page.ogTitle)
     const pageDesc = normalizeText(page.ogDescription)
     const pair = [primary, page].map(item => ({ url: item.url, key: item.scope ? captureObservationKey(item.scope) : 'unknown',
       ...(item.source ? { source: item.source } : {}) }))
@@ -85,7 +85,7 @@ export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
     const context = 'corridor:' + (scoped ? createHash('sha256').update(JSON.stringify(pair)).digest('hex') : 'unknown')
     const recorded: CheckAssertion[] = [
       { key: 'preview-titles', name: 'Distinct page preview titles', expected: 'The compared pages have distinct non-empty preview titles',
-        observed: `${primary.url}: ${primary.ogTitle || primary.title || titleAbsence}; ${page.url}: ${page.ogTitle || page.title || titleAbsence}`.slice(0, 2000),
+        observed: `${primary.url}: ${primary.ogTitle?.trim() || titleAbsence}; ${page.url}: ${page.ogTitle?.trim() || titleAbsence}`.slice(0, 2000),
         passed: titlesObserved && hasTitles && primaryTitle !== pageTitle, complete: scoped && titlesObserved, context,
         ...(scoped && titlesObserved && !hasTitles ? { disposition: 'observed' as const } : {}) },
       { key: 'preview-descriptions', name: 'Page-specific preview descriptions', expected: 'The compared pages do not reuse the same long preview description',
@@ -106,7 +106,7 @@ export function evaluateCorridorConsistency(pages: CorridorPageMeta[]) {
         severity: 'IMPORTANT',
         impactTag: 'SHARING',
         problem: 'Multiple corridor pages share the same Open Graph title',
-        evidence: `Primary and ${page.role} (${page.url}) both use og:title "${primary.ogTitle || primary.title}".`,
+        evidence: `Primary and ${page.role} (${page.url}) both use og:title "${primary.ogTitle}".`,
         fix: '1. Give each key page a unique og:title that matches its H1\n2. Keep brand name consistent but vary the offer\n3. Re-check social previews after deploy',
         confidence: 0.9,
         source: 'DETERMINISTIC',

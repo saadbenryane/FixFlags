@@ -1,5 +1,6 @@
 import type { Page } from 'playwright'
 import { evidenceScopeForCheck } from '@/lib/marketing/evidence-regions'
+import { isIframeAxeTarget, type AxeTarget } from './checks/accessibility-rules'
 
 export type EvidenceDevice = 'desktop' | 'mobile'
 
@@ -240,11 +241,15 @@ export async function harvestEvidenceOnPage(
       }
 
       for (const parts of targets) {
-        const selector = parts.filter(Boolean).join(' ')
+        const selector = parts.filter(Boolean).join(' >>> ')
         if (!selector) continue
         let el: Element | null = null
         try {
-          el = document.querySelector(selector)
+          let root: Document | ShadowRoot | null = document
+          for (const part of parts) {
+            el = root?.querySelector(part) ?? null
+            root = el?.shadowRoot ?? null
+          }
         } catch {
           el = null
         }
@@ -290,16 +295,17 @@ export async function harvestEvidenceOnPage(
 }
 
 export function axeTargetsFromViolations(
-  violations: Array<{ nodes?: Array<{ target?: string[] }> }> | null | undefined
+  violations: Array<{ nodes?: Array<{ target?: AxeTarget }> }> | null | undefined
 ): string[][] {
   if (!violations) return []
   const seen = new Set<string>()
   const targets: string[][] = []
   for (const violation of violations) {
     for (const node of violation.nodes ?? []) {
-      const target = node.target?.filter(Boolean) ?? []
+      if (isIframeAxeTarget(node.target)) continue
+      const target = node.target?.flat().filter(Boolean) ?? []
       if (target.length === 0) continue
-      const key = target.join('>')
+      const key = JSON.stringify(target)
       if (seen.has(key)) continue
       seen.add(key)
       targets.push(target)

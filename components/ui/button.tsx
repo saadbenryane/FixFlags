@@ -3,9 +3,11 @@ import { Slot, Slottable } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { InteractiveButton } from './interactive-controls'
+import { hasClientInteraction } from './client-interaction'
 
 const buttonVariants = cva(
-  "inline-flex max-w-full items-center justify-center gap-2 whitespace-normal [overflow-wrap:anywhere] rounded-control text-sm font-medium ring-offset-background transition-[color,background-color,border-color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 motion-reduce:transition-none motion-reduce:active:scale-100",
+  "inline-flex max-w-full items-center justify-center gap-2 whitespace-normal [overflow-wrap:anywhere] rounded-control text-sm font-medium ring-offset-background transition-[color,background-color,border-color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 motion-reduce:transition-none",
   {
     variants: {
       variant: {
@@ -61,7 +63,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     tabIndex,
     ...props
   }, ref) => {
-    const Comp = asChild ? Slot : "button"
+    const clientCommand = hasClientInteraction({ ...props, onClick })
+    const Comp = asChild ? Slot : clientCommand ? InteractiveButton : "button"
     const content = loading && loadingLabel ? loadingLabel : children
     const isDisabled = Boolean(disabled || loading)
 

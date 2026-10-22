@@ -40,10 +40,10 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
   })
 
-  it.each([403, 404])('never loads or returns private prompt data when ownership is refused (%s)', async status => {
+  it.each(['prepare', 'copy'].flatMap(action => [403, 404].map(status => ({ action, status }))))('never loads private prompt data when $action ownership is refused ($status)', async ({ action, status }) => {
     mocks.requireSiteOwner.mockResolvedValue({ ok: false, status, message: 'Site access refused' })
     const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
-      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+      method: 'POST', body: JSON.stringify({ action }),
     }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
     expect(response.status).toBe(status)
     expect((await response.json()).prompt).toBeUndefined()
@@ -64,6 +64,56 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     expect(body.prompt).toContain('Affected pages:\n- https://example.com/product\n- https://example.com/other-product')
     expect(body.handoff).toEqual({ improvementId: 'improvement-1' })
     expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ flagId: 'flag-1', builder: 'copy' }))
+  })
+
+  it('prepares the complete original task without recording a copied handoff', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/improvement-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'prepare' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'improvement-1' }) })
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.prompt).toContain('FixFlags Flag: Checkout button is hidden')
+    expect(body.sourceFlagId).toBe('flag-1')
+    expect(body.promptHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(body.handoff).toBeUndefined()
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
+  it('refuses changed guidance rather than acknowledging a different copied task', async () => {
+    const context = { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) }
+    const request = (body: unknown) => new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify(body),
+    })
+    const prepared = await (await POST(request({ action: 'prepare' }), context)).json()
+    const original = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...original, flag: { ...original.flag, fix: 'Use a different complete repair task.' } })
+    const response = await POST(request({ action: 'copy', promptHash: prepared.promptHash }), context)
+    expect(response.status).toBe(409)
+    expect((await response.json()).code).toBe('REPAIR_TASK_CHANGED')
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+  })
+
+  it('acknowledges the exact prepared task after the caller confirms copying', async () => {
+    const context = { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) }
+    const request = (body: unknown) => new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify(body),
+    })
+    const prepared = await (await POST(request({ action: 'prepare' }), context)).json()
+    expect(mocks.executeSiteCommand).not.toHaveBeenCalled()
+    const response = await POST(request({ action: 'copy', promptHash: prepared.promptHash }), context)
+    expect(response.status).toBe(200)
+    expect((await response.json()).prompt).toBe(prepared.prompt)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledOnce()
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ flagId: prepared.sourceFlagId }))
+  })
+
+  it('does not return a successful acknowledgement without an actual command receipt', async () => {
+    mocks.executeSiteCommand.mockResolvedValue({ ok: true, handoff: null })
+    const response = await POST(new NextRequest('http://localhost/api/sites/site-1/flags/flag-1/fix', {
+      method: 'POST', body: JSON.stringify({ action: 'copy' }),
+    }), { params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }) })
+    expect(response.status).toBe(500)
+    expect((await response.json()).ok).not.toBe(true)
   })
   it('includes every recorded page and device in the actual website copy action', async () => {
     const detail = await mocks.loadSiteBoardFlag()

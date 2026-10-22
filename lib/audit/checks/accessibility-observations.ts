@@ -5,11 +5,13 @@ import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
 import type { AccessibilityEvidence } from '../browser/accessibility-evidence'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
-import { AXE_POLICY_CHECK_IDS, ACCESSIBILITY_DOM_CHECK_IDS, ACCESSIBILITY_VERIFICATION_RULE, axeRuleToCheckId } from './accessibility-rules'
-import { filterOutIframeAxeViolations, runAccessibilityChecks, type AxeViolation } from './accessibility'
+import { AXE_POLICY_CHECK_IDS, ACCESSIBILITY_DOM_CHECK_IDS, ACCESSIBILITY_VERIFICATION_RULE, axeRuleToCheckId,
+  HTML_CONTROL_NAMES_VERSION, HTML_CONTROL_NAMES_CONTEXT, HTML_CONTROL_NAME_CHECK_IDS, AXE_DOCUMENT_SCOPE_CONTEXT, axeTargetSelector } from './accessibility-rules'
+import { runAccessibilityChecks, type AxeViolation } from './accessibility'
 
-function context(kind: 'axe' | 'dom', scope: CaptureObservationScope, checkId: string, engine = '', rules: string[] = []) {
-  return 'accessibility:' + kind + ':desktop:' + captureObservationKey(scope) + ':' + checkId + ':' + engine + ':' + rules.sort().join(',')
+function context(kind: 'axe' | 'dom', scope: CaptureObservationScope, checkId: string, engine = '', rules: string[] = [], documentScope = '') {
+  return 'accessibility:' + kind + ':desktop:' + captureObservationKey(scope) + ':' + checkId + ':' + engine + ':' + rules.sort().join(',') +
+    (kind === 'axe' && documentScope === AXE_DOCUMENT_SCOPE_CONTEXT ? ':' + documentScope : '')
 }
 
 export function accessibilityObservations(input: { metadata: PageMetadata | null; evidence?: AccessibilityEvidence; scope?: CaptureObservationScope }): CheckAssertion[] {
@@ -24,7 +26,7 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
     result.push({ key: 'axe:' + checkId, name: 'Automated accessibility: ' + checkId,
       expected: 'No failed or unresolved results for the recorded automated rule responsibility',
       observed: rules.map(rule => `${rule.id}: ${rule.state}, ${rule.nodes} inspected nodes`).join('; ').slice(0, 2000),
-      passed: complete && !failed, complete, context: context('axe', evidence!.scope, checkId, evidence!.engine, rules.map(rule => rule.id)) })
+      passed: complete && !failed, complete, context: context('axe', evidence!.scope, checkId, evidence!.engine, rules.map(rule => rule.id), evidence!.documentScope) })
   }
   const counts: Record<typeof ACCESSIBILITY_DOM_CHECK_IDS[number], number | undefined> = {
     'images-missing-alt': metadata?.imagesWithoutAlt, 'form-inputs-no-label': metadata?.inputsWithoutLabel,
@@ -34,9 +36,12 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
   }
   for (const checkId of ACCESSIBILITY_DOM_CHECK_IDS) {
     const applicable = checkId !== 'skip-link-missing' || Boolean(metadata && (metadata.navLandmarkCount > 0 || metadata.hasSkipLink))
-    const complete = Boolean(metadata && applicable && scope && captureObservationKey(scope) !== 'unknown')
+    const observed = Boolean(metadata && applicable && scope && captureObservationKey(scope) !== 'unknown')
     const sameRenderedScope = scope && evidence && captureObservationKey(scope) === captureObservationKey(evidence.scope)
     const axeFailure = sameRenderedScope && evidence.rules.some(rule => axeRuleToCheckId(rule.id) === checkId && rule.state === 'failed')
+    const nameCheck = HTML_CONTROL_NAME_CHECK_IDS.some(id => id === checkId)
+    const currentNames = metadata?.controlNamesVersion === HTML_CONTROL_NAMES_VERSION
+    const complete = observed && (!nameCheck || currentNames || (counts[checkId] ?? 0) > 0 || Boolean(axeFailure))
     result.push({ key: 'dom:' + checkId, name: 'Captured HTML: ' + checkId,
       expected: checkId === 'skip-link-missing' ? 'A skip-link signal is present without a measured failure of the same responsibility'
         : 'No captured HTML elements or automated rules on the same rendered page fail the reported condition',
@@ -44,7 +49,7 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
         : 'No navigation landmark or skip-link signal was captured; skip-link applicability changed.',
       passed: complete && counts[checkId] === 0 && !axeFailure, complete,
       ...(metadata && !applicable ? { disposition: 'observed' as const } : {}),
-      ...(scope ? { context: context('dom', scope, checkId) } : {}) })
+      ...(scope ? { context: context('dom', scope, checkId) + (nameCheck && currentNames ? HTML_CONTROL_NAMES_CONTEXT : '') } : {}) })
   }
   const unresolved = evidence?.rules.filter(rule => rule.state === 'incomplete').length ?? 0
   const failed = evidence?.rules.filter(rule => rule.state === 'failed').length ?? 0
@@ -57,14 +62,14 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
 }
 
 export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations: CheckAssertion[], axe?: AxeViolation[]): DeterministicFlag[] {
-  const violations = filterOutIframeAxeViolations(axe ?? [])
+  const violations = axe ?? []
   return flags.map(flag => {
     // Axe findings retain their existing human copy. Fallback findings use the
     // exact captured-HTML predicate instead of borrowing a different rule's pass.
     const fromAxe = violations.some(violation => axeRuleToCheckId(violation.id) === flag.checkId)
     const assertion = observations.find(item => item.key === (fromAxe ? 'axe:' : 'dom:') + flag.checkId && item.context)
     return assertion ? { ...flag, verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
-      evidenceTargets: fromAxe ? violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId).flatMap(violation => violation.nodes).slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const, selector: node.target.join(' > '), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: assertion.context }))
+      evidenceTargets: fromAxe ? violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId).flatMap(violation => violation.nodes).slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const, selector: axeTargetSelector(node.target), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: assertion.context }))
         : [{ kind: 'page', source: 'measured', device: 'desktop', label: flag.checkId, context: assertion.context }] } : flag
   })
 }

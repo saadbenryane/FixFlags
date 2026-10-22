@@ -1,3 +1,4 @@
+import type { OutcomeAssessmentState } from '@prisma/client'
 import { CARD_CATALOG } from './card-areas'
 import { readExecutionSpec } from './domain/execution-spec'
 
@@ -13,7 +14,7 @@ export type MonitoringHistoryEntry = {
   targetLabel?: string | null
   trigger?: 'MANUAL' | 'SCHEDULED' | 'OTHER' | 'UNKNOWN'
   afterFix?: boolean
-  result?: 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | null
+  result?: OutcomeAssessmentState | null
 }
 
 type HistoryRun = {

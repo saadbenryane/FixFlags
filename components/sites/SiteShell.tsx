@@ -13,6 +13,7 @@ import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
+import { useSiteNavigationContinuity } from '@/hooks/useSiteNavigationContinuity'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { cn } from '@/lib/utils'
 import { CustomerMain, customerMobileBarClass } from '@/components/layout/customer-frame'
@@ -21,6 +22,7 @@ import styles from './SiteShell.module.css'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { LazySiteChat } from './LazySiteChat'
 import { SiteMonitoringMenu } from './SiteMonitoringMenu'
+import { SiteResourceBoundary } from './SiteResourceBoundary'
 import { nextCheckLabel } from '@/lib/sites/monitoring-schedule'
 import { siteContinuationHref, type SiteViewerActions } from '@/lib/sites/viewer-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -34,7 +36,8 @@ function routeHref(siteId: string, route: SiteRoute): Route {
 }
 
 export function SiteShell(props: Parameters<typeof SiteShellContent>[0]) {
-  return <SupportProvider><SiteShellContent {...props} /></SupportProvider>
+  const content = <SupportProvider><SiteShellContent {...props} /></SupportProvider>
+  return props.analysisView ? <SiteResourceBoundary siteId={props.siteId} initial={props.analysisView}>{content}</SiteResourceBoundary> : content
 }
 
 function SiteShellContent({
@@ -69,6 +72,7 @@ function SiteShellContent({
   children: ReactNode
 }) {
   const { user } = useMe()
+  useSiteNavigationContinuity(siteId)
   const signedIn = Boolean(user)
   const ownsSite = actions.ownership === 'owner'
   const showSettings = true
@@ -93,14 +97,14 @@ function SiteShellContent({
       {!signedIn ? <div className={styles.anonymousBrand}><Logo variant="lockup" size="sm" /></div> : null}
       <div className={styles.identity}>
         <Link href={routeHref(siteId, 'home')} className={styles.domain}>{host}</Link>
-        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} initial={analysisView} /> : <AnalysisDetails host={host} statusLabel={presentation?.run.label ?? watch.label}
+        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : <AnalysisDetails host={host} statusLabel={presentation?.run.label ?? watch.label}
           active={Boolean(analyzing)} disconnected={false} />)}
       </div>
       <div className={styles.desktopNavigation}>{navigation('Site')}</div>
       <div className={styles.tabletNavigation}>
         <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
           <SheetTrigger asChild><Button variant="outline" size="sm"><Menu size={16} aria-hidden />{SITE_WORKSPACE_COPY.siteMenu}</Button></SheetTrigger>
-          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all pr-6">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
+          <SheetContent side="left" className="flex h-full w-60 flex-col md:left-16"><SheetHeader><SheetTitle className="break-all">{host}</SheetTitle><SheetDescription>{SITE_WORKSPACE_COPY.siteMenu}</SheetDescription></SheetHeader>
             {navigation('Website drawer', () => setNavigationOpen(false))}
           </SheetContent>
         </Sheet>

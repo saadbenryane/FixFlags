@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cardAreaForCheck, ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
-import { buildCoverageFacts, SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from '@/lib/sites/coverage'
+import { buildCoverageFacts } from '@/lib/sites/coverage'
+import { SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from '../evidence-freshness'
 import { encodeSiteId, parseSiteId } from '@/lib/sites/types'
 import { siteCardHealth } from '@/lib/sites/site-health'
 import { buildBoardCards } from '@/lib/sites/board-card'
@@ -414,7 +415,7 @@ describe('site card packaging', () => {
     const withModules = buildCoverageFacts({
       ...base,
       verifierExecutions: [
-        { targetKey: 'module:trust', status: 'COMPLETED' },
+        { targetKey: 'module:trust', status: 'COMPLETED', detail: observedReceipt('trust', ['privacy-link', 'contact-information', 'cookie-consent-signals']) },
         { targetKey: 'module:security', status: 'COMPLETED', detail: observedReceipt('security', ['https', 'image-transport']) },
         { targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) },
       ],
@@ -430,6 +431,20 @@ describe('site card packaging', () => {
       evidenced: true,
       label: 'Analytics markup detected',
       detail: 'An analytics snippet appeared in captured HTML; event delivery was not verified',
+    })
+    // A registered module whose receipt cannot be read leaves its areas
+    // unanswered. Module completion alone is not evidence.
+    const unreadable = buildCoverageFacts({
+      ...base,
+      verifierExecutions: [
+        { targetKey: 'module:trust', status: 'COMPLETED' },
+        { targetKey: 'module:security', status: 'COMPLETED', detail: observedReceipt('security', ['https', 'image-transport']) },
+        { targetKey: 'module:measurement', status: 'COMPLETED', detail: observedReceipt('measurement', ['analytics-markup']) },
+      ],
+    })
+    expect(unreadable.find((fact) => fact.area === 'security')).toMatchObject({
+      state: 'unknown',
+      incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete,
     })
     const stale = siteCardHealth({
       inFlight: false,

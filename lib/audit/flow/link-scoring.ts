@@ -1,5 +1,6 @@
 /** Shared CTA / conversion-path link scoring for critical path and flow scan. */
 import { normalizeSiteHost, parseSiteHostname } from '@/lib/utils/url-helpers'
+import { isRoutingFragment } from './flow-url'
 export { normalizeSiteHost }
 
 const AUTH_UTILITY_PATTERN = /\b(login|log in|sign in|signin)\b/i
@@ -14,6 +15,8 @@ const NON_PAGE_PROTOCOLS = new Set(['mailto:', 'tel:', 'sms:'])
 
 export interface CtaHrefOptions {
   baseUrl?: string
+  /** Browser-resolved destination, including the document's active base. */
+  resolvedHref?: string | null
   /** True only when a same-page hash points at a real element on the page. */
   hashTargetExists?: boolean
 }
@@ -66,7 +69,7 @@ export function classifyCtaHref(
     isActionable: false,
   }
 
-  if (!raw || raw === '#') return fallback
+  if (!raw) return fallback
 
   const lower = raw.toLowerCase()
   if (
@@ -77,13 +80,23 @@ export function classifyCtaHref(
     return fallback
   }
 
-  if (raw.startsWith('#')) {
+  let destination = raw
+  if (raw.startsWith('#') && options.resolvedHref && options.baseUrl) {
+    try {
+      const target = new URL(options.resolvedHref), document = new URL(options.baseUrl)
+      if (target.origin !== document.origin || target.pathname !== document.pathname || target.search !== document.search)
+        destination = options.resolvedHref
+    } catch { /* Unknown resolution cannot establish another document. */ }
+  }
+
+  if (destination.startsWith('#')) {
+    if (destination === '#') return fallback
     const actionable = Boolean(options.hashTargetExists)
     return {
       href: raw,
       resolvedHref: options.baseUrl ? new URL(raw, options.baseUrl).toString() : raw,
       protocol: null,
-      isPlaceholder: !actionable,
+      isPlaceholder: !actionable && !isRoutingFragment(destination),
       isPageNavigation: actionable,
       isSamePageAnchor: actionable,
       isActionable: actionable,
@@ -91,8 +104,8 @@ export function classifyCtaHref(
   }
 
   // Relative URL (no protocol scheme) means it's a same-site page link
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) && !raw.startsWith('//')) {
-    const resolvedHref = options.baseUrl ? new URL(raw, options.baseUrl).toString() : null
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(destination) && !destination.startsWith('//')) {
+    const resolvedHref = options.resolvedHref ?? (options.baseUrl ? new URL(destination, options.baseUrl).toString() : null)
     return {
       href: raw,
       resolvedHref,
@@ -105,7 +118,7 @@ export function classifyCtaHref(
   }
 
   try {
-    const parsed = options.baseUrl ? new URL(raw, options.baseUrl) : new URL(raw)
+    const parsed = options.baseUrl ? new URL(options.resolvedHref ?? destination, options.baseUrl) : new URL(options.resolvedHref ?? destination)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       // mailto:, tel:, sms: open an external app - intentional, working
       // destinations, NOT dead/placeholder links. They are still not page
@@ -137,7 +150,7 @@ export function classifyCtaHref(
       href: raw,
       resolvedHref: parsed.toString(),
       protocol: parsed.protocol,
-      isPlaceholder: isSamePageAnchor && !anchorIsActionable,
+      isPlaceholder: isSamePageAnchor && !anchorIsActionable && !isRoutingFragment(parsed.hash),
       isPageNavigation: anchorIsActionable,
       isSamePageAnchor,
       isActionable: anchorIsActionable,
@@ -204,10 +217,6 @@ export function scoreCtaLink(href: string, text: string): number {
 
 /** Maximum pages to discover per link category (used by critical path). */
 export { CATEGORY_MAX }
-
-export function isDeadHref(href: string): boolean {
-  return classifyCtaHref(href).isPlaceholder
-}
 
 /**
  * True when the href intentionally opens an external app (mail, phone, SMS)

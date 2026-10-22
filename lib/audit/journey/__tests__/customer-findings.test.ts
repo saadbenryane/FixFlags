@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   reviewCreate: vi.fn(),
   findingUpdate: vi.fn(),
   flagUpdate: vi.fn(),
-  auditFindUnique: vi.fn(),
+  auditFindUnique: vi.fn(), auditUpdate: vi.fn(),
   flagFindUnique: vi.fn(),
   writeTail: Promise.resolve() as Promise<unknown>,
   owner: undefined as { taskId: string } | undefined,
@@ -24,6 +24,7 @@ vi.mock('@/lib/audit/execution-ownership', () => ({
   currentExecutionOwnership: () => mocks.owner,
   executionWrite: (work: (tx: unknown) => unknown) => {
     const result = mocks.writeTail.then(() => work({
+    audit: { findUnique: mocks.auditFindUnique, update: mocks.auditUpdate },
     flag: { findMany: mocks.flagFindMany, findUniqueOrThrow: mocks.flagFindUnique, create: mocks.flagCreate, update: mocks.flagUpdate },
     journeyReview: { create: mocks.reviewCreate }, journeyFinding: { updateMany: mocks.findingUpdate },
     }))
@@ -231,6 +232,21 @@ describe('customer Flags from a page walk', () => {
     expect(mocks.flagCreate).not.toHaveBeenCalled()
   })
 
+  it('preserves both entry timelines when independent walks finish together', async () => {
+    mocks.owner = { taskId: 'native-entry-task' }
+    let stored = { performanceData: { otherEvidence: 'preserved', actionTimeline: [{ t: 0, kind: 'navigate', label: 'Original observation' }] } }
+    mocks.auditFindUnique.mockImplementation(async () => structuredClone(stored))
+    mocks.auditUpdate.mockImplementation(async ({ data }) => { stored = { ...stored, ...data }; return stored })
+    const result = (startUrl: string) => ({ findings: [], steps: [], journeyType: 'first-visit' as const, startUrl,
+      status: 'COMPLETED' as const, goalAchieved: false, blockedReason: null, abandonedReason: null, durationMs: 10,
+      formProbe: null, actionTimeline: [{ t: 1, kind: 'journey' as const, label: 'Independent entry', url: startUrl }] })
+    await Promise.all([persistJourneyResult('audit-1', result(page + 'plans')), persistJourneyResult('audit-1', result(page + 'support'))])
+    expect(stored.performanceData.otherEvidence).toBe('preserved')
+    expect(stored.performanceData.actionTimeline).toHaveLength(3)
+    expect(stored.performanceData.actionTimeline).toEqual(expect.arrayContaining([
+      expect.objectContaining({ url: page + 'plans' }), expect.objectContaining({ url: page + 'support' }),
+    ]))
+  })
   it('records the first missing action and does not use the word journey', async () => {
     mocks.flagFindMany.mockResolvedValue([])
     await persistJourneyResult('audit-1', {

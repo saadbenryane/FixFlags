@@ -13,7 +13,7 @@ export default async function DocsHomePage() {
   return (
     <DocsPageFrame page={page}>
       <DocsHomePaths />
-      <DocsMarkdown>{markdown}</DocsMarkdown>
+      <DocsMarkdown headings={page.headings}>{markdown}</DocsMarkdown>
     </DocsPageFrame>
   )
 }

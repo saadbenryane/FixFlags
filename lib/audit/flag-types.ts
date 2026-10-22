@@ -166,10 +166,20 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
 /**
  * Minimal subset for AI prescription matching.
  */
+export type PrescriptionGuidanceContext = {
+  fix?: string | null
+  attention?: 'flag' | 'recommendation'
+  causeCertainty?: CauseCertainty | null
+  fixConfidence?: FixConfidence | null
+}
+
 export type ExistingFlagForPrescription = Pick<
   FlagData,
   'source' | 'rubric' | 'severity' | 'problem' | 'checkId' | 'evidence' | 'pageUrl'
-> & { flagKey: string; supportingObservations?: import('./flag-observations').SupportingObservationView[] }
+> & PrescriptionGuidanceContext & Partial<Pick<FlagData, 'whyItMatters' | 'verificationRule'>> & {
+  flagKey: string
+  supportingObservations?: import('./flag-observations').SupportingObservationView[]
+}
 
 /**
  * Minimal subset for theme-based deduplication matching.
@@ -183,6 +193,7 @@ export type ThemeMatchableFlag = Pick<FlagData, 'problem' | 'evidence'> & {
  */
 export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric' | 'severity'> & {
   attentionPolicy?: unknown
+  supportingEvidenceUnreadable?: boolean
   /** Exact persisted Flag represented by this diff item, when available. */
   id?: string
   status?: string

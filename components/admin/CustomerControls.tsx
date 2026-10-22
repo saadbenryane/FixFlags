@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { InteractiveInput, InteractiveSelect } from '@/components/ui/interactive-controls'
+import { useId, useState } from 'react'
 import { AdminActionButton } from './AdminActionButton'
 export function CustomerControls({
   id,
@@ -14,6 +15,7 @@ export function CustomerControls({
   initialPlan?: string
   initialQuantity?: number
 }) {
+  const fieldId = useId()
   const [plan, setPlan] = useState<'BUILDER' | 'TEAM'>(initialPlan === 'TEAM' ? 'TEAM' : 'BUILDER'),
     [quantity, setQuantity] = useState(
       initialQuantity && initialQuantity > 0 ? initialQuantity : 1,
@@ -48,20 +50,20 @@ export function CustomerControls({
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Complimentary access</h2>
         <div className="grid items-end gap-3 sm:grid-cols-3">
-          <label className="space-y-1 text-sm">
+          <label htmlFor={`${fieldId}-grant-plan`} className="space-y-1 text-sm">
             Access level
-            <select
+            <InteractiveSelect id={`${fieldId}-grant-plan`}
               className={field}
               value={grantPlan}
               onChange={(e) => setGrantPlan(e.target.value as typeof grantPlan)}
             >
               <option value="BUILDER">Pro</option>
               <option value="TEAM">Studio</option>
-            </select>
+            </InteractiveSelect>
           </label>
-          <label className="space-y-1 text-sm">
+          <label htmlFor={`${fieldId}-grant-days`} className="space-y-1 text-sm">
             Expires in days
-            <input
+            <InteractiveInput id={`${fieldId}-grant-days`}
               className={field}
               type="number"
               min={1}
@@ -90,20 +92,20 @@ export function CustomerControls({
         {hasSubscription ? (
           <>
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="space-y-1 text-sm">
+              <label htmlFor={`${fieldId}-subscription-plan`} className="space-y-1 text-sm">
                 Plan
-                <select
+                <InteractiveSelect id={`${fieldId}-subscription-plan`}
                   className={field}
                   value={plan}
                   onChange={(e) => setPlan(e.target.value as typeof plan)}
                 >
                   <option value="BUILDER">Pro</option>
                   <option value="TEAM">Studio</option>
-                </select>
+                </InteractiveSelect>
               </label>
-              <label className="space-y-1 text-sm">
+              <label htmlFor={`${fieldId}-quantity`} className="space-y-1 text-sm">
                 Licensed Sites
-                <input
+                <InteractiveInput id={`${fieldId}-quantity`}
                   className={field}
                   type="number"
                   min={1}
@@ -112,16 +114,16 @@ export function CustomerControls({
                   onChange={(e) => setQuantity(Number(e.target.value))}
                 />
               </label>
-              <label className="space-y-1 text-sm">
+              <label htmlFor={`${fieldId}-timing`} className="space-y-1 text-sm">
                 Effective date
-                <select
+                <InteractiveSelect id={`${fieldId}-timing`}
                   className={field}
                   value={timing}
                   onChange={(e) => setTiming(e.target.value)}
                 >
                   <option value="period_end">At the next period boundary</option>
                   <option value="immediate">Immediately, with proration</option>
-                </select>
+                </InteractiveSelect>
               </label>
             </div>
             <div className="flex flex-wrap gap-3">

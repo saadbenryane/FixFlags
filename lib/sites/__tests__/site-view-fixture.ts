@@ -1,6 +1,16 @@
 import { siteScopeCounts } from '@/lib/sites/scope-counts'
 import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import type { SiteHomeView } from '../application/queries'
+import type { SiteFlagSeed } from '../coverage'
+
+export function siteFlagFixture(overrides: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
+  return { id: 'flag-1', sourceFlagId: 'flag-1', improvementId: null, checkId: 'buttons-no-text', rubric: 'EXPERIENCE',
+    severity: 'IMPORTANT', confidence: 1, impactTag: null, problem: 'A button has no accessible name',
+    evidence: 'Recorded unnamed button', whyItMatters: 'Its action is unclear', fix: '', pageUrl: 'https://example.com/',
+    status: 'OPEN', resolvedInId: null, area: 'conversion', affectedPaths: ['https://example.com/'], affectedPageCount: 1,
+    priorityBand: 'fix_first', priorityScore: 1, relatedOutcome: null, verificationState: 'still_open',
+    latestOccurrenceAt: null, ...overrides }
+}
 
 export function siteViewFixture(): SiteHomeView {
   return {

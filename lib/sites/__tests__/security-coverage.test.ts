@@ -7,7 +7,8 @@ const url = 'https://example.test/'
 const now = new Date('2026-10-14T02:00:00Z')
 async function observe(html: string) {
   const checked = await runAllChecks(url, parseMetadataFromHtml(html, url), null, null, [], undefined, undefined, undefined,
-    undefined, true, ['security'])
+    undefined, true, ['security'], { publicDocument: { url, finalUrl: url, status: 200, headers: {}, body: html,
+      complete: true, reason: null, collectedAt: now.toISOString(), redirects: [] } })
   return { targetKey: 'module:security', status: 'COMPLETED', pageUrl: url, detail: {
     kind: 'site-module-check', version: 1, ...checked.executions[0], pageUrl: url } }
 }
@@ -16,6 +17,13 @@ function fact(receipts: Array<{ targetKey: string; status: string; detail: unkno
     .find(fact => fact.area === 'security')!
 }
 describe('Site Security coverage from recorded transport evidence', () => {
+  it('keeps HTML-only input unknown when no public HTTP observation was supplied', async () => {
+    const checked = await runAllChecks(url, parseMetadataFromHtml('<main><h1>Useful service</h1></main>', url),
+      null, null, [], undefined, undefined, undefined, undefined, true, ['security'])
+    expect(fact([{ targetKey: 'module:security', status: 'COMPLETED', detail: {
+      kind: 'site-module-check', version: 1, ...checked.executions[0], pageUrl: url,
+    } }])).toMatchObject({ state: 'unknown', evidenced: false })
+  })
   it('recognizes the real current evaluator without requiring media, providers or the old image assertion', async () => {
     const observed = await observe('<main><h1>Useful service</h1><img src="/hero.png"><script src="/app.js"></script></main>')
     expect(observed.detail.assertions?.map(assertion => assertion.key)).toContain('resource-transport')

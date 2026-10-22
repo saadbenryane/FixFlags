@@ -18,6 +18,13 @@ describe('customerFlagContext', () => {
     )
   })
 
+  it('states the recorded 4000ms mobile loading window', () => {
+    const stored = 'Test on 3G. Confirm meaningful content renders within 2 seconds. Server-render hero content.'
+    expect(customerExpectedBehavior('mobile-load-delay-content', stored)).toBe(
+      'Blocking mobile loading UI clears within 4000ms and page content is visible under the recorded mobile conditions.'
+    )
+  })
+
   it('names a verification attempt without the stored builder token', () => {
     expect(customerAttemptSource('site')).toBe('From this Site')
     expect(customerAttemptSource('copy')).toBe('Copied instructions')

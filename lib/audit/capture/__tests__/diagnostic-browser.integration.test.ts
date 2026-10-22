@@ -66,8 +66,7 @@ browserTests('diagnostic observations from Chromium', () => {
     const after = await measureMobileLayout(page)
     const observations: CheckAssertion[] = []
     runMobileUXQualityChecks(after, 'marketing', assertion => observations.push(assertion))
-    expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true })
-    expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')?.disposition).toBeUndefined()
+    expect(observations.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
   })
   it('measures a below-fold action and a changed placement using the actual mobile viewport', async () => {
     await fixture('main{min-height:1800px} #signup{display:block;margin-top:1000px}', '<a id="signup" href="/signup">Get started free</a>')
@@ -112,8 +111,9 @@ browserTests('diagnostic observations from Chromium', () => {
     expect(recovery(before.receipt)).toBe(false)
     size = 16
     const repaired = await inspect()
-    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: 'mobile-input-zoom', flag: flag! })?.assertion.passed).toBe(true)
-    expect(recovery(repaired.receipt)).toBe(true)
+    expect(repaired.receipt.assertions.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(scopedAssertionForTarget({ receipt: repaired.receipt, checkId: 'mobile-input-zoom', flag: flag! })).toBeUndefined()
+    expect(recovery(repaired.receipt)).toBe(false)
     size = 14
     const recurring = await inspect()
     expect(scopedAssertionForTarget({ receipt: recurring.receipt, checkId: 'mobile-input-zoom', flag: flag! })?.assertion.passed).toBe(false)

@@ -1,10 +1,12 @@
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { categoryAreaSchema } from '../domain/execution-spec'
 import { buildExecutionSpec,executionIntentHash } from './execution-spec'
 import type { RunInput } from './run-intent'
 import { SiteRunRefusal } from './run-refusal'
+import { SiteNotFound } from '../domain/site-errors'
+import { snapshotOutcomeAuthorization } from '../domain/outcome-authorization'
 
 export function validateRunSelection(input: RunInput) {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
@@ -62,7 +64,7 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
     where: { id: input.projectId, userId: input.userId, ...(cleanup ? {} : { deletedAt: null }) },
     select: { url: true },
   })
-  if (!project) throw new SiteRunRefusal('Site not found', 404)
+  if (!project) throw new SiteNotFound()
 
   const fixture = input.fixtureId ? await prisma.outcomeFixture.findFirst({
     where: { id: input.fixtureId, projectId: input.projectId, enabled: true }, select: { id: true, version: true, targetUrl: true },
@@ -78,7 +80,7 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
   const requestedUrl = fixture?.targetUrl ?? (input.verificationTarget?.kind === 'DIAGNOSTIC'
     ? input.verificationTarget.pageUrl
     : input.url ?? (scope === 'SITE' || scope === 'CATEGORY' || input.source === 'WATCH' || !singleStart ? project.url : singleStart))
-  const normalized = normalizeAuditUrl(requestedUrl)
+  const normalized = normalizeAuditNavigationUrl(requestedUrl)
   const auditUrl = normalized.ok ? normalized.url : requestedUrl
   const executionSpec = fixture ? { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: auditUrl, environment,
     scope: 'FIXTURE_SETUP' as const, fixtureSetup: { id: fixture.id, version: fixture.version }, checks: {}, outcomes: [], verificationTarget: null } : await buildExecutionSpec({
@@ -92,5 +94,6 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
     try { initialTaskPlan(executionSpec) }
     catch { throw new SiteRunRefusal(executionSpec.scope === 'CATEGORY' ? 'This category has no valid execution plan.' : 'This finding has no registered independent verifier. Its previous evidence is retained; a repair cannot be certified by this action.', 409) }
   }
-  return { selectedIds, first, fixture, auditUrl, executionSpec, requestHash }
+  return { selectedIds, first, fixture, auditUrl, executionSpec, requestHash,
+    outcomeAuthorization: snapshotOutcomeAuthorization(outcomes) }
 }

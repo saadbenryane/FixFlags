@@ -6,6 +6,7 @@ export interface ProviderConfig {
   maxTokens: number
   timeoutMs: number
   imageDetail: 'low' | 'high' | 'auto'
+  reasoningEffort?: 'none'
 }
 
 const DEFAULTS: Record<string, ProviderConfig> = {
@@ -68,6 +69,15 @@ export function getConfiguredJudgeProviderChain(): string[] {
 }
 
 const TRIAGE_DEFAULT_MAX_TOKENS = 1500
+
+/** Repair guidance has its own model contract, independent of scoring and chat. */
+export function getPrescriptionProviderConfig(provider: string, maxTimeoutMs?: number): ProviderConfig {
+  const env = getEnv(), base = getProviderConfig(provider, maxTimeoutMs)
+  const model = provider === 'openai'
+    ? env.OPENAI_PRESCRIPTION_MODEL ?? (env.OPENAI_JUDGE_MODEL?.trim() || 'gpt-6-luna')
+    : provider === 'anthropic' ? env.ANTHROPIC_PRESCRIPTION_MODEL ?? base.model : base.model
+  return { ...base, model, ...(provider === 'openai' && model === 'gpt-6-luna' ? { reasoningEffort: 'none' as const } : {}) }
+}
 
 /**
  * Phase-1 triage config: same provider/timeout resolution as the full judge,

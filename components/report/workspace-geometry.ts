@@ -8,13 +8,13 @@
 export const WORKSPACE_SPLIT_GRID_CLASS =
   'lg:grid-cols-[minmax(280px,32%)_minmax(0,1fr)]'
 
-/** Product pane header: flush pane, divider only, no inner card. */
+/** Product pane header: flush pane with spacing, no inner card. */
 export const WORKSPACE_PANEL_HEADER_CLASS =
-  'flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border/40 px-3 sm:px-4'
+  'flex min-h-14 shrink-0 items-center justify-between gap-3 px-3 sm:px-4'
 
 /** Agent pane header: product identity row above the transcript. */
 export const WORKSPACE_AGENT_HEADER_CLASS =
-  'flex min-h-16 shrink-0 items-center gap-3 border-b border-border/40 px-3'
+  'flex min-h-16 shrink-0 items-center gap-3 px-3'
 
 /**
  * Product stage: fills the pane between the header and the docked transport.

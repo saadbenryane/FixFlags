@@ -94,7 +94,7 @@ export function WorkspacePreviewTransport({
       aria-label={REPORT_COPY.workspace.playback.transportLabel}
       className={cn(
         TRANSPORT_HEIGHT_CLASS,
-        'flex shrink-0 items-center gap-3 border-t border-border/40 bg-background/70 px-3 sm:px-4',
+        'flex shrink-0 items-center gap-3 bg-background/70 px-3 sm:px-4',
         className,
       )}
     >

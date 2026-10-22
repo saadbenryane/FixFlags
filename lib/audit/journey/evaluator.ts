@@ -1,3 +1,5 @@
+import { measuredProviderRequest, openAIResponseUsage, anthropicResponseUsage } from '../provider-request'
+import type { ProviderUsageAdmission } from '../provider-usage'
 import { getTriageProviderConfig } from '@/lib/audit/judge-config'
 import {
   anthropic,
@@ -22,7 +24,7 @@ export type EvaluatorUsage = LlmUsage
 
 export interface EvaluatorResult {
   evaluation: JourneyEvaluation
-  usage: EvaluatorUsage
+  usage: EvaluatorUsage | null
 }
 
 export function isEvaluatorProviderConfigured(): boolean {
@@ -39,16 +41,20 @@ function parseEvaluationOutput(raw: unknown): JourneyEvaluation {
 
 async function runOpenAIEvaluator(
   input: EvaluatorUserPromptInput,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<EvaluatorResult> {
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
+  const client = openai
 
   const cfg = getTriageProviderConfig('openai', maxTimeoutMs)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const response = await openai.chat.completions.create(
+    const { response, usage } = await measuredProviderRequest({
+      model: cfg.model, onAttempt,
+      request: () => client.chat.completions.create(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
@@ -60,7 +66,9 @@ async function runOpenAIEvaluator(
         tool_choice: { type: 'function', function: { name: 'evaluate_journey' } },
       },
       { signal: controller.signal }
-    )
+      ),
+      usage: response => openAIResponseUsage(response, cfg.model),
+    })
 
     const toolCall = response.choices[0]?.message?.tool_calls?.[0]
     if (!toolCall || toolCall.type !== 'function') {
@@ -70,11 +78,7 @@ async function runOpenAIEvaluator(
     const raw = JSON.parse(toolCall.function.arguments)
     return {
       evaluation: parseEvaluationOutput(raw),
-      usage: {
-        inputTokens: response.usage?.prompt_tokens ?? 0,
-        outputTokens: response.usage?.completion_tokens ?? 0,
-        model: cfg.model,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -83,16 +87,20 @@ async function runOpenAIEvaluator(
 
 async function runAnthropicEvaluator(
   input: EvaluatorUserPromptInput,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<EvaluatorResult> {
   if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+  const client = anthropic
 
   const cfg = getTriageProviderConfig('anthropic', maxTimeoutMs)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
-    const response = await anthropic.messages.create(
+    const { response, usage } = await measuredProviderRequest({
+      model: cfg.model, onAttempt,
+      request: () => client.messages.create(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
@@ -119,7 +127,9 @@ async function runAnthropicEvaluator(
         ],
       },
       { signal: controller.signal }
-    )
+      ),
+      usage: response => anthropicResponseUsage(response, cfg.model),
+    })
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -128,13 +138,7 @@ async function runAnthropicEvaluator(
 
     return {
       evaluation: parseEvaluationOutput(toolUse.input),
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        model: cfg.model,
-        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -144,15 +148,16 @@ async function runAnthropicEvaluator(
 async function runEvaluatorWithProvider(
   provider: string,
   input: EvaluatorUserPromptInput,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<EvaluatorResult> {
   switch (provider) {
     case 'openai':
       if (!openai) throw new Error('OPENAI_API_KEY is not configured')
-      return runOpenAIEvaluator(input, maxTimeoutMs)
+      return runOpenAIEvaluator(input, maxTimeoutMs, onAttempt)
     case 'anthropic':
       if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
-      return runAnthropicEvaluator(input, maxTimeoutMs)
+      return runAnthropicEvaluator(input, maxTimeoutMs, onAttempt)
     default:
       throw new Error(`Unknown evaluator provider: ${provider}`)
   }
@@ -164,13 +169,14 @@ async function runEvaluatorWithProvider(
  */
 export async function evaluateJourney(
   input: EvaluatorUserPromptInput,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  onAttempt?: ProviderUsageAdmission
 ): Promise<EvaluatorResult> {
   return runLlmWithRetry({
     label: 'journey-evaluator',
     input: { input, maxTimeoutMs },
     attemptFn: (provider, { input, maxTimeoutMs }) =>
-      runEvaluatorWithProvider(provider, input, maxTimeoutMs),
+      runEvaluatorWithProvider(provider, input, maxTimeoutMs, onAttempt),
     isRetryable: (err) => {
       if (err instanceof Error && err.message.startsWith('Invalid evaluator output:')) return true
       return false

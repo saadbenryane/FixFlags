@@ -3,7 +3,7 @@ import { classifyTrackingEndpoint } from './endpoints'
 import { trackingEvidenceSchema, type TrackingRequest } from './contracts'
 import { runTrackingChecks, trackingContext } from '../checks/tracking'
 import { parseMetadataFromHtml } from '../metadata'
-import { trackingRequestKey, TRACKING_VERIFICATION_RULE } from './identity'
+import { trackingPageKey, trackingRequestKey, TRACKING_VERIFICATION_RULE } from './identity'
 import { captureObservationKey } from '../browser/observation-scope'
 import { scopedAssertionForTarget } from '../checks/verification'
 import { checkReceiptSchema } from '../checks/receipt'
@@ -25,6 +25,12 @@ function observed(urls: Array<[string, number]>, captureKey = captureObservation
 }
 
 describe('runtime Tracking assessment', () => {
+  it.each([
+    ['https://example.com/pricing', 'https://example.com/pricing/'],
+    ['https://example.com/?return=', 'https://example.com/?return=/'],
+  ])('keeps request capture page identity exact: %s', (left, right) => {
+    expect(trackingPageKey(left)).not.toBe(trackingPageKey(right))
+  })
   it('requires every original library request while keeping project keys and query values private', () => {
     const urls = ['https://cdn.segment.com/analytics.js/v1/PRIVATE_FIRST/analytics.min.js',
       'https://cdn.segment.com/analytics.js/v1/PRIVATE_SECOND/analytics.min.js']

@@ -2,8 +2,8 @@
   "contractVersion": "3.0",
   "protocolVersion": "2026-07-28",
   "tools": {
-    "listSites": { "name": "fixflags.list_sites", "desc": "List the Sites owned by this FixFlags account.", "scope": "sites:read", "title": "List FixFlags Sites", "readOnly": true },
-    "listOutcomes": { "name": "fixflags.list_outcomes", "desc": "List important Outcomes and their current Clear, Flag, Couldn’t verify, or Stale state.", "scope": "sites:read", "title": "List watched Outcomes", "readOnly": true },
+    "listSites": { "name": "fixflags.list_sites", "desc": "List the Sites owned by this FixFlags account and their automatic public HTTP uptime state. Reachability is separate from rendered-page verification.", "scope": "sites:read", "title": "List FixFlags Sites", "readOnly": true },
+    "listOutcomes": { "name": "fixflags.list_outcomes", "desc": "Read watched Outcomes, check evidence and automatic uptime for an owned Site. Uptime is included without configured Outcomes. Set uptimeWindow to include bounded probe and incident history; continue it with uptimeCursor. HTTP reachability does not verify rendered behavior or repair browser Flags.", "scope": "sites:read", "title": "List watched Outcomes", "readOnly": true },
     "run": { "name": "fixflags.run", "desc": "Check an owned Site, one supported category, or selected important Outcomes and return a durable run identifier.", "scope": "runs:write", "title": "Run important Outcomes", "readOnly": false },
     "getRun": { "name": "fixflags.get_run", "desc": "Poll a Site run and retrieve its scope, assessment, completeness, coverage gaps, freshness, and independent Outcome results.", "scope": "runs:read", "title": "Get Site run", "readOnly": true },
     "listFlags": { "name": "fixflags.list_flags", "desc": "List active customer Flags for an owned Site.", "scope": "flags:read", "title": "List active Flags", "readOnly": true },

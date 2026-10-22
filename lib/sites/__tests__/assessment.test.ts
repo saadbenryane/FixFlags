@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { projectSiteAssessment, requiredAreasForScope, LEGACY_BROAD_REQUIRED_AREAS } from '../assessment'
 import { siteCardHealth } from '../site-health'
 import type { CoverageFact } from '../coverage'
+import { siteCoverageMaxAgeMs } from '../evidence-freshness'
 
 const now = new Date('2026-10-12T12:00:00Z')
 const spec = (checks: Record<string, number>) => ({ version: 1, engine: 'progressive-v1', scope: 'SITE',
@@ -57,5 +58,18 @@ describe('shared Site assessment', () => {
   it('does not require a paused Outcome, but requires an enabled unassessed one', () => {
     expect(projectSiteAssessment({ ...input(), outcomes: [{ state: 'COULD_NOT_VERIFY', enabled: false }] }).result).toBe('CLEAR')
     expect(projectSiteAssessment({ ...input(), outcomes: [{ state: 'COULD_NOT_VERIFY' }] }).result).toBe('COULD_NOT_VERIFY')
+  })
+
+  it('uses current broad care for both the conclusion and deadline without changing historical defaults', () => {
+    const coverageMaxAgeMs = siteCoverageMaxAgeMs('daily')
+    const later = new Date(now.getTime() + coverageMaxAgeMs)
+    const current = { ...input(), now: later, coverageMaxAgeMs }
+    expect(projectSiteAssessment(current)).toMatchObject({ result: 'STALE', validUntil: later.toISOString() })
+    expect(siteCardHealth({ ...current, inFlight: false, finished: true, hasLastKnown: true })).toMatchObject({
+      state: 'unknown', assessment: { result: 'STALE', validUntil: later.toISOString() },
+    })
+    expect(projectSiteAssessment({ ...input(), now: later })).toMatchObject({ result: 'CLEAR',
+      validUntil: new Date(now.getTime() + 8 * 86400_000).toISOString() })
+    expect(projectSiteAssessment({ ...current, flags: [{ severity: 'IMPORTANT' }] }).result).toBe('FLAG')
   })
 })

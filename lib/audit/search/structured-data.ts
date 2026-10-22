@@ -1,5 +1,5 @@
 import { searchSectionBody } from './rendered-snapshot'
-import * as cheerio from 'cheerio'
+import { parseActiveHtmlDocument } from '../html-document'
 import jsonld, { type JsonLdDocument } from 'jsonld'
 import { MicrodataRdfParser } from 'microdata-rdf-streaming-parser'
 import { RdfaParser } from 'rdfa-streaming-parser'
@@ -89,7 +89,8 @@ async function parseEmbeddedGraph(html: string, baseIRI: string, format: 'Microd
 export async function inspectStructuredData(document: PublicDocument): Promise<StructuredInspection> {
   const body = searchSectionBody(document, 'structured')
   if (body == null) return { entities: [], issues: [], blocks: 0, complete: false }
-  const $ = cheerio.load(body), entities: StructuredEntity[] = [], issues: MarkupIssue[] = []
+  const { document: $, source } = parseActiveHtmlDocument(body)
+  const entities: StructuredEntity[] = [], issues: MarkupIssue[] = []
   const blocks: Array<{ locator: string; text: string }> = []
   $('script').each((index, node) => {
     if (($(node).attr('type') ?? '').trim().toLowerCase() === 'application/ld+json')
@@ -114,7 +115,7 @@ export async function inspectStructuredData(document: PublicDocument): Promise<S
   for (const format of ['Microdata', 'RDFa'] as const) {
     const selector = format === 'Microdata' ? '[itemscope][itemtype]' : '[typeof], [vocab], [prefix][property]'
     if (!$(selector).length) continue
-    try { entities.push(...normalizedEntities(await parseEmbeddedGraph(body, document.finalUrl, format), format, selector)) }
+    try { entities.push(...normalizedEntities(await parseEmbeddedGraph(source, document.finalUrl, format), format, selector)) }
     catch (error) { issues.push({ locator: selector, reason: error instanceof Error && error.message.includes('parser_limit') ? 'parser_limit' : 'parser_failed', excerpt: '' }) }
   }
   if (entities.length > STRUCTURED_ENTITY_LIMIT) issues.push({ locator: 'structured-data', reason: 'parser_limit', excerpt: '' })

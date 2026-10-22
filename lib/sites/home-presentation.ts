@@ -7,25 +7,26 @@ import type { siteCardHealth } from './site-health'
 import type { resolveLatestAudit } from './application/site-execution'
 import type { CoverageFact } from './coverage'
 import type { SiteCapture } from './captures'
+import type { PageCoverage } from './page-coverage'
 
 type Audit = Awaited<ReturnType<typeof resolveLatestAudit>>
 export function projectHomePresentation(input: {
   siteId: string; site: SiteHomeView['site']; cards: SiteHomeView['cards']; flags: SiteHomeView['flags'];
   health: ReturnType<typeof siteCardHealth>; coverage: CoverageFact[];
-  checkedPages: Array<{ status: string }>; capture?: SiteCapture; audit: Audit; prior: Audit; finished: boolean; now: Date;
+  pageCoverage: PageCoverage; capture?: SiteCapture; audit: Audit; prior: Audit; finished: boolean; now: Date;
 }) {
-  const { siteId, site, cards, flags, health, coverage, checkedPages, capture, audit, prior, finished, now } = input
+  const { siteId, site, cards, flags, health, coverage, pageCoverage, capture, audit, prior, finished, now } = input
   const siteCardState = health.state
   const watchState = watchBoardState({
     interval: site.watchInterval,
     nextRunAt: site.watchNextRunAt,
     lastError: site.watchLastError,
     consecutiveFailures: site.watchConsecutiveFailures,
+    now,
   })
   const watching = watchIsCovered(watchState)
   const completedAt = (isAuditFinished(audit?.status) ? audit : prior)?.completedAt?.toISOString() ?? null
-  const pagesReached = checkedPages.filter((page) => page.status === 'COMPLETED').length
-  const pagesExpected = checkedPages.length
+  const { pagesReached, pagesExpected } = pageCoverage
   const evidenceFacts = coverage.filter((fact) => fact.evidenced)
   const stale = evidenceFacts.length > 0 && evidenceFacts.every((fact) => fact.stale === true)
   const result = resultPresentation({
@@ -35,6 +36,7 @@ export function projectHomePresentation(input: {
     stale,
     hasCurrentEvidence: finished && evidenceFacts.some((fact) => !fact.stale),
     assessmentResult: health.assessment.result,
+    uptime: health.uptime,
   })
   const monitoring = monitoringPresentation(watchState, site.watchInterval, site.watchEveryMinutes)
   const projectedRun = runPresentation({
@@ -63,7 +65,7 @@ export function projectHomePresentation(input: {
       pagesReached,
       pagesExpected,
       label: pageCoverageLabel(pagesReached, pagesExpected),
-      complete: pagesExpected > 0 && pagesReached === pagesExpected,
+      complete: pageCoverage.complete,
     },
     freshness: {
       checkedAt: completedAt,
@@ -78,7 +80,7 @@ export function projectHomePresentation(input: {
     run: projectedRun,
     categories: [],
   }
-  const pagesCategory = pagesCardPresentation(presentation)
+  const pagesCategory = pagesCardPresentation(presentation, flags.filter(flag => flag.area === 'site'))
   presentation.categories = cards.map((card) => categoryPresentation({
     id: card.id,
     name: card.name,

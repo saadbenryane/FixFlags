@@ -685,6 +685,8 @@ model Audit {
   watchNotificationAttemptCeiling Int @default(5)
   planAtAdmission Plan?
   watchNotificationAttempts  Int                          @default(0)
+  /// Null admits initial and historical deliveries immediately. Failed attempts save their own backoff.
+  watchNotificationNextAttemptAt DateTime?
   watchNotificationLastError String?
   /// Provider acceptance reference, never proof that a person received or read it.
   watchNotificationProviderId String?
@@ -755,7 +757,7 @@ model Audit {
   @@index([siteId])
   /// Supports the Watch notification retry sweep, which only ever looks at a
   /// small set of undelivered alerts.
-  @@index([watchNotificationStatus, updatedAt])
+  @@index([watchNotificationStatus, watchNotificationNextAttemptAt, updatedAt], map: "audits_watch_notification_due_idx")
   @@index([dispatchState, dispatchNextAt], map: "audits_dispatch_due_idx")
   @@map("audits")
 }
@@ -1294,6 +1296,9 @@ model Flag {
   @@index([pageId])
   @@index([auditId, fingerprint])
   @@index([issueId])
+  /// Recovery proofs and resolved-Flag listings read flags by status and the
+  /// completed verification that closed them. One index serves both lanes.
+  @@index([status, resolvedInId])
   @@map("flags")
 }
 
@@ -2079,6 +2084,8 @@ model SiteOutcome {
   environment       String             @default("production")
   /// Clear requires every required binding. There is no partial Clear.
   bindingPolicy     OutcomeBindingPolicy @default(ALL_REQUIRED)
+  /// Permission changes fence work independently of the executable definition.
+  authorizationRevision Int           @default(1)
   enabled           Boolean          @default(true)
   staleAfterMinutes Int              @default(11520)
   /// heuristic | user

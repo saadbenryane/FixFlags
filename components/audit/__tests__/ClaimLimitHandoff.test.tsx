@@ -104,8 +104,8 @@ describe('claim limit signal', () => {
 
     await api.current!.claimAnonymous()
 
-    expect(await screen.findByText('claimUpgrade:none')).toBeInTheDocument()
-    expect(screen.getByText(`error:${AUTH.me.claimError}`)).toBeInTheDocument()
+    expect(await screen.findByText(`error:${AUTH.me.claimError}`)).toBeInTheDocument()
+    expect(screen.getByText('claimUpgrade:none')).toBeInTheDocument()
   })
 
   it('keeps the generic error with no upgrade signal when the network fails', async () => {
@@ -114,8 +114,8 @@ describe('claim limit signal', () => {
 
     await expect(api.current!.claimAnonymous()).resolves.toBeNull()
 
-    expect(await screen.findByText('claimUpgrade:none')).toBeInTheDocument()
-    expect(screen.getByText(`error:${AUTH.me.claimError}`)).toBeInTheDocument()
+    expect(await screen.findByText(`error:${AUTH.me.claimError}`)).toBeInTheDocument()
+    expect(screen.getByText('claimUpgrade:none')).toBeInTheDocument()
   })
 
   it('carries the signal across providers so the dashboard can render the notice', async () => {

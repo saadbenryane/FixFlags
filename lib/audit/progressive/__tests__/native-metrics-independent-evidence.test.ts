@@ -100,10 +100,11 @@ describe('independent native metric evaluation', () => {
     expect(incomplete.receipt.assertions.find(assertion => assertion.key === 'headline-presence')).toMatchObject({ passed: false, complete: false })
     expect(incomplete.receipt.complete).toBe(false)
   })
-  it('independently verifies the same input cohort while page purpose and HTML remain unavailable', async () => {
+  it('records a 16px input sample without certifying recovery while page purpose and HTML remain unavailable', async () => {
     const before = await observed('mobile-ux-quality'), flag = before.flags.find(flag => flag.checkId === 'mobile-input-zoom')!
     const after = await observed('mobile-ux-quality', true)
-    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })?.assertion).toMatchObject({ complete: true, passed: true })
+    expect(after.receipt.assertions.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ complete: true, passed: true, disposition: 'observed' })
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })).toBeUndefined()
     expect(after.receipt.assertions.filter(assertion => ['mobile-cta-position', 'mobile-cta-label'].includes(assertion.key)))
       .toEqual([expect.objectContaining({ complete: false, passed: false }), expect.objectContaining({ complete: false, passed: false })])
   })

@@ -89,6 +89,7 @@ describe('Site presentation', () => {
     expect(customerAttention({ result: { state: 'checking', label: 'Analyzing' }, flags }).text).toBe('Analyzing')
     expect(customerAttention({ result: { state: 'could_not_verify', label: 'Couldn’t verify' }, flags }).tone).toBe('pending')
     expect(customerAttention({ result: { state: 'flags', label: 'Flags found' }, flags: { count: 3, label: '3 Flags', fixFirstCount: 1 } })).toEqual({ text: '3 Flags', tone: 'attention' })
+    expect(customerAttention({ result: { state: 'flags', label: 'Offline' }, flags })).toEqual({ text: 'Offline', tone: 'attention' })
   })
 
   it('uses one banner for active, incomplete, and paused work', () => {
@@ -113,11 +114,24 @@ describe('Site presentation', () => {
       run: { state: 'idle' as const, label: 'Run details', auditId: 'audit-1', recoveryAction: null },
       categories: [],
     } satisfies SitePresentation
-    expect(pagesCardPresentation(site).state).toBe('healthy')
-    expect(pagesCardPresentation({ ...site, freshness: { ...site.freshness, stale: true } }).state).not.toBe('healthy')
-    expect(pagesCardPresentation({ ...site, coverage: { ...site.coverage, complete: false } }).state).not.toBe('healthy')
-    expect(pagesCardPresentation({ ...site, result: { state: 'failed', label: 'Analysis incomplete' } }).state).not.toBe('healthy')
-    expect(pagesCardPresentation({ ...site, result: { state: 'checking', label: 'Analyzing' } }).state).not.toBe('healthy')
+    expect(pagesCardPresentation(site, []).state).toBe('healthy')
+    expect(siteSortRank({ ...site, result: { state: 'flags', label: 'Offline' } })).toBeLessThan(siteSortRank(site))
+    expect(pagesCardPresentation({ ...site, freshness: { ...site.freshness, stale: true } }, []).state).not.toBe('healthy')
+    expect(pagesCardPresentation({ ...site, coverage: { ...site.coverage, complete: false } }, []).state).not.toBe('healthy')
+    expect(pagesCardPresentation({ ...site, run: { ...site.run, state: 'failed' } }, []).state).not.toBe('healthy')
+    expect(pagesCardPresentation({ ...site, result: { state: 'flags', label: 'Offline' }, run: { ...site.run, state: 'interrupted' } }, []).state).toBe('unknown')
+    expect(pagesCardPresentation({ ...site, run: { ...site.run, state: 'running' } }, []).state).not.toBe('healthy')
+    expect(pagesCardPresentation({ ...site, result: { state: 'flags', label: 'Offline' }, run: { ...site.run, state: 'running' } }, []))
+      .toEqual({ state: 'checking', status: 'Analyzing' })
+    // Findings remain actionable while their next independent observation is unavailable.
+    for (const current of [site, { ...site, coverage: { ...site.coverage, complete: false } },
+      { ...site, freshness: { ...site.freshness, stale: true } },
+      { ...site, result: { state: 'checking' as const, label: 'Analyzing' } }]) {
+      expect(pagesCardPresentation(current, [{ severity: 'IMPORTANT' }])).toEqual({ state: 'problem', status: 'Needs a fix' })
+      expect(pagesCardPresentation(current, [{ severity: 'MINOR' }])).toEqual({ state: 'attention', status: 'Needs a fix' })
+    }
+    expect(pagesCardPresentation({ ...site, result: { state: 'flags', label: 'Flags found' },
+      flags: { count: 1, label: '1 Flag', fixFirstCount: 0 } }, [])).toEqual({ state: 'healthy', status: '0 Flags' })
     const staleCategory = categoryPresentation({
       id: 'security', name: 'Security', state: 'unknown', answer: 'Out of date', status: 'Out of date',
       flagCount: 0, fixFirstCount: 0, checkedAt: null, coverageLimitation: 'Check out of date', siteId: 'site-1',

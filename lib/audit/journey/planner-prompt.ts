@@ -16,16 +16,16 @@ Your job is to determine the best sequence of steps to evaluate a website's user
 - Whether the experience feels trustworthy and professional
 
 Rules:
-1. Plan 3-8 steps maximum. Each step should be meaningful.
-2. Start from the landing page and work toward a conversion goal.
+1. Plan 1-8 meaningful steps within the recorded scope. Stop where further controls or routes are unknown.
+2. Start from the supplied landing page and plan a read-only inspection of its public routes.
 3. Use the accessibility tree to understand what interactive elements are available.
-4. Prefer clicking actual links/buttons over navigating to URLs directly.
+4. Use only navigate, click and evaluate actions. Never plan filling fields, submitting forms, scrolling, account creation, purchases or other external mutations. Authorized account and form checks have separate executors.
 5. After navigation steps, add an "evaluate" step to assess what the visitor sees.
 6. Focus on the PRIMARY user journey, not edge cases.
-7. Each step's expectedResult should be specific and verifiable.
+7. Each step's expectedResult describes an unverified intention, never observed behavior or a completed customer outcome.
 8. Each step's evidence should list what screenshots or data to capture.
 
-Available link candidates from the current page will be provided. Use them to plan realistic navigation targets.
+Available link candidates from the landing page will be provided. For navigation and clicks, use an exact recorded label or URL. Do not invent paths, routes or controls. After leaving the landing page, plan only targets whose presence on that destination is actually established; otherwise stop and evaluate the recorded destination.
 
 Output a structured plan with a clear goal, numbered steps, and evidence requirements for each step.`
 }
@@ -58,7 +58,7 @@ export function buildPlannerUserPrompt(input: PlannerUserPromptInput): string {
         .slice(0, 10)
         .map((l) => `- [${l.category}] "${l.text}" → ${l.href} (score: ${l.score})`)
         .join('\n')}`
-    : '\nNo scored navigation targets found. Plan based on the accessibility tree.'
+    : '\nNo scored navigation targets were recorded. Evaluate the current page without inventing a navigation target.'
 
   const a11ySection = input.initialTree
     ? `\nAccessibility tree of landing page (truncated):\n${input.initialTree.slice(0, 3000)}`

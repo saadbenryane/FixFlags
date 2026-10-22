@@ -7,6 +7,16 @@ const captures: SiteCapture[] = [
   { auditId: 'current', url: '/api/screenshots/current/mobile', pageUrl: 'https://example.com/', device: 'mobile', previous: false, viewport: '390 × 844', recordedAt: '2026-10-12T12:00:00.000Z' },
 ]
 describe('website capture preview', () => {
+  it('prioritizes the primary workspace capture without changing its authorized source', () => {
+    const view = render(<SitePreviewCard host="example.com" captures={captures} priority />)
+    const image = view.container.querySelector('img')!
+    expect(image).toHaveAttribute('src', captures[0].url)
+    expect(image).toHaveAttribute('loading', 'eager')
+    expect(image).toHaveAttribute('fetchpriority', 'high')
+    view.rerender(<SitePreviewCard host="example.com" captures={captures} />)
+    expect(image).toHaveAttribute('loading', 'lazy')
+    expect(image).not.toHaveAttribute('fetchpriority')
+  })
   it('uses the selected capture and its provenance, then restores focus after enlargement', async () => {
     const view = render(<SitePreviewCard host="example.com" captures={captures} />)
     expect(screen.queryByRole('heading', { name: 'Website preview' })).not.toBeInTheDocument()

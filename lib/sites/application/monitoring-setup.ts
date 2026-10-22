@@ -4,6 +4,13 @@ import { logger } from '@/lib/logger'
 
 export const MONITORING_SETUP_RETRY_MS = 60_000
 
+/** Active untouched Sites receive defaults on every plan. Prior monitoring
+ * control must remain distinct from setup that has never been admitted. */
+export function initialMonitoringSitesWhere(): Prisma.ProjectWhereInput {
+  return { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: null,
+    watchNextRunAt: null, watchLastAttemptAt: null, watchLastRunAt: null, watchLastError: null }
+}
+
 export function monitoringSetupDue(now: Date): Prisma.ProjectWhereInput {
   return { OR: [{ monitoringSetupRetryAt: null }, { monitoringSetupRetryAt: { lte: now } }] }
 }

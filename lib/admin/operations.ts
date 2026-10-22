@@ -1,53 +1,47 @@
-import type { Prisma } from '@prisma/client'
 import { accountsAwaitingAction, requiresAccountCleanup } from './account-operations'
 import { incompleteExecutionHistory } from './task-operations'
 import type { AdminActor } from '@/lib/auth/require-admin'
 import { adminRead } from './workspace-queries'
 import { adminPagination, readAdminListQuery } from './list-query'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
+import { countGuidanceGaps, guidanceGapRows } from './guidance-operations'
+import { ADMIN_COPY } from '@/lib/marketing/copy/admin'
+import { countMonitoringOperations, loadUptimeOperationSites, monitoringOperationsWhere } from '@/lib/sites/application/monitoring-operations'
+import { monitoringIsOverdue } from '@/lib/sites/monitoring-freshness'
+
+function notificationDeliveryState(status: string) {
+  if (status === 'FAILED') return 'Delivery failed'
+  if (status === 'PENDING') return 'Awaiting delivery'
+  if (status === 'SENDING') return 'Delivery confirmation overdue'
+  return status
+}
+
 export const OPERATION_QUEUES = [
-  { id: 'schedules', label: 'Overdue monitoring schedules' },
+  { id: 'schedules', label: ADMIN_COPY.operations.schedules },
   { id: 'tasks', label: 'Incomplete execution history' },
   { id: 'accounts', label: 'Accounts awaiting reconciliation' },
-  { id: 'uptime', label: 'Overdue uptime probes' },
-  { id: 'uptime-alerts', label: 'Failed uptime notifications' },
-  { id: 'watch-alerts', label: 'Failed monitoring notifications' },
+  { id: 'uptime', label: ADMIN_COPY.operations.uptime },
+  { id: 'uptime-alerts', label: 'Uptime notifications needing attention' },
+  { id: 'watch-alerts', label: 'Monitoring notifications needing attention' },
+  { id: 'guidance', label: ADMIN_COPY.operations.guidance },
 ] as const
 export async function loadOperations(actor: AdminActor, params: { queue?: string; page?: string }) {
   const queue = OPERATION_QUEUES.some((q) => q.id === params.queue) ? params.queue! : 'schedules',
     now = new Date(),
-    overdue = new Date(now.getTime() - 300000),
     interrupted = new Date(now.getTime() - 900000)
-  const active: Prisma.ProjectWhereInput = { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } }
   const data = await adminRead(actor, async (db) => {
-    const sites: Prisma.ProjectWhereInput = {
-      ...active,
-      watchInterval: { not: null },
-      watchNextRunAt: { lt: overdue },
-    }
+    const { schedules: sites, uptimeAlerts, watchAlerts } = monitoringOperationsWhere(now)
     const tasks = incompleteExecutionHistory()
     const accounts = accountsAwaitingAction(interrupted)
-    const uptime: Prisma.UptimeMonitorWhereInput = {
-      enabled: true,
-      project: active,
-      nextProbeAt: { lt: overdue },
-    }
-    const uptimeAlerts: Prisma.UptimeNotificationWhereInput = {
-      status: 'FAILED',
-      incident: { monitor: { project: active } },
-    }
-    const watchAlerts: Prisma.AuditWhereInput = {
-      watchNotificationStatus: 'FAILED',
-      project: active,
-    }
-    const counts = await Promise.all([
-      db.project.count({ where: sites }),
+    const [monitoring, taskCount, accountCount, guidanceCount] = await Promise.all([
+      countMonitoringOperations(db, now),
       db.auditVerifierExecution.count({ where: tasks }),
       db.siteTestAccount.count({ where: accounts }),
-      db.uptimeMonitor.count({ where: uptime }),
-      db.uptimeNotification.count({ where: uptimeAlerts }),
-      db.audit.count({ where: watchAlerts }),
+      countGuidanceGaps(db),
     ])
+    const counts = [monitoring.overdueSchedules + monitoring.interruptedSchedules, taskCount, accountCount,
+      monitoring.overdueUptimeProbes + monitoring.inconclusiveUptimeSites,
+      monitoring.undeliveredUptimeAlerts, monitoring.undeliveredWatchAlerts, guidanceCount]
     const index = OPERATION_QUEUES.findIndex((q) => q.id === queue),
       total = counts[index],
       pagination = adminPagination(readAdminListQuery(params).page, total),
@@ -69,21 +63,26 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       targetId: string
       auditId?: string
     }> = []
+    if (queue === 'guidance')
+      rows = (await guidanceGapRows(db, slice)).map(row => ({
+        ...row, state: ADMIN_COPY.operations.guidanceUnavailable, action: null, targetId: row.auditId,
+      }))
     if (queue === 'schedules')
       rows = (
         await db.project.findMany({
           where: sites,
           ...slice,
           orderBy: [{ watchNextRunAt: 'asc' }, { id: 'asc' }],
-          select: { id: true, name: true, watchNextRunAt: true },
+          select: { id: true, name: true, watchNextRunAt: true, createdAt: true },
         })
       ).map((p) => ({
         id: p.id,
         siteId: p.id,
         label: p.name,
-        state: 'Schedule overdue',
-        at: p.watchNextRunAt,
-        action: 'SITE_RECONCILE',
+        state: !p.watchNextRunAt ? 'Awaiting automatic setup'
+          : monitoringIsOverdue(p.watchNextRunAt, now) ? 'Schedule overdue' : 'Scheduled check interrupted',
+        at: p.watchNextRunAt ?? p.createdAt,
+        action: p.watchNextRunAt && p.watchNextRunAt <= now ? 'SITE_RECONCILE' : null,
         targetId: p.id,
       }))
     if (queue === 'tasks')
@@ -136,25 +135,15 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
       }))
     if (queue === 'uptime')
       rows = (
-        await db.uptimeMonitor.findMany({
-          where: uptime,
-          ...slice,
-          orderBy: [{ nextProbeAt: 'asc' }, { id: 'asc' }],
-          select: {
-            id: true,
-            state: true,
-            nextProbeAt: true,
-            project: { select: { id: true, name: true } },
-          },
-        })
+        await loadUptimeOperationSites(db, now, slice)
       ).map((m) => ({
-        id: m.id,
-        siteId: m.project.id,
-        label: m.project.name,
-        state: m.state,
-        at: m.nextProbeAt,
+        id: m.monitorId ?? m.id,
+        siteId: m.id,
+        label: m.name,
+        state: m.gap === 'inconclusive' ? ADMIN_COPY.operations.uptimeInconclusive : m.state ?? 'Awaiting automatic setup',
+        at: m.gap === 'inconclusive' ? m.lastCheckedAt : m.nextProbeAt ?? m.createdAt,
         action: 'SITE_RECONCILE',
-        targetId: m.project.id,
+        targetId: m.id,
       }))
     if (queue === 'uptime-alerts')
       rows = (
@@ -175,7 +164,7 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
         id: n.id,
         siteId: n.incident.monitor.project.id,
         label: n.incident.monitor.project.name,
-        state: n.status,
+        state: notificationDeliveryState(n.status),
         at: n.createdAt,
         action: 'UPTIME_NOTIFICATION_RETRY',
         targetId: n.id,
@@ -186,13 +175,13 @@ export async function loadOperations(actor: AdminActor, params: { queue?: string
           where: watchAlerts,
           ...slice,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          select: { id: true, projectId: true, url: true, createdAt: true },
+          select: { id: true, projectId: true, url: true, createdAt: true, watchNotificationStatus: true },
         })
       ).map((a) => ({
         id: a.id,
         siteId: a.projectId!,
         label: a.url,
-        state: 'Delivery failed',
+        state: notificationDeliveryState(a.watchNotificationStatus),
         at: a.createdAt,
         action: 'WATCH_NOTIFICATION_RETRY',
         targetId: a.id,

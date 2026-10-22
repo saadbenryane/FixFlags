@@ -59,13 +59,13 @@ export function scopedOverlayResult(kind: OverlayTarget['kind'], blocker: Parame
   const scoped = observation ? runObservedOverlayChecks(observation).filter(flag => flag.checkId === OVERLAY_CHECKS[kind]) : []
   return scoped.length ? scoped : runOverlayBlockerChecks(kind, blocker, label)
 }
-export function overlayCheckReceipts(observations: OverlayObservation[], execution: { auditId: string; taskId: string; collectedAt: string }) {
+export function overlayCheckReceipts(observations: OverlayObservation[], execution: { auditId: string; taskId: string; collectedAt: string; checkVersion?: number; checkVersions?: Record<string, number> }) {
   return observations.map(observation => {
     const assertions = overlayAssertions(observation)
     return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'overlays', pageUrl: observation.scope.pageUrl,
       applicable: true, assertions, complete: assertions.every(item => item.complete === true), passed: assertions.every(item => item.passed),
       limitation: 'Recorded control and interaction phase only. Overlay recovery does not establish a completed business outcome.',
-      execution: { ...execution, checkVersion: 1, source: 'rendered-dom' } })
+      execution: { ...execution, checkVersion: execution.checkVersion ?? 1, source: 'rendered-dom' } })
   })
 }
 export function overlayReceiptScope(receipt: ReturnType<typeof overlayCheckReceipts>[number]) {

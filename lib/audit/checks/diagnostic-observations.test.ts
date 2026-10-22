@@ -88,6 +88,15 @@ describe('registered diagnostic observations', () => {
     expect(observation(after.assertions, key)).toMatchObject({ passed: true, complete: true })
     if (!['reduced-motion', 'blocking-loading-ui'].includes(key)) expect(assertionForTarget(after.receipt, checkId)).toBeUndefined()
   })
+  it.each(cases.filter(item => ['hierarchy-no-sections', 'messaging-headline-too-short'].includes(item.checkId)))('$checkId keeps a qualitative change conditional on context', async ({ module, checkId, broken }) => {
+    const checked = await inspect(module, broken)
+    const finding = checked.flags.find(flag => flag.checkId === checkId)!
+    expect(finding.fix).toMatch(/^Review /)
+    expect(finding.fix).toContain('If ')
+    expect(finding.fix).toMatch(/Preserve|Keep/)
+    expect(finding.fix).not.toMatch(/Plan releases with|shared team calendar|promise a specific benefit/)
+    expect(finding.evidence).toMatch(/not measured/)
+  })
 
   it('never upgrades an advisory positive signal into a verified business result', async () => {
     const checked = await inspect('trust-psychology', html(undefined, prose + ' Trusted by our customers.'))
@@ -101,7 +110,8 @@ describe('registered diagnostic observations', () => {
     expect(failed).toMatchObject({ passed: false, complete: true })
     expect(failed?.disposition).toBeUndefined()
     const after = await inspect('mobile-ux-quality', html())
-    expect(assertionForTarget(after.receipt, 'mobile-input-zoom')).toMatchObject({ passed: true, complete: true })
+    expect(after.assertions.find(assertion => assertion.key === 'mobile-input-fonts')).toMatchObject({ passed: true, complete: true, disposition: 'observed' })
+    expect(assertionForTarget(after.receipt, 'mobile-input-zoom')).toBeUndefined()
     expect(after.assertions.find(assertion => assertion.key === 'mobile-input-fonts')?.observed).toContain('not iOS focus')
   })
   it('keeps empty content and unusable measurements incomplete', async () => {

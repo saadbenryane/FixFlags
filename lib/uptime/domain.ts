@@ -43,6 +43,8 @@ export type UptimeSummary = {
   lastCheckedAt: string | null
   nextCheckAt: string | null
   openIncidentCount: number
+  /** An unresolved confirmed incident for the active target generation. */
+  incidentOpen?: boolean
   segments: UptimeSegment[]
 }
 export type UptimeHistory = UptimeSummary & {
@@ -77,11 +79,18 @@ export function uptimeTransition(input: {
   }
 }
 
+/** Availability at the read clock is separate from observation freshness. */
+export function availableUptimeObservationAt(observedAt: Date | null, now: Date): Date | null {
+  return observedAt && Number.isFinite(observedAt.getTime()) && observedAt <= now ? observedAt : null
+}
+
 export function currentUptimeState(input: {
   enabled: boolean; state: UptimeState; lastCheckedAt: Date | null; now: Date;
 }): UptimeState {
   if (!input.enabled) return 'paused'
-  if (!input.lastCheckedAt || input.now.getTime() - input.lastCheckedAt.getTime() > UPTIME_STALE_MS) return 'unknown'
+  const observedAt = availableUptimeObservationAt(input.lastCheckedAt, input.now)
+  const age = observedAt ? input.now.getTime() - observedAt.getTime() : NaN
+  if (!Number.isFinite(age) || age > UPTIME_STALE_MS) return 'unknown'
   return input.state
 }
 

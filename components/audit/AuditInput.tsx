@@ -103,8 +103,6 @@ export function AuditInput({
       return
     }
 
-    normalized = normalized.replace(/\/+$/, '')
-
     const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(normalized)
     if (!hasScheme) {
       normalized = 'https://' + normalized
@@ -139,7 +137,8 @@ export function AuditInput({
     setLoading(true)
     const params = new URLSearchParams(window.location.search)
     const auditSource = source ?? (isLanding ? readPublicEntrySurface(params) ?? 'homepage' : 'dashboard')
-    const journeyId = isLanding ? readOrCreateAnalyticsJourneyId() : null
+    const isPublicEntry = auditSource === 'homepage' || auditSource === 'tool_page' || auditSource === 'issue_page' || auditSource === 'benchmark_page'
+    const journeyId = isPublicEntry ? readOrCreateAnalyticsJourneyId() : null
     const result = await startScanWithHandoff({
       url: normalized,
       body: {

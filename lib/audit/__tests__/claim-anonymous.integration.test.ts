@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
+import { listSiteOutcomes, loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { claimAnonymousAudits } from '../claim-anonymous'
 import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
 import * as sites from '@/lib/sites/ensure-site'
@@ -164,6 +165,11 @@ run('anonymous claim with migrated PostgreSQL', () => {
       { outcomeId: source.id, pageId: provisionalPage.id },
     ] })
 
+    const provisional = (await sites.loadSiteRecord('p_' + provisionalId))!
+    expect((await listSiteOutcomes(provisional)).find(outcome => outcome.id === source.id))
+      .toMatchObject({ pageIds: [provisionalPage.id], pageUrls: [url] })
+    expect(await loadSiteOutcomeDetail(provisional, source.id)).toMatchObject({ pageIds: [provisionalPage.id], pageUrls: [url] })
+
     expect(await claimAnonymousAudits(userId)).toBe(1)
     const claimed = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: source.id }, include: { bindings: true, pages: true, bindingExecutions: true } })
     expect(claimed).toMatchObject({ projectId, provisionalSiteId: null, name: source.name, confirmedAt: source.confirmedAt,
@@ -173,6 +179,9 @@ run('anonymous claim with migrated PostgreSQL', () => {
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ userId, projectId })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date) })
     expect(await sites.loadSiteRecord('p_' + provisionalId)).toMatchObject({ siteId: projectId, projectId, userId })
+    expect((await listSiteOutcomes((await sites.loadSiteRecord(projectId))!)).find(outcome => outcome.id === source.id))
+      .toMatchObject({ pageIds: [page.id], pageUrls: [url] })
+    expect(await loadSiteOutcomeDetail((await sites.loadSiteRecord(projectId))!, source.id)).toMatchObject({ pageIds: [page.id], pageUrls: [url] })
 
     expect(await claimAnonymousAudits(userId)).toBe(1)
     expect(await prisma.siteOutcome.findUniqueOrThrow({ where: { id: source.id } })).toMatchObject({ slug: claimed.slug })

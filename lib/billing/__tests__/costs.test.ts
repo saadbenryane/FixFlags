@@ -6,6 +6,7 @@ vi.mock('@/lib/db', () => ({
     auditRunCost: {
       upsert: vi.fn(),
       update: vi.fn(),
+      create: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       aggregate: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock('@/lib/db', () => ({
       findUniqueOrThrow: vi.fn(async()=>({planAtAdmission:'FREE'})),
       findMany: vi.fn(),
     },
+    auditPipelineEvent: { findMany: vi.fn(async () => []) },
     user: {
       findMany: vi.fn(),
     },
@@ -38,6 +40,7 @@ import { prisma } from '@/lib/db'
 
 const mockUpsert = vi.mocked(prisma.auditRunCost.upsert)
 const mockUpdate = vi.mocked(prisma.auditRunCost.update)
+const mockCreate = vi.mocked(prisma.auditRunCost.create)
 const mockFindUnique = vi.mocked(prisma.auditRunCost.findUnique)
 const mockFindMany = vi.mocked(prisma.auditRunCost.findMany)
 const mockAggregate = vi.mocked(prisma.auditRunCost.aggregate)
@@ -56,6 +59,15 @@ afterEach(() => {
 
 describe('estimateLlmCostUsd', () => {
   describe('single model pricing', () => {
+    it('estimates the exact Luna alias from measured uncached, cached, written and output tokens', () => {
+      expect(estimateLlmCostUsd('gpt-6-luna', 1000, 1000, 1000, 1000)).toBeCloseTo(0.000735, 10)
+      expect(estimateLlmCostUsd('gpt-6-luna-unlisted', 1000, 1000)).toBeNull()
+    })
+    it('uses the documented long-context rates only above the actual input threshold', () => {
+      expect(estimateLlmCostUsd('gpt-6-luna', 272000, 1000)).toBeCloseTo(0.0277, 10)
+      expect(estimateLlmCostUsd('gpt-6-luna', 273000, 1000)).toBeCloseTo(0.05535, 10)
+      expect(estimateLlmCostUsd('gpt-6-luna', 1000, 0, 272000)).toBeCloseTo(0.00564, 10)
+    })
     it('calculates cost for gpt-4o-mini (input + output)', () => {
       const cost = estimateLlmCostUsd('gpt-4o-mini', 1_000_000, 1_000_000)
       expect(cost).toBeCloseTo(0.75, 10)
@@ -253,6 +265,35 @@ describe('persistAuditRunCost', () => {
   })
 
   describe('triage phase', () => {
+    it('includes both journey phases once and keeps unfinished journey consumption unknown', async () => {
+      const events = ['triage', 'journey_planner', 'journey_evaluator'].flatMap((phase, index) => {
+        const detail = { version: 1, responseId: `${index + 1}1111111-1111-4111-8111-111111111111`, model: 'gpt-4o-mini',
+          usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 3, cacheWriteTokens: 0 } }
+        const response = { event: `${phase}_provider_response`, detail }
+        return [{ event: `${phase}_provider_attempt`, detail: { ...detail, usage: null } }, response, response]
+      })
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce(events as never)
+      await persistAuditRunCost('all-initial-analysis', { ...baseMetrics, phase: 'triage' })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 30, triageOutputTokens: 6, pricingBasis: 'CONFIGURED_ESTIMATE' })
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce(events.filter(event => event.event !== 'journey_evaluator_provider_response') as never)
+      await persistAuditRunCost('incomplete-initial-analysis', { ...baseMetrics, phase: 'triage' })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 20, triageOutputTokens: 4, llmCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
+    it('includes rejected provider responses and leaves unfinished attempts unpriced', async () => {
+      const attempt = (responseId: string) => ({ event: 'triage_provider_attempt', detail: { version: 1, responseId, model: 'gpt-4o-mini', usage: null } })
+      const first = attempt('11111111-1111-4111-8111-111111111111')
+      const second = attempt('22222222-2222-4222-8222-222222222222')
+      const events = [first, { event: 'triage_provider_response', detail: { ...first.detail,
+        usage: { inputTokens: 40, outputTokens: 5, cacheReadTokens: 3, cacheWriteTokens: 0 } } },
+      second, { event: 'triage_provider_response', detail: { ...second.detail,
+        usage: { inputTokens: 100, outputTokens: 10, cacheReadTokens: 7, cacheWriteTokens: 0 } } }]
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce(events as never)
+      await persistAuditRunCost('rejected-then-valid', { ...baseMetrics, phase: 'triage', llmInputTokens: 100, llmOutputTokens: 10 })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 140, triageOutputTokens: 15, pricingBasis: 'CONFIGURED_ESTIMATE' })
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce([...events, attempt('33333333-3333-4333-8333-333333333333')] as never)
+      await persistAuditRunCost('rejected-then-valid', { ...baseMetrics, phase: 'triage' })
+      expect(mockUpsert.mock.lastCall?.[0].create).toMatchObject({ triageInputTokens: 140, triageCostUsd: null, llmCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
     it('upserts with triage-specific fields', async () => {
       mockUpsert.mockResolvedValue({} as never)
       await persistAuditRunCost('audit-2', {
@@ -268,6 +309,20 @@ describe('persistAuditRunCost', () => {
   })
 
   describe('prescription phase', () => {
+    it('prices separately measured responses and keeps missing consumption unpriced', async () => {
+      mockFindUnique.mockResolvedValue({ triageInputTokens: 10, triageOutputTokens: 2,
+        pricingBasis: 'CONFIGURED_ESTIMATE', triageCostUsd: new Prisma.Decimal(0.001),
+        triageModel: 'gpt-4o-mini', durationMs: 3000, pagespeedCalls: 0 } as never)
+      const measured = { ...baseMetrics, phase: 'prescription' as const,
+        llmModel: 'gpt-4o-mini,claude-sonnet-5', llmInputTokens: 2_000_000, llmOutputTokens: 0,
+        llmMeasurements: [{ model: 'gpt-4o-mini', inputTokens: 1_000_000, outputTokens: 0 },
+          { model: 'claude-sonnet-5', inputTokens: 1_000_000, outputTokens: 0 }] }
+      await persistAuditRunCost('measured', measured)
+      expect(mockUpdate.mock.lastCall?.[0].data.prescriptionCostUsd?.toString()).toBe('3.15')
+      await persistAuditRunCost('measured', { ...measured, llmUsageComplete: false })
+      expect(mockUpdate.mock.lastCall?.[0].data).toMatchObject({ prescriptionCostUsd: null, llmCostUsd: null, pricingBasis: 'UNPRICED' })
+    })
+
     it('accumulates tokens and costs from existing triage record', async () => {
       const existing = {
         triageInputTokens: 800,
@@ -295,13 +350,75 @@ describe('persistAuditRunCost', () => {
       expect(data.pagespeedCalls).toBe(2)
     })
 
-    it('does nothing when no existing record found', async () => {
+    it('records the prescription spend when no triage record was written', async () => {
       mockFindUnique.mockResolvedValue(null)
+      mockCreate.mockResolvedValue({} as never)
       await persistAuditRunCost('audit-4', {
         ...baseMetrics,
         phase: 'prescription',
       })
       expect(mockUpdate).not.toHaveBeenCalled()
+      expect(mockCreate).toHaveBeenCalledTimes(1)
+      const data = mockCreate.mock.calls[0][0].data
+      expect(data.auditId).toBe('audit-4')
+      expect(data.prescriptionInputTokens).toBe(1000)
+      expect(data.prescriptionOutputTokens).toBe(500)
+      expect(data.llmInputTokens).toBe(1000)
+      expect(data.llmOutputTokens).toBe(500)
+      expect(data.estimatedCostUsd).not.toBeNull()
+      expect(data.pricingBasis).toBe('CONFIGURED_ESTIMATE')
+    })
+
+    it('adopts the initial analysis the provider log already holds', async () => {
+      mockFindUnique.mockResolvedValue(null)
+      mockCreate.mockResolvedValue({} as never)
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce([
+        { event: 'triage_provider_attempt', detail: { version: 1, responseId: '44444444-4444-4444-8444-444444444444', model: 'gpt-4o-mini', usage: null } },
+        { event: 'triage_provider_response', detail: { version: 1, responseId: '44444444-4444-4444-8444-444444444444', model: 'gpt-4o-mini',
+          usage: { inputTokens: 40, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 } } },
+      ] as never)
+      await persistAuditRunCost('audit-5', { ...baseMetrics, phase: 'prescription' })
+      const data = mockCreate.mock.calls[0][0].data
+      expect(data.triageInputTokens).toBe(40)
+      expect(data.prescriptionInputTokens).toBe(1000)
+      expect(data.llmInputTokens).toBe(1040)
+      expect(data.llmOutputTokens).toBe(510)
+    })
+  })
+
+  describe('phase accumulation', () => {
+    it('keeps the recorded prescription spend when a later phase reports the initial analysis', async () => {
+      mockFindUnique.mockResolvedValue({
+        triageInputTokens: 800, triageOutputTokens: 200, triageModel: 'gpt-4o-mini',
+        triageCostUsd: new Prisma.Decimal(0.001),
+        prescriptionInputTokens: 500, prescriptionOutputTokens: 100, prescriptionModel: 'claude-sonnet-5',
+        prescriptionCostUsd: new Prisma.Decimal(0.002),
+        durationMs: 3000, pagespeedCalls: 1,
+      } as never)
+      mockUpsert.mockResolvedValue({} as never)
+      await persistAuditRunCost('audit-6', { ...baseMetrics, phase: 'full' })
+      const data = mockUpsert.mock.lastCall?.[0].update
+      expect(data.llmInputTokens).toBe(1500)
+      expect(data.llmOutputTokens).toBe(600)
+      expect(data.triageInputTokens).toBe(1000)
+      expect(data.prescriptionInputTokens).toBeUndefined()
+      expect(data.durationMs).toBe(5000)
+      expect(data.pagespeedCalls).toBe(2)
+    })
+
+    it('keeps the recorded prescription spend when the initial analysis is recorded again', async () => {
+      mockFindUnique.mockResolvedValue({
+        triageInputTokens: 0, triageOutputTokens: 0, triageModel: null,
+        triageCostUsd: new Prisma.Decimal(0),
+        prescriptionInputTokens: 500, prescriptionOutputTokens: 100, prescriptionModel: 'claude-sonnet-5',
+        prescriptionCostUsd: new Prisma.Decimal(0.002),
+        durationMs: 3000, pagespeedCalls: 1,
+      } as never)
+      mockUpsert.mockResolvedValue({} as never)
+      await persistAuditRunCost('audit-7', { ...baseMetrics, phase: 'triage' })
+      const data = mockUpsert.mock.lastCall?.[0].update
+      expect(data.llmInputTokens).toBe(1500)
+      expect(data.prescriptionInputTokens).toBeUndefined()
     })
   })
 })

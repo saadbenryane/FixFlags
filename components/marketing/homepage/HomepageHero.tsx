@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bot, Flag, Route } from 'lucide-react'
+import { ArrowRight, Bot, Flag, Route } from 'lucide-react'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S, type SampleCategory, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
@@ -18,16 +18,15 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
   return <>
     <section className={s.hero}>
       <div className={s.heroContent}>
-        <p className={s.heroEyebrow}>{C.hero.eyebrow}</p>
-        <h1><span className={s.headlineLead}><span className={s.headlineAccent}>{C.headlineAccent}</span>{' '}{C.headlineLines[0]}</span><br /><span className={s.headlineLead}>{C.headlineLines[1]}<span className={s.headlineAccent}>{C.headlinePunctuation}</span></span></h1>
+        <h1><span className={s.headlineLead}>{C.hero.headline[0]}</span><br /><span className={s.headlineAccent}>{C.hero.headline[1]}</span></h1>
         <p className={s.heroBody}>{C.hero.body}</p>
         <HomepageUrlEntry />
-        <p className="mt-3 text-sm text-muted-foreground">{C.hero.setup}</p>
+        <p className={s.heroNote}>{C.hero.setup}<Link href="#product">{C.hero.sampleAction}<ArrowRight size={14} aria-hidden="true" /></Link></p>
         <HomepageEditorTools />
       </div>
     </section>
     <section className={`${s.section} ${s.sampleSection}`} id="product" tabIndex={-1}>
-      <HomepageIntro title={S.title} body={<>{S.subtitle} <Link className={s.introMcpLink} href="/docs/fix-with-ai">{C.workflow.action}</Link></>} />
+      <HomepageIntro title={S.title} body={<>{S.subtitle} <Link className={s.introMcpLink} href="/how-it-works">{C.workflow.action}<ArrowRight size={14} aria-hidden="true" /></Link></>} />
       <ul className={s.heroBenefits} aria-label="What FixFlags does">
         {C.hero.benefits.map((benefit, index) => {
           const Icon = BENEFIT_ICONS[index]

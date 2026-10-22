@@ -1,3 +1,4 @@
+import { captureScreenshot } from '../browser/capture-screenshot'
 import type { Browser, Page } from 'playwright'
 import { setTimeout as pause } from 'node:timers/promises'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
@@ -73,7 +74,7 @@ export async function runSlowReplay(browser: Browser, auditId: string, pageUrl: 
           const startedAtMs = Date.now() - started
           let url: string | null = null, capturedAtMs: number | null = null
           try {
-            const buffer = Buffer.from(await current.screenshot({ type: 'png', fullPage: false, timeout: Math.max(1, Math.min(1500, deadline - Date.now())) }))
+            const buffer = await captureScreenshot(current, { type: 'png', fullPage: false, timeout: 1500 }, deadline)
             capturedAtMs = Date.now() - started
             if (!signal.aborted) url = await uploadScreenshot(auditId, 'mobile', buffer, (options.pageKey ? options.pageKey + '-' : '') + 'flow-slow-' + targetMs / 1000 + 's', { deadline, signal })
           } catch (error) { if (!signal.aborted) logger.warn('Slow replay capture unavailable', { error }) }

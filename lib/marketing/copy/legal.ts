@@ -74,7 +74,7 @@ export const PRIVACY_SECTIONS = {
   reportAccess: {
     title: 'Access and sharing',
     body:
-      'Owned Sites, Flags, verification attempts, Agent threads, support context, and connections are private to the authenticated owner. Anonymous analysis and legacy report links can show public-safe evidence. They do not grant access to the private Site workspace. FixFlags does not currently offer public Flag sharing.',
+      'Owned Sites, Flags, verification attempts, Agent threads, support context and connections are private to their owner. New anonymous analyses are private to their creator, and signup preserves the same evidence in their account. Historical public reports retain their access policy. A copied link does not grant private access. Public Flag sharing is unavailable.',
   },
   thirdParties: {
     title: 'Third parties',

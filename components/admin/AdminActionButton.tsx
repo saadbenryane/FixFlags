@@ -135,8 +135,7 @@ export function AdminActionButton({
         {label ?? ADMIN_COPY.actions[action]}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogTitle>{preview?.title ?? ADMIN_COPY.actions[action]}</DialogTitle>
+        <DialogContent header={<DialogTitle>{preview?.title ?? ADMIN_COPY.actions[action]}</DialogTitle>} className="max-h-[90dvh]">
           <DialogDescription>
             {preview?.targetLabel ?? 'Every action is recorded with your identity and reason.'}
           </DialogDescription>

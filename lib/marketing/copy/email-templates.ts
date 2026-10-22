@@ -43,11 +43,11 @@ export const NURTURE_EMAILS = {
   <p>Hi${name ? ` ${escapeEmailHtml(name)}` : ''},</p>
   <p>Before your next launch post, run through this:</p>
   <ul>
-    <li>Primary CTA visible above the fold at 375px</li>
-    <li>Social preview shows a branded image (not blank)</li>
+    <li>The intended next step is easy to find at 375px</li>
+    <li>The shared-link title and image match the page you intend to share</li>
     <li>LCP under 2.5s on mobile</li>
-    <li>Social proof visible before the scroll</li>
-    <li>Page job clear in the hero headline</li>
+    <li>Any proof you show is accurate and supports its claim</li>
+    <li>The opening copy explains what the page is for</li>
   </ul>
   <p>${BRAND.name} checks your website and keeps evidence with each finding. Confirm important results before you share the link.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Review before you publish</a></p>

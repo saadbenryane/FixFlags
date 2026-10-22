@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   isIframeAxeTarget,
-  filterOutIframeAxeViolations,
-  type AxeViolation,
 } from '@/lib/audit/checks/accessibility'
 import {
   OVERLAY_COVERAGE_PARTIAL,
@@ -73,52 +71,12 @@ function rankable(
 describe('iframe axe scoping', () => {
   it('detects iframe paths in axe targets', () => {
     expect(isIframeAxeTarget(['iframe', 'button.ytmVideoInfoLink'])).toBe(true)
-    expect(isIframeAxeTarget(['html', 'body', 'main', 'button.cta'])).toBe(false)
+    expect(isIframeAxeTarget(['#payment', '#inside'])).toBe(true)
+    expect(isIframeAxeTarget([['#shadow-host', '#shadow-action']])).toBe(false)
+    expect(isIframeAxeTarget(['html > body > main > button.cta'])).toBe(false)
   })
 
-  it('strips iframe-only nodes and drops empty violations', () => {
-    const violations: AxeViolation[] = [
-      {
-        id: 'button-name',
-        impact: 'critical',
-        description: 'Buttons must have discernible text',
-        help: 'Buttons must have discernible text',
-        helpUrl: 'https://example.com',
-        nodes: [
-          {
-            html: '<button class="ytmVideoInfoLink">',
-            target: ['iframe', 'button.ytmVideoInfoLink'],
-            failureSummary: 'Fix any of the following',
-          },
-          {
-            html: '<button class="site-cta">Go</button>',
-            target: ['button.site-cta'],
-            failureSummary: 'Fix any of the following',
-          },
-        ],
-      },
-      {
-        id: 'aria-allowed-attr',
-        impact: 'critical',
-        description: 'ARIA',
-        help: 'Elements must only use supported ARIA attributes',
-        helpUrl: 'https://example.com',
-        nodes: [
-          {
-            html: '<a class="ytmVideoInfoVideoTitle" aria-level="2">',
-            target: ['iframe', 'a.ytmVideoInfoVideoTitle'],
-            failureSummary: 'Fix',
-          },
-        ],
-      },
-    ]
 
-    const filtered = filterOutIframeAxeViolations(violations)
-    expect(filtered).toHaveLength(1)
-    expect(filtered[0].id).toBe('button-name')
-    expect(filtered[0].nodes).toHaveLength(1)
-    expect(filtered[0].nodes[0].target).toEqual(['button.site-cta'])
-  })
 })
 
 describe('overlay severity + evidence', () => {
@@ -313,8 +271,9 @@ describe('managed-host security headers', () => {
     expect(flags).toHaveLength(1)
     expect(flags[0].checkId).toBe('security-headers-missing')
     expect(flags[0].severity).toBe('POLISH')
-    expect(flags[0].evidence).toMatch(/managed subdomain/i)
-    expect(flags[0].evidence).toMatch(/custom domain/i)
+    expect(flags[0].evidence).toContain('Hosting configuration was not inspected for demo.lovable.app')
+    expect(flags[0].evidence).toContain('No Content-Security-Policy header')
+    expect(flags[0].evidence).not.toMatch(/custom domain|cannot (set|configure)/i)
     // Must not emit CRITICAL CSP on managed hosts.
     expect(flags.every((f) => f.severity === 'POLISH')).toBe(true)
   })

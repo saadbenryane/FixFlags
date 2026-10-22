@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { ArrowUpRight } from 'lucide-react'
@@ -92,7 +93,7 @@ export function SiteMonitoringHistory({ points, events, emptyMessage }: {
         {event.resultLabel ? <p className={styles.count}>{event.resultLabel}</p> : null}
         {event.flagCount !== undefined && (event.state !== 'unknown' || event.flagCount > 0) ? <span className={styles.count}>{C.flags(event.flagCount)}</span> : null}
         {event.flags?.length ? <ul className={styles.flags}>{event.flags.map(flag => <li key={flag.id}>
-          {flag.onOpen ? <button type="button" onClick={flag.onOpen}>{flag.title}<ArrowUpRight size={14} aria-hidden /></button> : flag.href ? <Link href={flag.href as Route}>{flag.title}<ArrowUpRight size={14} aria-hidden /></Link> : <span>{flag.title}</span>}
+          {flag.onOpen ? <InteractiveButton type="button" onClick={flag.onOpen}>{flag.title}<ArrowUpRight size={14} aria-hidden /></InteractiveButton> : flag.href ? <Link href={flag.href as Route}>{flag.title}<ArrowUpRight size={14} aria-hidden /></Link> : <span>{flag.title}</span>}
         </li>)}</ul> : null}
       </div></li>)}
     </ol></> : null}

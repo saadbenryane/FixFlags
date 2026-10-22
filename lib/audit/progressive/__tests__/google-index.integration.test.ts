@@ -15,6 +15,8 @@ import { searchReceiptSchema } from '@/lib/audit/search/contracts'
 import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlags } from '@/lib/sites/flags'
+import { loadSiteHome } from '@/lib/sites/application/queries'
+import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('Google indexed-version worker observations', () => {
@@ -23,6 +25,7 @@ run('Google indexed-version worker observations', () => {
   let fetchState = 'SUCCESSFUL', verdict = 'PASS', crawl = '2026-10-01T00:00:00Z'
   let peerCrawl = crawl
   let currentProperty = property
+  let providerRequests = 0
   let worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
     if (request.url === '/robots.txt') { response.setHeader('content-type', 'text/plain'); response.end('User-agent: *\nAllow: /\nSitemap: ' + origin + '/sitemap.xml'); return }
@@ -38,6 +41,7 @@ run('Google indexed-version worker observations', () => {
     vi.stubGlobal('fetch', async (input: string | URL | Request, options?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
       if (url.hostname === 'searchconsole.googleapis.com' && url.pathname === '/v1/urlInspection/index:inspect') {
+        providerRequests++
         const requested = JSON.parse(String(options?.body))
         expect([pageUrl, peerUrl]).toContain(requested.inspectionUrl)
         expect(requested.siteUrl).toBe(currentProperty)
@@ -46,6 +50,7 @@ run('Google indexed-version worker observations', () => {
           robotsTxtState: 'ALLOWED', indexingState: 'INDEXING_ALLOWED', ...(verdict === 'PASS' ? { googleCanonical: requested.inspectionUrl } : {}), userCanonical: requested.inspectionUrl } } }))
       }
       if (url.hostname === 'www.googleapis.com' && url.pathname.endsWith('/searchAnalytics/query')) {
+        providerRequests++
         const filter = JSON.parse(String(options?.body)).dimensionFilterGroups[0].filters[0]
         expect(filter).toMatchObject({ dimension: 'page', operator: 'equals' })
         expect([pageUrl, peerUrl]).toContain(filter.expression)
@@ -94,6 +99,37 @@ run('Google indexed-version worker observations', () => {
     const result = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', scope: 'CATEGORY', categoryArea: 'search', idempotencyKey: key })
     await complete(result.auditId!); return result
   }
+  it('keeps unconfigured Search Console optional without treating a revoked connection as successful evidence', async () => {
+    const connection = await prisma.siteConnection.findUniqueOrThrow({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } } })
+    await prisma.siteConnection.delete({ where: { id: connection.id } })
+    const before = providerRequests
+    try {
+      const unconfigured = await category('google-unconfigured')
+      const audit = await prisma.audit.findUniqueOrThrow({ where: { id: unconfigured.auditId! } })
+      expect(audit.failedModules).not.toEqual(expect.arrayContaining(['search-google-index', 'search-google-performance']))
+      const receipts = await prisma.auditVerifierExecution.findMany({ where: { auditId: unconfigured.auditId!, targetKey: { startsWith: 'module:search-google' } } })
+      expect(receipts).toHaveLength(4)
+      expect(receipts.every(item => item.status === 'NOT_APPLICABLE')).toBe(true)
+      for (const receipt of receipts) expect(searchReceiptSchema.parse(receipt.detail)).toMatchObject({ complete: false,
+        observations: [expect.objectContaining({ disposition: 'unknown', reason: 'NOT_CONNECTED' })] })
+      expect(providerRequests).toBe(before)
+      expect((await getOwnedRun(userId, unconfigured.runId))?.completionState).toBe('FULL')
+      const home = (await loadSiteHome(projectId))!
+      expect(home.cards.find(item => item.id === 'search')).toMatchObject({ evidenced: true, incompleteReason: null })
+      expect((await loadSiteSummaries(userId)).find(item => item.id === projectId)?.presentation.coverage)
+        .toEqual(home.presentation.coverage)
+      await prisma.siteConnection.create({ data: { ...connection, status: 'REVOKED' } })
+      const revoked = await category('google-revoked')
+      expect(await prisma.audit.findUniqueOrThrow({ where: { id: revoked.auditId! } })).toMatchObject({
+        reportCompleteness: 'PARTIAL', failedModules: expect.arrayContaining(['search-google-index', 'search-google-performance']) })
+      const unavailable = await prisma.auditVerifierExecution.findMany({ where: { auditId: revoked.auditId!, targetKey: { startsWith: 'module:search-google' } } })
+      expect(unavailable.every(item => item.status === 'COMPLETED')).toBe(true)
+      expect(providerRequests).toBe(before)
+    } finally {
+      await prisma.siteConnection.deleteMany({ where: { projectId, provider: 'SEARCH_CONSOLE' } })
+      await prisma.siteConnection.create({ data: connection })
+    }
+  }, 120_000)
   it('persists soft 404 evidence, refuses stale repair proof, verifies a later crawl and preserves recurrence', async () => {
     await category('google-index-baseline')
     verdict = 'NEUTRAL'; fetchState = 'SOFT_404'; crawl = '2026-10-10T00:00:00Z'; peerCrawl = '2026-10-12T00:00:00Z'
@@ -112,18 +148,29 @@ run('Google indexed-version worker observations', () => {
     expect(searchReceiptSchema.parse(saved.detail).observations.find(item => item.checkId === 'search-google-fetch'))
       .toMatchObject({ reason: 'google_soft_404_recorded', google: { property, pageFetchState: 'SOFT_404', lastCrawlAt: crawl } })
     verdict = 'PASS'; fetchState = 'SUCCESSFUL'
-    for (const phase of ['stale', 'changed-property', 'partial', 'fresh'] as const) {
+    for (const phase of ['stale', 'changed-property', 'partial', 'unconfigured', 'fresh'] as const) {
       currentProperty = phase === 'changed-property' ? pageUrl : property
       await prisma.siteConnection.update({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } }, data: { propertyId: currentProperty } })
       if (phase === 'partial' || phase === 'fresh') crawl = '2026-10-11T00:00:00Z'
       if (phase === 'partial') peerCrawl = '2026-10-11T00:00:00Z'
       if (phase === 'fresh') peerCrawl = '2026-10-13T00:00:00Z'
-      const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'google-index-fix-' + phase, changeSummary: 'Restore useful content and allow Google to recrawl' })
-      const check = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', idempotencyKey: 'google-index-verify-' + phase,
-        verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: flag.pageUrl!, checkId: 'indexing-failure', parentAuditId: failure.auditId!, attemptId: fix.attemptId } })
-      await complete(check.auditId!)
-      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome: phase === 'fresh' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: phase === 'fresh' })
-      expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'fresh' ? 'FIXED' : 'OPEN' })
+      const disconnected = phase === 'unconfigured'
+        ? await prisma.siteConnection.findUniqueOrThrow({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } } }) : null
+      if (disconnected) await prisma.siteConnection.delete({ where: { id: disconnected.id } })
+      try {
+        const fix = await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId, idempotencyKey: 'google-index-fix-' + phase, changeSummary: 'Restore useful content and allow Google to recrawl' })
+        const check = await requestSiteRun({ projectId, userId, outcomeIds: [], source: 'WEB', idempotencyKey: 'google-index-verify-' + phase,
+          verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: flag.pageUrl!, checkId: 'indexing-failure', parentAuditId: failure.auditId!, attemptId: fix.attemptId } })
+        await complete(check.auditId!)
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } })).toMatchObject({ outcome: phase === 'fresh' ? 'IMPROVED' : 'INCONCLUSIVE', comparable: phase === 'fresh' })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: phase === 'fresh' ? 'FIXED' : 'OPEN' })
+        if (disconnected) {
+          const provider = await prisma.auditVerifierExecution.findMany({ where: { auditId: check.auditId!, targetKey: 'module:search-google-index' } })
+          expect(provider).toHaveLength(2)
+          expect(provider.every(item => item.status === 'COMPLETED' && !searchReceiptSchema.parse(item.detail).complete)).toBe(true)
+          expect((await getOwnedRun(userId, check.runId))?.result).toBe('COULD_NOT_VERIFY')
+        }
+      } finally { if (disconnected) await prisma.siteConnection.create({ data: disconnected }) }
     }
     expect(await loadSiteFlags(site)).not.toEqual(expect.arrayContaining([expect.objectContaining({ checkId: 'indexing-failure' })]))
     expect(await sourceHistory()).toMatchObject({ result: 'FLAG', flagCount: 1,

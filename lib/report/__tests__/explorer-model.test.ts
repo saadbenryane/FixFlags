@@ -7,6 +7,19 @@ import {
 } from '@/lib/report/explorer-model'
 
 describe('explorer-model', () => {
+  it('grounds every editor action in the same eligible contextual task without exposing unconditional historical alternatives', () => {
+    const recorded = { id: 'context', rubric: 'MESSAGE', severity: 'IMPORTANT', checkId: 'placeholder-copy-detected',
+      problem: 'Recorded phrase', evidence: 'The page explains Lorem ipsum examples.',
+      fix: 'Review the recorded phrase. If it is unintended placeholder copy, replace that content. Preserve educational examples.',
+      agentPrompt: 'Delete the recorded example.', cursorPrompt: 'Rewrite the entire page.' }
+    const before = structuredClone(recorded)
+    const model = buildLiveExplorerModel({ url: 'https://example.com/', pageType: null, score: null, flags: [recorded], rubricRows: [] })
+    assert.equal(model.flags[0].toolPrompts.cursor, model.flags[0].fixPrompt)
+    assert.equal(model.flags[0].toolPrompts.universal, model.flags[0].fixPrompt)
+    assert.match(model.flags[0].fixPrompt, /Review the recorded phrase\./)
+    assert.doesNotMatch(model.flags[0].fixPrompt, /Rewrite the entire page\./)
+    assert.deepEqual(recorded, before)
+  })
   it('preserves current search policy through complete and partial projections', () => {
     const current = { id: 'search-regression', checkId: 'robots-blocks-indexing', rubric: 'REACH', severity: 'IMPORTANT',
       problem: 'Previously indexable page is blocked', fix: 'Restore the intended crawl rule',
@@ -61,7 +74,7 @@ describe('explorer-model', () => {
           problem: 'CTA below fold',
           evidence: 'Button at 900px.',
           whyItMatters: 'Mobile users miss CTA.',
-          fix: 'Move CTA up.',
+          fix: 'Review the recorded action. If its task requires first-screen access, adjust its placement.',
           evidenceTargets: [
             {
               kind: 'element',
@@ -90,7 +103,7 @@ describe('explorer-model', () => {
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
-    assert.match(model.flags[0]?.fixPrompt ?? '', /Task: Move CTA up\./)
+    assert.match(model.flags[0]?.fixPrompt ?? '', /Task: Review the recorded action\./)
     assert.equal(model.flags[0]?.fixPrompt, model.flags[0]?.copyFixPrompt)
     assert.match(model.flags[0]?.copyFixPrompt ?? '', /Page: https:\/\/example.com/)
     assert.match(model.flags[0]?.copyFixPrompt ?? '', /Viewport: mobile 375x812/)
@@ -146,7 +159,7 @@ describe('explorer-model', () => {
         severity: 'CRITICAL',
         problem: 'CTA below fold',
         evidence: 'The CTA starts below the 812px mobile viewport.',
-        fix: 'Move the CTA above the fold.',
+        fix: 'Review the recorded action. If its task requires first-screen access, adjust its placement.',
         agentPrompt: 'Move the primary CTA into the initial mobile viewport.',
       },
       flags: [
@@ -167,7 +180,7 @@ describe('explorer-model', () => {
           severity: 'CRITICAL',
           problem: 'CTA below fold',
           evidence: 'The CTA starts below the 812px mobile viewport.',
-          fix: 'Move the CTA above the fold.',
+          fix: 'Review the recorded action. If its task requires first-screen access, adjust its placement.',
           agentPrompt: 'Move the primary CTA into the initial mobile viewport.',
         },
         {
@@ -205,7 +218,7 @@ describe('explorer-model', () => {
     )
     assert.match(
       model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt ?? '',
-      /Move the primary CTA into the initial mobile viewport/
+      /Review the recorded action\. If its task requires first-screen access/
     )
     assert.equal(
       model.flags.find((flag) => flag.id === 'f2')?.fixPrompt,

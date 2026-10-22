@@ -3,10 +3,11 @@ import type { Prisma, ReportCompleteness } from '@prisma/client'
 import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
 import { searchVerifierSchema } from '@/lib/audit/search/contracts'
 import { checkVerifierSchema } from '@/lib/audit/checks/verification'
-import { recordedVerificationVerdict, recordedObservationGap, type RecoveryFlag } from '@/lib/audit/recovery-evidence'
+import { createRecordedRecoveryReader, recordedObservationGap, type RecoveryFlag, type RecordedRecoveryReader } from '@/lib/audit/recovery-evidence'
 import { baseCheckId } from '@/lib/audit/flag-identity'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
 import { VERIFICATION_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
+import { normalizeVerifierUrl as normalizeUrl } from './verifier-scope'
 
 type EvidenceCoverage = {
   desktopScreenshot?: boolean
@@ -48,16 +49,6 @@ function parseEvidenceCoverage(value: unknown): EvidenceCoverage {
   return value as EvidenceCoverage
 }
 
-function normalizeUrl(value: string): string {
-  try {
-    const url = new URL(value)
-    url.hash = ''
-    return url.toString().replace(/\/$/, '')
-  } catch {
-    return value.replace(/\/$/, '')
-  }
-}
-
 export function assessVerificationCoverage(input: {
   auditId?: string
   status: string
@@ -80,7 +71,7 @@ export function assessVerificationCoverage(input: {
     evidenceReference: Prisma.JsonValue | null
     detail?: Prisma.JsonValue | null
   }>
-}): VerificationCoverageDecision {
+}, recoveryReader?: RecordedRecoveryReader): VerificationCoverageDecision {
   const failedModules = parseFailedModules(input.failedModules)
   const evidence = parseEvidenceCoverage(input.evidenceCoverage)
   const isAi = input.source === 'AI'
@@ -97,11 +88,14 @@ export function assessVerificationCoverage(input: {
   const executionSpec = readExecutionSpec(input.executionSpec)
   const unreadableScope = input.executionSpec != null && !executionSpec
   const requiresOriginalScope = unreadableScope || Boolean(input.originalFlag && executionSpec?.engine === 'progressive-v1')
-  const recordedVerdict = input.auditId && input.originalFlag &&
+  let recordedVerdict: 'passed' | 'failed' | null = null
+  if (input.auditId && input.originalFlag &&
     baseCheckId(input.originalFlag.checkId) === baseCheckId(input.checkId) &&
-    normalizeUrl(input.originalFlag.pageUrl ?? '') === normalizeUrl(input.pageUrl ?? '') && input.status === 'COMPLETED' &&
-    recordedVerificationVerdict({ auditId: input.auditId, executionSpec: input.executionSpec,
-      flag: input.originalFlag, executions: input.verifierExecutions.map(row => ({ ...row, detail: row.detail })) }) || null
+    normalizeUrl(input.originalFlag.pageUrl ?? '') === normalizeUrl(input.pageUrl ?? '') && input.status === 'COMPLETED') {
+    const reader = recoveryReader ?? createRecordedRecoveryReader({ auditId: input.auditId, executionSpec: input.executionSpec,
+      executions: input.verifierExecutions.map(row => ({ ...row, detail: row.detail })) })
+    if (reader.auditId === input.auditId) recordedVerdict = reader.verdict(input.originalFlag)
+  }
   const recordedCondition = recordedVerdict !== null
   const search = searchVerifierSchema.safeParse(targetExecution?.detail)
   const isSearch = search.success && search.data.auditId === input.auditId && search.data.pageUrl === input.pageUrl &&

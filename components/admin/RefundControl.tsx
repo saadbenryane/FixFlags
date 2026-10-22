@@ -1,4 +1,5 @@
 'use client'
+import { InteractiveInput } from '@/components/ui/interactive-controls'
 import { useId, useState } from 'react'
 import { AdminActionButton } from './AdminActionButton'
 export function RefundControl({
@@ -21,7 +22,7 @@ export function RefundControl({
       <label htmlFor={field} className="block text-sm">
         Refund amount ({currency.toUpperCase()})
       </label>
-      <input
+      <InteractiveInput
         id={field}
         type="number"
         min={1 / 10 ** digits}

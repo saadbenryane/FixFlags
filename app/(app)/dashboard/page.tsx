@@ -6,9 +6,10 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Container } from '@/components/ui/container'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { getAppViewer } from '@/lib/auth/app-viewer'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 import { SCAN_HANDOFF, WEBSITES_COPY } from '@/lib/marketing/copy'
+import styles from './Dashboard.module.css'
 
 /**
  * The sign-up handoff lands here as `?url=`. The signup gate sends the visitor
@@ -21,7 +22,7 @@ function handoffUrl(raw: string | string[] | undefined): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   if (!trimmed) return null
-  const normalized = normalizeAuditUrl(trimmed)
+  const normalized = normalizeAuditNavigationUrl(trimmed)
   return normalized.ok ? normalized.url : null
 }
 
@@ -37,6 +38,7 @@ export default async function DashboardPage({
     searchParams,
   ])
   const resumedUrl = handoffUrl(params?.url)
+  const firstWebsite = sites.length === 0
 
   return (
     <Container
@@ -48,9 +50,9 @@ export default async function DashboardPage({
       </Suspense>
 
       <PageHeader title="Websites" />
-      <section aria-labelledby="analyze-heading" className="rounded-[var(--radius-card)] border border-border/60 bg-card p-4 sm:p-5">
-        <h2 id="analyze-heading" className="mb-1 text-base font-semibold">{WEBSITES_COPY.analyzeTitle}</h2>
-        <p className="mb-3 text-sm text-muted-foreground">
+      <section aria-labelledby="analyze-heading" className={styles.entry} data-first={firstWebsite}>
+        <h2 id="analyze-heading" className={styles.title}>{firstWebsite ? WEBSITES_COPY.firstTitle : WEBSITES_COPY.analyzeTitle}</h2>
+        <p className={styles.description}>
           {resumedUrl ? SCAN_HANDOFF.resuming(resumedUrl) : WEBSITES_COPY.analyzeBody}
         </p>
         <AuditInput
@@ -59,8 +61,14 @@ export default async function DashboardPage({
           initialUrl={resumedUrl ?? undefined}
           autoStart={Boolean(resumedUrl)}
         />
+        {firstWebsite && !resumedUrl ? <ol className={styles.steps}>
+          {WEBSITES_COPY.firstSteps.map((step, index) => <li key={step.title}>
+            <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
+            <div><h3>{step.title}</h3><p>{step.body}</p></div>
+          </li>)}
+        </ol> : null}
       </section>
-      <SitesOverviewGrid sites={sites} />
+      {sites.length > 0 ? <SitesOverviewGrid sites={sites} /> : null}
     </Container>
   )
 }

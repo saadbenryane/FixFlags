@@ -62,4 +62,18 @@ describe('Uptime summary reads', () => {
     expect(history!.probes).toHaveLength(1)
     expect(db.incidents).toHaveBeenCalledOnce()
   })
+  it('keeps an open incident visible when the Site URL has not yet retargeted the monitor', async () => {
+    const now = new Date('2026-10-13T12:00:00Z')
+    const previous = 'https://previous.example/'
+    db.monitor.mockResolvedValue({ id: 'monitor_1', version: 1, targetUrl: previous, project,
+      enabled: true, state: 'offline', lastCheckedAt: now, nextProbeAt: new Date(now.getTime() + 300_000), confirmationDueAt: null })
+    db.incidentCount.mockResolvedValue(1)
+    db.incidents.mockResolvedValue([{ id: 'incident_1', targetUrl: previous, reason: 'response_error',
+      startedAt: now, confirmedAt: now, recoveredAt: null, supersededAt: null }])
+    const summary = await loadUptimeSummary(project.id, now)
+    expect(summary).toMatchObject({ enabled: true, targetUrl: project.url, state: 'unknown', lastCheckedAt: null, nextCheckAt: null, openIncidentCount: 1 })
+    const history = await loadUptimeHistory(project.id, '24h', null, now)
+    expect(history).toMatchObject({ openIncidentCount: 1, state: 'unknown', targetUrl: project.url })
+    expect(history!.incidents).toEqual([expect.objectContaining({ id: 'incident_1', targetUrl: previous, recoveredAt: null, supersededAt: null })])
+  })
 })

@@ -38,7 +38,7 @@ describe('PricingCTAButton', () => {
     push.mockReset()
     const free = PRICING_CARDS[0]
     render(<MeProvider initialUser={null}><PricingCTAButton plan={free.plan} cta={free.cta} signUpHref={free.href} isLoggedIn={false} variant="brand" /></MeProvider>)
-    expect(screen.getByRole('link', { name: 'Sign up now' })).toHaveAttribute('href', '/sign-up')
+    expect(screen.getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/sign-up')
   })
 
   it('sends Studio clicks to the Studio waitlist', () => {

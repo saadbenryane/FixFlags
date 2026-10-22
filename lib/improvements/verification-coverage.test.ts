@@ -25,6 +25,13 @@ const complete = {
 }
 
 describe('assessVerificationCoverage', () => {
+  it('does not treat another path variant as completion of the affected page', () => {
+    const pageUrl = 'https://example.com/pricing/'
+    expect(assessVerificationCoverage({ ...complete, pageUrl,
+      pages: [{ url: 'https://example.com/pricing', status: 'COMPLETED' }],
+      verifierExecutions: [{ ...complete.verifierExecutions[0], scopeKey: 'page:' + pageUrl }],
+    })).toMatchObject({ comparable: false, coverage: { relevantPageCovered: false } })
+  })
   it('never treats an unreadable current execution scope as a historical comparison', () => {
     expect(assessVerificationCoverage({ ...complete, executionSpec: { version: 99 } }))
       .toMatchObject({ comparable: false, reason: expect.stringMatching(/scope could not be read/),

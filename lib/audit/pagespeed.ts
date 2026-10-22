@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { performanceMeasurement, performancePageKey } from './performance-measurement'
 import { readResourceAudits, projectResourceOpportunities, type ResourceAudit } from './pagespeed-opportunities'
 import { readTapTargetAudits, type TapTargetAudit } from './pagespeed-tap-targets'
+import { collectCruxEvidence, readCruxMetric, type CruxEvidence } from './crux'
+export type { CruxMetrics } from './crux'
 
 export const pageSpeedFailureSchema = z.object({
   code: z.enum(['PROVIDER_QUOTA', 'PROVIDER_UNAVAILABLE', 'PROVIDER_REFUSED', 'PROVIDER_RESPONSE_INVALID', 'MEASUREMENT_INCOMPLETE']),
@@ -29,20 +31,6 @@ export interface LighthouseAuditSummary {
   score: number | null
 }
 
-export interface CruxMetrics {
-  lcp: number | null  // p75 in ms
-  cls: number | null  // p75
-  fcp: number | null  // p75 in ms
-  inp: number | null  // p75 in ms
-  ttfb: number | null // p75 in ms
-  formFactor: string | null
-  effectiveConnectionType: string | null
-  source?: 'pagespeed-loading-experience'
-  scope?: 'page' | 'origin'
-  url?: string
-  reportingWindowDays?: 28
-}
-
 export interface PageSpeedResult {
   strategy: 'desktop' | 'mobile'
   score: number | null
@@ -58,7 +46,7 @@ export interface PageSpeedResult {
   failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
   raw: Record<string, unknown>
-  crux: CruxMetrics | null
+  crux: CruxEvidence | null
 }
 
 /** An audit can retain a number while explicitly reporting failed measurement. */
@@ -67,26 +55,6 @@ function labMetric(audit: Record<string, unknown> | undefined): number | null {
     ['error', 'notApplicable', 'manual', 'informative'].includes(String(audit.scoreDisplayMode))) return null
   const value = audit.numericValue
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
-}
-
-function extractCruxMetrics(data: Record<string, unknown>): CruxMetrics | null {
-  const experienceSchema = z.object({ id: z.string().url(), metrics: z.record(z.string(), z.object({ percentile: finiteMetric.optional() }).passthrough()) }).passthrough()
-  const page = experienceSchema.safeParse(data.loadingExperience), origin = experienceSchema.safeParse(data.originLoadingExperience)
-  const recorded = page.success && Object.values(page.data.metrics).some(metric => metric.percentile !== undefined) ? page
-    : origin.success && Object.values(origin.data.metrics).some(metric => metric.percentile !== undefined) ? origin : null
-  if (!recorded?.success) return null
-  const metrics = recorded.data.metrics
-  const value = (key: string) => metrics[key]?.percentile ?? null
-  // PSI exposes CLS percentiles as hundredths, not the CrUX API's decimal format.
-  const cls = value('CUMULATIVE_LAYOUT_SHIFT_SCORE')
-  return {
-    lcp: value('LARGEST_CONTENTFUL_PAINT_MS'),
-    cls: cls !== null ? cls / 100 : null,
-    fcp: value('FIRST_CONTENTFUL_PAINT_MS'), inp: value('INTERACTION_TO_NEXT_PAINT'), ttfb: value('EXPERIMENTAL_TIME_TO_FIRST_BYTE'),
-    formFactor: null, effectiveConnectionType: null,
-    source: 'pagespeed-loading-experience', scope: recorded === page ? 'page' : 'origin',
-    url: recorded.data.id, reportingWindowDays: 28,
-  }
 }
 
 // PSI allows 120 seconds for measurement. Retain transport and parsing time
@@ -219,7 +187,7 @@ async function runPageSpeed(
     opportunities.push(...tapTargetAudits.flatMap(audit => audit.score !== null && audit.score < 1
       ? [{ id: audit.id, title: audit.title, savings: 0, ...(audit.itemsCount ? { itemsCount: audit.itemsCount } : {}) }] : []))
 
-    const crux = extractCruxMetrics(data)
+    const crux = collectCruxEvidence(data)
 
     return {
       strategy,
@@ -228,7 +196,7 @@ async function runPageSpeed(
       cls: cls !== null ? Math.round(cls * 1000) / 1000 : null,
       fcp: fcp !== null ? Math.round(fcp) : null,
       tbt: tbt !== null ? Math.round(tbt) : null,
-      inp: crux?.inp ?? null,
+      inp: readCruxMetric(crux, 'inp')?.value ?? null,
       opportunities,
       resourceAudits,
       tapTargetAudits,

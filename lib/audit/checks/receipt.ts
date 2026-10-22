@@ -1,6 +1,27 @@
 import { z } from 'zod'
 import type { CheckAssertion } from './assertion'
 import { CHECK_ASSERTIONS, CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
+import type { DeterministicFlag } from '../flag-types'
+import type { SiteCardArea } from '@/lib/sites/card-areas'
+import { currentFormFeedbackObservation } from './form-validation'
+import { currentControlNameObservation } from './accessibility-rules'
+
+/** Shared modules can observe several areas. Select admitted evidence before
+ * deriving completeness, so unrelated measurements cannot decide this result. */
+export function scopeCheckEvidence(input: {
+  module: string; flags: DeterministicFlag[]; assertions: CheckAssertion[];
+  scope?: { area?: SiteCardArea; allowedCheckIds?: readonly string[] };
+}) {
+  if (!input.scope?.allowedCheckIds) return { flags: input.flags, assertions: input.assertions }
+  const allowed = new Set(input.scope.allowedCheckIds)
+  return {
+    flags: input.flags.filter(flag => allowed.has(flag.checkId.split('::page:')[0])),
+    assertions: input.assertions.filter(assertion => {
+      const definition = CHECK_ASSERTIONS[input.module]?.[assertion.key]
+      return definition && (definition.area === input.scope?.area || definition.verifies.some(id => allowed.has(id)))
+    }),
+  }
+}
 
 export const checkAssertionSchema = z.object({
   key: z.string().min(1).max(160), name: z.string().min(1).max(300),
@@ -55,13 +76,37 @@ export function summarizeCheckAssertions(input: { passed: boolean; complete?: bo
 /** Historical receipts have no version. Only explicitly recorded, valid fields survive. */
 export function readCheckReceipt(detail: unknown) {
   const current = checkReceiptSchema.safeParse(detail)
-  if (current.success) return { ...current.data, ...summarizeCheckAssertions(current.data), legacy: false }
-  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return { passed: undefined, assertions: [], legacy: true }
+  if (current.success) {
+    let qualified = current.data
+    if (qualified.module === 'form-validation' || qualified.module === 'accessibility') qualified = { ...qualified,
+      assertions: current.data.assertions.map(assertion => currentFormFeedbackObservation(assertion) && currentControlNameObservation(assertion)
+        ? assertion : { ...assertion, complete: false }),
+    }
+    // Retain genuine HTTP facts without inventing historical pixel decoding.
+    if (qualified.module === 'og-image' && qualified.assertions.some(assertion => assertion.key === 'preview-image-response' && assertion.passed) &&
+      !qualified.assertions.some(assertion => assertion.key === 'preview-image-decoding')) qualified = { ...qualified, complete: false }
+    return { ...qualified, ...summarizeCheckAssertions(qualified), legacy: false as const, unavailable: false }
+  }
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return { passed: undefined, assertions: [], legacy: true as const, unavailable: true }
   const old = detail as Record<string, unknown>
-  if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true }
-  return { passed: typeof old.passed === 'boolean' ? old.passed : undefined,
-    assertions: Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
-      const parsed = checkAssertionSchema.safeParse(value)
-      return parsed.success ? [parsed.data] : []
-    }) : [], legacy: true }
+  if (old.version !== undefined) return { passed: undefined, assertions: [], legacy: true as const, unavailable: true }
+  const assertions = Array.isArray(old.assertions) ? old.assertions.slice(0, 300).flatMap(value => {
+    const parsed = checkAssertionSchema.safeParse(value)
+    return parsed.success ? [currentFormFeedbackObservation(parsed.data) && currentControlNameObservation(parsed.data)
+      ? parsed.data : { ...parsed.data, complete: false }] : []
+  }) : []
+  const currentAssertions = assertions.some(assertion => assertion.key === 'preview-image-decoding') ? assertions
+    : assertions.map(assertion => assertion.key === 'preview-image-response' && assertion.passed ? { ...assertion, complete: false } : assertion)
+  const unavailable = typeof old.passed !== 'boolean' && currentAssertions.length === 0 ||
+    old.assertions !== undefined && !Array.isArray(old.assertions) ||
+    Array.isArray(old.assertions) && old.assertions.length !== assertions.length
+  const recordedPassed = typeof old.passed === 'boolean' ? old.passed : undefined
+  // Qualification can invalidate a historical positive observation. Derive its
+  // summary by the same rules as current receipts, without inventing a recorded
+  // aggregate or positive completeness that historical evidence never supplied.
+  const summary = summarizeCheckAssertions({ passed: recordedPassed === true,
+    ...(old.complete === false ? { complete: false } : {}), failed: old.failed === true || unavailable,
+    assertions: currentAssertions })
+  return { ...summary, passed: recordedPassed === undefined ? undefined : summary.passed,
+    assertions: currentAssertions, legacy: true as const, unavailable }
 }

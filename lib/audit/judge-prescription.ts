@@ -1,16 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
-import {
-  prescriptionProviderJsonSchema,
-  parsePrescriptionProviderOutput,
-  type PrescriptionOutput,
-} from './judge-prescription-schema'
+import type { PrescriptionOutput } from './judge-prescription-schema'
+import { prescriptionGuidanceJsonSchema, parsePrescriptionGuidance, composePrescriptionRubrics, recordedPrescriptionFields } from './prescription-guidance-schema'
 import {
   buildPrescriptionSystemPrompt,
   buildPrescriptionUserPrompt,
 } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
-import { getProviderConfig } from './judge-config'
+import { getPrescriptionProviderConfig } from './judge-config'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
 import type { ExistingFlagForPrescription } from './flag-types'
@@ -21,6 +18,8 @@ import {
   type LlmUsage,
 } from './judge-runner'
 import { PRESCRIPTION_BATCH_SIZE, prescriptionFlagBatches } from './prescription-plan'
+import { isConditionalInspection } from './prescription-policy'
+import { getScreenshotHint } from './screenshot-hint'
 
 export { prescriptionFlagBatches, prescriptionTaskPlans } from './prescription-plan'
 
@@ -34,6 +33,8 @@ export interface PrescriptionResult {
 export type { ExistingFlagForPrescription } from './flag-types'
 
 export interface PrescriptionContext {
+  validationFeedback?: string
+  onAttempt?: (model: string) => Promise<(usage: LlmUsage | null) => Promise<void>>
   url: string
   verdict: string
   score: number
@@ -52,8 +53,14 @@ function parsePrescriptionOutput(
   raw: unknown,
   existingFlags: ExistingFlagForPrescription[]
 ): PrescriptionOutput {
-  const parsed = parsePrescriptionProviderOutput(raw, existingFlags.map(flag => flag.flagKey))
-  return validatePrescriptionOutput(parsed, existingFlags)
+  try {
+    const parsed = parsePrescriptionGuidance(raw, existingFlags)
+    return validatePrescriptionOutput(parsed, existingFlags)
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Invalid prescription output:'))
+      throw new JudgeContractError(error.message)
+    throw error
+  }
 }
 
 export function validatePrescriptionOutput(
@@ -81,7 +88,15 @@ export function validatePrescriptionOutput(
 
   for (const rx of output.flagPrescriptions) {
     const existing = existingFlags.find((f) => f.flagKey === rx.flagKey)
-    validateFixQuality(rx, existing)
+    if (!existing || typeof existing.evidence !== 'string' || !existing.evidence.trim()) {
+      throw new JudgeContractError(`recorded evidence for ${rx.flagKey} is unavailable`)
+    }
+    for (const [field, value] of Object.entries(recordedPrescriptionFields(existing))) {
+      if (rx[field as 'evidence' | 'whyItMatters' | 'verificationRule'] !== value) {
+        throw new JudgeContractError(`prescription for ${rx.flagKey} changes recorded ${field}`)
+      }
+    }
+    validateRepairTaskQuality(rx, existing)
     // Soft-fail mismatched agentPrompt: keep fix/evidence, drop the bad prompt
     // so the whole prescription job is not aborted after retries.
     const agentPrompt = rx.agentPrompt?.trim()
@@ -129,18 +144,23 @@ function sharesRecordedTarget(fix: string, problem: string, evidence: string): b
   return matching.length >= 2
 }
 
-function validateFixQuality(
+function validateRepairTaskQuality(
   rx: {
     flagKey: string
     fix: string
-    evidence: string
-    whyItMatters: string
     agentPrompt?: string | null
-    verificationRule: string
   },
   existing?: ExistingFlagForPrescription
 ): void {
   const fix = rx.fix.trim()
+
+  if (existing?.attention === 'recommendation') {
+    for (const [field, guidance] of [['fix', fix], ['agentPrompt', rx.agentPrompt?.trim()]] as const) {
+      if (guidance && !isConditionalInspection(guidance)) {
+        throw new JudgeContractError(`Recommendation ${rx.flagKey} requires conditional inspection before prescribing a change (${field})`)
+      }
+    }
+  }
 
   const lines = fix.split('\n').filter((l) => l.trim().length > 0)
   if (lines.length === 0) {
@@ -183,26 +203,6 @@ function validateFixQuality(
     )
   }
 
-  const evidence = rx.evidence.trim()
-  if (evidence.length < 20) {
-    throw new JudgeContractError(
-      `evidence for ${rx.flagKey} is too brief (${evidence.length} chars), must describe what is visible on the page`
-    )
-  }
-
-  const why = rx.whyItMatters.trim()
-  if (why.length < 15) {
-    throw new JudgeContractError(
-      `whyItMatters for ${rx.flagKey} is too brief (${why.length} chars), must repeat the recorded explanation`
-    )
-  }
-
-  const vr = rx.verificationRule.trim()
-  if (vr.length < 10) {
-    throw new JudgeContractError(
-      `verificationRule for ${rx.flagKey} is too brief (${vr.length} chars), must describe how to verify the fix`
-    )
-  }
 }
 
 async function runAnthropicPrescription(
@@ -227,7 +227,8 @@ async function runAnthropicPrescription(
     })
   }
 
-  const cfg = getProviderConfig('anthropic', maxTimeoutMs)
+  const cfg = getPrescriptionProviderConfig('anthropic', maxTimeoutMs)
+  const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -243,9 +244,9 @@ async function runAnthropicPrescription(
             cache_control: { type: 'ephemeral' },
           },
         ],
-        tools: [{ name: 'quality_prescription', description: 'Generate fix prompts and evidence for an already-diagnosed audit',
-          input_schema: prescriptionProviderJsonSchema(context.existingFlags.map(flag => flag.flagKey), 'anthropic') as Anthropic.Tool.InputSchema }],
-        tool_choice: { type: 'tool', name: 'quality_prescription' },
+        tools: [{ name: 'quality_prescription_v2', description: 'Return bounded guidance plans for the exact recorded findings',
+          input_schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'anthropic') as Anthropic.Tool.InputSchema }],
+        tool_choice: { type: 'tool', name: 'quality_prescription_v2' },
         messages: [
           {
             role: 'user',
@@ -267,9 +268,9 @@ async function runAnthropicPrescription(
                   },
                   techStack: context.techStack,
                   existingFlags: context.existingFlags,
+                  validationFeedback: context.validationFeedback,
                   rubrics: context.rubrics,
-                  screenshotHint:
-                    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only',
+                  screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
                 }),
               },
             ],
@@ -277,7 +278,16 @@ async function runAnthropicPrescription(
         ],
       },
       { signal: controller.signal }
-    )
+    ).catch(async error => {
+      await recordUsage?.(null)
+      throw error
+    })
+
+    const usage: LlmUsage = {
+      inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, model: response.model ?? cfg.model,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
+    }
+    await recordUsage?.(usage)
 
     const toolUse = response.content.find((b) => b.type === 'tool_use')
     if (!toolUse || toolUse.type !== 'tool_use') {
@@ -286,13 +296,7 @@ async function runAnthropicPrescription(
 
     return {
       output: parsePrescriptionOutput(toolUse.input, context.existingFlags),
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        model: cfg.model,
-        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -320,8 +324,7 @@ async function runOpenAIPrescription(
       image_url: { url: `data:image/png;base64,${mobileBase64}`, detail: 'low' },
     })
   }
-  const screenshotHint =
-    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only'
+  const screenshotHint = getScreenshotHint(desktopBase64, mobileBase64)
   content.push({
     type: 'text',
     text: buildPrescriptionUserPrompt({
@@ -338,12 +341,14 @@ async function runOpenAIPrescription(
       },
       techStack: context.techStack,
       existingFlags: context.existingFlags,
+      validationFeedback: context.validationFeedback,
       rubrics: context.rubrics,
       screenshotHint,
     }),
   })
 
-  const cfg = getProviderConfig('openai', maxTimeoutMs)
+  const cfg = getPrescriptionProviderConfig('openai', maxTimeoutMs)
+  const recordUsage = await context.onAttempt?.(cfg.model)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -351,13 +356,13 @@ async function runOpenAIPrescription(
     const response = await openai.chat.completions.create(
       {
         model: cfg.model,
-        max_tokens: cfg.maxTokens,
+        ...(cfg.reasoningEffort ? { max_completion_tokens: cfg.maxTokens, reasoning_effort: cfg.reasoningEffort } : { max_tokens: cfg.maxTokens }),
         response_format: {
           type: 'json_schema',
           json_schema: {
-            name: 'quality_prescription',
+            name: 'quality_prescription_v2',
             strict: true,
-            schema: prescriptionProviderJsonSchema(context.existingFlags.map(flag => flag.flagKey), 'openai'),
+            schema: prescriptionGuidanceJsonSchema(context.existingFlags, 'openai'),
           },
         },
         messages: [
@@ -366,7 +371,17 @@ async function runOpenAIPrescription(
         ],
       },
       { signal: controller.signal }
-    )
+    ).catch(async error => {
+      await recordUsage?.(null)
+      throw error
+    })
+
+    const cacheReadTokens = response.usage?.prompt_tokens_details?.cached_tokens ?? 0
+    const usage: LlmUsage = {
+      inputTokens: (response.usage?.prompt_tokens ?? 0) - cacheReadTokens,
+      outputTokens: response.usage?.completion_tokens ?? 0, cacheReadTokens, model: response.model ?? cfg.model,
+    }
+    await recordUsage?.(response.usage ? usage : null)
 
     const rawContent = response.choices[0]?.message?.content
     if (!rawContent) {
@@ -376,11 +391,7 @@ async function runOpenAIPrescription(
     const raw = JSON.parse(rawContent)
     return {
       output: parsePrescriptionOutput(raw, context.existingFlags),
-      usage: {
-        inputTokens: response.usage?.prompt_tokens ?? 0,
-        outputTokens: response.usage?.completion_tokens ?? 0,
-        model: cfg.model,
-      },
+      usage,
     }
   } finally {
     clearTimeout(timeout)
@@ -429,12 +440,26 @@ async function runPrescriptionBatch(
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
   const deadline = maxTimeoutMs === undefined ? undefined : Date.now() + maxTimeoutMs
+  let validationFeedback: string | undefined
   return runLlmWithRetry({
     label: 'prescription',
     input: { context, desktopBase64, mobileBase64, maxTimeoutMs },
-    attemptFn: (provider, { context, desktopBase64, mobileBase64, maxTimeoutMs }) =>
-      runPrescriptionWithProvider(provider, context, desktopBase64, mobileBase64,
-        deadline === undefined ? maxTimeoutMs : Math.max(1, deadline - Date.now())),
+    attemptFn: async (provider, { context, desktopBase64, mobileBase64, maxTimeoutMs }) => {
+      try {
+        return await runPrescriptionWithProvider(provider, validationFeedback ? { ...context, validationFeedback } : context,
+          desktopBase64, mobileBase64, deadline === undefined ? maxTimeoutMs : Math.max(1, deadline - Date.now()))
+      } catch (error) {
+        if (error instanceof JudgeContractError || (error instanceof Error && error.message.startsWith('Invalid prescription output:'))) {
+          validationFeedback = error.message.slice(0, 4000)
+          const target = context.existingFlags.find(flag => error.message.includes(`${flag.flagKey} does not identify its recorded target`))
+          if (target) {
+            // Source text stays in the private retry input, outside logged errors.
+            validationFeedback = `${validationFeedback}\nTarget reminder from the original observation: ${JSON.stringify(target.evidence.slice(0, 600))}. Name this recorded target in the inspection or repair.`.slice(0, 4000)
+          }
+        }
+        throw error
+      }
+    },
     isRetryable: isPrescriptionAttemptRetryable,
     deadline,
   })
@@ -480,9 +505,7 @@ export async function runPrescriptionWithRetry(
       }, error)
     }
     flagPrescriptions.push(...result.output.flagPrescriptions)
-    if (rubricPrescriptions.length === 0) {
-      rubricPrescriptions = result.output.rubricPrescriptions
-    }
+    rubricPrescriptions = composePrescriptionRubrics(flags, flagPrescriptions)
     inputTokens += result.usage.inputTokens
     outputTokens += result.usage.outputTokens
     model = result.usage.model

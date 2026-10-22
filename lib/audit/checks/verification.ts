@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { TLS_CERTIFICATE_VERIFICATION_RULE } from '../tls-evidence'
+import { certificateRequestContext } from './security'
 import { KEYBOARD_CONTEXT_PATTERN } from './keyboard'
 import { JOURNEY_VERIFICATION_RULE, readJourneyContext } from './journey-evidence'
 import { readSlowActionTargets, sameSlowActionIdentity, slowActionContextSchema, SLOW_REPLAY_CONTEXT, SLOW_REPLAY_VERIFICATION_RULE } from '../flow/slow-replay-contract'
@@ -9,11 +11,14 @@ import { checkAssertionSchema, checkReceiptSchema, recordedCheckVersion } from '
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
 import { DESTINATION_VERIFICATION_RULE } from './destination-evidence'
 import { FORM_VERIFICATION_RULE } from '../flow/form-evidence'
+import { currentFormFeedbackObservation } from './form-validation'
 import { SECURITY_HEADER_VERIFICATION_RULE, currentSecurityHeaderObservation } from './security-headers'
 import { CONSOLE_VERIFICATION_RULE, readConsoleContext } from '../console-evidence'
-import { ACCESSIBILITY_VERIFICATION_RULE } from './accessibility-rules'
+import { ACCESSIBILITY_VERIFICATION_RULE, currentControlNameObservation } from './accessibility-rules'
 import { PRIMARY_ACTION_VERIFICATION_RULE } from '../flow/primary-action-evidence'
 import { POST_CLICK_CHECKS, POST_CLICK_VERIFICATION_RULE, postClickTargetSchema } from './flow-post-click'
+import { DESTINATION_TRUST_VERIFICATION_RULE, destinationTrustTargetSchema } from './flow-destination-trust'
+import { DESTINATION_CONTENT_CHECKS, DESTINATION_CONTENT_VERIFICATION_RULE, destinationContentTargetSchema } from './flow-destination-content'
 import { PRICING_NAVIGATION_RULE, pricingNavigationTargetSchema } from '../flow/pricing-navigation-evidence'
 import { MOBILE_NAVIGATION_RULE, readMobileNavigationTarget } from '../flow/mobile-navigation-evidence'
 import { SECTION_LINK_VERIFICATION_RULE } from './section-links'
@@ -187,6 +192,10 @@ export function scopedAssertionForTarget(input: {
   const headers = receipt.module === 'security-headers' && (flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE || ['security-headers-missing', 'security-headers-hardening'].includes(checkId))
     const form = receipt.module === 'form-validation'
     let assertion = assertionForTarget(receipt, checkId)
+    if (checkId === 'security-certificate-invalid' && (flag.verificationRule !== TLS_CERTIFICATE_VERIFICATION_RULE ||
+      receipt.execution?.source !== 'http' || assertion?.context !== certificateRequestContext(receipt.pageUrl) ||
+      !Array.isArray(flag.evidenceTargets) || !flag.evidenceTargets.some(target => target && typeof target === 'object' &&
+        'context' in target && target.context === assertion?.context))) return undefined
     if (!assertion && !tracking && !destination && !form && !headers && !accessibility && !primaryAction && !sections && !loading && !overlays && !mobileNavigation && receipt.module !== 'journeys' && receipt.module !== 'slow-replay') return undefined
     let supportingTasks: Array<{ taskId: string; pageUrl: string; collectedAt: string }> = []
     if (mobileNavigation) {
@@ -341,18 +350,24 @@ export function scopedAssertionForTarget(input: {
       const contexts = z.array(z.object({ context: z.string().min(1) }).passthrough()).safeParse(flag.evidenceTargets)
       const postClick = primaryAction && POST_CLICK_CHECKS.includes(checkId)
       const pricing = primaryAction && checkId === 'flow-pricing-nav-broken'
-      const scopedRule = accounts ? flag.verificationRule === 'Automatic account observation v1' : sections ? flag.verificationRule === SECTION_LINK_VERIFICATION_RULE : pricing ? flag.verificationRule === PRICING_NAVIGATION_RULE : postClick ? flag.verificationRule === POST_CLICK_VERIFICATION_RULE : primaryAction ? flag.verificationRule === PRIMARY_ACTION_VERIFICATION_RULE : accessibility ? flag.verificationRule === ACCESSIBILITY_VERIFICATION_RULE : tracking ? flag.verificationRule === TRACKING_VERIFICATION_RULE : form ? flag.verificationRule === FORM_VERIFICATION_RULE : headers ? flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE : flag.verificationRule === DESTINATION_VERIFICATION_RULE
+      const destinationTrust = primaryAction && checkId === 'flow-cta-destination-no-trust'
+      const destinationContent = primaryAction && DESTINATION_CONTENT_CHECKS.includes(checkId)
+      const scopedRule = accounts ? flag.verificationRule === 'Automatic account observation v1' : sections ? flag.verificationRule === SECTION_LINK_VERIFICATION_RULE : pricing ? flag.verificationRule === PRICING_NAVIGATION_RULE : postClick ? flag.verificationRule === POST_CLICK_VERIFICATION_RULE : destinationTrust ? flag.verificationRule === DESTINATION_TRUST_VERIFICATION_RULE : destinationContent ? flag.verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE : primaryAction ? flag.verificationRule === PRIMARY_ACTION_VERIFICATION_RULE : accessibility ? flag.verificationRule === ACCESSIBILITY_VERIFICATION_RULE : tracking ? flag.verificationRule === TRACKING_VERIFICATION_RULE : form ? flag.verificationRule === FORM_VERIFICATION_RULE : headers ? flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE : flag.verificationRule === DESTINATION_VERIFICATION_RULE
       if (!scopedRule || !contexts.success || !contexts.data.length) return undefined
       if (tracking && contexts.data.some(target => !TRACKING_REQUEST_CONTEXT.test(target.context))) return undefined
       if (sections && contexts.data.some(target => !/^section:(?:v2:)?[a-f0-9]{64}:[a-f0-9]{64}$/.test(target.context))) return undefined
       if (postClick && !z.array(postClickTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
       if (pricing && !z.array(pricingNavigationTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
-      if (primaryAction && !postClick && !pricing && contexts.data.some(target => !/^flow:(page|control):[a-f0-9]{64}$/.test(target.context))) return undefined
+      if (destinationTrust && !z.array(destinationTrustTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
+      if (destinationContent && !z.array(destinationContentTargetSchema).min(1).safeParse(flag.evidenceTargets).success) return undefined
+      if (primaryAction && !postClick && !pricing && !destinationTrust && !destinationContent && contexts.data.some(target => !/^flow:(page|control):[a-f0-9]{64}$/.test(target.context))) return undefined
       if (accessibility && contexts.data.some(target => target.context.includes(':unknown:') || !target.context.startsWith('accessibility:'))) return undefined
       const sources = [receipt, ...input.receipts ?? []].filter(source => source.execution?.auditId === receipt.execution!.auditId &&
         source.module === receipt.module && source.execution.source === sourceKind && source.execution.checkVersion === receipt.execution!.checkVersion && source.applicable && !source.failed)
       const candidates = sources.flatMap(source => source.assertions.filter(item => item.complete === true && item.disposition !== 'observed' &&
         (!headers || currentSecurityHeaderObservation(item)) &&
+        (!form || currentFormFeedbackObservation(item)) &&
+        (!accessibility || currentControlNameObservation(item)) &&
         MODULE_CHECK_DEFINITIONS[receipt.module]?.assertions[item.key]?.verifies.includes(checkId)).map(item => ({ item, source })))
       const matched = contexts.data.map(prior => candidates.find(candidate => candidate.item.context === prior.context))
       const combined = combineScopedAssertions(matched, candidate => candidate.item)

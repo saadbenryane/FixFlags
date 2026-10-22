@@ -5,7 +5,7 @@ import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
 import { accessTokenForConnection, completeGoogleConnection, googleConnectionGrantScope, liveGoogleClient, refreshDueGoogleContexts, signConnectionState, syncGoogleConnection, type GoogleConnectionClient } from './google'
 import { loadSiteConnectionViews, connectionLines } from './read'
 import type { AnalyticsReport } from './report-scope'
-import { searchReportScope, searchFactScope } from './report-scope'
+import { analyticsReportScope, searchReportScope, searchFactScope } from './report-scope'
 
 const run = process.env.DEFAULT_MONITORING_DB_REQUIRED === 'true' ? describe : describe.skip
 
@@ -73,6 +73,71 @@ run('Google credential ownership during refresh', () => {
     expect(transport).toHaveBeenCalledOnce()
   })
 
+  it('keeps provider page identity through refresh, persistence and retained-context reads', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'fixture-client')
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'fixture-secret')
+    const initial = await connectionFixture('example.com', 'SEARCH_CONSOLE'), projectId = initial.projectId
+    const searchProperty = 'sc-domain:example.com', analyticsProperty = 'properties/123'
+    const search = await prisma.siteConnection.update({ where: { id: initial.id }, data: { propertyId: searchProperty } })
+    const analytics = await prisma.siteConnection.create({ data: { projectId, provider: 'ANALYTICS', status: 'CONNECTED', propertyId: analyticsProperty,
+      encryptedAccessToken: initial.encryptedAccessToken } })
+    const oldPage = await prisma.siteConnectionFact.create({ data: { connectionId: analytics.id, projectId,
+      kind: 'analytics_page', pagePath: '/pricing', subject: 'sessions', pageViews: 999,
+      reportScope: analyticsReportScope('example.com', analyticsProperty) } })
+    const oldAudience = await prisma.siteConnectionFact.create({ data: { connectionId: analytics.id, projectId,
+      kind: 'analytics_site', subject: 'audience', sessions: 70, reportScope: analyticsReportScope('example.com', analyticsProperty) } })
+    const previous = await loadSiteConnectionViews(projectId)
+    expect(previous.facts).toEqual([expect.objectContaining({ kind: 'analytics_site', sessions: 70 })])
+    expect(await prisma.siteConnectionFact.findUniqueOrThrow({ where: { id: oldPage.id } })).toMatchObject({ pageViews: 999 })
+    expect(await prisma.siteConnectionFact.findUnique({ where: { id: oldAudience.id } })).not.toBeNull()
+    const transport = vi.fn(async (target: string) => {
+      if (target.includes('searchAnalytics/query')) return new Response(JSON.stringify({ rows: [
+        { keys: ['https://example.com/pricing/?plan=teams', 'team plans'], impressions: 80, clicks: 4 },
+        { keys: ['https://example.com/pricing/?plan=solo', 'solo plans'], impressions: 20, clicks: 1 },
+        { keys: ['https://example.com/pricing?plan=teams', 'other path'], impressions: 10 },
+      ] }))
+      if (target === 'https://analyticsadmin.googleapis.com/v1beta/properties/123') return new Response(JSON.stringify({ displayName: 'Site analytics' }))
+      if (target.includes('properties/123/dataStreams')) return new Response(JSON.stringify({ dataStreams: [{ webStreamData: { defaultUri: 'https://example.com/' } }] }))
+      if (target.includes('batchRunReports')) {
+        const columns = { dimensionHeaders: [{ name: 'pagePath' }], metricHeaders: [{ name: 'sessions' }, { name: 'screenPageViews' }] }
+        return new Response(JSON.stringify({ reports: [
+          { ...columns, rows: [
+            { dimensionValues: [{ value: '/pricing' }], metricValues: [{ value: '3' }, { value: '12' }] },
+            { dimensionValues: [{ value: '/pricing/' }], metricValues: [{ value: '7' }, { value: '42' }] },
+            { dimensionValues: [{ value: '(not set)' }], metricValues: [{ value: '90' }, { value: '999' }] },
+          ] },
+          { metricHeaders: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'screenPageViews' }], rows: [{ metricValues: [{ value: '10' }, { value: '8' }, { value: '54' }] }] },
+          { ...columns, rows: [] },
+        ] }))
+      }
+      throw new Error('Unexpected fixture provider request')
+    })
+    vi.stubGlobal('fetch', transport)
+    for (const connection of [search, analytics]) expect(await syncGoogleConnection({ connectionId: connection.id, projectId,
+      provider: connection.provider, host: 'example.com', siteUrl: 'https://example.com/', propertyId: connection.propertyId,
+      accessToken: 'fixture-expired-access' })).toMatchObject({ status: 'CONNECTED' })
+    const saved = await prisma.siteConnectionFact.findMany({ where: { connectionId: analytics.id, kind: 'analytics_page' } })
+    expect(saved.map(fact => fact.pagePath).sort()).toEqual(['/pricing', '/pricing/'])
+    expect(saved.find(fact => fact.pagePath === '/pricing/')?.reportScope).toMatchObject({ pagePath: '/pricing/' })
+    let view = await loadSiteConnectionViews(projectId)
+    const target = 'https://example.com/pricing/?plan=teams'
+    let lines = connectionLines(view.facts, target).join(' ')
+    expect(lines).toContain('80 impressions and 4 clicks')
+    expect(lines).toContain('42 page views')
+    expect(lines).not.toContain('12 page views')
+    expect(lines).not.toContain('20 impressions')
+    expect(connectionLines(view.facts, 'https://example.com/pricing?plan=teams').join(' ')).toContain('10 impressions')
+    expect(connectionLines(view.facts, 'https://www.example.com/pricing/?plan=teams').join(' ')).not.toContain('impressions')
+    expect(connectionLines(view.facts, 'https://example.com:8443/pricing/?plan=teams').join(' ')).not.toContain('impressions')
+    for (const id of [search.id, analytics.id]) await prisma.siteConnection.update({ where: { id }, data: { status: 'UNAVAILABLE' } })
+    view = await loadSiteConnectionViews(projectId)
+    lines = connectionLines(view.facts, target).join(' ')
+    expect(lines).toContain('80 impressions and 4 clicks')
+    expect(lines).toContain('42 page views')
+    expect(lines).toContain('Provider unavailable; retained context.')
+    expect(connectionLines(view.facts, 'https://example.com/pricing/?plan=other').join(' ')).not.toContain('impressions')
+    expect(transport).toHaveBeenCalledTimes(4)
+  })
   it('retains dated Search counts when reporting is empty and preserves an explicit zero', async () => {
     const initial = await connectionFixture('example.com', 'SEARCH_CONSOLE')
     const propertyId = 'sc-domain:example.com'
@@ -130,7 +195,7 @@ run('Google credential ownership during refresh', () => {
     expect(saved).toMatchObject({ sessions: 7, pageViews: 12, reportScope: { version: 1, kind: 'analytics-hostnames', propertyId: 'properties/123', hostnames: ['example.com', 'www.example.com'] },
       periodStart: expect.any(Date), periodEnd: expect.any(Date) })
     const audience = await prisma.siteConnectionFact.findFirstOrThrow({ where: { connectionId: connection.id, kind: 'analytics_site' } })
-    expect(audience).toMatchObject({ sessions: 7, activeUsers: 5, pageViews: 25, reportScope: saved.reportScope })
+    expect(audience).toMatchObject({ sessions: 7, activeUsers: 5, pageViews: 25, reportScope: analyticsReportScope('example.com', 'properties/123') })
     const view = await loadSiteConnectionViews(connection.projectId)
     expect(connectionLines(view.facts, 'https://example.com/pricing').join(' ')).toContain('12 page views')
     expect(connectionLines(view.facts, 'https://other.example/pricing')).toEqual([])
@@ -501,7 +566,7 @@ run('Google credential ownership during refresh', () => {
   it('continues later context batches after one connection claim fails', async () => {
     enableGoogleFixture()
     const now = new Date(), hosts = ['failed.example.com', 'second.example.com', 'third.example.com']
-    const connections = []
+    const connections: Array<Awaited<ReturnType<typeof monitoredContext>>> = []
     for (const [index, host] of hosts.entries()) {
       const connection = await monitoredContext(host, now)
       await prisma.siteConnection.update({ where: { id: connection.id }, data: { lastSyncAttemptAt: new Date(index + 1) } })
@@ -531,7 +596,7 @@ run('Google credential ownership during refresh', () => {
   it('continues later contexts when a refused commit also fails to persist its fallback state', async () => {
     enableGoogleFixture()
     const now = new Date(), hosts = ['removed.example.com', 'second.example.com', 'third.example.com']
-    const connections = []
+    const connections: Array<Awaited<ReturnType<typeof monitoredContext>>> = []
     for (const [index, host] of hosts.entries()) {
       const connection = await monitoredContext(host, now)
       await prisma.siteConnection.update({ where: { id: connection.id }, data: { lastSyncAttemptAt: new Date(index + 1) } })

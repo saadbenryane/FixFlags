@@ -100,7 +100,8 @@ describe('journey evaluation fix templates', () => {
     expect(a11y?.fix).toMatch(/heading/i)
     expect(a11y?.fix).not.toMatch(/keyboard-accessible/)
     const friction = personal.find((f) => f.checkId === 'journey-funnel-too-many-steps')
-    expect(friction?.fix).toMatch(/Do not invent pricing/)
+    expect(friction?.fix).toContain('existing pricing and signup routes')
+    expect(friction?.fix).toContain('Confirm the intended')
   })
 
   it('keeps commercial broken promises on marketing sites', () => {

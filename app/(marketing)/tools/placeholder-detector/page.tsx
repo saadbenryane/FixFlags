@@ -1,3 +1,4 @@
+import { ToolEducation } from '@/components/marketing/tools/ToolEducation'
 import { PlaceholderDetectorClient } from '@/components/marketing/tools/PlaceholderDetectorClient'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -24,6 +25,7 @@ export default function PlaceholderDetectorPage() {
         <Container variant="narrow" className="space-y-8">
           <main>
             <PlaceholderDetectorClient />
+            <ToolEducation tool="placeholder-detector" />
           </main>
         </Container>
       </Section>

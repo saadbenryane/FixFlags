@@ -82,6 +82,12 @@ function boundStartUrl(): string | undefined {
 }
 
 describe('observedPurchaseStart', () => {
+  it.each(['https://shop.example/', 'https://www.shop.example/'])('retains observed apex and www purchase starts without rewriting their navigation at %s', siteUrl => {
+    for (const start of ['https://shop.example/products/tote?color=blue#size', 'https://www.shop.example/products/tote?color=blue#size'])
+      expect(observedPurchaseStart({ siteUrl, pageUrls: [start] })).toBe(start)
+    expect(observedPurchaseStart({ siteUrl, pageUrls: ['https://store.shop.example/products/tote', 'https://shop.example.external.test/products/tote'] })).toBeNull()
+  })
+
   it('prefers a product page over a cart, a storefront homepage, and a checkout URL', () => {
     expect(
       observedPurchaseStart({

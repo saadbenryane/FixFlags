@@ -1,4 +1,5 @@
 import type { JourneyStepDraft } from './types'
+import { observedJourneyActionDetail } from './action-observation'
 
 /**
  * Byte-identical across all audits for prompt cache reuse.
@@ -50,7 +51,7 @@ export function buildEvaluatorUserPrompt(input: EvaluatorUserPromptInput): strin
 
       return `Step ${s.stepNumber} [${s.actionType}]:
   URL: ${s.url}
-  actionDetail: ${JSON.stringify(s.actionDetail)}
+  actionDetail: ${JSON.stringify(observedJourneyActionDetail(s))}
   Runner reasoning (intent, not observation): ${s.reasoning ?? 'Not recorded'}
   ${evidence.length > 0 ? `Evidence:\n  ${evidence.join('\n  ')}` : 'No additional evidence'}`
     })

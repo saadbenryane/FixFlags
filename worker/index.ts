@@ -3,13 +3,11 @@ import { validateWorkerEnv } from '../lib/env'
 import { startWorker } from '../lib/queue/worker'
 import { startRecoveryScheduler } from '../lib/queue/recovery-scheduler'
 import { closeBrowser } from '../lib/audit/screenshot'
-import { getAuditBrowser, getBrowserDiagnostics } from '../lib/audit/screenshot'
 import {
   clearWorkerHeartbeat,
   readWorkerHeartbeat,
   beginWorkerShutdown,
   WORKER_ID,
-  touchWorkerHeartbeat,
 } from '../lib/queue/worker-heartbeat'
 import { prisma } from '../lib/db'
 import { createQueueRedis } from '../lib/queue/redis'
@@ -48,11 +46,6 @@ const runtime = createWorkerRuntime({
       if (heartbeat.alive) throw new Error('An unmanaged worker is already alive on this Redis. Stop its owning terminal with Ctrl+C. No process was stopped.')
     }
   },
-  warmBrowser: async () => {
-    await getAuditBrowser()
-  },
-  readBrowserDiagnostics: getBrowserDiagnostics,
-  touchHeartbeat: touchWorkerHeartbeat,
   clearHeartbeat: clearWorkerHeartbeat,
   beginShutdown: beginWorkerShutdown,
   releaseOwnership: async () => {

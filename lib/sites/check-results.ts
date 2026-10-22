@@ -1,9 +1,11 @@
 import type { SiteCardArea } from '@/lib/sites/card-areas'
+import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
 import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/check-registry'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
 import { z } from 'zod'
-import { searchObservationSchema, searchReceiptSchema, type SearchObservation } from '@/lib/audit/search/contracts'
+import { searchObservationSchema, readRecordedSearchReceipt, type SearchObservation } from '@/lib/audit/search/contracts'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 
 export type SiteCheckResult = {
   id: string
@@ -30,9 +32,9 @@ export function projectCheckResults(auditId: string, receipts: Array<{
   source?: string;
 }>, historical = false): SiteCheckResult[] {
   return receipts.flatMap<SiteCheckResult>(receipt => {
-    const search = searchReceiptSchema.safeParse(receipt.detail)
-    if (search.success && receipt.targetKey.startsWith('module:search') && search.data.auditId === auditId && search.data.pageUrl === receipt.pageUrl) {
-      return search.data.observations.map(item => ({
+    const search = receipt.targetKey.startsWith('module:search') ? readRecordedSearchReceipt({ ...receipt, auditId }) : null
+    if (search) {
+      return search.observations.map(item => ({
         id: `${receipt.id}:${item.id}`, auditId, area: 'search' as const, name: item.name, kind: 'assertion' as const,
         status: item.disposition === 'failed' ? 'findings' as const : item.disposition,
         pageUrl: item.pageUrl, checkedAt: item.collectedAt, historical, limitation: item.limitation, source: item.source,
@@ -40,6 +42,13 @@ export function projectCheckResults(auditId: string, receipts: Array<{
         observation: item.observed, expected: item.expected, search: item,
       } satisfies SiteCheckResult))
     }
+    if (receipt.targetKey.startsWith('module:search')) return [{
+      id: receipt.id, auditId, area: 'search', name: SEARCH_COPY.title, kind: 'execution',
+      status: receipt.status === 'FAILED' ? 'failed' : receipt.status === 'NOT_APPLICABLE' ? 'not_applicable' : 'unknown',
+      pageUrl: receipt.pageUrl, checkedAt: receipt.updatedAt.toISOString(), historical,
+      limitation: SEARCH_COPY.unknown, source: receipt.source ?? 'HISTORICAL',
+      evidenceReference: { auditId, executionId: receipt.id, pageUrl: receipt.pageUrl },
+    }]
     const descriptor = CHECK_MODULES[receipt.targetKey.replace(/^module:/, '')]
     if (!receipt.targetKey.startsWith('module:')) return []
     if (!descriptor) return [{ id: receipt.id, auditId, area: 'site',
@@ -55,6 +64,7 @@ export function projectCheckResults(auditId: string, receipts: Array<{
     }
     const status = receipt.status === 'FAILED' ? 'failed'
       : receipt.status === 'NOT_APPLICABLE' ? 'not_applicable'
+      : detail.unavailable ? 'unknown'
       : 'complete' in detail && detail.complete === false ? 'unknown'
       : 'applicable' in detail && !detail.applicable ? 'not_applicable'
       : detail.passed === false ? 'findings' : 'completed'
@@ -80,7 +90,7 @@ export function projectCheckResults(auditId: string, receipts: Array<{
 }
 
 export const siteCheckResultSchema = z.object({
-  id: z.string(), auditId: z.string(), area: z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility']),
+  id: z.string(), auditId: z.string(), area: z.enum(SITE_CARD_AREAS),
   name: z.string(), kind: z.enum(['execution', 'assertion']), status: z.enum(['passed', 'completed', 'findings', 'failed', 'not_applicable', 'observed', 'unknown']),
   pageUrl: z.string().nullable(), checkedAt: z.string(), historical: z.boolean(), limitation: z.string(), source: z.string(),
   evidenceReference: z.object({ auditId: z.string(), executionId: z.string(), pageUrl: z.string().nullable() }),

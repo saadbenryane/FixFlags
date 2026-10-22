@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMetadataFromHtml } from '../metadata'
+import { parseMetadataFromHtml, publishedTrustSignals } from '../metadata'
 import { publicTrustObservations, runTrustChecks } from './trust'
 import { runAllChecks } from './index'
 import { checkReceiptSchema } from './receipt'
@@ -56,6 +56,13 @@ describe('public trust observations and independent repair', () => {
     expect(assertionForTarget(receipt, 'cookie-consent-absent')).toBeUndefined()
     const withConsent = publicTrustObservations(page(analytics + healthy))['cookie-consent-signals']
     expect(withConsent.observed).toContain('consent enforcement was not evaluated')
+  })
+  it('shares the published privacy and contact predicate with destination probes', () => {
+    expect(publishedTrustSignals({ anchors: [{ text: 'Privacy policy', href: '/privacy' }], publishedText: 'Email support@example.com',
+      publishedHrefs: ['mailto:help@example.com'], jsonLd: [] })).toEqual({ hasPrivacyPolicy: true, hasContactInfo: true })
+    expect(publishedTrustSignals({ anchors: [], publishedText: 'Nothing published here', publishedHrefs: [], jsonLd: [] })).toEqual({ hasPrivacyPolicy: false, hasContactInfo: false })
+    expect(page(healthy).hasPrivacyPolicy).toBe(true)
+    expect(page('<div hidden><a href="mailto:hidden@example.com">Contact hidden@example.com</a></div>').hasContactInfo).toBe(false)
   })
   it('does not certify contact information from implementation code, CSS or unpublished template content', () => {
     const metadata = page('<style>@font-face{font-family:Contact;src:url(font.woff)}</style><script>const contact="internal@example.com"</script>' +

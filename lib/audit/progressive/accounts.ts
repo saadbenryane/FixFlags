@@ -1,3 +1,4 @@
+import { checkExecution } from './check-execution'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { readExecutionSpec } from '@/lib/sites/domain/execution-spec'
@@ -7,7 +8,7 @@ import { assertAccountPermission } from '@/lib/sites/accounts/store'
 import { serializeArtifact, TaskFailure } from './contracts'
 import { flagSchema, commitFindings, commitCheckReceipt } from './results'
 import type { TaskHandler } from './registry'
-import { accountAssertion, accountCheckId } from '@/lib/sites/accounts/check-definitions'
+import { accountCheckAssertion, accountCheckId } from '@/lib/sites/accounts/check-definitions'
 
 const artifactSchema = accountResultSchema.extend({ flags: z.array(flagSchema).max(100) }).strict()
 export const accountHandlers: TaskHandler[] = [{ kind: 'automatic-accounts', replay: 'protected', timeoutMs: 180_000,
@@ -45,9 +46,8 @@ export const accountHandlers: TaskHandler[] = [{ kind: 'automatic-accounts', rep
       await commitCheckReceipt(context, { kind: 'site-module-check', version: 1, module: 'automatic-accounts', applicable: item.state !== 'unavailable',
         passed: item.state === 'verified', complete: item.state !== 'unknown', pageUrl: safeEvidenceUrl(item.pageUrl),
         limitation: item.state === 'unknown' || item.state === 'unavailable' ? item.detail : undefined,
-        assertions: [{ key: accountAssertion[item.kind], name: item.kind.replace('_', ' '), expected: 'The observed account behavior completes successfully.',
-          observed: item.detail, passed: item.state === 'verified', complete: item.state === 'verified' || item.state === 'failed', context: accountObservationContext(item) }],
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: artifact.collectedAt } }, tx, ':' + item.kind)
+        assertions: [accountCheckAssertion(item)],
+        execution: checkExecution(context, 'automatic-accounts', 'rendered-dom', artifact.collectedAt) }, tx, ':' + item.kind)
     }
     await commitFindings(context, artifact, tx)
   },

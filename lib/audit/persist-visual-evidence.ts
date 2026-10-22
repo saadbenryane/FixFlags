@@ -1,3 +1,4 @@
+import { captureScreenshot } from './browser/capture-screenshot'
 import { executionTransaction } from '@/lib/audit/execution-ownership'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
@@ -111,7 +112,7 @@ export async function tryCaptureVisualEvidenceForAudit(
         })
         try {
           if (needsComparison) {
-            try { frames[device] = Buffer.from(await session.page.screenshot({ type: 'png', fullPage: false })) }
+            try { frames[device] = await captureScreenshot(session.page, { type: 'png', fullPage: false }, captureDeadline) }
             catch (error) { logger.warn('Device comparison frame unavailable', { auditId, device, error }) }
           }
           const captured = await captureVisualEvidence(session.page, auditId, selected, device, metrics, captureDeadline)

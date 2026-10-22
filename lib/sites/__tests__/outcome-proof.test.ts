@@ -8,6 +8,9 @@ describe('Outcome scope proof', () => {
     expect(comparableOutcomeCoverage(scope, { ...scope, bindings: [{ ...scope.bindings[0], config: { expectedSelector: 'body', startUrl: 'https://example.com/' } }] })).toBe(true)
     expect(completeOutcomeEvidence(scope, { reason: 'available' })).toBe(true)
   })
+  it('allows stronger success evidence to recover a genuine failure under the same responsibility', () => {
+    expect(comparableOutcomeCoverage(scope, { ...scope, bindings: scope.bindings.map(binding => ({ ...binding, evaluator: 'checkout-entry-v2' })) })).toBe(true)
+  })
   it('rejects changed, duplicated or unrecorded responsibility', () => {
     for (const changed of [
       { ...scope, environment: 'staging' }, { ...scope, requiredBindings: ['http', 'http'] },

@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useState, type ReactNode } from 'react'
 import { ChevronDown, Link2, Share2, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -85,7 +86,7 @@ function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; check
               : 'No image preview'}
           </div>
         )}
-        <div className="space-y-1 border-t border-border/60 p-3">
+        <div className="space-y-1 p-3">
           <p className="text-3xs uppercase tracking-wide text-muted-foreground">{hostname}</p>
           <p className="line-clamp-2 text-sm font-semibold leading-snug">
             {checkId === 'og-title-missing' ? (
@@ -152,7 +153,7 @@ const PROMPT_COPY_CLASS =
   'h-11 shrink-0 rounded-none border-0 px-3 shadow-none sm:px-4'
 
 const PROMPT_SPLIT_CHEVRON_CLASS =
-  'flex h-11 min-w-11 shrink-0 items-center justify-center border-l border-brand-foreground/25 bg-brand text-brand-foreground transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring disabled:opacity-50'
+  'flex h-11 min-w-11 shrink-0 items-center justify-center bg-brand text-brand-foreground transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring disabled:opacity-50'
 
 export function FlagPromptRow({
   flag,
@@ -248,7 +249,7 @@ export function FlagPromptRow({
     row = (
       <div className="space-y-2">
         <div className="flex items-stretch overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
-          <button
+          <InteractiveButton
             type="button"
             aria-expanded={canViewPrompt ? promptOpen : undefined}
             onClick={() => {
@@ -268,7 +269,7 @@ export function FlagPromptRow({
               )}
               aria-hidden
             />
-          </button>
+          </InteractiveButton>
           <div className="flex shrink-0 items-stretch">
             <PromptCopyButton
               prompt={aiLocked ? '' : flag.copyFixPrompt || flag.fixPrompt}

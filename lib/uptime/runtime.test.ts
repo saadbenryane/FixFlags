@@ -1,14 +1,37 @@
 vi.mock('@/lib/queue/worker-heartbeat', () => ({ touchWorkerHeartbeat: vi.fn().mockResolvedValue(undefined) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ close: vi.fn(), schedule: vi.fn(), alerts: vi.fn(), retention: vi.fn() }))
+const mocks = vi.hoisted(() => ({ close: vi.fn(), schedule: vi.fn(), initialize: vi.fn(), alerts: vi.fn(), retention: vi.fn() }))
 vi.mock('./queue', () => ({ startUptimeWorker: () => ({ close: mocks.close }) }))
-vi.mock('./service', () => ({ executeUptimeProbe: vi.fn(), scheduleUptimeProbes: mocks.schedule, retainUptimeHistory: mocks.retention }))
+vi.mock('./service', () => ({ executeUptimeProbe: vi.fn(), dispatchDueUptimeProbes: mocks.schedule,
+  initializeUptimeMonitors: mocks.initialize, retainUptimeHistory: mocks.retention }))
 vi.mock('./alerts', () => ({ deliverUptimeNotifications: mocks.alerts }))
 import { startUptimeRuntime } from './runtime'
 import { touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
-beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); mocks.close.mockResolvedValue(undefined); mocks.schedule.mockResolvedValue(undefined); mocks.alerts.mockResolvedValue(undefined); mocks.retention.mockResolvedValue(undefined) })
+beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); mocks.close.mockResolvedValue(undefined); mocks.initialize.mockResolvedValue(undefined); mocks.schedule.mockResolvedValue(undefined); mocks.alerts.mockResolvedValue(undefined); mocks.retention.mockResolvedValue(undefined) })
 afterEach(() => vi.useRealTimers())
 describe('independent Uptime worker maintenance', () => {
+  it('keeps dispatch and alerts running while monitor setup is slow without overlapping setup', async () => {
+    let finish!: () => void
+    mocks.initialize.mockReturnValue(new Promise<void>(resolve => { finish = resolve }))
+    const runtime = startUptimeRuntime()
+    try {
+      await vi.advanceTimersByTimeAsync(301_000)
+      expect(mocks.initialize).toHaveBeenCalledOnce()
+      expect(mocks.schedule).toHaveBeenCalledTimes(11)
+      expect(mocks.alerts).toHaveBeenCalledTimes(11)
+      expect(mocks.retention).toHaveBeenCalledOnce()
+    } finally { finish(); await runtime.close() }
+  })
+  it('retries failed monitor setup without stopping due probes or alerts', async () => {
+    mocks.initialize.mockRejectedValue(new Error('Monitor setup unavailable'))
+    const runtime = startUptimeRuntime()
+    try {
+      await vi.advanceTimersByTimeAsync(61_000)
+      expect(mocks.initialize).toHaveBeenCalledTimes(3)
+      expect(mocks.schedule).toHaveBeenCalledTimes(3)
+      expect(mocks.alerts).toHaveBeenCalledTimes(3)
+    } finally { await runtime.close() }
+  })
   it('keeps dispatching probes while notification delivery is slow without overlapping deliveries', async () => {
     let finishDelivery!: () => void
     mocks.alerts.mockReturnValue(new Promise<void>(resolve => { finishDelivery = resolve }))
@@ -69,13 +92,13 @@ describe('independent Uptime worker maintenance', () => {
     expect(mocks.alerts).not.toHaveBeenCalled()
     expect(mocks.retention).not.toHaveBeenCalled()
   })
-  it('stops intake immediately and waits for both the active sweep and queue drain', async () => {
+  it.each(['schedule', 'initialize'] as const)('stops intake immediately and waits for active %s maintenance and queue drain', async lane => {
     let resolve!: () => void, drain!: () => void
     mocks.close.mockReturnValue(new Promise<void>(done => { drain = done }))
-    mocks.schedule.mockReturnValue(new Promise<void>(done => { resolve = done }))
+    mocks[lane].mockReturnValue(new Promise<void>(done => { resolve = done }))
     const runtime = startUptimeRuntime()
     await vi.advanceTimersByTimeAsync(61_000)
-    expect(mocks.schedule).toHaveBeenCalledOnce()
+    expect(mocks[lane]).toHaveBeenCalledOnce()
     const closing = runtime.close()
     expect(mocks.close).toHaveBeenCalledOnce()
     let settled = false
@@ -83,7 +106,7 @@ describe('independent Uptime worker maintenance', () => {
     resolve()
     await vi.advanceTimersByTimeAsync(60_000)
     expect(settled).toBe(false)
-    expect(mocks.schedule).toHaveBeenCalledOnce()
+    expect(mocks[lane]).toHaveBeenCalledOnce()
     drain(); await closing
     expect(settled).toBe(true)
   })

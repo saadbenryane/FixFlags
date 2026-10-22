@@ -25,6 +25,31 @@ describe('continuing Site value',()=>{
       recordedFixAttempts:1,independentlyImproved:1,completedMonitoringAfterImprovement:1,ownerRequestedFollowup:1}})
     expect(JSON.stringify(report)).not.toContain('private-')
   })
+  it('preserves the seven-day default and counts later activity only in a mature 28-day cohort',()=>{
+    const input=fixture();input.now=at(40);input.cycles=[]
+    input.audits.push(audit('late',20));input.runs=[run('late',20)]
+    expect(calculateSiteValueCohort(input)).toMatchObject({followupDays:7,counts:{sites:1,completedScheduledChecks:0}})
+    expect(calculateSiteValueCohort({...input,followupDays:7})).toEqual(calculateSiteValueCohort(input))
+    expect(calculateSiteValueCohort({...input,followupDays:28})).toMatchObject({followupDays:28,counts:{sites:1,completedScheduledChecks:1}})
+  })
+  it('excludes immature 28-day Sites before counts and shares, including the maturity boundary',()=>{
+    const input=fixture();input.now=at(28.99)
+    const immature=calculateSiteValueCohort({...input,followupDays:28})
+    expect(immature).toMatchObject({counts:{sites:0,completedScheduledChecks:0,independentlyImproved:0},coverage:{firstRecordedClaims:1,immatureSites:1}})
+    expect(immature.observedSharesPct.completedScheduledChecks).toBeNull()
+    input.now=at(29)
+    expect(calculateSiteValueCohort({...input,followupDays:28})).toMatchObject({counts:{sites:1,independentlyImproved:1},coverage:{immatureSites:0}})
+  })
+  it('keeps 28-day event boundaries and owner evidence checks',()=>{
+    const input=fixture();input.now=at(40);input.cycles=[]
+    input.audits.push(audit('late',29));input.runs=[run('late',29)]
+    expect(calculateSiteValueCohort({...input,followupDays:28})).toMatchObject({status:'partial',counts:{completedScheduledChecks:0},coverage:{rejectedRuns:1}})
+    input.runs=[run('later',2)];input.sites[0].userId='other'
+    expect(calculateSiteValueCohort({...input,followupDays:28})).toMatchObject({status:'partial',counts:{completedScheduledChecks:0},coverage:{unavailableOwnerLinks:1}})
+  })
+  it('refuses unsupported follow-up durations instead of silently changing denominators',()=>{
+    expect(()=>calculateSiteValueCohort({...fixture(),followupDays:14 as 7})).toThrow('Invalid Site follow-up duration')
+  })
   it('does not treat another scheduled check as proof of continuing recovery or a human return',()=>{
     const input=fixture();input.runs=input.runs.filter(run=>run.source==='WATCH')
     expect(calculateSiteValueCohort(input).counts).toMatchObject({completedMonitoringAfterImprovement:1,ownerRequestedFollowup:0})

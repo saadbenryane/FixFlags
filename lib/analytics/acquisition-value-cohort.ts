@@ -1,6 +1,7 @@
+import { analysisCompletionAuditId } from './analysis-completion'
+
 export const ACQUISITION_FOLLOWUP_DAYS = 7
 const START_PREFIX = 'analyze_started:'
-const RESULT_PREFIXES = ['analysis_completed:', 'first_useful_result:']
 const DAY = 86_400_000
 const SURFACES = new Set(['HOMEPAGE', 'TOOL_PAGE', 'ISSUE_PAGE', 'BENCHMARK_PAGE', 'REPORT', 'API', 'MCP', 'DASHBOARD', 'UNKNOWN'])
 
@@ -33,10 +34,10 @@ export function anonymousAcquisitionAuditId(start: AcquisitionStart): string | n
 }
 
 type Stages = {
-  starts: number; usefulResultReceipts: number; claimReceipts: number;
+  starts: number; analysisCompletionReceipts: number; claimReceipts: number;
   initialIssueCycles: number; recordedFixAttempts: number; issuedVerificationResults: number; independentlyImproved: number
 }
-const stages = (): Stages => ({ starts: 0, usefulResultReceipts: 0, claimReceipts: 0,
+const stages = (): Stages => ({ starts: 0, analysisCompletionReceipts: 0, claimReceipts: 0,
   initialIssueCycles: 0, recordedFixAttempts: 0, issuedVerificationResults: 0, independentlyImproved: 0 })
 const validDate = (date: Date) => Number.isFinite(date.getTime())
 const within = (date: Date, start: Date, end: Date) => validDate(date) && date >= start && date <= end
@@ -79,9 +80,8 @@ export function calculateAcquisitionValueCohort(input: {
   const audits = new Map(input.audits.map((audit) => [audit.id, audit]))
   const resultsByAudit = new Map<string, AcquisitionResult[]>()
   for (const result of input.results) {
-    const prefix = RESULT_PREFIXES.find(value => result.idempotencyKey.startsWith(value))
-    if (!prefix) continue
-    const id = result.idempotencyKey.slice(prefix.length)
+    const id = analysisCompletionAuditId(result.idempotencyKey)
+    if (!id) continue
     group(resultsByAudit, id, result)
   }
   const claimsByProject = new Map<string | null, AcquisitionClaim[]>()
@@ -110,7 +110,7 @@ export function calculateAcquisitionValueCohort(input: {
     if (!audit) { coverage.missingSourceAudits++; continue }
     if (!validDate(audit.createdAt) || audit.createdAt > start.createdAt) { coverage.invalidSourceDates++; continue }
     const mark = (key: Exclude<keyof Stages, 'starts'>) => { row[key]++; total[key]++ }
-    if (resultsByAudit.get(auditId)?.some((result) => within(result.createdAt, audit.createdAt, end))) mark('usefulResultReceipts')
+    if (resultsByAudit.get(auditId)?.some((result) => within(result.createdAt, audit.createdAt, end))) mark('analysisCompletionReceipts')
     const project = audit.project
     const owned = project && !project.deletedAt && project.id === audit.projectId && audit.userId === project.userId
     if (!owned) {
@@ -146,15 +146,21 @@ export function calculateAcquisitionValueCohort(input: {
   const partial = coverage.missingSourceAudits > 0 || coverage.invalidSourceDates > 0 ||
     coverage.unavailableOwnerLinks > 0 || coverage.invalidCycleLineage > 0 || coverage.rejectedVerificationReceipts > 0
   const claimPartial = coverage.currentlyOwnedWithoutClaimReceipt > 0
-  const summary = (value: Stages) => ({ ...value, observedSharesPct: Object.fromEntries(
-    Object.entries(value).filter(([key]) => key !== 'starts').map(([key, count]) =>
-      [key, !partial && value.starts > 0 && (key !== 'claimReceipts' || !claimPartial) ? Math.round(count / value.starts * 10_000) / 100 : null]),
-  ) })
-  return { version: 1, status: partial || claimPartial ? 'partial' : 'available', unit: 'anonymous-initial-analysis',
+  const summary = (value: Stages) => {
+    const shares = Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'starts').map(([key, count]) =>
+      [key, !partial && value.starts > 0 && (key !== 'claimReceipts' || !claimPartial) ? Math.round(count / value.starts * 10_000) / 100 : null]))
+    const observedSharesPct: Record<string, number | null> = { ...shares, usefulResultReceipts: shares.analysisCompletionReceipts }
+    return { ...value,
+      // Retain the old JSON field for compatibility. It has always counted completion receipts.
+      usefulResultReceipts: value.analysisCompletionReceipts,
+      observedSharesPct }
+  }
+  return { version: 1, customerUsefulnessAssessed: false, status: partial || claimPartial ? 'partial' : 'available', unit: 'anonymous-initial-analysis',
     cohortStart: input.since.toISOString(), asOf: input.now.toISOString(), followupDays: ACQUISITION_FOLLOWUP_DAYS,
     matureCohort: summary(total), surfaces: [...surfaces].sort(([a], [b]) => a.localeCompare(b)).map(([surface, value]) => ({ surface, ...summary(value) })),
     coverage, databaseWritten: false,
     limitations: [
+      'Analysis-completion receipts measure finished processing, not customer usefulness. usefulResultReceipts is a compatibility alias for analysisCompletionReceipts. Owner feedback, published repairs and verified recovery require their own evidence.',
       'Cohort membership uses recorded anonymous start time. Only starts with a complete seven-day observation period enter stage counts.',
       'Counts are initial analyses, not visitors, customers or unique Sites. Stages are independent evidence counts, not a sequential funnel.',
       'Entry surfaces are declared or inferred. No external acquisition channel, causal attribution or revenue is inferred.',

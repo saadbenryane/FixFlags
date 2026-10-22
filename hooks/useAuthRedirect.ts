@@ -73,7 +73,7 @@ export function useAuthRedirect() {
     () => buildPostLoginQuery(next, plan, from),
     [next, plan, from]
   )
-  // Email flows push here after auth so /post-login is the single post-auth
+  // Email flows replace the auth screen here so /post-login is the single post-auth
   // path: it claims anonymous audits, then runs checkout/next navigation.
   // Navigating straight to `next` skips the claim and leaves reports locked.
   const postLoginHref = oauthCallbackURL
@@ -108,7 +108,7 @@ export function useAuthRedirect() {
     // `/post-login` has already claimed any anonymous Review. Honor the user's
     // explicit destination next; ordinary authentication lands on the URL-first
     // dashboard instead of inserting a pricing decision into the product loop.
-    router.push(postAuthDestination(next))
+    router.replace(postAuthDestination(next))
   }, [next, plan, router])
 
   function signInHref(extraNext?: string): Route {

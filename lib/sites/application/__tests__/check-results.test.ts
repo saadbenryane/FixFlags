@@ -72,7 +72,7 @@ describe('Site result access and provenance', () => {
     const current = await loadSiteCheckResultPage({ projectId: 'site-1' } as SiteRecord, 'latest')
     expect(current.results).toMatchObject([{ status: 'failed', historical: false }])
     expect(current.nextCursor).not.toBeNull()
-    findMany.mockResolvedValueOnce([{ ...base, id: 'old', auditId: 'prior', status: 'COMPLETED' }])
+    findMany.mockResolvedValueOnce([{ ...base, id: 'old', auditId: 'prior', status: 'COMPLETED', detail: { passed: true } }])
     const history = await loadSiteCheckResultPage({ projectId: 'site-1' } as SiteRecord, 'latest', current.nextCursor!)
     expect(history.results).toMatchObject([{ status: 'completed', historical: true }])
   })

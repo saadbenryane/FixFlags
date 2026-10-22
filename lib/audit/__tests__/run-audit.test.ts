@@ -55,7 +55,8 @@ vi.mock('@/lib/audit/search/google', () => ({
 vi.mock('@/lib/audit/search/workflow', () => ({
   runCheckedPageSearch: vi.fn(async () => []),
 }))
-vi.mock('@/lib/audit/open-check', () => ({
+vi.mock('@/lib/audit/open-check', async original => ({
+  ...await original<typeof import('@/lib/audit/open-check')>(),
   DEFAULT_OPEN_CHECK_CEILING: 80,
   openCheckDestinations: vi.fn(async () => ({ results: [], truncated: false })),
   deadDestinationFlags: vi.fn(() => []),
@@ -148,6 +149,17 @@ describe('runAudit orchestrator', () => {
       return true
     })
     ;(tryPartialFinalize as Mock).mockResolvedValue(false)
+  })
+
+  it('executes every admitted navigation once across compatibility discovery passes', async () => {
+    const peer = 'https://example.com/pricing', affected = peer + '/'
+    prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ url: peer, reviewDepth: 3, executionSpec: {
+      version: 1, scope: 'SITE', targetUrl: peer, environment: 'production', monitoringPages: [peer, affected],
+      checks: {}, outcomes: [], verificationTarget: null,
+    } }))
+    ;(runPage as Mock).mockImplementation(async (_context, input: { url: string }) => makePageRun({ url: input.url }))
+    await runAudit('audit-1')
+    expect((runPage as Mock).mock.calls.map(([, input]) => input.url)).toEqual([peer, affected])
   })
 
   it('resumes durable projection before returning an already-completed audit', async () => {

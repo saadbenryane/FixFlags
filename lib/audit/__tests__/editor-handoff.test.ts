@@ -10,7 +10,7 @@ import {
 } from '@/lib/audit/editor-handoff'
 import { buildPlanModePrompt } from '@/lib/audit/priority-flags'
 import type { RankableFlag } from '@/lib/audit/flag-types'
-import { mergeSupportingObservations, observationsForFlag, publicSupportingObservations } from '../flag-observations'
+import { hasUnreadableStoredSupportingObservations, mergeSupportingObservations, observationsForFlag, publicSupportingObservations } from '../flag-observations'
 
 const FINDING_LEAD =
   'This is a FixFlags finding from the live page, not a guess about your repo.'
@@ -43,8 +43,16 @@ describe('editor-handoff', () => {
       'Recorded desktop headline observation.', 'Recorded mobile headline observation.', 'Version: 2', '2026-10-16T12:00:00.000Z']) assert.ok(prompt.includes(value), value)
     assert.match(prompt, /Recheck every recorded supporting observation/)
     assert.doesNotMatch(prompt, /unrelated-capture|private-audit|private-task|private-comparison-context/)
-    assert.equal(buildEditorHandoffPrompt({ ...grouped, supportingObservations: publicSupportingObservations(supportingObservations) }, context), prompt)
+    const redacted = { ...grouped, supportingObservations: publicSupportingObservations(supportingObservations) }
+    assert.equal(buildEditorHandoffPrompt(redacted, context), '')
+    const projected = { ...redacted, supportingEvidenceUnreadable: hasUnreadableStoredSupportingObservations(supportingObservations) }
+    assert.equal(buildEditorHandoffPrompt(projected, context), prompt)
+    assert.equal(buildEditorHandoffPrompt({ ...projected, supportingEvidenceUnreadable: true }, context), '')
+    assert.equal(buildEditorHandoffPrompt({ ...projected,
+      supportingObservations: [{ ...redacted.supportingObservations[0], provenance: { auditId: 'private' } }],
+    }, context), '')
     const bundle = buildPlanModePrompt([grouped], context)
+    assert.equal(buildPlanModePrompt([projected], context), bundle)
     assert.match(bundle, /Recorded desktop headline observation/)
     assert.match(bundle, /Recorded mobile headline observation/)
     assert.doesNotMatch(bundle, /private-comparison-context/)
@@ -76,12 +84,12 @@ describe('editor-handoff', () => {
         severity: 'CRITICAL',
         problem: 'CTA below fold',
         evidence: 'On mobile (375×812), the primary CTA starts below the first screen.',
-        fix: 'Keep the primary CTA visible in the first 812px at 375px width.',
+        fix: 'Review the recorded mobile action. If its intended task requires first-screen access, adjust its placement.',
       }),
       { url: 'https://acme.com/' }
     )
     assert.match(prompt, /Viewport: mobile 375x812/)
-    assert.match(prompt, /Section: Primary call-to-action button/)
+    assert.match(prompt, /Section: Recorded call-to-action control/)
     assert.doesNotMatch(prompt, /^Current:/m)
     assert.match(prompt, /layout that renders on mobile/)
     assert.match(prompt, /Do not restyle desktop/)

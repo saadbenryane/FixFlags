@@ -20,7 +20,7 @@ Save your website to your account to return to its results. In FixFlags, this sa
 - [Getting started](/docs/getting-started): run your first check and save your website.
 - [Understand your results](/docs/site-care): read Flags, see what was checked, and follow changes over time.
 - [Fix with your AI](/docs/fix-with-ai): copy a suggested fix into the tool you already use.
-- [Integration guides](/docs/integrations): connect Shopify, Google Analytics, or Google Search Console.
+- [Integration guides](/docs/integrations): manage GitHub account authorization and understand planned connections.
 <!-- generated:mcp-guide-link -->
 - [Troubleshooting](/docs/troubleshooting): get help when a check or connection does not finish.
 

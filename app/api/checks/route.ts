@@ -8,7 +8,7 @@ import {
   ParentAuditError,
 } from '@/lib/audit/create-audit'
 import { checkAndPlan } from '@/lib/audit/task-contracts'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
 import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
 import { prisma } from '@/lib/db'
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       return apiError(parsed.error.issues[0]?.message ?? 'Invalid URL', 400)
     }
 
-    const urlResult = normalizeAuditUrl(parsed.data.url)
+    const urlResult = normalizeAuditNavigationUrl(parsed.data.url)
     if (!urlResult.ok) {
       return apiError(urlResult.error, 400)
     }

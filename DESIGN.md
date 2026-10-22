@@ -25,7 +25,7 @@ Use existing semantic tokens before adding values. Add a shared token for a repe
 
 ## Identity and typography
 
-- Keep the official folded-F mark. `components/brand/Logo.tsx` combines transparent runtime PNGs with the Inter Tight wordmark, with Fix heavier than Flags. Do not invent replacement SVG geometry.
+- Keep the official folded-F mark. `public/brand/logo-mark.svg` is the cleaned trace of the owner silhouette, with flat orange fill and no outline. `components/brand/Logo.tsx` combines it with the Inter Tight wordmark, with Fix heavier than Flags. Preserve the silhouette and proportions.
 - Original owner sources and asset provenance live in [the reference index](docs/brand/reference/README.md). Use `npm run brand:icons` to derive runtime logo sizes.
 - Inter is the product UI and body face. Inter Tight is used for marketing display, prices, wordmarks and editorial Help/Docs headings. JetBrains Mono is used for code, IDs and numeric evidence, not marketing display.
 - Preserve the existing responsive heading sizes and weights. Use `text-balance` for headings, `text-pretty` for body, and `tabular-nums` for comparable numbers.
@@ -74,6 +74,8 @@ Marketing overview pages share `MarketingPageHeader`: centered Inter Tight displ
 - Preserve rest, hover, keyboard focus, active, disabled and loading states. Keep Button loading/slot behavior and existing dialog focus trapping, Escape dismissal and focus restoration.
 - Returning from a Flag to its page list restores the prior scroll position and result focus. Switching views from a disclosure keeps keyboard focus in the destination view.
 - Use 44px hit targets for shared controls. Keep icon actions accessible by name and preserve touch access to actions otherwise revealed on hover.
+- Preserve control size during opening and pressed feedback. Interactive overlays may fade or translate without shrinking their hit targets.
+- JavaScript controls use the shared readiness primitives and remain disabled and busy until their handlers are ready. Native server form controls without client callbacks and real links retain their browser behavior.
 - Preserve semantic heading order, form labels, status announcements and Radix screen-reader behavior. Use the existing EmptyState and RouteErrorPage primitives.
 - Use lucide-react for interface icons and approved assets for brand and third-party marks. Decorative media must not become fabricated customer evidence.
 - Run the focused component checks and existing brand/UI guards for changed surfaces. Follow [AGENTS.md](AGENTS.md) for validation scope; browser and E2E tests require an explicit request.

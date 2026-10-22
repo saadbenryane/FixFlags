@@ -148,7 +148,6 @@ export async function POST(req: NextRequest) {
       await notifyAdmin(`
         <p><strong>${to ?? 'unknown'}</strong> redeemed an invite for <strong>${planLabel}</strong>.</p>
         <p>Batch: ${batchAdminLabel(redeemed.batch)}. Access granted.</p>
-        <hr style="border: none; border-top: 1px solid ${BRAND_HEX.border}; margin: 16px 0;" />
         <p style="font-size: 13px; color: ${BRAND_HEX.mutedForeground};">
           <a href="${SITE_URL}/admin/waitlist">Open waitlist admin</a>
         </p>
@@ -182,7 +181,6 @@ export async function POST(req: NextRequest) {
         ${source ? `<p>Source: ${source}</p>` : ''}
         ${campaign ? `<p>Campaign: ${campaign}</p>` : ''}
         <p>They will be attached to an account on signup.</p>
-        <hr style="border: none; border-top: 1px solid ${BRAND_HEX.border}; margin: 16px 0;" />
         <p style="font-size: 13px; color: ${BRAND_HEX.mutedForeground};">
           <a href="${SITE_URL}/admin/waitlist">Open waitlist admin</a>
         </p>
@@ -221,7 +219,6 @@ export async function POST(req: NextRequest) {
       ${campaign ? `<p>Campaign: ${campaign}</p>` : ''}
       <p>Discount tier: ${tierAdminLabel(entry.discountTier as DiscountTier | null)}</p>
       <p>Batch: ${batchAdminLabel(entry.batch)}</p>
-      <hr style="border: none; border-top: 1px solid ${BRAND_HEX.border}; margin: 16px 0;" />
       <p style="font-size: 13px; color: ${BRAND_HEX.mutedForeground};">
         <a href="${SITE_URL}/admin/waitlist">Open waitlist admin</a>
       </p>

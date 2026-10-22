@@ -5,7 +5,7 @@ import { Info, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
-import { useSiteResource } from '@/hooks/useSiteResource'
+import { useSharedSiteResource } from '@/components/sites/SiteResourceBoundary'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { ExecutionProgress } from '@/lib/sites/application/execution-progress'
 import type { SiteActivity } from '@/lib/sites/activity'
@@ -17,8 +17,8 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import styles from './AnalysisDetails.module.css'
 
-export function LiveSiteAnalysisDetails({ siteId, initial }: { siteId: string; initial: SiteHomeView }) {
-  const { view, disconnected } = useSiteResource(siteId, initial)
+export function LiveSiteAnalysisDetails({ siteId }: { siteId: string }) {
+  const { view, disconnected } = useSharedSiteResource(siteId)
   return <SiteAnalysisDetails view={view} disconnected={disconnected} />
 }
 
@@ -56,8 +56,7 @@ export function AnalysisDetails({ host, statusLabel, active, disconnected, activ
         <Info className="h-4 w-4" aria-hidden />
       </Button>
     </div>
-    <ResponsiveDepth open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-      <DialogTitle className="break-all pr-8">{host}</DialogTitle>
+    <ResponsiveDepth header={<DialogTitle className="break-all">{host}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
       <DialogDescription>{statusLabel}</DialogDescription>
       <p className={styles.currentActivity}>{disconnected ? SITE_ACTION_COPY.updatesDisconnected : task ? taskLabel(task) : active ? copy.live ?? SITE_BOARD_COPY.activityDescription : activity?.label ?? SITE_BOARD_COPY.activityDescription}</p>
       {progress ? <div className="space-y-2 text-sm text-muted-foreground">

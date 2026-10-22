@@ -1,8 +1,9 @@
 import type { RuntimeHeadMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import { safeFetchDocument } from '../url'
-import { isBotInterstitialDocument } from '../browser/page-capture'
+import { safeFetchResource } from '../url'
+import { previewImageResponse, PREVIEW_IMAGE_MAX_BYTES, type PreviewImageResponse } from './preview-image-response'
+import { QUALITATIVE_GUIDANCE_COPY as C } from '@/lib/marketing/copy/qualitative-guidance'
 import { destinationContext, displayDestination, destinationScope, DESTINATION_VERIFICATION_RULE, type DestinationCheckOptions } from './destination-evidence'
 
 export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
@@ -107,7 +108,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'IMPORTANT',
       problem: 'No image is specified for link previews',
       evidence: 'No <meta property="og:image"> tag found in <head>. A sharing service may choose a fallback; its rendered preview was not tested.',
-      fix: '1. Choose an image that represents this page (1200×630px is a common size)\n2. Add <meta property="og:image" content="https://yourdomain.com/og.png"> to the page head, or set the equivalent field in your framework\n3. Confirm the image loads publicly and check the preview in the sharing services you use',
+      fix: C.previewImage,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -121,7 +122,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'POLISH',
       problem: 'og:title is missing',
       evidence: 'No <meta property="og:title"> tag found',
-      fix: '1. Add <meta property="og:title" content="..."> to the page head\n2. Set it to match the page title (50-60 characters)\n3. Verify it renders correctly in the Twitter Card validator',
+      fix: C.previewTitle,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -135,7 +136,7 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       severity: 'POLISH',
       problem: 'og:description is missing',
       evidence: 'No <meta property="og:description"> tag found',
-      fix: '1. Add <meta property="og:description"> to the page head\n2. Set it to match the meta description\n3. Keep it under 200 characters for clean link previews',
+      fix: C.previewDescription,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -202,9 +203,9 @@ export function runMetadataChecks(meta: RuntimeHeadMetadata, record?: (assertion
       rubric: 'REACH',
       impactTag: 'SEO',
       severity: 'POLISH',
-      problem: 'Favicon is missing',
+      problem: 'No favicon link is declared',
       evidence: 'No link rel="icon" or apple-touch-icon found in <head>',
-      fix: '1. Generate a 32x32 PNG or ICO favicon\n2. Add <link rel="icon" href="/favicon.ico"> to <head>\n3. Add <link rel="apple-touch-icon" href="/apple-touch-icon.png"> for iOS',
+      fix: C.favicon,
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -218,7 +219,7 @@ export async function runOgImageUrlCheck(
   meta: { ogImage?: string | null; linkBaseUrl?: string },
   options: DestinationCheckOptions = {},
 ): Promise<DeterministicFlag[]> {
-  const limitation = 'A bounded public GET sample establishes response status and declared image content type. Full image decoding, rendered previews and platform caches were not evaluated.'
+  const limitation = 'A bounded public GET observes response facts and first-frame PNG, JPEG, WebP or GIF decoding within 5MB, 16 million pixels and the execution budget. Unsupported formats and incomplete decoding remain unknown. Sharing-platform rendering, later animation frames and caches were not evaluated.'
   if (meta.ogImage === undefined) {
     options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
       expected: 'The declared image destination returns a successful GET response with image content type and content',
@@ -231,34 +232,47 @@ export async function runOgImageUrlCheck(
   let invalid = false
   try { imageUrl = new URL(meta.ogImage, meta.linkBaseUrl ?? pageUrl).toString() }
   catch { imageUrl = meta.ogImage; invalid = true }
-  let complete = invalid, passed = false, broken = invalid
+  let complete = invalid, responseComplete = invalid, passed = false, broken = invalid, imageEligible = false
+  let decoding: PreviewImageResponse['decoding']
   let observed = 'The declared image URL could not be resolved.'
   if (!invalid) {
     try {
-      const response = await safeFetchDocument(imageUrl, { timeoutMs: 5000, deadline: options.deadline,
-        maxBytes: 64_000, accept: 'image/*' })
-      const status = response.statusCode, contentType = response.headers['content-type']?.toLowerCase() ?? ''
-      const restricted = status === 401 || status === 403 || status === 429 ||
-        isBotInterstitialDocument({ body: response.body, headers: response.headers, status })
-      passed = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.body.length > 0
+      const init = { timeoutMs: 5000, deadline: options.deadline, maxBytes: PREVIEW_IMAGE_MAX_BYTES, accept: 'image/*' }
+      const response = options.observeImage ? await options.observeImage(imageUrl, init)
+        : await previewImageResponse(await (options.fetchDocument ?? safeFetchResource)(imageUrl, init), options.deadline)
+      const status = response.statusCode, contentType = response.contentType, restricted = response.restriction !== null
+      imageEligible = !restricted && status >= 200 && status < 300 && /^image\//.test(contentType) && response.hasContent
+      decoding = response.decoding
+      passed = imageEligible && decoding?.state !== 'invalid'
       broken = !restricted && (status >= 400 || status >= 200 && status < 300 &&
-        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && response.body.length === 0))
-      complete = passed || broken
+        (Boolean(contentType) && !/^image\//.test(contentType) || response.complete && !response.hasContent)) || imageEligible && decoding?.state === 'invalid'
+      responseComplete = passed || broken
+      complete = responseComplete && (!imageEligible || decoding?.state === 'decoded' || decoding?.state === 'invalid')
       observed = `GET HTTP ${status}${contentType ? `, ${contentType.slice(0, 120)}` : ', no content type'}. ${restricted ? 'Access to the normal image response was not established. ' : ''}${limitation}`
     } catch { observed = 'No public image response was obtained. Network errors and scanner refusals remain unknown.' }
   }
   const context = destinationContext(pageUrl, imageUrl)
   options.record?.({ key: 'preview-image-response', name: 'Link preview image response',
-    expected: 'The declared image destination returns a successful GET response with image content type and content',
-    observed, passed, complete, context })
+    expected: 'The declared image destination returns a successful GET response with image content type, content and no observed decoding failure',
+    observed, passed, complete: responseComplete, context })
+  const decodingContext = destinationContext(pageUrl, imageUrl, 'preview-image-decoding-v1')
+  const decodingObserved = decoding?.state === 'decoded'
+    ? `The ${decoding.format} first frame decoded from the collected bytes (${decoding.width} × ${decoding.height}).`
+    : decoding?.state === 'invalid' ? `The collected ${decoding.format} bytes could not be decoded.`
+      : `Image decoding remains unknown (${decoding?.reason ?? 'byte_evidence_unavailable'}).`
+  if (imageEligible) options.record?.({ key: 'preview-image-decoding', name: 'Link preview image decoding',
+    expected: 'The original image destination supplies decodable pixels under the recorded raster policy',
+    observed: decodingObserved, passed: decoding?.state === 'decoded',
+    complete: decoding?.state === 'decoded' || decoding?.state === 'invalid', context: decodingContext })
   destinationScope(options, complete, limitation)
   if (!broken) return []
+  const decodingFailed = imageEligible && decoding?.state === 'invalid'
   return [{
     checkId: 'og-image-broken', rubric: 'REACH', impactTag: 'SHARING', severity: 'IMPORTANT',
-    problem: invalid ? 'og:image URL is invalid' : 'og:image URL does not load',
-    evidence: `${displayDestination(imageUrl)}: ${observed}`,
+    problem: invalid ? 'og:image URL is invalid' : decodingFailed ? 'Link preview image data could not be decoded' : 'og:image URL does not load',
+    evidence: `${displayDestination(imageUrl)}: ${decodingFailed ? decodingObserved + ' ' : ''}${observed}`,
     fix: '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
     confidence: 1.0, source: 'DETERMINISTIC', verificationRule: DESTINATION_VERIFICATION_RULE,
-    evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Link preview image response', context }],
+    evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: 'Link preview image response', context: decodingFailed ? decodingContext : context }],
   }]
 }

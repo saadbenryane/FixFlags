@@ -3,6 +3,7 @@ import type { SiteOutcomeView, OutcomeViewSource } from './outcome-view'
 import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
 import { bindingEvidenceIsComparable, type CurrentBindingRevision } from '../domain/assessment-comparability'
 import { readExecutionSpec } from '../domain/execution-spec'
+import { recordedBindingEvaluator } from '../domain/outcome-evaluation'
 import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, currentOutcomeState,
   customerBindingResult, outcomeStatusLabel, staleOutcomeRecovery } from '../outcome-state'
 
@@ -62,9 +63,12 @@ export function projectOutcomeDetail({ row, view, revisions, executions, lastSuc
     const spec = readExecutionSpec(execution.audit?.executionSpec)
     if (spec && spec.environment !== row.environment) continue
     const bindings = spec?.outcomes.find(outcome => outcome.id === row.id)?.bindings
-    const coverage = bindings?.some(binding => binding.key === current.key) ? { environment: spec!.environment, requiredBindings: [], bindings }
+    const evaluator = recordedBindingEvaluator(execution.detail)
+    if (execution.disposition === 'SUCCEEDED' && current.evaluator !== evaluator) continue
+    const coverage = bindings?.some(binding => binding.key === current.key) ? { environment: spec!.environment, requiredBindings: [],
+      bindings: bindings.map(binding => binding.key === current.key && evaluator ? { ...binding, evaluator } : binding) }
       : row.assessments.find(assessment => assessment.auditId === execution.auditId)?.coverage
-    if (bindingEvidenceIsComparable(coverage, current, row.environment) && !latestByKey.has(execution.bindingKey))
+    if (bindingEvidenceIsComparable(coverage, current, row.environment, execution.disposition === 'SUCCEEDED') && !latestByKey.has(execution.bindingKey))
       latestByKey.set(execution.bindingKey, execution)
   }
   const timeline = [

@@ -99,7 +99,7 @@ export function powerToolVisibilityFailures({ proxySource, discoverySources, mcp
     failures.push('Parked repository APIs must return the same not-found boundary as other power tools')
   }
   for (const [file, source] of Object.entries(discoverySources)) {
-    if (DISCOVERY_PATH_PATTERN.test(source)) {
+    if (DISCOVERY_PATH_PATTERN.test(source) || /\/docs\/fix-with-ai#what-is-mcp|Learn about MCP|Agent access/.test(source)) {
       failures.push(`${file} links to a parked power-tool surface`)
     }
     if (/(?:Repository scan|Deployment webhook)/i.test(source)) {

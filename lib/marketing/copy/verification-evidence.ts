@@ -17,6 +17,22 @@ export const EDITOR_EVIDENCE_COPY = {
 } as const
 
 export const JOURNEY_ROUTE_COPY = {
+  plannedTargetNotObserved: 'The planned target could not be matched to a recorded link on this page. This part of the planned journey remains untested.',
+  plannedActionNotSupported: 'This planned action requires a separate supported and authorized check. The walk stopped before attempting it.',
+  controlNotActivated: 'This walk could not activate the recorded control. The continuation remains untested; inspect the retained interaction evidence.',
+  plannedWalkIncomplete: 'The walk reached its observation limit before completing the planned steps. Retained observations remain available; the remaining steps are untested.',
+  destinationHeading: {
+    problem: 'Review the destination H1 and its supporting context',
+    whyItMatters: 'The sampled destination H1 did not meet the headline-length check. Review its surrounding context; visitor understanding was not measured.',
+    fix: '1. Review the recorded H1 and supporting copy alongside the preceding action.\n2. Clarify the heading only where the page purpose and verified content support a change.\n3. Preserve concise headings whose context already explains the intended task.',
+  },
+  signupFields: {
+    problem: 'Review the fields required by this signup form',
+    whyItMatters: 'The recorded form contains more than eight visible fields. This count does not establish which fields are necessary or whether visitors abandon signup.',
+    fix: '1. Review each field against the actual registration requirements.\n2. Remove or defer only fields demonstrated to be unnecessary at this stage.\n3. Preserve required information and protections, then check the authorized registration journey.',
+  },
+  continuationReview: { whyItMatters: 'Review whether the intended task requires another page. The eligible-link check does not establish a blocked task or visitor behavior.' },
+  stepLimitReview: { whyItMatters: 'The walk reached its configured step limit. Review the actual route and task requirements before deciding whether steps are unnecessary.' },
   destinationAction: {
     problem: "Review the destination's primary action",
     evidence: (target: string) => `Recorded at step 2. After opening "${target}", no recognized primary CTA was detected. Other navigation or controls may still be available.`,

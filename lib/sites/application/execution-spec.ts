@@ -4,16 +4,18 @@ import { createHash } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { trackingPageKey } from '@/lib/audit/tracking/identity'
+import { publicPageBehaviors } from '@/lib/audit/progressive/graph'
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { consoleObservationMinimum } from '@/lib/audit/console-evidence'
 import { capturePageKey } from '@/lib/audit/browser/observation-scope'
 import { validateBindingForOutcome } from './binding-config'
 import { canonicalIntent, executionSpecSchema, readExecutionSpec, type ExecutionSpec } from '../domain/execution-spec'
 import type { CategoryArea } from '../domain/execution-spec'
-import { siteWideAnalysisAuditWhere } from './analysis-scope'
+import { analysisEnvironmentWhere, siteWideAnalysisAuditWhere } from './analysis-scope'
 import { SiteRunRefusal } from './run-refusal'
-import { monitoringReviewUrls } from '@/lib/audit/review-depth'
+import { monitoringResponsibility, monitoringBehaviorResponsibility } from './monitoring-responsibility'
 import { readSupportingObservations } from '@/lib/audit/flag-observations'
+import { recordedPageUrls } from '../page-coverage'
 
 type SpecOutcome = { id: string; kind: string; expectation?: string | null; bindingPolicy?: string;
   bindings: Array<{ key: string; version: number; mechanism: string; required: boolean; config: Prisma.JsonValue; scope?: Prisma.JsonValue | null }> }
@@ -22,32 +24,38 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   scope: ExecutionSpec['scope']; categoryArea?: CategoryArea; accountMode?: AccountIntent['mode']; outcomes: SpecOutcome[]; verificationTarget?: ExecutionSpec['verificationTarget'] }): Promise<ExecutionSpec> {
   let category: ExecutionSpec['category']
   let monitoringPages: ExecutionSpec['monitoringPages']
+  let monitoringBehaviors: ExecutionSpec['monitoringBehaviors']
+  let retainedConsoleScopes: ExecutionSpec['consoleObservationScopes']
+  let retainedConsoleMinimum = 0
   let targetUrl = input.targetUrl
-  if (input.scope === 'SITE' && input.projectId) {
-    const source = await prisma.audit.findFirst({ where: { projectId: input.projectId, url: targetUrl, status: 'COMPLETED', ...siteWideAnalysisAuditWhere,
-      AND: [input.environment === 'production' ? { OR: [
-        { executionSpec: { path: ['environment'], equals: input.environment } },
-        { executionSpec: { path: ['environment'], equals: Prisma.AnyNull } },
-      ] } : { executionSpec: { path: ['environment'], equals: input.environment } }] },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { executionSpec: true, pages: {
-        orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 24, select: { url: true } } } })
+  if ((input.scope === 'SITE' && input.projectId) || input.scope === 'CATEGORY') {
+    if (input.scope === 'CATEGORY' && !input.categoryArea) throw new SiteRunRefusal('Select a category to check.', 400)
+    const source = await prisma.audit.findFirst({ where: { projectId: input.projectId,
+      ...(input.scope === 'CATEGORY' ? { status: 'COMPLETED' as const } : {}), ...siteWideAnalysisAuditWhere,
+      AND: [analysisEnvironmentWhere(input.environment)] },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true, url: true, executionSpec: true, pages: {
+        orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 24, select: { url: true } },
+        verifierExecutions: { where: { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 24, select: { targetKey: true, workKind: true, pageUrl: true } } } })
+    if (input.scope === 'CATEGORY') {
+      if (!source) throw new SiteRunRefusal('Run a website check before rechecking a category.', 409)
+      targetUrl = source.url
+    }
     const prior = readExecutionSpec(source?.executionSpec)
-    const retained = prior?.scope === 'SITE' && prior.targetUrl === targetUrl && prior.environment === input.environment ? prior.monitoringPages ?? [] : []
-    if (retained.length || source?.pages?.length) monitoringPages = monitoringReviewUrls(targetUrl, [...retained, ...source?.pages?.map(page => page.url) ?? []])
-  }
-  if (input.scope === 'CATEGORY') {
-    if (!input.categoryArea) throw new SiteRunRefusal('Select a category to check.', 400)
-    const source = await prisma.audit.findFirst({ where: { projectId: input.projectId, status: 'COMPLETED', ...siteWideAnalysisAuditWhere,
-      AND: [input.environment === 'production' ? { OR: [
-        { executionSpec: { path: ['environment'], equals: input.environment } },
-        { executionSpec: { path: ['environment'], equals: Prisma.AnyNull } },
-      ] } : { executionSpec: { path: ['environment'], equals: input.environment } }] },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true, url: true,
-        pages: { orderBy: [{ position: 'asc' }, { id: 'asc' }], take: 24, select: { url: true } } } })
-    if (!source) throw new SiteRunRefusal('Run a website check before rechecking a category.', 409)
-    targetUrl = source.url
-    category = { area: input.categoryArea, sourceAuditId: source.id,
-      pages: [...new Set([targetUrl, ...source.pages.map(page => page.url)])].slice(0, 24) }
+    const compatible = prior?.scope === 'SITE' && prior.targetUrl === source?.url && prior.environment === input.environment
+    if (compatible) {
+      retainedConsoleScopes = prior.consoleObservationScopes
+      retainedConsoleMinimum = prior.consoleObservationMs ?? 0
+    }
+    // The Site can enter at its configured origin after a URL-first analysis
+    // began on another page. Keep that source's admitted responsibility.
+    const recorded = [...(source?.url ? [source.url] : []), ...recordedPageUrls({ executionSpec: compatible ? prior : null,
+      pages: source?.pages ?? [], executions: source?.verifierExecutions })]
+    const pages = await monitoringResponsibility({ projectId: input.projectId, environment: input.environment, targetUrl, recorded })
+    monitoringBehaviors = await monitoringBehaviorResponsibility({ projectId: input.projectId, environment: input.environment, pages,
+      recordedEntries: [...(source?.url ? [source.url] : []), ...(compatible ? prior.monitoringEntryPages ?? [] : [])], recordedBehaviors: compatible ? prior.monitoringBehaviors : undefined })
+    if (input.scope === 'CATEGORY') category = { area: input.categoryArea!, sourceAuditId: source!.id, pages }
+    else if (recorded.length || pages.length > 1) monitoringPages = pages
   }
   const outcomes = input.outcomes.map(outcome => ({ id: outcome.id, kind: outcome.kind,
     expectation: outcome.expectation ?? null, bindingPolicy: outcome.bindingPolicy ?? 'ALL_REQUIRED',
@@ -68,6 +76,9 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
   let verificationScopes: ExecutionSpec['verificationScopes']
   let consoleObservationMs: number | undefined
   let consoleObservationScopes: ExecutionSpec['consoleObservationScopes']
+  const checks = Object.fromEntries(Object.entries(CHECK_REGISTRY)
+    .filter(([id, definition]) => !category || definition.area === category.area || category.area === 'search' && id.startsWith('corridor-og-'))
+    .map(([id, definition]) => [id, definition.version]))
   const diagnosticModule = input.verificationTarget?.kind === 'DIAGNOSTIC' ? CHECK_REGISTRY[input.verificationTarget.checkId.split('::page:')[0]]?.module : null
   if (input.verificationTarget?.kind === 'DIAGNOSTIC') {
     const flags = await prisma.flag.findMany({ where: { auditId: input.verificationTarget.parentAuditId,
@@ -95,32 +106,43 @@ export async function buildExecutionSpec(input: { projectId: string; targetUrl: 
     }
 
   }
-  if (input.scope === 'SITE' || category?.area === 'conversion') {
+  if (input.scope === 'SITE' || category && Object.keys(checks).some(id => CHECK_REGISTRY[id]?.module === 'console')) {
     // Carry recorded error horizons into care runs. A fast, healthy navigation
     // must not silently shorten observation after an earlier delayed failure.
     const flags = await prisma.flag.findMany({ where: { audit: { projectId: input.projectId, status: 'COMPLETED' },
       OR: [{ checkId: { startsWith: 'console-errors-critical' } }, { checkId: { startsWith: 'console-errors-some' } }] },
       orderBy: { createdAt: 'desc' }, take: 100, select: { evidenceTargets: true, pageUrl: true, affectedPaths: true } })
+    // The existing admission snapshot retains responsibility after its original
+    // finding falls outside the bounded recent-history lookup.
     const windows = new Map<string, number>()
+    if (retainedConsoleMinimum) consoleObservationMs = retainedConsoleMinimum
+    for (const scope of retainedConsoleScopes ?? []) {
+      const page = new URL(scope.pageUrl).href
+      windows.set(page, Math.max(2000, scope.minimumMs, retainedConsoleMinimum, windows.get(page) ?? 0))
+    }
     for (const flag of flags) {
       const pages = [flag.pageUrl, ...(Array.isArray(flag.affectedPaths) ? flag.affectedPaths : [])]
       for (const page of pages) if (typeof page === 'string' && URL.canParse(page)) {
         const pageUrl = new URL(page).href
         const minimum = consoleObservationMinimum(flag.evidenceTargets, pageUrl)
-        if (minimum && (windows.has(pageUrl) || windows.size < 100)) windows.set(pageUrl, Math.max(2000, minimum, windows.get(pageUrl) ?? 0))
+        if (minimum && (windows.has(pageUrl) || windows.size < 100)) windows.set(pageUrl, Math.max(2000, minimum, retainedConsoleMinimum, windows.get(pageUrl) ?? 0))
       }
     }
     if (windows.size) consoleObservationScopes = [...windows].map(([pageUrl, minimumMs]) => ({ pageUrl, minimumMs }))
   }
   let accountChecks = (['SITE', 'ACCOUNT_CHECKS'].includes(input.scope) || category?.area === 'conversion' || input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId.startsWith('account-')) ? await accountAdmission(input.projectId, input.verificationTarget?.kind === 'DIAGNOSTIC' && input.verificationTarget.checkId === 'account-signup-failed' ? 'retest' : input.accountMode) : undefined
   if (accountChecks?.siteUrl && new URL(accountChecks.siteUrl).origin !== new URL(input.targetUrl).origin) accountChecks = undefined
-  return executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', targetUrl, environment: input.environment,
-    scope: input.scope, ...(category ? { category } : {}), checks: Object.fromEntries(Object.entries(CHECK_REGISTRY)
-      .filter(([id, definition]) => !category || definition.area === category.area || category.area === 'search' && id.startsWith('corridor-og-'))
-      .map(([id, definition]) => [id, definition.version])),
+  const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', targetUrl, environment: input.environment,
+    scope: input.scope, ...(category ? { category } : {}), checks,
     ...(accountChecks ? { accountChecks } : {}), outcomes, verificationTarget: input.verificationTarget ?? null, ...(verificationScopes ? { verificationScopes } : {}),
-    ...(monitoringPages ? { monitoringPages } : {}),
+    ...(monitoringPages ? { monitoringPages } : {}), ...(monitoringBehaviors ? { monitoringBehaviors } : {}),
     ...(consoleObservationMs !== undefined ? { consoleObservationMs } : {}), ...(consoleObservationScopes ? { consoleObservationScopes } : {}) })
+  if (spec.scope !== 'SITE' && spec.scope !== 'CATEGORY') return spec
+  const pages = spec.category?.pages ?? spec.monitoringPages ?? [spec.targetUrl]
+  return executionSpecSchema.parse({ ...spec, monitoringBehaviors: pages.flatMap((pageUrl, position) => {
+    const behaviors = publicPageBehaviors({ pageUrl, primary: position === 0 }, spec)
+    return behaviors.length ? [{ pageUrl, behaviors }] : []
+  }) })
 }
 
 /** Responsibility selection is a set. Preserve execution order in the snapshot,
@@ -139,5 +161,5 @@ export function executionIntentHash(spec: ExecutionSpec) {
   return createHash('sha256').update(canonicalIntent({ ...spec, outcomes: spec.scope === 'SITE' || spec.scope === 'CATEGORY' ? [] : canonicalExecutionOutcomes(spec.outcomes),
     targetUrl: spec.category ? undefined : spec.targetUrl,
     category: spec.category ? { area: spec.category.area } : undefined,
-    scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
+    scanAccess: undefined, reviewDepth: undefined, monitoringPages: undefined, monitoringEntryPages: undefined, monitoringBehaviors: undefined, verificationScopes: undefined, consoleObservationMs: undefined, consoleObservationScopes: undefined })).digest('hex')
 }

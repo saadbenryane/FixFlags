@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { trackEvent, type ReportAccessState, type ReportSurface } from '@/lib/analytics/events'
 import { isUsableFixPrompt } from '@/lib/audit/priority-flags'
+import { CLIPBOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export type CopyKind = 'flag' | 'plan' | 'export' | 'command' | 'link'
 
@@ -43,13 +44,13 @@ export function useCopyToClipboard() {
       surface,
       accessState,
       itemPosition,
-      successMessage = 'Copied to clipboard',
+      successMessage = CLIPBOARD_COPY.success,
       successDescription,
       requireUsablePrompt = false,
     } = opts
 
     if (requireUsablePrompt && !isUsableFixPrompt(text)) {
-      toast.error('Create a free account to copy this fix prompt')
+      toast.error(CLIPBOARD_COPY.accountRequired)
       return false
     }
 
@@ -70,7 +71,7 @@ export function useCopyToClipboard() {
       setTimeout(() => setCopied(false), 2000)
       return true
     } catch {
-      toast.error('Could not copy to clipboard')
+      toast.error(CLIPBOARD_COPY.failure)
       return false
     }
   }, [])

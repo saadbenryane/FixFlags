@@ -8,7 +8,7 @@ import type { ComponentProps } from 'react'
 const PUBLIC_PATHS = new Set([
   '/', '/new', '/how-it-works', '/coverage', '/security', '/use-cases', '/samples',
   '/integrations', '/pricing', '/waitlist', '/request-demo', '/faq', '/help', '/docs',
-  '/blog', '/changelog', '/privacy', '/terms', '/tools/meta-preview', '/tools/placeholder-detector',
+  '/blog', '/guides', '/changelog', '/privacy', '/terms', '/tools/meta-preview', '/tools/placeholder-detector',
 ])
 
 export function PublicLink({ target, children, onClick, ...props }: ComponentProps<typeof Link> & { target: string }) {

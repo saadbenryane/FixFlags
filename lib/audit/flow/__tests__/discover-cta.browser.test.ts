@@ -1,11 +1,15 @@
 import type { BrowserContext } from 'playwright'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { closeBrowser, getAuditBrowser } from '../../screenshot'
-import { discoverFlowCtasWithFallback, rankCtaCandidate } from '../discover-cta'
+import { collectRenderedActionInventory, discoverFlowCtasWithFallback, rankCtaCandidate } from '../discover-cta'
 import { bindAuditPageObservation } from '../../browser/observation-scope'
 import { DESKTOP_CAPTURE_PROFILE } from '../../browser/capture-profile'
 import { runFlowScan } from '../run-flow-scan'
 import { runFlowChecks } from '../../checks/flow'
+import { primaryActionAssertions } from '../primary-action-evidence'
+import { observeJourneyControls } from '../../journey/discover'
+import { observeJourneyPage } from '../../journey/page-observation'
+import { runDestinationUXProbes } from '../destination-ux-probes'
 
 const run = process.env.KEYBOARD_BROWSER_REQUIRED === 'true' ? describe : describe.skip
 run('native primary action visibility', () => {
@@ -42,13 +46,107 @@ run('native primary action visibility', () => {
     expect(result).toMatchObject({ status: 'success', ctaText: 'Get started free', finalUrl: 'https://example.com/signup',
       actionEvidence: { candidateCount: 1, clicked: true, navigation: 'changed', response: 'healthy', httpStatus: 200 } })
   })
+  it('exercises a visible fragment route action instead of reporting that no primary action exists', async () => {
+    const page = await fixture('<main><h1>Choose a useful plan</h1><a href="#/signup">Get started free</a></main>' +
+      '<script>addEventListener("hashchange",()=>{if(location.hash==="#/signup")document.querySelector("main").innerHTML="<h1>Create your account</h1><form><label>Email<input type=email></label><button>Continue</button></form>"})</script>')
+    const result = await runFlowScan(page, 'fragment-primary-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+    expect(result).toMatchObject({ status: 'success', ctaText: 'Get started free', finalUrl: 'https://example.com/#/signup',
+      actionEvidence: { candidateCount: 1, clicked: true, navigation: 'changed', responseExpected: false } })
+    expect(await page.getByRole('heading', { name: 'Create your account' }).count()).toBe(1)
+  })
+  it('preserves the bare-placeholder exclusion while using resolved destinations for actual links', async () => {
+    const page = await fixture('<main><a href="#">Get started free</a></main>')
+    expect((await discoverFlowCtasWithFallback(page, page.url())).candidates).toEqual([])
+  })
+  it('does not activate embedded credentials or turn their refusal into a missing-action finding', async () => {
+    const page = await fixture('<base href="https://fixture-user:PRIVATE_PASSWORD@example.com/signup"><main><a href="#details">Get started free</a></main>')
+    const requests: string[] = []
+    page.on('request', request => { requests.push(request.url()) })
+    const result = await runFlowScan(page, 'credential-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+    expect(requests).toEqual([])
+    expect(result.actionEvidence).toMatchObject({ candidateCount: 0, candidateComplete: false, clicked: false })
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_PASSWORD')
+    expect(runFlowChecks(result).some(flag => flag.checkId === 'flow-no-cta-found')).toBe(false)
+  })
+  it('still exercises an independent public action after refusing a credential-bearing link', async () => {
+    const page = await fixture('<base href="https://fixture-user:PRIVATE_PASSWORD@example.com/signup"><main>' +
+      '<a href="#details">Get started free</a><a href="https://example.com/signup">Start free trial</a></main>')
+    const result = await runFlowScan(page, 'independent-public-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+    expect(result).toMatchObject({ status: 'success', ctaText: 'Start free trial', finalUrl: 'https://example.com/signup', actionEvidence: { clicked: true } })
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_PASSWORD')
+  })
+  it.each(['document-base', 'route'])('shares %s declarations with native journey and destination consumers', async kind => {
+    const page = await fixture((kind === 'document-base' ? '<base href="/signup">' : '') +
+      '<main><h1>Choose a useful plan for your team</h1><p>Review the next step for your account.</p><a href="' +
+      (kind === 'document-base' ? '#details' : '#/signup') + '">Get started free</a></main>')
+    const controls = await observeJourneyControls(page, new URL(page.url()).origin)
+    expect(controls.primaryAction.found).toBe(true)
+    expect(controls.links.map(link => link.href)).toEqual(kind === 'document-base' ? ['https://example.com/signup#details'] : [])
+    const observed = await observeJourneyPage(page, 'first-visit', 'landing', [], { headline: true, primaryAction: true,
+      nextPath: controls.links.length > 0, fieldCount: 0 }, false, { status: 200 }, controls)
+    expect(observed).toMatchObject({ actionVersion: 6, pathVersion: 5, primaryAction: true, pathComplete: kind === 'document-base' })
+    expect(await runDestinationUXProbes(page, 'Get started free', null)).toMatchObject({ controlsVersion: 3,
+      controlsComplete: true, hasPrimaryCTA: true, frictionSignals: { distinctCtaCount: 1 } })
+  })
+  it('exercises the browser-resolved fragment destination when the document base points elsewhere', async () => {
+    const page = await fixture('<base href="/signup"><main><h1>Choose a useful plan</h1><a href="#details">Get started free</a></main>')
+    const result = await runFlowScan(page, 'base-primary-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+    expect(result).toMatchObject({ status: 'success', ctaText: 'Get started free', finalUrl: 'https://example.com/signup#details',
+      actionEvidence: { candidateCount: 1, clicked: true, navigation: 'changed', responseExpected: true, response: 'healthy', httpStatus: 200 } })
+  })
+  it('observes a ready rendered client route without requiring an invented HTTP response', async () => {
+    const page = await fixture('<main><h1>Plan your next project</h1><a href="#/pricing">Get started free</a></main>' +
+      '<script>addEventListener("hashchange",()=>document.querySelector("main").innerHTML="<h1>Plans for your team</h1><p>Choose the plan that fits your project and team.</p><a href=\\"/signup\\">Create your account</a>")</script>')
+    const result = await runFlowScan(page, 'content-route-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+    expect(result).toMatchObject({ status: 'success', actionEvidence: { clicked: true, navigation: 'changed',
+      samePageProgress: 'rendered-route', responseExpected: false, httpStatus: null } })
+    expect(primaryActionAssertions(result.actionEvidence).find(assertion => assertion.key === 'primary-action-response'))
+      .toMatchObject({ disposition: 'observed' })
+  })
+  it.each(['url-only', 'loading', 'missing-page', 'cancelled'])('keeps %s fragment-route progress inconclusive after a completed click', async mode => {
+    const body = mode === 'loading' ? '<h1>Loading your account</h1><div aria-busy="true">Loading</div><form><input aria-label="Email"><button>Continue</button></form>'
+      : mode === 'missing-page' ? '<h1>Page not found</h1><form><button>Return home</button></form>' : ''
+    const page = await fixture('<main><h1>Choose a useful plan</h1><a href="#/signup"' + (mode === 'cancelled' ? ' onclick="event.preventDefault()"' : '') + '>Get started free</a></main>' +
+      (body ? '<script>addEventListener("hashchange",()=>document.querySelector("main").innerHTML=' + JSON.stringify(body) + ')</script>' : ''))
+    const result = await runFlowScan(page, 'unknown-route-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
+    expect(result).toMatchObject({ status: 'skipped', actionEvidence: { candidateCount: 1, clicked: true, navigation: 'unknown', responseExpected: false } })
+    expect(primaryActionAssertions(result.actionEvidence).find(assertion => assertion.key === 'primary-action-navigation'))
+      .toMatchObject({ passed: false, complete: false })
+    expect(runFlowChecks(result).some(flag => flag.checkId === 'flow-no-cta-found')).toBe(false)
+  })
+  it('selects and exercises a button named by referenced text without relying on its icon', async () => {
+    const page = await fixture('<main><span id="start-label" hidden>Get started free</span>' +
+      '<button aria-labelledby="start-label" onclick="location.href=\'/signup\'" style="width:80px;height:44px"><svg aria-hidden="true" width="20" height="20"><path d="M0 10H20"/></svg></button></main>')
+    expect(await page.getByRole('button', { name: 'Get started free', exact: true }).count()).toBe(1)
+    const result = await runFlowScan(page, 'referenced-primary-action', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8_000 })
+    expect(result).toMatchObject({ status: 'success', ctaText: 'Get started free', finalUrl: 'https://example.com/signup',
+      actionEvidence: { candidateCount: 1, clicked: true, response: 'healthy', httpStatus: 200 } })
+  })
   it.each([404, 500, 403, 429])('classifies the actual HTTP %s reached by a native input handler', async status => {
     const page = await fixture('<main><input type="button" value="Get started free" onclick="location.href=\'/signup\'"></main>', status)
-    const listenersBefore = page.listenerCount('response')
+    const emitter = page as typeof page & { listenerCount(event: 'response'): number }
+    const listenersBefore = emitter.listenerCount('response')
     const result = await runFlowScan(page, 'native-input-response', page.url(), { mode: 'primary', captureSteps: false, deadlineMs: 8000 })
     expect(result).toMatchObject({ status: status === 403 || status === 429 ? 'skipped' : 'error_response',
       actionEvidence: { responseExpected: true, httpStatus: status, response: status === 403 || status === 429 ? 'restricted' : 'error' } })
-    expect(page.listenerCount('response')).toBe(listenersBefore)
+    expect(emitter.listenerCount('response')).toBe(listenersBefore)
+  })
+  it('resolves referenced labels in order while excluding hidden descendants of visible labels', async () => {
+    const page = await fixture('<main><span id="label">Get started<span hidden>Log in</span><span aria-hidden="true">Cancel</span></span>' +
+      '<span id="suffix" hidden>free</span><span id="label">Log in</span>' +
+      '<button aria-labelledby="missing label suffix" style="width:80px;height:44px"></button></main>')
+    expect(await page.getByRole('button', { name: 'Get started free', exact: true }).count()).toBe(1)
+    expect((await collectRenderedActionInventory(page)).controls).toEqual([expect.objectContaining({ text: 'Get started free', labelComplete: true })])
+  })
+  it('retains visible captions and withholds bounded or editable reference evidence', async () => {
+    const page = await fixture('<main><span id="other" hidden>Log in</span><button aria-labelledby="other">Get started free</button>' +
+      '<span id="long" hidden>' + 'x'.repeat(1001) + '</span><button aria-labelledby="long" style="width:80px;height:44px"></button>' +
+      '<textarea id="private">PRIVATE_FIELD_VALUE</textarea><button aria-labelledby="private" style="width:80px;height:44px"></button></main>')
+    const inventory = await collectRenderedActionInventory(page)
+    expect(inventory.complete).toBe(false)
+    expect(inventory.controls.map(control => ({ text: control.text, complete: control.labelComplete })))
+      .toEqual([{ text: 'Get started free', complete: true }, { text: '', complete: false }, { text: '', complete: false }])
+    expect(JSON.stringify(inventory)).not.toContain('PRIVATE_FIELD_VALUE')
   })
   it('does not collect editable input values as action captions', async () => {
     const page = await fixture('<main><input type="text" role="button" value="PRIVATE_FIELD_VALUE"><input type="password" role="button" value="PRIVATE_PASSWORD"><input type="submit" value="Get started free"></main>')

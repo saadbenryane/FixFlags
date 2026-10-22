@@ -68,6 +68,15 @@ describe('flagRecoveryProofId', () => {
       })).toBeNull()
     }
   })
+
+  it('does not cite a recorded audit when the loaded status is unverified', () => {
+    expect(flagRecoveryProofId({
+      status: 'UNVERIFIED',
+      resolvedInId: 'audit-recorded',
+      sourceAuditId: 'audit-source',
+      attempts: [attempt({ verificationAuditId: 'audit-attempt' })],
+    })).toBeNull()
+  })
 })
 
 describe('flagResolutionView', () => {
@@ -110,6 +119,33 @@ describe('flagResolutionView', () => {
       expect(view.proof?.observedAt).toBe(PROOF_AT)
       expect(view.proof?.observation).toBe(SITE_BOARD_COPY.flagProofObserved)
     }
+  })
+
+  it('does not call an unverified Flag recovered when a completed audit is still on file', () => {
+    const view = flagResolutionView(input({
+      status: 'UNVERIFIED',
+      resolvedInId: 'audit-proof',
+      proof: completedProof(),
+    }))
+    expect(view.kind).toBe('unproven')
+    if (view.kind !== 'unproven') return
+    expect(view.statusLabel).toBe(SITE_BOARD_COPY.flagProofMissing)
+    expect(view.body).toBe(SITE_BOARD_COPY.flagProofMissingBody)
+    expect(view.nextStep).toBe('verify')
+    expect(view.statusLabel).not.toBe(SITE_BOARD_COPY.flagRecovered)
+  })
+
+  it('keeps an unverified Flag unverified while a later check is running', () => {
+    const view = flagResolutionView(input({
+      status: 'UNVERIFIED',
+      resolvedInId: 'audit-proof',
+      verifying: true,
+      proof: completedProof(),
+    }))
+    expect(view.kind).toBe('verifying')
+    if (view.kind !== 'verifying') return
+    expect(view.proof).toBeNull()
+    expect(view.statusLabel).toBe(SITE_BOARD_COPY.verifying)
   })
 
   it('says Couldn’t verify when the loaded status recorded a proof the page cannot show', () => {

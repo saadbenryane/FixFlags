@@ -20,7 +20,7 @@ export async function collectRenderedSearchSnapshot(page: Page): Promise<Rendere
     const sections = {} as Record<string, { html: string; complete: boolean; reason: string | null; observed: number; limit: number }>
     const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const collect = (key: string, selector: string, limit: number, bytes: number, serialize: (node: Element) => string | { html: string; complete: boolean }) => {
-      const nodes = document.querySelectorAll(selector)
+      const nodes = Array.from(document.querySelectorAll(selector)).filter(node => !node.closest('template,noscript'))
       let html = '', used = 0, complete = nodes.length <= limit
       for (let index = 0; index < Math.min(nodes.length, limit); index++) {
         const value = serialize(nodes[index])

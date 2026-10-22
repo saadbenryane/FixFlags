@@ -1,4 +1,5 @@
 import { isCheckoutUrl } from '@/lib/integrity/buy-controls'
+import { normalizeSiteHost } from '@/lib/utils/url-helpers'
 import {
   isTerminalOrderUrl,
   stepRecordsBuyAction,
@@ -99,8 +100,7 @@ function normalizeStart(
     return null
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
-  if (!allowOtherHost && (!siteHost || parsed.hostname !== siteHost)) return null
-  parsed.hash = ''
+  if (!allowOtherHost && (!siteHost || normalizeSiteHost(parsed.hostname) !== siteHost)) return null
   const start = parsed.toString()
   if (isCheckoutUrl(start) || isTerminalOrderUrl(start)) return null
   return start
@@ -110,7 +110,7 @@ function hostOf(url: string): string | null {
   try {
     const parsed = new URL(url)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
-    return parsed.hostname
+    return normalizeSiteHost(parsed.hostname)
   } catch {
     return null
   }

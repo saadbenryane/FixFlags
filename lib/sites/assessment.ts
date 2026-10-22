@@ -1,28 +1,39 @@
 import { CHECK_REGISTRY } from '@/lib/audit/check-registry'
 import { readExecutionSpec } from './domain/execution-spec'
-import { SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale, type CoverageFact } from './coverage'
+import type { CoverageFact } from './coverage'
+import { SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from './evidence-freshness'
 import type { SiteCardArea } from './card-areas'
 import type { CustomerOutcomeState } from './outcome-state'
-import { FLAG_COMPARISON_TARGET, readFlagComparison } from '@/lib/audit/flag-comparison'
-import { isCustomerFlag, type CustomerFlagInput } from '@/lib/audit/attention'
+import { FLAG_COMPARISON_TARGET, readFlagComparison, comparisonEvidenceComplete } from '@/lib/audit/flag-comparison'
+import { isCustomerFlag, hasUnresolvedFlagEvidence, type CustomerFlagInput } from '@/lib/audit/attention'
 import { taskArtifactSchema } from '@/lib/audit/progressive/contracts'
 import { accountResultSchema } from './accounts/contracts'
+import type { SiteAssessment, AssessmentGap } from './assessment-contract'
+import type { uptimeAssessment } from '@/lib/uptime/status'
+export type { SiteAssessment, AssessmentGap } from './assessment-contract'
 
 /** Historical run conclusions use immutable comparison receipts. Mutable Flag
- * lifecycle state describes current attention, not what an earlier run found. */
+ * lifecycle state describes current attention, not what an earlier run found.
+ * comparisonComplete establishes publication independently of historical
+ * inconclusive recoveries, which can later receive an independent repair. */
 export function recordedRunFlags(input: { executionSpec: unknown; audit: {
   id: string; parentId: string | null; flags: CustomerFlagInput[];
   verifierExecutions: Array<{ targetKey: string; status: string; detail?: unknown }>;
-} | null }): { flags: CustomerFlagInput[]; complete: boolean } {
+} | null }): { flags: CustomerFlagInput[]; complete: boolean; comparisonComplete: boolean; evidenceComplete: boolean } {
   const spec = readExecutionSpec(input.executionSpec)
-  if (spec?.engine !== 'progressive-v1' || !['SITE', 'CATEGORY'].includes(spec.scope)) return { flags: input.audit?.flags ?? [], complete: true }
+  if (spec?.engine !== 'progressive-v1' || !['SITE', 'CATEGORY'].includes(spec.scope)) {
+    const evidenceComplete = !(input.audit?.flags ?? []).some(hasUnresolvedFlagEvidence)
+    return { flags: input.audit?.flags ?? [], complete: evidenceComplete, comparisonComplete: true, evidenceComplete }
+  }
   const receipt = input.audit?.verifierExecutions.find(record => record.targetKey === FLAG_COMPARISON_TARGET && record.status === 'COMPLETED')
-  if (!receipt || !input.audit) return { flags: [], complete: false }
+  if (!receipt || !input.audit) return { flags: [], complete: false, comparisonComplete: false, evidenceComplete: false }
   try {
     const comparison = readFlagComparison(receipt.detail, { auditId: input.audit.id, parentAuditId: input.audit.parentId })
     const retained = comparison.inconclusive.filter(isCustomerFlag)
-    return { flags: [...comparison.newIssues, ...comparison.unchanged, ...comparison.regressed, ...retained], complete: retained.length === 0 }
-  } catch { return { flags: [], complete: false } }
+    const evidenceComplete = comparisonEvidenceComplete(comparison)
+    return { flags: [...comparison.newIssues, ...comparison.unchanged, ...comparison.regressed, ...retained],
+      complete: retained.length === 0 && evidenceComplete, comparisonComplete: true, evidenceComplete }
+  } catch { return { flags: [], complete: false, comparisonComplete: false, evidenceComplete: false } }
 }
 
 export type DiagnosticAttemptReceipt = {
@@ -78,16 +89,6 @@ export function requiredAreasForScope(executionSpec: unknown): SiteCardArea[] {
   }))]
 }
 
-export type AssessmentGap = { area: SiteCardArea | null; outcomeId?: string; reason: 'missing' | 'incomplete' | 'stale' | 'pages' | 'unassessed' }
-export type SiteAssessment = {
-  result: CustomerOutcomeState | 'FAILED' | null;
-  completeness: 'FULL' | 'PARTIAL' | 'PENDING';
-  requiredAreas: SiteCardArea[];
-  gaps: AssessmentGap[];
-  checkedAt: string | null;
-  validUntil: string | null;
-}
-
 /** Callers supply recorded run findings or current active findings explicitly.
  * The conclusion is otherwise identical across run, board and list readers. */
 export function projectSiteAssessment(input: {
@@ -97,15 +98,19 @@ export function projectSiteAssessment(input: {
   coverage: CoverageFact[];
   flags: Array<{ severity?: string | null }>;
   now: Date;
+  coverageMaxAgeMs?: number;
   pagesComplete?: boolean;
   checkedAt?: Date | null;
   assessmentComplete?: boolean;
   scopedConclusion?: { state: CustomerOutcomeState; complete: boolean; validUntil?: Date | null } | null;
   outcomes?: Array<{ id?: string; state: CustomerOutcomeState; enabled?: boolean; validUntil?: Date | null }>;
+  uptime?: ReturnType<typeof uptimeAssessment>;
 }): SiteAssessment {
   const requiredAreas = [...input.requiredAreas ?? requiredAreasForScope(input.executionSpec)]
   const watched = (input.outcomes ?? []).filter(outcome => outcome.enabled !== false)
   const gaps: AssessmentGap[] = []
+  if (input.uptime?.state === 'COULD_NOT_VERIFY' || input.uptime?.observedState === 'unknown' || input.uptime?.observedState === 'checking')
+    gaps.push({ area: 'uptime', reason: 'incomplete' })
   if (input.assessmentComplete === false) gaps.push({ area: null, reason: 'unassessed' })
   if (input.scopedConclusion && (!input.scopedConclusion.complete || input.scopedConclusion.state === 'COULD_NOT_VERIFY'))
     gaps.push({ area: null, reason: 'incomplete' })
@@ -119,7 +124,7 @@ export function projectSiteAssessment(input: {
     const fact = input.coverage.find(fact => fact.area === area)
     if (!fact) gaps.push({ area, reason: 'missing' })
     else if (!fact.evidenced || fact.state === 'unknown' || fact.incompleteReason) gaps.push({ area, reason: fact.stale ? 'stale' : 'incomplete' })
-    else if (siteCoverageIsStale(fact.checkedAt, input.now)) gaps.push({ area, reason: 'stale' })
+    else if (siteCoverageIsStale(fact.checkedAt, input.now, input.coverageMaxAgeMs)) gaps.push({ area, reason: 'stale' })
   }
   if (input.pagesComplete === false) gaps.push({ area: 'site', reason: 'pages' })
   for (const outcome of watched) if (outcome.state === 'STALE' || outcome.state === 'COULD_NOT_VERIFY')
@@ -128,14 +133,15 @@ export function projectSiteAssessment(input: {
   const settled = input.status === 'COMPLETED' || input.status === 'FAILED'
   const incomplete = gaps.some(gap => gap.reason !== 'stale')
   const result = !settled ? null : input.status === 'FAILED' ? 'FAILED'
-    : input.flags.length > 0 || watched.some(outcome => outcome.state === 'FLAG') || input.scopedConclusion?.state === 'FLAG' ? 'FLAG'
+    : input.flags.length > 0 || watched.some(outcome => outcome.state === 'FLAG') || input.scopedConclusion?.state === 'FLAG' || input.uptime?.state === 'FLAG' ? 'FLAG'
       : incomplete ? 'COULD_NOT_VERIFY' : gaps.length > 0 ? 'STALE' : 'CLEAR'
   const dates = requiredAreas.flatMap(area => {
     const date = input.coverage.find(fact => fact.area === area)?.checkedAt
-    return date && Number.isFinite(Date.parse(date)) ? [Date.parse(date) + SITE_COVERAGE_MAX_AGE_MS] : []
+    return date && Number.isFinite(Date.parse(date)) ? [Date.parse(date) + (input.coverageMaxAgeMs ?? SITE_COVERAGE_MAX_AGE_MS)] : []
   })
   for (const outcome of watched) if (outcome.validUntil) dates.push(outcome.validUntil.getTime())
   if (input.scopedConclusion?.validUntil) dates.push(input.scopedConclusion.validUntil.getTime())
+  if (input.uptime?.validUntil) dates.push(input.uptime.validUntil.getTime())
   return { result, completeness: !settled ? 'PENDING' : input.status === 'FAILED' || incomplete ? 'PARTIAL' : 'FULL',
     requiredAreas, gaps, checkedAt: input.checkedAt?.toISOString() ?? null,
     validUntil: dates.length ? new Date(Math.min(...dates)).toISOString() : null }

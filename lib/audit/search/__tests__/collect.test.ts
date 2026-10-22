@@ -6,6 +6,28 @@ import { document, PAGE } from './fixtures'
 
 beforeEach(() => vi.clearAllMocks())
 describe('bounded Search resource collection', () => {
+  it('requests a canonical target independently of a client-updated rendered URL', async () => {
+    const target = PAGE + 'canonical?route=1', body = '<link rel="canonical" href="' + target + '">'
+    safeFetchDocument.mockResolvedValue({ body: 'Missing target', finalUrl: target, statusCode: 404, headers: {}, complete: true, redirects: [] })
+    const cache = new Map([[new URL(PAGE).origin, Promise.resolve({ robots: document('User-agent: *'), sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [] })]])
+    const result = await collectSearchEvidence({ auditId: 'client-navigation', pageUrl: PAGE, original: document(body),
+      renderedHtml: body, finalUrl: target, status: 200, cache, deadline: Date.now() + 10_000 })
+    expect(safeFetchDocument).toHaveBeenCalledWith(target, expect.anything())
+    expect(result.canonicalTargets).toMatchObject([{ url: target, status: 404 }])
+    expect(result.rendered).toMatchObject({ finalUrl: target, status: 200, complete: true })
+  })
+
+  it.each([PAGE, PAGE + 'redirect-target'])('reuses an actual public response at %s without borrowing rendered response claims', async target => {
+    const body = '<link rel="canonical" href="' + target + '">'
+    const original = document(body, { finalUrl: target, redirects: target === PAGE ? [] : [PAGE] })
+    const cache = new Map([[new URL(PAGE).origin, Promise.resolve({ robots: document('User-agent: *'), sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [] })]])
+    const result = await collectSearchEvidence({ auditId: 'self-canonical', pageUrl: PAGE, original,
+      renderedHtml: body, finalUrl: target, status: 200, cache, deadline: Date.now() + 10_000 })
+    expect(safeFetchDocument).not.toHaveBeenCalled()
+    expect(result.canonicalTargets).toEqual([original])
+    expect(result.canonicalTargets[0]).toBe(original)
+  })
+
   it('collects active HTML canonical targets against the document base and HTTP declarations against the response URL', async () => {
     safeFetchDocument.mockImplementation(async (url: string) => ({ body: 'Canonical target', finalUrl: url, statusCode: 200, headers: {}, complete: true, redirects: [] }))
     const body = '<template><link rel="canonical" href="/template"><base href="https://ignored.example/"></template>' +
@@ -56,11 +78,39 @@ describe('bounded Search resource collection', () => {
   it('does not treat truncated XML as a missing or valid sitemap', () => {
     expect(parseSitemap(document('<urlset></urlset>', { complete: false }))).toMatchObject({ valid: false, reason: 'sitemap_unavailable' })
   })
+  it('decodes XML references once while retaining literal CDATA and URL percent escapes', () => {
+    const xml = '<urlset><url><loc>https://example.com/catalog?page=1&amp;type=product&#38;lang=fr&#x26;name=&#x1F600;%26</loc></url>' +
+      '<url><loc><![CDATA[https://example.com/literal?a=1&amp;b=2]]></loc></url>' +
+      '<url><loc>https://example.com/once?a=1&amp;amp;b=2</loc></url></urlset>'
+    expect(parseSitemap(document(xml))).toMatchObject({ valid: true, urls: [
+      'https://example.com/catalog?page=1&type=product&lang=fr&name=%F0%9F%98%80%26',
+      'https://example.com/literal?a=1&amp;b=2',
+      'https://example.com/once?a=1&amp;b=2',
+    ] })
+  })
+  it('requests the decoded child sitemap URL and retains its real page identities', async () => {
+    const child = 'https://example.com/sitemap.xml?page=2&type=product'
+    safeFetchDocument.mockImplementation(async (url: string) => ({
+      body: url.endsWith('/sitemap.xml')
+        ? '<sitemapindex><sitemap><loc>https://example.com/sitemap.xml?page=2&amp;type=product</loc></sitemap></sitemapindex>'
+        : url === child ? '<urlset><url><loc>https://example.com/catalog?id=2&amp;lang=en</loc></url></urlset>' : 'Not found',
+      finalUrl: url, statusCode: url === child || url.endsWith('/sitemap.xml') ? 200 : 404,
+      headers: {}, complete: true, redirects: [],
+    }))
+    const result = await collectSiteResources('https://example.com', Date.now() + 5000, document('User-agent: *'))
+    expect(safeFetchDocument.mock.calls.map(call => call[0])).toEqual(['https://example.com/sitemap.xml', child])
+    expect(result).toMatchObject({ complete: true, sitemapUrls: ['https://example.com/catalog?id=2&lang=en'], declaredSitemaps: [child] })
+  })
   it('rejects entities, HTML, and relative sitemap locations', () => {
     expect(parseSitemap(document('<!DOCTYPE urlset [<!ENTITY x SYSTEM "file:///etc/passwd">]><urlset/>')).valid).toBe(false)
     expect(parseSitemap(document('<html><body>App shell</body></html>')).reason).toBe('not_a_sitemap')
     expect(parseSitemap(document('<urlset><url><loc>/relative</loc></url></urlset>')).reason).toBe('sitemap_invalid_location')
   })
+  it.each(['&custom;', '&#0;', '&#1;', '&#xD800;', '&#xFFFE;', '&#1114112;'])(
+    'refuses invalid XML references without silently changing the URL: %s', reference => {
+      expect(parseSitemap(document(`<urlset><url><loc>https://example.com/?value=a${reference}b</loc></url></urlset>`)))
+        .toMatchObject({ valid: false, reason: 'sitemap_invalid_xml', urls: [] })
+    })
   it('bounds sitemap-index expansion and records incomplete coverage', async () => {
     safeFetchDocument.mockImplementation(async (url: string) => ({ body: url.endsWith('robots.txt') ? 'User-agent: *\nAllow: /'
       : '<sitemapindex>' + Array.from({ length: 8 }, (_, i) => `<sitemap><loc>https://example.com/${i}.xml</loc></sitemap>`).join('') + '</sitemapindex>',

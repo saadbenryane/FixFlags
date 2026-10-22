@@ -342,7 +342,7 @@ export function AccountDangerZone() {
     {error ? <Callout variant="danger" title={ac.errorTitle}>{error}</Callout> : null}
     <Button type="button" variant="destructive" disabled={busy} onClick={() => setOpen(true)}>{ac.deleteCta}</Button>
     <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) setPassword('') }}>
-      <DialogContent className="max-w-md"><DialogHeader><DialogTitle>{ac.deleteConfirmTitle}</DialogTitle><DialogDescription>{ac.deleteConfirmDescription}</DialogDescription></DialogHeader>
+      <DialogContent header={<DialogTitle>{ac.deleteConfirmTitle}</DialogTitle>} className="max-w-md"><DialogHeader><DialogDescription>{ac.deleteConfirmDescription}</DialogDescription></DialogHeader>
         <Field id="delete-password" label={ac.deletePasswordLabel}>{(fieldProps) => <Input {...fieldProps} type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />}</Field>
         <DialogFooter className="gap-2 sm:gap-2"><Button type="button" variant="outline" onClick={() => setOpen(false)}>{ac.deleteCancel}</Button><Button type="button" variant="destructive" disabled={busy} loading={busy} loadingLabel={ac.deleteConfirming} onClick={() => void deleteAccount()}>{ac.deleteConfirmLabel}</Button></DialogFooter>
       </DialogContent>

@@ -15,8 +15,10 @@ import {
   isPublicIp,
   isBlockedHostname,
   normalizeAuditUrl,
+  normalizeAuditNavigationUrl,
   resolvePublicAddresses,
   assertPublicAuditUrl,
+  assertPublicNavigationUrl,
   safeFetchHtml,
   safeFetchDocument,
   PublicRequestError,
@@ -102,6 +104,13 @@ describe('isBlockedHostname', () => {
 })
 
 describe('normalizeAuditUrl', () => {
+  it('retains browser routes while HTTP normalization still selects their shared document', () => {
+    const url = 'https://example.com/app/?plan=teams#/pricing/'
+    expect(normalizeAuditNavigationUrl(url)).toEqual({ ok: true, url })
+    expect(normalizeAuditUrl(url)).toEqual({ ok: true, url: 'https://example.com/app/?plan=teams' })
+    for (const invalid of ['ftp://example.com/#/pricing', 'https://secret:password@example.com/#/pricing', 'http://10.0.0.1/#/pricing'])
+      expect(normalizeAuditNavigationUrl(invalid).ok).toBe(false)
+  })
   it('normalizes a valid https URL and strips the hash', () => {
     const result = normalizeAuditUrl('https://example.com/path#section')
     assert.ok(result.ok)
@@ -187,6 +196,16 @@ describe('assertPublicAuditUrl', () => {
   beforeEach(() => {
     resolve4.mockReset()
     resolve6.mockReset()
+  })
+
+  it('validates the same DNS boundary for a complete browser navigation', async () => {
+    const url = 'https://example.com/app/#/pricing/'
+    resolve4.mockResolvedValue(['93.184.216.34'])
+    resolve6.mockResolvedValue([])
+    expect((await assertPublicNavigationUrl(url)).href).toBe(url)
+    expect((await assertPublicAuditUrl(url)).href).toBe('https://example.com/app/')
+    resolve4.mockResolvedValue(['10.0.0.2'])
+    await expect(assertPublicNavigationUrl(url)).rejects.toBeInstanceOf(AuditUrlError)
   })
 
   it('returns the parsed URL for a public destination', async () => {

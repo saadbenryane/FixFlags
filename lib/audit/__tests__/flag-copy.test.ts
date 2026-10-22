@@ -97,6 +97,7 @@ describe('flag-copy', () => {
       problem: 'Robots meta tag is blocking indexing',
       evidence: 'meta name="robots" content="noindex"',
       fix: 'Remove noindex from robots meta for production pages.',
+      attentionPolicy: { policy: 'search', version: 3, kind: 'flag', reason: 'recorded_indexing_regression' },
       verificationRule: 'View page source; robots meta should not include noindex.',
     }
     const prompt = buildExpertFixPrompt(
@@ -189,6 +190,11 @@ describe('flag-copy', () => {
       }),
       '1. Rewrite the headline'
     )
+  })
+
+  it.each(['', 'Sign up to get the fix prompt.'])('does not turn missing guidance or a historical signup gate into a task: %j', fix => {
+    assert.equal(buildExpertFixPrompt({ id: 'missing', rubric: 'MESSAGE', severity: 'IMPORTANT',
+      problem: 'Recorded diagnosis alone is not a repair task', fix }), '')
   })
 
   it('keeps factual evidence for head checks in display', () => {

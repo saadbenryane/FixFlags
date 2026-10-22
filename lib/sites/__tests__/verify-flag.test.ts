@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   createAndEnqueueAudit: vi.fn(),
   requestOutcomeRun: vi.fn(),
   requestSiteRun: vi.fn(),
-  findReusableRun: vi.fn(),
+  findReusableVerificationRun: vi.fn(),
+  loadRunSourceEnvironment: vi.fn(),
   recordSiteFlagFix: vi.fn(),
   requireSiteFlagAttempt: vi.fn(),
   outcomeFindMany: vi.fn(),
@@ -33,7 +34,8 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/sites/application/run-requests', () => ({
   requestOutcomeRun: mocks.requestOutcomeRun,
   requestSiteRun: mocks.requestSiteRun,
-  findReusableRun: mocks.findReusableRun,
+  findReusableVerificationRun: mocks.findReusableVerificationRun,
+  loadRunSourceEnvironment: mocks.loadRunSourceEnvironment,
 }))
 vi.mock('@/lib/sites/application/flag-verification', () => ({
   recordSiteFlagFix: mocks.recordSiteFlagFix,
@@ -73,7 +75,8 @@ describe('VERIFY_FLAG', () => {
     })
     mocks.outcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
     mocks.requestSiteRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: ['outcome-1'], reused: false })
-    mocks.findReusableRun.mockResolvedValue(null)
+    mocks.findReusableVerificationRun.mockResolvedValue(null)
+    mocks.loadRunSourceEnvironment.mockResolvedValue('production')
     mocks.attemptFindFirst.mockResolvedValue({ id: 'att_1' })
     mocks.requestOutcomeRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', reused: false })
   })
@@ -115,6 +118,24 @@ describe('VERIFY_FLAG', () => {
     expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
   })
 
+  it.each([false, true])('inherits the source environment for a new verification, Outcome: %s', async outcome => {
+    mocks.loadRunSourceEnvironment.mockResolvedValue('staging')
+    if (outcome) mocks.loadSiteFlagDetail.mockResolvedValue({ id: 'flag_1', sourceAuditId: 'parent_1',
+      outcomeId: 'checkout_1', expectedBehavior: 'Checkout opens' })
+    expect(await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1' }))
+      .toMatchObject({ ok: true, verificationAuditId: 'child_1' })
+    expect(mocks.loadRunSourceEnvironment).toHaveBeenCalledWith('proj_1', 'parent_1')
+    expect(outcome ? mocks.requestOutcomeRun : mocks.requestSiteRun).toHaveBeenCalledWith(expect.objectContaining({ environment: 'staging' }))
+  })
+
+  it('refuses verification when the original source environment is ambiguous', async () => {
+    mocks.loadRunSourceEnvironment.mockRejectedValue(new SiteRunRefusal('Verification source environment is unavailable', 409, 'SOURCE_ENVIRONMENT_UNAVAILABLE'))
+    await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1' }))
+      .rejects.toMatchObject({ status: 409, code: 'SOURCE_ENVIRONMENT_UNAVAILABLE' })
+    expect(mocks.requestOutcomeRun).not.toHaveBeenCalled()
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+  })
+
   it('returns the addressed physical Flag identity after it has a durable incident identity', async () => {
     mocks.loadSiteFlagDetail.mockResolvedValue({ id: 'improvement-1', sourceFlagId: 'flag_1', improvementId: 'improvement-1',
       sourceAuditId: 'parent_1', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', expectedBehavior: 'Contact confirmation appears' })
@@ -130,18 +151,18 @@ describe('VERIFY_FLAG', () => {
    * never contain. Verifying must still work when nobody describes the change.
    */
   it('returns the exact completed diagnostic receipt without creating another attempt', async () => {
-    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],
+    mocks.findReusableVerificationRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', environment: 'production', outcomeIds: [],
       verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1' } })
     const result = await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'same-intent' })
     expect(result).toMatchObject({ runId: 'run_1', verificationAuditId: 'child_1', attemptId: 'att_1', parentAuditId: 'parent_1' })
     expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
-    expect(mocks.findReusableRun).toHaveBeenCalledWith(expect.objectContaining({ verificationTargetKind: 'DIAGNOSTIC', outcomeIds: [],
+    expect(mocks.findReusableVerificationRun).toHaveBeenCalledWith(expect.objectContaining({ verificationTargetKind: 'DIAGNOSTIC', outcomeIds: [],
       verificationIdentity: expect.objectContaining({ checkId: 'form-feedback', pageUrl: 'https://example.com/contact' }) }))
   })
 
   it('refuses a receipt whose attempt does not belong to this exact Flag', async () => {
-    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],
+    mocks.findReusableVerificationRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', environment: 'production', outcomeIds: [],
       verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'other-attempt' } })
     mocks.attemptFindFirst.mockResolvedValue(null)
     await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'wrong-intent' })).rejects.toMatchObject({ status: 409 })
@@ -149,25 +170,38 @@ describe('VERIFY_FLAG', () => {
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
   })
 
-  it('replays a durable issue against its frozen original scope after later observations', async () => {
+  it.each(['production', 'staging'])('replays a durable issue against its original %s environment after later observations', async environment => {
+    mocks.loadRunSourceEnvironment.mockResolvedValue(environment)
     mocks.loadSiteFlagDetail.mockResolvedValue({ id: 'improvement-1', improvementId: 'improvement-1', sourceFlagId: 'later',
       sourceAuditId: 'later-review', checkId: 'form-feedback', pageUrl: 'https://example.com/new', expectedBehavior: 'Current condition' })
-    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [], verificationTarget: {
+    mocks.findReusableVerificationRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', environment, outcomeIds: [], verificationTarget: {
       kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1',
     } })
     mocks.requireSiteFlagAttempt.mockResolvedValue({ attemptId: 'att_1', attempt: { sourceAuditId: 'parent_1' },
       flag: { checkId: 'form-feedback', pageUrl: 'https://example.com/contact', expectedBehavior: 'Original condition' } })
     expect(await executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'improvement-1', attemptId: 'att_1' }))
       .toMatchObject({ runId: 'run_1', expectedBehavior: 'Original condition', parentAuditId: 'parent_1' })
-    expect(mocks.findReusableRun).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'flag-verify:att_1',
+    expect(mocks.findReusableVerificationRun).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'flag-verify:att_1',
       verificationIdentity: { attemptId: 'att_1' } }))
     expect(mocks.requireSiteFlagAttempt).toHaveBeenCalledWith(expect.objectContaining({ attemptId: 'att_1' }), { allowSettled: true })
+    expect(mocks.loadRunSourceEnvironment).toHaveBeenCalledWith('proj_1', 'parent_1')
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+  })
+
+  it('refuses a replay whose saved verifier changed environments', async () => {
+    mocks.findReusableVerificationRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', environment: 'production', outcomeIds: [], verificationTarget: {
+      kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1',
+    } })
+    mocks.loadRunSourceEnvironment.mockResolvedValue('staging')
+    await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', attemptId: 'att_1' }))
+      .rejects.toMatchObject({ status: 409 })
+    expect(mocks.recordSiteFlagFix).not.toHaveBeenCalled()
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
   })
 
   it.each([{ parentAuditId: 'another' }, { checkId: 'another' }, { pageUrl: 'https://example.com/another' }])(
     'refuses a run receipt that does not match its recorded repair scope: %j', async patch => {
-      mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [], verificationTarget: {
+      mocks.findReusableVerificationRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', environment: 'production', outcomeIds: [], verificationTarget: {
         kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1', ...patch,
       } })
       await expect(executeSiteCommand({ type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1', idempotencyKey: 'wrong-scope' }))
@@ -176,7 +210,7 @@ describe('VERIFY_FLAG', () => {
     })
 
   it.each([false, true])('checks the recorded implicit fix payload before reusing its run, changed: %s', async changed => {
-    mocks.findReusableRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: [],
+    mocks.findReusableVerificationRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', environment: 'production', outcomeIds: [],
       verificationTarget: { kind: 'DIAGNOSTIC', checkId: 'form-feedback', pageUrl: 'https://example.com/contact', parentAuditId: 'parent_1', attemptId: 'att_1' } })
     mocks.attemptFindFirst.mockResolvedValue({ id: 'att_1', sourceAuditId: 'parent_1', handoffReference: 'flag:flag_1',
       requestHash: attemptIntentHash({ userId: 'user_1', sourceAuditId: 'parent_1', handoffReference: 'flag:flag_1', changeSummary: 'Original repair' }) })

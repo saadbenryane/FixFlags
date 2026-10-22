@@ -328,4 +328,13 @@ describe('priority-flags', () => {
       'Rewrite the hero CTA so it names the outcome.'
     )
   })
+  it('uses the same contextual guidance for report actions and owner commands without exposing historical tool instructions', () => {
+    const recorded = flag({ checkId: 'placeholder-copy-detected', fix: 'Replace the Lorem ipsum example.',
+      agentPrompt: 'Delete the recorded example and rewrite the page.' })
+    assert.equal(resolveFixPrompt(recorded), null)
+    const inspection = 'Review the recorded phrase. If it is unintended placeholder copy, replace that content. Preserve educational examples.'
+    assert.equal(resolveFixPrompt({ ...recorded, fix: inspection }), inspection)
+    assert.equal(recorded.fix, 'Replace the Lorem ipsum example.')
+    assert.equal(recorded.agentPrompt, 'Delete the recorded example and rewrite the page.')
+  })
 })

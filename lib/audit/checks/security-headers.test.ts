@@ -17,6 +17,20 @@ const healthy = {
   'permissions-policy': 'camera=(), microphone=(), geolocation=()',
   'x-permitted-cross-domain-policies': 'none',
 }
+
+it.each(['https://example.up.railway.app/', 'https://example.netlify.app/', 'https://example.vercel.app/'])(
+  'keeps missing response headers separate from unobserved hosting permissions on %s', url => {
+    const headers = { ...healthy, 'content-security-policy': '' }
+    const flag = runSecurityHeaderChecks(url, headers).find(item => item.checkId === 'security-headers-missing')!
+    expect(flag.problem).toBe('1 core security header is missing or weak')
+    expect(flag.evidence).toContain('No Content-Security-Policy header')
+    expect(flag.evidence).toContain('Hosting configuration was not inspected')
+    expect(flag.evidence).not.toMatch(/not settable|requires custom domain/i)
+    expect(flag.fix).toContain('Content-Security-Policy')
+    expect(flag.fix).not.toMatch(/cannot be set|connect a custom domain/i)
+    expect(runSecurityHeaderChecks(url, healthy)).toEqual([])
+  },
+)
 function receipt(headers: Record<string, string> | null, responseUrl = pageUrl) {
   return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'security-headers',
     pageUrl, applicable: headers !== null, passed: false, assertions: securityHeaderObservations(responseUrl, headers),

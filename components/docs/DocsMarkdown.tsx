@@ -3,7 +3,7 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { DocsCodeBlock } from '@/components/docs/DocsCodeBlock'
-import { slugifyDocsHeading } from '@/lib/docs/catalog'
+import { slugifyDocsHeading, type DocsHeadingDefinition } from '@/lib/docs/catalog'
 import s from './DocsExperience.module.css'
 
 function textFromNode(node: ReactNode): string {
@@ -13,14 +13,17 @@ function textFromNode(node: ReactNode): string {
   return ''
 }
 
-export function DocsMarkdown({ children }: { children: string }) {
+export function DocsMarkdown({ children, headings = [] }: { children: string; headings?: readonly DocsHeadingDefinition[] }) {
   return (
     <div className={`docs-prose ${s.prose}`}>
       <ReactMarkdown
         components={{
-          h2: ({ children: heading }) => (
-            <h2 id={slugifyDocsHeading(textFromNode(heading))}>{heading}</h2>
-          ),
+          hr: () => <div aria-hidden="true" className="h-8" />,
+          h2: ({ children: heading }) => {
+            const id = slugifyDocsHeading(textFromNode(heading))
+            return <h2 id={id}>{headings.find(item => item.id === id)?.aliases?.map(alias =>
+              <span key={alias} id={alias} className={s.headingAnchor} aria-hidden="true" />)}{heading}</h2>
+          },
           h3: ({ children: heading }) => (
             <h3 id={slugifyDocsHeading(textFromNode(heading))}>{heading}</h3>
           ),

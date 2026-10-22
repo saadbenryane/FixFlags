@@ -174,11 +174,21 @@ try {
       `Container check creation failed (${createResponse.status}): ${JSON.stringify(created)}`
     )
   }
+  const creatorCookies = new Map(createResponse.headers.getSetCookie().map(value => {
+    const pair = value.split(';', 1)[0]
+    const separator = pair.indexOf('=')
+    return [pair.slice(0, separator), pair.slice(separator + 1)]
+  }))
+  if (!creatorCookies.get('ff_anon_report_ids')) throw new Error('Anonymous creation did not issue its signed creator claim')
+  const creatorCookie = [...creatorCookies].map(([name, value]) => `${name}=${value}`).join('; ')
+  const statusUrl = `${baseUrl}/api/reports/${encodeURIComponent(created.reportId)}/status`
+  const unauthenticated = await fetch(statusUrl, { signal: AbortSignal.timeout(10_000) })
+  if (unauthenticated.status !== 404) throw new Error('Initial anonymous report is not private')
 
   await waitFor('container audit completion', 240_000, async () => {
     const response = await fetch(
-      `${baseUrl}/api/reports/${encodeURIComponent(created.reportId)}/status`,
-      { signal: AbortSignal.timeout(10_000) }
+      statusUrl,
+      { headers: { cookie: creatorCookie }, signal: AbortSignal.timeout(10_000) }
     )
     const body = await response.json().catch(() => null)
     if (body?.status === 'FAILED') {

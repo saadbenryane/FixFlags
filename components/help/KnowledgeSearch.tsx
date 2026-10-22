@@ -9,6 +9,7 @@ import type { KnowledgeSearchEntry, KnowledgeSearchFilter } from '@/lib/knowledg
 import { searchKnowledge } from '@/lib/knowledge/search'
 import { trackEvent } from '@/lib/analytics/events'
 import { Input } from '@/components/ui/input'
+import { FilterPill } from '@/components/ui/filter-pill'
 import { Body } from '@/components/ui/typography'
 import { cn } from '@/lib/utils'
 
@@ -55,22 +56,12 @@ export function KnowledgeSearch({
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div role="search" aria-label={placeholder} className={cn('space-y-4', className)}>
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setFilter(item.id)}
-            className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-              filter === item.id
-                ? 'bg-foreground text-background'
-                : 'bg-muted/50 text-muted-foreground hover:text-foreground'
-            )}
-          >
+          <FilterPill key={item.id} active={filter === item.id} onClick={() => setFilter(item.id)}>
             {item.label}
-          </button>
+          </FilterPill>
         ))}
       </div>
       <div className="relative">
@@ -91,7 +82,7 @@ export function KnowledgeSearch({
         <Body className="text-sm text-muted-foreground">{HELP_CENTER.noResults}</Body>
       )}
       {results.length > 0 && (
-        <ul className="divide-y divide-border/60 overflow-hidden rounded-card glass-surface shadow-card">
+        <ul className="space-y-2 overflow-hidden rounded-card glass-surface shadow-card">
           {results.map((hit) => (
             <li key={`${hit.surface}-${hit.href}`}>
               <Link

@@ -444,7 +444,7 @@ export const REPORT_COPY = {
     copied: "Copied!",
     promptCopied: "Prompt copied",
     promptCopiedRecordFailed:
-      "Prompt copied, but FixFlags could not record the handoff",
+      "Prompt copied, but FixFlags could not confirm the handoff",
     prioritiesTitle: "Your priorities",
     topFlagsTitle: "Top Flags",
     prioritiesHint: "Ranked by customer impact",

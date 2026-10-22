@@ -33,30 +33,30 @@ export function PasswordInput({
 
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <IconInput
-          type={visible ? 'text' : 'password'}
-          label={label}
-          icon={<Lock className="h-4 w-4" />}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required={required}
-          minLength={minLength}
-          error={error}
-          autoComplete={autoComplete}
-          className="pr-11"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => setVisible((v) => !v)}
-          className="absolute right-1 top-2.5 h-8 w-8 text-muted-foreground hover:text-foreground"
-          aria-label={visible ? AUTH.password.hideLabel : AUTH.password.showLabel}
-        >
-          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </Button>
-      </div>
+      <IconInput
+        type={visible ? 'text' : 'password'}
+        label={label}
+        icon={<Lock className="h-4 w-4" />}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        minLength={minLength}
+        error={error}
+        autoComplete={autoComplete}
+        trailing={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setVisible((value) => !value)}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label={visible ? AUTH.password.hideLabel : AUTH.password.showLabel}
+            aria-pressed={visible}
+          >
+            {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+        }
+      />
       {showRequirements && (
         <ul className="list-none space-y-1 px-1 text-xs text-muted-foreground">
           <li className={cn(hasMinLength && 'text-foreground')}>

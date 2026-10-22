@@ -1,19 +1,34 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma, type Flag, type OutcomeAssessment } from '@prisma/client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
-import { confirmSiteOutcome, listSiteOutcomes, loadSiteOutcomeDetail, renameSiteOutcome } from '@/lib/sites/outcomes'
+import { confirmSiteOutcome, createSiteOutcome, listSiteOutcomes, loadSiteOutcomeDetail, loadSiteOutcomeDetails, renameSiteOutcome, setSiteOutcomeEnabled } from '@/lib/sites/outcomes'
+import { currentExecutionOwnership, executionWrite, ExecutionOwnershipLost, withExecutionOwnership } from '@/lib/audit/execution-ownership'
+import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
+import { admittedOutcomeCoverage, comparableOutcomeCoverage } from '@/lib/sites/domain/outcome-proof'
+import { snapshotOutcomeAuthorization } from '@/lib/sites/domain/outcome-authorization'
 import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 import { persistOutcomeAssessment } from '@/lib/sites/application/outcome-incidents'
 import { outcomeFlagFingerprint } from '@/lib/audit/flag-identity'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
-import { loadSiteFlagDetail, loadSiteFlags, loadSiteResolvedFlags } from '@/lib/sites/flags'
+import { loadIncidentRecoveryProofs } from '@/lib/sites/application/incident-proofs'
+import { outcomeMonitoringDiff } from '@/lib/sites/application/outcome-monitoring'
+import { loadSiteFindings, loadSiteFlagDetail, loadSiteFlags, loadSiteResolvedFlags } from '@/lib/sites/flags'
 import type { SiteRecord } from '@/lib/sites/types'
 
 const runPostgres = process.env.OUTCOME_CONFIRMATION_DB_REQUIRED === 'true' ? describe : describe.skip
+const queryTrace = vi.hoisted(() => ({ active: false, queries: [] as string[] }))
+vi.mock('@/lib/db', async importOriginal => {
+  if (process.env.OUTCOME_CONFIRMATION_DB_REQUIRED !== 'true') return importOriginal<typeof import('@/lib/db')>()
+  const { PrismaClient } = await import('@prisma/client')
+  const client = new PrismaClient({ log: [{ emit: 'event', level: 'query' }] })
+  client.$on('query', event => { if (queryTrace.active) queryTrace.queries.push(event.query) })
+  return { prisma: client }
+})
 
 runPostgres('Outcome confirmation PostgreSQL serialization', () => {
+  afterAll(async () => { await prisma.$disconnect() })
   let userId = ''
   let projectId = ''
   let site: SiteRecord
@@ -68,6 +83,31 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     await prisma.user.deleteMany({ where: { id: userId } })
   })
 
+  it('projects joined Outcome pages across list, detail, confirmation and rename without borrowing another Site', async () => {
+    const otherOwner = await prisma.user.create({ data: { email: `foreign-page-${randomUUID()}@example.test` } })
+    const other = await prisma.project.create({ data: { userId: otherOwner.id, name: 'Other Site', url: 'https://other.example/', canonicalHost: 'other.example' } })
+    try {
+      const own = await prisma.sitePage.create({ data: { projectId, url: site.url, path: '/' } })
+      const privatePage = await prisma.sitePage.create({ data: { projectId: other.id, url: 'https://other.example/private', path: '/private' } })
+      const outcome = await prisma.siteOutcome.create({ data: { projectId, name: 'Page loads', slug: 'joined-page-projection',
+        kind: 'GENERIC', pages: { create: [{ pageId: own.id }, { pageId: privatePage.id }] } } })
+      const reads = vi.spyOn(prisma.sitePage, 'findMany')
+      try {
+        const views = [(await listSiteOutcomes(site)).find(view => view.id === outcome.id), await loadSiteOutcomeDetail(site, outcome.id),
+          await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY' }),
+          await renameSiteOutcome({ site, outcomeId: outcome.id, name: 'The original page loads' })]
+        for (const view of views) {
+          expect(view?.pageIds).toEqual([own.id])
+          expect(view?.pageUrls).toEqual([own.url])
+          expect(JSON.stringify(view)).not.toContain(privatePage.url)
+        }
+        expect(reads).not.toHaveBeenCalled()
+        expect(await prisma.siteOutcomePage.count({ where: { outcomeId: outcome.id } })).toBe(2)
+        expect(await prisma.sitePage.findUnique({ where: { id: privatePage.id } })).toMatchObject({ projectId: other.id, url: privatePage.url })
+      } finally { reads.mockRestore() }
+    } finally { await prisma.project.delete({ where: { id: other.id } }); await prisma.user.delete({ where: { id: otherOwner.id } }) }
+  })
+
   async function genericOutcome(slug: string) {
     return prisma.siteOutcome.create({
       data: {
@@ -78,6 +118,76 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
       },
     })
   }
+
+  it('keeps evidence limits and older successful verification separate for each Outcome in a batch', async () => {
+    const now = Date.now(), binding = { key: 'http', mechanism: 'HTTP_AVAILABILITY' as const, version: 1, required: true, config: { startUrl: site.url } }
+    const outcomes = await Promise.all(['first', 'second'].map(slug => prisma.siteOutcome.create({ data: {
+      projectId, name: slug, slug, kind: 'AVAILABILITY', bindings: { create: binding },
+    } })))
+    const audits = Array.from({ length: 55 }, (_, index) => ({ id: 'batch-evidence-' + randomUUID(), userId, projectId,
+      url: site.url, status: 'COMPLETED' as const, createdAt: new Date(now - index * 60_000), completedAt: new Date(now - index * 60_000) }))
+    await prisma.audit.createMany({ data: audits })
+    try {
+      for (const [position, outcome] of outcomes.entries()) {
+        const requests = audits.slice(0, 22).map((audit, index) => ({ id: 'batch-request-' + randomUUID(), projectId, auditId: audit.id,
+          requestedByUserId: userId, source: 'WEB' as const, status: 'COMPLETED' as const, idempotencyKey: randomUUID(),
+          requestedAt: new Date(now - index * 60_000), executionSpec: {} }))
+        await prisma.runRequest.createMany({ data: requests })
+        await prisma.runRequestOutcome.createMany({ data: requests.map(request => ({ outcomeId: outcome.id, runRequestId: request.id })) })
+        await prisma.outcomeAssessment.createMany({ data: requests.map((request, index) => ({
+          outcomeId: outcome.id, runRequestId: request.id, auditId: request.auditId,
+          state: position === 1 || index === 21 ? 'CLEAR' as const : 'FLAG' as const,
+          summary: outcome.name, assessedAt: request.requestedAt, validUntil: new Date(now + 3600_000),
+          coverage: { environment: 'production', requiredBindings: [binding.key], bindings: [binding] },
+        })) })
+        await prisma.outcomeBindingExecution.createMany({ data: audits.map(audit => ({
+          outcomeId: outcome.id, auditId: audit.id, bindingKey: binding.key, bindingVersion: 1, mechanism: binding.mechanism,
+          disposition: position === 0 ? 'FAILED' as const : 'SUCCEEDED' as const,
+          reason: position === 0 ? 'response_error' : 'response_received', createdAt: audit.createdAt,
+        })) })
+      }
+      queryTrace.active = true; queryTrace.queries = []
+      const details = await loadSiteOutcomeDetails(site, { excludeGeneric: true })
+      queryTrace.active = false
+      expect(queryTrace.queries.some(query => query.includes('SELECT o.id') && query.includes('LIMIT 50'))).toBe(true)
+      for (const table of ['outcome_assessments', 'outcome_binding_executions']) {
+        const reads = queryTrace.queries.filter(query => query.startsWith(`SELECT "public"."${table}"`))
+        expect(reads.length).toBeGreaterThan(0)
+        for (const query of reads) expect(query).toContain(`"${table}"."id" IN`)
+      }
+      expect(details).toHaveLength(2)
+      for (const [position, outcome] of outcomes.entries()) {
+        const detail = details.find(item => item.id === outcome.id)!
+        expect(detail.state).toBe(position === 0 ? 'FLAG' : 'CLEAR')
+        expect(detail.timeline.filter(event => event.type === 'assessment')).toHaveLength(20)
+        expect(detail.timeline.filter(event => event.type === 'attempt')).toHaveLength(50)
+        expect(detail.timeline.filter(event => event.type === 'run')).toHaveLength(20)
+        expect(detail.bindings[0].latestEvidence?.reason).toBe(position === 0 ? 'response_error' : 'response_received')
+        expect(detail.lastSuccessfulVerificationAt).toBe(audits[position === 0 ? 21 : 0].createdAt.toISOString())
+        expect(await loadSiteOutcomeDetail(site, outcome.id)).toEqual(detail)
+      }
+      queryTrace.active = true; queryTrace.queries = []
+      const summaries = await listSiteOutcomes(site)
+      queryTrace.active = false
+      expect(summaries.map(item => [item.id, item.state])).toEqual(details.map(item => [item.id, item.state]))
+      expect(queryTrace.queries.some(query => query.includes('outcome_binding_executions'))).toBe(false)
+      const summaryAssessments = queryTrace.queries.find(query => query.startsWith('SELECT "public"."outcome_assessments"'))!
+      expect(summaryAssessments).toContain('"outcome_assessments"."id" IN')
+      expect(summaryAssessments.match(/"outcome_assessments"\."id" IN \(([^)]*)\)/)![1].split(',')).toHaveLength(2)
+      const olderSuccess = await prisma.outcomeAssessment.findFirstOrThrow({ where: { outcomeId: outcomes[0].id, state: 'CLEAR' } })
+      const read = prisma.siteOutcome.findMany.bind(prisma.siteOutcome)
+      let superseded = false
+      const changed = vi.spyOn(prisma.siteOutcome, 'findMany').mockImplementation(async args => {
+        if (!superseded) {
+          superseded = true
+          await prisma.outcomeAssessment.update({ where: { id: olderSuccess.id }, data: { evidence: { supersededByAssessmentId: 'newer-assessment' } } })
+        }
+        return read(args)
+      })
+      try { expect((await loadSiteOutcomeDetail(site, outcomes[0].id))?.lastSuccessfulVerificationAt).toBeNull() }
+      finally { changed.mockRestore() }
+    } finally { queryTrace.active = false; await prisma.audit.deleteMany({ where: { id: { in: audits.map(audit => audit.id) } } }) }
+  })
 
   it('keeps later Flags open while showing a successful repair only for its original captured occurrence', async () => {
     if (!/^\/fixflags_execution_test_[a-f0-9]{32}$/.test(new URL(process.env.DATABASE_URL!).pathname))
@@ -109,6 +219,52 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     const summary = (await loadSiteSummaries(userId)).find(value => value.id === projectId)!
     expect(summary.presentation.flags.count).toBe(1)
     expect(summary.presentation.result.state).toBe('flags')
+  })
+
+  it.each([false, true])('retains genuine Checkout failures across stricter success proof, historical URL-only clear: %s', async legacyClear => {
+    const config = { startUrl: site.url, steps: [{ action: 'wait', waitMs: 1000 }], goal: { type: 'url_pattern', pattern: '/checkout' }, safety: 'stop-at-checkout' }
+    const outcome = await prisma.siteOutcome.create({ data: { projectId, name: 'Checkout', slug: 'checkout-proof', kind: 'CHECKOUT',
+      bindings: { create: { key: 'checkout', mechanism: 'BROWSER_JOURNEY', required: true, config } } } })
+    const coverage = { environment: 'production', policy: 'ALL_REQUIRED', requiredBindings: ['checkout'], observedBindings: ['checkout'], scope: null,
+      bindings: [{ key: 'checkout', mechanism: 'BROWSER_JOURNEY', version: 1, config, scope: null }] }
+    const fingerprint = outcomeFlagFingerprint(outcome.id, 'checkout'), base = Date.now() - 10_000
+    let sequence = 0
+    async function observation(state: 'FLAG' | 'CLEAR', current = true) {
+      const time = new Date(base + ++sequence * 1000)
+      const audit = await prisma.audit.create({ data: { projectId, userId, url: site.url, status: 'COMPLETED', completedAt: time } })
+      const run = await prisma.runRequest.create({ data: { projectId, auditId: audit.id, source: 'WATCH', status: 'COMPLETED', requestedAt: time,
+        idempotencyKey: 'checkout-proof:' + sequence, selections: { create: { outcomeId: outcome.id } } } })
+      const flag = state === 'FLAG' ? await prisma.flag.create({ data: { auditId: audit.id, source: 'DETERMINISTIC', fingerprint,
+        rubric: 'EXPERIENCE', severity: 'CRITICAL', problem: 'Add to cart did nothing', evidence: 'Controlled failed cart action',
+        whyItMatters: 'Customers cannot reach checkout', fix: 'Restore cart entry', confidence: 1, position: 0 } }) : null
+      const input = { projectId, bindingKeys: ['checkout'], failureFlagIds: flag ? [flag.id] : [], outcomeKind: 'CHECKOUT',
+        outcomeId: outcome.id, runRequestId: run.id, auditId: audit.id, state, summary: 'Controlled ' + state,
+        coverage: { ...coverage, bindings: coverage.bindings.map(binding => current ? { ...binding, evaluator: 'checkout-entry-v2' } : binding) },
+        evidence: { reason: state === 'FLAG' ? 'add_to_cart_noop' : 'checkout_reached' }, assessedAt: time, validUntil: new Date(time.getTime() + 60_000) }
+      return { input, flag }
+    }
+    const original = await observation('FLAG', false)
+    const first = await persistOutcomeAssessment(original.input)
+    if (legacyClear) {
+      const old = await observation('CLEAR', false)
+      const data = old.input
+      const legacy = await prisma.outcomeAssessment.create({ data: { outcomeId: data.outcomeId, runRequestId: data.runRequestId,
+        auditId: data.auditId, state: data.state, summary: data.summary, coverage: data.coverage, assessedAt: data.assessedAt, validUntil: data.validUntil,
+        evidence: { ...data.evidence,
+        incident: { ...readOutcomeIncident(first.evidence)!, transition: 'recovery', recoveredFlagIds: [original.flag!.id] } } } })
+      expect(await loadSiteOutcomeDetail(site, outcome.id)).toMatchObject({ state: 'COULD_NOT_VERIFY', lastSuccessfulVerificationAt: null })
+      const failedAgain = await observation('FLAG')
+      expect(readOutcomeIncident((await persistOutcomeAssessment(failedAgain.input)).evidence)).toMatchObject({
+        transition: 'ongoing_failure', incidentRunRequestId: original.input.runRequestId,
+      })
+      expect(await prisma.outcomeAssessment.findUniqueOrThrow({ where: { id: legacy.id } })).toEqual(legacy)
+    }
+    const repaired = await observation('CLEAR')
+    expect(readOutcomeIncident((await persistOutcomeAssessment(repaired.input)).evidence)?.transition).toBe('recovery')
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: original.flag!.id } })).toMatchObject({ status: 'FIXED', resolvedInId: repaired.input.auditId })
+    const recurred = await observation('FLAG')
+    expect(readOutcomeIncident((await persistOutcomeAssessment(recurred.input)).evidence)?.transition).toBe('regression')
+    expect(await prisma.flag.findUniqueOrThrow({ where: { id: recurred.flag!.id } })).toMatchObject({ status: 'REGRESSED' })
   })
 
   it('retains newer incidents through a delayed older success, then verifies genuine recovery and recurrence', async () => {
@@ -148,6 +304,9 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     for (const flag of [original.flag!, newer.flag!]) expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }))
       .toMatchObject({ status: 'OPEN', resolvedInId: null })
     expect(await prisma.improvement.findUniqueOrThrow({ where: { id: improvement.id } })).toMatchObject({ status: 'PROPOSED' })
+    const duringOutage = await loadSiteOutcomeDetail(site, outcome.id)
+    expect(duringOutage?.lastSuccessfulVerificationAt).toBeNull()
+    expect(mcpOutcomePayload(duringOutage!).freshness.lastSuccessfulVerificationAt).toBeNull()
     const continued = await observation('continued-failure', 1000, 2000, 'FLAG')
     const ongoing = await persistOutcomeAssessment(continued.input)
     expect(readOutcomeIncident(ongoing.evidence)).toMatchObject({ transition: 'ongoing_failure', incidentRunRequestId: original.run.id })
@@ -155,9 +314,47 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     expect(readOutcomeIncident((await persistOutcomeAssessment(repaired.input)).evidence)?.transition).toBe('recovery')
     for (const flag of [original.flag!, newer.flag!, continued.flag!]) expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } }))
       .toMatchObject({ status: 'FIXED', resolvedInId: repaired.audit.id })
+    const recoveredRows = await prisma.flag.findMany({ where: { id: { in: [original.flag!.id, newer.flag!.id, continued.flag!.id] } } })
+    const proofs = await loadIncidentRecoveryProofs([{ projectId, flags: recoveredRows }])
+    for (const flag of recoveredRows) expect(proofs.get(projectId)?.hasFlag?.(flag)).toBe(true)
+    expect(await loadSiteFindings(site)).toMatchObject({ flags: [], recommendations: [] })
+    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ status: 'FIXED', verificationState: 'verified', resolvedInId: repaired.audit.id }])
+    const monitored = { version: 1 as const, targetUrl: site.url, environment: 'production', scope: 'OUTCOMES' as const, checks: {},
+      outcomes: [{ id: outcome.id, kind: 'AVAILABILITY', expectation: null, bindingPolicy: 'ALL_REQUIRED',
+        bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY' as const, required: true, config: { startUrl: site.url } }] }],
+      verificationTarget: null }
+    await prisma.audit.update({ where: { id: repaired.audit.id }, data: { executionSpec: monitored } })
+    const summary = await outcomeMonitoringDiff(repaired.audit.id)
+    const resolved = await loadSiteResolvedFlags(site)
+    expect(summary?.fixed.map(flag => flag.id)).toEqual([continued.flag!.id])
+    expect(resolved.map(flag => flag.sourceFlagId)).toEqual(summary?.fixed.map(flag => flag.id))
+    const recoveredDetail = await loadSiteOutcomeDetail(site, outcome.id)
+    expect(recoveredDetail?.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
+    expect(mcpOutcomePayload(recoveredDetail!).freshness.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
     const repeated = await observation('genuine-recurrence', 5000, 6000, 'FLAG')
     expect(readOutcomeIncident((await persistOutcomeAssessment(repeated.input)).evidence)?.transition).toBe('regression')
     expect(await prisma.flag.findUniqueOrThrow({ where: { id: repeated.flag!.id } })).toMatchObject({ status: 'REGRESSED' })
+    const after = await loadIncidentRecoveryProofs([{ projectId, flags: await prisma.flag.findMany({ where: { audit: { projectId } } }) }])
+    expect(after.get(projectId)?.hasFlag?.(repeated.flag!)).toBe(false)
+    for (const flag of recoveredRows) expect(after.get(projectId)?.hasFlag?.(flag)).toBe(true)
+    expect(await loadSiteFindings(site)).toMatchObject({ flags: [], recommendations: [{ sourceFlagId: repeated.flag!.id, status: 'REGRESSED' }] })
+    await prisma.audit.update({ where: { id: repeated.audit.id }, data: { executionSpec: monitored } })
+    const recurrence = await outcomeMonitoringDiff(repeated.audit.id)
+    expect(recurrence?.regressed.map(flag => flag.id)).toEqual([repeated.flag!.id])
+    expect((await loadSiteFindings(site)).recommendations.map(flag => flag.sourceFlagId)).toEqual(recurrence?.regressed.map(flag => flag.id))
+    expect(await loadSiteResolvedFlags(site)).toMatchObject([{ status: 'FIXED', verificationState: 'verified', resolvedInId: repaired.audit.id }])
+    const afterRecurrence = await loadSiteOutcomeDetail(site, outcome.id)
+    expect(afterRecurrence?.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
+    expect(mcpOutcomePayload(afterRecurrence!).freshness.lastSuccessfulVerificationAt).toBe(repaired.input.assessedAt.toISOString())
+    for (const flag of [continued.flag!, repeated.flag!]) await prisma.flag.update({ where: { id: flag.id },
+      data: { supportingObservations: { version: 999, items: [{ evidence: 'Private unavailable observation' }] } } })
+    const unreadableRecovery = await outcomeMonitoringDiff(repaired.audit.id)
+    const unreadableRecurrence = await outcomeMonitoringDiff(repeated.audit.id)
+    expect(unreadableRecovery?.fixed).toMatchObject([{ id: continued.flag!.id, supportingEvidenceUnreadable: true }])
+    expect(unreadableRecurrence?.regressed).toMatchObject([{ id: repeated.flag!.id, supportingEvidenceUnreadable: true }])
+    for (const comparison of [unreadableRecovery!, unreadableRecurrence!]) {
+      expect(JSON.stringify(comparison)).not.toContain('Private unavailable observation')
+    }
   })
 
   it('keeps the latest requested answer and its method when an older run finishes later', async () => {
@@ -282,6 +479,101 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     const after = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })
     expect(after.name).toBe('A customer can buy the annual plan')
     expect(after.confirmedAt?.toISOString()).toBe(before.confirmedAt?.toISOString())
+  })
+
+  it('preserves a page-specific target when its existing agreement is reconfirmed', async () => {
+    const created = await createSiteOutcome({ site, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    expect(created).not.toBeNull()
+    const before = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: created!.id, enabled: true } })
+    await confirmSiteOutcome({ site, outcomeId: created!.id, confirmed: true, kind: 'AVAILABILITY' })
+    const after = await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })
+    expect(after.config).toEqual(before.config)
+    expect(after.scope).toEqual(before.scope)
+    expect(after.version).toBe(before.version)
+  })
+
+  it('versions a changed target so work admitted against its old binding can be fenced', async () => {
+    const outcome = await genericOutcome('changed-target')
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY' })
+    const before = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: outcome.id, enabled: true } })
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    const after = await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })
+    expect(after.version).toBe(before.version + 1)
+    expect(after.config).not.toEqual(before.config)
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    expect((await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })).version).toBe(after.version)
+  })
+
+  it('preserves the check definition while recording renewed authorization after withdrawal', async () => {
+    const outcome = await genericOutcome('reauthorized-binding')
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    const before = await prisma.outcomeExecutionBinding.findFirstOrThrow({ where: { outcomeId: outcome.id, enabled: true } })
+    const agreedBefore = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: false })
+    expect((await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })).enabled).toBe(false)
+    await confirmSiteOutcome({ site, outcomeId: outcome.id, confirmed: true, kind: 'AVAILABILITY' })
+    const after = await prisma.outcomeExecutionBinding.findUniqueOrThrow({ where: { id: before.id } })
+    expect(after).toMatchObject({ enabled: true, version: before.version, config: before.config })
+    const agreedAfter = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: outcome.id } })
+    expect(agreedAfter.confirmedAt!.getTime()).toBeGreaterThan(agreedBefore.confirmedAt!.getTime())
+    expect(agreedAfter.authorizationRevision).toBe(agreedBefore.authorizationRevision + 1)
+  })
+
+  it('revokes live task ownership without changing recovery obligations or unrelated evidence', async () => {
+    const created = await createSiteOutcome({ site, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    const ownedOutcomes = () => prisma.siteOutcome.findMany({ where: { id: created!.id }, include: { bindings: true } })
+    const input = { projectId, targetUrl: site.url + 'pricing', environment: 'production', scope: 'OUTCOMES' as const }
+    const originalOutcomes = await ownedOutcomes()
+    const before = await buildExecutionSpec({ ...input, outcomes: originalOutcomes })
+    const audit = await prisma.audit.create({ data: { userId, projectId, url: input.targetUrl, status: 'CHECKING', executionSpec: before as Prisma.InputJsonValue } })
+    const token = randomUUID()
+    const task = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'task:binding',
+      source: 'EXECUTION', status: 'RUNNING', workKind: 'bindings', workState: 'RUNNING', workToken: token,
+      workGeneration: 1, workLeaseUntil: new Date(Date.now() + 90_000), workInput: {
+        pageUrl: input.targetUrl, position: 0, primary: true, role: 'primary', outcomeId: created!.id,
+        bindingKey: before.outcomes[0]!.bindings[0]!.key,
+      } } })
+    const retained = await prisma.auditVerifierExecution.create({ data: { auditId: audit.id, targetKey: 'retained-observation',
+      source: 'DETERMINISTIC', status: 'COMPLETED', detail: { observation: 'Already recorded evidence' } } })
+    const owner = { auditId: audit.id, taskId: task.id, token, generation: 1 }
+    let signal: AbortSignal | undefined
+    const running = withExecutionOwnership(owner, () => new Promise((_resolve, reject) => {
+      signal = currentExecutionOwnership()!.signal!
+      signal.addEventListener('abort', () => reject(new ExecutionOwnershipLost()), { once: true })
+    }))
+    const stopped = expect(running).rejects.toBeInstanceOf(ExecutionOwnershipLost)
+    try {
+      await confirmSiteOutcome({ site, outcomeId: created!.id, confirmed: false })
+      await stopped
+      expect(signal!.aborted).toBe(true)
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: task.id } }))
+        .toMatchObject({ workState: 'BLOCKED', workToken: null, workErrorCode: 'OUTCOME_AUTHORIZATION_CHANGED' })
+      await expect(withExecutionOwnership(owner, () => executionWrite(tx => tx.audit.update({
+        where: { id: audit.id }, data: { status: 'COMPLETED' },
+      })))).rejects.toBeInstanceOf(ExecutionOwnershipLost)
+      expect((await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).status).toBe('CHECKING')
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: retained.id } })).toEqual(retained)
+      await confirmSiteOutcome({ site, outcomeId: created!.id, confirmed: true, kind: 'AVAILABILITY' })
+      const renewedOutcomes = await ownedOutcomes()
+      const after = await buildExecutionSpec({ ...input, outcomes: renewedOutcomes })
+      expect(snapshotOutcomeAuthorization(renewedOutcomes).outcomes[0]!.revision)
+        .toBe(snapshotOutcomeAuthorization(originalOutcomes).outcomes[0]!.revision + 1)
+      expect(comparableOutcomeCoverage(admittedOutcomeCoverage(before, before.outcomes[0]!),
+        admittedOutcomeCoverage(after, after.outcomes[0]!))).toBe(true)
+    } finally {
+      if (!signal?.aborted) await prisma.auditVerifierExecution.update({ where: { id: task.id }, data: { workState: 'BLOCKED', workToken: null } })
+      await stopped
+    }
+  })
+
+  it('makes disable idempotent and keeps its new authorization after re-enabling', async () => {
+    const created = await createSiteOutcome({ site, kind: 'AVAILABILITY', targetUrl: site.url + 'pricing' })
+    const before = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: created!.id } })
+    await setSiteOutcomeEnabled({ site, outcomeId: created!.id, enabled: false })
+    await setSiteOutcomeEnabled({ site, outcomeId: created!.id, enabled: false })
+    await setSiteOutcomeEnabled({ site, outcomeId: created!.id, enabled: true })
+    const after = await prisma.siteOutcome.findUniqueOrThrow({ where: { id: created!.id } })
+    expect(after).toMatchObject({ enabled: true, authorizationRevision: before.authorizationRevision + 1 })
   })
 
   it('does not wait on or touch a foreign tenant Outcome row', async () => {

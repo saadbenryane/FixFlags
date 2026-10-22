@@ -35,8 +35,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     },
   })
 
-  const isShareableOg = audit?.isPublic || audit?.userId === null
-  if (!audit || audit.status !== 'COMPLETED' || !isShareableOg) {
+  if (!audit || audit.status !== 'COMPLETED' || !audit.isPublic) {
     return new ImageResponse(<ReportOgImage mode="light" generic />, { ...size })
   }
 

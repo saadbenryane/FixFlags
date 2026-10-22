@@ -2,6 +2,7 @@ import type { FlowScanResult } from '../flow/run-flow-scan'
 import { isAuthUtilityLink } from '../flow/link-scoring'
 import { runPostClickFlowChecks, scopePostClickFlags } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
+import { scopeDestinationContentFlags } from './flow-destination-content'
 import { runFlowUXChecks } from './flow-ux'
 import { formatOverlayEvidence } from '../browser/overlay-probe'
 import { scopedOverlayResult, runObservedOverlayChecks } from './overlay-evidence'
@@ -356,8 +357,8 @@ export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose | nul
   const scoped = purpose !== null && needsFirstStep(purpose) ? findings : findings.filter(flag => !['flow-no-cta-found', 'flow-cta-external-leave'].includes(flag.checkId))
   const ids = new Set(scoped.map((f) => f.checkId))
   if (ids.has('flow-cta-stuck-loading') && ids.has('flow-destination-stuck-loading')) {
-    return scopePostClickFlags(scopePrimaryActionFlags(scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading'), result.actionEvidence), result)
+    return scopeDestinationContentFlags(scopePostClickFlags(scopePrimaryActionFlags(scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading'), result.actionEvidence), result), result)
   }
 
-  return scopePostClickFlags(scopePrimaryActionFlags(scoped, result.actionEvidence), result)
+  return scopeDestinationContentFlags(scopePostClickFlags(scopePrimaryActionFlags(scoped, result.actionEvidence), result), result)
 }

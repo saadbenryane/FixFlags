@@ -13,6 +13,16 @@ describe('current assessment comparability', () => {
   it('never upgrades unversioned historical coverage to current success', () => {
     expect(assessmentIsComparable({ environment: 'production', requiredBindings: ['http'] }, [{ ...binding, version: 1 }], 'production')).toBe(false)
   })
+  it('requires current positive proof while preserving observed failures under the same configuration', () => {
+    const current = { ...binding, mechanism: 'BROWSER_JOURNEY', evaluator: 'checkout-entry-v2' }
+    const prior = { ...coverage, bindings: [{ ...binding, mechanism: 'BROWSER_JOURNEY' }] }
+    expect(assessmentIsComparable(prior, [current], 'production')).toBe(false)
+    expect(bindingEvidenceIsComparable(prior, current, 'production')).toBe(false)
+    expect(assessmentIsComparable(prior, [current], 'production', false)).toBe(true)
+    expect(bindingEvidenceIsComparable(prior, current, 'production', false)).toBe(true)
+    const fresh = { ...prior, bindings: [{ ...current }] }
+    expect(assessmentIsComparable(fresh, [current], 'production')).toBe(true)
+  })
   it('requires the exact authorized fixture version for protected actions', () => {
     const current = { ...binding, mechanism: 'SAFE_FORM', fixture: { id: 'fixture', version: 4, authorized: true } }
     const receipt = { ...coverage, bindings: [{ ...current, fixture: { id: 'fixture', version: 4 } }] }

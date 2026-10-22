@@ -49,11 +49,19 @@ try {
     canonicalHost: 'example.test', watchInterval: 'WEEKLY', watchNextRunAt: new Date('2026-10-19T12:00:00Z') }, select: { id: true } })
   const audit = await db.audit.create({ data: { userId: user.id, projectId: site.id, url: 'https://example.test/supplied-path', status: 'COMPLETED',
     isPublic: false, completedAt: new Date(), htmlMetadata: { retainedEvidenceReference: 'private-retained-capture' } }, select: { id: true } })
+  const outcomeId = 'upgrade-outcome-' + randomUUID(), bindingId = 'upgrade-binding-' + randomUUID()
+  await db.$executeRaw`INSERT INTO site_outcomes (id, "projectId", name, slug, kind, "confirmedAt", "updatedAt")
+    VALUES (${outcomeId}, ${site.id}, 'Retained page agreement', 'retained-page', 'AVAILABILITY', clock_timestamp(), clock_timestamp())`
+  await db.$executeRaw`INSERT INTO outcome_execution_bindings (id, "outcomeId", key, mechanism, config, version, "updatedAt")
+    VALUES (${bindingId}, ${outcomeId}, 'retained-http', 'HTTP_AVAILABILITY',
+      ${JSON.stringify({ startUrl: 'https://example.test/supplied-path', expectedSelector: 'body' })}::jsonb, 3, clock_timestamp())`
   async function retained() {
     return {
       user: await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { id: true, plan: true, subscriptionStatus: true, stripeCustomerId: true, stripeSubscriptionId: true } }),
       site: await db.project.findUniqueOrThrow({ where: { id: site.id }, select: { id: true, userId: true, url: true, canonicalHost: true, watchInterval: true, watchNextRunAt: true } }),
       audit: await db.audit.findUniqueOrThrow({ where: { id: audit.id }, select: { id: true, projectId: true, userId: true, status: true, isPublic: true, htmlMetadata: true } }),
+      outcome: await db.$queryRaw`SELECT id, "projectId", kind, "confirmedAt" FROM site_outcomes WHERE id = ${outcomeId}`,
+      binding: await db.$queryRaw`SELECT id, "outcomeId", key, mechanism, config, scope, version, enabled FROM outcome_execution_bindings WHERE id = ${bindingId}`,
     }
   }
   const before = JSON.stringify(await retained())
@@ -61,9 +69,12 @@ try {
   run(['migrate', 'status', '--schema', 'prisma/schema.prisma'])
   run(['migrate', 'diff', '--from-schema-datasource', 'prisma/schema.prisma', '--to-schema-datamodel', 'prisma/schema.prisma', '--exit-code'])
   if (JSON.stringify(await retained()) !== before) throw new Error('Upgrade changed subscription, Site, history or private evidence identity')
+  const permissions = await db.$queryRaw`SELECT "authorizationRevision" FROM site_outcomes WHERE id = ${outcomeId}`
+  if (permissions[0]?.authorizationRevision !== 1) throw new Error('Upgrade did not establish the retained authorization baseline')
   const evidence = { schemaVersion: 1, status: 'PASS', gitSha: git(['rev-parse', 'HEAD']).trim(), previousGitSha: previous,
     completedAt: new Date().toISOString(), checks: ['previous migrations applied', 'retained subscription and Site identity',
-      'retained historical private evidence reference', 'current migrations applied', 'migration ledger current', 'schema drift absent'],
+      'retained historical private evidence reference', 'retained check definition and initial authorization revision',
+      'current migrations applied', 'migration ledger current', 'schema drift absent'],
     retainedRecordsSha256: createHash('sha256').update(before).digest('hex') }
   if (process.env.RELEASE_UPGRADE_EVIDENCE_FILE) {
     mkdirSync(path.dirname(process.env.RELEASE_UPGRADE_EVIDENCE_FILE), { recursive: true, mode: 0o700 })

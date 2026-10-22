@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MeProvider } from '@/hooks/useMe'
 import DashboardPage from '@/app/(app)/dashboard/page'
+import { WEBSITES_COPY } from '@/lib/marketing/copy/terminology'
 
 const mocks = vi.hoisted(() => ({
   getAppViewer: vi.fn(),
@@ -62,14 +63,17 @@ describe('/dashboard handoff', () => {
     ).rejects.toThrow('REDIRECT:/sign-in')
   })
 
-  it('resumes the handed-off URL by starting the scan exactly once', async () => {
-    await renderPage({ url: 'https://example.com' })
+  it.each([
+    ['https://example.com', 'https://example.com/'],
+    ['https://example.com/plans/?return=/account/#/pricing/', 'https://example.com/plans/?return=/account/#/pricing/'],
+  ])('resumes the handed-off URL by starting the scan exactly once: %s', async (url, expected) => {
+    await renderPage({ url })
 
     await waitFor(() => expect(mocks.startScanWithHandoff).toHaveBeenCalledTimes(1))
     expect(mocks.startScanWithHandoff).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: 'https://example.com',
-        body: expect.objectContaining({ url: 'https://example.com', source: 'dashboard' }),
+        url: expected,
+        body: expect.objectContaining({ url: expected, source: 'dashboard' }),
       })
     )
   })
@@ -78,7 +82,7 @@ describe('/dashboard handoff', () => {
     await renderPage({ url: 'https://example.com' })
 
     await waitFor(() =>
-      expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('https://example.com/')).toBeInTheDocument()
     )
     // The field is locked only while the resumed scan is in flight.
     expect(screen.getByRole('button', { name: /Analyzing/i })).toBeDisabled()
@@ -97,5 +101,22 @@ describe('/dashboard handoff', () => {
 
     await waitFor(() => expect(screen.getByText('Websites')).toBeInTheDocument())
     expect(mocks.startScanWithHandoff).not.toHaveBeenCalled()
+  })
+
+  it('explains the first check in one place without a second empty state', async () => {
+    await renderPage({})
+    expect(screen.getByRole('heading', { name: WEBSITES_COPY.firstTitle })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeVisible()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.queryByText(WEBSITES_COPY.emptyTitle)).not.toBeInTheDocument()
+    expect(screen.queryByText(WEBSITES_COPY.count(0))).not.toBeInTheDocument()
+  })
+
+  it('keeps returning customers focused on adding a website', async () => {
+    mocks.loadSiteSummaries.mockResolvedValue([{ id: 'existing-site' }])
+    await renderPage({})
+    expect(screen.getByRole('heading', { name: WEBSITES_COPY.analyzeTitle })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: WEBSITES_COPY.firstTitle })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 })

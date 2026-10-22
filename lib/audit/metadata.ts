@@ -7,8 +7,10 @@ import { normalizeHeadingText } from './checks/utils'
 import { collectResourceTransport, type ResourceTransport } from './resource-transport'
 import { htmlDocumentBase, htmlDocumentIds, isInertHtmlNode } from './html-document'
 import { collectFormInventory } from './metadata-form-inventory'
+import { HTML_CONTROL_NAMES_VERSION } from './checks/accessibility-rules'
 
 export interface PageMetadata {
+  controlNamesVersion?: typeof HTML_CONTROL_NAMES_VERSION
   renderedCopy?: import('./browser/rendered-copy').RenderedCopy | null
   /** Visible introductory prose following the primary headline, before another heading. */
   headlineSupport?: string | null
@@ -16,6 +18,8 @@ export interface PageMetadata {
   testimonialBlocks?: Array<{ quote: string; attribution: string | null }>
   /** Observed document base used to resolve relative navigation declarations. */
   linkBaseUrl?: string
+  /** Address of the observed document, distinct from an author-supplied link base. */
+  documentUrl?: string
   title: string | null
   description: string | null
   ogTitle: string | null
@@ -114,6 +118,34 @@ export function mergeRuntimeHeadMetadata(
 
 export type MetadataMode = 'crawler' | 'rendered'
 
+/** Published privacy and contact signals. Hidden, script, style and template
+ * text is already removed from the contact inputs. */
+export function publishedTrustSignals(input: {
+  anchors: ReadonlyArray<{ text: string; href: string }>
+  publishedText: string
+  publishedHrefs: readonly string[]
+  jsonLd: readonly unknown[]
+}) {
+  const hasPrivacyPolicy = input.anchors.some(anchor => {
+    const text = anchor.text.toLowerCase()
+    const href = anchor.href.toLowerCase()
+    return text.includes('privacy') || href.includes('privacy')
+  })
+  const publishedText = input.publishedText.toLowerCase()
+  const publishedHrefs = input.publishedHrefs.map(href => href.toLowerCase())
+  const hasContactInfoFromText = publishedText.includes('contact') || publishedText.includes('@') ||
+    publishedText.search(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) !== -1 ||
+    publishedHrefs.some(href => href.includes('contact') || href.startsWith('mailto:') || href.startsWith('tel:'))
+  const hasContactInfoFromJsonLd = input.jsonLd.some(item => {
+    if (!item || typeof item !== 'object') return false
+    const record = item as Record<string, unknown>
+    if (record.email || record.contactPoint) return true
+    const text = JSON.stringify(record).toLowerCase()
+    return text.includes('"email"') || text.includes('contactpoint')
+  })
+  return { hasPrivacyPolicy, hasContactInfo: hasContactInfoFromText || hasContactInfoFromJsonLd }
+}
+
 export function parseMetadataFromHtml(html: string, url: string, mode: MetadataMode = 'crawler'): PageMetadata {
   // Resource declarations use the scripting-enabled parse, so fallback and
   // template contents cannot become claims about live resource requests.
@@ -178,35 +210,43 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
     return $el.parents('[hidden], [aria-hidden="true"]').length > 0
   }
 
-  const SR_ONLY_CLASS = /\b(sr-only|visually-hidden|screen-reader-only|skip-nav|skip-link)\b/i
+  const nameTextCache = new Map<object, { visible?: string; referenced?: string }>()
+  const nameText = ($el: ReturnType<typeof $>, includeHidden = false): string => {
+    const node = $el.get(0)
+    if (!node) return ''
+    const key = includeHidden ? 'referenced' : 'visible'
+    const recorded = nameTextCache.get(node)?.[key]
+    if (recorded !== undefined) return recorded
+    const content = $el.clone()
+    content.find('script, style, template, noscript' + (includeHidden ? '' : ', [hidden], [aria-hidden="true"]')).remove()
+    const text = content.text().trim()
+    nameTextCache.set(node, { ...nameTextCache.get(node), [key]: text })
+    return text
+  }
 
-  const hasAccessibleName = ($el: ReturnType<typeof $>): boolean => {
-    if ($el.attr('aria-hidden') === 'true') return true
-    if ($el.text().trim()) return true
-    const srOnlyText = $el
-      .find('[class]')
-      .toArray()
-      .filter((child) => SR_ONLY_CLASS.test($(child).attr('class') || ''))
-      .map((child) => $(child).text().trim())
-      .find(Boolean)
-    if (srOnlyText) return true
-    if (($el.attr('aria-label') || '').trim()) return true
-    const labelledBy = ($el.attr('aria-labelledby') || '').trim()
-    if (labelledBy) {
-      const labelText = labelledBy
-        .split(/\s+/)
-        .map(id => { const label = documentIds.get(id); return label ? $(label).text().trim() : '' })
-        .filter(Boolean)
-        .join(' ')
-      if (labelText) return true
-    }
+  // Attribute presence alone does not label a control. Empty or missing
+  // references leave the other recorded name sources available.
+  const hasDeclaredName = ($el: ReturnType<typeof $>, followReferences = true): boolean => {
+    if (followReferences && ($el.attr('aria-labelledby') || '').trim().split(/\s+/).some(id => {
+      const node = documentIds.get(id)
+      // Referenced names use the same content rules, without following another
+      // aria-labelledby chain or recursing through a self-reference.
+      return node ? hasAccessibleName($(node), isInHiddenSubtree($(node)), false) : false
+    })) return true
+    return Boolean(($el.attr('aria-label') || '').trim())
+  }
+
+  const hasAccessibleName = ($el: ReturnType<typeof $>, includeHidden = false, followReferences = true): boolean => {
+    if ($el.attr('aria-hidden') === 'true' && !includeHidden) return true
+    if (hasDeclaredName($el, followReferences)) return true
+    if ($el.is('img') && ($el.attr('alt') || '').trim()) return true
+    if (nameText($el, includeHidden)) return true
     if (($el.attr('title') || '').trim()) return true
     const hasLabeledImg = $el
       .find('img')
       .toArray()
-      .some((img) => ($(img).attr('alt') || '').trim() !== '')
+      .some((img) => (includeHidden || !isInHiddenSubtree($(img))) && ($(img).attr('alt') || '').trim() !== '')
     if (hasLabeledImg) return true
-    if ($el.find('svg[aria-label], svg > title').length > 0) return true
     if ($el.is('a')) {
       const cls = ($el.attr('class') || '').toLowerCase()
       if (/\babsolute\b/.test(cls) && /\binset-0\b/.test(cls)) {
@@ -218,7 +258,7 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
     const hasLabeledChild = $el
       .find('[aria-label], [title]')
       .toArray()
-      .some((c) => (($(c).attr('aria-label') ?? $(c).attr('title')) || '').trim() !== '')
+      .some((c) => (includeHidden || !isInHiddenSubtree($(c))) && (($(c).attr('aria-label') ?? $(c).attr('title')) || '').trim() !== '')
     return hasLabeledChild
   }
 
@@ -229,21 +269,33 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
   }
 
   // Forms and inputs
-  // Note: <input type="file"> is excluded because it is always visually hidden
-  // and triggered by an adjacent button that carries the accessible name.
+  // File controls retain the native-rule policy rather than this HTML fallback.
   let inputsWithoutLabel = 0
-  const explicitLabels = new Set($('label[for]').toArray().filter(label => !isInertHtmlNode(label)).map(label => $(label).attr('for')!))
+  const labelNames = new Map<object, boolean>()
+  const hasLabelName = ($label: ReturnType<typeof $>): boolean => {
+    const node = $label.get(0)
+    if (!node) return false
+    const recorded = labelNames.get(node)
+    if (recorded !== undefined) return recorded
+    const content = $label.clone()
+    const includeHidden = isInHiddenSubtree($label)
+    // A textarea value or select option is not the enclosing label's name.
+    content.find('input, textarea, select, button, script, style, template, noscript' + (includeHidden ? '' : ', [hidden], [aria-hidden="true"]')).remove()
+    const named = hasAccessibleName(content, includeHidden)
+    labelNames.set(node, named)
+    return named
+  }
+  const explicitLabels = new Set($('label[for]').toArray()
+    .filter(label => !isInertHtmlNode(label) && hasLabelName($(label)))
+    .map(label => documentIds.get($(label).attr('for')!)))
   $('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="file"]), textarea, select').each((_, el) => {
     const $el = $(el)
-    if ($el.attr('aria-hidden') === 'true') return
-    const id = $el.attr('id')
-    const ariaLabel = $el.attr('aria-label')
-    const ariaLabelledby = $el.attr('aria-labelledby')
-    const hasExplicitLabel = Boolean(id && explicitLabels.has(id) && documentIds.get(id) === el)
-    if (!ariaLabel && !ariaLabelledby && !hasExplicitLabel) {
-      if ($el.closest('label').length) return
-      inputsWithoutLabel++
-    }
+    if (!shouldCountInteractive($el)) return
+    if (hasDeclaredName($el)) return
+    const label = $el.closest('label')
+    const implicit = label.length > 0 && label.attr('for') === undefined &&
+      label.find('input:not([type="hidden"]), textarea, select, button, meter, output, progress').get(0) === el && hasLabelName(label)
+    if (!explicitLabels.has(el) && !implicit) inputsWithoutLabel++
   })
 
   const formInventory = collectFormInventory($, documentIds)
@@ -330,35 +382,16 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
       attribution: attribution.replace(/\s+/g, ' ').trim().slice(0, 1200) || null }
   }).filter(block => block.quote)
 
-  // Privacy policy detection
-  const hasPrivacyPolicy = !!(
-    $('a').filter((_, el) => {
-      const text = $(el).text().toLowerCase()
-      const href = ($(el).attr('href') || '').toLowerCase()
-      return text.includes('privacy') || href.includes('privacy')
-    }).length > 0
-  )
-
-  // Contact info detection - check body text, visible links, and JSON-LD structured data
-
+  // Privacy and contact use one predicate. Rendered destination probes call it
+  // with the live document when the saved HTML no longer fits.
   const contactBody = $('body').clone()
   contactBody.find('script,style,template,[hidden]').remove()
-  const publishedText = contactBody.text().toLowerCase()
-  const publishedLinks = contactBody.find('a[href]').toArray().map(element => ($(element).attr('href') ?? '').toLowerCase())
-  const hasContactInfoFromText = !!(
-    publishedText.includes('contact') ||
-    publishedText.includes('@') ||
-    publishedText.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) ||
-    publishedLinks.some(href => href.includes('contact') || /^mailto:|^tel:/.test(href))
-  )
-  const hasContactInfoFromJsonLd = jsonLd.some((item) => {
-    if (!item || typeof item !== 'object') return false
-    const obj = item as Record<string, unknown>
-    if (obj.email || obj.contactPoint) return true
-    const str = JSON.stringify(obj).toLowerCase()
-    return str.includes('"email"') || str.includes('contactpoint')
+  const { hasPrivacyPolicy, hasContactInfo } = publishedTrustSignals({
+    anchors: $('a').toArray().map(element => ({ text: $(element).text(), href: $(element).attr('href') || '' })),
+    publishedText: contactBody.text(),
+    publishedHrefs: contactBody.find('a[href]').toArray().map(element => $(element).attr('href') ?? ''),
+    jsonLd,
   })
-  const hasContactInfo = hasContactInfoFromText || hasContactInfoFromJsonLd
 
   const hasFavicon = $(
     'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
@@ -419,6 +452,8 @@ export function parseMetadataFromHtml(html: string, url: string, mode: MetadataM
 
   return {
     linkBaseUrl,
+    controlNamesVersion: HTML_CONTROL_NAMES_VERSION,
+    documentUrl: url,
     title: $('title').first().text().trim() || null,
     description: $('meta[name="description"]').attr('content') || null,
     ogTitle: $('meta[property="og:title"]').attr('content') || null,

@@ -1,6 +1,6 @@
 import { accountInfrastructureReady } from '@/lib/sites/accounts/contracts'
 import { accountConfigurationFingerprint } from '@/lib/sites/accounts/configuration'
-import { createWorkerRedis } from './redis'
+import { createQueueRedis } from './redis'
 import { randomUUID } from 'node:crypto'
 import type Redis from 'ioredis'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
@@ -30,7 +30,8 @@ let diagnostics: WorkerDiagnostics = {
 
 function getRedis(): Redis {
   if (!redis) {
-    redis = createWorkerRedis()
+    // Diagnostics are bounded RPCs, not BullMQ's persistent blocking consumer.
+    redis = createQueueRedis()
   }
   return redis
 }
@@ -134,9 +135,9 @@ export async function clearWorkerHeartbeat(): Promise<void> {
   stopping = true
   if (!redis) return
   const client = redis
-  await client.del(`${HEARTBEAT_PREFIX}${WORKER_ID}`)
-  client.disconnect()
   redis = null
+  try { await client.del(`${HEARTBEAT_PREFIX}${WORKER_ID}`) }
+  finally { client.disconnect() }
 }
 
 async function listHeartbeatKeys(): Promise<string[]> {

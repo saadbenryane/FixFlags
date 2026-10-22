@@ -1,10 +1,11 @@
 'use client'
 
+import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { ANALYTICS_PREFERENCES_EVENT } from '@/lib/analytics/consent'
 
 export function CookiePreferencesButton({ className }: { className?: string }) {
   return (
-    <button
+    <InteractiveButton
       type="button"
       className={className}
       onClick={event => {
@@ -13,6 +14,6 @@ export function CookiePreferencesButton({ className }: { className?: string }) {
       }}
     >
       Cookie settings
-    </button>
+    </InteractiveButton>
   )
 }

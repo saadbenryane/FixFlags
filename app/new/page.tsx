@@ -3,6 +3,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
 import { REVIEW_ENTRY } from '@/lib/marketing/copy'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 
 export default function NewReviewPage() {
   return (
@@ -10,11 +11,11 @@ export default function NewReviewPage() {
       <Section spacing="hero">
         <Container className="max-w-2xl px-4">
           <Heading as="h1" className="text-3xl font-bold tracking-display">
-            {REVIEW_ENTRY.cta}
+            {PUBLIC_SITE_COPY.analyze}
           </Heading>
           <p className="mt-3 text-sm text-muted-foreground">{REVIEW_ENTRY.description}</p>
           <div className="mt-6">
-            <AuditInput variant="landing" idSuffix="-new" showLandingExtras={false} />
+            <AuditInput variant="landing" idSuffix="-new" showLandingExtras={false} submitLabel={PUBLIC_SITE_COPY.analyze} />
           </div>
         </Container>
       </Section>

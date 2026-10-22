@@ -28,7 +28,7 @@
     "module:boundary-guard": "node scripts/module-boundary-guard.mjs",
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:validate": "node scripts/skill-validator.mjs",
-    "brand:icons": "node scripts/generate-brand-icons.mjs",
+    "brand:icons": "node scripts/generate-brand-icons.mjs && tsx scripts/generate-social-card.mts && node --test scripts/brand-assets.test.mjs",
     "seo:guard": "node scripts/seo-guard.mjs",
     "metadata:route-guard": "node scripts/metadata-route-guard.mjs",
     "security:audit": "node scripts/security-audit.mjs",
@@ -112,7 +112,11 @@
     "setup": "docker compose up -d --wait --wait-timeout 60 && npm run db:generate && npm run db:migrate && npm run db:seed",
     "test:website": "FIXFLAGS_TEST_PROFILE=website vitest run",
     "test:coverage:website": "FIXFLAGS_TEST_PROFILE=website vitest run --coverage",
-    "verify:website": "node scripts/validate.mjs website"
+    "verify:website": "node scripts/validate.mjs website",
+    "growth:readiness": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/inspect-growth-readiness.ts",
+    "growth:ai-visibility": "tsx scripts/growth/evaluate-ai-visibility.ts",
+    "growth:indexnow": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/notify-indexnow.ts",
+    "growth:plugin-package": "node scripts/growth/build-chatgpt-plugin.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
@@ -128,6 +132,7 @@
     "@modelcontextprotocol/server": "^2.1.0",
     "@next/env": "16.4.0",
     "@next/third-parties": "16.4.0",
+    "@nodable/entities": "3.1.0",
     "@prisma/client": "^6.0.0",
     "@radix-ui/react-accordion": "^1.0.0",
     "@radix-ui/react-checkbox": "^1.3.5",
@@ -147,6 +152,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "dotenv": "^16.4.7",
+    "encoding-sniffer": "0.2.1",
     "fast-xml-parser": "5.11.2",
     "fixflags": "^1.0.2",
     "googleapis": "^173.0.0",

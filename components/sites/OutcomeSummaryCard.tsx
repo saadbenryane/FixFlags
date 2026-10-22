@@ -3,11 +3,10 @@ import Link from 'next/link'
 import { Check, CircleAlert, CircleHelp, Clock3, Loader2 } from 'lucide-react'
 import type { Route } from 'next'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
+import type { CustomerOutcomeState } from '@/lib/sites/domain/outcome-states'
 import { cn } from '@/lib/utils'
 import styles from './BoardCard.module.css'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
-
-type OutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
 export function OutcomeSummaryCard({
   name,
@@ -31,7 +30,7 @@ export function OutcomeSummaryCard({
   coverage: string
   freshness: string
   nextStep?: string
-  state: OutcomeState
+  state: CustomerOutcomeState
   running?: boolean
   label?: string
   actions?: ReactNode

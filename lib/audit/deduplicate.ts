@@ -3,18 +3,13 @@ import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'
 import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
 import type { ThemeMatchableFlag } from './flag-types'
+import { navigationDestinationKey } from './url-identity'
 
 type PageScopedFlag = { pageUrl?: string | null; affectedPaths?: string[] }
 
 function normalizedPage(pageUrl: string | null | undefined): string | undefined {
   if (!pageUrl) return undefined
-  try {
-    const url = new URL(pageUrl)
-    url.hash = ''
-    return url.toString()
-  } catch {
-    return pageUrl
-  }
+  return navigationDestinationKey(pageUrl) ?? pageUrl
 }
 
 /** Resolve the reviewed page before applying an explicit ownership rule. */

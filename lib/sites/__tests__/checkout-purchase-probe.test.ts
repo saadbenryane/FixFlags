@@ -150,12 +150,13 @@ describe('unmocked Checkout purchase probe', () => {
     expect(lastDisposition()).not.toBe('FAILED')
   }, 120_000)
 
-  it('does not copy a goal-achieved review that never bought', async () => {
+  it.each([false, true])('does not copy a diagnostic goal-achieved review, buy recorded: %s', async bought => {
     mockCheckoutRun(`${origin}/unknown/`)
     mocks.journeyFindFirst.mockResolvedValue({
       goalAchieved: true,
       blockedReason: null,
       steps: [
+        ...(bought ? [{ actionType: 'add_to_cart', actionDetail: { label: 'add_to_cart' }, url: `${origin}/unknown/` }] : []),
         { actionType: 'navigate', actionDetail: { label: 'landing' }, url: `${origin}/checkout` },
         { actionType: 'checkout', actionDetail: { label: 'checkout' }, url: `${origin}/checkout` },
       ],
@@ -177,6 +178,7 @@ function mockCheckoutRun(startUrl: string) {
     selections: [{
       outcome: {
         id: 'outcome-1',
+        authorizationRevision: 1,
         kind: 'CHECKOUT',
         bindings: [{
           key: 'checkout-browser-v1',

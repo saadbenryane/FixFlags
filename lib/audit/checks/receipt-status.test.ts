@@ -9,6 +9,7 @@ import { evaluatorHandlers } from '../progressive/evaluators'
 import { serializeArtifact, readArtifact } from '../progressive/contracts'
 import { checkArtifactSchema } from '../progressive/results'
 import type { TaskContext } from '../progressive/registry'
+import { NATIVE_CONSTRAINT_OBSERVATION } from './form-validation'
 
 const pageUrl = 'https://example.com/'
 const scope = { pageUrl, finalUrl: pageUrl, profile: 'desktop', access: 'public' }
@@ -18,6 +19,61 @@ const receipt = { kind: 'site-module-check', version: 1, module: 'cta-focus', pa
   complete: true, assertions: [assertion] }
 
 describe('check receipt summaries', () => {
+  it('distinguishes unreadable current evidence from supported historical observations', () => {
+    for (const detail of [null, { kind: 'site-module-check', version: 99 }, { ...receipt, assertions: [{ malformed: true }] }]) {
+      expect(readCheckReceipt(detail)).toMatchObject({ unavailable: true })
+      expect(projectCheckResults('audit', [{ id: 'unreadable', targetKey: 'module:cta-focus', pageUrl,
+        status: 'COMPLETED', updatedAt: new Date(), detail }])).toMatchObject([{ status: 'unknown' }])
+    }
+    expect(readCheckReceipt({ passed: true })).toMatchObject({ passed: true, legacy: true, unavailable: false })
+  })
+  it('projects a recorded native shortcut as incomplete without altering its original receipt', () => {
+    const original = { kind: 'site-module-check', version: 1, module: 'form-validation', pageUrl, passed: true, applicable: true,
+      complete: true, assertions: [{ key: 'form-feedback', name: 'Feedback', expected: 'Immediate feedback',
+        observed: NATIVE_CONSTRAINT_OBSERVATION, passed: true, complete: true }] }
+    const saved = JSON.stringify(original)
+    expect(readCheckReceipt(original)).toMatchObject({ passed: false, complete: false,
+      assertions: [expect.objectContaining({ passed: true, complete: false })] })
+    expect(JSON.stringify(original)).toBe(saved)
+  })
+  it.each([
+    { module: 'form-validation', assertions: [{ key: 'form-feedback', observed: NATIVE_CONSTRAINT_OBSERVATION, passed: true, complete: true }] },
+    { module: 'accessibility', assertions: [{ key: 'dom:form-inputs-no-label', observed: 'All controls have labels', passed: true, complete: true }] },
+    { module: 'og-image', assertions: [{ key: 'preview-image-response', observed: 'HTTP 200', passed: true, complete: true }] },
+    { module: 'cta-focus', assertions: [assertion] },
+    { module: 'cta-focus', complete: false, assertions: [] },
+    { module: 'cta-focus', failed: true, assertions: [] },
+  ])('qualifies the historical $module summary with the same incomplete evidence rules', detail => {
+    const original = { ...detail, passed: true, assertions: detail.assertions.map(item => ({
+      name: 'Recorded observation', expected: 'Useful evidence', ...item,
+    })) }
+    const saved = structuredClone(original)
+    expect(readCheckReceipt(original)).toMatchObject({ passed: false, complete: false, legacy: true, unavailable: false })
+    const projected = projectCheckResults('audit', [{ id: 'legacy', targetKey: 'module:' + detail.module,
+      pageUrl, status: 'COMPLETED', updatedAt: new Date(), detail: original }])
+    expect(projected.every(result => result.status === 'unknown')).toBe(true)
+    expect(projected.length).toBe(original.assertions.length + 1)
+    expect(original).toEqual(saved)
+  })
+  it('preserves readable historical facts while withholding an unreadable aggregate', () => {
+    const positive = { key: 'https', name: 'HTTPS', expected: 'HTTPS', observed: 'HTTPS', passed: true, complete: true }
+    const original = { passed: true, assertions: [positive, { malformed: true }] }
+    expect(readCheckReceipt(original)).toMatchObject({ passed: false, complete: false, legacy: true, unavailable: true, assertions: [positive] })
+    expect(projectCheckResults('audit', [{ id: 'legacy', targetKey: 'module:security', pageUrl,
+      status: 'COMPLETED', updatedAt: new Date(), detail: original }]).map(result => result.status)).toEqual(['passed', 'unknown'])
+  })
+  it.each([null, 'not an assertion list', { key: 'https' }])('withholds an unreadable historical assertion list: %j', assertions => {
+    expect(readCheckReceipt({ passed: true, assertions })).toMatchObject({ passed: false, complete: false, unavailable: true })
+  })
+  it('retains historical failures and advisory semantics without inventing a recorded aggregate', () => {
+    const failure = { key: 'https', name: 'HTTPS', expected: 'HTTPS', observed: 'HTTP', passed: false, complete: true }
+    expect(readCheckReceipt({ passed: true, assertions: [failure] })).toMatchObject({ passed: false, assertions: [failure] })
+    expect(readCheckReceipt({ assertions: [{ ...failure, passed: true }] }).passed).toBeUndefined()
+    expect(readCheckReceipt({ passed: false, assertions: [{ ...failure, passed: true }] }).passed).toBe(false)
+    expect(readCheckReceipt({ passed: true, assertions: [{ ...assertion, complete: true }] }))
+      .toMatchObject({ passed: true, assertions: [{ passed: false, disposition: 'observed' }] })
+    expect(readCheckReceipt({ passed: true })).not.toHaveProperty('complete')
+  })
   it('keeps incomplete advisory evidence unknown even when a stored summary says it passed', () => {
     expect(readCheckReceipt(receipt)).toMatchObject({ passed: false, complete: false, assertions: [assertion] })
     expect(receipt).toMatchObject({ passed: true, complete: true })

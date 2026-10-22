@@ -2,7 +2,7 @@ import type { SiteConnectionProvider, SiteConnectionStatus } from '@prisma/clien
 import { prisma } from '@/lib/db'
 import { googleConnectionConfigured } from '@/lib/sites/connections/google'
 import { cardContext, contextLinesForPage, type ConnectionFact, type PublicConnection } from '@/lib/sites/connections/match'
-import { readAnalyticsReportScope, readSearchFactScope } from './report-scope'
+import { readAnalyticsPageFactScope, readAnalyticsReportScope, readSearchFactScope } from './report-scope'
 
 export type { PublicConnection }
 
@@ -51,11 +51,13 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
     analytics: view('ANALYTICS'),
     facts: rows.flatMap((row) => ['CONNECTED', 'UNAVAILABLE', 'NEEDS_REAUTH', 'REVOKED'].includes(row.status)
       ? row.facts.flatMap((fact) => {
-        const reportScope = row.provider === 'ANALYTICS' && ['analytics_page', 'analytics_site'].includes(fact.kind)
-          ? readAnalyticsReportScope(fact.reportScope, row.propertyId, row.project.canonicalHost)
+        const reportScope = row.provider === 'ANALYTICS' && fact.kind === 'analytics_page'
+          ? readAnalyticsPageFactScope(fact.reportScope, row.propertyId, row.project.canonicalHost)
+          : row.provider === 'ANALYTICS' && fact.kind === 'analytics_site'
+            ? readAnalyticsReportScope(fact.reportScope, row.propertyId, row.project.canonicalHost)
           : row.provider === 'SEARCH_CONSOLE' && fact.kind === 'search_query'
             ? readSearchFactScope(fact.reportScope, row.propertyId, row.project.canonicalHost) : null
-        if (!reportScope) return []
+        if (!reportScope || fact.kind === 'analytics_page' && (!('pagePath' in reportScope) || reportScope.pagePath !== fact.pagePath)) return []
         return [{
           kind: fact.kind === 'analytics_page' ? 'analytics_page' as const : fact.kind === 'analytics_site' ? 'analytics_site' as const : 'search_query' as const,
           pagePath: fact.pagePath,

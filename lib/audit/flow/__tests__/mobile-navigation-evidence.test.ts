@@ -1,3 +1,4 @@
+import { CHECK_REGISTRY } from '../../check-registry'
 import { describe, expect, it } from 'vitest'
 import { mobileNavigationAssertions, mobileNavigationFlags, mobileNavigationContext, mobileLinkIdentity, type MobileNavigationObservation } from '../mobile-navigation-evidence'
 import { scopedAssertionForTarget } from '../../checks/verification'
@@ -13,7 +14,7 @@ function observation(healthy = false): MobileNavigationObservation {
 function receipt(data: MobileNavigationObservation) {
   return checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'mobile-navigation', pageUrl, applicable: true,
     complete: data.complete, passed: data.opened, assertions: mobileNavigationAssertions([data]),
-    execution: { auditId: 'after', taskId: 'mobile-navigation', checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() } })
+    execution: { auditId: 'after', taskId: 'mobile-navigation', checkVersion: CHECK_REGISTRY['flow-mobile-menu-broken'].version, source: 'rendered-dom', collectedAt: new Date().toISOString() } })
 }
 const flag = mobileNavigationFlags([observation()], pageUrl)[0]
 const compare = (data: MobileNavigationObservation) => scopedAssertionForTarget({ receipt: receipt(data), checkId: flag.checkId, flag })
@@ -44,6 +45,10 @@ describe('independent mobile navigation evidence', () => {
     expect(scopedAssertionForTarget({ receipt: receipt(empty), checkId: original.checkId, flag: original })?.assertion.passed).toBe(false)
     expect(scopedAssertionForTarget({ receipt: receipt(observation(true)), checkId: original.checkId, flag: original })?.assertion.passed).toBe(true)
   })
+  it('requires the current native paint observation for repair', () => {
+    expect(scopedAssertionForTarget({ receipt: receipt(observation(true)), checkId: flag.checkId,
+      flag: { ...flag, verificationRule: 'Mobile navigation observation v1' } })).toBeUndefined()
+  })
   it('requires every original page and uses the same conclusion for monitoring recovery', () => {
     const peer = { ...observation(), context: mobileNavigationContext({ pageUrl: pageUrl + 'other', finalUrl: pageUrl + 'other', profile: 'mobile', access: 'public' }, '#main-nav') }
     const combined = { ...flag, evidenceTargets: [...flag.evidenceTargets!, ...mobileNavigationFlags([peer], pageUrl + 'other')[0].evidenceTargets!] }
@@ -57,7 +62,7 @@ describe('independent mobile navigation evidence', () => {
     expect(scopedAssertionForTarget({ receipt: healthy, receipts: [receipt(peer)], checkId: flag.checkId, flag: combined })?.assertion.passed).toBe(false)
     const recovered = (data: MobileNavigationObservation) => hasRecordedRecoveryEvidence({ auditId: 'after', flag,
       executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: pageUrl, environment: 'production',
-        checks: { [flag.checkId]: 1 }, outcomes: [], verificationTarget: null },
+        checks: { [flag.checkId]: CHECK_REGISTRY[flag.checkId].version }, outcomes: [], verificationTarget: null },
       executions: [{ targetKey: 'module:mobile-navigation', status: 'COMPLETED', detail: receipt(data) }] })
     expect(recovered(observation())).toBe(false)
     expect(recovered(observation(true))).toBe(true)

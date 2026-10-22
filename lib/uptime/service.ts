@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { deferMonitoringSetup, monitoringSetupDue, monitoringSetupOrder } from '@/lib/sites/application/monitoring-setup'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
@@ -14,6 +14,12 @@ import { systemClock, type Clock } from '@/lib/time/clock'
 const slot = (now: Date) => new Date(Math.floor(now.getTime() / UPTIME_INTERVAL_MS) * UPTIME_INTERVAL_MS)
 const nextSlot = (now: Date) => new Date(slot(now).getTime() + UPTIME_INTERVAL_MS)
 
+/** Queue-like monitor intent yields to an existing row owner, without changing
+ * its due time or requiring a second scheduling or recovery mechanism. */
+function availableMonitorRow(id: string) {
+  return Prisma.sql`SELECT id FROM uptime_monitors WHERE id = ${id} FOR UPDATE SKIP LOCKED`
+}
+
 function currentProbeSlot(job: UptimeJob, scheduledAt: Date, now: Date) {
   return scheduledAt <= now && now.getTime() - scheduledAt.getTime() <= 2 * UPTIME_INTERVAL_MS &&
     (job.attempt === 2 || scheduledAt.getTime() === slot(now).getTime())
@@ -21,18 +27,21 @@ function currentProbeSlot(job: UptimeJob, scheduledAt: Date, now: Date) {
 
 /** Synchronize activation and target generations without touching analysis schedules or credits. */
 async function syncMonitor(snapshot: UptimeMonitor, project: MonitoringProject, now: Date) {
-  const target = normalizeAuditUrl(project.url)
-  const enabled = uptimeEligible(project) && target.ok
-  const changed = target.ok && target.url !== snapshot.targetUrl
-  const expiredConfirmation = snapshot.pendingFailureAt && now.getTime() - snapshot.pendingFailureAt.getTime() > UPTIME_INTERVAL_MS
-  if (!changed && enabled === snapshot.enabled && !expiredConfirmation) return snapshot
+  const transition = monitorSynchronization(snapshot, project, now)
+  if (!transition) return snapshot
   return prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT id FROM uptime_monitors WHERE id = ${snapshot.id} FOR UPDATE`
-    const current = await tx.uptimeMonitor.findUniqueOrThrow({ where: { id: snapshot.id } })
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(availableMonitorRow(snapshot.id))
+    if (!locked.length) return null
+    const current = await tx.uptimeMonitor.findUniqueOrThrow({ where: { id: snapshot.id }, include: { project: { include: uptimeProjectInclude } } })
     if (current.version !== snapshot.version || current.targetUrl !== snapshot.targetUrl) return current
+    // The selection is only a hint. A worker may have completed an observation
+    // or acquired its lease between selection and this row claim.
+    const latest = monitorSynchronization(current, current.project, now)
+    if (!latest) return current
+    const { targetUrl, enabled, changed } = latest
     if (changed) await tx.uptimeIncident.updateMany({ where: { monitorId: current.id, recoveredAt: null, supersededAt: null }, data: { supersededAt: now } })
     return tx.uptimeMonitor.update({ where: { id: current.id }, data: {
-      enabled, ...(changed ? { targetUrl: target.url, version: { increment: 1 }, lastCheckedAt: null, lastScheduledAt: null } : {}),
+      enabled, ...(changed ? { targetUrl, version: { increment: 1 }, lastCheckedAt: null, lastScheduledAt: null } : {}),
       state: enabled ? 'unknown' : 'paused', nextProbeAt: enabled ? slot(now) : nextSlot(now),
       pendingFailureAt: null, pendingSlotAt: null, confirmationDueAt: null, leaseUntil: null, leaseToken: null,
       lastDispatchAttemptAt: null,
@@ -40,8 +49,24 @@ async function syncMonitor(snapshot: UptimeMonitor, project: MonitoringProject, 
   })
 }
 
-/** Bounded sweeps plus durable due fields recover enqueue failures without a catch-up burst. */
+function monitorSynchronization(monitor: UptimeMonitor, project: MonitoringProject, now: Date) {
+  const target = normalizeAuditUrl(project.url)
+  const enabled = uptimeEligible(project) && target.ok
+  const changed = target.ok && target.url !== monitor.targetUrl
+  const leased = monitor.leaseUntil && monitor.leaseUntil > now
+  const expiredConfirmation = !leased && monitor.pendingFailureAt && now.getTime() - monitor.pendingFailureAt.getTime() > UPTIME_INTERVAL_MS
+  return changed || enabled !== monitor.enabled || expiredConfirmation ? { targetUrl: target.ok ? target.url : monitor.targetUrl, enabled, changed } : null
+}
+
+/** Explicit maintenance composes the same setup and dispatch used independently
+ * by the runtime. A selected operator command can establish its missing monitor. */
 export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
+  await initializeUptimeMonitors(clock, limit, onlyProjectId)
+  await dispatchDueUptimeProbes(clock, limit, onlyProjectId)
+}
+
+/** Setup retains its own bounded eligibility, retry and identity fences. */
+export async function initializeUptimeMonitors(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
   const setupCutoff = clock.now()
   const initializing: Prisma.ProjectWhereInput = { ...(onlyProjectId ? { id: onlyProjectId } : {}),
     user: { lifecycleStatus: 'ACTIVE' }, deletedAt: null, watchInterval: { not: null }, uptimeMonitor: null }
@@ -67,9 +92,25 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
     if (!initialized) await deferMonitoringSetup({ ...initializing, id: project.id, userId: project.userId, url: project.url,
       watchInterval: project.watchInterval, monitoringSetupRetryAt: project.monitoringSetupRetryAt }, clock.now())
   }
+}
+
+/** Due monitors cannot wait for unrelated setup. Durable due fields recover
+ * enqueue failures without a catch-up burst or synthetic observations. */
+export async function dispatchDueUptimeProbes(clock: Clock = systemClock, limit = 100, onlyProjectId?: string) {
   const selectedAt = clock.now()
+  // Locked rows must not consume the bounded cohort. The atomic attempt update
+  // below also yields if a row becomes busy after this short selection ends.
+  const available = await prisma.$queryRaw<Array<{ id: string }>>`SELECT m.id
+    FROM uptime_monitors m JOIN projects p ON p.id = m."projectId" JOIN users u ON u.id = p."userId"
+    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND p."watchInterval" IS NOT NULL
+      ${onlyProjectId ? Prisma.sql`AND p.id = ${onlyProjectId}` : Prisma.empty}
+      AND (m."nextProbeAt" <= ${selectedAt} OR m."confirmationDueAt" <= ${selectedAt})
+      AND (m."leaseUntil" IS NULL OR m."leaseUntil" < ${selectedAt})
+    ORDER BY m."lastDispatchAttemptAt" ASC NULLS FIRST, m."nextProbeAt" ASC, m.id ASC
+    LIMIT ${limit} FOR UPDATE OF m SKIP LOCKED`
+  if (!available.length) return
   const due = await prisma.uptimeMonitor.findMany({
-    where: { ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: { user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchInterval: { not: null } },
+    where: { id: { in: available.map(monitor => monitor.id) }, ...(onlyProjectId?{projectId:onlyProjectId}:{}), project: { user:{lifecycleStatus:'ACTIVE'}, deletedAt: null, watchInterval: { not: null } },
       OR: [{ nextProbeAt: { lte: selectedAt } }, { confirmationDueAt: { lte: selectedAt } }],
       AND: [{ OR: [{ leaseUntil: null }, { leaseUntil: { lt: selectedAt } }] }] },
     include: { project: { include: uptimeProjectInclude } },
@@ -78,22 +119,30 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
   for (const snapshot of due) {
     try {
       const monitor = await syncMonitor(snapshot, snapshot.project, clock.now())
+      if (!monitor) continue
       if (!monitor.enabled || !uptimeEligible(snapshot.project)) {
-        await prisma.uptimeMonitor.updateMany({ where: { id: monitor.id, version: monitor.version }, data: { nextProbeAt: nextSlot(clock.now()) } })
+        await prisma.$executeRaw`UPDATE uptime_monitors SET "nextProbeAt" = ${nextSlot(clock.now())}, "updatedAt" = CURRENT_TIMESTAMP
+          WHERE id IN (${availableMonitorRow(monitor.id)}) AND version = ${monitor.version}`
         continue
       }
       // Record an attempt before publishing, so failed or unexecuted jobs cannot monopolize a batch.
       // Only the worker's observation advances due times or establishes reachability evidence.
       const attemptedAt = clock.now()
-      const attempted = await prisma.uptimeMonitor.updateMany({ where: {
-        id: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl, enabled: true,
-        lastDispatchAttemptAt: monitor.lastDispatchAttemptAt, nextProbeAt: monitor.nextProbeAt,
-        confirmationDueAt: monitor.confirmationDueAt, pendingSlotAt: monitor.pendingSlotAt,
-        OR: [{ leaseUntil: null }, { leaseUntil: { lt: attemptedAt } }],
-        project: { id: monitor.projectId, userId: snapshot.project.userId, url: snapshot.project.url,
-          deletedAt: null, user: { lifecycleStatus: 'ACTIVE' }, watchInterval: { not: null } },
-      }, data: { lastDispatchAttemptAt: attemptedAt } })
-      if (!attempted.count) continue
+      if (monitor.nextProbeAt > attemptedAt && (!monitor.confirmationDueAt || monitor.confirmationDueAt > attemptedAt)) continue
+      const attempted = await prisma.$executeRaw`UPDATE uptime_monitors m
+        SET "lastDispatchAttemptAt" = ${attemptedAt}, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE m.id IN (${availableMonitorRow(monitor.id)})
+          AND m.version = ${monitor.version} AND m."targetUrl" = ${monitor.targetUrl} AND m.enabled
+          AND m."lastDispatchAttemptAt" IS NOT DISTINCT FROM ${monitor.lastDispatchAttemptAt}
+          AND m."nextProbeAt" = ${monitor.nextProbeAt}
+          AND m."confirmationDueAt" IS NOT DISTINCT FROM ${monitor.confirmationDueAt}
+          AND m."pendingSlotAt" IS NOT DISTINCT FROM ${monitor.pendingSlotAt}
+          AND (m."leaseUntil" IS NULL OR m."leaseUntil" < ${attemptedAt})
+          AND EXISTS (SELECT 1 FROM projects p JOIN users u ON u.id = p."userId"
+            WHERE p.id = m."projectId" AND p.id = ${monitor.projectId} AND p."userId" = ${snapshot.project.userId}
+              AND p.url = ${snapshot.project.url} AND p."deletedAt" IS NULL
+              AND u."lifecycleStatus" = 'ACTIVE' AND p."watchInterval" IS NOT NULL)`
+      if (!attempted) continue
       if (monitor.pendingFailureAt && monitor.pendingSlotAt && monitor.confirmationDueAt) {
         await enqueueUptimeProbe({ monitorId: monitor.id, version: monitor.version, scheduledAt: monitor.pendingSlotAt.toISOString(), attempt: 2 }, monitor.confirmationDueAt)
       } else {
@@ -112,7 +161,7 @@ export async function executeUptimeProbe(job: UptimeJob, observe: (url: string) 
   const snapshot = await prisma.uptimeMonitor.findUnique({ where: { id: job.monitorId }, include: { project: { include: uptimeProjectInclude } } })
   if (!snapshot || snapshot.version !== job.version) return
   const monitor = await syncMonitor(snapshot, snapshot.project, clock.now())
-  if (monitor.version !== job.version || !monitor.enabled || !uptimeEligible(snapshot.project)) return
+  if (!monitor || monitor.version !== job.version || !monitor.enabled || !uptimeEligible(snapshot.project)) return
   // Complete authority reads before spending the observation lease.
   const currentProject = await prisma.project.findUnique({ where: { id: monitor.projectId }, include: uptimeProjectInclude })
   if (!currentProject || !uptimeEligible(currentProject) || normalizeAuditUrl(currentProject.url).ok === false || currentProject.url !== snapshot.project.url) return

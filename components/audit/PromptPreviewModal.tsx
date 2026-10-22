@@ -5,7 +5,6 @@ import { Copy, Check, FileText, Code } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
@@ -44,13 +43,10 @@ export function PromptPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col gap-0 p-0">
-        <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
+      <DialogContent header={<DialogTitle>{title}</DialogTitle>} className="max-w-2xl max-h-[80dvh]">
+        <DialogDescription>{description}</DialogDescription>
 
-        <div className="flex items-center gap-2 px-6 pb-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={format === 'plain' ? 'secondary' : 'ghost'}
             size="xs"
@@ -74,13 +70,13 @@ export function PromptPreviewModal({
           </span>
         </div>
 
-        <div className="flex-1 overflow-auto mx-6 mb-2">
-          <pre className="rounded-card bg-terminal p-4 font-mono text-2xs leading-relaxed text-terminal-foreground whitespace-pre-wrap break-words min-h-[200px] max-h-[50vh] overflow-auto">
+        <div className="min-w-0">
+          <pre className="rounded-card bg-terminal p-4 font-mono text-2xs leading-relaxed text-terminal-foreground whitespace-pre-wrap break-words min-h-[200px]">
             {displayPrompt}
           </pre>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close
           </Button>

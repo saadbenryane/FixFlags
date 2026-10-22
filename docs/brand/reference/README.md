@@ -11,7 +11,7 @@ These files preserve original owner artwork and historical visual references. Th
 
 ## Original identity sources
 
-- `logo-mark-source.jpg` is the owner's high-resolution folded-F mark. Preserve it and derive runtime sizes with `npm run brand:icons`.
+- `logo-mark-source.jpg` is the owner's original folded-F mark. Preserve it. The cleaned vector trace in `public/brand/logo-mark.svg` removes the JPEG fringe and supplies runtime sizes through `npm run brand:icons`.
 - `logo-lockup-source.jpg` preserves the owner's flattened lockup. It is source artwork, not a logo for light surfaces.
 - `brand-sheet-2026-07.png` and `ui-kit-v2.png` preserve the original identity and historical UI treatment. Their palette and layout recipes do not override current tokens or components.
 - `logo-lockup-on-ink.png` is an earlier identity reference.
@@ -24,7 +24,7 @@ The July homepage mockups and glass-hero exports record earlier compositions. Pr
 
 | Role | Source |
 | --- | --- |
-| Runtime mark and wordmark | `public/brand/logo-mark*.png` and `components/brand/Logo.tsx` |
+| Runtime mark and wordmark | `public/brand/logo-mark.svg` and `components/brand/Logo.tsx`; vector-derived PNGs remain available for email and OG consumers |
 | OG mark | `lib/design/logo-mark.tsx`, which embeds the official PNG for Node/Satori consumers |
 | CSS palette and visual values | `lib/design/tokens.css` |
 | Non-CSS brand palette | `lib/design/brand-spec.ts` |

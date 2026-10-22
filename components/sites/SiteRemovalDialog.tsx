@@ -1,5 +1,6 @@
 'use client'
 
+import { InteractiveInput } from '@/components/ui/interactive-controls'
 import { useEffect, useState } from 'react'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -17,8 +18,7 @@ export function SiteRemovalDialog({ open, onOpenChange, accounts, busy, onCleanu
   const snapshot = JSON.stringify(remaining)
   const [acknowledged, setAcknowledged] = useState(false)
   useEffect(() => { setAcknowledged(false) }, [open, snapshot])
-  return <ResponsiveDepth open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
-    <DialogTitle>{S.remove}</DialogTitle>
+  return <ResponsiveDepth header={<DialogTitle>{S.remove}</DialogTitle>} open={open} onOpenChange={onOpenChange} onCloseAutoFocus={onCloseAutoFocus}>
     <DialogDescription>{S.removeBody}</DialogDescription>
     {remaining.length > 0 ? <div className="mt-4 space-y-3">
       <p className="text-sm">{A.removalAccounts}</p>
@@ -27,7 +27,7 @@ export function SiteRemovalDialog({ open, onOpenChange, accounts, busy, onCleanu
       </li>)}</ul>
       <Button variant="outline" disabled={busy || !accounts?.canCleanup} onClick={onCleanup}>{A.cleanup}</Button>
       {accounts?.cleanupUnavailableReason ? <p className="text-sm text-muted-foreground">{accounts.cleanupUnavailableReason}</p> : null}
-      <label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input type="checkbox" className="mt-1" checked={acknowledged}
+      <label className="flex min-h-11 items-start gap-3 py-2 text-sm"><InteractiveInput type="checkbox" className="mt-1" checked={acknowledged}
         disabled={busy} onChange={event => setAcknowledged(event.target.checked)} /><span>{A.removalAcknowledgement}</span></label>
     </div> : null}
     <div className="mt-5 flex flex-wrap justify-end gap-2">

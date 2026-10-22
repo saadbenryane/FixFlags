@@ -16,8 +16,8 @@ vi.mock('playwright', () => ({ chromium: { launch: async () => ({
 vi.mock('@axe-core/playwright', () => ({ AxeBuilder: class {
   options() { return this } setLegacyMode() { return this } analyze() { return mocks.axe() }
 } }))
-vi.mock('@/lib/audit/capture-metrics', () => ({ measureMobileLayout: async () => ({ viewportWidth: 375 }) }))
-vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), createAuditPage: async () => {
+vi.mock('@/lib/audit/capture-metrics', () => ({ measureMobileLayout: async () => ({ mobileViewportHeight: 812 }) }))
+vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), createAuditPage: vi.fn(async () => {
   const navigationStartedAt = Date.now()
   let loadingReads = 0
   return {
@@ -36,16 +36,46 @@ vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), c
   tracking: () => ({ version: 1, phase: 'page_load', requests: [], truncated: false, durationMs: 10, consentInteraction: 'none' }),
   networkFailures: [], technologyResources: [], technologyResourcesTruncated: () => false, formProbe: null,
   }
-} }))
+}) }))
 
 import { captureScreenshots } from '../screenshot'
+import { createAuditPage } from '../browser/page-session'
 
 describe('independent rendered evidence', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.truncated.mockReturnValue(false); mocks.loading.mockReturnValue(false); mocks.wait.mockResolvedValue(undefined);
-    mocks.screenshot.mockResolvedValue(new Uint8Array([1])); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable'));
+    mocks.screenshot.mockResolvedValue(Buffer.from([1])); mocks.close.mockResolvedValue(undefined); mocks.upload.mockRejectedValue(new Error('Storage unavailable'));
     mocks.axe.mockResolvedValue({ url: 'https://example.com/', testEngine: { version: 'fixture-axe' }, violations: [], incomplete: [],
       passes: [{ id: 'button-name', nodes: [{ target: ['button'] }] }], inapplicable: [] }) })
   afterEach(() => { vi.useRealTimers() })
+  it.each([false, true])('retains independent facts when every optional screenshot fails, mobile %s', async collectMobile => {
+    mocks.screenshot.mockRejectedValue(new Error('Screenshot font deadline exceeded'))
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined,
+      { runFlow: false, collectMobile })
+    expect(result.desktopHtml).toContain('<title>Example</title>')
+    expect(result.desktopHttpStatus).toBe(200)
+    expect(result.accessibilityEvidence).toBeDefined()
+    expect(result.axeViolations).toEqual([])
+    expect(result.consoleCoverage?.desktop.complete).toBe(true)
+    expect(result.captureStatus).toEqual({ desktop: 'failed', mobile: collectMobile ? 'failed' : 'pending' })
+    if (collectMobile) expect(result.captureMetrics?.mobileViewportHeight).toBe(812)
+    expect(result.actionTimeline?.some(event => event.label === 'Desktop screenshot captured')).toBe(false)
+    expect(result.desktopUrl).toBeNull()
+    expect(result.desktopBase64).toBeNull()
+    expect(result.captureFailures).toEqual([])
+    expect(mocks.upload).not.toHaveBeenCalled()
+  })
+  it('collects requested desktop evidence without opening a mobile profile or running unrelated axe work', async () => {
+    const result = await captureScreenshots('https://example.com/', 'audit', undefined,
+      { runFlow: false, captureMedia: false, collectMobile: false, collectAccessibility: false })
+    expect(createAuditPage).toHaveBeenCalledOnce()
+    expect(mocks.axe).not.toHaveBeenCalled()
+    expect(result.desktopHtml).toContain('<title>Example</title>')
+    expect(result.captureMetrics).toBeNull()
+    expect(result.accessibilityEvidence).toBeUndefined()
+    expect(result.axeViolations).toBeUndefined()
+    expect(result.consoleCoverage?.mobile.complete).toBe(false)
+    expect(result.captureFailures).toEqual([])
+  })
   it('fills initial, landing and timeline references from their actual asynchronous uploads', async () => {
     vi.useFakeTimers(); vi.setSystemTime(0)
     mocks.upload.mockImplementation(async (_auditId, device, _buffer, key) => {

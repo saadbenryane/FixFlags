@@ -15,7 +15,7 @@ export const journeyObservationSchema = z.object({
   available: z.boolean(), pathComplete: z.boolean(), headline: z.boolean(), primaryAction: z.boolean(),
   nextPath: z.boolean(), fieldCount: z.number().int().nonnegative(),
   headlineVersion: z.literal(2).optional(), headlineComplete: z.boolean().optional(),
-  actionVersion: z.union([z.literal(3), z.literal(4)]).optional(), actionComplete: z.boolean().optional(), pathVersion: z.union([z.literal(2), z.literal(3)]).optional(), fieldVersion: z.literal(2).optional(),
+  actionVersion: z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]).optional(), actionComplete: z.boolean().optional(), pathVersion: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(), fieldVersion: z.literal(2).optional(),
 }).strict()
 export type JourneyObservation = z.infer<typeof journeyObservationSchema>
 
@@ -26,8 +26,7 @@ export function journeyContext(observation: JourneyObservation, condition?: stri
   // Unchanged conditions retain their original comparable scope.
   const detector = condition?.endsWith('-action') ? observation.actionVersion ? 'rendered-action-v' + observation.actionVersion : 'primary-action-v2'
     : ['destination-form', 'destination-field-count'].includes(condition ?? '') && observation.fieldVersion === 2 ? 'editable-fields-v2'
-    : condition === 'landing-path' && observation.pathVersion === 3 ? 'rendered-path-v3'
-    : condition === 'landing-path' && observation.pathVersion === 2 ? 'rendered-path-v2'
+    : condition === 'landing-path' && observation.pathVersion ? 'rendered-path-v' + observation.pathVersion
     : condition?.endsWith('-headline') && observation.headlineVersion === 2 ? 'rendered-headline-v2' : null
   const key = detector ? createHash('sha256').update(scope + ':' + detector).digest('hex') : scope
   return `journey:${observation.journeyType}:${observation.phase}:${capturePageKey(observation.scope.pageUrl)}:${key}:${JSON.stringify(observation.route)}`
@@ -64,11 +63,11 @@ export function scopedJourneyFinding(finding: JourneyFindingDraft, observations:
   return { ...finding, affectedPaths: [observed.observation.scope.pageUrl], verificationRule: JOURNEY_VERIFICATION_RULE,
     evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', label: observed.assertion.name, context: observed.assertion.context }] }
 }
-export function journeyReceipts(observations: JourneyObservation[], execution: { auditId: string; taskId: string; collectedAt: string }) {
+export function journeyReceipts(observations: JourneyObservation[], execution: { auditId: string; taskId: string; collectedAt: string; checkVersion?: number; checkVersions?: Record<string, number> }) {
   return observations.map(observation => checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'journeys',
     pageUrl: observation.scope.pageUrl, applicable: true, passed: journeyAssertions(observation).every(assertion => assertion.passed),
     complete: journeyAssertions(observation).every(assertion => assertion.complete), assertions: journeyAssertions(observation),
-    execution: { ...execution, checkVersion: 1, source: 'rendered-dom' } }))
+    execution: { ...execution, checkVersion: execution.checkVersion ?? 1, source: 'rendered-dom' } }))
 }
 
 export function journeyReceiptScope(receipt: z.infer<typeof checkReceiptSchema>) {

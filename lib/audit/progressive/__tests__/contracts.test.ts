@@ -2,7 +2,7 @@ import { queueForTask, priorityForTask, TASK_QUEUES } from '../queues'
 import { describe, expect, it } from 'vitest'
 import { retryDecision, validateTaskGraph, readArtifact, serializeArtifact, taskInputSchema } from '../contracts'
 import { registerTaskHandlers } from '../registry'
-import { initialTaskPlan, pageTaskPlan, availabilityOnly } from '../graph'
+import { initialTaskPlan, pageTaskPlan } from '../graph'
 import { CHECK_REGISTRY } from '../../check-registry'
 import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { pageMetadataSchema } from '../snapshots'
@@ -35,7 +35,7 @@ describe('durable bounded work contracts', () => {
 
   it('isolates pricing navigation from the primary action and selects only its original scope for repair', () => {
     const spec = { version: 1 as const, engine: 'progressive-v1' as const, targetUrl: input.pageUrl, environment: 'production', scope: 'SITE' as const,
-      checks: { 'flow-pricing-nav-broken': 1, 'flow-cta-dead-end': 1 }, outcomes: [] }
+      checks: { 'flow-pricing-nav-broken': 1, 'flow-cta-dead-end': 1 }, outcomes: [], verificationTarget: null }
     const graph = pageTaskPlan({ ...input, role: 'primary' }, spec)
     const pricing = graph.find(task => task.input.module === 'pricing-navigation')!, primary = graph.find(task => task.key === 'p0:flow')!
     expect(pricing).toMatchObject({ kind: 'flow', dependencies: [] })
@@ -68,6 +68,48 @@ describe('durable bounded work contracts', () => {
     expect(initialTaskPlan({ ...spec, reviewDepth: 1 }).filter(task => task.kind === 'browser')).toHaveLength(1)
     expect(() => executionSpecSchema.parse({ ...spec, scope: 'OUTCOMES' })).toThrow('monitoring page scope')
     validateTaskGraph(graph)
+  })
+  it('keeps entry behavior on retained pages without duplicating bindings or deepening discovered-only pages', () => {
+    const pages = [input.pageUrl, 'https://example.com/pricing/?plan=team#choose', 'https://example.com/about']
+    const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: input.pageUrl,
+      environment: 'production', reviewDepth: 2, monitoringPages: pages, monitoringEntryPages: pages.slice(0, 2),
+      checks: { 'flow-pricing-nav-broken': 1 }, verificationTarget: null, outcomes: [{ id: 'checkout', kind: 'CHECKOUT', expectation: null,
+        bindingPolicy: 'ALL_REQUIRED', bindings: [{ key: 'authorized', version: 1, mechanism: 'BROWSER_JOURNEY', required: true, config: {} }] }] })
+    const graph = initialTaskPlan(spec)
+    for (const key of ['flow', 'pricing-navigation', 'slow-replay', 'journeys']) {
+      expect(graph.find(task => task.key === 'p1:' + key)).toMatchObject({ input: { pageUrl: pages[1], primary: false, role: 'linked' } })
+      expect(graph.some(task => task.key === 'p2:' + key)).toBe(false)
+    }
+    expect(graph.filter(task => task.kind === 'bindings')).toHaveLength(1)
+    validateTaskGraph(graph)
+    const performance = initialTaskPlan({ ...spec, scope: 'CATEGORY', monitoringPages: undefined,
+      category: { area: 'performance', sourceAuditId: 'full', pages } })
+    expect(performance.filter(task => task.kind === 'slow-replay').map(task => task.input.pageUrl)).toEqual(pages.slice(0, 2))
+    expect(performance.some(task => ['journeys', 'bindings', 'flow'].includes(task.kind))).toBe(false)
+    validateTaskGraph(performance)
+    for (const changed of [{ monitoringEntryPages: [pages[1], pages[1]] }, { monitoringEntryPages: ['https://foreign.example/'] },
+      { scope: 'OUTCOMES', monitoringPages: undefined }, { monitoringEntryPages: Array.from({ length: 25 }, () => input.pageUrl) }])
+      expect(executionSpecSchema.safeParse({ ...spec, ...changed }).success).toBe(false)
+    expect(executionSpecSchema.safeParse({ ...spec, monitoringEntryPages: undefined }).success).toBe(true)
+  })
+  it('retains each admitted behavior without promoting its page to unrelated work', () => {
+    const pages = [input.pageUrl, 'https://example.com/pricing/']
+    for (const behavior of ['flow', 'pricing-navigation', 'slow-replay', 'journeys'] as const) {
+      const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: input.pageUrl,
+        environment: 'production', reviewDepth: 2, monitoringPages: pages,
+        monitoringBehaviors: [{ pageUrl: pages[1], behaviors: [behavior] }], checks: {}, outcomes: [], verificationTarget: null })
+      const graph = initialTaskPlan(spec)
+      for (const kind of ['flow', 'pricing-navigation', 'slow-replay', 'journeys'])
+        expect(graph.some(task => task.key === 'p1:' + kind), behavior + ':' + kind).toBe(kind === behavior)
+      expect(graph.find(task => task.key === 'p1:' + behavior)).toMatchObject({ input: { pageUrl: pages[1], primary: false, role: 'linked' } })
+      validateTaskGraph(graph)
+      for (const scopes of [
+        [{ pageUrl: pages[1], behaviors: [behavior, behavior] }],
+        [{ pageUrl: pages[1], behaviors: [behavior] }, { pageUrl: pages[1], behaviors: [behavior] }],
+        [{ pageUrl: 'https://foreign.example/', behaviors: [behavior] }],
+      ]) expect(executionSpecSchema.safeParse({ ...spec, monitoringBehaviors: scopes }).success).toBe(false)
+      expect(executionSpecSchema.safeParse({ ...spec, scope: 'OUTCOMES', monitoringPages: undefined }).success).toBe(false)
+    }
   })
   it('rechecks all original preview pages with only browser collection and the cross-page comparison', () => {
     const pages = [input.pageUrl, 'https://example.com/pricing', 'https://example.com/features']
@@ -194,8 +236,7 @@ describe('durable bounded work contracts', () => {
         bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY' as const, required: true, config: {} }] }], verificationTarget: null }
     const graph = initialTaskPlan(spec)
     expect(graph.map(task => task.kind)).toEqual(['bindings', 'finalize'])
-    expect(availabilityOnly(spec)).toBe(true)
-    expect(availabilityOnly({ ...spec, scope: 'SITE' })).toBe(false)
+    expect(queueForTask(graph[0].kind, graph[0].input)).toBe('availability')
   })
   it('builds a diagnostic verifier from only its actual dependencies', () => {
     const spec = { version: 1 as const, targetUrl: input.pageUrl, environment: 'production', scope: 'DIAGNOSTIC' as const,

@@ -55,8 +55,8 @@ describe('authoritative Site settings refresh', () => {
     const view = render(<SiteSettingsControls siteId={first.site.siteId} initial={first.settings} watch={first.watch} onRefresh={onRefresh} />)
     view.rerender(<SiteSettingsControls siteId={next.site.siteId} initial={next.settings} watch={next.watch} onRefresh={onRefresh} />)
     expect(screen.getByRole('combobox', { name: 'Email me' })).toHaveValue('OFF')
-    expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: /when a fix is verified/ })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /when a fix is verified/ })).toBeDisabled()
     fireEvent.change(screen.getByRole('combobox', { name: 'Email me' }), { target: { value: 'CRITICAL_ONLY' } })
     await waitFor(() => expect(onRefresh).toHaveBeenCalledOnce())
     expect(fetch).toHaveBeenCalledWith('/api/sites/fixture-site/settings', expect.objectContaining({
@@ -83,11 +83,11 @@ describe('authoritative Site settings refresh', () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Email me' }), { target: { value: 'CRITICAL_ONLY' } })
     } else {
       current.settings.notificationLevel = 'CRITICAL_ONLY'
-      fireEvent.click(screen.getByRole('checkbox', { name: /verified as recovered/ }))
+      fireEvent.click(screen.getByRole('checkbox', { name: /when a fix is verified/ }))
     }
     await waitFor(() => {
       expect(screen.getByRole('combobox', { name: 'Email me' })).toHaveValue('CRITICAL_ONLY')
-      expect(screen.getByRole('checkbox', { name: /verified as recovered/ })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: /when a fix is verified/ })).not.toBeChecked()
     })
     expect(fetch.mock.calls.filter(([url]) => url === '/api/sites/fixture-site/settings')).toHaveLength(1)
   })

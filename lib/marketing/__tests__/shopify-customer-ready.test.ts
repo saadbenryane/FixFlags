@@ -9,7 +9,7 @@ describe('supported open-beta offer', () => {
   it('offers one website with paid access waitlisted', () => {
     expect(OPEN_BETA_ACCESS).toBe(true)
     expect(PRICING.headline).toMatch(/free during open beta/i)
-    expect(PLANS.find(plan => plan.plan === 'FREE')?.cta).toBe('Sign up now')
+    expect(PLANS.find(plan => plan.plan === 'FREE')?.cta).toBe('Start free')
     expect(PLANS.filter(plan => plan.plan !== 'FREE').every(plan => plan.href.startsWith('/waitlist'))).toBe(true)
     expect(PRICING_FAQ.some(entry => /waitlist/i.test(entry.answer))).toBe(true)
     expect(FAQ.find(entry => entry.question === 'Is FixFlags free?')?.answer).toMatch(/one website/)

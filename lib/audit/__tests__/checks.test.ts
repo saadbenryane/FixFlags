@@ -47,7 +47,7 @@ import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
 import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
 import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
-import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
+import { assessSecurityTransport, runSecurityBasicsChecks } from '@/lib/audit/checks/security'
 import { runSecurityHeaderChecks } from '@/lib/audit/checks/security-headers'
 import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
@@ -1337,6 +1337,9 @@ describe('trigger matrix - one failing signal per checkId', () => {
   const triggers: Partial<Record<(typeof ALL_CHECK_IDS)[number], () => Promise<string[]> | string[]>> = {
     'page-http-error': () => checkIds(assessPageResponse('https://example.com/',
       searchDocument('<html><body>Service unavailable</body></html>', { status: 503 })).flags),
+    'page-redirect-loop': () => checkIds(assessPageResponse('https://example.com/',
+      searchDocument(null, { status: 302, complete: false, reason: 'redirect_loop',
+        headers: { location: '/' }, redirects: ['https://example.com/'] })).flags),
     'title-missing': () => checkIds(runMetadataChecks(healthyMeta({ title: null }))),
     'title-too-short': () => checkIds(runMetadataChecks(healthyMeta({ title: 'Short' }))),
     'title-too-long': () =>
@@ -1697,6 +1700,11 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runSecurityBasicsChecks('https://example.com', healthyMeta({
         images: [{ src: '/hero.png', alt: 'Screenshot' }, { src: 'http://cdn.example.com/img.png', alt: 'Insecure image' }],
       }))),
+    'security-certificate-invalid': () => checkIds(assessSecurityTransport('https://example.com/', null, {
+      url: 'https://example.com/', finalUrl: 'https://example.com/', status: null, headers: {}, body: null,
+      complete: false, reason: 'tls_certificate_refused', collectedAt: new Date().toISOString(), redirects: [],
+      transportFailure: { kind: 'tls-certificate', code: 'CERT_HAS_EXPIRED' },
+    }).flags),
     'security-csp-missing': () =>
       checkIds(runSecurityHeaderChecks('https://example.com', secHeaders({
         'content-security-policy': undefined,

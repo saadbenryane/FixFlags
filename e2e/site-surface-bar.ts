@@ -31,8 +31,9 @@ const DENSITIES: Density[] = [
 const INTERACTIVE = 'main a[href], main button, main input, main select, main textarea, main [role="button"], main [role="radio"], main [tabindex]:not([tabindex="-1"])'
 
 async function setTextZoom(page: Page, percent: number): Promise<void> {
-  await page.evaluate((size) => {
+  await page.evaluate(async (size) => {
     document.documentElement.style.fontSize = `${size}%`
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
   }, percent)
 }
 
@@ -58,6 +59,21 @@ export async function assertSiteSurfaceMeetsLaunchBar(page: Page, url: string): 
     expect(geometry.scrollWidth, `horizontal overflow at ${label}`).toBeLessThanOrEqual(
       geometry.clientWidth + 1,
     )
+
+    const mobileNavigation = page.getByRole('navigation', { name: 'Mobile Site', exact: true })
+    if (await mobileNavigation.isVisible()) {
+      const clippedLabels = await mobileNavigation.locator('a').evaluateAll(links => links.flatMap(link => {
+        const bounds = link.getBoundingClientRect(), label = link.querySelector('span')
+        if (!label) return [{ text: '', reason: 'Missing navigation label' }]
+        const range = document.createRange()
+        range.selectNodeContents(label)
+        const clipped = [...range.getClientRects()].some(rect => rect.left < bounds.left - 1 || rect.right > bounds.right + 1 ||
+          rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1)
+        return clipped || bounds.width < 43.99 || bounds.height < 43.99
+          ? [{ text: label.textContent ?? '', reason: 'Label extends beyond its control or target is undersized' }] : []
+      }))
+      expect(clippedLabels, `mobile navigation at ${label}`).toEqual([])
+    }
 
     const violations = (await new AxeBuilder({ page: page as never }).analyze()).violations
     const { failures, approvedContrastCount } = await inspectAccessibilityViolations(page, violations)
@@ -134,4 +150,63 @@ export async function assertKeyboardReachesTheSurface(page: Page, url: string): 
   }
 
   expect(visited.length, 'no control is reachable by keyboard').toBeGreaterThan(0)
+}
+
+/** Portalled navigation sits outside main and needs its own target and focus proof. */
+export async function assertSharedNavigationTargets(page: Page, url: string): Promise<void> {
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(url)
+    await page.getByRole('heading', { level: 1 }).waitFor({ state: 'visible' })
+    for (const name of ['Open menu', 'Website navigation']) {
+      const opener = page.getByRole('button', { name, exact: true })
+      if (!await opener.isVisible()) continue
+      await opener.focus()
+      await page.keyboard.press('Enter')
+      const drawer = page.getByRole('dialog').filter({
+        has: page.getByRole('button', { name: 'Close', exact: true }),
+      })
+      await expect(drawer).toBeVisible()
+      const close = drawer.getByRole('button', { name: 'Close', exact: true })
+      const box = await close.boundingBox()
+      expect(box?.width, `drawer close width at ${width}px`).toBeGreaterThanOrEqual(44)
+      expect(box?.height, `drawer close height at ${width}px`).toBeGreaterThanOrEqual(44)
+      const undersized = await drawer.locator('button,a[href],input:not([type=hidden])').evaluateAll(elements => elements
+        .filter(element => { const r = element.getBoundingClientRect(); return r.width && r.height && getComputedStyle(element).visibility !== 'hidden' && (r.width < 43.99 || r.height < 43.99) })
+        .map(element => element.getAttribute('aria-label') ?? element.textContent?.trim()))
+      expect(undersized, `drawer targets at ${width}px`).toEqual([])
+      for (let step = 0; step < 30 && !await close.evaluate(element => element === document.activeElement); step += 1) {
+        await page.keyboard.press('Tab')
+        expect(await drawer.evaluate(element => element.contains(document.activeElement)), 'drawer retains keyboard focus').toBe(true)
+      }
+      await expect(close).toBeFocused()
+      const indicator = await close.evaluate(element => {
+        const style = getComputedStyle(element)
+        return style.boxShadow !== 'none' || (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0 && !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.outlineColor))
+      })
+      expect(indicator, 'drawer close has a visible focus treatment').toBe(true)
+      await page.keyboard.press('Escape')
+      await expect(drawer).toBeHidden()
+      await expect(opener).toBeFocused()
+    }
+    const account = page.getByRole('button', { name: 'Account menu', exact: true })
+    if (await account.isVisible()) {
+      const box = await account.boundingBox()
+      expect(box?.width).toBeGreaterThanOrEqual(44)
+      expect(box?.height).toBeGreaterThanOrEqual(44)
+      await account.focus()
+      await page.keyboard.press('Enter')
+      const menu = page.getByRole('menu')
+      await expect(menu).toBeVisible()
+      const targets = await menu.getByRole('menuitem').evaluateAll(elements => elements.map(element => {
+        const r = element.getBoundingClientRect()
+        return { name: element.textContent?.trim(), width: r.width, height: r.height }
+      }))
+      expect(targets.length).toBeGreaterThan(0)
+      expect(targets.filter(target => target.width < 43.99 || target.height < 43.99), 'account menu targets').toEqual([])
+      await page.keyboard.press('Escape')
+      await expect(menu).toBeHidden()
+      await expect(account).toBeFocused()
+    }
+  }
 }
