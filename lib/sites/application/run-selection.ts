@@ -5,6 +5,7 @@ import { categoryAreaSchema } from '../domain/execution-spec'
 import { buildExecutionSpec,executionIntentHash } from './execution-spec'
 import type { RunInput } from './run-intent'
 import { SiteRunRefusal } from './run-refusal'
+import { SiteNotFound } from '../domain/site-errors'
 import { snapshotOutcomeAuthorization } from '../domain/outcome-authorization'
 
 export function validateRunSelection(input: RunInput) {

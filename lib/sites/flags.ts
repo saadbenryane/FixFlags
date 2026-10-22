@@ -8,7 +8,7 @@ import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { selectResolvedFlags, newestRecordedFlag, siteFlagDetailStatus, currentIncidentFlags, currentImprovementFlags, incidentAffectedPaths, hasIncidentRecoveryProof, currentUnboundFindings } from '@/lib/sites/flag-resolution'
+import { selectResolvedFlags, newestRecordedFlag, currentFlagStatus, currentIncidentFlags, currentImprovementFlags, incidentAffectedPaths, hasIncidentRecoveryProof, currentUnboundFindings } from '@/lib/sites/flag-resolution'
 import { currentImprovementWhere, loadIncidentRecoveryProofs, unboundSiteFindingWhere } from './application/incident-proofs'
 import { compareFlagPriority, flagPriority, type FlagVerificationState } from '@/lib/sites/presentation'
 import type { SiteRecord } from '@/lib/sites/types'
@@ -173,13 +173,14 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
         if (!flag) return []
         const paths = incidentAffectedPaths(currentOccurrenceFlags)
         if (auditFlag?.pageUrl) paths.push(auditFlag.pageUrl)
+        const projectedStatus = currentFlagStatus({ flagStatus: flag?.status ?? 'OPEN', improvementStatus: imp.status })
         return [toSiteFlagSeed({
           ...flag,
-          status: flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
+          status: projectedStatus,
           improvementId: imp.id,
           affectedPaths: paths,
           relatedOutcome: imp.outcome ?? null,
-          verificationState: verificationState(flag?.status === 'UNVERIFIED' ? 'UNVERIFIED' : siteFlagDetailStatus(imp.status, flag?.status ?? 'OPEN'),
+          verificationState: verificationState(projectedStatus,
             attemptHasActiveVerification(imp.attempts?.[0], site.projectId!, flag?.auditId)),
           latestOccurrenceAt: imp.occurrences?.find(occurrence => occurrence.flag.id === flag.id)?.createdAt ?? flag.createdAt ?? null,
         })]
@@ -425,7 +426,7 @@ export async function loadSiteFlagDetail(
   const seed = toSiteFlagSeed({
     ...flagRow,
     improvementId: improvement?.id,
-    status: flagRow.status === 'FIXED' && !provenRecovery ? 'UNVERIFIED' : siteFlagDetailStatus(improvement?.status, flagRow.status),
+    status: currentFlagStatus({ flagStatus: flagRow.status, improvementStatus: improvement?.status, provenRecovery }),
     resolvedInId: flagRow.resolvedInId ?? null,
   })
 
@@ -461,9 +462,13 @@ export async function loadSiteFlagDetail(
   const expectedBehavior = linkedOutcome?.expectation?.trim() || customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
   const affectedPaths = flagRow.id === flagId ? seed.affectedPaths : incidentAffectedPaths(activeScope)
-  const sourceStatus = flagRow.status === 'FIXED' && !provenRecovery ? 'UNVERIFIED'
-    : siteFlagDetailStatus(improvement?.status, flagRow.status, Boolean(site.projectId && attempts.some(attempt =>
-      attemptProvesFlagRecovery(attempt, site.projectId!, flagRow.auditId, flagRow.id))))
+  const sourceStatus = currentFlagStatus({
+    flagStatus: flagRow.status,
+    improvementStatus: improvement?.status,
+    provenRecovery,
+    verifiedForSource: Boolean(site.projectId && attempts.some(attempt =>
+      attemptProvesFlagRecovery(attempt, site.projectId!, flagRow.auditId, flagRow.id))),
+  })
   const scopedSeed = toSiteFlagSeed({
     ...seed,
     audit: flagRow.audit,

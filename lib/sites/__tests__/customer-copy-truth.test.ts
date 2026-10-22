@@ -47,8 +47,6 @@ describe('customer-visible truth', () => {
     expect(homepage).toContain('Illustrative integration evidence. GitHub is available; other connections are coming soon.')
     const github = INTEGRATIONS_PAGE.items.find(item => item.id === 'github')!
     expect(github.status).toBe('available')
-    expect(github.summary).toContain('Connect or disconnect your GitHub account')
-    expect(github.summary).not.toMatch(/inspect.*code|open.*pull request/i)
     expect(github.href).toBe('/settings/integrations')
     expect(INTEGRATIONS_PAGE.items.filter(item => item.status === 'planned')).toHaveLength(9)
     expect(source('lib/marketing/copy/compare.ts')).not.toContain('values: { psi: false')

@@ -6,6 +6,7 @@ vi.mock('@/lib/db', () => ({
     auditRunCost: {
       upsert: vi.fn(),
       update: vi.fn(),
+      create: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       aggregate: vi.fn(),
@@ -39,6 +40,7 @@ import { prisma } from '@/lib/db'
 
 const mockUpsert = vi.mocked(prisma.auditRunCost.upsert)
 const mockUpdate = vi.mocked(prisma.auditRunCost.update)
+const mockCreate = vi.mocked(prisma.auditRunCost.create)
 const mockFindUnique = vi.mocked(prisma.auditRunCost.findUnique)
 const mockFindMany = vi.mocked(prisma.auditRunCost.findMany)
 const mockAggregate = vi.mocked(prisma.auditRunCost.aggregate)
@@ -348,13 +350,75 @@ describe('persistAuditRunCost', () => {
       expect(data.pagespeedCalls).toBe(2)
     })
 
-    it('does nothing when no existing record found', async () => {
+    it('records the prescription spend when no triage record was written', async () => {
       mockFindUnique.mockResolvedValue(null)
+      mockCreate.mockResolvedValue({} as never)
       await persistAuditRunCost('audit-4', {
         ...baseMetrics,
         phase: 'prescription',
       })
       expect(mockUpdate).not.toHaveBeenCalled()
+      expect(mockCreate).toHaveBeenCalledTimes(1)
+      const data = mockCreate.mock.calls[0][0].data
+      expect(data.auditId).toBe('audit-4')
+      expect(data.prescriptionInputTokens).toBe(1000)
+      expect(data.prescriptionOutputTokens).toBe(500)
+      expect(data.llmInputTokens).toBe(1000)
+      expect(data.llmOutputTokens).toBe(500)
+      expect(data.estimatedCostUsd).not.toBeNull()
+      expect(data.pricingBasis).toBe('CONFIGURED_ESTIMATE')
+    })
+
+    it('adopts the initial analysis the provider log already holds', async () => {
+      mockFindUnique.mockResolvedValue(null)
+      mockCreate.mockResolvedValue({} as never)
+      vi.mocked(prisma.auditPipelineEvent.findMany).mockResolvedValueOnce([
+        { event: 'triage_provider_attempt', detail: { version: 1, responseId: '44444444-4444-4444-8444-444444444444', model: 'gpt-4o-mini', usage: null } },
+        { event: 'triage_provider_response', detail: { version: 1, responseId: '44444444-4444-4444-8444-444444444444', model: 'gpt-4o-mini',
+          usage: { inputTokens: 40, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 } } },
+      ] as never)
+      await persistAuditRunCost('audit-5', { ...baseMetrics, phase: 'prescription' })
+      const data = mockCreate.mock.calls[0][0].data
+      expect(data.triageInputTokens).toBe(40)
+      expect(data.prescriptionInputTokens).toBe(1000)
+      expect(data.llmInputTokens).toBe(1040)
+      expect(data.llmOutputTokens).toBe(510)
+    })
+  })
+
+  describe('phase accumulation', () => {
+    it('keeps the recorded prescription spend when a later phase reports the initial analysis', async () => {
+      mockFindUnique.mockResolvedValue({
+        triageInputTokens: 800, triageOutputTokens: 200, triageModel: 'gpt-4o-mini',
+        triageCostUsd: new Prisma.Decimal(0.001),
+        prescriptionInputTokens: 500, prescriptionOutputTokens: 100, prescriptionModel: 'claude-sonnet-5',
+        prescriptionCostUsd: new Prisma.Decimal(0.002),
+        durationMs: 3000, pagespeedCalls: 1,
+      } as never)
+      mockUpsert.mockResolvedValue({} as never)
+      await persistAuditRunCost('audit-6', { ...baseMetrics, phase: 'full' })
+      const data = mockUpsert.mock.lastCall?.[0].update
+      expect(data.llmInputTokens).toBe(1500)
+      expect(data.llmOutputTokens).toBe(600)
+      expect(data.triageInputTokens).toBe(1000)
+      expect(data.prescriptionInputTokens).toBeUndefined()
+      expect(data.durationMs).toBe(5000)
+      expect(data.pagespeedCalls).toBe(2)
+    })
+
+    it('keeps the recorded prescription spend when the initial analysis is recorded again', async () => {
+      mockFindUnique.mockResolvedValue({
+        triageInputTokens: 0, triageOutputTokens: 0, triageModel: null,
+        triageCostUsd: new Prisma.Decimal(0),
+        prescriptionInputTokens: 500, prescriptionOutputTokens: 100, prescriptionModel: 'claude-sonnet-5',
+        prescriptionCostUsd: new Prisma.Decimal(0.002),
+        durationMs: 3000, pagespeedCalls: 1,
+      } as never)
+      mockUpsert.mockResolvedValue({} as never)
+      await persistAuditRunCost('audit-7', { ...baseMetrics, phase: 'triage' })
+      const data = mockUpsert.mock.lastCall?.[0].update
+      expect(data.llmInputTokens).toBe(1500)
+      expect(data.prescriptionInputTokens).toBeUndefined()
     })
   })
 })

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { SiteRunRefusal } from './run-refusal'
+import { SiteNotFound } from '../domain/site-errors'
 import { accountStateSchema } from '../accounts/contracts'
 import { ACCOUNT_CHECK_COPY as C } from '@/lib/marketing/copy/account-checks'
 import { cancelSiteExecutions } from './cancel-executions'
@@ -28,7 +29,7 @@ export async function saveSiteSettings(owner: Owner, input: z.infer<typeof siteS
       where: { id: owner.projectId, userId: owner.userId, deletedAt: null },
       data: { ...changes, ...(changes.accountChecksEnabled !== undefined ? { accountCheckRevision: { increment: 1 } } : {}) },
     })
-    if (result.count !== 1) throw new SiteRunRefusal('Site not found.', 404)
+    if (result.count !== 1) throw new SiteNotFound()
     if (changes.accountChecksEnabled === false)
       await tx.siteAccountMessage.deleteMany({ where: { account: { projectId: owner.projectId } } })
     if (changes.accountChecksEnabled === true)
@@ -49,7 +50,7 @@ export async function removeSite(owner: Owner, input: z.infer<typeof siteRemoval
     const projects = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "projects" WHERE "id" = ${owner.projectId}
         AND "userId" = ${owner.userId} AND "deletedAt" IS NULL FOR UPDATE`
-    if (!projects.length) throw new SiteRunRefusal('Site not found.', 404)
+    if (!projects.length) throw new SiteNotFound()
     const accounts = await tx.siteTestAccount.findMany({ where: { projectId: owner.projectId, state: { not: 'DELETED' } }, select: { email: true, state: true } })
     if (accounts.length && !acknowledgement.acknowledgeRemainingAccounts)
       throw new SiteRunRefusal(C.removalRequired, 409, 'TEST_ACCOUNTS_REMAIN')

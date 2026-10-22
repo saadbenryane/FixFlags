@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { prisma } from '@/lib/db'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 
 const LINK_TTL_MS = 15 * 60 * 1000
 
@@ -15,7 +16,7 @@ export async function createShopifyAccountLink(input: {
     where: { id: input.projectId, userId: input.userId },
     select: { id: true },
   })
-  if (!project) throw new Error('Site not found')
+  if (!project) throw new SiteNotFound()
 
   const token = randomBytes(32).toString('base64url')
   await prisma.shopifyAccountLink.create({
@@ -88,7 +89,7 @@ export async function disconnectShopifySite(input: { projectId: string; userId: 
     where: { id: input.projectId, userId: input.userId },
     select: { id: true },
   })
-  if (!project) throw new Error('Site not found')
+  if (!project) throw new SiteNotFound()
   await prisma.shopifyShop.updateMany({
     where: { projectId: project.id },
     data: { projectId: null, linkedAt: null },

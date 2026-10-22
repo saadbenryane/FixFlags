@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   createAudit: vi.fn(),
   flagFindMany: vi.fn(),
+  queryRaw: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession: mocks.getSession } } }))
@@ -26,7 +27,6 @@ vi.mock('next/headers', () => ({ headers: vi.fn().mockResolvedValue(new Headers(
 vi.mock('@/lib/sites/request-access', () => ({ requireSiteAccess: mocks.requireSiteAccess }))
 vi.mock('@/lib/db', () => ({
   prisma: {
-    $queryRaw: vi.fn().mockResolvedValue([]),
     user: { findUnique: mocks.userFindUnique },
     siteOutcome: { findMany: mocks.outcomeFindMany },
     project: { findFirst: mocks.projectFindFirst },
@@ -73,6 +73,7 @@ describe('POST /api/sites/[siteId]/runs Site-care integration', () => {
     mocks.auditFindFirst.mockResolvedValue({ id: 'audit-parent' })
     mocks.auditFindUnique.mockResolvedValue(null)
     mocks.createAudit.mockResolvedValue({ auditId: 'audit-care', reused: false })
+    mocks.queryRaw.mockResolvedValue([])
   })
 
   it('crosses the authenticated route into the shared RunRequest and physical Audit ledger', async () => {

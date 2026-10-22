@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import {
   MCP_CONTRACT_VERSION,
   MCP_CORE_TOOL_DEFINITIONS,
@@ -58,6 +59,10 @@ export function mcpCoreError(error: unknown, defaults?: { code?: string; action?
     code = 'RATE_LIMITED'
     action = 'wait_and_retry'
     message = error.message
+  } else if (error instanceof SiteNotFound) {
+    code = 'NOT_FOUND'
+    action = 'check_identifier'
+    message = 'The requested Site, Outcome, run, or Flag was not found.'
   } else if (error instanceof ImprovementAttemptConflict) {
     code = error.code
     action = 'use_new_request_key'

@@ -18,11 +18,13 @@ import { projectUptimeStatus, uptimeStatusProjectSelect } from '@/lib/uptime/sta
 import { InvalidUptimeCursorError, loadUptimeHistory, loadUptimeSummary } from '@/lib/uptime/queries'
 import { uptimeCursorSchema, uptimeWindowSchema } from '@/lib/uptime/contracts'
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
+import { ownedSiteContext } from '@/lib/sites/domain/site-context'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
-  if (!site?.projectId || site.userId !== userId) throw new Error('Site not found')
-  return site
+  if (!site) throw new SiteNotFound()
+  return ownedSiteContext(site, userId).site
 }
 
 function toolAnnotations(tool: { title: string; readOnly: boolean }) {

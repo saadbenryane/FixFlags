@@ -1,10 +1,10 @@
 import type { RepairGuidanceState } from '@/lib/improvements/repair-guidance'
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
-import { cardAreaForCheck } from '@/lib/sites/card-areas'
+import { cardAreaForCheck, PAGES_CARD_AREA, SITE_CARD_AREAS } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
-import { checkAssertionsForVersion, CHECK_MODULES } from '@/lib/audit/check-registry'
+import { checkAssertionsForVersion, CHECK_MODULES, CHECK_ASSERTIONS } from '@/lib/audit/check-registry'
 import { searchEvidence } from './search-evidence'
 import { SEARCH_COPY } from '@/lib/marketing/copy/search'
 import { isResolvedFlagStatus } from '@/lib/audit/attention'
@@ -116,7 +116,7 @@ function passedAssertion(executions: Array<{ targetKey: string; status: string; 
   })
 }
 
-export type CoverageExecution = { targetKey: string; status: string; detail?: unknown; workKind?: string | null; pageUrl?: string | null }
+export type CoverageExecution = { targetKey: string; status: string; detail?: unknown; workKind?: string | null; pageUrl?: string | null; auditId?: string }
 
 function failedModuleArea(module: string): SiteCardArea | undefined {
   if (module.startsWith('search-')) return 'search'
@@ -257,8 +257,12 @@ export function buildCoverageFacts(input: {
     const moduleKey = execution.targetKey.slice('module:'.length)
     const receipt = readCheckReceipt(execution.detail)
     const missing = receipt.assertions.filter(assertion => assertion.complete === false)
-    const failed = execution.status === 'FAILED' || !receipt.legacy && 'failed' in receipt && receipt.failed === true
-    const incomplete = !receipt.legacy && 'complete' in receipt && receipt.complete === false
+    // Search owns a separate receipt contract. A known page/action module with
+    // unreadable evidence must not disappear behind a collection summary bit.
+    const failed = execution.status === 'FAILED' || input.auditStatus === 'COMPLETED' && execution.status !== 'COMPLETED' ||
+      receipt.unavailable && Object.hasOwn(CHECK_ASSERTIONS, moduleKey) ||
+      !receipt.legacy && 'failed' in receipt && receipt.failed === true
+    const incomplete = 'complete' in receipt && receipt.complete === false
     if (!failed && !incomplete && !missing.length) continue
     // A shared module can inspect several customer areas. Attribute explicit
     // gaps to their assertions; an unavailable collector leaves all of its
@@ -277,15 +281,9 @@ export function buildCoverageFacts(input: {
     for (const area of gapsByModule.get(moduleKey) ?? moduleAreas(moduleKey)) incompleteAreas.add(area)
   }
 
-  const areas: SiteCardArea[] = [
-    'security',
-    'search',
-    'performance',
-    'conversion',
-    'tracking',
-    'uptime',
-    'accessibility',
-  ]
+  // Every board area answers from check evidence except the Pages card, which
+  // answers from the pages a Site discovered.
+  const areas: SiteCardArea[] = SITE_CARD_AREAS.filter(area => area !== PAGES_CARD_AREA)
 
   return areas.map((area) => {
     const openFlagCount = openByArea.get(area) ?? 0

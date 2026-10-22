@@ -165,6 +165,14 @@ export const AUTH = {
   settings: {
     pageTitle: 'Account',
     pageDescription: 'Manage your profile, sign-in methods, and security.',
+    profile: {
+      title: 'Profile',
+      description: 'Your plan, name, and email address.',
+    },
+    danger: {
+      title: 'Danger zone',
+      description: 'Permanently remove this FixFlags account.',
+    },
     gscConnectedTitle: 'Google Search Console connected',
     gscNotConnectedTitle: 'Google Search Console was not connected',
     gscRetry: 'Try connecting again.',

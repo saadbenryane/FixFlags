@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { dispatchAudit } from './dispatch'
 import { buildExecutionSpec } from '@/lib/sites/application/execution-spec'
 import type { ExecutionSpec } from '@/lib/sites/domain/execution-spec'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import type { SiteRecord } from '@/lib/sites/types'
 import { AuditStatus, Prisma } from '@prisma/client'
 import type { RecheckTrigger } from '@prisma/client'
@@ -337,7 +338,7 @@ export async function createAndEnqueueAudit(
             throw staleScheduledClaim()
           assertScheduledClaim(ownedProject, options.scheduledClaim)
         }
-        if (!ownedProject) throw new ParentAuditError('Site not found', 404)
+        if (!ownedProject) throw new SiteNotFound()
         if (!cleanup && canonicalProductHost(url) !== (ownedProject.canonicalHost ?? canonicalProductHost(ownedProject.url)))
           throw new ParentAuditError('Choose a page on the same Site as the original check.', 400)
         projectId = ownedProject.id
@@ -356,7 +357,7 @@ export async function createAndEnqueueAudit(
           throw error
         }
       }
-      if(cleanup && !options.runRequestAdmission && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new ParentAuditError('Cleanup Site not found.',404)
+      if(cleanup && !options.runRequestAdmission && (!projectId || !(await tx.project.findFirst({where:{id:projectId,userId},select:{id:true}})))) throw new SiteNotFound()
       const user = await rollUserUsagePeriod(tx, userId)
       if (!user) throw new Error('User not found')
       if (options.operator && projectId) await assertAdminDomainActor(options.operator, userId, projectId, tx)

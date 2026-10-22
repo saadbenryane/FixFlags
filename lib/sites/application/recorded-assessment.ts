@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { Prisma } from '@prisma/client'
+import type { OutcomeAssessmentState, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { FLAG_COMPARISON_TARGET, readFlagComparisonFacts, comparisonEvidenceComplete, type FlagDiffSummary } from '@/lib/audit/flag-comparison'
 import type { CustomerFlagInput } from '@/lib/audit/attention'
@@ -14,7 +14,7 @@ import { categoryCoverageFact, type CategoryEvidenceAudit } from './category-evi
 import { categoryCoverageExecutionSelect } from './site-execution'
 import type { RecordedCompletionTask } from '@/lib/audit/progressive/recorded-completeness'
 
-type AssessmentObservation = { outcomeId: string; state: 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY'; validUntil: Date }
+type AssessmentObservation = { outcomeId: string; state: OutcomeAssessmentState; validUntil: Date }
 type RecordedAudit = Pick<CategoryEvidenceAudit, 'id' | 'parentId' | 'status' | 'completedAt' | 'executionSpec' |
   'evidenceCoverage' | 'failedModules' | 'failureCode' | 'pages'> & {
   verifierExecutions: Array<CoverageExecution & RecordedCompletionTask>;

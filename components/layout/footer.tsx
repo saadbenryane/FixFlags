@@ -4,6 +4,7 @@ import { Logo } from '@/components/brand/Logo'
 import { FooterBottom } from '@/components/layout/FooterBottom'
 import { Container } from '@/components/ui/container'
 import { BRAND } from '@/lib/marketing/copy/brand'
+import { FOOTER_COLUMN_COPY } from '@/lib/marketing/copy/navigation'
 import { FOOTER_COLUMNS } from '@/lib/site/nav'
 
 export function Footer() {
@@ -21,13 +22,13 @@ export function Footer() {
             </p>
           </div>
 
-          <FooterColumn title="Product" links={FOOTER_COLUMNS.product} />
+          <FooterColumn title={FOOTER_COLUMN_COPY.product} links={FOOTER_COLUMNS.product} />
           <FooterColumn
-            title="Resources"
+            title={FOOTER_COLUMN_COPY.resources}
             links={FOOTER_COLUMNS.resources}
           />
-          <FooterColumn title="Company" links={FOOTER_COLUMNS.company} />
-          <FooterColumn title="Trust" links={FOOTER_COLUMNS.trust} />
+          <FooterColumn title={FOOTER_COLUMN_COPY.company} links={FOOTER_COLUMNS.company} />
+          <FooterColumn title={FOOTER_COLUMN_COPY.trust} links={FOOTER_COLUMNS.trust} />
 
         </div>
 

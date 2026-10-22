@@ -27,6 +27,7 @@ const STATUS_BY_CODE: Record<string, number> = {
   WATCH_UNAVAILABLE: 503,
   WATCH_CHANGED: 409,
   SCHEDULE_REQUIRED: 409,
+  SITE_NOT_FOUND: 404,
 }
 
 function statusForCode(code?: string): number {

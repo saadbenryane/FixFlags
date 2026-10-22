@@ -9,6 +9,7 @@ import { getAppViewer } from '@/lib/auth/app-viewer'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
 import { SCAN_HANDOFF, WEBSITES_COPY } from '@/lib/marketing/copy'
+import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import styles from './Dashboard.module.css'
 
 /**
@@ -49,7 +50,7 @@ export default async function DashboardPage({
         <DashboardCheckoutToast />
       </Suspense>
 
-      <PageHeader title="Websites" />
+      <PageHeader title={SITE_WORKSPACE_COPY.websites} />
       <section aria-labelledby="analyze-heading" className={styles.entry} data-first={firstWebsite}>
         <h2 id="analyze-heading" className={styles.title}>{firstWebsite ? WEBSITES_COPY.firstTitle : WEBSITES_COPY.analyzeTitle}</h2>
         <p className={styles.description}>

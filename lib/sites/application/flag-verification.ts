@@ -4,6 +4,15 @@ import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 import { SiteRunRefusal } from './run-refusal'
+import { ownedSiteContext } from '@/lib/sites/domain/site-context'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
+
+/** The Site this caller owns, or the one answer for a Site they do not. */
+async function requireOwnedSite(siteId: string, userId: string) {
+  const site = await loadSiteRecord(siteId)
+  if (!site) throw new SiteNotFound()
+  return ownedSiteContext(site, userId).site
+}
 
 export async function recordSiteFlagFix(input: {
   siteId: string
@@ -15,8 +24,7 @@ export async function recordSiteFlagFix(input: {
   deploymentReference?: string
   client?: string
 }) {
-  const site = await loadSiteRecord(input.siteId)
-  if (!site?.projectId || site.userId !== input.userId) throw new Error('Site not found')
+  const site = await requireOwnedSite(input.siteId, input.userId)
   const flag = await loadSiteFlagDetail(site, input.flagId)
   if (!flag) throw new Error('Flag not found')
 
@@ -64,8 +72,7 @@ export async function requireSiteFlagAttempt(input: {
   attemptId: string
   userId: string
 }, options: { allowSettled?: boolean } = {}) {
-  const site = await loadSiteRecord(input.siteId)
-  if (!site?.projectId || site.userId !== input.userId) throw new Error('Site not found')
+  const site = await requireOwnedSite(input.siteId, input.userId)
   const flag = await loadSiteFlagDetail(site, input.flagId)
   if (!flag?.improvementId) throw new Error('Record the fix before verification')
   const attempt = await prisma.improvementAttempt.findFirst({

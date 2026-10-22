@@ -43,6 +43,23 @@ export function siteFlagDetailStatus(
   return improvementStatus ?? flagStatus
 }
 
+/** The status one customer sees for one Flag. A fixed observation without its
+ * completed, tenant-owned recovery reads as unverified, an unverified
+ * observation stays unverified, and repair workflow never rewrites the
+ * observed status. */
+export function currentFlagStatus(input: {
+  flagStatus: string
+  improvementStatus?: string | null
+  /** The Flag's own completed recovery, when it has one. */
+  provenRecovery?: boolean | null
+  /** A completed attempt that proves this exact source occurrence. */
+  verifiedForSource?: boolean
+}): string {
+  if (input.flagStatus === 'UNVERIFIED') return 'UNVERIFIED'
+  if (input.flagStatus === 'FIXED' && input.provenRecovery !== true) return 'UNVERIFIED'
+  return siteFlagDetailStatus(input.improvementStatus ?? null, input.flagStatus, input.verifiedForSource ?? false)
+}
+
 /** Project current incident attention without rewriting repair declarations.
  * A fixed row without its completed, tenant-owned recovery remains unverified. */
 export function currentIncidentFlags<T extends { status: string; resolvedInId?: string | null }>(

@@ -9,6 +9,7 @@ import { resumeOrCreateSession, serializeSession } from '@/lib/live-support'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 
 const postSchema = z.object({
   pageUrl: z.string().url().optional(),
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
         where: { id: parsed.data.projectId, userId: session.user.id },
         select: { id: true },
       })
-      if (!owned) return apiError('Site not found.', 404)
+      if (!owned) return apiError(SITE_ERRORS.notFound, 404)
     }
     const visitorToken = await getOrCreateVisitorToken()
 

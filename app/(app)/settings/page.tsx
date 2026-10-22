@@ -46,8 +46,8 @@ export default async function SettingsPage() {
 
       <Card variant="subtle">
         <CardHeader>
-          <CardTitle as="h2" className="text-base">Profile</CardTitle>
-          <CardDescription>Your plan, name, and email address.</CardDescription>
+          <CardTitle as="h2" className="text-base">{settingsCopy.profile.title}</CardTitle>
+          <CardDescription>{settingsCopy.profile.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <AccountSettingsForms
@@ -74,7 +74,7 @@ export default async function SettingsPage() {
       />
 
       <Card variant="subtle" className="border-destructive/30">
-        <CardHeader><CardTitle as="h2" className="text-base">Danger zone</CardTitle><CardDescription>Permanently remove this FixFlags account.</CardDescription></CardHeader>
+        <CardHeader><CardTitle as="h2" className="text-base">{settingsCopy.danger.title}</CardTitle><CardDescription>{settingsCopy.danger.description}</CardDescription></CardHeader>
         <CardContent><AccountDangerZone /></CardContent>
       </Card>
     </div>

@@ -4,11 +4,13 @@ import { z } from 'zod'
 import type { SiteHomeView } from './application/queries'
 import { siteCheckResultSchema } from './check-results'
 import { watchIntervalSchema } from './watch-schedule'
+import { SITE_CARD_AREAS } from './card-areas'
+import { CUSTOMER_OUTCOME_STATES } from './domain/outcome-states'
 
 const text = z.string(), nullableText = text.nullable(), count = z.number().int().nonnegative()
 const time = z.string().datetime({ offset: true }), nullableTime = time.nullable()
 const date = z.union([z.date(), time]).transform(value => new Date(value)).nullable()
-const area = z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility'])
+const area = z.enum(SITE_CARD_AREAS)
 const health = z.enum(['healthy', 'attention', 'problem', 'unknown', 'checking'])
 const connection = z.object({ provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']), configured: z.boolean(),
   status: z.enum(['not_connected', 'connected', 'mismatch', 'needs_reauth', 'revoked', 'unavailable']),
@@ -97,7 +99,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
     kind: z.enum(['GENERIC', 'CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY']), criticality: z.enum(['CRITICAL', 'IMPORTANT', 'INFORMATIONAL']),
     environment: text, enabled: z.boolean(), staleAfterMinutes: count, expectation: nullableText,
     bindings: z.array(z.object({ key: text, required: z.boolean(), scope: z.json(), mechanism: text, version: count })), coverage: z.json(),
-    state: z.enum(['CLEAR', 'FLAG', 'COULD_NOT_VERIFY', 'STALE']), summary: text, lastVerifiedAt: nullableTime,
+    state: z.enum(CUSTOMER_OUTCOME_STATES), summary: text, lastVerifiedAt: nullableTime,
     validUntil: nullableTime, flagId: nullableText, latestRunId: nullableText, running: z.boolean(),
   })),
   checkResults: z.array(siteCheckResultSchema).max(100).optional(), checkResultsNextCursor: nullableText.optional(),

@@ -30,7 +30,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     return true
   })
   const confirmedOutcomes = view.outcomes.filter((outcome) => outcome.kind !== 'GENERIC' && outcome.bindings.some(binding => binding.required)).sort((left, right) => {
-    const rank = { FLAG: 0, COULD_NOT_VERIFY: 1, STALE: 2, CLEAR: 3 }
+    const rank: Record<string, number> = { FLAG: 0, COULD_NOT_VERIFY: 1, STALE: 2, CLEAR: 3 }
     return rank[left.state] - rank[right.state]
   })
   const pagesNeedingAttention = new Set(view.flags.flatMap(flag => flag.affectedPaths.length ? flag.affectedPaths : [flag.pageUrl ?? view.site.url])).size

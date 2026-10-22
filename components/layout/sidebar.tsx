@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
+import { APP_NAV_COPY } from '@/lib/marketing/copy/navigation'
 import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 import type { Route } from 'next'
 import Link from 'next/link'
@@ -43,14 +44,14 @@ const PRIMARY_ITEMS: SidebarItem[] = [
 ]
 
 const SECONDARY_ITEMS: SidebarItem[] = [
-  { href: '/billing', label: 'Billing', icon: CreditCard },
-  ...(MCP_IS_DISCOVERABLE ? [{ href: '/settings/api-keys' as const, label: 'API keys', icon: KeyRound }] : []),
-  { href: '/docs', label: 'Docs', icon: BookOpen },
-  { href: '/help', label: 'Help', icon: CircleHelp },
+  { href: '/billing', label: APP_NAV_COPY.billing, icon: CreditCard },
+  ...(MCP_IS_DISCOVERABLE ? [{ href: '/settings/api-keys' as const, label: APP_NAV_COPY.apiKeys, icon: KeyRound }] : []),
+  { href: '/docs', label: APP_NAV_COPY.docs, icon: BookOpen },
+  { href: '/help', label: APP_NAV_COPY.help, icon: CircleHelp },
 ]
 
-const ADMIN_ITEM: SidebarItem = { href: '/admin', label: 'Admin', icon: ShieldCheck }
-const SETTINGS_ITEM: SidebarItem = { href: '/settings', label: 'Account', icon: Settings }
+const ADMIN_ITEM: SidebarItem = { href: '/admin', label: APP_NAV_COPY.admin, icon: ShieldCheck }
+const SETTINGS_ITEM: SidebarItem = { href: '/settings', label: APP_NAV_COPY.account, icon: Settings }
 
 export function SidebarNav({
   onNav,

@@ -3,6 +3,7 @@ import { requireSiteOwner } from '@/lib/sites/request-access'
 import { InvalidUptimeCursorError, loadUptimeHistory } from '@/lib/uptime/queries'
 import { uptimeCursorSchema, uptimeWindowSchema } from '@/lib/uptime/contracts'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 
 export async function GET(request: Request, context: { params: Promise<{ siteId: string }> }) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: Request, context: { params: Promise<{ siteId:
     const cursor = uptimeCursorSchema.nullable().safeParse(query.get('cursor'))
     if (!window.success || !cursor.success) return apiError('Invalid Uptime history query', 400)
     const history = await loadUptimeHistory(access.projectId, window.data, cursor.data)
-    if (!history) return apiError('Site not found', 404)
+    if (!history) return apiError(SITE_ERRORS.notFound, 404)
     return NextResponse.json({ siteId: access.decision.site.siteId, ...history }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     if (error instanceof InvalidUptimeCursorError) return apiError('Invalid Uptime history cursor', 400)

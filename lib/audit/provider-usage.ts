@@ -65,15 +65,20 @@ export function sumProviderResponses(events: readonly { event?: string; detail: 
     model: [...new Set(measurements.length ? measurements.map(item => item.model) : attempts.values())].join(',') }
 }
 
+/** The recorded consumption of a set of pipeline phases, summed per phase. */
+export function sumProviderPhases(events: readonly { event?: string; detail: unknown }[], phases: readonly ProviderUsagePhase[]) {
+  const totals = phases.map(phase => sumProviderResponses(
+    events.filter(event => event.event === `${phase}_provider_attempt` || event.event === `${phase}_provider_response`), phase))
+  const measurements = totals.flatMap(phase => phase.measurements)
+  return { measurements, complete: totals.every(phase => phase.complete),
+    inputTokens: totals.reduce((sum, phase) => sum + phase.inputTokens, 0),
+    outputTokens: totals.reduce((sum, phase) => sum + phase.outputTokens, 0),
+    cacheReadTokens: totals.reduce((sum, phase) => sum + phase.cacheReadTokens, 0),
+    cacheWriteTokens: totals.reduce((sum, phase) => sum + phase.cacheWriteTokens, 0),
+    model: [...new Set(totals.flatMap(phase => phase.model ? phase.model.split(',') : []))].join(',') }
+}
+
 /** The existing phase-one subtotal covers every initial-analysis provider. */
 export function sumAnalysisProviderResponses(events: readonly { event?: string; detail: unknown }[]) {
-  const phases = INITIAL_ANALYSIS_PROVIDER_PHASES.map(phase => sumProviderResponses(
-    events.filter(event => event.event === `${phase}_provider_attempt` || event.event === `${phase}_provider_response`), phase))
-  const measurements = phases.flatMap(phase => phase.measurements)
-  return { measurements, complete: phases.every(phase => phase.complete),
-    inputTokens: phases.reduce((sum, phase) => sum + phase.inputTokens, 0),
-    outputTokens: phases.reduce((sum, phase) => sum + phase.outputTokens, 0),
-    cacheReadTokens: phases.reduce((sum, phase) => sum + phase.cacheReadTokens, 0),
-    cacheWriteTokens: phases.reduce((sum, phase) => sum + phase.cacheWriteTokens, 0),
-    model: [...new Set(phases.flatMap(phase => phase.model ? phase.model.split(',') : []))].join(',') }
+  return sumProviderPhases(events, INITIAL_ANALYSIS_PROVIDER_PHASES)
 }

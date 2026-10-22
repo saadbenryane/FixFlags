@@ -3,6 +3,7 @@ import { loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { removeSite, siteRemovalSchema } from '@/lib/sites/application/settings-commands'
+import { SITE_ERRORS } from '@/lib/marketing/copy/errors'
 
 export async function GET(
   _req: Request,
@@ -14,7 +15,7 @@ export async function GET(
     if (!access.ok) return apiError(access.message, access.status)
 
     const home = await loadSiteHome(access.decision.site.siteId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
-    if (!home) return apiError('Site not found', 404)
+    if (!home) return apiError(SITE_ERRORS.notFound, 404)
     return NextResponse.json(home, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     return handleRouteError(error)

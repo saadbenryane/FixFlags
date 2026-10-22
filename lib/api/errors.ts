@@ -10,6 +10,7 @@ import { isSupportError } from '@/lib/live-support/errors'
 import { AuditUrlError } from '@/lib/audit/url'
 import { AuditLimitError } from '@/lib/audit/create-audit'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
+import { SiteNotFound } from '@/lib/sites/domain/site-errors'
 import { ImprovementAttemptConflict } from '@/lib/improvements/attempt-intent'
 import { AdminActionError } from '@/lib/admin/errors'
 
@@ -54,6 +55,13 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
   // centrally because any route that starts a scan can now reach it, and a route
   // that omits the branch reports "could not start" for a limit that is simply
   // spent, which is both false and leaves the customer with nothing to do.
+  // A Site the caller does not own is not found for that caller. Reporting a
+  // server fault here would tell a customer their Site broke when the truth
+  // is that it belongs to somebody else.
+  if (err instanceof SiteNotFound) {
+    return apiError(err.message, 404, { code: err.code, requestId })
+  }
+
   if (err instanceof SiteRunRefusal || err instanceof ImprovementAttemptConflict) {
     return apiError(err.message, err.status, { code: err.code, requestId })
   }
