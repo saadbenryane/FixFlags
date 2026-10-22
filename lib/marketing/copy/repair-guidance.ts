@@ -1,0 +1,17 @@
+export const REPAIR_GUIDANCE_COPY = {
+  recordedSeverity: (severity: string) => `Recorded severity: ${severity}. Keep changes within the recorded scope and preserve working behavior.`,
+  inspection: (subject: string) => `Review ${subject}.`,
+  confirmIntent: 'Confirm the intended behavior for this scope before making a change.',
+  condition: (condition: string) => `Make a change only if ${condition}.`,
+  confirmedChange: (change: string) => `If confirmed: ${change}.`,
+  preserve: (subject: string) => `Keep ${subject} unchanged.`,
+  noChange: 'If that condition is not established, keep the existing implementation.',
+  noFindings: 'No change is prescribed from the recorded evidence.',
+  observed: (evidence: string) => `Recorded evidence: ${evidence}`,
+  page: (url: string) => `Affected page: ${url}`,
+  problem: (problem: string) => `Recorded finding: ${problem}`,
+  supporting: (evidence: string) => `Supporting observation: ${evidence}`,
+  verify: (rule: string, page?: string | null) => `Independent verification${page ? ` for ${page}` : ''}: ${rule}`,
+  verificationUnavailable: 'Independent verification conditions are not recorded.',
+  explanationUnavailable: 'No explanation was recorded for this finding.',
+} as const

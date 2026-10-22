@@ -1,0 +1,11 @@
+.closing { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 24px; max-width: 1120px; margin-inline: auto; }
+.copy { min-width: 0; position: relative; z-index: 1; }
+.art { position: relative; min-width: 0; width: min(100%, 300px); aspect-ratio: 1; margin-inline: auto; mask-image: radial-gradient(ellipse at 54% 50%, black 40%, transparent 73%); }
+.art img { object-fit: cover; object-position: right center; }
+.dark { display: none; }
+:global(.dark) .light { display: none; }
+:global(.dark) .dark { display: block; }
+@media (min-width: 768px) {
+  .closing { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; }
+  .art { width: 100%; max-width: 460px; }
+}

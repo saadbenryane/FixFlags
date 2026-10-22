@@ -1,0 +1,5 @@
+.prompt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; min-width: 0; padding: 24px; border-radius: var(--radius-card); background: hsl(var(--muted) / .3); }
+.prompt > div { flex: 1 1 280px; min-width: 0; }
+.prompt h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.025em; line-height: 1.4; }
+.prompt p { max-width: 54ch; margin: 8px 0 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.65; }
+.prompt > a { flex-shrink: 0; }
