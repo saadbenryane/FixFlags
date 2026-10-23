@@ -31,7 +31,7 @@ import {
 } from '@/components/report/workspace-geometry'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { displaySiteAddress } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'

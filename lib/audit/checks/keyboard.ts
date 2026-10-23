@@ -10,9 +10,9 @@ export const KEYBOARD_CONTEXT_PATTERN = /^keyboard:[a-f0-9]{64}:[a-f0-9]{64}:.+$
  * summary; an unrelated untested popup cannot supply or erase repair evidence. */
 export function runKeyboardChecks(evidence: KeyboardEvidence): { flags: DeterministicFlag[]; assertions: CheckAssertion[] } {
   const flags: DeterministicFlag[] = [], assertions: CheckAssertion[] = []
-  if (evidence.limitations.includes('protected_action_refused')) return { flags, assertions }
   const targets = [...new Map(evidence.steps.map(step => [step.selector, step])).values()]
-  const navigationComplete = evidence.navigationComplete ?? evidence.complete
+  // A protected-action refusal ends the probe. Measured failures remain; an unfinished pass does not.
+  const navigationComplete = !evidence.limitations.includes('protected_action_refused') && (evidence.navigationComplete ?? evidence.complete)
   const missing = targets.filter(step => step.indicator === 'missing')
   const reversed = targets.filter((step, index) => index > 0 && step.domOrder < targets[index - 1].domOrder &&
     targets.slice(0, index).some(previous => previous.tabIndex > 0))
@@ -52,8 +52,13 @@ export function runKeyboardChecks(evidence: KeyboardEvidence): { flags: Determin
     fix: '1. Review the recorded sequence against the visible reading and action order.\n2. Prefer native controls and tabindex="0" over positive tabindex.\n3. Put controls in a logical DOM order and repeat Tab navigation.',
     confidence: 0.8, source: 'DETERMINISTIC', pageUrl, verificationRule, evidenceTargets: locations(targets) })
   function assertion(key: string, name: string, expected: string, observed: string, passed: boolean) {
-    if (navigationComplete || !passed) assertions.push({ key, name, expected, observed, passed, complete: true,
-      targets: targets.map(step => ({ selector: step.selector, label: step.label || 'Keyboard control', context: scopedContext() })) })
+    const targetsForAssertion = targets.map(step => ({ selector: step.selector, label: step.label || 'Keyboard control', context: scopedContext() }))
+    if (!navigationComplete && passed) {
+      assertions.push({ key, name, expected, observed: 'The keyboard probe stopped before this sequence was established.',
+        passed: false, complete: false, targets: targetsForAssertion })
+      return
+    }
+    assertions.push({ key, name, expected, observed, passed, complete: true, targets: targetsForAssertion })
   }
   if (targets.length) {
     focusObservations(targets)

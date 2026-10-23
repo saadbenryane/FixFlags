@@ -19,7 +19,7 @@ import {
   getRelatedArticles,
 } from '@/lib/help/search'
 import { helpArticlePath } from '@/lib/help/types'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 import type { HelpArticleSlug, HelpCategoryId } from '@/lib/help/types'
 
 interface Props {

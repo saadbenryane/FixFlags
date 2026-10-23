@@ -5,7 +5,7 @@ import { rubricStatusColor, cn } from '@/lib/utils'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { RubricScoreBar } from '@/components/report/RubricScoreBar'
 import { Card } from '@/components/ui/card'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy-barrel'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 interface RubricRowInput {

@@ -9,7 +9,7 @@ import {
   isNonRetryableAuditError,
 } from '../pipeline-errors'
 import { getUserFacingAuditError } from '../user-facing-errors'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 describe('audit failure classification', () => {
   it('maps each error type to its own failure code', () => {

@@ -8,7 +8,7 @@ import { RefreshCw } from 'lucide-react'
 
 import { ExportMenu } from '@/components/audit/ExportMenu'
 import { trackEvent } from '@/lib/analytics/events'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 
 import type { RankableFlag } from '@/lib/audit/priority-flags'

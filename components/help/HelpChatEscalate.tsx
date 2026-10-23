@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { HELP_CENTER, SUPPORT_CHAT, BRAND } from '@/lib/marketing/copy'
+import { HELP_CENTER, SUPPORT_CHAT, BRAND } from '@/lib/marketing/copy-barrel'
 import { Button } from '@/components/ui/button'
 import { useOptionalSupportContext } from '@/components/live-support/SupportProvider'
 

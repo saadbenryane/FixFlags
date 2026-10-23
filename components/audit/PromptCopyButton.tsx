@@ -6,7 +6,7 @@ import type { ButtonProps } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isUsableFixPrompt } from '@/lib/audit/priority-flags'
-import { LOCKED_CONTENT_TEASER, REPORT_COPY } from '@/lib/marketing/copy'
+import { LOCKED_CONTENT_TEASER, REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import {
   trackEvent,
   type ReportAccessState,

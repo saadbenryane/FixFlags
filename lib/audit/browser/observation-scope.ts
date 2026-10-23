@@ -4,6 +4,7 @@ import type { CaptureProfile } from './capture-profile'
 import type { ScanAccessConfig } from '../scan-access'
 import { canonicalIntent } from '@/lib/sites/domain/execution-spec'
 import type { Page } from 'playwright'
+import { documentEvidenceWithheld } from './document-evidence'
 
 export const captureObservationScopeSchema = z.object({
   pageUrl: z.string().url(), finalUrl: z.string().url(), profile: z.string().min(1), access: z.string().min(1),
@@ -43,7 +44,7 @@ export function auditPageObservation(page: Page) {
   const source = pageSources.get(page)
   if (!source) return undefined
   const viewport = page.viewportSize()
-  return { device: source.profile.name, restricted: source.restrictions.length > 0,
+  return { device: source.profile.name, restricted: documentEvidenceWithheld(source.restrictions),
     scope: { pageUrl: source.pageUrl, finalUrl: page.url(), access: source.access,
       profile: captureProfileKey({ ...source.profile, ...(viewport ? { width: viewport.width, height: viewport.height } : {}) }) } }
 }

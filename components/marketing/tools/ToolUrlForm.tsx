@@ -4,7 +4,7 @@ import { AlertCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { URL_PLACEHOLDER } from '@/lib/marketing/copy'
+import { URL_PLACEHOLDER } from '@/lib/marketing/copy-barrel'
 
 interface ToolUrlFormProps {
   url: string

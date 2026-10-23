@@ -4,7 +4,7 @@ import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { PRODUCT_WATCH_COPY, REPORT_COPY } from '@/lib/marketing/copy'
+import { PRODUCT_WATCH_COPY, REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 import type { WatchInterval } from '@/lib/sites/watch-schedule'

@@ -24,6 +24,16 @@ import { FlagEvidenceDetails } from '@/components/sites/FlagEvidenceDetails'
 import { SiteActionContinuation } from '@/components/sites/SiteActionContinuation'
 import styles from './FlagDetailPage.module.css'
 
+function recordedPathLabel(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const path = `${parsed.pathname}${parsed.search}`
+    return path === '/' ? parsed.host : path
+  } catch {
+    return url
+  }
+}
+
 function attemptLabel(attempt: Parameters<typeof verificationResult>[0]): string {
   return verificationResultLabel(verificationResult(attempt))
 }
@@ -42,8 +52,13 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
   const resolvedId = access.decision.site.siteId
   const ownsSite = access.decision.role === 'owner'
-  const detail = await loadSiteBoardFlag(resolvedId, flagId)
-  if (!detail) notFound()
+  const detailPromise = loadSiteBoardFlag(resolvedId, flagId)
+  const homePromise = loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated })
+  const detail = await detailPromise
+  if (!detail) {
+    await homePromise.catch(() => undefined)
+    notFound()
+  }
 
   const { site, flag, capture } = detail
   const actionFlagId = flag.sourceFlagId ?? flag.id
@@ -70,7 +85,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     }
   }
   const [home, connectionViews] = await Promise.all([
-    loadSiteHome(resolvedId, { ownerEvidence: ownsSite, viewerAuthenticated: access.decision.authenticated }),
+    homePromise,
     site.projectId ? loadSiteConnectionViews(site.projectId) : null,
     recordOpening(),
   ])
@@ -149,7 +164,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
 
           <div className={`${styles.evidenceGrid} ${resolution.kind === 'open' || resolution.kind === 'verifying' ? styles.withActions : ''}`}>
             <div className="space-y-6">
-              <section className="overflow-hidden rounded-[17px] border border-border bg-background shadow-sm" aria-labelledby="flag-evidence-heading">
+              <section className="overflow-hidden rounded-board-panel border-0 bg-background shadow-board" aria-labelledby="flag-evidence-heading">
                 <div className="flex flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand text-brand">
                     <CircleAlert className="h-4 w-4" aria-hidden="true" />
@@ -158,7 +173,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                     <h2 id="flag-evidence-heading" className="font-semibold">
                       {resolution.kind === 'proven' ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence}
                     </h2>
-                    <p className="text-xs text-muted-foreground">{resolution.kind === 'proven' ? flag.problem : SITE_BOARD_COPY.flagObserved}</p>
+                    {resolution.kind === 'proven' ? <p className="text-xs text-muted-foreground">{flag.problem}</p> : null}
                   </div>
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
@@ -191,11 +206,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                         <dt className="text-xs text-muted-foreground">{(flag.affectedPageCount ?? affectedPaths.length) > 1 ? 'Affected pages' : 'Page'}</dt>
                         <dd className="mt-1 min-w-0 break-words font-medium">
                           {affectedPaths.length === 1 ? (
-                            <a href={affectedPaths[0]} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{affectedPaths[0]}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a>
+                            <a href={affectedPaths[0]} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{recordedPathLabel(affectedPaths[0])}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a>
                           ) : affectedPaths.length > 1 ? (
                             <details>
                               <summary className="min-h-11 cursor-pointer py-2 text-sm">View all {affectedPaths.length} pages</summary>
-                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><a href={path} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{path}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a></li>)}</ul>
+                              <ul className="space-y-2">{affectedPaths.map((path) => <li key={path}><a href={path} target="_blank" rel="noreferrer" className="inline-flex min-h-11 max-w-full items-start gap-1.5 underline decoration-border underline-offset-4 hover:decoration-foreground"><span className="min-w-0 break-all">{recordedPathLabel(path)}</span><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /></a></li>)}</ul>
                             </details>
                           ) : (
                             'This Site, page not recorded'
@@ -214,7 +229,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
               </section>
 
               {connectionContext.length > 0 ? (
-                <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6">
+                <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6">
                   <h2 className="font-semibold">Connected context</h2>
                   <p className="mt-1 text-sm text-muted-foreground">These numbers come from an account connected to this Site. They sit beside the Flag.</p>
                   <ul className="mt-3 space-y-2 text-sm">
@@ -227,7 +242,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             </div>
 
             {ownsSite && (resolution.kind === 'open' || resolution.kind === 'verifying') ? (
-              <aside className="rounded-[17px] border border-border bg-background p-5 shadow-sm sm:p-6 lg:sticky lg:top-6" aria-labelledby="fix-and-verify-heading">
+              <aside className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:sticky lg:top-6" aria-labelledby="fix-and-verify-heading">
                 <h2 id="fix-and-verify-heading" className="text-lg font-semibold tracking-tight">
                   {SITE_BOARD_COPY.fixAndVerify}
                 </h2>
@@ -238,7 +253,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             ) : null}
 
             {!ownsSite ? <SiteActionContinuation availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} action="copy" /> : null}
-            {ownsSite ? <section className="rounded-[17px] border border-border bg-background p-5 sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
+            {ownsSite ? <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
               <div className="flex flex-wrap items-center gap-3">
                 <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <h2 id="verification-history-heading" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] font-semibold">

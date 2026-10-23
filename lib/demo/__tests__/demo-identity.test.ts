@@ -6,7 +6,7 @@ import { v0Fixture } from '@/lib/demo/fixtures/v0'
 import { v1Fixture } from '@/lib/demo/fixtures/v1'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { DEMO_FIXTURE_CONTEXT_TAG } from '@/lib/marketing/display-meta'
-import { SEO } from '@/lib/marketing/copy'
+import { SEO } from '@/lib/marketing/copy-barrel'
 
 /**
  * The demo has one name and one story. Chrome, fixture copy, curated evidence,

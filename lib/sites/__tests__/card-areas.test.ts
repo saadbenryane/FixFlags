@@ -6,6 +6,7 @@ import { encodeSiteId, parseSiteId } from '@/lib/sites/types'
 import { siteCardHealth } from '@/lib/sites/site-health'
 import { buildBoardCards } from '@/lib/sites/board-card'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
 function observedReceipt(module: string, assertions: string[]) {
   return { kind: 'site-module-check', version: 1, module, pageUrl: 'https://example.com/', passed: true, applicable: true,
@@ -46,9 +47,11 @@ describe('site card packaging', () => {
       verifierExecutions: [
         { targetKey: 'module:accessibility', status: 'COMPLETED', detail: observedReceipt('accessibility', ['automated-accessibility']) },
         { targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail: { ...layout, complete: false,
-          assertions: layout.assertions.map(assertion => ({ ...assertion, passed: false, complete: false })) } },
+          assertions: layout.assertions.map(assertion => ({ ...assertion, name: SITE_ACTION_COPY.mobileInputs.name, passed: false, complete: false })) } },
       ] })
-    expect(facts.find(fact => fact.area === 'accessibility')).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    const accessibility = facts.find(fact => fact.area === 'accessibility')
+    expect(accessibility).toMatchObject({ state: 'unknown', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })
+    expect(accessibility?.incompleteReason).not.toContain(SITE_ACTION_COPY.mobileInputs.name)
     expect(facts.find(fact => fact.area === 'performance')).toMatchObject({ state: 'healthy' })
     expect(facts.find(fact => fact.area === 'performance')?.incompleteReason).toBeFalsy()
   })

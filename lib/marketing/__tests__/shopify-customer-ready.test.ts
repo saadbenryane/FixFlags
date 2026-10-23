@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FAQ, PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
+import { FAQ, PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy-barrel'
 import { getDocsPageByPath } from '@/lib/docs/catalog'
 import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy/integrations'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'

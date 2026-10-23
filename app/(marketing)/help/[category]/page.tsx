@@ -9,7 +9,7 @@ import { HelpPageFrame } from '@/components/help/HelpPageFrame'
 import { buildHelpCategoryMetadata } from '@/lib/help/metadata'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getArticlesForCategory, getHelpCategory } from '@/lib/help/search'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 import type { HelpCategoryId } from '@/lib/help/types'
 
 interface Props {

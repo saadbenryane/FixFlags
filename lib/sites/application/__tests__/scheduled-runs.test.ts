@@ -5,6 +5,7 @@ vi.mock('@/lib/db', () => ({ prisma: { project: { findFirst: mocks.project }, ru
 vi.mock('@/lib/admin/domain-actor', () => ({ assertAdminDomainActor: mocks.operator }))
 vi.mock('../run-requests', () => ({ requestSiteRun: mocks.request }))
 vi.mock('../scheduled-completion', () => ({ commitScheduledRun: vi.fn() }))
+import { interruptedAnalysisWorkWhere } from '@/lib/audit/progressive/recorded-completeness'
 import { analysisEnvironmentWhere } from '../analysis-scope'
 import { requestScheduledSiteRun } from '../scheduled-runs'
 import { siteCareIntervalMinutes } from '../../evidence-freshness'
@@ -46,6 +47,11 @@ describe('automatic scheduled Site care', () => {
     expect(mocks.outcomes).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'site', enabled: true,
       environment: 'production', bindings: { some: { enabled: true, required: true } } } }))
     expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({ scope: 'OUTCOMES', outcomeIds: ['availability'], context: { cadence: 'hourly' } }))
+    expect(mocks.recent.mock.calls[0][0].select.verifierExecutions.where).toEqual(interruptedAnalysisWorkWhere)
+    expect(interruptedAnalysisWorkWhere).toEqual({
+      targetKey: { startsWith: 'task:' }, workState: 'EXHAUSTED', status: 'FAILED',
+      OR: [{ workKind: null }, { workKind: { notIn: ['prescription', 'pagespeed', 'google', 'judge'] } }],
+    })
     expect(mocks.recent.mock.calls[0][0].where.createdAt.gt).toEqual(new Date('2026-10-11T12:01:00Z'))
   })
   it('requests broad recovery when the latest completed analysis exhausted an obligation', async () => {

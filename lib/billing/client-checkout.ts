@@ -1,4 +1,4 @@
-import { BILLING_ACTION_COPY } from '@/lib/marketing/copy'
+import { BILLING_ACTION_COPY } from '@/lib/marketing/copy-barrel'
 
 export type CheckoutPlan = 'BUILDER' | 'TEAM'
 

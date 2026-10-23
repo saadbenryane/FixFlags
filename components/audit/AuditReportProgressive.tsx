@@ -28,7 +28,7 @@ import {
   PIPELINE_PROGRESS_SUBSTEP,
   streamingFlagsVisible,
 } from '@/lib/audit/progress'
-import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
+import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'

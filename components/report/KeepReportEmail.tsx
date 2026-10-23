@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 export function KeepReportEmail({
   auditId,

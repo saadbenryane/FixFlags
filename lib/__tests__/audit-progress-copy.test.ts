@@ -2,7 +2,7 @@ import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy-barrel'
 
 const BANNED = [/in queue/i, /#\d+ in queue/i, /Checking your site/i]
 

@@ -1,4 +1,4 @@
-import { WATCH_OFFER } from '@/lib/marketing/copy'
+import { WATCH_OFFER } from '@/lib/marketing/copy-barrel'
 import type { WatchBoardState } from '@/lib/sites/watch-state'
 
 /**

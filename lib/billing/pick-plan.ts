@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner'
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
-import { BILLING_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { BILLING_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 import {

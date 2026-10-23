@@ -1,7 +1,7 @@
 import { resend } from '@/lib/email/client'
 import { prisma } from '@/lib/db'
 import { NURTURE_EMAILS, NEWSLETTER_EMAIL, KEEP_REPORT_EMAIL, type NurtureEmailType } from './templates'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { isReservedEmailRecipient } from './recipient'
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`

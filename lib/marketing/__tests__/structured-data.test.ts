@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, PRICING_FAQ, SEO, SITE_URL } from '@/lib/marketing/copy'
+import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, PRICING_FAQ, SEO, SITE_URL } from '@/lib/marketing/copy-barrel'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getHelpArticle } from '@/lib/help/search'
 import {

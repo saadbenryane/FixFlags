@@ -6,7 +6,7 @@ import {
   FLAG_DISMISS_REASONS,
   FLAG_FEEDBACK_COPY,
   type FlagDismissReasonId,
-} from '@/lib/marketing/copy'
+} from '@/lib/marketing/copy-barrel'
 import { useFeedbackSubmit } from '@/lib/hooks/useFeedbackSubmit'
 import { cn } from '@/lib/utils'
 

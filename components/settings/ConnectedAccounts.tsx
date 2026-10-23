@@ -1,6 +1,6 @@
 'use client'
 
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PasskeyTwoFactorSettings } from '@/components/settings/PasskeyTwoFactorSettings'

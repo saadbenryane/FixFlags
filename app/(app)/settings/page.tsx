@@ -8,7 +8,7 @@ import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { AccountDangerZone, AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 import { isGithubOAuthConfigured, isGoogleOAuthConfigured } from '@/lib/auth/env'
 
 export default async function SettingsPage() {

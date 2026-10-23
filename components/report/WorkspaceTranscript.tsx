@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Check, CheckCircle2, CircleAlert, Flag, Loader2 } from 'lucide-react'
 import type { AgentMessage } from '@/lib/audit/agent-message'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 /**

@@ -1,4 +1,4 @@
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { getMcpEndpoint } from './docs-content'
 
 export interface McpInstallConfig {

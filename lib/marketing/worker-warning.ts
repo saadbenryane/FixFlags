@@ -1,4 +1,4 @@
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy-barrel'
 
 export function getWorkerQueuedWarning(workerMissing = false): string {
   if (process.env.NODE_ENV === 'development') {

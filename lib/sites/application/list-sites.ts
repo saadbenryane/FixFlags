@@ -310,6 +310,7 @@ export async function loadSiteSummaries(userId: string): Promise<SiteSummary[]> 
         failureCode: latest?.failureCode ?? null,
         reportCompleteness: latest?.reportCompleteness ?? null,
         failedModules: latest?.failedModules,
+        evidenceCoverage: latest?.evidenceCoverage,
       }),
       categories: [],
     }

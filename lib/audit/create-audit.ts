@@ -34,7 +34,7 @@ import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { ensureSiteForAudit } from '@/lib/sites/ensure-site'
 import { admitScanAccess } from './scan-access-store'
-import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
+import { resolveVisitorKey, rotateVisitorKey } from '@/lib/sites/visitor-identity'
 import {
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
@@ -220,7 +220,10 @@ export async function createAndEnqueueAudit(
   // Identity and abuse control are separate concerns. The visitor key owns the
   // board; the client IP only bounds abuse. Resolved here so every create path
   // (web, CLI, MCP) shares one definition of "who is this anonymous visitor".
-  const visitorKey = options.visitorKey ?? (isAnonTeaser ? await resolveVisitorKey() : '')
+  // A claim belongs to one account. It does not reserve the website. When this
+  // browser's board for the host was already saved, start a new visitor so this
+  // check gets its own board instead of the claimed one.
+  let visitorKey = options.visitorKey ?? (isAnonTeaser ? await resolveVisitorKey() : '')
 
   const parentAudit = options.parentId ? await assertParentAuditAllowed(options.parentId, userId, options.retryParent) : null
 
@@ -543,14 +546,19 @@ export async function createAndEnqueueAudit(
       // The visitor's own board for this host is the only reuse candidate: it is
       // keyed by (sessionKey, canonicalHost) and already records the audit that
       // produced it, so "my last scan of this site" needs no new state.
-      const canonicalHost = new URL(url).hostname
+      const canonicalHost = canonicalProductHost(url)
       const ownedSite = await tx.provisionalSite.findUnique({
         where: {
           sessionKey_canonicalHost: { sessionKey: visitorKey, canonicalHost },
         },
-        select: { primaryAuditId: true },
+        select: { primaryAuditId: true, claimedProjectId: true },
       })
-      const ownedAuditId = ownedSite?.primaryAuditId
+      // Someone already saved this browser's board for the website. Leave that
+      // claim on the account and continue as a new visitor with a new board.
+      if (ownedSite?.claimedProjectId) {
+        visitorKey = await rotateVisitorKey()
+      }
+      const ownedAuditId = ownedSite?.claimedProjectId ? null : ownedSite?.primaryAuditId
       if (ownedAuditId && (!options.retryParent || ownedAuditId !== options.parentId)) {
         const owned = await tx.audit.findFirst({
           where: {

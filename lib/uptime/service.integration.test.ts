@@ -20,6 +20,7 @@ vi.mock('@/lib/db', async () => {
 })
 vi.mock('./queue', () => ({ enqueueUptimeProbe: fixture.enqueue }))
 import { executeUptimeProbe, retainUptimeHistory, scheduleUptimeProbes } from './service'
+import { MONITORING_SETUP_UNAVAILABLE_RETRY_MS } from '@/lib/sites/application/monitoring-setup'
 import { loadUptimeHistory, loadUptimeSummary } from './queries'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
@@ -175,9 +176,22 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     await scheduleUptimeProbes(fixedClock(originTime), 1)
     await scheduleUptimeProbes(fixedClock(originTime), 1)
     expect(await db().uptimeMonitor.findUnique({ where: { projectId: unsafe.id } })).toBeNull()
-    expect(await db().project.findUniqueOrThrow({ where: { id: unsafe.id } })).toMatchObject({ monitoringSetupRetryAt: new Date(originTime.getTime() + 60_000) })
+    expect(await db().project.findUniqueOrThrow({ where: { id: unsafe.id } })).toMatchObject({ monitoringSetupRetryAt: new Date(originTime.getTime() + MONITORING_SETUP_UNAVAILABLE_RETRY_MS) })
     expect(await db().uptimeMonitor.findUnique({ where: { projectId: following.id } })).not.toBeNull()
     expect(await db().uptimeIncident.count()).toBe(0)
+  })
+  it('admits a retained target once its saved URL is public', async () => {
+    const { user } = await monitorFixture()
+    const retained = await db().project.create({ data: { userId: user.id, name: 'Retained private target', url: 'https://watched-stale.local/',
+      canonicalHost: 'watched-stale.local', watchInterval: 'WEEKLY', watchNextRunAt: originTime, createdAt: new Date('2000-01-01') } })
+    await scheduleUptimeProbes(fixedClock(originTime), 1, retained.id)
+    expect(await db().uptimeMonitor.findUnique({ where: { projectId: retained.id } })).toBeNull()
+    await db().project.update({ where: { id: retained.id }, data: { url: 'https://retained.example.com/', canonicalHost: 'retained.example.com' } })
+    await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + 60_000)), 1, retained.id)
+    expect(await db().uptimeMonitor.findUnique({ where: { projectId: retained.id } })).toBeNull()
+    await scheduleUptimeProbes(fixedClock(new Date(originTime.getTime() + MONITORING_SETUP_UNAVAILABLE_RETRY_MS)), 1, retained.id)
+    expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { projectId: retained.id } })).toMatchObject({ enabled: true, targetUrl: 'https://retained.example.com/' })
+    expect(await db().project.findUniqueOrThrow({ where: { id: retained.id } })).toMatchObject({ monitoringSetupRetryAt: null })
   })
   it.each([true, false])('gives later due monitors a turn while an earlier dispatch remains pending (failure: %s)', async (rejectDispatch) => {
     const { user, monitor } = await monitorFixture()

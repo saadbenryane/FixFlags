@@ -1,5 +1,5 @@
 import { resend } from '@/lib/email/client'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { BILLING_EMAILS } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
 import { getAppUrl } from '@/lib/get-app-url'

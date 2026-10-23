@@ -11,15 +11,15 @@ const progress = (kind: string, state: string, module?: string): ExecutionProgre
 describe('Card execution activity', () => {
   it('attributes active checks by their registered module', () => {
     expect(cardExecution('security', progress('check', 'RUNNING', 'security-headers'))?.detail).toBe('Response protections')
-    expect(cardExecution('conversion', progress('check', 'RUNNING', 'conversion-friction'))?.status).toBe('1 running')
-    expect(cardExecution('search', progress('google', 'RUNNING', 'google-index'))?.status).toBe('1 running')
-    expect(cardExecution('performance', progress('pagespeed', 'RUNNING'))?.status).toBe('1 running')
+    expect(cardExecution('conversion', progress('check', 'RUNNING', 'conversion-friction'))?.status).toBe('Running')
+    expect(cardExecution('search', progress('google', 'RUNNING', 'google-index'))?.status).toBe('Running')
+    expect(cardExecution('performance', progress('pagespeed', 'RUNNING'))?.status).toBe('Running')
   })
   it('distinguishes automatic recovery from running work', () => {
-    expect(cardExecution('conversion', progress('flow', 'RETRY_WAIT'))?.status).toBe('1 recovering automatically')
+    expect(cardExecution('conversion', progress('flow', 'RETRY_WAIT'))?.status).toBe('Retrying')
   })
-  it('never invents active work for pending, completed, or missing tasks', () => {
-    expect(cardExecution('conversion', progress('flow', 'WAITING'))).toBeNull()
+  it('shows waiting tasks without inventing completed or missing work', () => {
+    expect(cardExecution('conversion', progress('flow', 'WAITING'))?.status).toBe('Waiting')
     expect(cardExecution('conversion', progress('flow', 'COMPLETED'))).toBeNull()
     expect(cardExecution('search', progress('flow', 'RUNNING'))).toBeNull()
     expect(cardExecution('site', progress('finalize', 'RUNNING'))).toBeNull()

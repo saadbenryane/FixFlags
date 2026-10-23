@@ -8,7 +8,7 @@ import {
   normalizedPercent,
   type LetterboxLayout,
 } from '@/lib/audit/highlight-geometry'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 export function useLetterboxLayout(

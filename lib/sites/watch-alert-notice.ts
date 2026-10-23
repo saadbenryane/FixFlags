@@ -1,4 +1,4 @@
-import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy-barrel'
 import {
   type WatchAlertDeliveryState,
   type WatchNotificationStatusLike,

@@ -8,7 +8,7 @@ import {
 } from '@/lib/integrations/github'
 import { githubResultDestination } from '@/lib/integrations/github-continuation'
 import { saveGithubAuthorization } from '@/lib/integrations/github-connection'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {

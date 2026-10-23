@@ -254,3 +254,7 @@ export function formatQueueWaitHint(seconds: number): string {
 export function formatQueuePosition(position: number): string {
   return `Queue position ${position}.`
 }
+
+export const SITE_ERRORS = {
+  notFound: 'Site not found',
+} as const

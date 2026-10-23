@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ROAST_COPY } from '@/lib/marketing/copy'
+import { ROAST_COPY } from '@/lib/marketing/copy-barrel'
 
 interface RubricResult {
   name: string

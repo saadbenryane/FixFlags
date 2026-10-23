@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
-import { AUDIT_ERRORS, REPORT_COPY, SITE_ACTION_COPY } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, REPORT_COPY, SITE_ACTION_COPY } from '@/lib/marketing/copy-barrel'
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), toast: vi.fn() }))
 

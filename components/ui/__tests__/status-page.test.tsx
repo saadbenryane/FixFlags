@@ -5,7 +5,7 @@ import {
   ReportAccessDeniedStatus,
   ReportPollErrorStatus,
 } from '@/components/ui/status-page'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 describe('ReportNotFoundStatus', () => {
   it('renders the not-found copy with a way back to the product', () => {

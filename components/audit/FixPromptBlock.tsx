@@ -9,7 +9,7 @@ import {
   type PromptToolKey,
 } from '@/components/audit/PromptToolSelector'
 import { TerminalShell } from '@/components/ui/terminal-shell'
-import { OUTPUT_LABELS } from '@/lib/marketing/copy'
+import { OUTPUT_LABELS } from '@/lib/marketing/copy-barrel'
 import { resolveToolPrompt } from '@/lib/mcp/builders'
 import { cn } from '@/lib/utils'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'

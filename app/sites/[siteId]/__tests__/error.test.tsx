@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import SiteError from '@/app/sites/[siteId]/error'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 const { siteParams } = vi.hoisted(() => ({ siteParams: { current: 'p_site-1' as string | null } }))
 vi.mock('next/navigation', () => ({

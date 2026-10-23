@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { RuntimeHeadMetadata } from '../metadata'
 import type { ScreenshotResult } from '../screenshot'
+import { documentEvidenceWithheld } from '../browser/document-evidence'
 import { captureObservationScopeSchema, type CaptureObservationScope } from '../browser/observation-scope'
 
 export const NATIVE_HEAD_TEXT_LIMIT = 8000
@@ -16,7 +17,7 @@ export function capturedHeadMetadata(capture: Pick<ScreenshotResult,
   const scope = captureObservationScopeSchema.safeParse(capture.runtimeHeadScope)
   if (!scope.success || capture.desktopFinalUrl && new URL(capture.desktopFinalUrl).href !== new URL(scope.data.finalUrl).href) return undefined
   const metadata: RuntimeHeadMetadata = {}
-  if (!capture.collectionRestrictions?.length) {
+  if (!documentEvidenceWithheld(capture.collectionRestrictions)) {
     for (const field of fields) {
       const value = text.safeParse(capture.runtimeHeadMetadata[field])
       if (value.success) metadata[field] = value.data?.trim() || null

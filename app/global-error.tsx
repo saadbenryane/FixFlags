@@ -4,7 +4,7 @@ import './globals.css'
 import { fontVariables } from '@/lib/design/fonts'
 import { Button } from '@/components/ui/button'
 import { PageTitle } from '@/components/ui/typography'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 export default function GlobalError({
   error,

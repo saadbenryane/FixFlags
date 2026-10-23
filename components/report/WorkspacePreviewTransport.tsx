@@ -4,7 +4,7 @@ import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from 'rea
 import type { Route } from 'next'
 import Link from 'next/link'
 import type { PlaybackStep } from '@/lib/audit/playback-steps'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 interface WorkspacePreviewTransportProps {

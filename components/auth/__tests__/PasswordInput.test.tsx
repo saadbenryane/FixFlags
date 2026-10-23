@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PasswordInput } from '../PasswordInput'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 
 describe('password visibility action', () => {
   it('changes visibility without submitting or losing its label, value and error association', () => {

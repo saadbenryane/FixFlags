@@ -326,11 +326,12 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   test.setTimeout(240_000)
 
   const targetUrl = process.env.E2E_AUDIT_URL ?? 'https://example.com'
+  const host = new URL(targetUrl).host
   await page.goto('/')
   await page.getByRole('textbox', { name: 'Website URL' }).first().fill(targetUrl)
   await page.getByRole('button', { name: 'Analyze' }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
-  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Settings', exact: true }).first()).toHaveAttribute(
     'href',
     /\/sign-in\?next=%2Fsites%2F/
@@ -379,7 +380,7 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   )
   expect(walkEvents).toHaveLength(0)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sign in to check again', exact: true }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sign in to check again', exact: true }).first()).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
   await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)

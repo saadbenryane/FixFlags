@@ -37,13 +37,25 @@ describe('keyboard evidence evaluation', () => {
       steps: [{ ...evidence.steps[0], indicator: 'missing' }] })
     expect(result.flags[0]).toMatchObject({ checkId: 'focus-visible-missing', pageUrl: evidence.pageUrl,
       evidenceTargets: [{ selector: '#action', source: 'measured' }] })
-    expect(result.assertions).toHaveLength(1)
-    expect(result.assertions[0].passed).toBe(false)
+    expect(result.assertions.find(assertion => assertion.key === 'focus-styles')).toMatchObject({ passed: false, complete: true })
+    expect(result.assertions.filter(assertion => assertion.key !== 'focus-styles').every(assertion => assertion.complete === false && assertion.passed === false)).toBe(true)
   })
   it('does not turn unresolved focus styles or a modal boundary into a failure or success', () => {
     const result = runKeyboardChecks({ ...evidence, complete: false, trap: 'unknown', reason: 'dialog_requires_activation',
       steps: [{ ...evidence.steps[0], indicator: 'unknown' }] })
     expect(result.flags).toEqual([])
-    expect(result.assertions).toMatchObject([{ key: 'focus-styles', complete: false, passed: false }])
+    expect(result.assertions.find(assertion => assertion.key === 'focus-styles')).toMatchObject({ complete: false, passed: false })
+    expect(result.assertions.filter(assertion => assertion.key !== 'focus-styles').every(assertion => assertion.complete === false && assertion.passed === false)).toBe(true)
+  })
+  it('keeps a refused probe incomplete and still reports a measured trap', () => {
+    const refused = runKeyboardChecks({ ...evidence, limitations: ['protected_action_refused'] })
+    expect(refused.flags).toEqual([])
+    expect(refused.assertions.filter(assertion => assertion.key === 'tab-sequence' || assertion.key === 'keyboard-exit')).toEqual([
+      expect.objectContaining({ key: 'tab-sequence', complete: false, passed: false }),
+      expect.objectContaining({ key: 'keyboard-exit', complete: false, passed: false }),
+    ])
+    const trapped = runKeyboardChecks({ ...evidence, limitations: ['protected_action_refused'], trap: 'blocked' })
+    expect(trapped.flags.map(flag => flag.checkId)).toContain('keyboard-nav-trap')
+    expect(trapped.assertions.find(assertion => assertion.key === 'keyboard-exit')).toMatchObject({ passed: false, complete: true })
   })
 })

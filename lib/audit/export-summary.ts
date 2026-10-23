@@ -2,7 +2,7 @@ import { gradeFromScore } from '@/lib/audit/scoring'
 import { formatScoreInline } from '@/lib/audit/score-display'
 import { displayVerdict } from '@/lib/audit/verdict'
 import { rubricLabel, severityRank, shareStatusLabel } from '@/lib/utils'
-import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { BRAND, SITE_URL } from '@/lib/marketing/copy-barrel'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 import {

@@ -3,7 +3,7 @@
 import { useId, useState } from 'react'
 import { Check, Copy, Radio, Loader2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import type { ProductSignalKeyDTO } from '@/lib/products/workspace'
 
 type CreatedSignalKey = ProductSignalKeyDTO & { key: string }

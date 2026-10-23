@@ -25,7 +25,7 @@ import {
 } from '@/lib/audit/highlight-geometry'
 import { EvidenceChip, EvidenceSpotlight } from '@/components/audit/EvidenceSpotlight'
 import { cn } from '@/lib/utils'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 interface ScreenshotWithHighlightsProps {
   host: string

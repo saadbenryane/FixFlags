@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Heading, Muted } from '@/components/ui/typography'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 interface Action {
   label: string

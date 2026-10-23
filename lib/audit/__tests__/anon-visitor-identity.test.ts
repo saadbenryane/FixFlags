@@ -124,6 +124,7 @@ vi.mock('@/lib/sites/ensure-site', () => ({
 vi.mock('@/lib/sites/visitor-identity', () => ({
   resolveVisitorKey: vi.fn(async () => 'anon-v1:aaaaaaaaaaaaaaaa'),
   peekVisitorKey: vi.fn(async () => 'anon-v1:aaaaaaaaaaaaaaaa'),
+  rotateVisitorKey: vi.fn(async () => 'anon-v1:bbbbbbbbbbbbbbbb'),
 }))
 
 vi.mock('@/lib/queue/client', () => ({

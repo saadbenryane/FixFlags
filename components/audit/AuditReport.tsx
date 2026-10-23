@@ -14,7 +14,7 @@ const LiveReportExplorer = dynamic(() =>
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
-import { REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'

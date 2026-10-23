@@ -3,7 +3,7 @@
 import { Monitor, Smartphone } from 'lucide-react'
 import type { PreviewDevice } from '@/components/report/preview-device'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 interface WorkspaceDeviceToggleProps {

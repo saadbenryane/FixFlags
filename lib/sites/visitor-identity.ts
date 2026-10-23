@@ -91,30 +91,49 @@ export async function resolveVisitorKey(
   // An unpersisted random key is the correct degradation: the caller gets its
   // own board and its own scan, and simply loses reuse. It must never fall
   // back to a shared literal, or unrelated callers would share one board.
-  if (store && options.setCookie) {
-    const domain = sharedCookieDomain(undefined, await hostForCookie())
-    const secure = process.env.NODE_ENV === 'production'
-    // Drop a host-only leftover first so it cannot shadow the shared-domain
-    // cookie, which would give www and apex two different identities.
-    if (domain) {
-      store.set(ANON_VISITOR_COOKIE, '', {
-        httpOnly: true,
-        maxAge: 0,
-        sameSite: 'lax',
-        path: '/',
-        secure,
-      })
-    }
-    store.set(ANON_VISITOR_COOKIE, minted, {
+  if (store && options.setCookie) await persistVisitorCookie(store, minted)
+  return minted
+}
+
+/**
+ * Replace the current browser identity with a new one.
+ *
+ * Used when this browser's board for a website was already saved to an account.
+ * The claim stays with that account. The next check must not reuse it, or a
+ * second person testing the same website is blocked by someone else's claim.
+ */
+export async function rotateVisitorKey(): Promise<string> {
+  const minted = generateVisitorId()
+  const store = await readCookieStore()
+  if (store) await persistVisitorCookie(store, minted)
+  return minted
+}
+
+async function persistVisitorCookie(
+  store: NonNullable<Awaited<ReturnType<typeof readCookieStore>>>,
+  value: string
+) {
+  const domain = sharedCookieDomain(undefined, await hostForCookie())
+  const secure = process.env.NODE_ENV === 'production'
+  // Drop a host-only leftover first so it cannot shadow the shared-domain
+  // cookie, which would give www and apex two different identities.
+  if (domain) {
+    store.set(ANON_VISITOR_COOKIE, '', {
       httpOnly: true,
-      maxAge: ANON_VISITOR_MAX_AGE_SECONDS,
+      maxAge: 0,
       sameSite: 'lax',
       path: '/',
       secure,
-      ...(domain ? { domain } : {}),
     })
   }
-  return minted
+  store.set(ANON_VISITOR_COOKIE, value, {
+    httpOnly: true,
+    maxAge: ANON_VISITOR_MAX_AGE_SECONDS,
+    sameSite: 'lax',
+    path: '/',
+    secure,
+    ...(domain ? { domain } : {}),
+  })
 }
 
 /**

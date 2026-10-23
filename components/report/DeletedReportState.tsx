@@ -3,7 +3,7 @@ import { FileQuestion } from 'lucide-react'
 import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
-import { AUDIT_ERRORS, REPORT_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, REPORT_COPY, SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 
 /**

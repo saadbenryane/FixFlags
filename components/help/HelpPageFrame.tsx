@@ -7,7 +7,7 @@ import {
   helpArticleStructuredData,
   helpCategoryStructuredData,
 } from '@/lib/marketing/structured-data'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 
 type HelpPageFrameProps =
   | {

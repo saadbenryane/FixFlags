@@ -129,6 +129,22 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(await prisma.audit.count({ where: { projectId } })).toBe(0)
   })
 
+  it('does not treat a private retained target as an overdue uptime probe', async () => {
+    const now = new Date()
+    await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
+    const sessionId = randomUUID()
+    await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
+    const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: now }
+    await prisma.project.update({ where: { id: projectId }, data: { url: 'https://watched-stale.local/', watchInterval: 'DAILY',
+      watchNextRunAt: new Date(now.getTime() + 86400_000), createdAt: new Date(now.getTime() - 6 * 60_000) } })
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: true, overdueSchedules: 0, overdueUptimeProbes: 0, inconclusiveUptimeSites: 0 })
+    expect((await loadOperations(actor, { queue: 'uptime' })).total).toBe(0)
+    await prisma.project.update({ where: { id: projectId }, data: { url } })
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, overdueUptimeProbes: 1, inconclusiveUptimeSites: 0 })
+    expect((await loadOperations(actor, { queue: 'uptime' })).rows).toMatchObject([{ siteId: projectId, action: 'SITE_RECONCILE', targetId: projectId }])
+    expect(await prisma.uptimeMonitor.count({ where: { projectId } })).toBe(0)
+  })
+
   it('detects an overdue inactive monitor for committed care and recovers through ordinary uptime admission', async () => {
     const now = new Date(), overdue = new Date(now.getTime() - 6 * 60_000)
     await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })

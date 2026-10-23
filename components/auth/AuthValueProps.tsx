@@ -1,5 +1,5 @@
 import { History, FileText, RefreshCw } from 'lucide-react'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 
 const ICONS = {
   history: History,

@@ -7,6 +7,7 @@ import { parseDictionary, parseItem, Token } from 'structured-headers'
 
 export const SECURITY_HEADER_VERIFICATION_RULE = 'Public response headers: repeat every originally failed header responsibility on the same response URL.'
 export const SECURITY_HEADER_LIMITATION = 'Some response header declarations could not be interpreted. Their configuration remains unknown.'
+export const SECURITY_HEADER_WITHHELD_LIMITATION = 'This response is not the origin header configuration. Header configuration remains unknown.'
 const POLICY_ASSERTIONS_V2 = new Set(['csp-inline-scripts', 'csp-eval', 'csp-objects', 'frame-protection', 'x-content-type-options', 'referrer-policy',
   'hsts-duration', 'hsts-subdomains', 'hsts-preload', 'permissions-policy', 'opener-policy', 'embedder-policy', 'resource-policy'])
 /** Older substring and directive-presence observations remain historical,
@@ -115,20 +116,28 @@ function crossOriginPolicyToken(value: string, structured: boolean): string | nu
   } catch { return null }
 }
 
-/** Explicit observations of the response configuration, before finding rollups. */
+const HEADER_RESPONSIBILITIES = [
+  ['content-security-policy', 'Content Security Policy', 'An enforcing CSP header is present'],
+  ['csp-inline-scripts', 'CSP inline script permissions', 'Enforced policies restrict arbitrary inline scripts and handlers'],
+  ['csp-eval', 'CSP dynamic script permissions', 'Enforced policies restrict JavaScript string evaluation'],
+  ['csp-objects', 'CSP object sources', 'An object-src directive without a wildcard is recorded'],
+  ['hsts-duration', 'HSTS duration', 'The HTTPS HSTS max-age is at least 31536000 seconds'],
+  ['hsts-subdomains', 'HSTS subdomain declaration', 'A valid nonzero HTTPS HSTS policy specifies includeSubDomains'],
+  ['hsts-preload', 'HSTS preload declaration', 'A valid nonzero HTTPS HSTS policy contains the preload declaration'],
+  ['frame-protection', 'Frame configuration', 'Enforced frame-ancestors restricts parents, or DENY/SAMEORIGIN applies'],
+  ['x-content-type-options', 'Content type protection', 'The first response field value specifies nosniff'],
+  ['referrer-policy', 'Referrer configuration', 'The last recognized response policy avoids the diagnosed full-URL disclosure settings'],
+  ['opener-policy', 'Cross-origin opener declaration', 'A recognized cross-origin-opener-policy policy is declared'],
+  ['embedder-policy', 'Cross-origin embedder declaration', 'A recognized cross-origin-embedder-policy policy is declared'],
+  ['resource-policy', 'Cross-origin resource declaration', 'A recognized cross-origin-resource-policy policy is declared'],
+  ['permissions-policy', 'Browser permission configuration', 'A parsed Permissions-Policy without sensitive-feature wildcard tokens is recorded'],
+  ['cross-domain-policy', 'Legacy cross-domain declaration', 'The cross-domain policy is absent or specifies none'],
+] as const
+
+/** Explicit observations of the response configuration, before finding rollups.
+ * Null means the response headers were not collected. An empty map is a collected response. */
 export function securityHeaderObservations(url: string, headers: Record<string, string> | null): CheckAssertion[] {
-  if (headers === null) return []
-  const csp = headers['content-security-policy'], hsts = headers['strict-transport-security']
-  const policy = inspectCsp(csp ?? '')
-  const hstsPolicy = hsts ? inspectHsts(hsts) : null
-  const age = hstsPolicy?.age ?? null
-  const hstsComplete = !hsts || hstsPolicy !== null
   const https = url.startsWith('https://')
-  const frame = headers['x-frame-options']?.trim().toLowerCase()
-  const referrerHeader = headers['referrer-policy']
-  const referrer = headerTokens(referrerHeader ?? '').map(token => token.toLowerCase()).filter(token => REFERRER_POLICIES.has(token)).at(-1)
-  const permissions = headers['permissions-policy']
-  const overbroad = permissions ? sensitivePermissionWildcards(permissions) : []
   const values: CheckAssertion[] = []
   const responseContext = destinationContext(url, url)
   const observe = (key: string, name: string, expected: string, observed: string, passed: boolean, complete = true, advisory = false) => {
@@ -136,6 +145,23 @@ export function securityHeaderObservations(url: string, headers: Record<string, 
       ...(advisory ? { disposition: 'observed' as const } : {}),
       context: `security-header:${POLICY_ASSERTIONS_V2.has(key) ? 'v2:' : ''}${key}:${responseContext}` })
   }
+  if (headers === null) {
+    for (const [key, name, expected] of HEADER_RESPONSIBILITIES) {
+      if (!https && key.startsWith('hsts-')) continue
+      observe(key, name, expected, 'Response headers were not collected. Header configuration remains unknown.', false, false)
+    }
+    return values
+  }
+  const csp = headers['content-security-policy'], hsts = headers['strict-transport-security']
+  const policy = inspectCsp(csp ?? '')
+  const hstsPolicy = hsts ? inspectHsts(hsts) : null
+  const age = hstsPolicy?.age ?? null
+  const hstsComplete = !hsts || hstsPolicy !== null
+  const frame = headers['x-frame-options']?.trim().toLowerCase()
+  const referrerHeader = headers['referrer-policy']
+  const referrer = headerTokens(referrerHeader ?? '').map(token => token.toLowerCase()).filter(token => REFERRER_POLICIES.has(token)).at(-1)
+  const permissions = headers['permissions-policy']
+  const overbroad = permissions ? sensitivePermissionWildcards(permissions) : []
   observe('content-security-policy', 'Content Security Policy', 'An enforcing CSP header is present', csp ? 'Enforcing CSP recorded' : 'Enforcing CSP absent', Boolean(csp))
   observe('csp-inline-scripts', 'CSP inline script permissions', 'Enforced policies restrict arbitrary inline scripts and handlers',
     policy.inlineAllowed === null ? 'Applicable script restrictions could not be established.' : policy.inlineAllowed ? 'Enforced policies permit arbitrary inline scripts or handlers.' : 'At least one enforced policy restricts each inline script and handler scope.', policy.inlineAllowed === false, policy.inlineAllowed !== null)
@@ -186,6 +212,7 @@ export function runSecurityHeaderChecks(
   url: string,
   headers: Record<string, string> | null
 ): DeterministicFlag[] {
+  // Uncollected headers are incomplete observations, not measured header failures.
   if (headers == null) return []
 
   const findings: DeterministicFlag[] = []

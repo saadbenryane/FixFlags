@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading, Body } from '@/components/ui/typography'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import { BRAND, LEGAL_PAGE_META, TERMS_SECTIONS } from '@/lib/marketing/copy'
+import { BRAND, LEGAL_PAGE_META, TERMS_SECTIONS } from '@/lib/marketing/copy-barrel'
 
 export const metadata = buildPageMetadata('terms', '/terms')
 

@@ -14,7 +14,7 @@ export async function projectSiteAnalysis(auditId: string): Promise<void> {
   if (scope && scope !== 'SITE') return
   const provisional = audit.projectId ? null : await prisma.provisionalSite.findFirst({
     where: { primaryAuditId: auditId },
-    select: { id: true },
+    select: { id: true, sessionKey: true },
   })
   if (!scope && !provisional) {
     const recorded = await prisma.provisionalSite.findFirst({ where: { primaryAuditId: auditId, claimedProjectId: audit.projectId }, select: { id: true } })
@@ -22,7 +22,13 @@ export async function projectSiteAnalysis(auditId: string): Promise<void> {
   }
   // Historical analyses without a customer Site have no Site projection to maintain.
   if (!audit.projectId && !provisional) return
-  const site = await loadSiteRecord(audit.projectId ?? `p_${provisional!.id}`)
+  // This analysis has no project. Keep it on the provisional that recorded it,
+  // including after that provisional is claimed. Following the claim would
+  // target the owner's project, which does not own the analysis.
+  const site = await loadSiteRecord(
+    audit.projectId ?? `p_${provisional!.id}`,
+    provisional ? { viewer: { sessionKey: provisional.sessionKey } } : undefined,
+  )
   if (!site) throw new Error('Site disappeared during analysis projection')
   await syncOutcomesFromAudit({ site, auditId, url: audit.url })
   await recordSiteLifecycleEvent({

@@ -1,5 +1,5 @@
 import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import type { ProductAttemptDTO } from '@/lib/products/workspace'
 import { cn } from '@/lib/utils'
 

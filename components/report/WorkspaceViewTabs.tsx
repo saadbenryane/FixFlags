@@ -2,7 +2,7 @@
 
 import { Eye, FileText, LayoutDashboard } from 'lucide-react'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 
 export type WorkspacePanelView = 'browser' | 'report' | 'canvas'

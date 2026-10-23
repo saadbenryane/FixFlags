@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import { AlertTriangle, ArrowRight, CircleDot, CircleX, Clock3, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import type { ProductAttemptDTO } from '@/lib/products/workspace'
 
 type Coverage = {

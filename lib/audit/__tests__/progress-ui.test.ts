@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import { getStagePresentation, getProgressPercent } from '@/lib/audit/progress-ui'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy-barrel'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 
 describe('getStagePresentation', () => {

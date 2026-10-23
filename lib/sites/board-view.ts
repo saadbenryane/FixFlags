@@ -27,6 +27,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
   const visibleCategories = view.presentation.categories.filter((category) => {
     const card = cardsById.get(category.id)
     if (!card || category.id === 'uptime' && view.actions.ownership === 'owner') return false
+    if (category.id === 'site' && !checking && category.state === 'healthy' && category.flagCount === 0 && !card.incompleteReason && view.counts.recordedPages > 0) return false
     return true
   })
   const confirmedOutcomes = view.outcomes.filter((outcome) => outcome.kind !== 'GENERIC' && outcome.bindings.some(binding => binding.required)).sort((left, right) => {
@@ -38,7 +39,7 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     { value: view.presentation.flags.count, label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : B.flags(view.presentation.flags.count).replace(/^\d+ /, ''), state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
   ]
   const recordedPageCount = view.counts.recordedPages
-  if (!checking && recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: view.counts.checkedPages === recordedPageCount ? B.checkedPages(recordedPageCount) : B.recordedPages(recordedPageCount),
+  if (recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: view.counts.checkedPages === recordedPageCount ? B.checkedPages(recordedPageCount) : B.recordedPages(recordedPageCount),
     detail: [view.counts.checkedPages < recordedPageCount ? B.completedPages(view.counts.checkedPages) : null, pagesNeedingAttention ? B.pagesNeedAttention(pagesNeedingAttention) : null, view.counts.savedPages > recordedPageCount ? B.savedPages(view.counts.savedPages) : null].filter(Boolean).join(' · ') || undefined, state: pagesNeedingAttention ? 'attention' : 'unknown' })
   const technologies: ToolItem[] = (view.technology?.items ?? []).map(item => ({
     name: item.name,

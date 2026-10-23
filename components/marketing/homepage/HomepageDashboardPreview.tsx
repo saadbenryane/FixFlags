@@ -15,7 +15,7 @@ import { MonitoringScheduleEditor } from '@/components/sites/MonitoringScheduleE
 import { SiteIntegrationsPanel, type GoogleProvider } from '@/components/sites/SiteIntegrationsPanel'
 import { SiteAccountChecksPanel, SiteMonitoringSettingsPanel, SiteNotificationSettingsPanel, SiteRemovalSettingsPanel, type NotificationLevel } from '@/components/sites/SiteSettingsPanels'
 import { nextCheckLabel, scheduleLabel, scheduleMilliseconds, type MonitoringSchedule } from '@/lib/sites/monitoring-schedule'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { MONITORING_SCHEDULE_COPY as M } from '@/lib/marketing/copy/monitoring'
 import { SITE_SETTINGS_COPY as Settings } from '@/lib/marketing/copy/site-settings'

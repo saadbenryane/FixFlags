@@ -4091,7 +4091,8 @@ run('migrated progressive execution', () => {
       expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempted.attemptId } })).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
       expect(await prisma.flag.findUniqueOrThrow({ where: { id: flags[0].id } })).toMatchObject({ status: 'OPEN', resolvedInId: null })
       expect(await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: gap.verificationAuditId!, targetKey: 'module:slow-replay' } }))
-        .toMatchObject({ status: 'FAILED', detail: expect.objectContaining({ module: 'slow-replay', failed: true, passed: false }) })
+        .toMatchObject({ status: 'COMPLETED', detail: expect.objectContaining({ module: 'slow-replay', passed: false, complete: false,
+          limitation: 'The slow connection page was not collected. Timing remains unknown.' }) })
       slowReplayMode = 'healthy'
       await persistProjectScanAccess(siteId, owner, { headers: { 'X-Slow-Fixture': 'PRIVATE_SLOW_ACCESS' } })
       for (const flag of flags) {

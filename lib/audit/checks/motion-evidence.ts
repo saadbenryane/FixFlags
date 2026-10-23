@@ -23,6 +23,11 @@ export function motionAssertions(value: unknown): CheckAssertion[] {
   if (!parsed.success) return [{ key: 'reduced-motion', name: 'Reduced-motion behavior', expected: 'Comparable normal and reduced startup observations',
     observed: 'Paired initial motion evidence is unavailable.', passed: false, complete: false }]
   const { before, after, scope } = parsed.data
+  if (!before.complete && !after.complete && before.targets.length === 0 && after.targets.length === 0) {
+    return MOTION_FAMILIES.map(family => ({ key: 'reduced-motion', name: 'Initial reduced motion (' + family + ')',
+      expected: 'Comparable normal and reduced startup observations', observed: 'Paired initial motion evidence is unavailable.',
+      passed: false, complete: false }))
+  }
   const hash = captureObservationKey(scope)
   const comparable = hash !== 'unknown' && before.complete && after.complete && !before.restricted && !after.restricted && !before.reduced && after.reduced &&
     before.windowMs === after.windowMs && before.pageUrl === after.pageUrl && after.pageUrl === scope.finalUrl

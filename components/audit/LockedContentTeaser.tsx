@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ReportSignupCta, trackReportSignupCta } from '@/components/audit/ReportSignupCta'
-import { LOCKED_CONTENT_TEASER } from '@/lib/marketing/copy'
+import { LOCKED_CONTENT_TEASER } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 interface LockedContentTeaserProps {

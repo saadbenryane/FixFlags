@@ -6,6 +6,7 @@ import type { TaskContext } from '../registry'
 import type { RenderedCopy } from '../../browser/rendered-copy'
 import type { CaptureMetrics } from '../../capture-metrics'
 import { CHECK_REGISTRY } from '../../check-registry'
+import { parseMetadataFromHtml } from '../../metadata'
 import { scopedAssertionForTarget } from '../../checks/verification'
 
 const pageUrl = 'https://example.com/'
@@ -14,7 +15,8 @@ const mobile = { ...scope, profile: 'mobile' }
 const inputContext = 'mobile-input:' + '1'.repeat(64)
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
 const checks = { 'mobile-ux-quality': 'mobile-input-zoom', 'cta-focus': 'competing-ctas',
-  'visual-polish': 'visual-radius-inconsistent', 'visual-hierarchy': 'hierarchy-competing-actions', layout: 'cta-below-fold-mobile', metadata: 'title-missing', 'og-image': 'og-image-broken' }
+  'visual-polish': 'visual-radius-inconsistent', 'visual-hierarchy': 'hierarchy-competing-actions', layout: 'cta-below-fold-mobile', interaction: 'loading-indicator-stuck', metadata: 'title-missing', 'og-image': 'og-image-broken',
+  trust: 'no-privacy-policy', seo: 'h1-missing', content: 'h1-generic' }
 function metrics(repaired = false): CaptureMetrics {
   return { mobilePrimaryCtaTopPx: 900, mobilePrimaryCtaText: 'Get started', competingPrimaryCtaCount: 3,
     competingPrimaryCtaLabels: ['Get started', 'Request demo', 'Pricing'], competingPrimaryCtaComplete: true,
@@ -113,6 +115,67 @@ describe('independent native metric evaluation', () => {
     expect(unknown.flags).toEqual([])
     expect(unknown.receipt).toMatchObject({ passed: false, complete: false })
     expect(unknown.receipt.assertions).toEqual([expect.objectContaining({ complete: false, passed: false })])
-    await expect(observed('metadata')).rejects.toMatchObject({ code: 'PAGE_EVIDENCE_UNAVAILABLE' })
+  })
+  it('records a completed capture without parsed metadata as incomplete and does not invent findings', async () => {
+    for (const moduleKey of ['metadata', 'og-image', 'trust', 'seo', 'content'] as const) {
+      const missing = await observed(moduleKey)
+      expect(missing.flags, moduleKey).toEqual([])
+      expect(missing.receipt, moduleKey).toMatchObject({ passed: false, complete: false, applicable: true })
+    }
+    expect((await observed('metadata')).receipt.limitation).toBe('Page metadata was not collected. These observations remain unknown.')
+    expect((await observed('og-image')).receipt).toMatchObject({
+      limitation: 'Page metadata was not collected. The preview image remains unknown.', assertions: [],
+    })
+    expect((await observed('trust')).receipt.assertions).toEqual([
+      expect.objectContaining({ key: 'privacy-link', passed: false, complete: false }),
+      expect.objectContaining({ key: 'contact-information', passed: false, complete: false }),
+      expect.objectContaining({ key: 'cookie-consent-signals', passed: false, complete: false }),
+    ])
+  })
+  it('records a completed capture without browser metrics as incomplete and does not invent measurements', async () => {
+    const metadata = parseMetadataFromHtml('<!doctype html><html><head><title>Useful project reports</title></head><body><main><h1>Useful project reports</h1><p>'
+      + 'Prepare a clear record of every project result for the team. '.repeat(20)
+      + '</p><a href="/start">Get started</a></main></body></html>', pageUrl)
+    const measured = ['cta-below-fold-mobile', 'competing-ctas', 'visual-radius-inconsistent', 'visual-typography-sprawl',
+      'hierarchy-competing-actions', 'mobile-input-zoom', 'mobile-cta-thumb-zone', 'mobile-cta-weak-label', 'mobile-load-delay-content',
+      'loading-indicator-stuck', 'loading-state-slow', 'motion-ignores-reduced-preference']
+    for (const moduleKey of ['layout', 'interaction', 'cta-focus', 'visual-polish', 'visual-hierarchy', 'mobile-ux-quality'] as const) {
+      const context = { audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+        environment: 'production', scope: 'SITE', checks: { [checks[moduleKey]]: CHECK_REGISTRY[checks[moduleKey]].version }, outcomes: [], verificationTarget: null } },
+        task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module: moduleKey }, deadline: Date.now() + 10_000,
+        dependencies: new Map([['browser', { workKind: 'browser', workState: 'COMPLETED', workResult: serializeArtifact('browser', {
+          pageId: 'page', metadata, snapshot: { desktopUrl: null, mobileUrl: null, desktopHtml: null, desktopHtmlTruncated: true,
+            desktopFinalUrl: pageUrl, desktopBase64: null, mobileBase64: null, consoleErrors: [], captureFailures: [],
+            captureStatus: { desktop: 'ok', mobile: 'failed' }, renderedScope: scope, captureMetrics: null },
+        }) }]]),
+      } as unknown as TaskContext
+      const missing = checkArtifactSchema.parse(readArtifact(await evaluate(context), 'check').data)
+      expect(missing.flags.map(flag => flag.checkId).filter(id => measured.includes(id)), moduleKey).toEqual([])
+      expect(missing.receipt, moduleKey).toMatchObject({ passed: false, complete: false })
+      expect(missing.receipt.assertions.some(assertion => assertion.complete === false), module).toBe(true)
+    }
+  })
+  it('records a missing browser snapshot or keyboard run as incomplete and does not invent findings', async () => {
+    const modules = { console: 'console-errors-critical', keyboard: 'focus-visible-missing',
+      measurement: 'measurement-ga-gtm-posthog-missing', layout: 'cta-below-fold-mobile' } as const
+    for (const [module, checkId] of Object.entries(modules)) {
+      const context = { audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+        environment: 'production', scope: 'SITE', checks: { [checkId]: CHECK_REGISTRY[checkId].version }, outcomes: [], verificationTarget: null } },
+        task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module }, deadline: Date.now() + 10_000,
+        dependencies: new Map(),
+      } as unknown as TaskContext
+      const missing = checkArtifactSchema.parse(readArtifact(await evaluate(context), 'check').data)
+      expect(missing.flags, module).toEqual([])
+      expect(missing.receipt, module).toMatchObject({ passed: false, complete: false, applicable: true })
+      expect(missing.receipt.execution, module).toBeUndefined()
+      expect(missing.receipt.assertions.length, module).toBeGreaterThan(0)
+      expect(missing.receipt.assertions.every(assertion => assertion.complete === false && assertion.passed === false), module).toBe(true)
+    }
+    const keyboard = checkArtifactSchema.parse(readArtifact(await evaluate({ audit: { id: 'after', executionSpec: { version: 1, engine: 'progressive-v1', targetUrl: pageUrl,
+      environment: 'production', scope: 'SITE', checks: { 'focus-visible-missing': CHECK_REGISTRY['focus-visible-missing'].version }, outcomes: [], verificationTarget: null } },
+      task: { id: 'check' }, input: { pageUrl, position: 0, primary: true, role: 'primary', module: 'keyboard' }, deadline: Date.now() + 10_000,
+      dependencies: new Map(),
+    } as unknown as TaskContext), 'check').data)
+    expect(keyboard.receipt.assertions.map(assertion => assertion.key)).toEqual(['focus-styles', 'keyboard-exit', 'tab-sequence'])
   })
 })

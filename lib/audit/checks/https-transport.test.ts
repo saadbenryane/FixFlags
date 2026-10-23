@@ -6,7 +6,8 @@ import { parseMetadataFromHtml } from '../metadata'
 import { runTrustChecks } from './trust'
 import { assertionForTarget } from './verification'
 import { checkReceiptSchema } from './receipt'
-import { runSecurityBasicsChecks, securityObservations } from './security'
+import { assessSecurityTransport, runSecurityBasicsChecks, securityObservations } from './security'
+import { document } from '../search/__tests__/fixtures'
 
 const url = 'http://example.com/'
 describe('HTTPS transport ownership', () => {
@@ -30,5 +31,10 @@ describe('HTTPS transport ownership', () => {
     ])
     expect(securityObservations(url, null)).toMatchObject([{ key: 'https', passed: false, complete: true }])
     expect(runSecurityBasicsChecks('http://example.com/?token=PRIVATE_VALUE', null)[0].evidence).toBe('URL: http://example.com/')
+  })
+  it('records an unobserved public response as incomplete and does not open an HTTPS finding', () => {
+    const open = assessSecurityTransport('https://example.com/', null, document(null, { status: null, complete: false }))
+    expect(open.assertions.find(assertion => assertion.key === 'https')).toMatchObject({ passed: false, complete: false })
+    expect(open.flags.map(flag => flag.checkId)).not.toContain('no-https')
   })
 })

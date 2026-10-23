@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 
 function buildModel(): ReportWorkspaceModel {

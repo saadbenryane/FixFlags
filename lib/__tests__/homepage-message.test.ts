@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARE_HOME, SEO } from '@/lib/marketing/copy'
+import { CARE_HOME, SEO } from '@/lib/marketing/copy-barrel'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { REVIEW_ENTRY } from '@/lib/marketing/copy/terminology'
 import { BRAND, SOCIAL_CARD } from '@/lib/marketing/copy/brand'

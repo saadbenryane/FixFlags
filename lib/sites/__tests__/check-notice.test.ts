@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
 import { siteCardHealth } from '@/lib/sites/site-health'

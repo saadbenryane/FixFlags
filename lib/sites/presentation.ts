@@ -219,6 +219,30 @@ export function siteSortRank(site: SitePresentation): number {
   return 4
 }
 
+const COLLECTION_FAILURES = new Set(['browser', 'http', 'pagespeed', 'captures', 'finalize'])
+
+function pageWasCaptured(evidenceCoverage: unknown): boolean {
+  if (!evidenceCoverage || typeof evidenceCoverage !== 'object' || Array.isArray(evidenceCoverage)) return false
+  const evidence = evidenceCoverage as Record<string, unknown>
+  return ['metadata', 'desktopScreenshot', 'mobileScreenshot', 'desktopPageSpeed', 'mobilePageSpeed']
+    .some(key => evidence[key] === true)
+}
+
+/** A finished check with the page in hand is not an incomplete analysis.
+ * Collection that never captured the page, or a recorded failure, still is.
+ * Bounded card gaps stay on those cards. */
+function analysisDidNotFinish(input: {
+  failureCode: string | null
+  reportCompleteness?: string | null
+  failedModules?: unknown
+  evidenceCoverage?: unknown
+}): boolean {
+  if (input.failureCode) return true
+  const modules = Array.isArray(input.failedModules) ? input.failedModules.filter((module): module is string => typeof module === 'string') : []
+  if (modules.some(module => COLLECTION_FAILURES.has(module))) return true
+  return !pageWasCaptured(input.evidenceCoverage) && (input.reportCompleteness === 'PARTIAL' || modules.length > 0)
+}
+
 export function runPresentation(input: {
   auditId: string | null
   auditStatus: string | null
@@ -226,6 +250,7 @@ export function runPresentation(input: {
   failureCode: string | null
   reportCompleteness?: string | null
   failedModules?: unknown
+  evidenceCoverage?: unknown
 }): SitePresentation['run'] {
   if (!input.auditStatus) {
     return { state: 'idle', label: SITE_PRESENTATION_COPY.run.idle, auditId: input.auditId, recoveryAction: null }
@@ -240,8 +265,7 @@ export function runPresentation(input: {
     const state: SiteRunState = input.startedAt ? 'interrupted' : 'failed'
     return { state, label: SITE_PRESENTATION_COPY.run[state], auditId: input.auditId, recoveryAction: 'retry' }
   }
-  if (input.failureCode || input.reportCompleteness === 'PARTIAL' ||
-    (Array.isArray(input.failedModules) && input.failedModules.length > 0)) {
+  if (analysisDidNotFinish(input)) {
     return { state: 'partial', label: SITE_PRESENTATION_COPY.run.partial, auditId: input.auditId, recoveryAction: 'retry' }
   }
   return { state: 'idle', label: SITE_PRESENTATION_COPY.run.idle, auditId: input.auditId, recoveryAction: null }

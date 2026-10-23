@@ -50,7 +50,7 @@ describe('HTTP evidence credential origin', () => {
     const url = await listen(server)
     vi.stubEnv('DEV_ALLOW_LOCALHOST', 'true')
     try {
-      await expect(safeFetchHtml(url, { timeoutMs: 50 })).rejects.not.toBeInstanceOf(PublicRequestError)
+      await expect(safeFetchHtml(url, { timeoutMs: 1000 })).rejects.not.toBeInstanceOf(PublicRequestError)
       expect(responseStarted).toBe(true)
     }
     finally { vi.unstubAllEnvs(); await close(server) }

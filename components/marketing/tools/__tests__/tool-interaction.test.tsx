@@ -4,7 +4,7 @@ import { MetaPreviewClient } from '@/components/marketing/tools/MetaPreviewClien
 import { PlaceholderDetectorClient } from '@/components/marketing/tools/PlaceholderDetectorClient'
 import { ANALYTICS_CONSENT_COOKIE } from '@/lib/analytics/consent'
 import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
-import { SYSTEM_COPY, TOOLS } from '@/lib/marketing/copy'
+import { SYSTEM_COPY, TOOLS } from '@/lib/marketing/copy-barrel'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => null }))
 

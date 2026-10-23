@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MeProvider } from '@/hooks/useMe'
-import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy-barrel'
 
 const startScanWithHandoff = vi.hoisted(() => vi.fn())
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))

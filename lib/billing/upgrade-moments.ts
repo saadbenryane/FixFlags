@@ -1,4 +1,4 @@
-import { UPGRADE_MOMENTS } from '@/lib/marketing/copy'
+import { UPGRADE_MOMENTS } from '@/lib/marketing/copy-barrel'
 import { proUpgradeCta } from '@/lib/billing/plans'
 
 export type UpgradeMoment =

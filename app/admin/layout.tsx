@@ -1,7 +1,7 @@
 import { requireAdminPage } from '@/lib/auth/require-admin-page'
 import type { Metadata } from 'next'
 import { AdminWorkspace } from '@/components/admin/AdminWorkspace'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 
 export const metadata: Metadata = {
   title: BRAND.name,

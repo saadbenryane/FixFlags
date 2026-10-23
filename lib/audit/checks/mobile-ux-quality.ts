@@ -65,34 +65,30 @@ export function runMobileUXQualityChecks(
   const viewportHeight = captureMetrics.mobileViewportHeight
   const measuredPosition = primaryCtaTop !== null && Number.isFinite(primaryCtaTop) && viewportHeight > 0 &&
     primaryCtaTop >= 0 && primaryCtaTop <= captureMetrics.mobileDocumentHeight
+  // A completed ratio is the conclusion. A missing measurement stays advisory and cannot certify recovery.
+  const positionRatio = measuredPosition
+    ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight : undefined
   if (conversion) recordObservation(record, 'mobile-cta-position', 'Mobile action position',
     'The sampled primary action is below the top 20 percent of the initial mobile viewport',
-    measuredPosition ? `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.` : 'No usable primary action position was measured.',
-    measuredPosition ? Math.max(0, primaryCtaTop! - (captureMetrics.mobileScrollY ?? 0)) / viewportHeight >= 0.2 : undefined, true)
+    positionRatio === undefined ? 'No usable primary action position was measured.'
+      : `Action top ${primaryCtaTop}px, scroll ${captureMetrics.mobileScrollY ?? 0}px, viewport ${viewportHeight}px.`,
+    positionRatio === undefined ? undefined : positionRatio >= 0.2, positionRatio === undefined)
   const mobileLoad = captureMetrics.loadExperience
   if (mobileLoad?.device === 'mobile') record?.(loadingDelayObservation(mobileLoad, 4000, 'mobile-loading-delay', true))
   else recordObservation(record, 'mobile-loading-delay', 'Mobile loading delay', 'Initial blocking mobile loading UI clears within 4000ms',
     'No mobile loading window was recorded.', undefined, true)
 
-  if (conversion && primaryCtaTop !== null && measuredPosition) {
-    // The metric is an absolute document position; the thumb-zone ratio is
-    // about the CTA's position in the initial viewport, so use the
-    // viewport-relative top.
-    const viewportTop = Math.max(
-      0,
-      primaryCtaTop - (captureMetrics.mobileScrollY ?? 0)
-    )
-    const ctaPositionRatio = viewportTop / viewportHeight
+  if (conversion && positionRatio !== undefined) {
     const hardToReachTopThreshold = 0.2
 
-    if (ctaPositionRatio >= 0 && ctaPositionRatio < hardToReachTopThreshold) {
+    if (positionRatio >= 0 && positionRatio < hardToReachTopThreshold) {
       findings.push({
         checkId: 'mobile-cta-thumb-zone',
         rubric: 'EXPERIENCE',
         impactTag: 'CONVERSION',
         severity: 'POLISH',
         problem: 'Primary CTA is in the hard-to-reach top zone on mobile',
-        evidence: `CTA "${captureMetrics.mobilePrimaryCtaText ?? 'Primary CTA'}" appears at ${Math.round(ctaPositionRatio * 100)}% of the viewport height. The top edge is harder to reach one-handed on larger phones.`,
+        evidence: `CTA "${captureMetrics.mobilePrimaryCtaText ?? 'Primary CTA'}" appears at ${Math.round(positionRatio * 100)}% of the viewport height. The top edge is harder to reach one-handed on larger phones.`,
         fix: '1. Move the primary CTA into the middle or lower mobile viewport (35-75% from top)\n2. Keep the CTA at least 48px tall\n3. Consider a sticky bottom CTA for the primary action\n4. Test one-handed on a 6.7" phone',
         confidence: 0.7,
         source: 'DETERMINISTIC',

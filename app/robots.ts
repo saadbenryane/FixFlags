@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 
 const PRIVATE_PREFIXES = [
   '/admin',

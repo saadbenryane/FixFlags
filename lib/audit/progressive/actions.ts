@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
 import { getAuditBrowser } from '../screenshot'
 import { createAuditPage } from '../browser/page-session'
+import { documentEvidenceWithheld } from '../browser/document-evidence'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '../browser/capture-profile'
 import { resolveAuditScanAccess } from '../scan-access-store'
 import { runFlowScan, type FlowScanResult } from '../flow/run-flow-scan'
@@ -149,7 +150,7 @@ export const actionHandlers: TaskHandler[] = [
         try {
           active = true
           const recorder = createOverlayInteractionRecorder(session.page, { deadline, expectedTargets: originalOverlays.filter(target => target.context.split(':')[3].startsWith('form_validation')),
-            restricted: () => safetyRefused || session.safetyRestrictions.length > 0 })
+            restricted: () => safetyRefused || documentEvidenceWithheld(session.safetyRestrictions) })
           const probe = await probeFormValidation(session.page, { isolated: true, localValidationToken: token, deadline,
             safetyRefused: () => safetyRefused, expectedTargets, unavailableDependencies: session.safetyRestrictions.length > 0, overlayRecorder: recorder, overlayOnly: overlayDiagnostic })
           const checked = checkFormValidation(probe.evidence)
@@ -216,17 +217,19 @@ export const actionHandlers: TaskHandler[] = [
               mode: !originalOverlays.some(target => ['pricing_navigation', 'flow_form_validation'].some(phase => target.context.split(':')[3].startsWith(phase))) ? 'primary' : undefined } : {}),
             ...(targetedPrimary || targetedLoading || targetedTrust || targetedContent ? { mode: targetedLoading || targetedTrust || targetedContent ? 'destination' : 'primary', captureSteps: false, expectedActionContexts } : {}),
             ...(pricingOnly ? { mode: 'pricing', captureSteps: false, expectedPricingContexts: expectedActionContexts } : {}) })
-        if (protectedActionRefused) throw new TaskFailure('PROTECTED_ACTION_REQUIRES_FIXTURE', false)
-        if (result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
+        if (!protectedActionRefused && result.status === 'skipped' && !result.actionEvidence && !overlayDiagnostic && !pricingOnly && !result.multiStep?.pricingEvidence) throw new TaskFailure('FLOW_EXECUTION_UNAVAILABLE', true, undefined, true)
         const tracking = session.tracking('public_action')
         const measured = runTrackingChecks(metadata ?? null, tracking, context.input.pageUrl)
         const purpose = metadata ? detectPagePurpose(metadata, context.input.pageUrl).purpose : null
         const actionRequired = purpose === null ? null : needsFirstStep(purpose)
-        const actionFlags = runFlowChecks(result, purpose)
+        // A refused action cannot establish a broken destination. Keep the
+        // independent observations and record the action's gap on its receipt.
+        const actionFlags = runFlowChecks(result, purpose).filter(flag => !protectedActionRefused ||
+          flag.checkId === 'flow-cta-404' && result.actionEvidence?.response === 'error')
         const flags = [...measured.flags, ...actionFlags,
           ...runNetworkEngagementChecks(session.networkFailures, session.formProbe)].map(flag => ({ ...flag, pageUrl: context.input.pageUrl }))
         if (context.input.primary && !pricingOnly) await executionWrite(tx => tx.audit.update({ where: { id: context.audit.id }, data: { flowData: serializeFlowData(result) as never } }))
-        const flowCheck = assembleFlowModuleCheck({ result, actionRequired, actionFlags, pricingOnly, targetedPricing })
+        const flowCheck = assembleFlowModuleCheck({ result, actionRequired, actionFlags, pricingOnly, targetedPricing, protectedActionRefused })
         return serializeArtifact('flow', flowSchema.parse({ flags, result: serializeFlowData(result), tracking, receipt: {
           kind: 'site-module-check', version: 1, module: 'measurement', pageUrl: context.input.pageUrl, applicable: true,
           passed: measured.flags.length === 0 && measured.complete, complete: measured.complete, limitation: measured.limitation, assertions: measured.assertions,
@@ -263,14 +266,18 @@ export const actionHandlers: TaskHandler[] = [
       }).map(action => [JSON.stringify([action.label, action.context]), action])).values()].slice(0, 20)
       const result = await runSlowReplay(await getAuditBrowser(), context.audit.id, context.input.pageUrl,
         { deadline: context.deadline, expectedActions, pageKey: 'p' + context.input.position + '-g' + context.task.workGeneration, scanAccess: await resolveAuditScanAccess(context.audit.id) })
-      if (!result.navigationComplete || result.reason === 'interrupted') throw new TaskFailure(
-        result.reason === 'navigation_unavailable' ? 'SLOW_REPLAY_PAGE_UNAVAILABLE' : 'SLOW_REPLAY_INTERRUPTED', result.reason !== 'navigation_unavailable', undefined, result.reason !== 'navigation_unavailable')
+      // A page that never loaded has no timing to judge. An interruption can still be retried.
+      if (result.reason !== 'navigation_unavailable' && (!result.navigationComplete || result.reason === 'interrupted'))
+        throw new TaskFailure('SLOW_REPLAY_INTERRUPTED', true, undefined, true)
       const assertions = slowReplayAssertions(result), pageUrl = context.input.pageUrl
       const complete = assertions.every(assertion => assertion.complete === true)
+      const collected = result.navigationComplete === true
       return serializeArtifact('slow-replay', slowSchema.parse({ result, flags: runSlowReplayChecks(result).map(flag => ({ ...flag, pageUrl })),
         receipt: { kind: 'site-module-check', version: 1, module: 'slow-replay', pageUrl, applicable: true, complete,
           passed: complete && assertions.every(assertion => assertion.passed), assertions,
-          limitation: 'Bounded top-level mobile viewport text, decoded main image and recognized-action timing on simulated 3G. Unclassified graphics, sampling gaps, missing controls and other devices remain separate or unknown.',
+          limitation: collected
+            ? 'Bounded top-level mobile viewport text, decoded main image and recognized-action timing on simulated 3G. Unclassified graphics, sampling gaps, missing controls and other devices remain separate or unknown.'
+            : 'The slow connection page was not collected. Timing remains unknown.',
           execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: 1, source: 'rendered-dom', collectedAt: new Date().toISOString() },
         } }))
     },

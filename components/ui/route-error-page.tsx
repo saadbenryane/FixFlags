@@ -5,7 +5,7 @@ import type { Route } from 'next'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { SiteShell } from '@/components/layout/site-shell'
 import { StatusPage } from '@/components/ui/status-page'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 type RouteErrorShell = 'marketing' | 'app' | 'admin' | 'audit' | 'none'
 

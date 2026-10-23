@@ -9,7 +9,7 @@ import {
   searchHelpArticles,
   SUPPORT_WELCOME_MESSAGE,
 } from '@/lib/help'
-import { SUPPORT_CHAT } from '@/lib/marketing/copy'
+import { SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
 
 describe('help catalog', () => {
   it('keeps public help focused on URL-first Site care', () => {

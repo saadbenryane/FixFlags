@@ -5,7 +5,8 @@ import { PAGE_CHECKS, type PageCheckContext } from './catalog'
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
 import type { CheckAssertion } from './assertion'
 import { checkReceiptSchema } from './receipt'
-import { assertionForTarget } from './verification'
+import { assertionForTarget, scopedAssertionForTarget } from './verification'
+import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 import { runAllChecks } from './index'
 
 const url = 'https://acme.fixture.test/'
@@ -86,7 +87,49 @@ describe('registered diagnostic observations', () => {
     expect(observation(before.assertions, key)).toMatchObject({ passed: false, complete: true })
     const after = await inspect(module, repaired)
     expect(observation(after.assertions, key)).toMatchObject({ passed: true, complete: true })
-    if (!['reduced-motion', 'blocking-loading-ui'].includes(key)) expect(assertionForTarget(after.receipt, checkId)).toBeUndefined()
+    if (!['reduced-motion', 'blocking-loading-ui'].includes(key) && checkId !== 'mobile-cta-thumb-zone') expect(assertionForTarget(after.receipt, checkId)).toBeUndefined()
+  })
+  it('certifies a later button position only on the same mobile window', async () => {
+    const source = html()
+    const metadata = parseMetadataFromHtml(source, url)
+    const run = async (captured: CaptureMetrics | null) => {
+      const checked = await runAllChecks(url, metadata, null, null, [], undefined, captured, undefined, undefined, true, ['mobile-ux-quality'])
+      const execution = checked.executions[0]
+      const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'mobile-ux-quality', pageUrl: url,
+        passed: execution.passed, applicable: execution.applicable, complete: execution.complete, assertions: execution.assertions ?? [],
+        execution: { auditId: 'after', taskId: 'mobile-ux-quality', checkVersion: 2, checkVersions: { 'mobile-cta-thumb-zone': 2 },
+          source: 'rendered-dom', collectedAt: '2026-10-14T02:00:00.000Z' } })
+      return { flags: checked.flags, receipt }
+    }
+    const before = await run(metrics({ mobilePrimaryCtaTopPx: 0 }))
+    const flag = { ...before.flags.find(item => item.checkId === 'mobile-cta-thumb-zone')!, pageUrl: url }
+    expect(flag.severity).toBe('POLISH')
+    const failed = before.receipt.assertions.find(assertion => assertion.key === 'mobile-cta-position')
+    expect(failed).toMatchObject({ passed: false, complete: true })
+    expect(failed?.disposition).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: before.receipt, checkId: flag.checkId, flag })?.assertion.passed).toBe(false)
+    const after = await run(metrics())
+    expect(after.flags.some(item => item.checkId === 'mobile-cta-thumb-zone')).toBe(false)
+    const repaired = after.receipt.assertions.find(assertion => assertion.key === 'mobile-cta-position')
+    expect(repaired).toMatchObject({ passed: true, complete: true })
+    expect(repaired?.disposition).toBeUndefined()
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })?.assertion.passed).toBe(true)
+    const spec = { version: 1, engine: 'progressive-v1', targetUrl: url, environment: 'production', scope: 'SITE',
+      checks: { 'mobile-cta-thumb-zone': 2 }, outcomes: [], verificationTarget: null }
+    const recover = (detail: typeof after.receipt) => hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: spec, flag,
+      executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail }] })
+    expect(recover(after.receipt)).toBe(true)
+    const shifted = await run(metrics({ loadingObservation: { ...nativeLoading, scope: { ...nativeLoading.scope, profile: 'other-mobile' } } }))
+    expect(scopedAssertionForTarget({ receipt: shifted.receipt, checkId: flag.checkId, flag })).toBeUndefined()
+    expect(recover(shifted.receipt)).toBe(false)
+    const missing = await run(null)
+    expect(missing.receipt.assertions.find(assertion => assertion.key === 'mobile-cta-position')).toMatchObject({ passed: false, complete: false })
+    expect(scopedAssertionForTarget({ receipt: missing.receipt, checkId: flag.checkId, flag })).toBeUndefined()
+    expect(recover(missing.receipt)).toBe(false)
+    const unmeasured = await run(metrics({ mobilePrimaryCtaTopPx: null }))
+    expect(unmeasured.flags.some(item => item.checkId === 'mobile-cta-thumb-zone')).toBe(false)
+    expect(unmeasured.receipt.assertions.find(assertion => assertion.key === 'mobile-cta-position')).toMatchObject({ passed: false, complete: false })
+    expect(recover(unmeasured.receipt)).toBe(false)
   })
   it.each(cases.filter(item => ['hierarchy-no-sections', 'messaging-headline-too-short'].includes(item.checkId)))('$checkId keeps a qualitative change conditional on context', async ({ module, checkId, broken }) => {
     const checked = await inspect(module, broken)

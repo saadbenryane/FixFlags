@@ -107,6 +107,8 @@ describe('runCorridorConsistencyChecks', () => {
     expect(capturedPagePreview(capture)).toMatchObject({ titleComplete: true, descriptionComplete: false })
     expect(capturedPagePreview({ ...capture, collectionRestrictions: ['read_only_refusal'] }))
       .toMatchObject({ titleComplete: false, descriptionComplete: false })
+    expect(capturedPagePreview({ ...capture, collectionRestrictions: ['protected_action_requires_fixture'] }))
+      .toMatchObject({ title: 'Known title', titleComplete: true, descriptionComplete: false })
     expect(capturedPagePreview({ runtimeHeadMetadata: capture.runtimeHeadMetadata })).toBeUndefined()
   })
   it('does not borrow native head provenance to certify an older metadata comparison', () => {

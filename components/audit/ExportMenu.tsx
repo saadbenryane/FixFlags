@@ -27,7 +27,7 @@ import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
-import { SITE_URL, REPORT_COPY } from '@/lib/marketing/copy'
+import { SITE_URL, REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 interface ExportRubric {
   name: string

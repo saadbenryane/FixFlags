@@ -21,7 +21,7 @@ describe('Site presentation', () => {
     expect(resultPresentation({ auditStatus: 'COMPLETED', healthState: 'problem', flagCount: 4, stale: false, hasCurrentEvidence: true })).toEqual({ state: 'flags', label: 'Flags found' })
     expect(monitoringPresentation('off', null)).toEqual({ state: 'not_monitored', label: 'Not monitored' })
     expect(pageCoverageLabel(21, 24)).toBe('21 of 24 pages')
-    expect(freshnessLabel('2026-10-08T10:00:00.000Z', new Date('2026-10-08T10:08:00.000Z'))).toBe('Checked 8 min ago')
+    expect(freshnessLabel('2026-10-08T10:00:00.000Z', new Date('2026-10-08T10:08:00.000Z'))).toBe('8 min ago')
   })
 
   it('never presents missing, stale, or failed evidence as clear', () => {
@@ -57,6 +57,12 @@ describe('Site presentation', () => {
       reportCompleteness: 'PARTIAL' })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,
       failedModules: ['flow'] })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+    expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,
+      reportCompleteness: 'PARTIAL', failedModules: ['flow', 'search', 'keyboard'],
+      evidenceCoverage: { metadata: true, desktopScreenshot: true, mobilePageSpeed: true } })).toMatchObject({ state: 'idle', recoveryAction: null })
+    expect(runPresentation({ auditId: 'a', auditStatus: 'COMPLETED', startedAt: new Date(), failureCode: null,
+      reportCompleteness: 'PARTIAL', failedModules: ['browser'],
+      evidenceCoverage: { metadata: true } })).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
     expect(runPresentation({ auditId: 'a', auditStatus: 'FAILED', startedAt: null, failureCode: 'LOST' }).state).toBe('failed')
     expect(runPresentation({ auditId: 'a', auditStatus: 'FAILED', startedAt: new Date(), failureCode: 'LOST' }).state).toBe('interrupted')
 

@@ -6,7 +6,7 @@ import {
   watchAlertDelivery,
 } from '@/lib/audit/watch-notification'
 import { siteWatchAlertNotice as projectedWatchAlertNotice, watchAlertSummary } from '@/lib/sites/watch-alert-notice'
-import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy-barrel'
 
 const root = resolve(__dirname, '../../..')
 

@@ -83,4 +83,17 @@ describe('public link observations', () => {
     expect(capturedPageLinks({ collectionRestrictions: ['request_blocked'], renderedSearchSnapshot: { documentBaseUrl: page, sections: { links } } }, legacy))
       .toMatchObject({ links: [], complete: false })
   })
+  it('keeps a complete link inventory when the only restriction is a refused action', () => {
+    const links = { html: '<a href="/ready">Details</a>', complete: true, observed: 1, limit: 2000, reason: null }
+    const inventory = capturedPageLinks({
+      collectionRestrictions: ['protected_action_requires_fixture', 'payment_or_download_blocked', 'auxiliary_document_unavailable'],
+      renderedSearchSnapshot: { documentBaseUrl: page, sections: { links } },
+    }, null)
+    expect(inventory).toMatchObject({ complete: true, links: [{ href: '/ready', text: 'Details' }] })
+    const legacy = parseMetadataFromHtml('<a href="next">Details</a>', page + 'docs/')
+    expect(capturedPageLinks({
+      collectionRestrictions: ['protected_action_requires_fixture'],
+      renderedSearchSnapshot: { sections: { links: { html: '', complete: true, observed: 0, limit: 2000, reason: null } } },
+    }, legacy)).toMatchObject({ links: legacy.links, complete: true })
+  })
 })

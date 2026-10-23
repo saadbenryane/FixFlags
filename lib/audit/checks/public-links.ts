@@ -7,6 +7,7 @@ import type { PageMetadata } from '../metadata'
 import { load } from 'cheerio'
 import type { RenderedSearchSnapshot } from '../search/rendered-snapshot'
 import type { DestinationCheckOptions } from './destination-evidence'
+import { documentEvidenceWithheld } from '../browser/document-evidence'
 
 export type PageLinkInventory = Pick<PageMetadata, 'links' | 'linkBaseUrl' | 'documentUrl'> & { complete?: boolean }
 type LinkCapture = {
@@ -19,7 +20,7 @@ type LinkCapture = {
  * Historical sections without an observed base cannot resolve relative links. */
 export function capturedPageLinks(capture: LinkCapture | null | undefined, metadata: PageMetadata | null): PageLinkInventory | null {
   const snapshot = capture?.renderedSearchSnapshot
-  const restricted = Boolean(capture?.collectionRestrictions?.length)
+  const restricted = documentEvidenceWithheld(capture?.collectionRestrictions)
   if (snapshot?.documentBaseUrl && (snapshot.sections.links.complete || !metadata)) {
     const section = snapshot.sections.links, $ = load(section.html)
     const anchors = $('a[href]').toArray()
@@ -33,6 +34,15 @@ export function capturedPageLinks(capture: LinkCapture | null | undefined, metad
 }
 
 export const PUBLIC_LINK_LIMITATION = 'Public link GET responses cover the recorded destination inventory. Access restrictions, transport failures, untested links and interactive behavior remain unknown.'
+export const PUBLIC_LINK_INVENTORY_LIMITATION = 'The captured link list was not collected. Public destinations remain unknown.'
+const PUBLIC_DESTINATION_EXPECTED = 'The linked public destination responds without a missing-page or server error'
+
+/** A capture without a link list cannot name a destination, broken or healthy. */
+export function missingPublicLinkEvidence() {
+  return { flags: [] as DeterministicFlag[], complete: false as const, limitation: PUBLIC_LINK_INVENTORY_LIMITATION,
+    assertions: [{ key: 'public-destination', name: 'Public link response', expected: PUBLIC_DESTINATION_EXPECTED,
+      observed: PUBLIC_LINK_INVENTORY_LIMITATION, passed: false, complete: false }] }
+}
 
 /** Detection and recovery consume the same observed GET, without another fetch.
  * A missing destination assertion cannot certify a removed or changed link. */
@@ -48,7 +58,7 @@ export function publicLinkObservations(sourceUrl: string, urls: string[], result
     if (!conclusive) complete = false
     if (result) observed.push(result)
     assertions.push({ key: 'public-destination', name: 'Public link response',
-      expected: 'The linked public destination responds without a missing-page or server error',
+      expected: PUBLIC_DESTINATION_EXPECTED,
       observed: `${displayDestination(url)}: ${result ? result.status === null ? result.outcome : `GET HTTP ${result.status} (${result.outcome})` : 'not checked'}. Interactive behavior was not tested.`,
       passed, complete: conclusive, context: destinationContext(sourceUrl, url) })
   }

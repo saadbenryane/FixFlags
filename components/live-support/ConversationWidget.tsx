@@ -10,7 +10,7 @@ import { useSupportSession } from '@/components/live-support/useSupportPolling'
 import { useSiteAgentConversation } from '@/hooks/useSiteAgentConversation'
 import { SiteAgent } from '@/components/sites/SiteAgent'
 import { SITE_AGENT_COPY as C } from '@/lib/marketing/copy/site-agent'
-import { SUPPORT_CHAT } from '@/lib/marketing/copy'
+import { SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 import { useFocusYield } from '@/components/system/useFocusYield'
 import styles from './ConversationWidget.module.css'
@@ -22,7 +22,7 @@ type ConversationWidgetProps = {
 } & ({ supportOnly: true; siteId?: never; host?: never; ownsSite?: never }
   | { supportOnly?: false; siteId: string; host: string; ownsSite: boolean })
 
-/** One responsive conversation window for Site questions and public support. */
+/** One conversation window. The site agent is the front door, and human support opens in that same window. */
 export function ConversationWidget(props: ConversationWidgetProps) {
   const { flagId, flagTitle, initiallyOpen = false } = props
   const siteId = props.supportOnly ? null : props.siteId
@@ -135,26 +135,16 @@ export function ConversationWidget(props: ConversationWidgetProps) {
           }}>
           <div className="shrink-0 px-4 pt-3">
             <div className="flex items-center justify-between gap-2">
-              <Dialog.Title className="text-base font-semibold">{title}</Dialog.Title>
-              <Button variant="ghost" size="icon" aria-label={closeLabel} onClick={close}><X aria-hidden /></Button>
+              <Dialog.Title className="min-w-0 text-base font-semibold">{title}</Dialog.Title>
+              <div className="flex shrink-0 items-center gap-1">
+                {ownsSite ? <Button variant="ghost" size="sm" onClick={showSupport ? selectQuestions : selectSupport}>
+                  {showSupport ? C.askAboutSite : C.support}
+                  {!showSupport && unread > 0 ? <span className="h-2 w-2 rounded-full bg-destructive" aria-hidden /> : null}
+                </Button> : null}
+                <Button variant="ghost" size="icon" aria-label={closeLabel} onClick={close}><X aria-hidden /></Button>
+              </div>
             </div>
             <Dialog.Description className="sr-only">{showSupport ? SUPPORT_CHAT.subtitle : flagId ? C.flagDescription : C.description}</Dialog.Description>
-            {ownsSite ? <div role="tablist" tabIndex={-1} aria-label={C.chatTitle} className="mt-1 flex gap-1 rounded-control bg-muted p-1"
-              onKeyDown={event => {
-                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-                  event.preventDefault()
-                  const toSupport = event.key === 'End' || (!showSupport && event.key !== 'Home')
-                  if (toSupport) selectSupport(); else selectQuestions()
-                  document.getElementById(toSupport ? 'site-chat-support-tab' : 'site-chat-questions-tab')?.focus()
-                }
-              }}>
-              <Button id="site-chat-questions-tab" role="tab" aria-selected={!showSupport} aria-controls="site-chat-questions" tabIndex={showSupport ? -1 : 0}
-                variant="ghost" className={cn('flex-1', !showSupport && 'bg-background shadow-sm')} onClick={selectQuestions}>{C.siteQuestions}</Button>
-              <Button id="site-chat-support-tab" role="tab" aria-label={C.support} aria-selected={showSupport} aria-controls="site-chat-support" tabIndex={showSupport ? 0 : -1}
-                variant="ghost" className={cn('flex-1', showSupport && 'bg-background shadow-sm')} onClick={selectSupport}>{C.support}
-                {unread > 0 ? <span className="h-2 w-2 rounded-full bg-destructive" aria-label={C.unread(unread)} /> : null}
-              </Button>
-            </div> : null}
             {!showSupport ? <div className="mt-2 flex items-start justify-between gap-2">
               <div className="min-w-0 py-2 text-xs text-muted-foreground"><p className="break-words">{host}</p>{flagTitle ? <p className="mt-1 line-clamp-2" title={flagTitle}>{flagTitle}</p> : null}</div>
               <details className="relative shrink-0">
@@ -163,9 +153,7 @@ export function ConversationWidget(props: ConversationWidgetProps) {
               </details>
             </div> : null}
           </div>
-          <div id={showSupport ? 'site-chat-support' : 'site-chat-questions'} role={ownsSite ? 'tabpanel' : undefined}
-            aria-labelledby={ownsSite ? showSupport ? 'site-chat-support-tab' : 'site-chat-questions-tab' : undefined}
-            className="flex min-h-0 flex-1 flex-col">
+          <div id={showSupport ? 'site-chat-support' : 'site-chat-questions'} className="flex min-h-0 flex-1 flex-col">
             {showSupport ? <SupportChatPanel compact onRead={onRead} composer={{ draft: supportDraft, setDraft: changeSupportDraft,
               sending: supportSending, beginSend: beginSupportSend, endSend: endSupportSend,
               error: supportError, setError: setSupportError }} /> : siteId ? <SiteAgent conversation={{ ...conversation, siteId }} /> : null}

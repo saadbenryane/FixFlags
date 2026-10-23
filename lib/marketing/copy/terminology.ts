@@ -64,8 +64,6 @@ export const SITE_BOARD_COPY = {
   findingPageScope: (count: number) => `Findings on ${count} ${count === 1 ? 'page' : 'pages'}`,
   settingsActionsBody: 'Choose the visitor actions FixFlags should verify. Each card records what happened and whether it still works.',
   partialReview: 'Results saved. Some fix guidance is still missing.',
-  activityTitle: 'Run details',
-  activityDescription: 'Technical details from this analysis.',
   viewDetails: 'View details',
   checkedScope: 'What was checked',
   websiteCheck: 'Website check',
@@ -266,10 +264,10 @@ export const SITE_PRESENTATION_COPY = {
   coverageIncomplete: 'Coverage incomplete',
   freshness: {
     none: 'No completed analysis',
-    now: 'Checked just now',
-    minutes: (count: number) => `Checked ${count} min ago`,
-    hours: (count: number) => `Checked ${count} hr ago`,
-    days: (count: number) => `Checked ${count} ${count === 1 ? 'day' : 'days'} ago`,
+    now: 'Just now',
+    minutes: (count: number) => `${count} min ago`,
+    hours: (count: number) => `${count} hr ago`,
+    days: (count: number) => `${count} ${count === 1 ? 'day' : 'days'} ago`,
   },
 } as const
 

@@ -1,4 +1,4 @@
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import type { EditorIntegrationKey } from '@/lib/integrations/editor-catalog'
 import {
   buildEditorMcpConfiguration,

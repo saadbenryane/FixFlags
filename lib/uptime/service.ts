@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { deferMonitoringSetup, monitoringSetupDue, monitoringSetupOrder } from '@/lib/sites/application/monitoring-setup'
+import { deferMonitoringSetup, MONITORING_SETUP_UNAVAILABLE_RETRY_MS, monitoringSetupDue, monitoringSetupOrder } from '@/lib/sites/application/monitoring-setup'
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
 import { normalizeAuditUrl } from '@/lib/audit/url'
@@ -63,8 +63,10 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
   for (const project of projects) {
     const initializedAt = clock.now()
     let initialized = false
+    let publicTarget = false
     try {
       const target = normalizeAuditUrl(project.url)
+      publicTarget = target.ok
       if (target.ok && uptimeEligible(project)) {
         await prisma.uptimeMonitor.upsert({ where: { projectId: project.id }, update: {},
           create: { projectId: project.id, targetUrl: target.url, nextProbeAt: slot(initializedAt) } })
@@ -76,7 +78,8 @@ export async function scheduleUptimeProbes(clock: Clock = systemClock, limit = 1
       logger.error('Uptime monitor initialization failed; Site remains eligible for retry', error, { projectId: project.id })
     }
     if (!initialized) await deferMonitoringSetup({ ...initializing, id: project.id, userId: project.userId, url: project.url,
-      watchInterval: project.watchInterval, monitoringSetupRetryAt: project.monitoringSetupRetryAt }, clock.now())
+      watchInterval: project.watchInterval, monitoringSetupRetryAt: project.monitoringSetupRetryAt }, clock.now(),
+      publicTarget ? undefined : MONITORING_SETUP_UNAVAILABLE_RETRY_MS)
   }
   const selectedAt = clock.now()
   const due = await prisma.uptimeMonitor.findMany({

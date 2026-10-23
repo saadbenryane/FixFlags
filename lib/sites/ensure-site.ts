@@ -142,7 +142,26 @@ export async function ensureSiteForAudit(input: {
   }
 }
 
-export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null> {
+/**
+ * A claimed provisional id normally opens the private project. The browser that
+ * started the scan is still signed out, so following the claim would deny the
+ * page and the check they just asked for would look missing.
+ */
+export function claimedProvisionalStaysWithVisitor(
+  provisional: { sessionKey: string; claimedProjectId: string | null },
+  claimedOwnerId: string | null | undefined,
+  viewer: { userId?: string | null; sessionKey?: string | null } | undefined
+): boolean {
+  if (!provisional.claimedProjectId) return false
+  const sessionKey = viewer?.sessionKey?.trim() || ''
+  if (!sessionKey || sessionKey !== provisional.sessionKey) return false
+  return !(viewer?.userId && claimedOwnerId && viewer.userId === claimedOwnerId)
+}
+
+export async function loadSiteRecord(
+  siteId: string,
+  options?: { viewer?: { userId?: string | null; sessionKey?: string | null } }
+): Promise<SiteRecord | null> {
   const { parseSiteId } = await import('@/lib/sites/types')
   const ref = parseSiteId(siteId)
   if (!ref) return null
@@ -195,10 +214,7 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
     where: { id: ref.provisionalSiteId },
   })
   if (!provisional) return null
-  if (provisional.claimedProjectId) {
-    return loadSiteRecord(provisional.claimedProjectId)
-  }
-  return {
+  const provisionalRecord: SiteRecord = {
     siteId: ref.siteId,
     kind: 'provisional',
     url: provisional.url,
@@ -214,6 +230,14 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
     watchConsecutiveFailures: 0,
     userId: null,
   }
+  if (provisional.claimedProjectId) {
+    const claimed = await loadSiteRecord(provisional.claimedProjectId)
+    if (claimedProvisionalStaysWithVisitor(provisional, claimed?.userId, options?.viewer)) {
+      return provisionalRecord
+    }
+    return claimed
+  }
+  return provisionalRecord
 }
 
 /** After claim, point provisional Sites for these audits at the owned Project. */

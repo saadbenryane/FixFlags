@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { PlanPickerDialog } from '@/components/billing/PlanPickerDialog'
-import { BILLING_PAGE_COPY, PLANS, PRICING } from '@/lib/marketing/copy'
+import { BILLING_PAGE_COPY, PLANS, PRICING } from '@/lib/marketing/copy-barrel'
 import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { cn } from '@/lib/utils'
 

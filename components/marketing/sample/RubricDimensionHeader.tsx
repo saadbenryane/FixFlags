@@ -1,6 +1,6 @@
 'use client'
 
-import { SAMPLE_RUBRIC_COPY } from '@/lib/marketing/copy'
+import { SAMPLE_RUBRIC_COPY } from '@/lib/marketing/copy-barrel'
 import { rubricIcon, rubricTint } from '@/lib/rubric-icons'
 import { cn } from '@/lib/utils'
 

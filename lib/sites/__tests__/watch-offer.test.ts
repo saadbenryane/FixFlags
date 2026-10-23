@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { WATCH_OFFER } from '@/lib/marketing/copy'
+import { WATCH_OFFER } from '@/lib/marketing/copy-barrel'
 import { watchOffNotice } from '@/lib/sites/watch-offer'
 
 const root = resolve(__dirname, '../../..')

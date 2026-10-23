@@ -5,6 +5,13 @@ import { slowActionContextSchema, slowReplayCaptureKey, SLOW_REPLAY_PROFILE, SLO
 import { capturePageKey } from '../browser/observation-scope'
 
 export function slowReplayAssertions(result: SlowReplayResult): CheckAssertion[] {
+  if (result.navigationComplete !== true) {
+    const observed = 'The slow connection page was not collected. Timing remains unknown.'
+    return [
+      { key: 'meaningful-text', name: 'Initial content on slow 3G', expected: 'Visible mobile viewport text or decoded main image within 5000ms', observed, passed: false, complete: false },
+      { key: 'primary-action-visibility', name: 'Primary action on slow 3G', expected: 'A recognized mobile viewport action within 8000ms', observed, passed: false, complete: false },
+    ]
+  }
   const captureKey = slowReplayCaptureKey(result)
   const context = captureKey ? 'slow-replay:v2:' + captureKey : SLOW_REPLAY_PROFILE
   const measured = result.profile === SLOW_REPLAY_PROFILE && result.navigationComplete === true && result.reason !== 'interrupted' && !result.restricted

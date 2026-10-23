@@ -15,7 +15,7 @@ import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { findReusableVerificationRun, loadRunSourceEnvironment, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
-import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
+import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy-barrel'
 import { assertAttemptReplay } from '@/lib/improvements/attempt-intent'
 import { handoffProtocolSuffix } from '@/lib/improvements/handoff-contract'
 

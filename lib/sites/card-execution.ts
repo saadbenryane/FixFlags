@@ -21,11 +21,12 @@ export function cardExecution(area: SiteCardArea, progress: ExecutionProgress | 
   const tasks = progress?.tasks.filter(task => taskArea(task) === area) ?? []
   const active = tasks.filter(task => task.state === 'RUNNING')
   const recovering = tasks.filter(task => task.state === 'RETRY_WAIT')
-  const task = active[0] ?? recovering[0]
+  const waiting = tasks.filter(task => task.state === 'WAITING' || task.state === 'READY')
+  const task = active[0] ?? recovering[0] ?? waiting[0]
   if (!task) return null
   const label = task.module ? copy.modules[task.module as keyof typeof copy.modules] : undefined
   return {
-    status: active.length ? copy.running(active.length) : copy.recovering(recovering.length),
+    status: active.length ? copy.runningStatus : recovering.length ? copy.retryingStatus : copy.waitingStatus,
     detail: [label ?? copy.kinds[task.kind as keyof typeof copy.kinds] ?? copy.title, task.device ? copy.devices[task.device] : null].filter(Boolean).join(' · '),
   }
 }

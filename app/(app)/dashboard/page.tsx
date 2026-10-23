@@ -8,7 +8,7 @@ import { AuditInput } from '@/components/audit/AuditInput'
 import { getAppViewer } from '@/lib/auth/app-viewer'
 import { normalizeAuditNavigationUrl } from '@/lib/audit/url'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
-import { SCAN_HANDOFF, WEBSITES_COPY } from '@/lib/marketing/copy'
+import { SCAN_HANDOFF, WEBSITES_COPY } from '@/lib/marketing/copy-barrel'
 import styles from './Dashboard.module.css'
 
 /**

@@ -21,6 +21,7 @@ import { sharedBrowser } from './browser/shared-browser'
 import { bindPublicBrowserProxy, startPublicBrowserProxy } from './browser/public-proxy'
 import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidence'
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
+import { documentEvidenceWithheld } from './browser/document-evidence'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from './browser/accessibility-evidence'
 import { ACCESSIBILITY_RUN_OPTIONS } from './checks/accessibility-rules'
 import type { ConsoleMessage } from './console-evidence'
@@ -302,7 +303,7 @@ async function waitForFinishedLoadState(
     finalReadyState: final.readyState,
     finalTitle: final.title,
     observation: { version: 1, device, scope: { ...scope, finalUrl: content.pageUrl }, contentVisible: content.content === true,
-      ready: final.readyState === 'complete', restricted: restrictions.length > 0 },
+      ready: final.readyState === 'complete', restricted: documentEvidenceWithheld(restrictions) },
   }
 }
 

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
-import { SHARE_COPY } from '@/lib/marketing/copy'
+import { SHARE_COPY } from '@/lib/marketing/copy-barrel'
 
 export function ShareLinkPageClient({
   token,

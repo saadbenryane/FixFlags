@@ -75,17 +75,22 @@ async function loadLatestWatchAlert(projectId: string | null | undefined) {
     : null
 }
 
-export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean; viewerAuthenticated?: boolean } = {}): Promise<SiteHomeView | null> {
-  const site = await loadSiteRecord(siteId)
+export async function loadSiteHome(siteId: string, options: { ownerEvidence?: boolean; viewerAuthenticated?: boolean; site?: SiteRecord | null } = {}): Promise<SiteHomeView | null> {
+  const site = options.site ?? await loadSiteRecord(siteId)
   if (!site) return null
   const now = new Date()
 
   const selection = await loadSiteAnalysisSelection(site)
+  // History only needs the site and its analysis selection, so it overlaps the
+  // findings read. The empty catch keeps a rejected read handled if the latest
+  // audit read fails before this promise is awaited.
+  const monitoringHistoryPromise = loadMonitoringHistory(site, selection)
+  void monitoringHistoryPromise.catch(() => undefined)
   const audit = await resolveLatestAudit(site, selection)
 
   const [
     { flags, recommendations }, outcomes, pageCount, checkedPages,
-    projectSettings, resolvedFlags, prior, categoryRuns,
+    projectSettings, resolvedFlags, prior, categoryRuns, monitoringHistoryView,
   ] = await Promise.all([
     loadSiteFindings(site),
     listSiteOutcomes(site, now),
@@ -102,6 +107,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     loadSiteResolvedFlags(site),
     site.kind === 'project' ? resolvePriorCompletedAudit(site, audit?.id ?? null, selection) : null,
     loadCategoryEvidence(site.projectId && audit ? [{ projectId: site.projectId, auditId: audit.id }] : []),
+    monitoringHistoryPromise,
   ])
   const inFlight = isAuditInFlight(audit?.status)
   const { coverage, coverageMaxAgeMs, categoryEvidence, hasLastKnown, assessmentComplete } = projectCurrentSiteEvidence({
@@ -115,7 +121,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const trackingAudit = categoryEvidence.get('tracking')
   const [
     resultPage, captures, uptime, uptimeEvents, technologyProfile, trackingProfile,
-    monitoringHistoryView, activeRuns, connections, latestAlert, executionProgress, accountChecks,
+    activeRuns, connections, latestAlert, executionProgress, accountChecks,
   ] = await Promise.all([
     loadSiteCheckResultPage(site, audit, undefined, categoryEvidence),
     loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null),
@@ -123,7 +129,6 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     options.ownerEvidence && site.projectId ? loadUptimeEvents(site.projectId) : undefined,
     audit?.id ? loadTechnologyProfile(audit.id) : null,
     trackingAudit ? loadTechnologyProfile(trackingAudit.id) : null,
-    loadMonitoringHistory(site, selection),
     loadActiveSiteRuns(site, now),
     site.projectId ? loadSiteConnectionViews(site.projectId) : null,
     loadLatestWatchAlert(site.projectId),

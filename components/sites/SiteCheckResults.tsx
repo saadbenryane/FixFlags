@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RESULT_SELECTION_CHANGED, siteCheckPageSchema, type SiteCheckResult } from '@/lib/sites/check-results'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
-import { SITE_BOARD_COPY as C, SITE_ACTION_COPY as A } from '@/lib/marketing/copy'
+import { SITE_BOARD_COPY as C, SITE_ACTION_COPY as A } from '@/lib/marketing/copy-barrel'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { Button } from '@/components/ui/button'
 import { fetchSiteAction, siteActionMessage } from '@/lib/sites/client-actions'

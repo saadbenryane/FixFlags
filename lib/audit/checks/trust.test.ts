@@ -64,6 +64,23 @@ describe('public trust observations and independent repair', () => {
     expect(page(healthy).hasPrivacyPolicy).toBe(true)
     expect(page('<div hidden><a href="mailto:hidden@example.com">Contact hidden@example.com</a></div>').hasContactInfo).toBe(false)
   })
+  it('keeps an unread laid-out page incomplete instead of reporting a missing privacy link or contact', () => {
+    const unread = { ...page(analytics), renderedCopy: { version: 1 as const, pageUrl: url, pageText: '', h1s: [], h2s: [], complete: false, textTruncated: true } }
+    const observations = publicTrustObservations(unread)
+    expect(observations['privacy-link']).toMatchObject({ passed: false, complete: false })
+    expect(observations['contact-information']).toMatchObject({ passed: false, complete: false })
+    expect(observations['privacy-link'].observed).toContain('not captured')
+    expect(runTrustChecks(url, unread).map(flag => flag.checkId)).toEqual(['cookie-consent-absent'])
+    const found = { ...unread, hasPrivacyPolicy: true, hasContactInfo: true }
+    expect(publicTrustObservations(found)['privacy-link']).toMatchObject({ passed: true, complete: true })
+    expect(publicTrustObservations(found)['contact-information']).toMatchObject({ passed: true, complete: true })
+    const parsed = page('')
+    expect(publicTrustObservations(parsed)['privacy-link'].complete).toBe(true)
+    expect(runTrustChecks(url, parsed).map(flag => flag.checkId)).toContain('no-privacy-policy')
+    const truncated = { ...parsed, renderedCopy: { version: 1 as const, pageUrl: url, pageText: 'Published page', h1s: ['Useful information'], h2s: [], complete: true, textTruncated: true } }
+    expect(publicTrustObservations(truncated)['privacy-link']).toMatchObject({ passed: false, complete: true })
+    expect(runTrustChecks(url, truncated).map(flag => flag.checkId)).toContain('no-privacy-policy')
+  })
   it('does not certify contact information from implementation code, CSS or unpublished template content', () => {
     const metadata = page('<style>@font-face{font-family:Contact;src:url(font.woff)}</style><script>const contact="internal@example.com"</script>' +
       '<template>Contact template@example.com</template><div hidden>Contact hidden@example.com</div>')

@@ -7,7 +7,7 @@ import { cancelSiteExecutions } from '@/lib/sites/application/cancel-executions'
 import { saveSiteSettings, removeSite } from '@/lib/sites/application/settings-commands'
 import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { appendSupportMessage } from '@/lib/live-support/ordered-messages'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import { AdminActionError } from './errors'
 
 const databaseActions = new Set([

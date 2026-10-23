@@ -71,7 +71,13 @@ function unknown(evidence: SearchPageEvidence, checkId: string, responsibility: 
 
 function presentation({ evidence }: EvaluatorInput): SearchObservation[] {
   const [document, source] = primary(evidence), $ = html(document)
-  if (!$) return [unknown(evidence, 'title-missing', 'presentation', 'title', source), unknown(evidence, 'description-missing', 'presentation', 'description', source)]
+  // An unread document is incomplete for every presentation check. It is not a missing heading.
+  if (!$) return [
+    unknown(evidence, 'title-missing', 'presentation', 'title', source),
+    unknown(evidence, 'description-missing', 'presentation', 'description', source),
+    unknown(evidence, 'h1-missing', 'presentation', 'headings', source),
+    unknown(evidence, 'search-page-language', 'presentation', 'language', source),
+  ]
   const title = $('head title').first().text().trim(), description = $('meta[name]').filter((_, node) => ($(node).attr('name') ?? '').toLowerCase() === 'description').first().attr('content')?.trim()
   const observations = [observation(evidence, { checkId: 'title-missing', rule: 'title', source, document,
     disposition: title ? 'passed' : 'failed', reason: title ? 'title_present' : 'title_empty', observed: title || 'No non-empty title was recorded.',
@@ -92,26 +98,29 @@ function presentation({ evidence }: EvaluatorInput): SearchObservation[] {
   for (const [other, otherSource] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     if (otherSource === source) continue
     const otherHtml = html(other)
-    if (otherHtml) {
-      const otherTitle = otherHtml('head title').first().text().trim()
-      observations.push(observation(evidence, { checkId: 'title-missing', rule: 'title', source: otherSource, document: other,
-        disposition: otherTitle ? 'passed' : 'failed', reason: otherTitle ? 'title_present' : 'title_empty',
-        observed: otherTitle || 'No non-empty title was recorded in this source.', attention: 'observation', locator: 'head title' }))
+    if (!otherHtml) {
+      observations.push(unknown(evidence, 'title-missing', 'presentation', 'title', otherSource))
+      observations.push(unknown(evidence, 'description-missing', 'presentation', 'description', otherSource))
+      continue
     }
-    if ((evidence.collectorVersion ?? 1) >= 2 && otherHtml) continue
-    observations.push(otherHtml ? observation(evidence, { checkId: 'search-original-title', rule: 'title', source: otherSource, document: other,
-      disposition: 'observed', reason: 'separate_source_title', observed: otherHtml('head title').first().text().trim() || 'No title in this source.', locator: 'head title' })
-      : unknown(evidence, 'search-original-title', 'presentation', 'title', otherSource))
+    const otherTitle = otherHtml('head title').first().text().trim()
+    observations.push(observation(evidence, { checkId: 'title-missing', rule: 'title', source: otherSource, document: other,
+      disposition: otherTitle ? 'passed' : 'failed', reason: otherTitle ? 'title_present' : 'title_empty',
+      observed: otherTitle || 'No non-empty title was recorded in this source.', attention: 'observation', locator: 'head title' }))
+    if ((evidence.collectorVersion ?? 1) >= 2) continue
+    observations.push(observation(evidence, { checkId: 'search-original-title', rule: 'title', source: otherSource, document: other,
+      disposition: 'observed', reason: 'separate_source_title', observed: otherTitle || 'No title in this source.', locator: 'head title' }))
   }
   return observations
 }
 
 function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
   const observations: SearchObservation[] = [], tokens: string[] = []
-  let complete = true
+  let parsed = 0
   for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     const $ = html(document, 'indexing')
-    if (!$) { complete = false; observations.push(unknown(evidence, 'search-indexing-source', 'indexing', 'indexing', source)); continue }
+    if (!$) { observations.push(unknown(evidence, 'search-indexing-source', 'indexing', 'indexing', source)); continue }
+    parsed += 1
     const directives: string[] = []
     $('meta[name]').each((_, node) => {
       const name = ($(node).attr('name') ?? '').toLowerCase()
@@ -139,13 +148,16 @@ function indexing({ evidence, previous }: EvaluatorInput): SearchObservation[] {
     item.checkId === 'robots-blocks-indexing' && (item.disposition === 'passed' && item.reason === 'no_index_restrictions' ||
       item.attention.kind === 'flag' && item.reason === 'indexing_policy_regressed'))
   const listed = evidence.sitemapsComplete && evidence.sitemapUrls.some(url => urlIdentity(url) === urlIdentity(evidence.pageUrl))
+  const bothSources = parsed === 2
   observations.push(observation(evidence, { checkId: 'robots-blocks-indexing', rule: 'indexing', responsibility: 'indexing', source: 'http',
-    disposition: excluded ? wasAllowed || listed ? 'failed' : 'observed' : complete ? 'passed' : 'unknown',
+    disposition: excluded ? wasAllowed || listed ? 'failed' : 'observed' : bothSources ? 'passed' : parsed ? 'observed' : 'unknown',
     reason: excluded ? wasAllowed ? 'indexing_policy_regressed' : listed ? 'sitemap_indexing_conflict' : 'declared_indexing_exclusion'
-      : complete ? 'no_index_restrictions' : 'indexing_evidence_incomplete',
+      : bothSources ? 'no_index_restrictions' : parsed ? 'indexing_comparison_incomplete' : 'indexing_evidence_incomplete',
     observed: excluded ? `Published directives exclude this page from indexing.${listed ? ' The page is also listed in the parsed sitemap.' : ''}`
-      : complete ? 'No noindex or none directive was recorded in either public source.' : C.unknown,
+      : bothSources ? 'No noindex or none directive was recorded in either public source.'
+      : parsed ? 'No noindex or none directive was recorded in the captured source.' : C.unknown,
     attention: excluded && (wasAllowed || listed) ? 'flag' : 'observation',
+    ...(!excluded && parsed && !bothSources ? { limitation: C.alternateSource } : {}),
     evidence: observations.flatMap(item => item.evidence).slice(0, 20) }))
   return observations
 }
@@ -190,10 +202,11 @@ function crawlWithResponse(input: EvaluatorInput): SearchObservation[] {
 function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
   const declarations: Array<{ url: string; raw: string; document: PublicDocument; source: 'original-html' | 'rendered-dom' | 'http' }> = []
   const observations: SearchObservation[] = []
-  let complete = true
+  let parsed = 0
   for (const [document, source] of [[evidence.original, 'original-html'], [evidence.rendered, 'rendered-dom']] as const) {
     const $ = html(document, 'canonical')
-    if (!$) { complete = false; continue }
+    if (!$) { observations.push(unknown(evidence, 'search-canonical-invalid', 'canonical', 'canonical', source)); continue }
+    parsed += 1
     for (const { raw, url } of canonicalDeclarations($, document.finalUrl, source === 'original-html' ? document.headers.link : undefined)) {
       if (url) declarations.push({ url, raw, document, source })
       else observations.push(observation(evidence, { checkId: 'search-canonical-invalid', rule: 'canonical', responsibility: 'canonical', source, document,
@@ -202,19 +215,28 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
     }
   }
   const urls = [...new Set(declarations.map(item => item.url))]
-  observations.push(observation(evidence, { id: 'search-canonical-syntax:http', checkId: 'search-canonical-invalid', rule: 'canonical',
-    responsibility: 'canonical', source: 'http', disposition: !complete ? 'unknown' : observations.some(item => item.reason === 'canonical_declaration_invalid') ? 'failed' : 'passed',
-    reason: !complete ? 'canonical_evidence_incomplete' : observations.some(item => item.reason === 'canonical_declaration_invalid') ? 'canonical_declaration_invalid' : 'canonical_declarations_parsed',
+  const invalid = observations.some(item => item.reason === 'canonical_declaration_invalid')
+  const bothSources = parsed === 2
+  observations.push(parsed ? observation(evidence, { id: 'search-canonical-syntax:http', checkId: 'search-canonical-invalid', rule: 'canonical',
+    responsibility: 'canonical', source: 'http', disposition: invalid ? 'failed' : 'passed',
+    reason: invalid ? 'canonical_declaration_invalid' : 'canonical_declarations_parsed',
     observed: `${declarations.length} valid canonical declarations were recorded.`,
-    attention: complete && observations.some(item => item.reason === 'canonical_declaration_invalid') ? 'flag' : 'observation' }))
+    attention: invalid ? 'flag' : 'observation',
+    ...(!invalid && !bothSources ? { limitation: C.alternateSource } : {}) })
+    : observation(evidence, { id: 'search-canonical-syntax:http', checkId: 'search-canonical-invalid', rule: 'canonical',
+      responsibility: 'canonical', source: 'http', disposition: 'unknown', reason: 'canonical_evidence_incomplete', observed: C.unknown }))
   if (urls.length > 1) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical', source: 'http',
     disposition: 'failed', reason: 'canonical_signals_conflict', observed: urls.join(' | '), attention: 'flag',
     evidence: declarations.slice(0, 20).map(item => ({ source: item.source, url: item.document.finalUrl,
       locator: 'canonical declaration', excerpt: item.raw, collectedAt: item.document.collectedAt })) }))
+  else if (bothSources) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical',
+    source: 'http', disposition: 'passed', reason: 'canonical_signals_consistent',
+    observed: `${urls.length} distinct canonical targets were recorded; no contradictory declarations were found in the inspected sources.` }))
+  else if (parsed) observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical',
+    source: 'http', disposition: 'observed', reason: 'canonical_comparison_incomplete', limitation: C.alternateSource,
+    observed: 'No contradictory canonical declarations were found in the captured source.' }))
   else observations.push(observation(evidence, { checkId: 'search-canonical-conflict', rule: 'canonical', responsibility: 'canonical',
-    source: 'http', disposition: complete ? 'passed' : 'unknown',
-    reason: complete ? 'canonical_signals_consistent' : 'canonical_evidence_incomplete',
-    observed: complete ? `${urls.length} distinct canonical targets were recorded; no contradictory declarations were found in the inspected sources.` : C.unknown }))
+    source: 'http', disposition: 'unknown', reason: 'canonical_evidence_incomplete', observed: C.unknown }))
   for (const url of urls) {
     const target = evidence.canonicalTargets.find(item => item.url === url || item.finalUrl === url)
     const broken = target?.complete && target.status != null && target.status >= 400 && target.status < 500 && target.status !== 429
@@ -224,9 +246,11 @@ function canonical({ evidence }: EvaluatorInput): SearchObservation[] {
       observed: `${url}: ${target?.status == null ? 'response unavailable' : `HTTP ${target.status}`}`, attention: broken ? 'flag' : 'observation', document: target,
       locator: 'canonical target response' }))
   }
-  if (!urls.length && !observations.some(item => item.reason === 'canonical_declaration_invalid')) observations.push(complete
+  if (!urls.length && !invalid) observations.push(bothSources
     ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
       reason: 'canonical_optional_absent', observed: 'No canonical preference was recorded. This does not itself prevent indexing.' })
+    : parsed ? observation(evidence, { checkId: 'canonical-missing', rule: 'canonical', responsibility: 'canonical', source: 'http', disposition: 'observed',
+      reason: 'canonical_optional_absent', limitation: C.alternateSource, observed: 'No canonical preference was recorded in the captured source.' })
     : unknown(evidence, 'canonical-missing', 'canonical', 'canonical', 'http'))
   return observations
 }
@@ -266,8 +290,11 @@ function discoveryWithLinks(input: EvaluatorInput): SearchObservation[] {
   })
   const urls = [...new Set(links)]
   const listed = evidence.sitemapUrls.some(url => urlIdentity(url) === urlIdentity(evidence.pageUrl))
+  // Presence in a partial sitemap is positive evidence. Absence stays unknown until the inspected scope is complete.
+  const membershipKnown = listed || evidence.sitemapsComplete
   return [...discovery(input), observation(evidence, { checkId: 'search-discovery-links', rule: 'sitemap', responsibility: 'discovery', source, document,
-    disposition: 'observed', reason: 'checked_page_discovery_recorded',
+    disposition: membershipKnown ? 'observed' : 'unknown',
+    reason: membershipKnown ? 'checked_page_discovery_recorded' : 'sitemap_coverage_incomplete',
     observed: `${urls.length} distinct HTTP links were recorded on this checked page. ${listed ? 'This page appears in the parsed sitemap scope.' : evidence.sitemapsComplete ? 'This page was not recorded in the inspected sitemap scope.' : 'Sitemap coverage is incomplete.'}`,
     locator: 'a[href] and inspected sitemap locations', excerpt: urls.slice(0, 20).join('\n'),
     limitation: 'Links support discovery; their presence does not establish indexing or destination health. Only this page and the inspected sitemap scope were checked.' })]
@@ -280,7 +307,14 @@ async function structured({ evidence }: EvaluatorInput): Promise<SearchObservati
   const contextBody = document.searchSnapshot && ['metadata', 'text', 'links'].every(key => document.searchSnapshot!.sections[key as SearchSection].complete)
     ? `<html><head>${document.searchSnapshot.sections.metadata.html}</head><body>${document.searchSnapshot.sections.text.html}${document.searchSnapshot.sections.links.html}</body></html>` : null
   const context = contextBody ? parseActiveHtmlDocument(contextBody).document : document.searchSnapshot ? null : $
-  if (!$) return [unknown(evidence, 'no-structured-data', 'structured-data', 'markup', source)]
+  // Unreadable markup does not establish syntax, feature rules, or the absence of markup.
+  if (!$) return [
+    unknown(evidence, 'no-structured-data', 'structured-data', 'markup', source),
+    unknown(evidence, 'search-structured-invalid', 'structured-data', 'markup', source),
+    unknown(evidence, 'search-structured-source', 'structured-data', 'markup', source),
+    unknown(evidence, 'search-structured-feature', 'structured-data', 'feature', source),
+    unknown(evidence, 'search-structured-coverage', 'structured-data', 'markup', source),
+  ]
   // Content matching enriches markup inspection. Missing or bounded page prose
   // cannot discard independently collected syntax and entity observations.
   const visible = context?.root().clone()

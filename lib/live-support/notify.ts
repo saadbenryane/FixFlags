@@ -1,6 +1,6 @@
 import { resend } from '@/lib/email/client'
 import { prisma } from '@/lib/db'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { logger } from '@/lib/logger'
 import { getAppUrl } from '@/lib/get-app-url'
 import { extractFlagIdFromPageUrl, extractSiteIdFromPageUrl } from '@/lib/live-support/extract-audit-id'

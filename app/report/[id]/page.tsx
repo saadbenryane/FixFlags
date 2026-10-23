@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportWorkspaceState } from '@/components/report/ReportWorkspaceState'
-import { BRAND, REPORT_COPY, SITE_URL } from '@/lib/marketing/copy'
+import { BRAND, REPORT_COPY, SITE_URL } from '@/lib/marketing/copy-barrel'
 import { getProgressiveAuditForRequest } from '@/lib/audit/fetch-audit'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { CompletedReportView } from './CompletedReportView'

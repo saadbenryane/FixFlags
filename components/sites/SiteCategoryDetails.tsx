@@ -11,11 +11,12 @@ import { RecommendationList,SiteCardFindings } from '@/components/sites/SiteCard
 import { SiteCheckResults } from '@/components/sites/SiteCheckResults'
 import { Button } from '@/components/ui/button'
 import { DialogDescription,DialogTitle } from '@/components/ui/dialog'
-import { MONITORING_COPY,SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import { MONITORING_COPY,SITE_BOARD_COPY } from '@/lib/marketing/copy-barrel'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { type SiteCardArea } from '@/lib/sites/card-areas'
+import { recoveryReplacesRecheck } from '@/lib/sites/execution-recovery'
 import { outcomeCoverageLabel,staleOutcomeRecovery,UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import { FileCheck } from 'lucide-react'
 import type { Route } from 'next'
@@ -71,8 +72,8 @@ export function SiteCategoryDetails({ selected, selectedFlags, selectedRecommend
               {selected.id === 'performance' ? <SitePerformanceFindings siteId={siteId} flags={selectedFlags} availability={view.actions.copy} /> : <SiteCardFindings copyAvailability={view.actions.copy} key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={[]} />}
               <SiteCheckResults key={`${selected.id}:${view.audit.id}:${selected.checkedAt}:${view.checkResultsNextCursor}`} siteId={siteId} area={selected.id} results={view.checkResults ?? []} nextCursor={view.checkResultsNextCursor} />
               <RecommendationList recommendations={selectedRecommendations} />
-              {selected.incompleteReason ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border p-3 text-sm"><p>{selected.incompleteReason.replace(/[.!?]?$/, '.')} {view.executionProgress?.categoryRecovery?.[selected.id]?.action && view.executionProgress.categoryRecovery[selected.id]!.action !== 'retry' ? SITE_ACTION_COPY.recovery.setupBody : SITE_BOARD_COPY.cardRetryExplanation}</p>{checkAction(selected.id)}</div> : null}
-              {selected.id !== 'site' ? <section className="mt-2 rounded-card border border-border p-4">
+              {selected.incompleteReason ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card p-3 text-sm shadow-board"><p>{selected.incompleteReason.replace(/[.!?]?$/, '.')} {recoveryReplacesRecheck(view.executionProgress?.categoryRecovery?.[selected.id]) ? SITE_ACTION_COPY.recovery.setupBody : SITE_BOARD_COPY.cardRetryExplanation}</p>{checkAction(selected.id)}</div> : null}
+              {selected.id !== 'site' ? <section className="mt-2 rounded-card p-4 shadow-board">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><FileCheck className="h-4 w-4 text-muted-foreground" aria-hidden />{SITE_BOARD_COPY.findingEvidence}</h3>
               <BoardDetails
                 image={selected.captureUrl ? { src: selected.captureUrl, alt: selected.captureAlt ?? selected.name } : null}

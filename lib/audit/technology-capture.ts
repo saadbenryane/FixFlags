@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { captureObservationScopeSchema } from './browser/observation-scope'
 import { detectTechnologies, TECHNOLOGY_DETECTOR_VERSION } from './tech-detect'
 import type { ScreenshotResult } from './screenshot'
+import { documentEvidenceWithheld } from './browser/document-evidence'
 
 export const technologyCaptureSchema = z.object({
   detectorVersion: z.string().min(1).max(80),
@@ -24,7 +25,7 @@ export function observeCapturedTechnologies(capture: ScreenshotResult): z.infer<
   const complete = Boolean(html && capture.renderedScope && capture.responseHeaders && capture.technologyResources && capture.technologyRuntimeMarkers) &&
     html.length <= 2_000_000 && resources.length <= 300 && markers.length <= 32 &&
     !capture.desktopHtmlTruncated && !capture.desktopHtmlCompacted && !capture.technologyResourcesTruncated && !capture.tracking?.truncated &&
-    !capture.collectionRestrictions?.length && !capture.captureFailures.some(failure => failure.device === 'desktop')
+    !documentEvidenceWithheld(capture.collectionRestrictions) && !capture.captureFailures.some(failure => failure.device === 'desktop')
   return technologyCaptureSchema.parse({
     detectorVersion: TECHNOLOGY_DETECTOR_VERSION,
     status: complete ? 'COMPLETE' : observed ? 'PARTIAL' : 'UNAVAILABLE',

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteMonitoringActivation } from '../SiteMonitoringActivation'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
-import { MONITORING_COPY as C } from '@/lib/marketing/copy'
+import { MONITORING_COPY as C } from '@/lib/marketing/copy-barrel'
 const refresh = vi.fn().mockResolvedValue(undefined)
 const fixture = { site: { url: 'https://example.com/' }, outcomes: [], watch: { interval: null, nextRunAt: null, state: 'off' }, settings: { notificationLevel: 'FLAGS', notifyOnRecovery: true } } as unknown as SiteHomeView
 function response(body: unknown, ok = true) { return { ok, json: async () => body } }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { evaluateSearch, searchFindings, SEARCH_CHECK_DEFINITIONS, validateSearchRegistration } from '../registry'
 import { isCustomerFlag } from '../../attention'
 import { searchReceiptSchema } from '../contracts'
-import { document, evidence, PAGE } from './fixtures'
+import { document, evidence, markup, PAGE } from './fixtures'
 import { assessSearchRecovery } from '../recovery'
 
 describe('Search responsibilities and classification', () => {
@@ -13,7 +13,31 @@ describe('Search responsibilities and classification', () => {
     for (const responsibility of ['presentation', 'structured-data']) {
       expect(result.filter(item => item.responsibility === responsibility).every(item => item.disposition === 'unknown')).toBe(true)
     }
-    expect(searchFindings(result).some(item => ['title-missing', 'no-structured-data'].includes(item.checkId))).toBe(false)
+    expect(result.find(item => item.checkId === 'h1-missing')).toMatchObject({ disposition: 'unknown', attention: { kind: 'observation' } })
+    expect(result.some(item => item.checkId === 'h1-multiple')).toBe(false)
+    expect(result.find(item => item.checkId === 'search-page-language')?.disposition).toBe('unknown')
+    expect(result.find(item => item.checkId === 'search-structured-feature')).toMatchObject({ disposition: 'unknown', attention: { kind: 'observation' } })
+    expect(searchFindings(result).some(item => ['title-missing', 'no-structured-data', 'h1-missing', 'h1-multiple', 'search-page-language', 'search-structured-feature', 'search-structured-invalid'].includes(item.checkId))).toBe(false)
+  })
+  it('does not treat an unread document as a heading or structured-data repair', async () => {
+    const blocked = document('<html><body>Error</body></html>', { status: 403 })
+    const unread = await evaluateSearch(evidence(undefined, { original: blocked, rendered: blocked }))
+    const receipt = (observations: Awaited<ReturnType<typeof evaluateSearch>>, complete: boolean) => searchReceiptSchema.parse({
+      kind: 'search-checks', version: 1, auditId: 'unread', pageUrl: PAGE, collectedAt: evidence().collectedAt, complete, observations })
+    const headings = await evaluateSearch(evidence('<html lang="en"><head><title>Example website title</title><meta name="description" content="A useful description of the example website for visitors."></head><body><p>No heading</p></body></html>'), null, ['presentation'])
+    const heading = headings.find(item => item.checkId === 'h1-missing')!
+    expect(heading).toMatchObject({ disposition: 'observed', attention: { kind: 'recommendation' } })
+    expect(isCustomerFlag(searchFindings(headings).find(item => item.checkId === 'h1-missing')!)).toBe(false)
+    expect(assessSearchRecovery(receipt(unread, false), heading.checkId, heading.attention, PAGE)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const repaired = await evaluateSearch(evidence('<html lang="en"><head><title>Example website title</title><meta name="description" content="A useful description of the example website for visitors."></head><body><h1>Example website</h1></body></html>'), null, ['presentation'])
+    expect(assessSearchRecovery(receipt(repaired, true), heading.checkId, heading.attention, PAGE)).toMatchObject({ comparable: true, verdict: 'passed' })
+    const product = (price: string) => markup({ '@context': 'https://schema.org', '@type': 'Product', '@id': '#product', name: 'Example', offers: { '@type': 'Offer', price } }, '<h1>Example</h1>')
+    const broken = await evaluateSearch(evidence(product('free')), null, ['structured-data'])
+    const flag = searchFindings(broken).find(item => item.checkId === 'search-structured-feature')!
+    expect(flag.attentionPolicy?.kind).toBe('flag')
+    expect(assessSearchRecovery(receipt(unread, false), flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const fixed = await evaluateSearch(evidence(product('12')), null, ['structured-data'])
+    expect(assessSearchRecovery(receipt(fixed, true), flag.checkId, flag.attentionPolicy, PAGE)).toMatchObject({ comparable: true, verdict: 'passed' })
   })
   it('separate evaluator execution preserves every original observation and finding', async () => {
     const input = evidence('<title>Page</title><meta name="robots" content="noindex"><link rel="canonical" href="https://example.com/">', { sitemapUrls: [PAGE] })
@@ -133,6 +157,43 @@ describe('Search responsibilities and classification', () => {
     const result = await evaluateSearch(evidence(undefined, { public: false }))
     expect(result.every(item => item.disposition === 'unknown')).toBe(true)
     expect(searchFindings(result)).toEqual([])
+  })
+  it('keeps a captured original page when the rendered copy is missing', async () => {
+    const rendered = document(null, { complete: false, reason: 'document_truncated' })
+    const original = '<html><head><title>Useful title</title><meta name="description" content="Useful description"><link rel="canonical" href="https://example.com/"></head><body><h1>Useful title</h1></body></html>'
+    const observations = await evaluateSearch(evidence(original, { rendered, collectorVersion: 2 }))
+    expect(observations.find(item => item.checkId === 'title-missing' && item.source === 'original-html')).toMatchObject({ disposition: 'passed', observed: 'Useful title' })
+    expect(observations.find(item => item.checkId === 'description-missing' && item.source === 'original-html')).toMatchObject({ disposition: 'passed' })
+    expect(observations.find(item => item.checkId === 'title-missing' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'unknown', reason: 'document_truncated' })
+    expect(observations.find(item => item.checkId === 'description-missing' && item.source === 'rendered-dom')?.disposition).toBe('unknown')
+    expect(observations.find(item => item.checkId === 'search-original-title')).toBeUndefined()
+    expect(observations.find(item => item.checkId === 'search-canonical-invalid' && item.source === 'http')).toMatchObject({ disposition: 'passed', reason: 'canonical_declarations_parsed' })
+    expect(observations.find(item => item.checkId === 'search-canonical-invalid' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'unknown' })
+    expect(observations.find(item => item.checkId === 'search-canonical-conflict')).toMatchObject({ disposition: 'observed', reason: 'canonical_comparison_incomplete' })
+    expect(observations.find(item => item.checkId === 'search-indexing-source' && item.source === 'original-html')).toMatchObject({ disposition: 'observed' })
+    expect(observations.find(item => item.checkId === 'search-indexing-source' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'unknown', reason: 'document_truncated' })
+    expect(observations.find(item => item.checkId === 'robots-blocks-indexing')).toMatchObject({ disposition: 'observed', reason: 'indexing_comparison_incomplete' })
+    expect(observations.find(item => item.checkId === 'search-structured-invalid' && item.source === 'original-html')?.disposition).not.toBe('unknown')
+    expect(observations.find(item => item.checkId === 'search-structured-invalid' && item.source === 'rendered-dom')).toMatchObject({ disposition: 'unknown' })
+    expect(observations.find(item => item.source === 'rendered-dom' && item.disposition === 'passed')).toBeUndefined()
+  })
+  it('keeps incomplete sitemap membership unknown and does not certify a later listing', async () => {
+    const page = '<html><head><title>Page</title></head><body><a href="/pricing">Pricing</a></body></html>'
+    const read = (overrides: Parameters<typeof evidence>[1]) => evaluateSearch(evidence(page, overrides), null, ['discovery'])
+    const membership = (observations: Awaited<ReturnType<typeof read>>) => observations.find(item => item.checkId === 'search-discovery-links')
+    const partial = await read({ sitemapUrls: [], sitemapsComplete: false })
+    expect(membership(partial)).toMatchObject({ disposition: 'unknown', reason: 'sitemap_coverage_incomplete' })
+    expect(searchFindings(partial).some(item => item.checkId === 'search-discovery-links')).toBe(false)
+    const listedPartial = await read({ sitemapUrls: [PAGE], sitemapsComplete: false })
+    expect(membership(listedPartial)).toMatchObject({ disposition: 'observed', reason: 'checked_page_discovery_recorded' })
+    const unlisted = membership(await read({ sitemapUrls: [], sitemapsComplete: true }))!
+    expect(unlisted).toMatchObject({ disposition: 'observed', reason: 'checked_page_discovery_recorded' })
+    expect(unlisted.disposition).not.toBe('passed')
+    const receipt = (observations: Awaited<ReturnType<typeof read>>, complete: boolean) => searchReceiptSchema.parse({
+      kind: 'search-checks', version: 1, auditId: 'discovery', pageUrl: PAGE, collectedAt: evidence().collectedAt, complete, observations })
+    expect(assessSearchRecovery(receipt(listedPartial, false), unlisted.checkId, unlisted.attention, PAGE)).toMatchObject({ comparable: false, verdict: 'unknown' })
+    const listed = await read({ sitemapUrls: [PAGE], sitemapsComplete: true })
+    expect(assessSearchRecovery(receipt(listed, true), unlisted.checkId, unlisted.attention, PAGE)).toMatchObject({ comparable: false, verdict: 'unknown' })
   })
   it('preserves accepted unrelated Flag eligibility', () => {
     for (const checkId of ['security-csp-missing', 'journey-signup-nav-broken'])

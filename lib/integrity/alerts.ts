@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { createHash } from 'node:crypto'
 import { trackEvent } from '@/lib/analytics/events'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { resend } from '@/lib/email/client'
 import { sendNotificationEmail } from '@/lib/email/notification-delivery'
 import { logger } from '@/lib/logger'

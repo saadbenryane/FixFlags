@@ -33,7 +33,7 @@ import {
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { parseReviewCoverage } from '@/lib/audit/review-depth'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 

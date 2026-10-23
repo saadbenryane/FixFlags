@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
 
 describe('triageUnavailableBody', () => {

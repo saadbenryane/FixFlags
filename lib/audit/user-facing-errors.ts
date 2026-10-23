@@ -1,4 +1,4 @@
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 const FAILURE_CODE_MESSAGES: Record<string, string> = {
   AUDIT_TIMEOUT: AUDIT_ERRORS.timeout,

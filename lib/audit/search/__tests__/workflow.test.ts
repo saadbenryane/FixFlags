@@ -75,7 +75,7 @@ describe('fresh Search verification and history', () => {
     expect(flag.attentionPolicy?.sources).toEqual(['rendered-dom'])
     pending(flag.checkId, flag.attentionPolicy)
     await recordSearchVerifiers(await receipt(undefined, undefined, { rendered: document(null) }))
-    expect(db.auditVerifierExecution.upsert).not.toHaveBeenCalled()
+    expect(proof()).toMatchObject({ verdict: 'unknown', comparable: false })
     await recordSearchVerifiers(await receipt())
     expect(proof()).toMatchObject({ verdict: 'passed', comparable: true })
   })

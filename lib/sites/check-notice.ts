@@ -1,4 +1,4 @@
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 

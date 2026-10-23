@@ -46,6 +46,7 @@ export function projectHomePresentation(input: {
     failureCode: audit?.failureCode ?? null,
     reportCompleteness: audit?.reportCompleteness ?? null,
     failedModules: audit?.failedModules,
+    evidenceCoverage: audit?.evidenceCoverage,
   })
   const presentation: SitePresentation = {
     identity: {

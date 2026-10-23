@@ -35,7 +35,7 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
 import { buildFixArtifacts, type FixList } from '@/lib/audit/finish-plan'
 import { parseReviewCoverage } from '@/lib/audit/review-coverage'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 /**
  * Derive a visitor-facing truth label from the flag's source and checkId.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { runSecurityHeaderChecks, securityHeaderObservations } from './security-headers'
+import { recordCheckObservations } from './observations'
 import { checkReceiptSchema } from './receipt'
 import { scopedAssertionForTarget } from './verification'
 import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
@@ -252,6 +253,28 @@ describe('public response header repair evidence', () => {
     const executions = (headers: Record<string, string>) => [{ targetKey: 'module:security-headers', status: 'COMPLETED', detail: receipt(headers) }]
     expect(hasRecordedRecoveryEvidence({ ...input, executions: executions(healthy) })).toBe(true)
     expect(hasRecordedRecoveryEvidence({ ...input, executions: executions({ ...healthy, 'x-content-type-options': '' }) })).toBe(false)
+  })
+  it('records uncollected response headers as incomplete without inventing a finding', () => {
+    const missing = securityHeaderObservations(pageUrl, null)
+    expect(missing.map(assertion => assertion.key)).toEqual(expect.arrayContaining([
+      'content-security-policy', 'x-content-type-options', 'cross-domain-policy',
+    ]))
+    expect(missing.every(assertion => assertion.passed === false && assertion.complete === false && assertion.observed.includes('not collected'))).toBe(true)
+    expect(securityHeaderObservations('http://example.com/', null).some(assertion => assertion.key.startsWith('hsts-'))).toBe(false)
+    expect(runSecurityHeaderChecks(pageUrl, null)).toEqual([])
+    expect(runSecurityHeaderChecks(pageUrl, {}).some(flag => flag.checkId === 'security-csp-missing' || flag.checkId === 'security-headers-missing')).toBe(true)
+    const flag = runSecurityHeaderChecks(pageUrl, {})[0]
+    expect(proof(flag, null)).toBeUndefined()
+    expect(recordCheckObservations('security-headers', { url: pageUrl, metadata: null, headers: null, desktop: null, mobile: null })).toEqual(missing)
+    expect(recordCheckObservations('security-headers', { url: pageUrl, metadata: null, desktop: null, mobile: null })).toEqual([])
+    expect(receipt(null).assertions).toEqual(missing)
+  })
+  it('keeps an uncollected header map incomplete through the shared page evaluator', async () => {
+    const result = await runAllChecks(pageUrl, parseMetadataFromHtml('<h1>Header fixture</h1>', pageUrl), null, null, [],
+      undefined, undefined, null, undefined, true, ['security-headers'])
+    expect(result.flags).toEqual([])
+    expect(result.executions[0]).toMatchObject({ passed: false, complete: false, applicable: false })
+    expect(result.executions[0].assertions?.every(assertion => assertion.complete === false && assertion.passed === false)).toBe(true)
   })
   it('publishes unparseable declarations as incomplete evidence through the shared page evaluator', async () => {
     const headers = { ...healthy, 'strict-transport-security': 'max-age=31536000invalid; includeSubDomains; preload' }

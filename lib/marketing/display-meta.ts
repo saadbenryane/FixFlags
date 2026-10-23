@@ -1,5 +1,5 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import type { SampleSource } from '@/lib/marketing/curated-sample'
 import { parseSiteHostname } from '@/lib/utils/url-helpers'
 

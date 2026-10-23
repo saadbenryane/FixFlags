@@ -4,7 +4,7 @@ import { runAllChecks } from '../checks'
 import { isUnresolvedPublicRedirect } from '../redirect-evidence'
 import { runPerformanceChecks, runInpChecks } from '../checks/performance'
 import { runMobileChecks } from '../checks/mobile'
-import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION } from '../checks/security-headers'
+import { runSecurityHeaderChecks, SECURITY_HEADER_LIMITATION, SECURITY_HEADER_WITHHELD_LIMITATION } from '../checks/security-headers'
 import { recordCheckObservations, recordInpObservation } from '../checks/observations'
 import { runConsoleChecks, consoleObservations } from '../checks/console'
 import { readScreenshotSnapshot, browserArtifactSchema, captureArtifactSchema, httpArtifactSchema, speedArtifactSchema, resourceArtifactSchema } from './snapshots'
@@ -27,13 +27,14 @@ import { suppressFlagsForPageRole } from '../suppression'
 import { evaluateSearchIsolated } from './cpu'
 import { executionWrite } from '../execution-ownership'
 import { scopeCheckEvidence, summarizeCheckAssertions } from '../checks/receipt'
-import { capturedPageLinks, checkPublicLinks } from '../checks/public-links'
+import { capturedPageLinks, checkPublicLinks, missingPublicLinkEvidence } from '../checks/public-links'
 import { runInteractionChecks } from '../checks/interaction'
 import { loadingDelayObservation, mobileLoadingDelayFlag } from '../checks/loading-evidence'
 import { applyMotionObservation, motionObservationSchema } from '../checks/motion-evidence'
 import { scopeRenderedPageEvidence } from '../checks/rendered-page-evidence'
 import { assessPageResponse } from '../checks/page-response'
 import { publicResponseRestriction } from '../browser/page-capture'
+import { renderedDocumentForSearch } from '../browser/document-evidence'
 import { capturedHeadMetadata } from '../checks/head-metadata'
 import { nativeHttpCollection } from '../native-http-evidence'
 
@@ -87,39 +88,57 @@ export const evaluatorHandlers: TaskHandler[] = [
       let flags: import('../flag-types').DeterministicFlag[], assertions: import('../checks/assertion').CheckAssertion[] = []
       let applicable = true, complete: boolean | undefined, limitation: string | undefined
       let collectedAt: string | undefined
+      let collectedDestinations = false
       let pageUrl = context.input.pageUrl
       const publicLinks = checkModule === 'seo' && spec?.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.split('::page:')[0] === 'broken-internal-links'
       if (publicLinks) {
         const inventory = capturedPageLinks(snapshot, metadata ?? null)
-        if (!inventory) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
         pageUrl = context.input.pageUrl
-        const checked = await checkPublicLinks(pageUrl, inventory, context.deadline, nativeHttp.options.openDestination)
-        flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
-        collectedAt = nativeHttp.options.collectedAt()
+        // A capture without a link list has no destination to judge. Do not fetch or invent a broken link.
+        if (!inventory) {
+          const missing = missingPublicLinkEvidence()
+          flags = missing.flags; assertions = missing.assertions; complete = missing.complete; limitation = missing.limitation
+        } else {
+          const checked = await checkPublicLinks(pageUrl, inventory, context.deadline, nativeHttp.options.openDestination)
+          flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
+          collectedAt = nativeHttp.options.collectedAt(); collectedDestinations = true
+        }
       } else if (checkModule === 'page-response') {
         const checked = assessPageResponse(pageUrl, response?.document)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete
         limitation = checked.limitation; collectedAt = checked.collectedAt
       } else if (checkModule === 'console') {
-        if (!snapshot) throw new TaskFailure('CONSOLE_EVIDENCE_UNAVAILABLE', false)
-        flags = runConsoleChecks(snapshot.consoleErrors, snapshot.consoleCoverage)
-        assertions = consoleObservations(snapshot.consoleCoverage)
+        flags = runConsoleChecks(snapshot?.consoleErrors ?? [], snapshot?.consoleCoverage)
+        assertions = consoleObservations(snapshot?.consoleCoverage)
         complete = assertions.every(assertion => assertion.complete === true)
-        limitation = 'Console inspection covers recorded desktop and mobile page-load windows. Later actions and unavailable captures remain outside this evidence.'
+        limitation = snapshot
+          ? 'Console inspection covers recorded desktop and mobile page-load windows. Later actions and unavailable captures remain outside this evidence.'
+          : 'Console collection was not captured. Page-load errors remain unknown.'
       } else if (checkModule === 'keyboard') {
         const task = dependency(context, 'keyboard')
-        if (!task?.workResult) throw new TaskFailure('KEYBOARD_EVIDENCE_UNAVAILABLE', false)
-        const evidence = keyboardEvidenceSchema.parse(readArtifact(task.workResult, 'keyboard').data)
-        const checked = runKeyboardChecks(evidence)
-        flags = checked.flags; assertions = checked.assertions
-        applicable = evidence.candidateCount > 0 || (evidence.interactionCount ?? 0) > 0; complete = evidence.complete; pageUrl = evidence.scope?.pageUrl ?? evidence.pageUrl
-        const copy = SITE_ACTION_COPY.execution.keyboard
-        const opened = evidence.interactions?.filter(item => item.openedBy !== 'none').length ?? 0
-        limitation = [`${evidence.steps.length} page controls exercised.`,
-          ...(evidence.interactionCount ? [`${opened} of ${evidence.interactionCount} declared popup states opened for inspection.`] : []), copy.reasons[evidence.reason as keyof typeof copy.reasons] ?? copy.incomplete,
-          ...evidence.limitations.map(key => copy.limitations[key as keyof typeof copy.limitations]).filter(Boolean), copy.scope].join(' ')
-      } else if (checkModule === 'interaction') {
-        if (!snapshot?.captureMetrics) throw new TaskFailure('RENDERED_METRICS_UNAVAILABLE', false)
+        if (!task?.workResult) {
+          flags = []
+          const unknown = 'Keyboard navigation was not collected. This behavior remains unknown.'
+          assertions = [
+            { key: 'focus-styles', name: 'Focus indicators', expected: 'The recorded controls have an observable focus outline or style change', observed: unknown, passed: false, complete: false },
+            { key: 'keyboard-exit', name: 'Keyboard navigation exit', expected: 'Tab can leave the recorded controls without an unresolved cycle', observed: unknown, passed: false, complete: false },
+            { key: 'tab-sequence', name: 'Recorded keyboard order', expected: 'The exercised Tab sequence has no positive-tabindex backward jump', observed: unknown, passed: false, complete: false },
+          ]
+          applicable = true
+          complete = false
+          limitation = 'Keyboard navigation was not collected. Focus, tab order, and popup behavior remain unknown.'
+        } else {
+          const evidence = keyboardEvidenceSchema.parse(readArtifact(task.workResult, 'keyboard').data)
+          const checked = runKeyboardChecks(evidence)
+          flags = checked.flags; assertions = checked.assertions
+          applicable = evidence.candidateCount > 0 || (evidence.interactionCount ?? 0) > 0; complete = evidence.complete; pageUrl = evidence.scope?.pageUrl ?? evidence.pageUrl
+          const copy = SITE_ACTION_COPY.execution.keyboard
+          const opened = evidence.interactions?.filter(item => item.openedBy !== 'none').length ?? 0
+          limitation = [`${evidence.steps.length} page controls exercised.`,
+            ...(evidence.interactionCount ? [`${opened} of ${evidence.interactionCount} declared popup states opened for inspection.`] : []), copy.reasons[evidence.reason as keyof typeof copy.reasons] ?? copy.incomplete,
+            ...evidence.limitations.map(key => copy.limitations[key as keyof typeof copy.limitations]).filter(Boolean), copy.scope].join(' ')
+        }
+      } else if (checkModule === 'interaction' && snapshot?.captureMetrics) {
         const motion = dependency(context, 'motion')
         if (motion?.workResult) snapshot.captureMetrics = applyMotionObservation(snapshot.captureMetrics, motionObservationSchema.parse(readArtifact(motion.workResult, 'motion').data))
         flags = runInteractionChecks(snapshot.captureMetrics, assertion => assertions.push(assertion))
@@ -129,45 +148,68 @@ export const evaluatorHandlers: TaskHandler[] = [
         limitation = 'Recorded mobile loading and reduced-motion observations, plus available desktop loading windows. Unavailable or unmatched source conditions cannot certify recovery.'
       } else if (checkModule === 'mobile-ux-quality' && spec?.verificationTarget?.kind === 'DIAGNOSTIC' && spec.verificationTarget.checkId.split('::page:')[0] === 'mobile-load-delay-content') {
         const window = snapshot?.captureMetrics?.loadExperience
-        if (!window || window.device !== 'mobile') throw new TaskFailure('MOBILE_LOADING_EVIDENCE_UNAVAILABLE', false)
-        const flag = mobileLoadingDelayFlag(window)
-        flags = flag ? [flag] : []
-        assertions = [loadingDelayObservation(window, 4000, 'mobile-loading-delay', true)]
-        complete = assertions[0].complete === true
+        if (!window || window.device !== 'mobile') {
+          flags = []
+          assertions = [{ key: 'mobile-loading-delay', name: 'Mobile loading delay', expected: 'Recorded mobile evidence supports this observation',
+            observed: 'Mobile loading was not collected. The delay remains unknown.', passed: false, complete: false }]
+          complete = false
+        } else {
+          const flag = mobileLoadingDelayFlag(window)
+          flags = flag ? [flag] : []
+          assertions = [loadingDelayObservation(window, 4000, 'mobile-loading-delay', true)]
+          complete = assertions[0].complete === true
+        }
         limitation = 'This targeted execution evaluates the recorded mobile loading window. Other mobile layout responsibilities remain separate.'
       } else if (checkModule === 'measurement') {
-        if (!snapshot) throw new TaskFailure('TRACKING_EVIDENCE_UNAVAILABLE', false)
         pageUrl = snapshot?.desktopFinalUrl ?? context.input.pageUrl
-        const checked = runTrackingChecks(metadata ?? null, snapshot.tracking, pageUrl)
+        const checked = runTrackingChecks(metadata ?? null, snapshot?.tracking, pageUrl)
         flags = checked.flags; assertions = checked.assertions; complete = checked.complete; limitation = checked.limitation
       } else if (checkModule === 'performance' || checkModule === 'mobile') {
         const inpOnly = checkModule === 'performance' && context.input.device === 'mobile'
         const measurement = checkModule === 'mobile' || inpOnly ? speed?.mobile : speed?.desktop
-        applicable = Boolean(measurement)
-        if (!applicable) throw new TaskFailure('PERFORMANCE_EVIDENCE_UNAVAILABLE', false)
-        flags = inpOnly ? runInpChecks(measurement!) : checkModule === 'mobile' ? runMobileChecks(measurement!, pageUrl) : runPerformanceChecks(measurement!, null, pageUrl)
-        // Each receipt describes only its own device and responsibility.
-        assertions = inpOnly ? [recordInpObservation(measurement!)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
-          metadata: null, desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
-        const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope: evidenceScope })
-        flags = admitted.flags; assertions = admitted.assertions
-        complete = assertions.every(assertion => assertion.complete === true)
-        if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
+        if (!measurement) {
+          flags = []
+          applicable = true
+          assertions = inpOnly
+            ? [{ key: 'inp', name: 'Mobile field responsiveness', expected: 'CrUX p75 INP is at most 200ms',
+              observed: 'No CrUX INP measurement is available. Current responsiveness remains unknown.',
+              passed: false, complete: false, disposition: 'observed' }]
+            : recordCheckObservations(checkModule, { url: context.input.pageUrl, metadata: null, desktop: null, mobile: null })
+          complete = false
+          limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
+        } else {
+          applicable = true
+          flags = inpOnly ? runInpChecks(measurement) : checkModule === 'mobile' ? runMobileChecks(measurement, pageUrl) : runPerformanceChecks(measurement, null, pageUrl)
+          // Each receipt describes only its own device and responsibility.
+          assertions = inpOnly ? [recordInpObservation(measurement)] : recordCheckObservations(checkModule, { url: context.input.pageUrl,
+            metadata: null, desktop: speed!.desktop, mobile: checkModule === 'mobile' ? speed!.mobile : null })
+          const admitted = scopeCheckEvidence({ module: checkModule, flags, assertions, scope: evidenceScope })
+          flags = admitted.flags; assertions = admitted.assertions
+          complete = assertions.every(assertion => assertion.complete === true)
+          if (!complete) limitation = inpOnly ? assertions[0].observed : 'PageSpeed did not provide all required performance measurements. Missing measurements remain unknown.'
+        }
       } else if (checkModule === 'security-headers') {
-        if (response && isUnresolvedPublicRedirect(response.document)) throw new TaskFailure('PUBLIC_REDIRECT_UNRESOLVED', false)
-        if (response?.document.reason === 'public_access_challenge') throw new TaskFailure('PUBLIC_ACCESS_CHALLENGE', false)
-        if (response && response.document.status !== null && publicResponseRestriction({
-          body: response.document.body ?? '', headers: response.document.headers, status: response.document.status,
-        })) throw new TaskFailure('PUBLIC_ACCESS_RESTRICTED', false)
-        if (!response?.document.status) throw new TaskFailure('RESPONSE_EVIDENCE_UNAVAILABLE', false)
-        flags = runSecurityHeaderChecks(response.document.finalUrl, response.document.headers)
-        assertions = recordCheckObservations(checkModule, { url: response.document.finalUrl,
-          metadata: null, headers: response.document.headers, desktop: null, mobile: null })
-        complete = assertions.every(assertion => assertion.complete !== false)
-        if (!complete) limitation = SECURITY_HEADER_LIMITATION
+        const document = response?.document
+        // A challenge, unfinished redirect, or access restriction is not the origin configuration.
+        const withheld = Boolean(document && (isUnresolvedPublicRedirect(document) || document.reason === 'public_access_challenge' ||
+          (document.status !== null && publicResponseRestriction({ body: document.body ?? '', headers: document.headers, status: document.status }))))
+        // A settled fetch with no status was not collected. Keep the check incomplete
+        // instead of aborting it. An empty collected map is a real absence and still flags.
+        if (!document?.status || withheld) {
+          pageUrl = document?.finalUrl ?? context.input.pageUrl
+          flags = []
+          assertions = recordCheckObservations(checkModule, { url: pageUrl, metadata: null, headers: null, desktop: null, mobile: null })
+          complete = false
+          limitation = withheld ? SECURITY_HEADER_WITHHELD_LIMITATION : SECURITY_HEADER_LIMITATION
+        } else {
+          flags = runSecurityHeaderChecks(document.finalUrl, document.headers)
+          assertions = recordCheckObservations(checkModule, { url: document.finalUrl,
+            metadata: null, headers: document.headers, desktop: null, mobile: null })
+          complete = assertions.every(assertion => assertion.complete !== false)
+          if (!complete) limitation = SECURITY_HEADER_LIMITATION
+        }
       } else {
-        if (!metadata && definition.input === 'metadata' && !head) throw new TaskFailure('PAGE_EVIDENCE_UNAVAILABLE', false)
-        if (definition.input === 'browser' && !snapshot?.captureMetrics) throw new TaskFailure('RENDERED_METRICS_UNAVAILABLE', false)
+        // A completed capture can omit parsed metadata or browser metrics. Record that gap.
         const observedUrl = definition.input === 'http' ? context.input.pageUrl : snapshot?.desktopFinalUrl ?? context.input.pageUrl
         const checked = await runAllChecks(observedUrl, metadata ?? null, null, null, snapshot?.consoleErrors ?? [], undefined,
           snapshot?.captureMetrics, response?.document.headers ?? snapshot?.responseHeaders, snapshot?.axeViolations, true, [checkModule], {
@@ -189,21 +231,28 @@ export const evaluatorHandlers: TaskHandler[] = [
       }
       flags = suppressFlagsForPageRole(flags, context.input.role)
         .map(flag => ({ ...flag, pageUrl }))
-      const summary = summarizeCheckAssertions({ passed: flags.length === 0, complete, assertions })
-      complete = summary.complete
       const sourceKind = checkModule === 'keyboard' ? 'keyboard' : definition.input === 'http' || checkModule === 'security-headers' ? 'http'
         : checkModule === 'performance' || checkModule === 'mobile' ? 'pagespeed' : 'browser'
       const sourceTask = dependency(context, sourceKind)
-      if (!sourceTask?.workResult) throw new TaskFailure('ASSERTION_SOURCE_UNAVAILABLE', false)
-      const source = readArtifact(sourceTask.workResult, sourceKind)
+      const source = sourceTask?.workResult ? readArtifact(sourceTask.workResult, sourceKind) : null
+      // A missing collector result is the observation. Do not publish findings or a collection time for it.
+      if (!source) {
+        flags = []
+        complete = false
+        applicable = true
+        limitation ??= 'The evidence for this check was not collected. The result remains unknown.'
+      }
+      const summary = summarizeCheckAssertions({ passed: flags.length === 0, complete, assertions })
+      complete = summary.complete
+      const evidenceCollectedAt = collectedAt ?? source?.collectedAt
       const device = checkModule === 'mobile' || context.input.device === 'mobile' ? 'mobile' : 'desktop'
       return serializeArtifact('check', checkArtifactSchema.parse({ flags, httpEvidence: nativeHttp.snapshot(), receipt: {
         kind: 'site-module-check', version: 1, module: checkModule, passed: summary.passed, applicable, pageUrl, assertions,
         ...(complete !== undefined ? { complete, limitation } : {}),
-        execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version, checkVersions: Object.fromEntries(selected),
-          source: publicLinks || definition.input === 'http' ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
+        ...(evidenceCollectedAt ? { execution: { auditId: context.audit.id, taskId: context.task.id, checkVersion: definition.version, checkVersions: Object.fromEntries(selected),
+          source: collectedDestinations || definition.input === 'http' ? 'http' : checkModule === 'console' ? 'browser-console' : checkModule === 'keyboard' ? 'keyboard' : checkModule === 'measurement' ? 'browser-network' : ['security', 'security-headers', 'auth-checkout', 'og-image'].includes(checkModule) ? 'http' : checkModule === 'performance' ? `pagespeed-${device}`
             : checkModule === 'mobile' ? 'pagespeed-mobile' : checkModule === 'accessibility' ? 'browser-accessibility' : 'rendered-dom',
-          collectedAt: collectedAt ?? source.collectedAt },
+          collectedAt: evidenceCollectedAt } } : {}),
       } }))
     },
   },
@@ -241,11 +290,12 @@ export const evaluatorHandlers: TaskHandler[] = [
         robots: missingDocument(new URL('/robots.txt', context.input.pageUrl).toString(), 'resource_collection_incomplete'),
         sitemaps: [], sitemapUrls: [], complete: false, declaredSitemaps: [],
       }))
+      const rendered = renderedDocumentForSearch(snapshot)
       const input = { collectorVersion: 2 as const, auditId: context.audit.id, pageUrl: context.input.pageUrl,
-        original: response?.document, renderedHtml: snapshot?.desktopHtml ?? null,
-        renderedSearchSnapshot: snapshot?.collectionRestrictions?.length ? undefined : snapshot?.renderedSearchSnapshot,
+        original: response?.document, renderedHtml: rendered.renderedHtml,
+        renderedSearchSnapshot: rendered.renderedSearchSnapshot,
         renderedCollectedAt: dependency(context, 'browser')?.workResult ? readArtifact(dependency(context, 'browser')!.workResult, 'browser').collectedAt : undefined,
-        renderedComplete: Boolean(snapshot?.desktopHtml) && !snapshot?.collectionRestrictions?.length, headers: snapshot?.responseHeaders ?? undefined,
+        renderedComplete: rendered.renderedComplete, headers: snapshot?.responseHeaders ?? undefined,
         finalUrl: snapshot?.desktopFinalUrl, status: snapshot?.desktopHttpStatus, deadline: context.deadline, cache,
         privateCapture: Boolean(context.audit.scanAccessEncrypted), collectCanonicalTargets: !evaluator || evaluator === 'canonical' }
       if (!evaluator) {

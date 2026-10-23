@@ -13,7 +13,7 @@ import { compareFlagsByPriority } from '@/lib/audit/priority-flags'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
-import { AGENT_SCAN_COPY } from '@/lib/marketing/copy'
+import { AGENT_SCAN_COPY } from '@/lib/marketing/copy-barrel'
 import { reviewPathLabel, canonicalizeDestination } from '@/lib/audit/url-identity'
 
 export type ScanAgentFlag = {

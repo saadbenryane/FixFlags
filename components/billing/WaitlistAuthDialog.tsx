@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AuthFlow } from '@/components/auth/AuthFlow'
-import { WAITLIST_PAGE } from '@/lib/marketing/copy'
+import { WAITLIST_PAGE } from '@/lib/marketing/copy-barrel'
 import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 
 export type WaitlistDialogPlan = 'BUILDER' | 'TEAM'

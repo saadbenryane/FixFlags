@@ -226,6 +226,7 @@ export const ACTION_CHECK_DEFINITIONS: Readonly<Record<string, PageCheckDefiniti
   flow: { ...define('flow', 'conversion', 'Public primary action', 'browser',
     { ...Object.fromEntries(Object.entries(PRIMARY_ACTION_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
       ...Object.fromEntries(Object.entries(POST_CLICK_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
+      'public-action-boundary': assertion('conversion'),
       'destination-trust': assertion('conversion', ['flow-cta-destination-no-trust']),
       ...Object.fromEntries(Object.entries(DESTINATION_CONTENT_ASSERTIONS).map(([key, ids]) => [key, assertion('conversion', ids)])),
       'pricing-navigation': assertion('conversion', ['flow-pricing-nav-broken']) }),

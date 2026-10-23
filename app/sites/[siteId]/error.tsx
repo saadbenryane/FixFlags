@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import type { Route } from 'next'
 import { RouteErrorPage } from '@/components/ui/route-error-page'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 export default function SiteError({
   error,

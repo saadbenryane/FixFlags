@@ -49,7 +49,7 @@ import {
   type OpenCheckResult,
 } from './open-check'
 import { canonicalizeDestination, navigationDestinationKey } from './url-identity'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy-barrel'
 import { systemClock } from '@/lib/time/clock'
 import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
 import { resolvedPageLinks } from './checks/public-links'

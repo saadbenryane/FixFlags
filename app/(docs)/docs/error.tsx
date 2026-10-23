@@ -3,7 +3,7 @@
 import type { Route } from 'next'
 import { RouteErrorPage } from '@/components/ui/route-error-page'
 import { TextLink } from '@/components/ui/text-link'
-import { HELP_CENTER, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { HELP_CENTER, SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 export default function DocsError({
   error,

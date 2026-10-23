@@ -4,7 +4,7 @@ import { MarketingPageHeader } from '@/components/marketing/MarketingPageHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { TextLink } from '@/components/ui/text-link'
-import { FAQ, FAQ_PAGE, FAQ_SECTION, HELP_CENTER } from '@/lib/marketing/copy'
+import { FAQ, FAQ_PAGE, FAQ_SECTION, HELP_CENTER } from '@/lib/marketing/copy-barrel'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { faqPageSchema } from '@/lib/marketing/structured-data'
 

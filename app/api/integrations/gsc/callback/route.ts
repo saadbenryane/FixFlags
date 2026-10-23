@@ -8,7 +8,7 @@ import {
   verifyGscConnectState,
 } from '@/lib/integrations/google-search-console'
 import { encryptSecret } from '@/lib/security/crypto'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {

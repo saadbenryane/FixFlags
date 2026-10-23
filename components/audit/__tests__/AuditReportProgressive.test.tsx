@@ -4,7 +4,7 @@ import {
   AuditReportProgressive,
 } from '@/components/audit/AuditReportProgressive'
 import { setActiveAudit } from '@/lib/audit/active-audit'
-import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
+import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 
 vi.mock('next/navigation', () => ({

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 interface Props {
   label?: string

@@ -6,6 +6,7 @@ import { observeViewport } from './viewport-observation'
 import type { ScanAccessConfig } from '../scan-access'
 import { MOTION_FAMILIES } from '../checks/motion-evidence'
 import { PageCaptureError } from './page-capture'
+import { documentEvidenceWithheld } from './document-evidence'
 
 export const MOTION_WINDOW_MS = 2000
 export type MotionFamily = typeof MOTION_FAMILIES[number]
@@ -125,7 +126,7 @@ export async function collectReducedMotionWindow(browser: Browser, pageUrl: stri
     try {
       const result = await observation!
       const content = await observeViewport(page, { profile: 'motion', includeActions: false, excludeLoading: true })
-      return { ...result, restricted: session.safetyRestrictions.length > 0, contentVisible: content.content,
+      return { ...result, restricted: documentEvidenceWithheld(session.safetyRestrictions), contentVisible: content.content,
         complete: result.complete && result.pageUrl === content.pageUrl }
     } finally { session.disposeNetwork() }
   } catch (error) {

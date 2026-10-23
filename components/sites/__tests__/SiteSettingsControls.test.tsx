@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteIntegrationsControls } from '@/components/sites/SiteIntegrationsControls'
 import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
-import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
+import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy-barrel'
 import { siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 

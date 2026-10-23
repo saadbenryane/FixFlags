@@ -7,19 +7,21 @@ import { searchReceiptSchema, type SearchObservation } from '../search/contracts
 import { googleIndexObservations } from '../search/google-index'
 import { searchAnalyticsObservations } from '../search/google'
 import { planReviewTargets, type ReviewPlan } from '../review-depth'
-import { normalizeAuditUrl, AuditUrlError } from '../url'
+import { AuditUrlError } from '../url'
 import { parseMetadataFromHtml, type PageMetadata, type RuntimeHeadMetadata } from '../metadata'
 import { classifyPublicGet, deadDestinationFlags, type OpenCheckResult } from '../open-check'
 import { observationIdentity } from '../flag-identity'
 import { PAGE_CHECKS, type PageCheckContext } from '../checks/catalog'
+import { runAllChecks } from '../checks/index'
 import { checkReceiptSchema } from '../checks/receipt'
 import { scopedAssertionForTarget } from '../checks/verification'
+import { hasRecordedRecoveryEvidence } from '../recovery-evidence'
 import type { CheckAssertion } from '../checks/assertion'
 import type { DeterministicFlag } from '../flag-types'
 import { assessPageResponse } from '../checks/page-response'
 import { publicLinkObservations } from '../checks/public-links'
 import { sectionLinkObservations } from '../checks/section-links'
-import { securityObservations, runSecurityBasicsChecks } from '../checks/security'
+import { assessSecurityTransport, securityObservations, runSecurityBasicsChecks } from '../checks/security'
 import { securityHeaderObservations, runSecurityHeaderChecks } from '../checks/security-headers'
 import { publicTrustObservations, runTrustChecks } from '../checks/trust'
 import { consoleObservations, runConsoleChecks } from '../checks/console'
@@ -92,11 +94,6 @@ function metrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics {
     inputsBelow16px: [], inputFontSamples: [{ selector: '#email', fontSize: 16 }], inputFontsComplete: true, loadingObservation: nativeLoading, ...overrides,
     ...(overrides.inputsBelow16px?.length && !overrides.inputFontSamples ? { inputFontSamples: overrides.inputsBelow16px } : {}) }
 }
-function loading(milliseconds: number) {
-  return { device: 'mobile' as const, initialScreenshotUrl: null, initialCaptureElapsedMs: 100, finalCaptureElapsedMs: 6000,
-    loadingVisibleAtInitial: true, loadingVisibleAtFinal: false, loadingClearedMs: milliseconds, loadingLabel: 'Loading',
-    finalReadyState: 'complete', finalTitle: 'Acme', observation: metrics().loadingObservation! }
-}
 async function inspect(module: string, source = pageHtml(), captured: CaptureMetrics | null = metrics(), metadata?: PageMetadata | null) {
   const assertions: CheckAssertion[] = []
   const context: PageCheckContext = { url: PAGE, metadata: metadata === undefined ? parseMetadataFromHtml(source, PAGE) : metadata, desktop: null, mobile: null,
@@ -126,6 +123,18 @@ function certifies(checkId: string, flag: DeterministicFlag | undefined, asserti
   if (!flag) return false
   const compared = scopedAssertionForTarget({ receipt: receipt(module, assertions, source, pageUrl), checkId, flag })
   return Boolean(compared?.assertion.passed === true && compared.assertion.complete !== false && compared.assertion.disposition !== 'observed')
+}
+function mobileRecovers(checkId: string, flag: DeterministicFlag | undefined, assertions: CheckAssertion[]) {
+  if (!flag) return false
+  const detail = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'mobile-ux-quality', pageUrl: PAGE, applicable: true,
+    passed: assertions.every(assertion => assertion.passed), complete: assertions.every(assertion => assertion.complete !== false), assertions,
+    execution: { auditId: 'catalog', taskId: 'mobile-ux-quality', checkVersion: 2, checkVersions: { [checkId]: 2 }, source: 'rendered-dom', collectedAt: WHEN } })
+  const compared = scopedAssertionForTarget({ receipt: detail, checkId, flag: { ...flag, pageUrl: PAGE } })
+  const certified = Boolean(compared?.assertion.passed === true && compared.assertion.complete !== false && compared.assertion.disposition !== 'observed')
+  const recorded = hasRecordedRecoveryEvidence({ auditId: 'catalog', executionSpec: { version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl: PAGE,
+    environment: 'production', checks: { [checkId]: 2 }, outcomes: [], verificationTarget: null }, flag: { ...flag, pageUrl: PAGE },
+    executions: [{ targetKey: 'module:mobile-ux-quality', status: 'COMPLETED', detail }] })
+  return certified || recorded
 }
 function pair(failing: { verdict: Verdict; identity: string }, repaired: { verdict: Verdict; identity: string; certified?: boolean }, rest: Fact[]): Fact[] {
   return [
@@ -157,7 +166,7 @@ function headerCase(key: string, checkId: string, broken: Record<string, string>
   const badHeaders = broken ?? {}
   const bad = securityHeaderObservations(PAGE, badHeaders).filter(assertion => assertion.key === key)
   const badFlags = runSecurityHeaderChecks(PAGE, badHeaders).filter(flag => flag.checkId === checkId)
-  const missing = incompleteHeaders === null ? [] : securityHeaderObservations(PAGE, incompleteHeaders).filter(assertion => assertion.key === key)
+  const missing = securityHeaderObservations(PAGE, incompleteHeaders).filter(assertion => assertion.key === key)
   const later = securityHeaderObservations(PAGE, GOOD_HEADERS)
   const certified = certifies(checkId, badFlags[0], later, 'security-headers', 'http')
   const failing = judge(bad, badFlags, [key])
@@ -320,9 +329,12 @@ function loadingFacts(): Fact[] {
   const key = 'destination-loading-ui'
   const failing = judge(stuck.assertions, stuck.flags.filter(flag => flag.checkId === 'flow-cta-stuck-loading'), [key])
   const certified = certifies('flow-cta-stuck-loading', stuck.flags.find(flag => flag.checkId === 'flow-cta-stuck-loading'), clear.assertions, 'flow', 'rendered-dom')
+  const open = postClick({ ...base, loadingComplete: false, stuckLoading: null })
+  if (!open.assertions.some(assertion => assertion.key === key && assertion.complete === false) || open.flags.some(flag => flag.checkId === 'flow-cta-stuck-loading'))
+    throw new Error('Unfinished destination loading was treated as a finished observation')
   return [
     { scenario: 'working', ...judge(clear.assertions, [], [key]) },
-    { scenario: 'incomplete', verdict: 'unavailable', identity: 'post-click:version' },
+    { scenario: 'incomplete', ...judge(open.assertions, open.flags, [key]) },
     ...pair(failing, { verdict: certified ? 'passed' : 'observed', identity: failing.identity, certified }, []),
   ]
 }
@@ -394,12 +406,20 @@ function trustFacts(key: 'privacy-link' | 'contact-information', checkId: string
   const flags = runTrustChecks(PAGE, parseMetadataFromHtml(failingHtml, PAGE)).filter(flag => flag.checkId === checkId)
   const failing = judge([bad], flags, [key])
   if (good.passed !== true || good.complete === false || bad.passed || bad.complete === false) throw new Error(checkId + ' trust observation changed')
+  const unread = unreadTrust(false, false)
+  const open = publicTrustObservations(unread)[key]
+  const openFlags = runTrustChecks(PAGE, unread).filter(flag => flag.checkId === checkId)
+  if (open.complete !== false || open.passed || openFlags.length) throw new Error(checkId + ' incomplete trust observation changed')
   return [
     { scenario: 'working', ...judge([good], [], [key]) },
     { scenario: 'failing', ...failing },
-    { scenario: 'incomplete', verdict: 'unavailable', identity: failing.identity },
+    { scenario: 'incomplete', ...judge([open], openFlags, [key]) },
     { scenario: 'repaired', verdict: 'observed', identity: failing.identity },
   ]
+}
+function unreadTrust(privacy: boolean, contact: boolean): PageMetadata {
+  return { ...parseMetadataFromHtml(pageHtml(), PAGE), hasPrivacyPolicy: privacy, hasContactInfo: contact,
+    renderedCopy: { version: 1, pageUrl: PAGE, pageText: '', h1s: [], h2s: [], complete: false, textTruncated: false } }
 }
 
 function accountFacts(kind: AccountObservation['kind']): Fact[] {
@@ -733,21 +753,117 @@ const handlers: Record<string, Handler> = {
   },
   'conversion.loading-feedback': async () => {
     const key = 'mobile-loading-delay'
-    const fast = await inspect('mobile-ux-quality', pageHtml(), metrics({ loadExperience: loading(800) }))
-    const slow = await inspect('mobile-ux-quality', pageHtml(), metrics({ loadExperience: loading(5200) }))
-    const missing = await inspect('mobile-ux-quality', pageHtml(), null)
-    const failing = judge(slow.assertions, slow.flags, [key])
-    const later = judge(fast.assertions, [], [key])
-    if (!fast.assertions.some(assertion => assertion.key === key && assertion.passed && assertion.complete !== false)) throw new Error('Mobile loading clearance was not recorded')
+    const checkId = 'mobile-load-delay-content'
+    const metadata = parseMetadataFromHtml(pageHtml(), PAGE)
+    const observation = metrics().loadingObservation!
+    const window = (milliseconds: number, profile = observation.scope.profile, contentVisible = true) => {
+      const recorded = { ...observation, contentVisible, scope: { ...observation.scope, profile } }
+      return metrics({ loadExperience: { device: 'mobile' as const, initialScreenshotUrl: null, initialCaptureElapsedMs: 100, finalCaptureElapsedMs: 6000,
+        loadingVisibleAtInitial: true, loadingVisibleAtFinal: false, loadingClearedMs: milliseconds, loadingLabel: 'Loading',
+        finalReadyState: 'complete', finalTitle: 'Acme', observation: recorded }, loadingObservation: recorded })
+    }
+    const run = async (captured: CaptureMetrics | null) => {
+      const checked = await runAllChecks(PAGE, metadata, null, null, [], undefined, captured, undefined, undefined, true, ['mobile-ux-quality'])
+      return { flags: checked.flags.filter(flag => flag.checkId === checkId), assertions: checked.executions[0]?.assertions ?? [] }
+    }
+    const healthy = await run(window(800))
+    const failed = await run(window(5200))
+    const missing = await run(null)
+    const blank = await run(window(800, observation.scope.profile, false))
+    const shifted = await run(window(800, 'other-mobile'))
+    const failing = judge(failed.assertions, failed.flags, [key])
+    const later = judge(healthy.assertions, [], [key])
+    const clearance = (assertions: CheckAssertion[]) => assertions.find(assertion => assertion.key === key)
+    const repairedAssertion = clearance(healthy.assertions)
+    const failedAssertion = clearance(failed.assertions)
+    if (later.verdict !== 'observed' || !repairedAssertion?.passed || repairedAssertion.complete === false || repairedAssertion.disposition !== 'observed')
+      throw new Error('Mobile loading clearance was not recorded as an advisory observation')
+    if (failing.verdict !== 'failed' || !failedAssertion || failedAssertion.passed || failedAssertion.complete === false || failedAssertion.disposition === 'observed')
+      throw new Error('Measured mobile loading delay was not recorded')
+    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || mobileRecovers(checkId, failed.flags[0], healthy.assertions) ||
+      mobileRecovers(checkId, failed.flags[0], blank.assertions) || mobileRecovers(checkId, failed.flags[0], shifted.assertions) ||
+      mobileRecovers(checkId, failed.flags[0], missing.assertions))
+      throw new Error('Advisory mobile loading clearance certified recovery')
     return [
       { scenario: 'working', ...later },
       { scenario: 'failing', ...failing },
       { scenario: 'incomplete', ...judge(missing.assertions, [], [key]) },
-      { scenario: 'repaired', verdict: later.verdict, identity: failing.identity },
+      { scenario: 'repaired', verdict: 'incomplete', identity: failing.identity },
     ]
   },
-  'conversion.input-zoom': () => heuristic('mobile-ux-quality', 'mobile-input-fonts', { captured: { inputsBelow16px: [{ selector: '#email', fontSize: 14 }] } }, 'metrics'),
-  'conversion.button-placement': () => heuristic('mobile-ux-quality', 'mobile-cta-position', { captured: { mobilePrimaryCtaTopPx: 0 } }, 'metrics'),
+  'conversion.input-zoom': async () => {
+    const key = 'mobile-input-fonts'
+    const checkId = 'mobile-input-zoom'
+    const control = 'mobile-input:' + 'ab'.repeat(32)
+    const metadata = parseMetadataFromHtml(pageHtml(), PAGE)
+    const scope = metrics().loadingObservation!
+    const captured = (fontSize: number, profile = scope.scope.profile) => metrics({
+      inputsBelow16px: fontSize < 16 ? [{ selector: '#email', fontSize }] : [],
+      inputFontSamples: [{ selector: '#email', fontSize, context: control }],
+      inputFontsComplete: true,
+      loadingObservation: { ...scope, scope: { ...scope.scope, profile } },
+    })
+    const run = async (value: CaptureMetrics | null) => {
+      const checked = await runAllChecks(PAGE, metadata, null, null, [], undefined, value, undefined, undefined, true, ['mobile-ux-quality'])
+      return { flags: checked.flags.filter(flag => flag.checkId === checkId), assertions: checked.executions[0]?.assertions ?? [] }
+    }
+    const healthy = await run(captured(16))
+    const failed = await run(captured(14))
+    const missing = await run(null)
+    const shifted = await run(captured(16, 'other-mobile'))
+    const failing = judge(failed.assertions, failed.flags, [key])
+    const later = judge(healthy.assertions, [], [key])
+    const sizing = (assertions: CheckAssertion[]) => assertions.find(assertion => assertion.key === key)
+    const repairedAssertion = sizing(healthy.assertions)
+    const failedAssertion = sizing(failed.assertions)
+    if (later.verdict !== 'observed' || !repairedAssertion?.passed || repairedAssertion.complete === false || repairedAssertion.disposition !== 'observed')
+      throw new Error('16px input sizing was not recorded as an advisory CSS observation')
+    if (failing.verdict !== 'failed' || !failedAssertion || failedAssertion.passed || failedAssertion.complete === false || failedAssertion.disposition === 'observed')
+      throw new Error('Measured small input was not recorded')
+    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || mobileRecovers(checkId, failed.flags[0], healthy.assertions) ||
+      mobileRecovers(checkId, failed.flags[0], shifted.assertions) || mobileRecovers(checkId, failed.flags[0], missing.assertions))
+      throw new Error('Input sizing recovery certified a non-comparable sample')
+    return [
+      { scenario: 'working', ...later },
+      { scenario: 'failing', ...failing },
+      { scenario: 'incomplete', ...judge(missing.assertions, [], [key]) },
+      { scenario: 'repaired', verdict: 'incomplete', identity: failing.identity },
+    ]
+  },
+  'conversion.button-placement': async () => {
+    const key = 'mobile-cta-position'
+    const checkId = 'mobile-cta-thumb-zone'
+    const metadata = parseMetadataFromHtml(pageHtml(), PAGE)
+    const run = async (captured: CaptureMetrics | null) => {
+      const checked = await runAllChecks(PAGE, metadata, null, null, [], undefined, captured, undefined, undefined, true, ['mobile-ux-quality'])
+      return { flags: checked.flags.filter(flag => flag.checkId === checkId), assertions: checked.executions[0]?.assertions ?? [] }
+    }
+    const healthy = await run(metrics())
+    const failed = await run(metrics({ mobilePrimaryCtaTopPx: 0 }))
+    const missing = await run(null)
+    const shifted = await run(metrics({ loadingObservation: { ...metrics().loadingObservation!, scope: { pageUrl: PAGE, finalUrl: PAGE, profile: 'other-mobile', access: 'public' } } }))
+    const failing = judge(failed.assertions, failed.flags, [key])
+    const flag = failed.flags[0]
+    const certified = certifies(checkId, flag, healthy.assertions, 'mobile-ux-quality', 'rendered-dom')
+    const wrongWindow = certifies(checkId, flag, shifted.assertions, 'mobile-ux-quality', 'rendered-dom')
+    const absent = certifies(checkId, flag, missing.assertions, 'mobile-ux-quality', 'rendered-dom')
+    const position = (assertions: CheckAssertion[]) => assertions.find(assertion => assertion.key === key)
+    const failedAssertion = position(failed.assertions)
+    const repairedAssertion = position(healthy.assertions)
+    if (failing.verdict !== 'failed' || !failedAssertion || failedAssertion.passed || failedAssertion.complete === false || failedAssertion.disposition === 'observed')
+      throw new Error('Measured button placement failure was not recorded')
+    if (judge(healthy.assertions, [], [key]).verdict !== 'passed' || !repairedAssertion?.passed || repairedAssertion.complete === false || repairedAssertion.disposition === 'observed')
+      throw new Error('Measured button placement repair was not recorded')
+    if (judge(missing.assertions, [], [key]).verdict !== 'incomplete' || !certified || wrongWindow || absent)
+      throw new Error('Button placement recovery did not stay on the original mobile window')
+    return [
+      { scenario: 'working', ...judge(healthy.assertions, [], [key]) },
+      { scenario: 'failing', ...failing },
+      { scenario: 'incomplete', ...judge(missing.assertions, [], [key]) },
+      { scenario: 'repaired', verdict: certified ? 'passed' : 'observed', identity: failing.identity, certified },
+      { scenario: 'recurring', verdict: failing.verdict, identity: failing.identity },
+    ]
+  },
   'conversion.cta-focus': () => heuristic('cta-focus', 'primary-action-count', { captured: { competingPrimaryCtaCount: 3, competingPrimaryCtaLabels: ['Start', 'Buy', 'Talk'] } }, 'metrics'),
   'conversion.value-proposition': () => heuristic('messaging-clarity', 'headline-outcome', { html: pageHtml('The ultimate platform') }, 'html'),
   'conversion.audience-language': () => heuristic('messaging-clarity', 'audience-or-outcome', { html: pageHtml('A brighter tomorrow') }, 'html'),
@@ -774,10 +890,15 @@ const handlers: Record<string, Handler> = {
     const failing = judge([bad['privacy-link'], bad['contact-information']], flags, ['privacy-link', 'contact-information'])
     const later = [good['privacy-link'], good['contact-information']]
     const certified = certifies('no-privacy-policy', flags.find(flag => flag.checkId === 'no-privacy-policy'), later, 'trust', 'original-html')
+    const unread = unreadTrust(false, false)
+    const open = publicTrustObservations(unread)
+    const openFlags = runTrustChecks(PAGE, unread)
+    if (open['privacy-link'].complete !== false || open['contact-information'].complete !== false || openFlags.some(flag => flag.checkId === 'no-privacy-policy' || flag.checkId === 'no-contact-info'))
+      throw new Error('Unread contact and privacy evidence was treated as a finished observation')
     return [
       { scenario: 'working', ...judge(later, [], ['privacy-link', 'contact-information']) },
       { scenario: 'failing', ...failing },
-      { scenario: 'incomplete', verdict: 'unavailable', identity: failing.identity },
+      { scenario: 'incomplete', ...judge([open['privacy-link'], open['contact-information']], [], ['privacy-link', 'contact-information']) },
       { scenario: 'repaired', verdict: certified ? 'passed' : 'observed', identity: failing.identity, certified },
       { scenario: 'recurring', verdict: failing.verdict, identity: failing.identity },
     ]
@@ -848,10 +969,13 @@ const handlers: Record<string, Handler> = {
     const flags = runSecurityBasicsChecks('http://example.com/', null)
     const failing = judge(bad, flags, ['https'])
     const certified = certifies('no-https', flags[0], good, 'security', 'http')
-    const admitted = normalizeAuditUrl('not a url')
+    const open = assessSecurityTransport(PAGE, null, document(null, { status: null, complete: false }))
+    const https = open.assertions.find(assertion => assertion.key === 'https')
+    if (https?.complete !== false || https.passed || open.flags.some(flag => flag.checkId === 'no-https'))
+      throw new Error('An unobserved public response was treated as an HTTPS finding')
     return [
       { scenario: 'working', ...judge(good, [], ['https']) },
-      { scenario: 'incomplete', verdict: admitted.ok ? 'failed' : 'unavailable', identity: 'security:unadmitted' },
+      { scenario: 'incomplete', ...judge(open.assertions, open.flags, ['https']) },
       ...pair(failing, { verdict: certified ? 'passed' : 'observed', identity: failing.identity, certified }, []),
     ]
   },
@@ -936,23 +1060,55 @@ const handlers: Record<string, Handler> = {
   'search.canonicals': () => searchCase(['canonical'], ['search-canonical-conflict', 'search-canonical-invalid', 'search-canonical-target'], { working: '<title>Example website title</title><link rel="canonical" href="https://example.com/">', failing: '<title>Page</title><link rel="canonical" href="/a"><link rel="canonical" href="/b"><link rel="canonical" href="javascript:bad">', incomplete: {}, failingOverrides: {}, goodOverrides: {} }),
   'search.indexing': () => searchCase(['indexing'], ['robots-blocks-indexing'], { working: PRESENTATION, failing: '<title>Page</title><meta name="robots" content="noindex">', incomplete: {}, failingOverrides: { sitemapUrls: [PAGE] } }),
   'search.robots': () => searchCase(['crawl'], ['search-crawl-access'], { working: PRESENTATION, failing: PRESENTATION, incomplete: { robots: document('server failure', { status: 503, url: PAGE + 'robots.txt', finalUrl: PAGE + 'robots.txt' }) }, failingOverrides: { robots: document('User-agent: *\nDisallow: /', { url: PAGE + 'robots.txt', finalUrl: PAGE + 'robots.txt' }) } }),
-  'search.sitemaps': () => searchCase(['discovery'], ['sitemap-missing', 'search-sitemap-invalid'], { working: PRESENTATION, failing: PRESENTATION, incomplete: { sitemaps: [document(null, { url: PAGE + 'sitemap.xml', finalUrl: PAGE + 'sitemap.xml', status: 503, complete: false })], sitemapsComplete: false }, failingOverrides: { sitemaps: [document(null, { url: PAGE + 'sitemap.xml', finalUrl: PAGE + 'sitemap.xml', status: 404, complete: true })], declaredSitemaps: [PAGE + 'sitemap.xml'], sitemapUrls: [], sitemapsComplete: true }, goodOverrides: { sitemaps: [document('<urlset><url><loc>https://example.com/</loc></url></urlset>', { url: PAGE + 'sitemap.xml', finalUrl: PAGE + 'sitemap.xml', headers: { 'content-type': 'application/xml' } })], sitemapUrls: [PAGE], sitemapsComplete: true } }),
+  'search.sitemaps': async () => {
+    const ids = ['sitemap-missing', 'search-sitemap-invalid']
+    const sitemapUrl = PAGE + 'sitemap.xml'
+    const sitemap = (body: string | null, url = sitemapUrl, status = body ? 200 : 404, complete = true) => document(body, { url, finalUrl: url, status, complete, ...(body ? { headers: { 'content-type': 'application/xml' } } : {}) })
+    const failingOverrides = { sitemaps: [sitemap(null)], declaredSitemaps: [sitemapUrl], sitemapUrls: [], sitemapsComplete: true }
+    const goodOverrides = { sitemaps: [sitemap('<urlset><url><loc>https://example.com/</loc></url></urlset>')], sitemapUrls: [PAGE], sitemapsComplete: true }
+    const working = await searchObservations(PRESENTATION, ['discovery'])
+    const failingObservations = await searchObservations(PRESENTATION, ['discovery'], failingOverrides)
+    const blocked = document('<html><body>Error</body></html>', { status: 403 })
+    const incomplete = await searchObservations(undefined, ['discovery'], { original: blocked, rendered: blocked, sitemaps: [sitemap(null, sitemapUrl, 503, false)], sitemapsComplete: false })
+    const failing = searchJudge(failingObservations, ids)
+    const flag = searchFindings(failingObservations).find(item => ids.includes(item.checkId))
+    const receiptFor = async (overrides: Parameters<typeof evidence>[1]) => searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: 'catalog', pageUrl: PAGE, collectedAt: evidence().collectedAt, complete: true, observations: await searchObservations(PRESENTATION, ['discovery'], overrides) })
+    const recovery = flag ? assessSearchRecovery(await receiptFor(goodOverrides), flag.checkId, flag.attentionPolicy, PAGE) : { comparable: false, verdict: 'unknown' as const }
+    const moved = flag ? assessSearchRecovery(await receiptFor({ sitemaps: [sitemap('<urlset><url><loc>https://example.com/</loc></url></urlset>', PAGE + 'other.xml')], sitemapUrls: [PAGE], sitemapsComplete: true }), flag.checkId, flag.attentionPolicy, PAGE) : { comparable: true, verdict: 'passed' as const }
+    if (moved.comparable && moved.verdict === 'passed') throw new Error('Sitemap repair accepted a different resource')
+    const certified = recovery.comparable && recovery.verdict === 'passed'
+    if (!certified) throw new Error('Declared sitemap repair was not certified on the original resource')
+    return [
+      { scenario: 'working', ...searchJudge(working, ids) },
+      { scenario: 'failing', ...failing },
+      { scenario: 'incomplete', ...searchJudge(incomplete, ids) },
+      { scenario: 'repaired', verdict: certified ? 'passed' : 'unavailable', identity: failing.identity, certified },
+      { scenario: 'recurring', verdict: failing.verdict, identity: failing.identity },
+    ]
+  },
   'search.links': async () => {
     const linked = await searchObservations(PRESENTATION.replace('</body>', '<a href="https://example.com/pricing">Pricing</a></body>'), ['discovery'], { sitemapUrls: [PAGE], sitemapsComplete: true })
     const unlisted = await searchObservations(PRESENTATION, ['discovery'], { sitemapUrls: [], sitemapsComplete: true })
     const blocked = document('<html><body>Error</body></html>', { status: 403 })
     const incomplete = await searchObservations(undefined, ['discovery'], { original: blocked, rendered: blocked })
+    const uncovered = await searchObservations(PRESENTATION, ['discovery'], { sitemapUrls: [], sitemapsComplete: false })
+    const listedPartial = await searchObservations(PRESENTATION.replace('</body>', '<a href="https://example.com/pricing">Pricing</a></body>'), ['discovery'], { sitemapUrls: [PAGE], sitemapsComplete: false })
     const link = (items: SearchObservation[]) => items.find(item => item.checkId === 'search-discovery-links')
-    const good = link(linked), bad = link(unlisted), open = link(incomplete)
-    if (!good?.observed.includes('1 distinct') || !bad?.observed.includes('was not recorded') || good.disposition === 'passed') throw new Error('Discovery link observation changed')
-    const listedReceipt = searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: 'catalog', pageUrl: PAGE, collectedAt: evidence().collectedAt, complete: true, observations: linked })
-    const recovery = bad ? assessSearchRecovery(listedReceipt, bad.checkId, bad.attention, PAGE) : { comparable: false, verdict: 'unknown' as const }
-    const certified = recovery.comparable && recovery.verdict === 'passed'
+    const good = link(linked), bad = link(unlisted), open = link(incomplete), partial = link(uncovered), listedOpen = link(listedPartial)
+    if (!good?.observed.includes('1 distinct') || !bad?.observed.includes('was not recorded') || good.disposition === 'passed' || bad.disposition === 'passed') throw new Error('Discovery link observation changed')
+    if (partial?.disposition !== 'unknown' || partial.reason !== 'sitemap_coverage_incomplete' || listedOpen?.disposition !== 'observed' || listedOpen.reason !== 'checked_page_discovery_recorded')
+      throw new Error('Incomplete sitemap membership was recorded as a finished observation')
+    const receiptFor = (observations: SearchObservation[], complete: boolean) => searchReceiptSchema.parse({ kind: 'search-checks', version: 1, auditId: 'catalog', pageUrl: PAGE, collectedAt: evidence().collectedAt, complete, observations })
+    const recovery = bad ? assessSearchRecovery(receiptFor(linked, true), bad.checkId, bad.attention, PAGE) : { comparable: true, verdict: 'passed' as const }
+    const partialRecovery = bad ? assessSearchRecovery(receiptFor(listedPartial, false), bad.checkId, bad.attention, PAGE) : { comparable: true, verdict: 'passed' as const }
+    const uncoveredRecovery = bad ? assessSearchRecovery(receiptFor(uncovered, false), bad.checkId, bad.attention, PAGE) : { comparable: true, verdict: 'passed' as const }
+    if ([recovery, partialRecovery, uncoveredRecovery].some(result => result.comparable && result.verdict === 'passed'))
+      throw new Error('Discovery link recovery certified an observation that is not a repair')
     return [
       { scenario: 'working', verdict: 'observed', identity: 'search:search-discovery-links:listed' },
       { scenario: 'failing', verdict: 'observed', identity: 'search:search-discovery-links:unlisted' },
       { scenario: 'incomplete', verdict: open?.disposition === 'unknown' ? 'incomplete' : 'failed', identity: 'search:search-discovery-links:unknown' },
-      { scenario: 'repaired', verdict: certified ? 'passed' : 'unavailable', identity: 'search:search-discovery-links:unlisted', certified },
+      { scenario: 'repaired', verdict: 'incomplete', identity: 'search:search-discovery-links:unlisted' },
       { scenario: 'recurring', verdict: 'observed', identity: 'search:search-discovery-links:unlisted' },
     ]
   },
@@ -1011,9 +1167,13 @@ const handlers: Record<string, Handler> = {
     const flat = (value: ReturnType<typeof evaluateCorridorConsistency>) => [...value.assertions.values()].flat()
     const failing = judge(flat(shared), shared.flags, ['preview-titles'])
     const certified = certifies('corridor-og-title-drift', shared.flags.find(flag => flag.checkId === 'corridor-og-title-drift'), flat(distinct), 'corridor', 'rendered-dom', PAGE + 'pricing')
+    const unfinished = evaluateCorridorConsistency([page(PAGE, 'Home offer', 'Home description for this site.'),
+      { ...page(PAGE + 'pricing', 'Pricing offer', 'Pricing description for this page.'), titleComplete: false }])
+    if (!flat(unfinished).some(assertion => assertion.key === 'preview-titles' && assertion.complete === false) || unfinished.flags.some(flag => flag.checkId === 'corridor-og-title-drift'))
+      throw new Error('Unfinished preview titles were treated as a finished comparison')
     return [
       { scenario: 'working', ...judge(flat(distinct), [], ['preview-titles']) },
-      { scenario: 'incomplete', verdict: evaluateCorridorConsistency([page(PAGE, 'Home', 'Home description')]).flags.length === 0 && flat(evaluateCorridorConsistency([page(PAGE, 'Home', 'Home description')])).length === 0 ? 'unavailable' : 'failed', identity: 'corridor:single-page' },
+      { scenario: 'incomplete', ...judge(flat(unfinished), unfinished.flags, ['preview-titles']) },
       ...pair(failing, { verdict: certified ? 'passed' : 'observed', identity: failing.identity, certified }, []),
     ]
   },
@@ -1134,14 +1294,14 @@ const handlers: Record<string, Handler> = {
     const drifted = await probeUptime(PAGE, async () => ({ body: 'ok', finalUrl: 'https://example.com/moved', statusCode: 200, headers: {}, complete: true, redirects: [] }))
     const unavailable = await probeUptime(PAGE, async () => { throw new Error('socket') })
     const restored = await probeUptime(PAGE, async () => ({ body: 'ok', finalUrl: PAGE, statusCode: 200, headers: {}, complete: true, redirects: [] }))
-    if (sameUrl.finalUrl !== PAGE || drifted.finalUrl === PAGE || unavailable.finalUrl !== null || restored.finalUrl !== PAGE) throw new Error('Uptime provenance changed')
+    if (sameUrl.finalUrl !== PAGE || drifted.finalUrl === PAGE || unavailable.finalUrl !== null || unavailable.result === 'FAILED' || restored.finalUrl !== PAGE) throw new Error('Uptime provenance changed')
     const opened = uptimeTransition({ result: drifted.result, now: NOW, confirmation: true, pendingFailureAt: new Date(NOW.getTime() - 30_000), incidentOpen: false })
     const recovered = uptimeTransition({ result: restored.result, now: NOW, confirmation: false, pendingFailureAt: null, incidentOpen: opened.event === 'opened' })
     const certified = opened.event === 'opened' && recovered.event === 'recovered'
     return [
       { scenario: 'working', verdict: 'passed', identity: 'uptime:final:' + sameUrl.finalUrl },
       { scenario: 'failing', verdict: 'observed', identity: 'uptime:final:https://example.com/moved' },
-      { scenario: 'incomplete', verdict: 'unavailable', identity: 'uptime:final:null' },
+      { scenario: 'incomplete', verdict: unavailable.result === 'UNKNOWN' ? 'incomplete' : 'failed', identity: 'uptime:final:null' },
       { scenario: 'repaired', verdict: certified ? 'passed' : 'observed', identity: 'uptime:final:https://example.com/moved', certified },
       { scenario: 'recurring', verdict: 'observed', identity: 'uptime:final:https://example.com/moved' },
     ]

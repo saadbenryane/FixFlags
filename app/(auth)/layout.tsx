@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { MarketingShell } from '@/components/layout/marketing-shell'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 
 export const metadata: Metadata = {
   title: BRAND.name,

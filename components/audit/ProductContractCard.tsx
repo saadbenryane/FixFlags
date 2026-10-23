@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { displayProductPurpose, type ProductContract } from '@/lib/audit/product-contract'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { trackEvent } from '@/lib/analytics/events'
 import { cn } from '@/lib/utils'
 

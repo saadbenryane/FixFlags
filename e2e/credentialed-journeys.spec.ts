@@ -159,6 +159,7 @@ test.describe('credentialed revenue journeys', () => {
   test('[journey:anonymous-claim] anonymous claim keeps prompts private and produces a metered full update-review diff', async ({ page }) => {
     test.setTimeout(420_000)
     const targetUrl = requiredEnv('E2E_AUDIT_URL')
+    const host = new URL(targetUrl).host
     const email = `validationalerts+${requiredEnv('RELEASE_RUN_ID').toLowerCase()}-claim@fixflags.com`
     const password = requiredEnv('E2E_SIGNUP_PASSWORD')
 
@@ -166,7 +167,7 @@ test.describe('credentialed revenue journeys', () => {
     await page.getByLabel('Website URL').first().fill(targetUrl)
     await page.getByRole('button', { name: 'Analyze' }).first().click()
     await page.waitForURL(/\/sites\//, { timeout: 30_000 })
-    await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
     await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
     const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
     await expect.poll(async () => {
@@ -217,7 +218,7 @@ test.describe('credentialed revenue journeys', () => {
     await expect(page.getByRole('dialog').getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toBeHidden()
-    await expect(page.getByRole('heading', { name: /Overview|Site settings|Flags/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: new RegExp(`^(?:${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|Settings|Flags)$`) })).toBeVisible()
     const claimedResponse = await page.request.get(`/api/sites/${siteId}`)
     expect(claimedResponse.status()).toBe(200)
     const claimed = await claimedResponse.json() as SiteHomeView
@@ -238,7 +239,7 @@ test.describe('credentialed revenue journeys', () => {
     expect(updateBody.siteId).toBe(claimed.site.projectId)
     await waitForReport(page.request, updateBody.reportId)
     await page.goto(`/sites/${updateBody.siteId}`)
-    await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
     await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
   })
 

@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { RefreshCw } from 'lucide-react'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { helpHrefForFailureCode } from '@/lib/help/contextual'
 import { HelpSupportActions } from '@/components/help/HelpSupportActions'

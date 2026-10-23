@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MeProvider, useMe, type MeUser } from '@/hooks/useMe'
-import { AUTH, PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy'
+import { AUTH, PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy-barrel'
 import { AuditInput } from '@/components/audit/AuditInput'
 
 vi.mock('@/lib/analytics/events', () => ({ trackEvent: vi.fn() }))

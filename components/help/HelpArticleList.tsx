@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { HelpArticle } from '@/lib/help/types'
 import { helpArticlePath } from '@/lib/help/types'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 import { Heading, Body } from '@/components/ui/typography'
 
 export function HelpArticleList({

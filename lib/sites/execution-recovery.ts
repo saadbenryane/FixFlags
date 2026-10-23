@@ -9,6 +9,14 @@ const connectionReasons = new Set(['GOOGLE_AUTH_REQUIRED', 'GOOGLE_PROPERTY_MISM
 const supportReasons = new Set(['STORAGE_NOT_CONFIGURED', 'CHECK_NOT_REGISTERED', 'CHECK_VERSION_UNAVAILABLE',
   'EVALUATOR_NOT_REGISTERED', 'SEARCH_EVALUATOR_NOT_REGISTERED', 'EXECUTION_SPEC_INVALID', 'ARTIFACT_KIND_MISMATCH'])
 const rank = { retry: 0, inspect: 1, support: 2, connections: 3, access: 4 }
+const publicActionLimit = 'PROTECTED_ACTION_REQUIRES_FIXTURE'
+export type RecheckReplacement = ExecutionRecovery & { action: Exclude<ExecutionRecovery['action'], 'retry'> }
+
+/** A refused public action does not block another check of the saved page. Retry stays on Recheck. */
+export function recoveryReplacesRecheck(recovery: ExecutionRecovery | null | undefined): recovery is RecheckReplacement {
+  if (!recovery || recovery.action === 'retry') return false
+  return !(recovery.action === 'access' && recovery.reasons.length > 0 && recovery.reasons.every(reason => reason === publicActionLimit))
+}
 
 /** A blocked collector is not retryable merely because its scope is incomplete. */
 export function executionRecovery(tasks: readonly Task[]): ExecutionRecovery | null {

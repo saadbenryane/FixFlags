@@ -8,7 +8,7 @@ import {
   isGithubRepoAccessConfigured,
   signGithubConnectState,
 } from '@/lib/integrations/github'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { githubSettingsDestination, githubResultDestination } from '@/lib/integrations/github-continuation'
 

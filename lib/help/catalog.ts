@@ -1,4 +1,5 @@
 import { PUBLIC_OFFER } from '@/lib/marketing/copy/public-offer'
+import { SITE_COVERAGE_HELP } from '@/lib/marketing/copy/site-coverage-help'
 import type { HelpArticle, HelpCategory } from './types'
 
 export const HELP_CATEGORIES: readonly HelpCategory[] = [
@@ -36,11 +37,13 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'read-site-coverage', categoryId: 'sites-and-coverage', title: 'Read Site coverage',
     excerpt: "See what FixFlags checked and how recent the results are.", popular: true,
-    searchTokens: ['coverage', 'cards', 'freshness', 'unknown', 'partial'], updatedAt: '2026-10-13', estimatedReadMinutes: 3,
+    searchTokens: ['coverage', 'cards', 'freshness', 'unknown', 'partial', 'conversion', 'performance', 'tracking', 'accessibility', 'keyboard', 'timeline'], updatedAt: '2026-10-23', estimatedReadMinutes: 3,
     body: [
-      { type: "p", text: "Overview groups results into Pages, Conversion, Security, Search, Performance, and Tracking. Open an area to see the pages checked, the date, and anything FixFlags could not check." },
-      { type: "ul", items: ["Healthy: the checks for that area passed and the results are recent.", "Partial: some checks finished, but others could not.", "Unknown or Not checked yet: there is not enough information yet.", "Stale: the last result is too old to describe the website now."] },
-      { type: "callout", text: "No Flags does not mean every page or action has been checked." },
+      { type: 'p', text: SITE_COVERAGE_HELP.introduction },
+      { type: 'ul', items: SITE_COVERAGE_HELP.categories },
+      { type: 'ul', items: SITE_COVERAGE_HELP.states },
+      { type: 'p', text: SITE_COVERAGE_HELP.timeline },
+      { type: 'callout', text: SITE_COVERAGE_HELP.limitation },
     ], related: ['coverage-limitations', 'read-a-flag'], relatedDocs: ['site-care'],
   },
   {

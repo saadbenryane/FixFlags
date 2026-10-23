@@ -1,5 +1,4 @@
-.card { min-width: 0; padding: 12px 18px 16px; border: 1px solid hsl(var(--border) / .65); border-radius: var(--radius-board-panel); background: hsl(var(--background)); }
-.card[data-state='offline'] { border-color: hsl(var(--brand) / .65); }
+.card { min-width: 0; padding: 12px 18px 16px; border: 0; border-radius: var(--radius-board-panel); background: hsl(var(--background)); box-shadow: var(--shadow-board); }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 44px; margin-bottom: 4px; border-radius: var(--radius-control); text-align: left; }
 .header:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .header > span { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }

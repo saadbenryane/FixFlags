@@ -41,8 +41,10 @@ describe('native page observation comparison', () => {
     const changed = await inspect(repaired(declarations[0]), { ...scope, access: 'credentialed:other' }, 'metadata')
     expect(scopedAssertionForTarget({ receipt: changed.receipt, checkId, flag })).toBeUndefined()
     const unavailable = await runAllChecks(url, null, null, null, [], undefined, undefined, undefined, undefined, true, ['metadata'], { renderedScope: scope })
-    expect(unavailable.failedModules).toEqual(['metadata'])
-    expect(unavailable.executions[0].assertions).toEqual([])
+    expect(unavailable.failedModules).toEqual([])
+    expect(unavailable.flags).toEqual([])
+    expect(unavailable.executions[0]).toMatchObject({ module: 'metadata', passed: false, complete: false, applicable: true,
+      limitation: 'Page metadata was not collected. These observations remain unknown.', assertions: [] })
   })
 
   it('shares comparable repair and recurrence proof while refusing different capture conditions and old unscoped history', async () => {

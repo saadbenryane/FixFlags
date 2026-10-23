@@ -14,6 +14,7 @@ export function assembleFlowModuleCheck(input: {
   actionFlags: readonly unknown[]
   pricingOnly: boolean
   targetedPricing: boolean
+  protectedActionRefused?: boolean
 }) {
   const { result } = input
   const applicable = input.pricingOnly
@@ -24,6 +25,10 @@ export function assembleFlowModuleCheck(input: {
   const contentAssertions = result.status === 'success' && result.destinationUX ? destinationContentObservations(result) : []
   const assertions: CheckAssertion[] = [...primaryAssertions, ...postClickAssertions(result.postClickMetrics, result.finalUrl, result.actionEvidence),
     ...pricingNavigationAssertions(result.multiStep?.pricingEvidence), ...trustAssertions, ...contentAssertions]
+  if (applicable && input.protectedActionRefused) assertions.push({ key: 'public-action-boundary', name: 'Public action coverage',
+    expected: 'The action can be inspected without submitting protected data',
+    observed: 'A protected action was blocked. The recorded observations remain available; the affected action is unverified.',
+    passed: false, complete: false })
   const destinationComplete = !result.destinationUX || result.destinationUX.contentComplete !== false && result.destinationUX.controlsComplete !== false
   const complete = input.pricingOnly
     ? !applicable || assertions.length > 0 && assertions.every(assertion => assertion.complete === true)

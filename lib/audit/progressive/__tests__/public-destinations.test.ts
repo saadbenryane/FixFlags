@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const dns = vi.hoisted(() => ({ resolve4: vi.fn(), resolve6: vi.fn() }))
 vi.mock('node:dns/promises', () => dns)
+import { collectionHandlers } from '../collectors'
 import { evaluatorHandlers } from '../evaluators'
+import { httpArtifactSchema } from '../snapshots'
 import { PREVIEW_IMAGE_MAX_BYTES } from '../../checks/preview-image-response'
 import { readArtifact, serializeArtifact } from '../contracts'
 import { checkArtifactSchema } from '../results'
@@ -13,7 +15,7 @@ import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '
 import { destinationContext, DESTINATION_VERIFICATION_RULE } from '../../checks/destination-evidence'
 import { publicHttpCapacity } from '../capacity'
 import { openCheckDestination } from '../../open-check'
-import { collectDocument } from '../../search/collect'
+import { collectDocument, missingDocument } from '../../search/collect'
 import { parseMetadataFromHtml, type PageMetadata } from '../../metadata'
 
 const pageUrl = 'https://example.com/pricing'
@@ -32,6 +34,24 @@ function context(module: string, metadata = healthyMeta(), page = pageUrl): Task
     }) } as unknown as TaskContext['task']]]) }
 }
 async function checked(ctx: TaskContext) { return checkArtifactSchema.parse(readArtifact(await evaluate(ctx), 'check').data) }
+function headerContext(document: ReturnType<typeof missingDocument>) {
+  const ctx = context('security-headers')
+  ctx.audit.executionSpec = { version: 1, targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+    checks: { 'security-csp-missing': 1 }, outcomes: [], verificationTarget: null }
+  ctx.dependencies = new Map([['http', { workKind: 'http', workState: 'COMPLETED',
+    workResult: serializeArtifact('http', { document, metadata: null }) } as unknown as TaskContext['task']]])
+  return ctx
+}
+async function withheldHeaders(document: ReturnType<typeof missingDocument>) {
+  const result = await checked(headerContext(document))
+  expect(result.flags).toEqual([])
+  expect(result.receipt).toMatchObject({ applicable: true, passed: false, complete: false, pageUrl,
+    limitation: 'This response is not the origin header configuration. Header configuration remains unknown.' })
+  expect(result.receipt.assertions.find(assertion => assertion.key === 'content-security-policy'))
+    .toMatchObject({ passed: false, complete: false })
+  expect(result.receipt.assertions.every(assertion => assertion.complete === false && assertion.passed === false)).toBe(true)
+  return result
+}
 const actionMeta = (links: PageMetadata['links'] = [{ href: '/checkout?plan=paid&token=PRIVATE_VALUE', text: 'Subscribe', rel: null }]) => healthyMeta({ links })
 beforeEach(() => {
   fetchMock.mockReset(); dns.resolve4.mockResolvedValue(['93.184.216.34']); dns.resolve6.mockResolvedValue([])
@@ -267,15 +287,87 @@ describe('guarded public destination evidence', () => {
     }
   })
 
+  it('records a missing captured link list as incomplete and does not invent a broken link', async () => {
+    const ctx = context('seo')
+    const task = ctx.dependencies.get('browser')!
+    const data = readArtifact(task.workResult, 'browser').data
+    task.workResult = serializeArtifact('browser', { ...data, metadata: null })
+    const captured = readArtifact(task.workResult, 'browser')
+    const result = await checked(ctx)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(result.flags).toEqual([])
+    expect(result.receipt).toMatchObject({ applicable: true, passed: false, complete: false, pageUrl,
+      limitation: 'The captured link list was not collected. Public destinations remain unknown.',
+      assertions: [{ key: 'public-destination', passed: false, complete: false }],
+      execution: { source: 'rendered-dom', collectedAt: captured.collectedAt } })
+  })
+
   it('does not diagnose origin security headers from a challenge document', async () => {
-    fetchMock.mockImplementation(async () => new Response('<title>Just a moment...</title>', { headers: { 'cf-mitigated': 'challenge' } }))
+    fetchMock.mockImplementation(async () => new Response('<title>Just a moment...</title>', { status: 200,
+      headers: { 'cf-mitigated': 'challenge', 'content-security-policy': "default-src 'none'" } }))
     const document = await collectDocument(pageUrl, Date.now() + 10_000)
-    const ctx = context('security-headers')
-    ctx.audit.executionSpec = { version: 1, targetUrl: pageUrl, environment: 'production', scope: 'SITE',
-      checks: { 'security-csp-missing': 1 }, outcomes: [], verificationTarget: null }
-    ctx.dependencies = new Map([['http', { workKind: 'http', workState: 'COMPLETED',
-      workResult: serializeArtifact('http', { document, metadata: null }) } as unknown as TaskContext['task']]])
-    await expect(evaluate(ctx)).rejects.toMatchObject({ code: 'PUBLIC_ACCESS_CHALLENGE', retryable: false })
+    expect(document).toMatchObject({ status: 200, reason: 'public_access_challenge' })
+    await withheldHeaders(document)
+  })
+
+  it('records an unresolved redirect as incomplete header evidence', async () => {
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      return new Response(null, { status: 302, headers: { location: url, 'content-security-policy': "default-src 'none'" } })
+    })
+    const document = await collectDocument(pageUrl, Date.now() + 10_000)
+    expect(document).toMatchObject({ status: 302, reason: 'redirect_loop' })
+    await withheldHeaders(document)
+  })
+
+  it.each([401, 403, 429])('records a restricted %s response as incomplete header evidence', async status => {
+    fetchMock.mockImplementation(async () => new Response('Forbidden area', { status,
+      headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'" } }))
+    const document = await collectDocument(pageUrl, Date.now() + 10_000)
+    expect(document.status).toBe(status)
+    expect(document.reason).not.toBe('public_access_challenge')
+    await withheldHeaders(document)
+  })
+
+  it('records a settled response without a status as incomplete header evidence', async () => {
+    const missing = await checked(headerContext(missingDocument(pageUrl, 'public_document_unavailable')))
+    expect(missing.flags).toEqual([])
+    expect(missing.receipt).toMatchObject({ applicable: true, passed: false, complete: false, pageUrl })
+    expect(missing.receipt.assertions.find(assertion => assertion.key === 'content-security-policy'))
+      .toMatchObject({ passed: false, complete: false })
+    expect(missing.receipt.assertions.every(assertion => assertion.complete === false && assertion.passed === false)).toBe(true)
+    const collected = { ...missingDocument(pageUrl, 'public_document_unavailable'), status: 200, headers: {}, body: '', complete: true, reason: null }
+    const flagged = await checked(headerContext(collected))
+    expect(flagged.flags.map(flag => flag.checkId)).toEqual(['security-headers-missing'])
+    expect(flagged.receipt.assertions.find(assertion => assertion.key === 'content-security-policy'))
+      .toMatchObject({ passed: false, complete: true })
+  })
+
+  it('stores a public document that never completes and keeps header evidence incomplete', async () => {
+    const http = collectionHandlers.find(handler => handler.kind === 'http')!
+    async function stored(ctx: TaskContext) {
+      const artifact = await http.evaluate(ctx)
+      http.validateResult(artifact)
+      const parsed = httpArtifactSchema.parse(readArtifact(artifact, 'http').data)
+      ctx.audit.executionSpec = { version: 1, targetUrl: pageUrl, environment: 'production', scope: 'SITE',
+        checks: { 'security-csp-missing': 1 }, outcomes: [], verificationTarget: null }
+      ctx.dependencies = new Map([['http', { workKind: 'http', workState: 'COMPLETED', workResult: artifact } as unknown as TaskContext['task']]])
+      return { parsed, headers: await checked(ctx) }
+    }
+    const expired = context('security-headers')
+    expired.deadline = Date.now() - 1
+    const late = await stored(expired)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(late.parsed.document).toMatchObject({ status: null, complete: false, reason: 'deadline_exhausted' })
+    expect(late.headers.flags).toEqual([])
+    expect(late.headers.receipt).toMatchObject({ applicable: true, passed: false, complete: false })
+    expect(late.headers.receipt.assertions.find(assertion => assertion.key === 'content-security-policy'))
+      .toMatchObject({ passed: false, complete: false })
+    fetchMock.mockRejectedValue(new Error('socket hang up'))
+    const unavailable = await stored(context('security-headers'))
+    expect(unavailable.parsed.document).toMatchObject({ status: null, complete: false, reason: 'public_document_unavailable' })
+    expect(unavailable.headers.flags).toEqual([])
+    expect(unavailable.headers.receipt).toMatchObject({ applicable: true, passed: false, complete: false })
   })
 
   it('bounds DNS waiting and releases HTTP capacity without sending a late request', async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { projectHistory } from '../monitoring-history'
+import { historyExecutionFilter, historyExecutionScope, projectHistory } from '../monitoring-history'
+import { categoryCoverageExecutionSelect, siteCoverageExecutionSelect } from '../site-execution'
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 import { executionSpecSchema } from '../../domain/execution-spec'
 import { serializeArtifact } from '@/lib/audit/progressive/contracts'
@@ -12,6 +13,22 @@ function row(assessment: unknown) {
     verificationAttempts: [], runRequests: [{ source: 'WATCH', verificationTarget: null,
       selections: [{ outcome: { name: 'The page loads' } }], assessments: [assessment] }] }
 }
+describe('history execution loading', () => {
+  const shared = [
+    { workKind: 'automatic-accounts', workState: 'COMPLETED' },
+    { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+  ]
+  it('keeps each recorded scope on its own execution filter', () => {
+    expect(historyExecutionScope({ scope: 'SITE', version: 'old' })).toBe('SITE')
+    expect(historyExecutionScope({ scope: 'CATEGORY' })).toBe('CATEGORY')
+    expect(historyExecutionScope({ scope: 'ACCOUNT_CHECKS' })).toBe('OTHER')
+    expect(historyExecutionScope(null)).toBe('OTHER')
+    expect(historyExecutionFilter('SITE')).toEqual([...shared, ...siteCoverageExecutionSelect.where.OR])
+    expect(historyExecutionFilter('CATEGORY')).toEqual([...shared, ...categoryCoverageExecutionSelect.where.OR])
+    expect(historyExecutionFilter('OTHER')).toEqual(shared)
+  })
+})
+
 describe('scope completion in monitoring history', () => {
   it('keeps an uncollected broad page in the historical completion denominator', () => {
     const targetUrl = 'https://example.com/', peer = targetUrl + 'pricing'

@@ -42,6 +42,27 @@ function context(data: PageSpeedResult, module = 'performance', device?: 'mobile
 }
 
 describe('progressive Performance evidence', () => {
+  it('records a missing PageSpeed result as incomplete and does not invent a measurement', async () => {
+    for (const moduleKey of ['performance', 'mobile'] as const) {
+      const missing = context(measurement(), moduleKey)
+      missing.dependencies = new Map()
+      const result = checkArtifactSchema.parse(readArtifact(await evaluate(missing), 'check').data)
+      expect(result.flags, moduleKey).toEqual([])
+      expect(result.receipt, moduleKey).toMatchObject({ passed: false, complete: false, applicable: true })
+      expect(result.receipt.assertions.some(assertion => assertion.complete === false), moduleKey).toBe(true)
+      expect(result.receipt.execution, moduleKey).toBeUndefined()
+    }
+    const field = context(measurement(), 'performance', 'mobile')
+    field.dependencies = new Map()
+    const inp = checkArtifactSchema.parse(readArtifact(await evaluate(field), 'check').data)
+    expect(inp.flags).toEqual([])
+    expect(inp.receipt.assertions).toEqual([expect.objectContaining({ key: 'inp', passed: false, complete: false })])
+    const otherDevice = checkArtifactSchema.parse(readArtifact(await evaluate(context(measurement({ strategy: 'mobile' }), 'performance')), 'check').data)
+    expect(otherDevice.flags).toEqual([])
+    expect(otherDevice.receipt).toMatchObject({ passed: false, complete: false, applicable: true })
+    expect(otherDevice.receipt.execution?.collectedAt).toEqual(expect.any(String))
+  })
+
   async function categoryMeasurement(data: PageSpeedResult, area: 'performance' | 'conversion') {
     const scoped = context(data, 'mobile')
     scoped.audit.executionSpec = { version: 1, engine: 'progressive-v1', scope: 'CATEGORY', targetUrl: pageUrl,

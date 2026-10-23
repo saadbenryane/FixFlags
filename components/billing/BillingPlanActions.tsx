@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PlanPickerDialog } from '@/components/billing/PlanPickerDialog'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
-import { BILLING_PAGE_COPY } from '@/lib/marketing/copy'
+import { BILLING_PAGE_COPY } from '@/lib/marketing/copy-barrel'
 
 interface Props {
   isPaid: boolean

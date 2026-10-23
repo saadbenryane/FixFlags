@@ -280,7 +280,9 @@ export const BILLING_PAGE_COPY = {
   description: 'Manage your plan and subscription',
   betaOffer: 'Full access during open beta. No usage limits on one website.',
   betaCadence: 'Any supported schedule during beta',
-  cadenceLabel: 'Monitoring options',
+  cadenceLabel: 'Monitoring',
+websitesLabel: 'Websites',
+statusLabel: 'Billing status',
   pastDueTitle: OPEN_BETA_ACCESS ? 'Payment past due' : 'Payment past due: features paused',
   pastDueBody:
     OPEN_BETA_ACCESS ? 'Your subscription payment is past due. You can update your card in the billing portal. Open beta access remains available.' : "Update your card to restore paid monitoring. We'll retry automatically. Monitoring resumes when payment succeeds.",

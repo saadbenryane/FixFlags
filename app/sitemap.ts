@@ -1,6 +1,6 @@
 import { GUIDE_REVIEWED_AT, WEBSITE_GUIDES } from '@/lib/marketing/copy/guides'
 import type { MetadataRoute } from 'next'
-import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy'
+import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy-barrel'
 import { INDEXABLE_ROUTES, LLMS_TXT_PATH } from '@/lib/marketing/seo-routes'
 import { getIndexableIssueCheckIds } from '@/lib/graph/queries'
 import { HELP_ARTICLES, HELP_CATEGORIES } from '@/lib/help/catalog'

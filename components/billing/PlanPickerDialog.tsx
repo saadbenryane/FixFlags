@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { PLANS, PRICING } from '@/lib/marketing/copy'
+import { PLANS, PRICING } from '@/lib/marketing/copy-barrel'
 import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { SYSTEM_COPY } from '@/lib/marketing/copy/errors'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'

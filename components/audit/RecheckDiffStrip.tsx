@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
+import { RECHECK_DIFF_COPY } from '@/lib/marketing/copy-barrel'
 import { countsFromUpdateDiff } from '@/lib/audit/update-review-progress'
 import { cn } from '@/lib/utils'
 import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'

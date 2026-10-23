@@ -9,7 +9,7 @@ import { useSupportContext } from '@/components/live-support/SupportProvider'
 import type { SiteChatWidget } from './SiteChatWidget'
 import styles from '@/components/live-support/ConversationWidget.module.css'
 
-const Chat = dynamic(() => import('./SiteChatWidget').then(module => module.SiteChatWidget), { ssr: false, loading: () => <Button size="icon" variant="ink" loading className={styles.launcher} aria-label={C.openChat}><MessageCircle aria-hidden /></Button> })
+const Chat = dynamic(() => import('./SiteChatWidget').then(module => module.SiteChatWidget), { ssr: false, loading: () => <Button size="icon" variant="ink" className={styles.launcher} aria-label={C.openChat} aria-busy="true"><MessageCircle className="!h-6 !w-6" aria-hidden /></Button> })
 export function LazySiteChat(props: Parameters<typeof SiteChatWidget>[0]) {
   const [opened, setOpened] = useState(false)
   const support = useSupportContext()

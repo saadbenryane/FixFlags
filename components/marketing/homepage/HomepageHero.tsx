@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { ArrowRight, Bot, Flag, Route } from 'lucide-react'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S, type SampleCategory, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { HomepageIntro, HomepageUrlEntry } from './HomepagePrimitives'

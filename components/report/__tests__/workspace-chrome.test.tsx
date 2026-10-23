@@ -5,7 +5,7 @@ import { WorkspaceMobileTabs } from '@/components/report/WorkspaceMobileTabs'
 import { WorkspacePreviewTransport } from '@/components/report/WorkspacePreviewTransport'
 import { ScanWorkingMark, ScanWorkingStatus } from '@/components/report/ScanWorkingStatus'
 import type { PlaybackStep } from '@/lib/audit/playback-steps'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 const steps: PlaybackStep[] = [
   { id: 's1', eventIndex: 0, label: 'Load homepage' },

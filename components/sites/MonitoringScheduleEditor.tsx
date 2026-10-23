@@ -8,7 +8,7 @@ import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { ResponsiveDepth } from './ResponsiveDepth'
 import { scheduleInterval, scheduleLabel, type MonitoringSchedule } from '@/lib/sites/monitoring-schedule'
 import type { WatchInterval } from '@/lib/sites/watch-schedule'
-import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
+import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy-barrel'
 
 type Choice = 'daily' | 'hourly' | 'weekly' | 'custom' | 'off'
 

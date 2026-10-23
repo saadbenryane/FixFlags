@@ -23,6 +23,27 @@ describe('shared Flag evidence presentation', () => {
     expect(screen.getByText(/Evidence for this Flag was not stored/)).toBeInTheDocument()
     expect(screen.queryByText('Supporting observations')).not.toBeInTheDocument()
   })
+  it('ranks repeated page measurements and keeps the rest behind the full list', () => {
+    render(<FlagEvidenceDetails observed={[
+      'https://saadbenryane.com/journal/what-i-learned-about-branding-at-founder-institute: Mobile Largest Contentful Paint: 4.35s',
+      'https://saadbenryane.com/work/global-biodiversity-platform: Mobile Largest Contentful Paint: 6.30s',
+      'https://saadbenryane.com/journal/when-ai-codes-the-developer-role-shifts: Mobile Largest Contentful Paint: 4.05s',
+      'https://saadbenryane.com/journal/a: Mobile Largest Contentful Paint: 5.10s',
+      'https://saadbenryane.com/journal?tag=design: Mobile Largest Contentful Paint: 4.24s Observed on 5 pages.',
+    ].join(' ')} expected="Mobile Largest Contentful Paint is under 2.5s" />)
+    expect(screen.getByText('Mobile Largest Contentful Paint: 4.05s to 6.30s.')).toBeInTheDocument()
+    expect(screen.getByText('Observed on 5 pages.')).toBeInTheDocument()
+    const links = screen.getAllByRole('link').map(link => link.textContent)
+    expect(links).toEqual([
+      '/work/global-biodiversity-platform',
+      '/journal/a',
+      '/journal/what-i-learned-about-branding-at-founder-institute',
+      '/journal?tag=design',
+      '/journal/when-ai-codes-the-developer-role-shifts',
+    ])
+    expect(screen.getByText('View all 5 pages').closest('details')?.querySelector('a')?.textContent).toBe('/journal/when-ai-codes-the-developer-role-shifts')
+  })
+
   it('keeps the representative evidence and explains why a new check is needed when support is unreadable', () => {
     render(<FlagEvidenceDetails observed="Two failed checks" expected="Checkout opens" supportingEvidenceUnreadable />)
     expect(screen.getByText('Two failed checks')).toBeInTheDocument()

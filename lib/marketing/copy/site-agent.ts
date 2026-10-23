@@ -10,7 +10,7 @@ export const SITE_AGENT_COPY = {
   retryHistory: 'Reload conversation', sources: 'Evidence referenced', you: 'You', assistant: 'FixFlags',
   replied: 'Your reply is ready.', invalid: 'The reply could not be read. Recover it using the same request.',
   chatTitle: 'FixFlags', openChat: 'Open FixFlags chat', closeChat: 'Close FixFlags chat',
-  siteQuestions: 'Site questions', support: 'Support', information: 'About Site answers',
+  siteQuestions: 'Site questions', support: 'Support', askAboutSite: 'Ask about this website', information: 'About Site answers',
   suggestions: ['What needs attention?', 'What should I do next?'],
   pending: 'Preparing your reply…', unread: (count: number) => `${count} unread support messages`,
   greeting: (host: string, flagTitle?: string) => flagTitle

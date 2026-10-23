@@ -3,7 +3,7 @@ import { CircleHelp } from 'lucide-react'
 import { RecheckDiffStrip } from '@/components/audit/RecheckDiffStrip'
 import { SHIMMER_KEYFRAMES } from '@/components/ui/skeleton'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
-import { REPORT_COPY, SCORE_HELP } from '@/lib/marketing/copy'
+import { REPORT_COPY, SCORE_HELP } from '@/lib/marketing/copy-barrel'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import {

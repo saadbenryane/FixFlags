@@ -2,7 +2,7 @@ import { ToolEducation } from '@/components/marketing/tools/ToolEducation'
 import { PlaceholderDetectorClient } from '@/components/marketing/tools/PlaceholderDetectorClient'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { SEO } from '@/lib/marketing/copy'
+import { SEO } from '@/lib/marketing/copy-barrel'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { toolPageStructuredData } from '@/lib/marketing/structured-data'
 

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Footer } from '@/components/layout/footer'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { FOOTER_COLUMNS } from '@/lib/site/nav'
 
 vi.mock('next/image', () => ({

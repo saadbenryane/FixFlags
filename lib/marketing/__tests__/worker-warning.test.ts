@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'vitest'
 import assert from 'node:assert/strict'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy-barrel'
 
 const ORIGINAL_ENV = { ...process.env }
 

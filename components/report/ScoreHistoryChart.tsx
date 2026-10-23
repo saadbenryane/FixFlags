@@ -5,7 +5,7 @@ import type { Route } from 'next'
 import { useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
-import { CUSTOMER_TERMS } from '@/lib/marketing/copy'
+import { CUSTOMER_TERMS } from '@/lib/marketing/copy-barrel'
 
 function dateLabel(date: Date): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date)

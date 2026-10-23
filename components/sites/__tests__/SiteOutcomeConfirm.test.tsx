@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteOutcomeConfirmList, SiteOutcomeRow } from '@/components/sites/SiteOutcomeConfirm'
-import { OUTCOME_CONFIRMATION, OUTCOME_KIND_LABELS } from '@/lib/marketing/copy'
+import { OUTCOME_CONFIRMATION, OUTCOME_KIND_LABELS } from '@/lib/marketing/copy-barrel'
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 

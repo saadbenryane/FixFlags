@@ -11,7 +11,7 @@ import { NOTIFICATION_EMAIL_COPY as EMAIL } from '@/lib/marketing/copy/notificat
 import { ArrowRight, ArrowUpRight, Bell, Check, ChevronDown, Copy } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { BrandClosing } from '@/components/marketing/BrandClosing'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
 import { HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'

@@ -141,11 +141,7 @@ describe('Flag verification attempts', () => {
     expect(screen.getByRole('button', { name: 'Copy fix prompt' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Check now' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
-    expect(
-      screen.getByRole('link', {
-        name: /https:\/\/shop\.example\/products\/tote/,
-      }),
-    ).toHaveAttribute('href', 'https://shop.example/products/tote')
+    expect(screen.getByRole('link', { name: '/products/tote' })).toHaveAttribute('href', 'https://shop.example/products/tote')
   })
 
   it('does not give a browser-measured input Flag a PageSpeed provenance or action', async () => {

@@ -156,6 +156,7 @@ const config: Config = {
         lg: '0 10px 20px -5px rgb(0 0 0 / 0.08), 0 4px 8px -4px rgb(0 0 0 / 0.08)',
         card: 'var(--shadow-card)',
         'card-hover': 'var(--shadow-card-hover)',
+        board: 'var(--shadow-board)',
         'board-hover': 'var(--shadow-board-hover)',
         raised: 'var(--shadow-raised)',
         glass: 'var(--glass-shadow)',

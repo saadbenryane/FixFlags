@@ -58,6 +58,7 @@ const ensureSiteForAudit = vi.hoisted(() => vi.fn())
 const refreshUserUsagePeriod = vi.hoisted(() => vi.fn())
 const rollUserUsagePeriod = vi.hoisted(() => vi.fn())
 const resolveVisitorKey = vi.hoisted(() => vi.fn(async () => 'anon-v1:testvisitor0000000'))
+const rotateVisitorKey = vi.hoisted(() => vi.fn(async () => 'anon-v1:freshvisitor000000'))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => ({ add: queueAdd }) }))
@@ -74,7 +75,7 @@ vi.mock('@/lib/audit/url', () => ({ assertPublicNavigationUrl }))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
 vi.mock('@/lib/sites/application/default-monitoring', () => ({ ensureDefaultMonitoring: vi.fn(async () => true) }))
 vi.mock('@/lib/sites/ensure-site', () => ({ ensureSiteForAudit }))
-vi.mock('@/lib/sites/visitor-identity', () => ({ resolveVisitorKey }))
+vi.mock('@/lib/sites/visitor-identity', () => ({ resolveVisitorKey, rotateVisitorKey }))
 vi.mock('@/lib/billing/usage-period', () => ({
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
@@ -337,6 +338,39 @@ describe('createAndEnqueueAudit', () => {
     })
     expect(queueAdd).not.toHaveBeenCalled()
     expect(trackAnonymousAuditId).toHaveBeenCalledWith('live-public')
+  })
+
+  it('starts a new board when this browser’s site for the website was already claimed', async () => {
+    prismaMock.provisionalSite.findUnique.mockResolvedValueOnce({
+      primaryAuditId: 'claimed-scan',
+      claimedProjectId: 'someone-elses-project',
+    })
+    ensureSiteForAudit.mockResolvedValueOnce({
+      siteId: 'p_fresh',
+      kind: 'provisional',
+      url: AUDIT_URL,
+      canonicalHost: 'example.com',
+      name: 'example.com',
+      projectId: null,
+      provisionalSiteId: 'fresh',
+      primaryAuditId: 'audit-1',
+      watchInterval: null,
+      watchNextRunAt: null,
+      watchLastRunAt: null,
+      watchLastError: null,
+      watchConsecutiveFailures: 0,
+      userId: null,
+    })
+
+    const result = await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-2' })
+
+    expect(rotateVisitorKey).toHaveBeenCalledOnce()
+    expect(result).toMatchObject({ auditId: 'audit-1', reused: false, siteId: 'p_fresh' })
+    expect(prismaMock.audit.create).toHaveBeenCalled()
+    expect(ensureSiteForAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionKey: 'anon-v1:freshvisitor000000' }),
+      prismaMock
+    )
   })
 
   it('does not reuse another visitor’s scan of the same URL', async () => {

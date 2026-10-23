@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SITE_ACTION_COPY } from '@/lib/marketing/copy'
+import { SITE_ACTION_COPY } from '@/lib/marketing/copy-barrel'
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), polling: vi.fn(), toast: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }) }))

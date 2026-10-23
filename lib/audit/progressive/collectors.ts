@@ -67,7 +67,13 @@ export const collectionHandlers: TaskHandler[] = [
       const browser = [...context.dependencies.values()].find(task => task.workKind === 'browser' && task.workState === 'COMPLETED')
       const captured = browser?.workResult ? browserArtifactSchema.parse(readArtifact(browser.workResult, 'browser').data) : null
       const before = captured?.snapshot.motionWindow
-      if (!before) throw new TaskFailure('INITIAL_MOTION_EVIDENCE_UNAVAILABLE', false)
+      if (!before) {
+        const pageUrl = context.input.pageUrl
+        const unavailable = { version: 1 as const, pageUrl, reduced: false, targets: [], complete: false, windowMs: 0, observedMs: 0, restricted: false, contentVisible: false }
+        return serializeArtifact('motion', motionObservationSchema.parse({ version: 1,
+          scope: { pageUrl, finalUrl: pageUrl, profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(null, pageUrl) },
+          before: unavailable, after: unavailable }))
+      }
       const access = await resolveAuditScanAccess(context.audit.id)
       const after = await collectReducedMotionWindow(await getAuditBrowser(), context.input.pageUrl, { deadline: context.deadline, scanAccess: access })
       return serializeArtifact('motion', motionObservationSchema.parse({ version: 1,
@@ -107,8 +113,9 @@ export const collectionHandlers: TaskHandler[] = [
     validateResult: artifact => { httpArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       // This collector observes only public responses. Credentialed captures remain isolated.
+      // A document that never arrives is still the observation. Dependent checks
+      // record that gap. Retrying the task would hide it until recovery ends.
       const document = await collectDocument(context.input.pageUrl, context.deadline)
-      if (document.status === null && !document.transportFailure) throw new TaskFailure('HTTP_COLLECTION_UNAVAILABLE', true)
       const metadata = document.status !== null && document.status >= 200 && document.status < 300 && document.complete && document.body && /(?:text\/html|application\/xhtml\+xml)/i.test(document.headers['content-type'] ?? '')
         ? await collectMetadata(document.body, document.finalUrl, context.deadline) : { metadata: null }
       return serializeArtifact('http', httpArtifactSchema.parse({ document, ...metadata }))

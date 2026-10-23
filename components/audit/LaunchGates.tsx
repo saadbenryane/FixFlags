@@ -5,7 +5,7 @@ import { Surface } from '@/components/ui/surface'
 import { LAUNCH_CHECKLIST_IDS } from '@/lib/audit/rubric'
 import type { LaunchChecklistItem } from '@/lib/audit/launch-readiness'
 import { cn } from '@/lib/utils'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 interface Props {
   checklist: LaunchChecklistItem[]

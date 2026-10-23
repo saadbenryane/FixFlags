@@ -44,13 +44,13 @@ Use existing semantic tokens before adding values. Add a shared token for a repe
 | Surface | Current treatment |
 | --- | --- |
 | Marketing | Whitespace, display hierarchy and section tone; existing special illustrations and connection panels retain their local composition |
-| Site board and homepage sample | Neutral flat cards, restrained hover shadows, board-specific radii, and status dots and counts for flagged categories |
+| Site board and homepage sample | Neutral cards with a soft resting shadow, a slightly deeper hover shadow, board-specific radii, and status dots and counts for flagged categories |
 | Existing report and glass surfaces | Shared Card/Surface variants, glass tokens and nested radii; these do not define the Site board recipe |
 | Controls and functional data | Borders where needed for inputs, tables, dialogs and progress/detail panels |
 
 Shared identity does not require identical card sizes, backgrounds or typography across these families. Keep board card and panel radii separate from the glass-card radius. Inner glass radii use the existing outer-radius-minus-gap tokens.
 
-Never use line separators. Group content with whitespace, typography, and surface tone. Card outlines, input boundaries, and focus rings define their controls; do not use standalone horizontal or vertical rules to separate content. Interaction placement and category anatomy belong to the Site interface contract.
+Never use line separators. Group content with whitespace, typography, and surface tone. Board cards use a soft shadow instead of an outline. Input boundaries and focus rings define their controls. Do not use standalone horizontal or vertical rules to separate content. Interaction placement and category anatomy belong to the Site interface contract.
 
 Give each piece of overview information one primary location. Site identity and the last-check time belong in the sidebar. Overall counts appear once in the summary, without a repeated Findings heading or attention sentence. The overview leads with the website capture and one summary, then problem rows and quiet clear cards. Flags are actions inside their category. Detected tools sit with the summary, showing up to four names and the actual remaining count, with the full recorded inventory in depth. Monitoring is a compact header control beside refresh, with schedule details disclosed on demand. The website preview shows the complete capture; URL, capture time, viewport, and previous-capture provenance remain available when it is enlarged. The homepage sample and real Site use the same shared components and layout.
 

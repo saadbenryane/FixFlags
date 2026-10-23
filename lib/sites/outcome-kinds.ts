@@ -1,4 +1,4 @@
-import { OUTCOME_KIND_NAMES } from '@/lib/marketing/copy'
+import { OUTCOME_KIND_NAMES } from '@/lib/marketing/copy-barrel'
 
 /**
  * Kinds a customer agreement may name. This module is deliberately safe to

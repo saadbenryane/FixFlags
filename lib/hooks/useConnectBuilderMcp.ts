@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useMe } from '@/hooks/useMe'
 import { createApiKey } from '@/lib/api/api-key-client'
 import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import {
   apiKeyClientForTool,
   getBuilder,

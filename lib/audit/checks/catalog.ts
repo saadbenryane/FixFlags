@@ -1,4 +1,4 @@
-import type { PageMetadata } from '../metadata'
+import { mergeRuntimeHeadMetadata, type PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
@@ -55,10 +55,15 @@ export type PageCheckContext = {
   purpose: ReturnType<typeof detectPagePurpose>; record(assertion: CheckAssertion): void;
 }
 type Evaluator = { id: string; evaluate(input: PageCheckContext): DeterministicFlag[] | Promise<DeterministicFlag[]> }
+const PAGE_METADATA_LIMITATION = 'Page metadata was not collected. These observations remain unknown.'
 /** Only registrations that consume whole-document fields require parsed metadata. */
 function withMetadata(evaluate: (input: PageCheckContext & { metadata: PageMetadata }) => ReturnType<Evaluator['evaluate']>): Evaluator['evaluate'] {
   return input => {
-    if (!input.metadata) throw new Error('Page metadata is unavailable')
+    if (!input.metadata) {
+      input.scope.complete = false
+      input.scope.limitation = PAGE_METADATA_LIMITATION
+      return []
+    }
     return evaluate({ ...input, metadata: input.metadata })
   }
 }
@@ -90,13 +95,24 @@ export const PAGE_CHECKS = registerPageEvaluators([
     return checked.flags
   } },
   { id: 'metadata', evaluate: c => {
-    const metadata = c.head?.metadata ?? c.metadata
-    if (!metadata) throw new Error('Page head metadata is unavailable')
+    // A native field that was actually read wins, including an observed absence.
+    // An unobserved field keeps the parsed document instead of erasing it.
+    const metadata = c.metadata ? mergeRuntimeHeadMetadata(c.metadata, c.head?.metadata) : c.head?.metadata
+    if (!metadata) {
+      c.scope.complete = false
+      c.scope.limitation = PAGE_METADATA_LIMITATION
+      return []
+    }
     return runMetadataChecks(metadata, c.record)
   } },
   { id: 'og-image', evaluate: c => {
-    const metadata = c.head ? { ogImage: c.head.metadata.ogImage, linkBaseUrl: c.metadata?.linkBaseUrl } : c.metadata
-    if (!metadata) throw new Error('Page head metadata is unavailable')
+    const ogImage = c.head && c.head.metadata.ogImage !== undefined ? c.head.metadata.ogImage : c.metadata?.ogImage
+    const metadata = c.head || c.metadata ? { ogImage, linkBaseUrl: c.metadata?.linkBaseUrl } : null
+    if (!metadata) {
+      c.scope.complete = false
+      c.scope.limitation = 'Page metadata was not collected. The preview image remains unknown.'
+      return []
+    }
     // Older captures retained relative declarations without their document base.
     // A current parsed base can resolve them; the page URL cannot invent it.
     if (c.head && metadata.ogImage && !metadata.linkBaseUrl && !/^[a-z][a-z0-9+.-]*:/i.test(metadata.ogImage)) metadata.ogImage = undefined

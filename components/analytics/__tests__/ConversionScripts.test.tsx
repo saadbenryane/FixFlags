@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConversionScripts } from '@/components/analytics/ConversionScripts'
-import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy'
+import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy-barrel'
 import {
   ANALYTICS_CONSENT_COOKIE,
   ANALYTICS_CONSENT_BOOTSTRAP,

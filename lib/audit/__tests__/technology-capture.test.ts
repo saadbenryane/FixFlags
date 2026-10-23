@@ -10,6 +10,10 @@ function captured(changes: Partial<ScreenshotResult> = {}): ScreenshotResult {
     captureFailures: [], captureStatus: { desktop: 'pending', mobile: 'pending' }, ...changes } as ScreenshotResult
 }
 describe('technology evidence from a bounded capture', () => {
+  it('keeps a complete observation when the only restriction is a refused action', () => {
+    expect(observeCapturedTechnologies(captured({ collectionRestrictions: ['protected_action_requires_fixture', 'payment_or_download_blocked'] })))
+      .toMatchObject({ status: 'COMPLETE' })
+  })
   it('publishes native document evidence independently of media and metadata parsing', () => {
     expect(observeCapturedTechnologies(captured())).toMatchObject({ status: 'COMPLETE', scope,
       detections: [expect.objectContaining({ name: 'React', kind: 'framework' })] })

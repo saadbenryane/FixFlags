@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import type { HelpArticle, HelpCategory } from '@/lib/help/types'
 import { helpArticlePath } from '@/lib/help/types'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { buildIndexableMetadata } from '@/lib/marketing/metadata'
 
 export function buildHelpArticleMetadata(article: HelpArticle): Metadata {

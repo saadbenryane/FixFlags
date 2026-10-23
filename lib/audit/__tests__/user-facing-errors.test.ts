@@ -4,7 +4,7 @@ import {
   getUserFacingAuditError,
   getUserFacingCaptureError,
 } from '@/lib/audit/user-facing-errors'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 describe('user-facing audit errors', () => {
   it('maps failure codes to stable copy', () => {

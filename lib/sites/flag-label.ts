@@ -1,5 +1,5 @@
 import { verificationRuleForCheckId } from '@/lib/audit/verification-rules'
-import { severityLabel } from '@/lib/marketing/copy'
+import { severityLabel } from '@/lib/marketing/copy-barrel'
 import { CARD_CATALOG, type SiteCardArea } from '@/lib/sites/card-areas'
 
 /** Area and severity as a customer reads them on a Flag. */

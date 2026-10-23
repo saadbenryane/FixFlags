@@ -2,7 +2,7 @@ import { AuditInput } from '@/components/audit/AuditInput'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
-import { REVIEW_ENTRY } from '@/lib/marketing/copy'
+import { REVIEW_ENTRY } from '@/lib/marketing/copy-barrel'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 
 export default function NewReviewPage() {

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { HELP_CENTER, USAGE_METER_COPY } from '@/lib/marketing/copy'
+import { HELP_CENTER, USAGE_METER_COPY } from '@/lib/marketing/copy-barrel'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 
 describe('UsageMeter', () => {

@@ -57,16 +57,27 @@ export function recordCheckObservations(module: string, input: {
     result.push({ key, name, expected, observed, passed, complete: true })
   }
   if (module === 'trust') {
-    if (!input.metadata) throw new Error('Public trust metadata is unavailable')
-    result.push(...Object.values(publicTrustObservations(input.metadata)))
+    if (input.metadata) result.push(...Object.values(publicTrustObservations(input.metadata)))
+    else result.push(
+      { key: 'privacy-link', name: 'Privacy policy link', expected: 'A privacy policy link is present in the captured page',
+        observed: 'Page metadata was not collected. A privacy policy link remains unknown.', passed: false, complete: false },
+      { key: 'contact-information', name: 'Contact information', expected: 'Contact information is present in the captured page',
+        observed: 'Page metadata was not collected. Contact information remains unknown.', passed: false, complete: false },
+      { key: 'cookie-consent-signals', name: 'Cookie-consent signals',
+        expected: 'Detected cookie-based analytics is accompanied by consent signals in the captured page',
+        observed: 'Page metadata was not collected. Consent signals remain unknown.', passed: false, complete: false },
+    )
   }
   if (module === 'console') result.push(...consoleObservations(input.consoleCoverage))
   if (module === 'measurement') {
-    if (!input.metadata) throw new Error('Analytics markup is unavailable')
-    record('analytics-markup', 'Analytics configuration in HTML', 'An analytics snippet is present in the captured HTML',
+    if (!input.metadata) result.push({ key: 'analytics-markup', name: 'Analytics configuration in HTML',
+      expected: 'An analytics snippet is present in the captured HTML',
+      observed: 'Captured HTML markup is unavailable. Snippet presence and absence remain unknown.', passed: false, complete: false })
+    else record('analytics-markup', 'Analytics configuration in HTML', 'An analytics snippet is present in the captured HTML',
       input.metadata.hasAnalytics ? 'Analytics snippet detected' : 'No snippet detected; consent-delayed or proxied analytics may not appear here', input.metadata.hasAnalytics)
   }
-  if (module === 'security-headers' && input.headers) {
+  // Undefined means this caller did not ask for headers. Null means collection did not happen.
+  if (module === 'security-headers' && input.headers !== undefined) {
     result.push(...securityHeaderObservations(input.url, input.headers))
   }
   if (module === 'performance' || module === 'mobile') {

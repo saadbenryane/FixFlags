@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Globe2, LockKeyhole } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 export function ReportWorkspaceState({
   title,

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { MessageBubble } from '@/components/support/MessageBubble'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportMessages } from '@/components/live-support/useSupportPolling'
-import { SUPPORT_CHAT } from '@/lib/marketing/copy'
+import { SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
 
 export function SupportChatPanel({ auditId, composer, compact = false, onRead }: {
   auditId?: string | null

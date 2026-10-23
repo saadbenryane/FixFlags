@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
-import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy-barrel'
 
 describe('PlanLimitNotice', () => {
   it.each(['site-limit', 'check-limit', 'claim-limit'] as const)(

@@ -14,7 +14,7 @@ import {
   ReportPollErrorStatus,
 } from '@/components/ui/status-page'
 import { toast } from 'sonner'
-import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SITE_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SITE_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 import { trackEvent } from '@/lib/analytics/events'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { createSiteActionController, executeSiteAction } from '@/lib/sites/client-actions'

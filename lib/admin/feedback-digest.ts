@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { parseSiteHostname } from '@/lib/utils/url-helpers'
 
 const DAY_MS = 86_400_000

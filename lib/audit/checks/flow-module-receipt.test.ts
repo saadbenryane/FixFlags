@@ -45,6 +45,16 @@ function conversion(receipt: ReturnType<typeof stored>['receipt'], flags: Return
 }
 
 describe('flow module receipt', () => {
+  it('retains observations through a refused action without certifying the affected action', () => {
+    const check = assembleFlowModuleCheck({ result: scan(ux()), actionRequired: true, actionFlags: [], pricingOnly: false,
+      targetedPricing: false, protectedActionRefused: true })
+    expect(check).toMatchObject({ applicable: true, complete: false, passed: false })
+    expect(check.assertions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: 'primary-action-response', complete: true, passed: true }),
+      expect.objectContaining({ key: 'destination-trust', complete: true, passed: true }),
+      expect.objectContaining({ key: 'public-action-boundary', complete: false, passed: false }),
+    ]))
+  })
   it('records a reached destination as passed only when trust and content were conclusive', () => {
     const healthy = stored(scan(ux()))
     expect(healthy.flags).toEqual([])

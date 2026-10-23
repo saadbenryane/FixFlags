@@ -1,7 +1,7 @@
 'use client'
 
 import { RouteErrorPage } from '@/components/ui/route-error-page'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 
 export default function DemoV1Error({
   error,

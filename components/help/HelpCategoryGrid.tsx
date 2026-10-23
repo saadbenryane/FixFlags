@@ -3,7 +3,7 @@ import { CreditCard, Flag, Rocket, Terminal, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { HelpCategory } from '@/lib/help/types'
 import { helpCategoryPath } from '@/lib/help/types'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 import { Heading, Body } from '@/components/ui/typography'
 
 const ICONS: Record<HelpCategory['icon'], LucideIcon> = {

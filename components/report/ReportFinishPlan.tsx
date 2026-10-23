@@ -7,7 +7,7 @@ import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Skeleton } from '@/components/ui/skeleton'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 import { cn } from '@/lib/utils'
 

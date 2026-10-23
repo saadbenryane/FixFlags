@@ -1,6 +1,6 @@
 import { KnowledgeSearch } from '@/components/help/KnowledgeSearch'
 import { buildKnowledgeIndex } from '@/lib/knowledge'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 
 export async function HelpKnowledgeSearch({ compact = false }: { compact?: boolean }) {
   const entries = await buildKnowledgeIndex()

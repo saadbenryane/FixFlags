@@ -1,4 +1,4 @@
-import { SCORE_HELP } from '@/lib/marketing/copy'
+import { SCORE_HELP } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 /** Colocated like ScanWorkingMark so ScoreRing stays free of global keyframes.

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy'
+import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy-barrel'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { executeSiteAction } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'

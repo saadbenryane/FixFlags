@@ -1,10 +1,17 @@
 import { Prisma } from '@prisma/client'
-import { analysisTaskWhere, MAX_TASKS_PER_AUDIT, taskIsSettled } from './contracts'
+import { MAX_TASKS_PER_AUDIT, taskIsSettled } from './contracts'
+
+/** PageSpeed, Search Console, and written review can exhaust without a measurement.
+ * That does not make the collected website evidence unfinished. */
+const enrichmentWithoutSiteRecovery = ['pagespeed', 'google', 'judge'] as const
+const excludedFromSiteRecovery = ['prescription', ...enrichmentWithoutSiteRecovery] as const
 
 /** Exhaustion records interrupted execution, unlike a completed inconclusive
- * observation, a blocked authorization or an inapplicable capability. */
+ * observation, a blocked authorization, an inapplicable capability, or provider
+ * enrichment that can finish without a result. */
 export const interruptedAnalysisWorkWhere = {
-  ...analysisTaskWhere, workState: 'EXHAUSTED', status: 'FAILED',
+  targetKey: { startsWith: 'task:' }, workState: 'EXHAUSTED', status: 'FAILED',
+  OR: [{ workKind: null }, { workKind: { notIn: [...excludedFromSiteRecovery] } }],
 } satisfies Prisma.AuditVerifierExecutionWhereInput
 
 /** SQL counterpart for cohorts joined to the existing "source" Audit alias.
@@ -13,7 +20,7 @@ export const interruptedAnalysisWorkSql = Prisma.sql`EXISTS (
   SELECT 1 FROM audit_verifier_executions interrupted
   WHERE interrupted."auditId" = "source".id AND interrupted."targetKey" LIKE 'task:%'
     AND interrupted."workState" = 'EXHAUSTED' AND interrupted.status = 'FAILED'
-    AND interrupted."workKind" IS DISTINCT FROM 'prescription')`
+    AND (interrupted."workKind" IS NULL OR interrupted."workKind" NOT IN (${Prisma.join([...excludedFromSiteRecovery])})))`
 
 export type RecordedCompletionTask = {
   targetKey: string; status: string; workKind?: string | null; workState?: string | null;

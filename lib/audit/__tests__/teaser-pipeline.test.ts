@@ -73,6 +73,7 @@ vi.mock('@/lib/audit/ensure-product-project', () => ({
 }))
 vi.mock('@/lib/sites/visitor-identity', () => ({
   resolveVisitorKey: vi.fn(async () => 'anon-v1:testvisitor0000000'),
+  rotateVisitorKey: vi.fn(async () => 'anon-v1:freshvisitor000000'),
 }))
 vi.mock('@/lib/sites/ensure-site', () => ({
   ensureSiteForAudit: vi.fn(async () => ({

@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { useSiteSignInHref } from '@/hooks/useSiteSignInHref'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
-import { CARE_HOME } from '@/lib/marketing/copy'
+import { CARE_HOME } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 

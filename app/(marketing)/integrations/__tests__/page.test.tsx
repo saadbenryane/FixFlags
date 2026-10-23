@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import IntegrationsPage, { metadata } from '../page'
-import { CARE_HOME, INTEGRATIONS_PAGE as C } from '@/lib/marketing/copy'
+import { CARE_HOME, INTEGRATIONS_PAGE as C } from '@/lib/marketing/copy-barrel'
 import { INDEXABLE_ROUTES, LLMS_SECTIONS } from '@/lib/marketing/seo-routes'
 import { FOOTER_COLUMNS, MARKETING_LINKS } from '@/lib/site/nav'
 

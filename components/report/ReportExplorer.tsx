@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {

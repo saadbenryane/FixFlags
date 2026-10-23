@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { Activity, ArrowRight, ArrowUpRight, Check, CircleAlert, Code2, FileText, Fingerprint, Gauge, LockKeyhole, MousePointer2, Search, ShieldCheck } from 'lucide-react'
 import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import s from './CareHomepage.module.css'
 import t from './HomepageCheckCoverage.module.css'
 

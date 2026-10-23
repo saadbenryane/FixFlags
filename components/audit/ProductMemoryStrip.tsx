@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { trackEvent } from '@/lib/analytics/events'
 import type { VerifiedLearning } from '@/lib/audit/product-intelligence'
 

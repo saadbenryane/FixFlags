@@ -1,4 +1,4 @@
-import { BRAND, CARE_HOME } from '@/lib/marketing/copy'
+import { BRAND, CARE_HOME } from '@/lib/marketing/copy-barrel'
 import { getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
 import { LogoMarkSvg, getOfficialLogoMarkDataUrl } from '@/lib/design/logo-mark'

@@ -4,7 +4,7 @@ import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { cn } from '@/lib/utils'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 export type FixLoopFlagItem = {
   id: string

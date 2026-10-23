@@ -10,7 +10,7 @@ import { emailButtonStyle, emailLayout, escapeEmailHtml } from '@/lib/email/layo
 import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { deleteUserProductData } from '@/lib/account/cleanup'
 import { recordSignupConversion } from '@/lib/analytics/signup-conversion'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import {
   getAuthBaseUrl,
   getPasskeyOrigin,

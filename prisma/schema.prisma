@@ -1296,6 +1296,9 @@ model Flag {
   @@index([pageId])
   @@index([auditId, fingerprint])
   @@index([issueId])
+  /// Recovery proofs and resolved-Flag listings read flags by status and the
+  /// completed verification that closed them. One index serves both lanes.
+  @@index([status, resolvedInId])
   @@map("flags")
 }
 

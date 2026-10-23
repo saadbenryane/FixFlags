@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Heading, Muted } from '@/components/ui/typography'
-import { HERO } from '@/lib/marketing/copy'
+import { HERO } from '@/lib/marketing/copy-barrel'
 import { DeletedReportState } from '@/components/report/DeletedReportState'
 
 /**

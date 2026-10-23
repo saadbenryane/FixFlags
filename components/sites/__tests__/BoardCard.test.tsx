@@ -8,6 +8,23 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
+  it('shows a recorded zero count with a neutral partial state and keeps collector details in depth', () => {
+    const card: BoardCardView = {
+      id: 'accessibility', name: 'Accessibility', question: 'Keyboard access', state: 'unknown',
+      status: 'Keyboard checks incomplete', answer: 'Keyboard checks incomplete', detail: '40 page controls exercised. Detailed collector limitations.',
+      facts: [], coverage: null, evidenced: false, openFlagCount: 0, checkedAt: '2026-10-23T12:00:00Z',
+      incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete, flagIds: [], flagChips: [], sources: [], activity: null, wide: false,
+      captureUrl: null, captureAlt: null, cropUrl: null, cropAlt: null, problem: null,
+    }
+    const { rerender } = render(<ProductBoardCard card={card} compact layout="row" onOpen={() => undefined} />)
+    expect(screen.getByText('0 Flags')).toBeVisible()
+    expect(screen.getByText('Partially checked')).toBeVisible()
+    expect(screen.queryByText(/40 page controls/)).not.toBeInTheDocument()
+    expect(screen.queryByText('No completed analysis')).not.toBeInTheDocument()
+    expect(card.detail).toContain('40 page controls')
+    rerender(<ProductBoardCard card={{ ...card, checkedAt: null, incompleteReason: null, answer: 'Not checked yet', status: 'Not checked yet' }} compact layout="row" />)
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
+  })
   it('hydrates recorded freshness even when the browser arrives after a minute boundary', async () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-19T12:00:59Z'))
     const element = <BoardCard name="Search" status="Not checked yet" state="unknown" answer="Recorded checks"
@@ -30,6 +47,13 @@ describe('BoardCard chrome', () => {
     }
   })
 
+  it('states a recorded limit once without a second coverage label', () => {
+    render(<BoardCard name="Conversion" icon="conversion" status={SITE_BOARD_COPY.siteCoverageIncomplete} state="unknown"
+      answer={SITE_BOARD_COPY.cardCheckIncomplete} incompleteReason={SITE_BOARD_COPY.cardCheckIncomplete} layout="row" />)
+    expect(screen.getAllByText(SITE_BOARD_COPY.cardCheckIncomplete)).toHaveLength(1)
+    expect(screen.queryByText(SITE_BOARD_COPY.siteCoverageIncomplete)).not.toBeInTheDocument()
+  })
+
   it('states an identical coverage limitation once while preserving recovery', () => {
     render(<BoardCard name="Security" icon="security" status="Not checked yet" state="unknown" answer="Some checks unfinished"
       detail="Some checks unfinished" incompleteReason="Some checks unfinished" layout="row"
@@ -41,10 +65,13 @@ describe('BoardCard chrome', () => {
     const retry = vi.fn()
     render(<BoardCard name="Search" status="1 Flag" state="problem" answer="Page title is missing" icon="search"
       layout="row" flags={[{ id: 'f1', title: 'Page title is missing', href: '#flag' }]}
-      incompleteReason="Unfinished checks: Crawl access." recoveryAction={<button onClick={retry}>Check Search again</button>} />)
+      incompleteReason={SITE_BOARD_COPY.cardCheckIncomplete} recoveryAction={<button onClick={retry}>Check Search again</button>} />)
     expect(screen.getByRole('link', { name: 'Page title is missing' })).toBeVisible()
-    expect(screen.getByText('Unfinished checks: Crawl access.')).toBeVisible()
+    expect(screen.queryByText(SITE_BOARD_COPY.cardCheckIncomplete)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     const action = screen.getByRole('button', { name: 'Check Search again' })
+    const flags = screen.getByRole('list')
+    expect(action.compareDocumentPosition(flags) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(action.parentElement?.closest('button, a')).toBeNull()
     fireEvent.click(action)
     expect(retry).toHaveBeenCalledOnce()

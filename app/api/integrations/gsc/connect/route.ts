@@ -6,7 +6,7 @@ import {
   isGoogleSearchConsoleConfigured,
   signGscConnectState,
 } from '@/lib/integrations/google-search-console'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy-barrel'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 export async function GET() {

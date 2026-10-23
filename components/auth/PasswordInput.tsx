@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 interface PasswordInputProps {

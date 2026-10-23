@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
-import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy'
+import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS } from '@/lib/marketing/copy/care-homepage'
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import { SITE_CARD_AREAS } from '@/lib/sites/card-areas'
@@ -166,7 +166,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(board).queryByText('Latest capture')).not.toBeInTheDocument()
     expect(within(board).getByText('www.examplesites.com')).toBeVisible()
     expect(within(board).getByRole('region', { name: 'Detected technologies' })).toBeVisible()
-    expect(within(board).getAllByText('15 minutes ago')).toHaveLength(8)
+    expect(within(within(board).getByRole('article', { name: 'Conversion' })).queryByText('15 minutes ago')).not.toBeInTheDocument()
     expect(within(board).getByText(/Last checked/)).toHaveAttribute('datetime', '2026-09-14T09:00:00.000Z')
     expect(within(board).getAllByRole('button', { name: '3 Flags', exact: true })).toHaveLength(1)
     expect(within(board).getByRole('link', { name: 'Recheck website' })).toHaveAttribute('href', '#analyze')

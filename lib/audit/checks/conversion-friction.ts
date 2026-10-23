@@ -13,6 +13,8 @@ import { recordObservation, type CheckRecorder } from './assertion'
 import { hasLogoWall } from './utils'
 
 const FREE_TRIAL_MARKERS = /(free trial|try free|start free|no credit card|no cc|free plan|get started free|14.day trial|7.day trial|30.day trial)/i
+/** A free-start label is a first step. Only a stated trial needs a payment condition. */
+const TRIAL_COMMITMENT_MARKERS = /(free trial|\btry free\b|\d+.day trial)/i
 
 const DEMO_MARKERS = /(book demo|request demo|schedule demo|see it in action|watch demo)/i
 
@@ -109,10 +111,10 @@ export function runConversionFrictionChecks(
     ctaTexts,
     links,
   })
-  const hasFreeTrial = firstSteps.has('trial')
   const hasGuarantee = GUARANTEE_MARKERS.test(bodyText)
   const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta.images ?? [])
   const hasPricingLinks = firstSteps.has('pricing')
+  const trialOffer = TRIAL_COMMITMENT_MARKERS.test(bodyText) || TRIAL_COMMITMENT_MARKERS.test(combinedAboveFold)
   if (needsFirstStep(purpose.purpose)) recordObservation(record, 'first-step-signals', 'Recognized first-step signals',
     'Sampled product content contains a recognized first-step signal', `Recognized paths: ${[...firstSteps].join(', ') || 'none'}. Destinations were not executed by this check.`,
     bodyText.trim().length >= 200 || firstSteps.size > 0 ? firstSteps.size > 0 : undefined, true)
@@ -136,9 +138,9 @@ export function runConversionFrictionChecks(
   }
 
   const hasCreditCardClarity = /no credit card|without credit card|credit card (required|needed)/i.test(bodyText)
-  if (hasFreeTrial) recordObservation(record, 'trial-payment-wording', 'Trial commitment wording',
+  if (trialOffer) recordObservation(record, 'trial-payment-wording', 'Trial commitment wording',
     'Captured trial copy states a credit-card requirement', `Credit-card requirement wording ${hasCreditCardClarity ? 'detected' : 'not detected'} in the sampled content.`, hasCreditCardClarity, true)
-  if (hasFreeTrial && !hasCreditCardClarity) {
+  if (trialOffer && !hasCreditCardClarity) {
     findings.push({
       checkId: 'friction-trial-commitment-unclear',
       rubric: 'MESSAGE',

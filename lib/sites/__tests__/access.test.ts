@@ -65,6 +65,34 @@ describe('resolveSiteAccess', () => {
     ).resolves.toEqual({ ok: false, reason: 'denied' })
   })
 
+  it('keeps a claimed provisional board open for the browser that started the scan', async () => {
+    loadSiteRecord.mockResolvedValue({
+      siteId: 'p_abc',
+      kind: 'provisional',
+      userId: null,
+      provisionalSiteId: 'abc',
+      projectId: null,
+      primaryAuditId: 'audit-1',
+    })
+    prismaMock.provisionalSite.findUnique.mockResolvedValue({
+      sessionKey: 'client-1',
+      primaryAuditId: 'audit-1',
+      claimedProjectId: 'proj_1',
+    })
+
+    await expect(
+      resolveSiteAccess('p_abc', { sessionKey: 'client-1' })
+    ).resolves.toMatchObject({ ok: true, role: 'provisional_session', site: { kind: 'provisional' } })
+
+    await expect(
+      resolveSiteAccess('p_abc', { anonAuditIds: ['audit-1'] })
+    ).resolves.toMatchObject({ ok: true, role: 'provisional_session' })
+
+    await expect(
+      resolveSiteAccess('p_abc', { sessionKey: 'other', anonAuditIds: [] })
+    ).resolves.toEqual({ ok: false, reason: 'denied' })
+  })
+
   it('returns not_found when the Site is missing', async () => {
     loadSiteRecord.mockResolvedValue(null)
     await expect(resolveSiteAccess('missing', {})).resolves.toEqual({

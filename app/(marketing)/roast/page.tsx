@@ -2,7 +2,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { RoastClient } from '@/components/marketing/tools/RoastClient'
 import { buildIndexableMetadata } from '@/lib/marketing/metadata'
-import { ROAST_SEO } from '@/lib/marketing/copy'
+import { ROAST_SEO } from '@/lib/marketing/copy-barrel'
 
 export const metadata = buildIndexableMetadata({
   title: ROAST_SEO.title,

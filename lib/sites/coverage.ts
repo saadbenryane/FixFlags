@@ -259,11 +259,11 @@ export function buildCoverageFacts(input: {
     const missing = receipt.assertions.filter(assertion => assertion.complete === false)
     const failed = execution.status === 'FAILED' || !receipt.legacy && 'failed' in receipt && receipt.failed === true
     const incomplete = !receipt.legacy && 'complete' in receipt && receipt.complete === false
-    if (!failed && !incomplete && !missing.length) continue
     // A shared module can inspect several customer areas. Attribute explicit
     // gaps to their assertions; an unavailable collector leaves all of its
-    // registered responsibilities unknown.
+    // registered responsibilities unknown. The customer reason stays generic.
     const version = !receipt.legacy && 'execution' in receipt ? receipt.execution?.checkVersion : undefined
+    if (!failed && !incomplete && !missing.length) continue
     const areas = failed || !missing.length ? moduleAreas(moduleKey, version) : missing.flatMap(assertion => {
       const area = checkAssertionsForVersion(moduleKey, version)[assertion.key]?.area
       return area ? [area] : moduleAreas(moduleKey, version)
@@ -291,7 +291,7 @@ export function buildCoverageFacts(input: {
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
     const incompleteReason = (area === 'search' && search && !search.complete && !inFlight
-      ? search.unfinished.length ? SEARCH_COPY.unfinished(search.unfinished) : SEARCH_COPY.partial : null)
+      ? SITE_BOARD_COPY.cardCheckIncomplete : null)
       ?? incompleteAreaReason({ area, openFlagCount, evidenced: evidenced.has(area), auditStatus: input.auditStatus,
         failureCode: input.failureCode, incomplete: incompleteAreas.has(area),
         triageCompleted: input.triageCompleted, extraReviewCompleted: input.extraReviewCompleted })

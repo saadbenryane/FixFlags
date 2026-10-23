@@ -7,7 +7,7 @@ import {
   SAMPLE_RUBRIC_COPY,
   RECHECK_DIFF_COPY,
   REPORT_COPY,
-} from '@/lib/marketing/copy'
+} from '@/lib/marketing/copy-barrel'
 import {
   HERO as HOMEPAGE_HERO,
   SAMPLE_RUBRIC_COPY as HOMEPAGE_SAMPLE_RUBRIC_COPY,

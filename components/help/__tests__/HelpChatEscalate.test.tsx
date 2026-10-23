@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
 import { SupportProvider, useSupportContext } from '@/components/live-support/SupportProvider'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 
 function PanelProbe() {
   const { panelOpen } = useSupportContext()

@@ -1,5 +1,5 @@
 import { PricingPage } from '@/components/pricing/PricingPage'
-import { PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
+import { PRICING, PRICING_FAQ } from '@/lib/marketing/copy-barrel'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { faqPageSchema } from '@/lib/marketing/structured-data'
 

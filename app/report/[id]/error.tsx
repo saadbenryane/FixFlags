@@ -2,7 +2,7 @@
 
 import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 import { RouteErrorPage } from '@/components/ui/route-error-page'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy-barrel'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 
 export default function ReportPageError({

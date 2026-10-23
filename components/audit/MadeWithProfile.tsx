@@ -48,7 +48,7 @@ import type {
 } from '@/lib/audit/technology-profile'
 import type { GraphTechKind } from '@/lib/graph/types'
 import { cn } from '@/lib/utils'
-import { MADE_WITH_COPY } from '@/lib/marketing/copy'
+import { MADE_WITH_COPY } from '@/lib/marketing/copy-barrel'
 
 const CATEGORY_META: Record<GraphTechKind, { label: string; icon: LucideIcon }> = {
   framework: { label: 'Framework', icon: Blocks },

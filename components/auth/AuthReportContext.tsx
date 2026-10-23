@@ -4,7 +4,7 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { ArrowLeft, Flag } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 import { useReportAuthContext } from '@/hooks/useReportAuthContext'
 
 export function AuthReportContext({ next }: { next: string | null }) {

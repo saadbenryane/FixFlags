@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FormContainer } from '@/components/ui/form-field'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 

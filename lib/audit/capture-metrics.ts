@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { readLoadingUi, type LoadingObservation } from './browser/loading-ui'
 import { observeViewport } from './browser/viewport-observation'
 import type { CaptureObservationScope } from './browser/observation-scope'
+import { documentEvidenceWithheld } from './browser/document-evidence'
 import { measureCurrentMotion } from './browser/motion-observation'
 import type { MotionObservation } from './checks/motion-evidence'
 export { measureCurrentMotion as measureMotionA11y } from './browser/motion-observation'
@@ -441,7 +442,7 @@ export async function measureMobileLayout(page: Page, scope?: CaptureObservation
     stuckLoadingLabel: loading.loadingLabel,
     ...(scope && content ? { loadingObservation: { version: 1 as const, device: 'mobile' as const,
       scope: { ...scope, finalUrl: content.pageUrl }, contentVisible: content.content === true,
-      ready: loading.readyState === 'complete', restricted: restrictions.length > 0 } } : {}),
+      ready: loading.readyState === 'complete', restricted: documentEvidenceWithheld(restrictions) } } : {}),
     motionIgnoresReducedPreference: motion.motionIgnoresReducedPreference,
     motionSampleLabel: motion.motionSampleLabel,
     motionComplete: motion.motionComplete,

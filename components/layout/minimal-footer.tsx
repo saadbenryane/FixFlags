@@ -2,7 +2,7 @@
 
 import { NavLink } from '@/components/layout/nav-link'
 import { Logo } from '@/components/brand/Logo'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy-barrel'
 import { LEGAL_LINKS } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,

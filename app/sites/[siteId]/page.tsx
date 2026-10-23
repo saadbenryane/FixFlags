@@ -20,11 +20,16 @@ export default async function SiteDashboardPage({
   const access = await requireSiteAccess(siteId)
   if (!access.ok) notFound()
 
-  // Prefer stable project id once claimed.
+  // Owner visits use the claimed project. The browser that started the scan
+  // stays on the provisional board, which is the only one that visitor can open.
   const resolvedId = access.decision.site.siteId
   if (view === 'flags') redirect(`/sites/${resolvedId}#website-checks`)
   if (view === 'monitoring') redirect(`/sites/${resolvedId}?view=timeline#timeline`)
-  const home = await loadSiteHome(resolvedId, { ownerEvidence: access.decision.role === 'owner', viewerAuthenticated: access.decision.authenticated })
+  const home = await loadSiteHome(resolvedId, {
+    ownerEvidence: access.decision.role === 'owner',
+    viewerAuthenticated: access.decision.authenticated,
+    site: access.decision.site,
+  })
   if (!home) notFound()
 
   return <SiteBoard siteId={resolvedId} initial={home} viewMode={siteBoardView(view)} initialCategory={siteBoardView(view) === 'home' ? siteCardArea(category) : null} />

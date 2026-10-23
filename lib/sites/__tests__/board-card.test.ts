@@ -10,7 +10,7 @@ import {
   starterBoardNames,
   outcomeNameForFlag,
 } from '@/lib/sites/board-card'
-import { CARE_HOME } from '@/lib/marketing/copy'
+import { CARE_HOME } from '@/lib/marketing/copy-barrel'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 it('keeps every affected page in both individual and category repair instructions', () => {

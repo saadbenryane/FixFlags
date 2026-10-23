@@ -9,7 +9,7 @@ import {
   WORKSPACE_PANE_SCROLL_CLASS,
   WORKSPACE_SPLIT_GRID_CLASS,
 } from '@/components/report/workspace-geometry'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 interface ReportWorkspaceSplitShellProps {

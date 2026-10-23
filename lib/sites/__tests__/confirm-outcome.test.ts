@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
+import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy-barrel'
 
 const mocks = vi.hoisted(() => ({
   loadSiteRecord: vi.fn(),

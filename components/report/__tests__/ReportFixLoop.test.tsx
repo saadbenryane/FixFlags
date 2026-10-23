@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ReportFixLoop } from '@/components/report/ReportFixLoop'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 describe('ReportFixLoop empty / loading states', () => {
   it('shows the no-flags copy when the list is empty and not loading', () => {

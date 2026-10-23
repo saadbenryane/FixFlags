@@ -1,9 +1,4 @@
 .launcher {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.publicLauncher {
   position: fixed;
   right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
   bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
@@ -14,15 +9,19 @@
   box-shadow: var(--shadow-card);
 }
 
+.publicLauncher {
+  bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
+}
+
 .panel {
   position: fixed;
   right: calc(var(--floating-action-offset) + env(safe-area-inset-right));
-  bottom: calc(var(--floating-action-offset) + 4.5rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
   z-index: var(--z-fab);
   display: flex;
   flex-direction: column;
   width: min(25rem, calc(100vw - 2 * var(--floating-action-offset)));
-  height: min(35rem, calc(100dvh - 4.5rem - 2 * var(--floating-action-offset)));
+  height: min(35rem, calc(100dvh - 2 * var(--floating-action-offset)));
   overflow: hidden;
   border-radius: var(--radius-card);
   background: hsl(var(--background));
@@ -31,13 +30,9 @@
   outline: none;
 }
 
-@media (min-width: 1024px) {
-  .panel {
-    bottom: calc(var(--floating-action-offset) + env(safe-area-inset-bottom));
-  }
-
-  .panel {
-    height: min(35rem, calc(100dvh - 2 * var(--floating-action-offset)));
+@media (max-width: 767px) {
+  .launcher:not(.publicLauncher) {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
   }
 }
 

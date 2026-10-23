@@ -120,6 +120,9 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   experimental: {
     optimizePackageImports: ['lucide-react', 'sonner', 'swr'],
+    // Server Fast Refresh treats each read of a Site page as a code change and
+    // asks the browser to reload the open report about once a second.
+    turbopackServerFastRefresh: false,
   },
 }
 

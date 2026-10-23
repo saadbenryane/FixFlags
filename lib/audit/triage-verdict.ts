@@ -1,4 +1,4 @@
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 import type { TriageFailureReason } from './pipeline/triage-failure'
 
 /** Verdict copy when triage failed but deterministic evidence is shown. */

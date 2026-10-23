@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { BRAND, SITE_URL } from '@/lib/marketing/copy-barrel'
 import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
 
 /**

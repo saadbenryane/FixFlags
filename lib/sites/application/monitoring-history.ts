@@ -21,13 +21,57 @@ const historySelect = {
   } },
   verificationAttempts: { take: 12, orderBy: { createdAt: 'desc' }, select: { id: true, outcome: true, comparable: true,
     handoffReference: true, sourceAuditId: true, verificationAuditId: true, evidenceReference: true } },
-  verifierExecutions: { where: { OR: [{ workKind: 'automatic-accounts', workState: 'COMPLETED' },
-    { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
-    { audit: { executionSpec: { path: ['scope'], equals: 'SITE' } }, OR: siteCoverageExecutionSelect.where.OR },
-    { audit: { executionSpec: { path: ['scope'], equals: 'CATEGORY' } }, OR: categoryCoverageExecutionSelect.where.OR }] },
-    select: categoryCoverageExecutionSelect.select },
+  verifierExecutions: { select: categoryCoverageExecutionSelect.select },
   flags: { select: { id: true, problem: true, severity: true, confidence: true, impactTag: true, checkId: true, attentionPolicy: true } },
 } satisfies Prisma.AuditSelect
+
+const { verifierExecutions: historyExecutionRelation, ...historyAuditSelect } = historySelect
+const historyExecutionSelect = { auditId: true, ...historyExecutionRelation.select } satisfies Prisma.AuditVerifierExecutionSelect
+
+const sharedHistoryExecutionWhere: Prisma.AuditVerifierExecutionWhereInput[] = [
+  { workKind: 'automatic-accounts', workState: 'COMPLETED' },
+  { targetKey: { startsWith: 'task:' }, workKind: 'browser' },
+]
+
+/** Scope is read from the stored document. A snapshot that no longer parses still keeps its recorded scope. */
+export function historyExecutionScope(executionSpec: unknown): 'SITE' | 'CATEGORY' | 'OTHER' {
+  if (!executionSpec || typeof executionSpec !== 'object' || Array.isArray(executionSpec)) return 'OTHER'
+  const scope = (executionSpec as { scope?: unknown }).scope
+  return scope === 'SITE' || scope === 'CATEGORY' ? scope : 'OTHER'
+}
+
+/** Same rows the nested audit filter used to keep, without joining back through executionSpec. */
+export function historyExecutionFilter(scope: 'SITE' | 'CATEGORY' | 'OTHER'): Prisma.AuditVerifierExecutionWhereInput[] {
+  if (scope === 'SITE') return [...sharedHistoryExecutionWhere, ...siteCoverageExecutionSelect.where.OR]
+  if (scope === 'CATEGORY') return [...sharedHistoryExecutionWhere, ...categoryCoverageExecutionSelect.where.OR]
+  return sharedHistoryExecutionWhere
+}
+
+async function loadHistoryExecutions(audits: Array<{ id: string; executionSpec: unknown }>) {
+  const ids: Record<'SITE' | 'CATEGORY' | 'OTHER', string[]> = { SITE: [], CATEGORY: [], OTHER: [] }
+  const seenAudits = new Set<string>()
+  for (const audit of audits) {
+    if (seenAudits.has(audit.id)) continue
+    seenAudits.add(audit.id)
+    ids[historyExecutionScope(audit.executionSpec)].push(audit.id)
+  }
+  const scopes = (['SITE', 'CATEGORY', 'OTHER'] as const).filter(scope => ids[scope].length > 0)
+  const rows = (await Promise.all(scopes.map(scope => prisma.auditVerifierExecution.findMany({
+    where: { auditId: { in: ids[scope] }, OR: historyExecutionFilter(scope) },
+    select: historyExecutionSelect,
+  })))).flat()
+  const byAudit = new Map<string, Array<Omit<(typeof rows)[number], 'auditId'>>>()
+  const seenRows = new Set<string>()
+  for (const row of rows) {
+    if (seenRows.has(row.id)) continue
+    seenRows.add(row.id)
+    const { auditId, ...execution } = row
+    const list = byAudit.get(auditId) ?? []
+    list.push(execution)
+    byAudit.set(auditId, list)
+  }
+  return byAudit
+}
 
 export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof historySelect }>, legacyIds: string[], proofFlags: Array<{ id: string; problem: string; auditId: string }> = [], accountTaskResult?: unknown): MonitoringHistoryEntry {
   const flags = audit.flags.filter(isCustomerFlag)
@@ -90,10 +134,13 @@ export async function loadMonitoringHistory(site: SiteRecord, selection?: Awaite
   const scoped = selection ?? await loadSiteAnalysisSelection(site)
   if (!site.projectId) return { timeline: [], trend: [] }
   const base = { projectId: site.projectId, status: { in: ['COMPLETED', 'FAILED'] as Array<'COMPLETED' | 'FAILED'> } }
-  const [timeline, trend] = await Promise.all([
-    prisma.audit.findMany({ where: { ...base, ...siteAnalysisAuditWhere }, orderBy: { createdAt: 'desc' }, take: 8, select: historySelect }),
-    prisma.audit.findMany({ where: { ...base, ...scoped.where }, orderBy: { createdAt: 'desc' }, take: 8, select: historySelect }),
+  const [timelineAudits, trendAudits] = await Promise.all([
+    prisma.audit.findMany({ where: { ...base, ...siteAnalysisAuditWhere }, orderBy: { createdAt: 'desc' }, take: 8, select: historyAuditSelect }),
+    prisma.audit.findMany({ where: { ...base, ...scoped.where }, orderBy: { createdAt: 'desc' }, take: 8, select: historyAuditSelect }),
   ])
+  const executions = await loadHistoryExecutions([...timelineAudits, ...trendAudits])
+  const timeline = timelineAudits.map(audit => ({ ...audit, verifierExecutions: executions.get(audit.id) ?? [] }))
+  const trend = trendAudits.map(audit => ({ ...audit, verifierExecutions: executions.get(audit.id) ?? [] }))
   const sourceIds = [...new Set(timeline.flatMap(audit => audit.verificationAttempts.flatMap(attempt =>
     attempt.handoffReference?.startsWith('flag:') ? [attempt.handoffReference.slice(5)] : [])))]
   const proofs = sourceIds.length ? await prisma.flag.findMany({ where: { id: { in: sourceIds }, audit: { projectId: site.projectId } },

@@ -97,6 +97,7 @@ describe('loadSiteSummaries', () => {
       {},
       { evidenceCoverage: { metadata: true } },
       { failedModules: ['flow'], reportCompleteness: 'PARTIAL' },
+      { failedModules: ['browser'], reportCompleteness: 'PARTIAL', evidenceCoverage: {} },
       { verifierExecutions: [...completedAudit().verifierExecutions, { targetKey: 'module:flow', status: 'COMPLETED', detail: {
         ...observed('flow', ['primary-action-presence']).detail, complete: false,
       } }] },
@@ -113,7 +114,9 @@ describe('loadSiteSummaries', () => {
       mocks.auditFindMany.mockReset().mockResolvedValueOnce([audit]).mockResolvedValueOnce([audit])
       const site = (await loadSiteSummaries('user-1')).find(site => site.id === 'site-1')!
       expect(site.presentation.result.state).toBe(Object.keys(overrides).length ? 'could_not_verify' : 'clear')
-      if ('failedModules' in overrides) expect(site.presentation.run).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+      if (Array.isArray(overrides.failedModules) && overrides.failedModules.includes('browser')) {
+        expect(site.presentation.run).toMatchObject({ state: 'partial', recoveryAction: 'retry' })
+      } else if ('failedModules' in overrides) expect(site.presentation.run).toMatchObject({ state: 'idle', recoveryAction: null })
     }
   })
 

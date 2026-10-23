@@ -101,7 +101,7 @@ export function BoardGrid({ children, className, layout = 'grid' }: { children: 
 export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {
   state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void; showText?: boolean
 }) {
-  const content = <>{count > 0 ? <><span className={styles.flagCount}>{count} {count === 1 ? 'Flag' : 'Flags'}</span>{state === 'checking' ? <span>{text}</span> : null}</> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
+  const content = <>{count > 0 ? <><span className={styles.flagCount}>{count} {count === 1 ? 'Flag' : 'Flags'}</span>{state === 'checking' ? <span className={styles.statusText}>{text}</span> : null}</> : state === 'unknown' || state === 'checking' || showText ? <span className={styles.statusText}>{text}</span> : <span className="sr-only">{label}</span>}<i aria-hidden="true" /></>
   const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
   return onOpen
     ? <InteractiveButton type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</InteractiveButton>
@@ -190,15 +190,15 @@ export function BoardCard({
     const clear = state === 'healthy' && count === 0 && !checking && !incompleteReason
     const rowClassName = `${styles.boardRow} ${count > 0 ? styles.rowProblem : ''} ${clear ? styles.rowClear : ''} ${checking ? styles.rowChecking : ''}`
     const iconClass = count > 0 ? styles.iconAttention : clear ? styles.iconHealthy : undefined
+    const repeatedLimit = Boolean(answer) && (footerLabel === answer || footerLabel === SITE_BOARD_COPY.siteCoverageIncomplete)
+    const visibleStatus = state === 'unknown' && !checking && repeatedLimit ? '' : footerLabel
+    const statusLabel = `${name}: ${checking && count > 0 ? `${flagCountLabel(count)}. ` : ''}${visibleStatus || answer}`
+    const recoveryText = incompleteReason && incompleteReason !== SITE_BOARD_COPY.cardCheckIncomplete && (previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail)) ? incompleteReason : null
     const rowMeta = <span className={styles.rowTrailing}>
-      {freshnessLabel && !checking ? <span className={styles.rowFreshness}>{freshnessLabel}</span> : null}
-      <span className={styles.rowStatus}><BoardStatus state={checking ? 'checking' : state} label={`${name}: ${checking && count > 0 ? `${flagCountLabel(count)}. ` : ''}${footerLabel}`} text={footerLabel} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /></span>
+      <span className={styles.rowStatus}>{visibleStatus || count > 0 ? <BoardStatus state={checking ? 'checking' : state} label={statusLabel} text={visibleStatus} count={count > 0 ? count : 0} onOpen={count > 0 ? onOpen : undefined} showText /> : null}</span>
+      {recoveryAction && !checking ? <span className={styles.rowRecheck}>{recoveryAction}</span> : null}
     </span>
-    const recoveryText = previewFlags.length > 0 || (incompleteReason !== answer && incompleteReason !== detail) ? incompleteReason : null
-    const recovery = incompleteReason && !checking && (recoveryText || recoveryAction) ? <div className={styles.rowRecovery}>
-      {recoveryText ? <p>{recoveryText}</p> : null}
-      {recoveryAction}
-    </div> : null
+    const recovery = recoveryText && !checking ? <div className={styles.rowRecovery}><p>{recoveryText}</p></div> : null
     if (previewFlags.length > 0) {
       return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>
         {onOpen ? <InteractiveButton type="button" className={styles.rowTitleButton} onClick={onOpen} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</InteractiveButton>
@@ -349,15 +349,17 @@ export function ProductBoardCard({
   const originalAnswer = card.answer
   // Presentation-only labels for known findings. Keep the original diagnosis
   // and measured scope in card depth; never summarize unknown claims by truncation.
-  const answer = compact ? boardFindingTitle(originalAnswer) : originalAnswer
+  const recordedPartial = compact && layout === 'row' && card.state === 'unknown' && card.activity !== 'checking'
+    && Boolean(card.checkedAt && card.incompleteReason) && card.openFlagCount === 0
+  const answer = recordedPartial ? flagCountLabel(0) : compact ? boardFindingTitle(originalAnswer) : originalAnswer
 
   return (
     <BoardCard
       name={card.name}
-      status={card.status}
+      status={recordedPartial ? SITE_ACTION_COPY.execution.partialStatus : card.status}
       state={card.state}
       answer={answer}
-      detail={card.id === 'site' ? card.detail : (compact && card.evidenced && card.state !== 'unknown' && card.activity !== 'checking') ? null : problem ? problem.body : card.detail}
+      detail={card.id === 'site' ? card.detail : compact ? null : problem ? problem.body : card.detail}
       compact={compact}
       incompleteReason={compact && layout !== 'row' ? null : card.incompleteReason}
       recoveryAction={recoveryAction}

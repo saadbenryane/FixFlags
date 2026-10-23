@@ -1,7 +1,7 @@
 'use client'
 
 import { Flag } from 'lucide-react'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 import { cn } from '@/lib/utils'
 
 /**

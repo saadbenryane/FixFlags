@@ -2,7 +2,7 @@ import { renderToString } from 'react-dom/server'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import TwoFactorPage from '../page'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy-barrel'
 
 const calls = vi.hoisted(() => ({ passkey: vi.fn(), backup: vi.fn(), replace: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: calls.replace }) }))

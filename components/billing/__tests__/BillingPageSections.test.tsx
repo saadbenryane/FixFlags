@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BILLING_PAGE_COPY, PRICING } from '@/lib/marketing/copy'
+import { BILLING_PAGE_COPY, PRICING } from '@/lib/marketing/copy-barrel'
 
 const trackEvent = vi.hoisted(() => vi.fn())
 const useMe = vi.hoisted(() => vi.fn())

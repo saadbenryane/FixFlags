@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy'
+import { INTEGRATIONS_PAGE } from '@/lib/marketing/copy-barrel'
 import { SITE_CONNECTION_COPY } from '@/lib/marketing/copy/site-connections'
 import styles from './ConnectPage.module.css'
 

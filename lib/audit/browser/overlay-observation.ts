@@ -2,6 +2,7 @@ import type { Browser, Page } from 'playwright'
 import { createAuditPage } from './page-session'
 import { profileForDevice } from './capture-profile'
 import { captureAccessKey, captureProfileKey, capturePageKey } from './observation-scope'
+import { documentEvidenceWithheld } from './document-evidence'
 import { observeViewport } from './viewport-observation'
 import { PageCaptureError } from './page-capture'
 import { probeCoverAtPoint, OVERLAY_PERSIST_MS, severityForOverlayBlocker, type OverlayBlockerInfo } from './overlay-probe'
@@ -101,7 +102,7 @@ export async function collectOverlayObservation(browser: Browser, pageUrl: strin
           blocker: blocker ? { ...blocker, persisted: disposition === 'failed' } : null }
       })
       for (const target of expected) if (!controls.some(control => control.context === target.context)) controls.push({ ...target, disposition: 'unknown', reason: 'unavailable', blocker: null })
-      return { version: 1, device: options.device, scope, controls, restricted: session.safetyRestrictions.length > 0, contentVisible: content.content,
+      return { version: 1, device: options.device, scope, controls, restricted: documentEvidenceWithheld(session.safetyRestrictions), contentVisible: content.content,
         complete: (expected.length > 0 || discovered.complete) && first.complete && last.complete && eligible.length <= MAX_CONTROLS && stable }
     } finally { session.disposeNetwork() }
   } catch (error) { if (error instanceof PageCaptureError) return unknown(); throw error }

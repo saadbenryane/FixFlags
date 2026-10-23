@@ -8,7 +8,7 @@ import { HelpArticleList } from '@/components/help/HelpArticleList'
 import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getPopularArticles } from '@/lib/help/search'
-import { HELP_CENTER } from '@/lib/marketing/copy'
+import { HELP_CENTER } from '@/lib/marketing/copy-barrel'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { helpHubStructuredData } from '@/lib/marketing/structured-data'
 

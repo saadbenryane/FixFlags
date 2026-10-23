@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 describe('AuditFailurePanel', () => {
   it('announces the failure as an alert with the shared title', () => {

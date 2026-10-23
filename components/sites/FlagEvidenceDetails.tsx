@@ -2,7 +2,35 @@ import { EDITOR_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence
 import type { ReactNode } from 'react'
 import type { publicSupportingObservations } from '@/lib/audit/flag-observations'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { presentObservedEvidence, type ObservedPage } from '@/lib/sites/observed-evidence'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
+
+function ObservedPageRow({ page }: { page: ObservedPage }) {
+  return <li className="min-w-0">
+    <div className="flex min-w-0 items-baseline justify-between gap-3">
+      <a href={page.url} target="_blank" rel="noreferrer" className="min-w-0 break-all underline decoration-border underline-offset-4 hover:decoration-foreground">{page.label}</a>
+      {page.valueLabel ? <span className="shrink-0 font-medium tabular-nums">{page.valueLabel}</span> : null}
+    </div>
+    {page.share != null ? <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(12, Math.round(page.share * 100))}%` }} /></span> : null}
+    {page.valueLabel ? null : <p className="mt-1 break-words text-muted-foreground">{page.note}</p>}
+  </li>
+}
+
+function ObservedFact({ text }: { text: string }) {
+  const presented = presentObservedEvidence(text)
+  if (presented.kind === 'text') return <p className="whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+  const visible = presented.pages.slice(0, 4)
+  const rest = presented.pages.slice(4)
+  return <div className="space-y-3">
+    <p className="leading-relaxed">{presented.summary}</p>
+    <ul className="space-y-3">{visible.map((page, index) => <ObservedPageRow key={`${page.url}:${index}`} page={page} />)}</ul>
+    {presented.trailing ? <p className="text-xs text-muted-foreground">{presented.trailing}</p> : null}
+    {rest.length ? <details>
+      <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">View all {presented.pages.length} pages</summary>
+      <ul className="mt-2 space-y-2">{rest.map((page, index) => <ObservedPageRow key={`${page.url}:${index}`} page={page} />)}</ul>
+    </details> : null}
+  </div>
+}
 
 /** Presentation is shared; sample actions and owner-authorized actions stay with their callers. */
 export function FlagEvidenceDetails({ observed, expected, supportingObservations = [], supportingEvidenceUnreadable = false, factsClassName,
@@ -13,7 +41,7 @@ export function FlagEvidenceDetails({ observed, expected, supportingObservations
   return <>
     <dl className={factsClassName ?? 'space-y-5 text-sm'}>
       <div><dt className="text-xs font-medium text-muted-foreground">{observedLabel}</dt>
-        <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed">{observed || SITE_ACTION_COPY.flagEvidence.missing}</dd></div>
+        <dd className="mt-1">{observed ? <ObservedFact text={observed} /> : <p className="leading-relaxed">{SITE_ACTION_COPY.flagEvidence.missing}</p>}</dd></div>
       <div><dt className="text-xs font-medium text-muted-foreground">{expectedLabel}</dt>
         <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed">{expected}</dd></div>
     </dl>

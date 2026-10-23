@@ -3,7 +3,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { HELP_CENTER, SUPPORT_CHAT } from '@/lib/marketing/copy'
+import { HELP_CENTER, SUPPORT_CHAT } from '@/lib/marketing/copy-barrel'
 import { useOptionalSupportContext } from '@/components/live-support/SupportProvider'
 
 /** Secondary CTAs: view help article + open chat. */

@@ -1,4 +1,4 @@
-import { AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS } from '@/lib/marketing/copy-barrel'
 
 /** User-facing body for the triage-degraded callout. Never uses partialReport fallback. */
 export function triageUnavailableBody(

@@ -17,8 +17,23 @@ vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 
 import {
   claimProvisionalSitesForProject,
+  claimedProvisionalStaysWithVisitor,
   migrateProvisionalSiteDataToProject,
 } from '@/lib/sites/ensure-site'
+
+describe('claimed provisional visitor', () => {
+  const provisional = { sessionKey: 'anon-v1:browser', claimedProjectId: 'proj_1' }
+
+  it('keeps the signed-out browser on the scan it started', () => {
+    expect(claimedProvisionalStaysWithVisitor(provisional, 'owner', { sessionKey: 'anon-v1:browser' })).toBe(true)
+  })
+
+  it('follows the claim for the signed-in owner and for everyone else', () => {
+    expect(claimedProvisionalStaysWithVisitor(provisional, 'owner', { userId: 'owner', sessionKey: 'anon-v1:browser' })).toBe(false)
+    expect(claimedProvisionalStaysWithVisitor(provisional, 'owner', { sessionKey: 'someone-else' })).toBe(false)
+    expect(claimedProvisionalStaysWithVisitor({ ...provisional, claimedProjectId: null }, 'owner', { sessionKey: 'anon-v1:browser' })).toBe(false)
+  })
+})
 
 describe('claim provisional Site data', () => {
   beforeEach(() => {

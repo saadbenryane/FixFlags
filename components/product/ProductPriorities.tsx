@@ -10,7 +10,7 @@ import type {
   ProductAttentionEvidenceDTO,
   ProductAttentionItemDTO,
 } from '@/lib/products/workspace'
-import { SHARE_COPY } from '@/lib/marketing/copy'
+import { SHARE_COPY } from '@/lib/marketing/copy-barrel'
 
 export function ProductPriorities({
   items,

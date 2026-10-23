@@ -22,7 +22,7 @@ export async function resolveSiteAccess(
   siteId: string,
   viewer: SiteViewer
 ): Promise<SiteAccessDecision> {
-  const site = await loadSiteRecord(siteId)
+  const site = await loadSiteRecord(siteId, { viewer })
   if (!site) return { ok: false, reason: 'not_found' }
 
   if (site.kind === 'project') {
@@ -41,18 +41,17 @@ export async function resolveSiteAccess(
 
   if (!provisional) return { ok: false, reason: 'not_found' }
 
-  if (provisional.claimedProjectId) {
-    // loadSiteRecord should already have redirected; treat as denied if still provisional view
+  const sessionKey = viewer.sessionKey?.trim() || ''
+  const anonIds = viewer.anonAuditIds ?? []
+  const ownsScan = Boolean(sessionKey && provisional.sessionKey === sessionKey)
+    || Boolean(provisional.primaryAuditId && anonIds.includes(provisional.primaryAuditId))
+  // A claimed row opens the private project for its owner. The browser that
+  // still holds this scan keeps the provisional board instead of a not-found page.
+  if (provisional.claimedProjectId && !ownsScan) {
     return { ok: false, reason: 'denied' }
   }
 
-  const sessionKey = viewer.sessionKey?.trim() || ''
-  if (sessionKey && provisional.sessionKey === sessionKey) {
-    return { ok: true, site, role: 'provisional_session', authenticated: Boolean(viewer.userId) }
-  }
-
-  const anonIds = viewer.anonAuditIds ?? []
-  if (provisional.primaryAuditId && anonIds.includes(provisional.primaryAuditId)) {
+  if (ownsScan) {
     return { ok: true, site, role: 'provisional_session', authenticated: Boolean(viewer.userId) }
   }
 

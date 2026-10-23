@@ -7,7 +7,7 @@ import {
   type TechnologyEvidence,
 } from './tech-detect'
 import type { GraphTechKind } from '@/lib/graph/types'
-import { MADE_WITH_COPY } from '@/lib/marketing/copy'
+import { MADE_WITH_COPY } from '@/lib/marketing/copy-barrel'
 import { captureObservationKey, captureObservationScopeSchema, type CaptureObservationScope } from './browser/observation-scope'
 
 export type TechnologyProfileStatus = 'complete' | 'partial' | 'unavailable' | 'not_captured'

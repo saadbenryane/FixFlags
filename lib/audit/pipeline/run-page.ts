@@ -16,6 +16,7 @@ import {
   toStoredPageSpeedResult,
 } from '../pagespeed'
 import { runAllChecks, suppressOverlappingFlags } from '../checks'
+import { renderedDocumentForSearch } from '../browser/document-evidence'
 import { capturedHeadMetadata } from '../checks/head-metadata'
 import { suppressFlagsForPageRole } from '../suppression'
 import { runFlowChecks } from '../checks/flow'
@@ -467,11 +468,13 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   }
   const checksStart = ctx.clock.now().getTime()
   ctx.searchResources ??= new Map()
+  const rendered = renderedDocumentForSearch(screenshots)
   const search = await runSearchWorkflow({
     collectorVersion: 2, auditId: ctx.auditId, pageUrl: normalizedUrl,
     original: screenshots.originalDocument,
-    renderedSearchSnapshot: screenshots.collectionRestrictions?.length ? undefined : screenshots.renderedSearchSnapshot,
-    renderedHtml: screenshots.desktopHtml, finalUrl: screenshots.desktopFinalUrl,
+    renderedSearchSnapshot: rendered.renderedSearchSnapshot,
+    renderedHtml: rendered.renderedHtml, renderedComplete: rendered.renderedComplete,
+    finalUrl: screenshots.desktopFinalUrl,
     headers: screenshots.responseHeaders, status: screenshots.desktopHttpStatus,
     privateCapture: Boolean(ctx.scanAccess), deadline: ctx.deadline,
     cache: ctx.searchResources,

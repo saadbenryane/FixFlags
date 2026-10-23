@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { AuditInput } from '@/components/audit/AuditInput'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import s from './CareHomepage.module.css'
 
 export const HOMEPAGE_EVIDENCE = {

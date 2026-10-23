@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { KeepReportEmail } from '@/components/report/KeepReportEmail'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy-barrel'
 
 describe('KeepReportEmail', () => {
   it('sends the report link and shows confirmation', async () => {
