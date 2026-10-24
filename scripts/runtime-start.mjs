@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { fileURLToPath } from 'node:url'
 import { loadRuntimeEnvironment } from '../lib/runtime/environment.mjs'
 import { runtimeEntry } from './runtime-artifacts.mjs'
 
@@ -12,12 +11,14 @@ let entry
 try { entry = runtimeEntry(mode) }
 catch (error) { console.error(error.message); process.exit(1) }
 
-const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))
-const migration = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
-  stdio: 'inherit',
-  env: process.env,
-})
-if (migration.status !== 0) process.exit(migration.status ?? 1)
+const { deployMigrations } = await import('../lib/runtime/migration-coordination.mjs')
+try {
+  const code = await deployMigrations()
+  if (code !== 0) process.exit(code)
+} catch (error) {
+  console.error(error.message)
+  process.exit(1)
+}
 
 const childEnv = {
   ...process.env,

@@ -235,6 +235,7 @@ export function releaseStageCommands(stage) {
         'lib/sites/application/__tests__/site-removal.integration.test.ts',
         'lib/sites/application/__tests__/default-monitoring.integration.test.ts',
         'lib/sites/application/__tests__/watch-alert.integration.test.ts',
+        'lib/runtime/__tests__/migration-coordination.integration.test.ts',
         'lib/sites/__tests__/outcome-confirmation-postgres.integration.test.ts',
         'lib/audit/progressive/__tests__/completion-projection.integration.test.ts',
         'lib/audit/__tests__/create-audit-postgres.integration.test.ts',

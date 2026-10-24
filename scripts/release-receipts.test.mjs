@@ -103,6 +103,7 @@ describe('release evidence receipts', () => {
     assert.ok(persistence?.[2].includes('lib/audit/__tests__/legacy-scan-access-migration.integration.test.ts'))
     assert.ok(persistence?.[2].includes('lib/improvements/handoff-custody.integration.test.ts'))
     assert.ok(persistence?.[2].includes('lib/sites/application/__tests__/watch-alert.integration.test.ts'))
+    assert.ok(persistence?.[2].includes('lib/runtime/__tests__/migration-coordination.integration.test.ts'))
   })
   it('requires website proof and rejects mixed profiles, missing journeys and paid stages', () => {
     assert.equal(releaseProfile({}), 'free-launch')
