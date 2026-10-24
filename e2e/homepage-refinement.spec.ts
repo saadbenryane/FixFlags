@@ -221,6 +221,23 @@ test('brand controls preserve the measured contrast exception in both themes', a
   }
 })
 
+for (const [view, flagId] of [['Overview', 'availability'], ['Pages', 'availability'], ['Timeline', 'contact']] as const) {
+  test(`sample Flag returns to its ${view} workspace and actual opener`, async ({ page }) => {
+    await visit(page)
+    const navigation = board(page).getByRole('button', { name: view, exact: true })
+    await navigation.click()
+    const title = SAMPLE_FLAGS[flagId].title
+    const trigger = board(page).getByRole('button', { name: view === 'Timeline' ? title : `Open ${title}`, exact: true })
+    await trigger.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    await dialog.getByRole('button', { name: `Back to ${view}`, exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(navigation).toHaveAttribute('aria-pressed', 'true')
+    await expect(trigger).toBeFocused()
+  })
+}
+
 test('selected page fixes use the native clipboard and keep their exact scope', async ({ page, context, browserName }) => {
   test.skip(browserName !== 'chromium', 'Native clipboard permission proof uses Chromium')
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])

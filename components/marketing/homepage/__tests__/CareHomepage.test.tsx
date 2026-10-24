@@ -95,6 +95,26 @@ describe('comprehensive homepage experience', () => {
     expect(scrollBody.scrollTop).toBe(320)
   })
 
+  it.each([
+    ['Overview', 'availability'],
+    ['Pages', 'availability'],
+    ['Timeline', 'contact'],
+  ] as const)('returns directly to %s after opening a Flag in that workspace', async (view, flagId) => {
+    render(<CareHomepage dashboardOnly />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    const navigation = within(board).getByRole('button', { name: view, exact: true })
+    fireEvent.click(navigation)
+    const title = SAMPLE_FLAGS[flagId].title
+    const trigger = within(board).getByRole('button', { name: view === 'Timeline' ? title : `Open ${title}`, exact: true })
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: title })).toBeVisible()
+    fireEvent.click(within(dialog).getByRole('button', { name: `Back to ${view}`, exact: true }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(navigation).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
   it('keeps keyboard focus in the board when a detected tool opens Integrations', async () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })

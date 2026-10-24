@@ -33,9 +33,11 @@ import type { AccountChecksView } from '@/lib/sites/accounts/contracts'
 import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
+export type SampleFlagOpener = (card: SampleCategory, flag: SampleFlagId, trigger?: HTMLElement, origin?: SiteRoute) => void
+
 export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onViewAll, onCopySelection, accountRail = false }: {
   accountRail?: boolean; onViewAll?: () => string;
-  onOpen: (card: SiteCardArea, trigger?: HTMLElement) => void; onOpenFlag: (card: SampleCategory, flag: SampleFlagId, trigger?: HTMLElement) => void; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void;
+  onOpen: (card: SiteCardArea, trigger?: HTMLElement) => void; onOpenFlag: SampleFlagOpener; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void;
   onCopyAll?: () => void; onCopySelection?: (prompt: string) => void;
 }) {
   const [view, setView] = useState<SiteRoute>('home')
@@ -55,13 +57,13 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
   const nextRunAt = schedule && !paused ? new Date(Date.parse(P.checkedAt) + scheduleMilliseconds(schedule)).toISOString() : null
   const timeline = C.monitoring.timeline.map(event => ({ ...event, dateTime: `2026-09-${event.id.slice(-2)}T09:00:00.000Z`, flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => {
     const category = S.categories.find(card => sampleFlagsForCategory(card).includes(flag.id as SampleFlagId))
-    if (category) onOpenFlag(category, flag.id as SampleFlagId, trigger)
+    if (category) onOpenFlag(category, flag.id as SampleFlagId, trigger, 'timeline')
   } })) : [] }))
   const summaryItems = S.summaryItems.filter(item => !('id' in item) || item.id !== 'monitoring')
   const renderCard = (card: SampleCategory, layout: 'card' | 'row') => <article key={card.id} aria-label={card.name}><BoardCard compact name={card.name} status={card.status} state={card.state} answer={card.answer} detail={layout === 'row' ? card.context : undefined} icon={card.id} flagCount={card.flagCount} freshness={S.freshness}
     showFlagPreview={layout === 'card' && card.flagCount > 0}
-    onOpenFlag={(id, trigger) => onOpenFlag(card, id as SampleFlagId, trigger)}
-    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, priorityBand: flag === 'contact' ? 'other' : 'fix_first', href: '#product', onOpen: () => onOpenFlag(card, flag), copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={trigger => onOpen(card.id, trigger)} layout={layout} /></article>
+    onOpenFlag={(id, trigger) => onOpenFlag(card, id as SampleFlagId, trigger, 'home')}
+    flags={sampleFlagsForCategory(card).map(flag => ({ id: flag, title: SAMPLE_FLAGS[flag].title, priorityBand: flag === 'contact' ? 'other' : 'fix_first', href: '#product', copyAction: <InteractiveButton type="button" className={s.flagCopyAction} aria-label={`Copy fix prompt for ${SAMPLE_FLAGS[flag].title}`} title="Copy fix prompt" onClick={() => onCopyFlag(card, flag)}><Copy size={15} aria-hidden /></InteractiveButton> }))} onOpen={trigger => onOpen(card.id, trigger)} layout={layout} /></article>
 
   function updateConnection(provider: GoogleProvider, connected: boolean) {
     setConnections(current => ({ ...current, [provider]: { ...current[provider], status: connected ? 'connected' : 'revoked', propertyLabel: connected ? provider === 'SEARCH_CONSOLE' ? `https://${C.boardLabel}/` : C.boardLabel : null, lastSyncedAt: connected ? P.checkedAt : null } }))
@@ -107,7 +109,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
       {view === 'timeline' ? <section className={s.boardPane} aria-label={S.navigation.timeline}><p className={s.paneDescription}>{M.historyBody}</p><SiteMonitoringHistory points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} /></section> : null}
       {view === 'pages' ? <section className={s.boardPane} aria-label={Dashboard.pages}><SampleFlagSelection ids={Object.keys(SAMPLE_FLAGS) as SampleFlagId[]} onCopy={onCopySelection}><SitePageResults pages={samplePages(Object.keys(SAMPLE_FLAGS) as SampleFlagId[], (id, trigger) => {
         const category = S.categories.find(card => sampleFlagsForCategory(card).includes(id))
-        if (category) onOpenFlag(category, id, trigger)
+        if (category) onOpenFlag(category, id, trigger, 'pages')
       })} /></SampleFlagSelection></section> : null}
       {view === 'integrations' ? <section className={s.boardPane} aria-label={S.navigation.integrations}><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>
         <SiteIntegrationsPanel github={{ configured: true, status: 'not_connected', login: null }} shopify={{ configured: true, state: shopConnected ? 'connected' : 'not_connected', domain: shopConnected ? shop : null }} searchConsole={connections.SEARCH_CONSOLE} analytics={connections.ANALYTICS}

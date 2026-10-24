@@ -7,14 +7,14 @@ import { HOMEPAGE_SAMPLE as S, type SampleCategory, type SampleFlagId } from '@/
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { HomepageIntro, HomepageUrlEntry } from './HomepagePrimitives'
 import { HomepageEditorTools } from './HomepageSections'
-import { HomepageDashboardPreview } from './HomepageDashboardPreview'
+import { HomepageDashboardPreview, type SampleFlagOpener } from './HomepageDashboardPreview'
 import s from './CareHomepage.module.css'
 
 export type HomepageDetailCard = SiteCardArea
 
 const BENEFIT_ICONS = [Route, Flag, Bot] as const
 
-export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onViewAll, onCopySelection }: { onCopySelection: (prompt: string) => void; onOpen: (card: HomepageDetailCard, trigger?: HTMLElement) => void; onOpenFlag: (card: SampleCategory, flag: SampleFlagId, trigger?: HTMLElement) => void; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void; onCopyAll: () => void; onViewAll: () => string }) {
+export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onViewAll, onCopySelection }: { onCopySelection: (prompt: string) => void; onOpen: (card: HomepageDetailCard, trigger?: HTMLElement) => void; onOpenFlag: SampleFlagOpener; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void; onCopyAll: () => void; onViewAll: () => string }) {
   return <>
     <section className={s.hero}>
       <div className={s.heroContent}>

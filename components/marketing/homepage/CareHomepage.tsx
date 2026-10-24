@@ -19,7 +19,8 @@ import { CARE_HOME as C } from '@/lib/marketing/copy-barrel'
 import { HOMEPAGE_SAMPLE as S, SAMPLE_FLAGS, type SampleFlagId } from '@/lib/marketing/copy/care-homepage'
 import { SITE_DASHBOARD_COPY as Dashboard } from '@/lib/marketing/copy/site-dashboard'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
-import { HomepageDashboardPreview } from './HomepageDashboardPreview'
+import { HomepageDashboardPreview, type SampleFlagOpener } from './HomepageDashboardPreview'
+import { SITE_ROUTES, type SiteRoute } from '@/components/sites/SiteWorkspaceNavigation'
 import { HomepageCheckCoverage } from './HomepageCheckCoverage'
 import { HomepageFinalSection, HomepageHandoffSection, HomepageIntegrationsSection, HomepageLoopSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
 import s from './CareHomepage.module.css'
@@ -27,6 +28,7 @@ import s from './CareHomepage.module.css'
 export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolean } = {}) {
   const [selected, setSelected] = useState<HomepageDetailCard | null>(null)
   const [flag, setFlag] = useState<SampleFlagId | null>(null)
+  const [flagOrigin, setFlagOrigin] = useState<SiteRoute | null>(null)
   const [copyResult, setCopyResult] = useState<HomepageCopyResult>(null)
   const [manualPrompt, setManualPrompt] = useState<string | null>(null)
   const opener = useRef<HTMLElement | null>(null)
@@ -40,7 +42,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
   const openCard = (card: HomepageDetailCard, trigger?: HTMLElement) => {
     opener.current = trigger ?? document.activeElement as HTMLElement
     flagOpener.current = null; categoryScroll.current = 0
-    setSelected(card); setFlag(null); setManualPrompt(null); setCopyResult(null)
+    setSelected(card); setFlag(null); setFlagOrigin(null); setManualPrompt(null); setCopyResult(null)
   }
   const focusHeading = () => {
     const dialog = heading.current?.closest<HTMLElement>('[role="dialog"]')?.querySelector<HTMLElement>('[data-dialog-scroll]')
@@ -55,13 +57,18 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
     setFlag(id); setCopyResult(null)
     requestAnimationFrame(focusHeading)
   }
-  const openSampleFlag = (card: typeof S.categories[number], id: SampleFlagId, trigger?: HTMLElement) => {
+  const openSampleFlag: SampleFlagOpener = (card, id, trigger, origin) => {
     opener.current = trigger ?? document.activeElement as HTMLElement
     flagOpener.current = null; categoryScroll.current = 0
-    setSelected(card.id); setFlag(id); setManualPrompt(null); setCopyResult(null)
+    setSelected(card.id); setFlag(id); setFlagOrigin(origin ?? null); setManualPrompt(null); setCopyResult(null)
   }
-  const backToCategory = () => {
+  const returnFromFlag = () => {
     setFlag(null); setManualPrompt(null); setCopyResult(null)
+    if (flagOrigin) {
+      setSelected(null)
+      setFlagOrigin(null)
+      return
+    }
     requestAnimationFrame(() => {
       const trigger = flagOpener.current ? document.getElementById(flagOpener.current) : null
       if (!trigger) { focusHeading(); return }
@@ -94,6 +101,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
     onCopyAll: () => { opener.current = document.activeElement as HTMLElement; void copyFlag('all', sampleBundle(Object.keys(SAMPLE_FLAGS) as SampleFlagId[])) } }
   const manualBundle = Boolean(manualPrompt && copyResult?.source === 'all')
   const title = selectedFlag?.title ?? selectedCard?.name ?? (manualBundle ? Dashboard.bundleManual : '')
+  const returnLabel = flagOrigin ? SITE_ROUTES.find(([id]) => id === flagOrigin)?.[1] : selectedCard?.name ?? 'area'
 
   return <div className={s.home}>
     {dashboardOnly ? <HomepageDashboardPreview accountRail {...previewActions} /> : <HomepageHero {...previewActions} />}
@@ -105,7 +113,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
     <HomepageFinalSection />
     </> : null}
     <ResponsiveDepth header={<>
-      {flag ? <InteractiveButton type="button" className={s.backButton} onClick={backToCategory}><ArrowLeft size={16} aria-hidden="true" />Back to {selectedCard?.name ?? 'area'}</InteractiveButton> : null}
+      {flag ? <InteractiveButton type="button" className={s.backButton} onClick={returnFromFlag}><ArrowLeft size={16} aria-hidden="true" />Back to {returnLabel}</InteractiveButton> : null}
       <div className={s.modalHeading}><DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>{!selectedFlag && selectedCard?.id === 'site' ? <span>{selectedCard.context}</span> : null}</div>
     </>} open={selected !== null || manualBundle} onOpenChange={open => { if (!open) { setSelected(null); if (manualBundle) setManualPrompt(null) } }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
       <DialogDescription className={selectedFlag || manualBundle ? undefined : 'sr-only'}>{selectedFlag?.scope ?? (selectedCard ? Dashboard.categoryDescription : undefined) ?? (manualBundle ? Dashboard.bundleBody : '')}</DialogDescription>
