@@ -91,7 +91,7 @@ export function monitoringOperationsWhere(now: Date) {
       { status: 'PENDING', nextAttemptAt: { lt: overdueBefore } },
       { status: 'SENDING', OR: [{ leaseUntil: { lte: now } }, { leaseUntil: null, nextAttemptAt: { lt: overdueBefore } }] },
     ] },
-    watchAlerts: { project: activeSite, OR: [
+    watchAlerts: { project: activeSite, recheckTrigger: 'WATCH', OR: [
       { watchNotificationStatus: 'FAILED' },
       { watchNotificationStatus: 'PENDING', ...oldWatchObservation },
       { watchNotificationStatus: 'SENDING', OR: [
