@@ -14,7 +14,7 @@ import { showFixPromptCopied } from './FixPromptToast'
 import { useSiteAction } from '@/hooks/useSiteAction'
 import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
-import { SiteActionContinuation } from './SiteActionContinuation'
+import { SitePromptAccessActions } from './SiteActionContinuation'
 import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
 import { usePreparedRepairPrompt } from '@/hooks/usePreparedRepairPrompt'
 
@@ -75,8 +75,8 @@ export function SitePromptCopyButton({
     }, copied => copied ? SITE_BOARD_COPY.copyPromptCopied : null)
   }
 
-  if (availability !== 'available') return <SiteActionContinuation availability={availability}
-    destination={`/sites/${siteId}/flags/${flagId}`} action="copy" compact />
+  if (availability !== 'available') return <SitePromptAccessActions availability={availability}
+    destination={`/sites/${siteId}/flags/${flagId}`} label={SITE_BOARD_COPY.copyPrompt} />
 
   return (
     <>

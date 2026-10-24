@@ -1,6 +1,11 @@
 import { CARD_CATALOG } from './card-areas'
 import { readExecutionSpec } from './domain/execution-spec'
 
+/** A trend needs at least two comparable observations. Missing checks stay gaps. */
+export function hasFlagTrend(points: ReadonlyArray<{ flagCount: number | null }>): boolean {
+  return points.filter(point => point.flagCount !== null).length >= 2
+}
+
 export type MonitoringHistoryEntry = {
   id?: string
   checkedAt: string

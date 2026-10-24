@@ -5,6 +5,7 @@ import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { CARE_HOME, HOMEPAGE_SAMPLE } from '@/lib/marketing/copy/care-homepage'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
+import { AUTH } from '@/lib/marketing/copy/auth'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 
 // Context routing disables HTTP cache in every supported engine. Page routes
@@ -368,6 +369,8 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   const boardBody = board.body as SiteHomeView
   const reportId = boardBody?.audit?.id
   expect(reportId).toBeTruthy()
+  expect(boardBody.monitoringHistory).toEqual([expect.objectContaining({ id: reportId, status: 'COMPLETED' })])
+  expect(boardBody.monitoringTrend).toEqual([expect.objectContaining({ id: reportId, scope: 'SITE' })])
 
   // Teaser scans run the reduced pipeline: the status payload streams
   // deterministic findings and never records flow-walk or journey events.
@@ -390,12 +393,27 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   expect(walkEvents).toHaveLength(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Sign in to check again', exact: true }).first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Sign in to check again', exact: true }).first()).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
+  const checkAgain = page.getByRole('button', { name: 'Check again', exact: true }).first()
+  await expect(checkAgain).toBeVisible()
+  await checkAgain.click()
+  const authentication = page.getByRole('dialog', { name: AUTH.signUp.title, exact: true })
+  await expect(authentication.getByLabel('Email')).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe(`/sites/${siteId}`)
+  await page.keyboard.press('Escape')
+  await expect(authentication).toBeHidden()
+  await expect(checkAgain).toBeFocused()
+  await expect(page.getByRole('complementary', { name: 'App' })).toBeVisible()
+  await expect(page.getByText('Flags over time', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
   await expect(page.getByText('Not watching')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0)
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Timeline', exact: true }).click()
+  await expect(page.getByRole('list', { name: 'Check history', exact: true })).toBeVisible()
+  await expect(page.getByText('Check history appears after the first check.', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('This Site has recorded analysis. Detailed history is unavailable for this evidence.', { exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Overview', exact: true }).click()
 
   // A healthy target need not produce a Flag. Existing findings still cannot
   // expose a private fix prompt through the anonymous action endpoint.

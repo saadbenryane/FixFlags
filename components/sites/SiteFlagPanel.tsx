@@ -12,7 +12,7 @@ import { useSiteFlagDetail } from '@/hooks/useSiteFlagDetail'
 import { ResponsiveDepth } from './ResponsiveDepth'
 import { FlagEvidenceDetails } from './FlagEvidenceDetails'
 import { SiteFlagActions } from './SiteFlagActions'
-import { SiteActionContinuation } from './SiteActionContinuation'
+import { SitePromptAccessActions } from './SiteActionContinuation'
 import { BoardDetails } from './BoardDetails'
 
 export function SiteFlagPanel({ siteId, flagId, view, onClose, restoreFocus, returnLabel }: {
@@ -42,7 +42,7 @@ export function SiteFlagPanel({ siteId, flagId, view, onClose, restoreFocus, ret
       {view.actions.copy === 'available' && !['FIXED', 'VERIFIED', 'DISMISSED'].includes(flag.status) ? <SiteFlagActions compact key={key}
         siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} sourceAuditId={flag.sourceAuditId}
         initial={view} initialFix={flag.fix} repairGuidance={flag.repairGuidance} verifying={flag.verifying} /> :
-        view.actions.copy !== 'available' ? <SiteActionContinuation availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} action="copy" /> : null}
+        view.actions.copy !== 'available' ? <SitePromptAccessActions availability={view.actions.copy} destination={`/sites/${siteId}?flag=${encodeURIComponent(flagId ?? '')}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
       <details className="text-sm"><summary className="flex min-h-11 cursor-pointer items-center font-medium">{C.evidenceDetails}</summary>
         <div className="mt-3 space-y-4">
           {flag.performanceEvidenceSource ? <p className="text-xs leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.flagEvidence[flag.performanceEvidenceSource]}</p> : null}

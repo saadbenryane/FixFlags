@@ -62,7 +62,7 @@ export function SidebarNav({
   onNav?: () => void
   showAdmin?: boolean
   compact?: boolean
-  onGatedItem?: (href: string) => boolean
+  onGatedItem?: (href: string, trigger: HTMLElement) => boolean
 }) {
   const pathname = usePathname()
 
@@ -87,7 +87,7 @@ export function SidebarNav({
         key={item.href}
         href={item.href as Route}
         onClick={(event) => {
-          if (onGatedItem?.(item.href)) {
+          if (onGatedItem?.(item.href, event.currentTarget)) {
             event.preventDefault()
             return
           }

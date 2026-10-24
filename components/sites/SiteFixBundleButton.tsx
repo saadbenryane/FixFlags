@@ -13,7 +13,7 @@ import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
 import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { useSiteAction } from '@/hooks/useSiteAction'
-import { SiteActionContinuation } from './SiteActionContinuation'
+import { SitePromptAccessActions } from './SiteActionContinuation'
 import { SiteActionFeedback } from './SiteActionFeedback'
 import { usePreparedRepairPrompt } from '@/hooks/usePreparedRepairPrompt'
 
@@ -23,7 +23,7 @@ export function SiteFixBundleButton({ siteId, area, flagIds, availability, prese
   const [manual, setManual] = useState<string | null>(null)
   const prepared = usePreparedRepairPrompt({ kind: 'bundle', siteId, ...(area ? { area } : {}), ...(flagIds ? { flagIds } : {}) }, availability === 'available', presentation === 'preview')
   const input = useRef<HTMLTextAreaElement>(null)
-  if (availability !== 'available') return <SiteActionContinuation availability={availability} destination={`/sites/${siteId}${area ? `?category=${area}` : ''}`} action="copy" compact />
+  if (availability !== 'available') return <SitePromptAccessActions availability={availability} destination={`/sites/${siteId}${area ? `?category=${area}` : ''}`} label={flagIds ? C.fixSelected(flagIds.length) : C.fixAll} />
   async function copy() {
     await submit(async () => {
       const bundle = await prepared.forCopy()

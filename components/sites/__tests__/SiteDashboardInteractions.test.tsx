@@ -57,7 +57,7 @@ describe('dashboard reading and handoff', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(detail)))
     render(<SiteFlagPanel siteId="site" flagId="flag-1" view={view()} onClose={vi.fn()} restoreFocus={vi.fn()} />)
     expect(await screen.findByText(detail.flag.evidence)).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Sign in to copy the fix prompt' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite%3Fflag%3Dflag-1')
+    expect(screen.getByRole('link', { name: 'Copy fix prompt' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite%3Fflag%3Dflag-1')
     expect(screen.queryByRole('button', { name: 'Owner fix actions' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Full details and history' })).toHaveAttribute('href', '/sites/site/flags/flag-1')
   })

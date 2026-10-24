@@ -2,16 +2,16 @@
 .checks .categoryGrid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .categoryGrid > :is(div, article) { display: flex; min-width: 0; }
 .categoryGrid > :is(div, article) > * { flex: 1; }
-.checks .healthyGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.healthyGrid > :is(div, article) { display: flex; min-width: 0; }
-.healthyGrid > :is(div, article) > * { flex: 1; }
+.checks .quietGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.quietGrid > :is(div, article) { display: flex; min-width: 0; }
+.quietGrid > :is(div, article) > * { flex: 1; }
 @container site-checks (min-width: 440px) {
   .checks .categoryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .checks .healthyGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .checks .quietGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container site-checks (min-width: 760px) {
   .checks .categoryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .checks .healthyGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .checks .quietGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .monitoring { display: grid; gap: 16px; min-width: 0; align-items: stretch; }

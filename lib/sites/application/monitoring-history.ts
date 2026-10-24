@@ -132,8 +132,12 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
 /** Read the broad trend independently so scoped activity cannot evict broad evidence. */
 export async function loadMonitoringHistory(site: SiteRecord, selection?: Awaited<ReturnType<typeof loadSiteAnalysisSelection>>) {
   const scoped = selection ?? await loadSiteAnalysisSelection(site)
-  if (!site.projectId) return { timeline: [], trend: [] }
-  const base = { projectId: site.projectId, status: { in: ['COMPLETED', 'FAILED'] as Array<'COMPLETED' | 'FAILED'> } }
+  // A creator can read only the primary analysis recorded on their provisional
+  // Site. Null ownership predicates fence a claim that occurs during this read.
+  const scope: Prisma.AuditWhereInput | null = site.projectId ? { projectId: site.projectId }
+    : site.primaryAuditId ? { id: site.primaryAuditId, projectId: null, userId: null } : null
+  if (!scope) return { timeline: [], trend: [] }
+  const base = { ...scope, status: { in: ['COMPLETED', 'FAILED'] as Array<'COMPLETED' | 'FAILED'> } }
   const [timelineAudits, trendAudits] = await Promise.all([
     prisma.audit.findMany({ where: { ...base, ...siteAnalysisAuditWhere }, orderBy: { createdAt: 'desc' }, take: 8, select: historyAuditSelect }),
     prisma.audit.findMany({ where: { ...base, ...scoped.where }, orderBy: { createdAt: 'desc' }, take: 8, select: historyAuditSelect }),
@@ -143,7 +147,7 @@ export async function loadMonitoringHistory(site: SiteRecord, selection?: Awaite
   const trend = trendAudits.map(audit => ({ ...audit, verifierExecutions: executions.get(audit.id) ?? [] }))
   const sourceIds = [...new Set(timeline.flatMap(audit => audit.verificationAttempts.flatMap(attempt =>
     attempt.handoffReference?.startsWith('flag:') ? [attempt.handoffReference.slice(5)] : [])))]
-  const proofs = sourceIds.length ? await prisma.flag.findMany({ where: { id: { in: sourceIds }, audit: { projectId: site.projectId } },
+  const proofs = sourceIds.length ? await prisma.flag.findMany({ where: { id: { in: sourceIds }, audit: scope },
     select: { id: true, problem: true, auditId: true } }) : []
   const accountAuditIds = [...new Set([...timeline, ...trend].filter(audit => readExecutionSpec(audit.executionSpec)?.scope === 'ACCOUNT_CHECKS').map(audit => audit.id))]
   const accountTasks = accountAuditIds.length ? await prisma.auditVerifierExecution.findMany({ where: { auditId: { in: accountAuditIds }, targetKey: 'task:automatic-accounts', workKind: 'automatic-accounts', workState: 'COMPLETED' },

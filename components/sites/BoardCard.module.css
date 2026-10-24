@@ -110,7 +110,7 @@
 .flagPreviewList li { position: relative; padding-left: 14px; overflow-wrap: anywhere; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 550; line-height: 1.5; letter-spacing: -.01em; }
 .flagPreviewList li::before { content: ''; position: absolute; top: .58em; left: 0; width: 6px; height: 6px; border-radius: 50%; background: hsl(var(--brand)); }
 .flagPreviewList .flagPreviewMore { color: hsl(var(--muted-foreground)); font-family: var(--font-sans), sans-serif; font-size: 12px; font-weight: 550; letter-spacing: 0; }
-.flagPreviewList .flagPreviewMore::before { background: hsl(var(--muted-foreground) / .6); }
+.flagPreviewList .flagPreviewMore::before { content: none; }
 .incompleteNote { display: inline-flex; margin-top: 8px; font-size: 12px; font-weight: 550; color: hsl(var(--muted-foreground)); }
 .compact { min-height: 164px; }
 .compact .visual { height: 96px; }
@@ -228,8 +228,8 @@
   .rowResultCopy strong { font-size: 15px; }
 }
 
-.card.clearSummary { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 14px 16px; background: hsl(var(--muted) / .45); box-shadow: none; text-decoration: none; }
-.clearSummary .title { flex: 1; font-size: 12px; font-weight: 500; }
+.card.compactSummary { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 14px 16px; background: hsl(var(--muted) / .45); box-shadow: none; text-decoration: none; }
+.compactSummary .title { flex: 1; font-size: 12px; font-weight: 500; }
 .clearCount { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; color: hsl(var(--muted-foreground)); font-size: 11px; }
 .priority { display: block; margin-top: 3px; color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 500; letter-spacing: 0; }
 .priority[data-priority='fix_first'] { color: hsl(var(--foreground)); font-weight: 600; }

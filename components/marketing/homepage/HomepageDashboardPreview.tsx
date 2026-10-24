@@ -101,7 +101,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
           }} onSelectTechnology={() => { setView('integrations'); requestAnimationFrame(() => navigationItems.current.get('integrations')?.focus()) }} />}
           trend={<SiteMonitoringHistory variant="overview" points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} />}
           items={S.categories.filter(card => card.id !== 'uptime').map(card => ({ id: card.id, flagCount: card.flagCount,
-            healthy: card.state === 'healthy' && card.flagCount === 0, render: layout => renderCard(card, layout) }))}
+            render: layout => renderCard(card, layout) }))}
           uptime={<UptimeCard siteId="sample" summary={{ ...SAMPLE_UPTIME, enabled: Boolean(schedule) && !paused, state: schedule && !paused ? SAMPLE_UPTIME.state : 'paused' }} historySource={sampleUptimeHistory} referenceTime={referenceTime} />} />
       </> : null}
       {view === 'timeline' ? <section className={s.boardPane} aria-label={S.navigation.timeline}><p className={s.paneDescription}>{M.historyBody}</p><SiteMonitoringHistory points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} /></section> : null}

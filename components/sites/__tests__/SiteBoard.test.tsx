@@ -202,7 +202,7 @@ it('reopens a requested category and preserves that destination through authenti
   render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={boardView({ actions: siteViewerActions(false) })} initialCategory="search" /></MeProvider>)
   const dialog = await screen.findByRole('dialog', {}, { timeout: 5000 })
   expect(within(dialog).getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
-  expect(within(dialog).getByRole('link', { name: 'Sign in to check again' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fp_example%3Fcategory%3Dsearch')
+  expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH + '?category=search')
 })
 
 function watchedOutcome(partial: Partial<SiteOutcomeView> & Pick<SiteOutcomeView, 'name' | 'state' | 'summary'>): SiteOutcomeView {
@@ -278,7 +278,7 @@ describe('SiteBoard chrome', () => {
 
   it('gives signed-out visitors a recheck path that returns to their Site', async () => {
     renderBoard(null)
-    expect(screen.getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH)
   })
 
   it('keeps Check again in the header when a public action was refused', async () => {
@@ -352,13 +352,13 @@ describe('SiteBoard chrome', () => {
         answer: 'Search partially checked', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete })],
     })} /></MeProvider>)
     const search = screen.getByRole('article', { name: 'Search' })
-    expect(within(search).getByText('Search partially checked')).toBeVisible()
+    expect(within(search).getByRole('button', { name: 'Open Search' })).toHaveAccessibleDescription(/Search partially checked/)
     expect(within(search).queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     expect(within(search).queryByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Open Search' }))
     const detail = await screen.findByRole('dialog')
-    expect(within(detail).getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH + '?category=search')}`)
+    expect(within(detail).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH + '?category=search')
   })
 
   it('puts Uptime first, followed by flagged, unfinished, and healthy checks', () => {
@@ -371,7 +371,7 @@ describe('SiteBoard chrome', () => {
     const conversion = screen.getByRole('article', { name: 'Conversion' })
     const search = screen.getByRole('article', { name: 'Search' })
     expect(conversion.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(within(search).getByText('Crawl access checked')).toBeVisible()
+    expect(within(search).getByRole('button', { name: 'Open Search' })).toHaveAccessibleDescription(/Crawl access checked/)
     expect(within(search).queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     const uptime = screen.getByRole('article', { name: 'Uptime' })
     expect(uptime.compareDocumentPosition(conversion)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -395,7 +395,7 @@ describe('SiteBoard chrome', () => {
       method: 'POST', body: JSON.stringify({ scope: 'category', area: 'search' }),
       headers: expect.objectContaining({ 'Idempotency-Key': expect.stringMatching(/^web:/) }),
     }))
-    expect(screen.getByText('Search partially checked')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Search', hidden: true })).toHaveAccessibleDescription(/Search partially checked/)
     expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search') })).toBeEnabled()
     vi.unstubAllGlobals()
   })
@@ -421,7 +421,7 @@ describe('SiteBoard chrome', () => {
     fireEvent.click(action)
     expect(action).toBeDisabled()
     expect(action).toHaveTextContent(SITE_BOARD_COPY.starting)
-    expect(screen.getByText('Search partially checked')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Search', hidden: true })).toHaveAccessibleDescription(/Search partially checked/)
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/runs'))).toHaveLength(1)
     current = boardView({ ...initial,
       audit: { ...initial.audit, id: 'audit-2', status: 'QUEUED', progress: 0 },
@@ -522,7 +522,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
     expect(screen.queryByText('0 pages')).not.toBeInTheDocument()
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
-    expect(within(screen.getByRole('article', { name: 'Pages' })).getByText('Checking pages…')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Pages' })).toHaveAccessibleDescription(/Checking pages/)
     expect(within(screen.getByRole('group', { name: 'Website status summary' })).queryByText('Pages')).not.toBeInTheDocument()
   })
 
@@ -829,7 +829,7 @@ describe('SiteBoard chrome', () => {
     initial.presentation.coverage.pagesExpected = 12
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={initial} /></MeProvider>)
     const pages = screen.getByRole('article', { name: 'Pages' })
-    expect(within(pages).getByText('1 needs attention')).toBeVisible()
+    expect(within(pages).getByRole('button', { name: 'Open Pages' })).toHaveAccessibleDescription(/1 needs attention/)
   })
 
   it('opens Pages from the summary and discloses each capture with its recorded check state', async () => {
@@ -857,7 +857,18 @@ describe('SiteBoard chrome', () => {
     render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={initial} viewMode="timeline" /></MeProvider>)
     expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: SITE_ACTION_COPY.access.historyTitle })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: SITE_BOARD_COPY.signInToCheckAgain })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH)
+  })
+
+  it('omits an empty overview trend while preserving the first recorded check in Timeline', () => {
+    const view = boardView({ monitoringHistory: [
+      { id: 'first', checkedAt: '2026-10-23T09:00:00Z', flagCount: 0, scope: 'SITE', status: 'COMPLETED', completionState: 'PARTIAL' },
+    ] })
+    view.monitoringTrend = view.monitoringHistory
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    expect(screen.queryByText('Flags over time')).not.toBeInTheDocument()
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Site' })).getByRole('link', { name: 'Timeline', exact: true }))
+    expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
   })
 
   it('shows real monitoring history in the same Site shell', async () => {
@@ -966,13 +977,13 @@ describe('SiteBoard chrome', () => {
     view.audit.status = 'RUNNING'
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
     const pages = screen.getByRole('article', { name: 'Pages' })
-    expect(within(pages).getByText('Running')).toBeVisible()
+    expect(within(pages).getByRole('button', { name: 'Open Pages' })).toHaveAccessibleDescription(/Running/)
     expect(within(pages).queryByText('Rendered content and semantics')).not.toBeInTheDocument()
     const conversion = screen.getByRole('article', { name: 'Conversion' })
     expect(within(conversion).getByText('Running')).toBeVisible()
     expect(within(conversion).getByText('Headline does not convey usage context')).toBeVisible()
     expect(within(screen.getByRole('article', { name: 'Performance' })).queryByText(/running/)).not.toBeInTheDocument()
-    expect(within(screen.getByRole('article', { name: 'Performance' })).getByText('Waiting')).toBeVisible()
+    expect(within(screen.getByRole('article', { name: 'Performance' })).getByRole('button', { name: 'Open Performance' })).toHaveAccessibleDescription(/Waiting/)
     expect(screen.queryByText('No completed analysis')).not.toBeInTheDocument()
     const header = screen.getByRole('complementary', { name: 'Website navigation' })
     const status = within(header).getByRole('status')
@@ -998,7 +1009,7 @@ describe('SiteBoard chrome', () => {
         'href',
         `/sign-in?next=${encodeURIComponent(SITE_PATH)}`
       )
-      expect(link).toHaveClass('bg-primary', 'text-primary-foreground')
+      expect(link).toHaveAttribute('data-site-return-focus', 'account')
     }
     expect(screen.queryByRole('link', { name: 'All Sites' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Keep watching' })).not.toBeInTheDocument()
@@ -1084,7 +1095,7 @@ describe('SiteBoard chrome', () => {
         })} />
       </MeProvider>
     )
-    expect(screen.getAllByText('2 of 3 pages')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Open Pages' })).toHaveAccessibleDescription(/2 of 3 pages/)
     expect(screen.queryByRole('button', { name: 'Uptime' })).not.toBeInTheDocument()
   })
 
@@ -1228,9 +1239,7 @@ describe('SiteBoard chrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     await screen.findByRole('dialog')
-    expect(screen.getByRole('link', { name: 'Sign in to check again' })).toHaveAttribute(
-      'href', `/sign-in?next=${encodeURIComponent(SITE_PATH + '?category=conversion')}`,
-    )
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH + '?category=conversion')
   })
 
   it('keeps stale evidence available when a new Site check cannot start', async () => {

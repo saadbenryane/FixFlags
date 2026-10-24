@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { InteractiveButton } from '@/components/ui/interactive-controls'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -162,6 +163,7 @@ export function BoardCard({
   freshness?: string | null
 }) {
   const Icon = BOARD_CARD_ICONS[icon]
+  const statusId = useId()
   const checking = activity === 'checking' || state === 'checking'
   const className = [
     styles.card,
@@ -239,13 +241,14 @@ export function BoardCard({
     </article>
   }
 
-  const clear = compact && count === 0 && state === 'healthy' && !checking && !incompleteReason
-  if (clear) {
-    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{flagCountLabel(0)}<ArrowRight size={15} aria-hidden /></span></>
-    const clearClass = `${styles.card} ${styles.clearSummary}`
-    return onOpen ? <InteractiveButton type="button" className={clearClass} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`}>{content}</InteractiveButton>
-      : href ? <Link className={clearClass} href={href as Route} aria-label={`Open ${name}`}>{content}</Link>
-        : <article className={clearClass} aria-label={name}>{content}</article>
+  if (compact && count === 0) {
+    const description = [...new Set([status, incompleteReason, answer !== flagCountLabel(0) ? answer : null, detail].filter(Boolean))].join('. ')
+    const content = <><span className={styles.title}><Icon size={17} aria-hidden />{name}</span><span className={styles.clearCount}>{checking ? SITE_BOARD_COPY.checking : flagCountLabel(0)}
+      <span className={`${styles.signal} ${SIGNAL_CLASS[checking ? 'checking' : state]}`} title={description}><i aria-hidden /></span><ArrowRight size={15} aria-hidden /></span><span id={statusId} className="sr-only">{description}</span></>
+    const compactClass = `${styles.card} ${styles.compactSummary}`
+    return onOpen ? <InteractiveButton type="button" className={compactClass} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</InteractiveButton>
+      : href ? <Link className={compactClass} href={href as Route} aria-label={`Open ${name}`} aria-describedby={statusId}>{content}</Link>
+        : <article className={compactClass} aria-label={name} aria-describedby={statusId}>{content}</article>
   }
 
   const body = (
