@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import { PrismaClient } from '@prisma/client'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
@@ -165,7 +166,7 @@ test.describe('credentialed revenue journeys', () => {
 
     await page.goto('/new')
     await page.getByLabel('Website URL').first().fill(targetUrl)
-    await page.getByRole('button', { name: 'Analyze' }).first().click()
+    await page.getByRole('button', { name: PUBLIC_SITE_COPY.analyze, exact: true }).first().click()
     await page.waitForURL(/\/sites\//, { timeout: 30_000 })
     await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
     await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)

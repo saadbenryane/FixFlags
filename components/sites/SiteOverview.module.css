@@ -1,14 +1,15 @@
-.overview { container: site-overview / inline-size; min-width: 0; margin-bottom: 28px; }
+.workspace { display: grid; gap: 16px; min-width: 0; }
+.overview { container: site-overview / inline-size; min-width: 0; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: stretch; }
-.summaries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
-.findings { display: flex; align-items: flex-start; min-width: 0; }
+.summaries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; align-self: stretch; }
+.findings { display: flex; align-items: stretch; min-width: 0; }
 .findings > * { width: 100%; }
 .notice { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
 @container site-overview (min-width: 420px) {
-  .withTools .summaries { grid-template-columns: minmax(0, .9fr) minmax(0, 1.15fr); }
+  .withTools .summaries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .withTools .findings dl { grid-template-columns: minmax(0, 1fr); }
 }
 @container site-overview (min-width: 640px) {
-  .layout { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
+  .layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .findings dl { grid-template-columns: minmax(0, 1fr); }
 }

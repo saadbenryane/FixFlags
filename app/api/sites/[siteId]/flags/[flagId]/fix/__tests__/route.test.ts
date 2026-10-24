@@ -19,7 +19,7 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     mocks.requireSiteOwner.mockResolvedValue({ ok: true, projectId: 'project-1', decision: { role: 'owner', site: { siteId: 'site-1', userId: 'user-1' } } })
     mocks.loadSiteBoardFlag.mockResolvedValue({
       flag: {
-        id: 'improvement-1', sourceFlagId: 'flag-1', problem: 'Checkout button is hidden',
+        id: 'improvement-1', sourceFlagId: 'flag-1', sourceAuditId: 'audit-1', problem: 'Checkout button is hidden',
         whyItMatters: 'Customers cannot buy.', evidence: 'The button is outside the viewport.',
         evidenceMissing: false, fix: 'Move the button into view.', pageUrl: 'https://example.com/product',
         affectedPaths: ['https://example.com/product', 'https://example.com/other-product'],
@@ -74,6 +74,9 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/fix', () => {
     const body = await response.json()
     expect(body.prompt).toContain('FixFlags Flag: Checkout button is hidden')
     expect(body.sourceFlagId).toBe('flag-1')
+    expect(body.prompt).toContain('/api/reports/audit-1')
+    expect(body.prompt).toContain('/report/audit-1')
+    expect(body.prompt).toContain('Access follows the scan visibility')
     expect(body.promptHash).toMatch(/^[a-f0-9]{64}$/)
     expect(body.handoff).toBeUndefined()
     expect(mocks.executeSiteCommand).not.toHaveBeenCalled()

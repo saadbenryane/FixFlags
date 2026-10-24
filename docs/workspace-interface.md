@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-11
+reviewed_at: 2026-10-24
 supersedes: []
 ---
 
@@ -29,18 +29,19 @@ Customer chrome follows [product-architecture.md](product-architecture.md). Do n
 | -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Websites       | Which websites are mine?                            | Full-width Site rows at `/dashboard`, preceded by one persistent Analyze control                    |
 | Site Overview  | What works and what needs fixing on this website?  | Site identity, monitoring, visible recovery, and a prioritized grid of category summary cards       |
+| Pages          | Which pages have problems?                          | Recorded page inventory, page-specific captures and direct Flag actions                            |
 | Timeline       | What has changed over time?                          | Recorded checks, findings, rechecks and verified recoveries, with supporting Flag trends           |
 | Integrations   | Which tools add context?                             | Supported connections with recognizable logos and plain status                                    |
 | Site settings  | How is this Site configured?                        | Monitoring cadence and pause/resume, notifications, automatic account checks, and Remove Site          |
 | Site questions | Explain this evidence                               | Shared floating chat, scoped to the current Site or Flag                                              |
 
-Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages, Journeys, category health and execution diagnostics are depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
+Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages groups the same findings by recorded URL. Journeys, category health and execution diagnostics remain depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
 
-The selected Site uses Overview, Timeline, Integrations, and Settings on desktop and mobile, with All websites as the return action. Timeline and Integrations are views of the same Site dashboard, not separate report products. Production verification remains separate from local implementation. Pages, Journeys and diagnostics stay inside card depth rather than becoming permanent navigation destinations.
+The selected Site uses Overview, Pages, Timeline, Integrations, and Settings on desktop and mobile, with All websites as the return action. Timeline and Integrations are views of the same Site dashboard, not separate report products. Production verification remains separate from local implementation. Pages has its own navigation destination. Journeys and diagnostics remain in card depth.
 
 ## Home hierarchy
 
-The [card-board experience](card-board-experience.md) owns the selected Site's flat grid. Show categorized findings and automatic checks as flat rows. Integrate visitor-action evidence into the relevant category without duplicate rows. Do not render an Add action or a check-configuration wizard. Public evidence works before connections, which enrich the same product.
+The [card-board experience](card-board-experience.md) owns the selected Site's flat grid. Show categorized findings and automatic checks in an aligned responsive grid. Integrate visitor-action evidence into the relevant category without duplicate rows. Do not render an Add action or a check-configuration wizard. Public evidence works before connections, which enrich the same product.
 
 Site identity, monitoring, and one current result lead. The Flag count is that result only when Flags exist or the evidence is current and clear. Incomplete scope and its recovery action remain visible. Execution detail appears only while work is running, interrupted, partial, or failed. Completed pipeline narration does not remain on Overview. Attention appears inside the related category card, where every Flag is its own action row. Overview is the only categorized Flag list. Flag counters return to its attention categories; individual Flag detail remains available. A quiet Site still supplies scope and freshness in card depth.
 
@@ -48,13 +49,13 @@ Site identity, monitoring, and one current result lead. The Flag count is that r
 
 - The homepage sample and authenticated Site use the same summary, category-row, technology, monitoring, and integration components.
 - Summary cards communicate a result or useful operating state. Never use filler counts such as “With 0 Flags,” “Still to check,” “Review areas,” or “Daily schedule.” Prefer Flags, Areas checked, and Daily monitoring active.
-- Put relative freshness, the total Flag count, and the status dot at the top right of each category card. Category rechecking belongs in the detail modal. Keep the dot farthest right and align each Flag arrow directly below its center, with no extra right padding on Flag rows. Highlight each Flag row on hover or keyboard focus.
-- Summary and clear categories stay borderless. Put a single orange outline around each flagged category, with no individual Flag outlines or orange backgrounds. Each Flag has its own right-aligned arrow and copy shortcut, visible on hover or keyboard focus and always available on touch screens.
+- Put the category Flag count and status dot at the top right of each category card. Category rechecking belongs in the detail modal. Keep the dot farthest right and align each Flag arrow directly below its center, with no extra right padding on Flag rows. Highlight each Flag row on hover or keyboard focus.
+- Summary and clear categories stay borderless. Use neutral surfaces and a small priority/count accent for flagged categories, with no glowing cards. Each Flag has its own right-aligned arrow and copy shortcut, visible on hover or keyboard focus and always available on touch screens.
 - Clear category rows show only the name, green icon, and status controls. Opening them reveals the complete check list. Flagged categories use orange icons.
 - Flag titles name observable failures, such as a page not loading, a measured slow page, or a missing payment form. Detection alone never establishes private integration configuration such as test keys. Flag rows use an orange dot, left indentation, and a hover surface without underlining. Areas checked opens the existing coverage list.
-- Preserve overall status and total Flags next to the Site identity. The preview menu omits the duplicate Flags destination.
+- Give the overall Flag count one primary location in the summary. Site identity stays in the sidebar.
 - After copying a prompt, show a temporary bottom-center confirmation with a countdown bar and a link to the public guide at `/docs/fix-with-ai`.
-- A detected-technology strip sits before the summary. Use the real product logo when available and pair color with a text state. “Detected” describes evidence of use, not proof that the tool works. A detected tool may become a suggested integration for more data and checks, but it is not connected until the customer connects it.
+- The complete detected-tool list sits alongside the capture and summary. Use the real product logo when available and pair color with a text state. “Detected” describes evidence of use, not proof that the tool works. A detected tool may become a suggested integration for more data and checks, but it is not connected until the customer connects it.
 - Timeline owns recorded checks, findings, rechecks and verified recoveries. Monitoring cadence and pause/resume belong in Settings. A Flag-per-check graph supports the history when enough evidence exists. Do not fabricate trend points before two completed checks exist.
 - Timeline and Integrations replace the board content inside the persistent Site shell. They do not open in a modal.
 - Integrations use recognizable logos and plain states such as Connected, Suggested, or Available. Connections add context and do not establish recovery.
@@ -72,7 +73,7 @@ Show expectation, state, freshness, related pages/actions, execution methods and
 
 Start with what happened and where. Show affected scope, observed behavior, expected behavior, evidence, and limitations. Add technical detail progressively. Evidence matches the claimed page, viewport and time; missing evidence has an honest state.
 
-Copy fix prompt is the single coding-tool handoff. Site questions is reserved for grounded product explanation. Support remains a separate conversation in the same floating panel. Keep fix instructions structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
+Copy fix prompt is the coding-tool handoff for an individual Flag, a selected set, a category, or all open Flags. Every copy control offers a prompt preview; the canonical inline task and original hash define the copied scope. Links give context without granting access. Selecting a Flag opens its detail in place and restores the actual opener when closed. The canonical full detail and history route remains available. Site questions is reserved for grounded product explanation. Support remains a separate conversation in the same floating panel. Keep fix instructions structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
 
 Verify fix shows real progress and retains prior attempts. Resolved shows fresh independent proof and time. Neither copying nor “Done” resolves the Flag.
 

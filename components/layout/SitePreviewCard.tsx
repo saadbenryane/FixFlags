@@ -28,13 +28,13 @@ export function SitePreviewCard({ host, captures, priority = false }: { host: st
   useEffect(() => {
     if (capture && image.current?.complete && image.current.naturalWidth === 0) setFailedUrl(capture.url)
   }, [capture])
-  return <section className={styles.card} aria-label={C.preview}>
+  return <section className={styles.card} data-device={device} aria-label={C.preview}>
     <div className={styles.devices}>
       {(['desktop', 'mobile'] as const).map(value => <Button key={value} type="button" variant={device === value ? 'secondary' : 'ghost'} size="icon" aria-label={C[value]} title={C[value]} aria-pressed={device === value} onClick={() => { setDevice(value); setFailedUrl(null) }}>
         {value === 'desktop' ? <Monitor size={16} aria-hidden /> : <Smartphone size={16} aria-hidden />}
       </Button>)}
     </div>
-    {available ? <InteractiveButton ref={opener} type="button" className={styles.imageButton} aria-label={C.openCapture(host)} onClick={() => setOpen(true)}>
+    {available ? <InteractiveButton ref={opener} type="button" className={styles.imageButton} style={device === 'desktop' ? { aspectRatio: `${width} / ${height}` } : undefined} aria-label={C.openCapture(host)} onClick={() => setOpen(true)}>
       {publicCapture ? <Image ref={image} src={capture.url} alt="" width={width} height={height}
         sizes="(max-width: 639px) 100vw, (max-width: 1024px) 50vw, 640px" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : undefined} decoding="async"
         onError={() => setFailedUrl(capture.url)} data-device={device} /> :

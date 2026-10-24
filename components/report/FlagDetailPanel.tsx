@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { ChevronDown, Link2, Share2, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { PromptPreviewDialog } from '@/components/ui/prompt-preview'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
@@ -179,6 +180,7 @@ export function FlagPromptRow({
 }) {
   const [claimOpen, setClaimOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
+  const [allPromptOpen, setAllPromptOpen] = useState(false)
   const authGate = useReportAuthGate()
 
   function openClaim() {
@@ -233,6 +235,7 @@ export function FlagPromptRow({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onSelect={() => { if (aggregateLocked) openClaim(); else setAllPromptOpen(true) }}>{REPORT_COPY.finishPlan.viewPrompts}</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => { void copyAllPrompts() }}>
           {REPORT_COPY.finishPlan.copyCta}
         </DropdownMenuItem>
@@ -304,6 +307,7 @@ export function FlagPromptRow({
 
   return (
     <section data-flag-prompt-row className="min-w-0">
+      <PromptPreviewDialog prompt={aggregateLocked ? '' : polishPassPrompt ?? ''} open={allPromptOpen && !aggregateLocked} onOpenChange={setAllPromptOpen} />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
         {secondaryPromptAction ? (
           <div className="shrink-0">{secondaryPromptAction}</div>

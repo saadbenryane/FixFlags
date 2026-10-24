@@ -32,6 +32,11 @@ function Settings({ initial }: { initial: SiteHomeView }) {
   return <SiteSettingsControls siteId={initial.site.siteId} initial={view.settings} watch={view.watch} onRefresh={refresh} />
 }
 
+function openConnectionDetails(property: string) {
+  const details = screen.getByText(property).closest('details')!
+  if (!details.open) fireEvent.click(details.querySelector('summary')!)
+}
+
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks() })
 
 describe('authoritative Site settings refresh', () => {
@@ -41,6 +46,8 @@ describe('authoritative Site settings refresh', () => {
     next.settings.analytics.propertyLabel = 'Current audience'
     const view = render(<SiteIntegrationsControls siteId={first.site.siteId} initial={first.settings} onRefresh={onRefresh} />)
     view.rerender(<SiteIntegrationsControls siteId={next.site.siteId} initial={next.settings} onRefresh={onRefresh} />)
+    openConnectionDetails('current-shop.myshopify.com')
+    openConnectionDetails('Current audience')
     expect(screen.getByText('current-shop.myshopify.com')).toBeVisible()
     expect(screen.getByText('Current audience')).toBeVisible()
     expect(screen.queryByText('old-shop.myshopify.com')).not.toBeInTheDocument()
@@ -119,6 +126,7 @@ describe('authoritative Site settings refresh', () => {
     expect(screen.queryByRole('button', { name: `Disconnect ${name}` })).not.toBeInTheDocument()
     if (name === 'Shopify') expect(screen.queryByText('old-shop.myshopify.com')).not.toBeInTheDocument()
     else {
+      openConnectionDetails(name === 'Google Analytics' ? 'Original audience' : 'sc-domain:example.com')
       expect(screen.getByText(name === 'Google Analytics' ? 'Original audience' : 'sc-domain:example.com')).toBeVisible()
       expect(screen.getByText(SITE_ACTION_COPY.settings.disconnectedDetail)).toBeVisible()
     }
@@ -139,6 +147,7 @@ describe('authoritative Site settings refresh', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
     fireEvent.click(screen.getByRole('button', { name: 'Disconnect Shopify' }))
     expect(await screen.findByText(SITE_ACTION_COPY.refreshPending)).toBeVisible()
+    openConnectionDetails('old-shop.myshopify.com')
     expect(screen.getByText('old-shop.myshopify.com')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Disconnect Shopify' })).toBeEnabled()
     expect(screen.queryByText(SITE_ACTION_COPY.settings.shopifyDisconnected)).not.toBeInTheDocument()

@@ -30,9 +30,9 @@ export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingE
     group.push(request); groups.set(context, group)
   }
   const scope = evidence.phase === 'page_load' ? 'during page loading' : 'during the existing public action walk, including overlay handling'
-  function observe(key: string, name: string, expected: string, observed: string, passed: boolean | null, context?: string, descriptive = false) {
+  function observe(key: string, name: string, expected: string, observed: string, passed: boolean | null, context?: string, descriptive = false, reason?: CheckAssertion['reason']) {
     assertions.push({ key, name, expected, observed, passed: passed === true, complete: passed !== null,
-      ...(context ? { context } : {}), ...(descriptive ? { disposition: 'observed' as const } : {}) })
+      ...(context ? { context } : {}), ...(reason ? { reason } : {}), ...(descriptive ? { disposition: 'observed' as const } : {}) })
   }
   for (const [context, requests] of groups) {
     const first = requests[0], provider = TRACKING_PROVIDERS[first.provider]
@@ -43,16 +43,16 @@ export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingE
     if (first.role === 'library') {
       observe('tracking-library', `${provider}: library resource`, 'The requested library resource completes without an HTTP error',
         errors.length ? `${endpoint} returned HTTP ${[...new Set(errors.map(request => request.status))].join(', ')} ${scope}.` : successful ? `${endpoint} completed its resource transfer ${scope}. This does not prove library initialization or tracking delivery.` : `${endpoint} was requested ${scope}, but successful transfer was not established. Browser blocking, transport failures or the observation limit may affect this result.`,
-        errors.length ? false : successful ? true : null, context)
+        errors.length ? false : successful ? true : null, context, false, 'tracking_provider_unverified')
     } else {
       observe('tracking-initiation', `${provider}: event request initiated`, 'An event collection request is initiated by the page',
         `${requests.length} request attempt${requests.length === 1 ? '' : 's'} to ${endpoint} ${scope}. Payloads, identifiers and event values were not retained.`, true, context, true)
       const suppressed = requests.filter(request => request.state === 'suppressed').length
       observe('tracking-http-response', `${provider}: destination response`, 'The event destination returns a successful HTTP response',
         errors.length ? `${endpoint} returned HTTP ${[...new Set(errors.map(request => request.status))].join(', ')} ${scope}.` : successful ? `${endpoint} returned a successful HTTP response ${scope}. This establishes an endpoint response, not provider ingestion.` : suppressed ? `${suppressed} attempt${suppressed === 1 ? ' was' : 's were'} intentionally stopped by FixFlags before delivery. Destination availability and provider recording remain unknown.` : 'No conclusive destination response was recorded. Browser restrictions, consent policy or the observation window may affect this result.',
-        errors.length ? false : successful ? true : null, context)
+        errors.length ? false : successful ? true : null, context, false, !errors.length && !successful && suppressed ? 'tracking_suppressed' : undefined)
       observe('tracking-provider-recording', `${provider}: provider recording`, 'The provider independently confirms the relevant event was recorded',
-        'No independent event-level provider confirmation was obtained. HTTP responses and aggregate audience reports do not certify that this event was recorded.', null, context)
+        'No independent event-level provider confirmation was obtained. HTTP responses and aggregate audience reports do not certify that this event was recorded.', null, context, false, 'tracking_provider_unverified')
     }
     if (errors.length) {
       const checkId = first.role === 'library' ? 'tracking-library-http-error' : 'tracking-endpoint-http-error'
@@ -67,12 +67,12 @@ export function runTrackingChecks(meta: PageMetadata | null, evidence: TrackingE
     }
   }
   if (!evidence.requests.some(request => request.role === 'library')) observe('tracking-library', 'Library loading not established',
-    'Browser evidence establishes a recognized tracking library transfer', 'No recognized external library transfer was observed. Inline or bundled code, consent, intentional blocking, unsupported providers and proxies remain possible.', null)
+    'Browser evidence establishes a recognized tracking library transfer', 'No recognized external library transfer was observed. Inline or bundled code, consent, intentional blocking, unsupported providers and proxies remain possible.', null, undefined, false, 'tracking_no_library')
   if (!evidence.requests.some(request => request.role === 'event')) observe('tracking-initiation', 'Event initiation not established',
-    'Browser evidence establishes relevant event requests', `${scope}: no recognized event collection request was observed. Consent, intentional blocking, unsupported or proxied providers, and delayed execution can explain this. No missing-event failure is inferred.`, null)
+    'Browser evidence establishes relevant event requests', `${scope}: no recognized event collection request was observed. Consent, intentional blocking, unsupported or proxied providers, and delayed execution can explain this. No missing-event failure is inferred.`, null, undefined, false, 'tracking_no_event')
   if (!evidence.requests.some(request => request.role === 'event')) {
     observe('tracking-http-response', 'Tracking destination remains unverified', 'The event destination provides an observable response', 'No event-level destination response was established in this scope.', null)
-    observe('tracking-provider-recording', 'Provider recording remains unverified', 'Independent provider evidence confirms relevant events', 'No independent event-level confirmation was obtained. Aggregate audience reports are separate evidence.', null)
+    observe('tracking-provider-recording', 'Provider recording remains unverified', 'Independent provider evidence confirms relevant events', 'No independent event-level confirmation was obtained. Aggregate audience reports are separate evidence.', null, undefined, false, 'tracking_provider_unverified')
   }
   // Retain all endpoint scopes before the existing finding collapse runs.
   const grouped = new Map<string, DeterministicFlag>()

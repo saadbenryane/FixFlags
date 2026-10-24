@@ -1,0 +1,64 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import { FixPromptCard } from './FixPromptCard'
+import { Check, Copy } from 'lucide-react'
+import { PromptPreviewButton, PromptPreviewDialog } from '@/components/ui/prompt-preview'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import type { SiteCardArea } from '@/lib/sites/card-areas'
+import type { SiteActionAvailability } from '@/lib/sites/viewer-actions'
+import { executeSiteAction, SiteActionError } from '@/lib/sites/client-actions'
+import { SITE_DASHBOARD_COPY as C } from '@/lib/marketing/copy/site-dashboard'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { useSiteAction } from '@/hooks/useSiteAction'
+import { SiteActionContinuation } from './SiteActionContinuation'
+import { SiteActionFeedback } from './SiteActionFeedback'
+import { usePreparedRepairPrompt } from '@/hooks/usePreparedRepairPrompt'
+
+export function SiteFixBundleButton({ siteId, area, flagIds, availability, presentation = 'button' }: { siteId: string; area?: SiteCardArea; flagIds?: string[]; availability: SiteActionAvailability; presentation?: 'button' | 'preview' }) {
+  const { busy, error, submit } = useSiteAction()
+  const [copied, setCopied] = useState(false)
+  const [manual, setManual] = useState<string | null>(null)
+  const prepared = usePreparedRepairPrompt({ kind: 'bundle', siteId, ...(area ? { area } : {}), ...(flagIds ? { flagIds } : {}) }, availability === 'available', presentation === 'preview')
+  const input = useRef<HTMLTextAreaElement>(null)
+  if (availability !== 'available') return <SiteActionContinuation availability={availability} destination={`/sites/${siteId}${area ? `?category=${area}` : ''}`} action="copy" compact />
+  async function copy() {
+    await submit(async () => {
+      const bundle = await prepared.forCopy()
+      try { await navigator.clipboard.writeText(bundle.prompt) }
+      catch { setManual(bundle.prompt); return }
+      let recordFailed = false
+      for (let offset = 0; offset < bundle.tasks.length; offset += 4) {
+        const recorded = await Promise.allSettled(bundle.tasks.slice(offset, offset + 4).map(task => executeSiteAction(`/api/sites/${siteId}/flags/${encodeURIComponent(task.sourceFlagId)}/fix`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'copy', promptHash: task.promptHash }),
+        }, 'fixPrompt')))
+        if (recorded.some(result => result.status === 'rejected')) recordFailed = true
+      }
+      if (recordFailed) throw new SiteActionError(C.bundleRecordFailed)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2500)
+    }, () => null)
+  }
+  return <>
+    {presentation === 'preview' ? <div className="w-full"><FixPromptCard unavailable={prepared.unavailable} prompt={prepared.preview} busy={busy} copied={copied} copyLabel={flagIds ? C.fixSelected(flagIds.length) : C.fixAll} onCopy={() => void copy()} onExpand={() => { if (!prepared.preview) void submit(() => prepared.prepare(), () => null) }} /><SiteActionFeedback message={null} error={error} siteId={siteId} /></div> : <span className="inline-flex flex-col items-start gap-2">
+      <span className="inline-flex flex-wrap items-center gap-1"><Button size="sm" variant={area ? 'outline' : 'default'} disabled={busy} onClick={() => void copy()} title={C.bundleBody}>
+        {copied ? <Check aria-hidden /> : <Copy aria-hidden />}{busy ? C.bundlePreparing : copied ? C.bundleCopied : flagIds ? C.fixSelected(flagIds.length) : area ? C.fixCategory : C.fixAll}
+      </Button>
+      <PromptPreviewButton key={`${siteId}:${area ?? 'all'}`} disabled={busy} loadPrompt={async () => {
+        const bundle = await prepared.prepare()
+        return bundle.prompt
+      }} /></span>
+      <SiteActionFeedback message={null} error={error} siteId={siteId} />
+    </span>}
+    <PromptPreviewDialog prompt={prepared.review ?? ''} open={prepared.review !== null} onOpenChange={open => { if (!open) prepared.closeReview() }} />
+    <Dialog open={Boolean(manual)} onOpenChange={open => { if (!open) setManual(null) }}>
+      <DialogContent header={<DialogTitle>{C.bundleManual}</DialogTitle>}>
+        <DialogDescription>{C.bundleBody}</DialogDescription>
+        <Textarea ref={input} value={manual ?? ''} readOnly rows={14} aria-label={SITE_BOARD_COPY.fixPromptLabel} onFocus={event => event.currentTarget.select()} />
+        <Button variant="outline" onClick={() => { input.current?.focus(); input.current?.select() }}>{SITE_BOARD_COPY.selectPrompt}</Button>
+      </DialogContent>
+    </Dialog>
+  </>
+}

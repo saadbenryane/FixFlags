@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { inspectAccessibilityViolations } from './approved-contrast'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
-import { HOMEPAGE_SAMPLE } from '@/lib/marketing/copy/care-homepage'
+import { CARE_HOME, HOMEPAGE_SAMPLE } from '@/lib/marketing/copy/care-homepage'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { BILLING_ACTION_COPY } from '@/lib/marketing/copy/plans'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 
@@ -21,7 +22,7 @@ for (const height of [900, 225]) {
     await page.goto('/')
     const consent = page.getByRole('dialog', { name: 'Choose your analytics settings' })
     await expect(consent).toBeVisible()
-    const copy = page.getByRole('button', { name: /Copy fix prompt for/ }).first()
+    const copy = page.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll, exact: true })
     await copy.click()
     const manual = page.getByRole('textbox', { name: HOMEPAGE_SAMPLE.guidanceLabel, exact: true })
     if (await manual.isVisible()) {
@@ -160,7 +161,7 @@ for (const width of [320, 375]) {
     expect(signInBox).not.toBeNull()
     expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(signInBox!.x)
 
-    await expect(page.getByRole('link', { name: /Analyze your website/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: PUBLIC_SITE_COPY.analyze, exact: true })).toBeVisible()
   })
 }
 
@@ -329,7 +330,7 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   const host = new URL(targetUrl).host
   await page.goto('/')
   await page.getByRole('textbox', { name: 'Website URL' }).first().fill(targetUrl)
-  await page.getByRole('button', { name: 'Analyze' }).first().click()
+  await page.getByRole('button', { name: CARE_HOME.hero.cta, exact: true }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Settings', exact: true }).first()).toHaveAttribute(
@@ -347,24 +348,32 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   }
 
   const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
+  // Chromium sends Secure creator cookies on trusted loopback. APIRequestContext
+  // does not, so exercise the same authenticated fetch path as the dashboard.
+  const creatorRead = (path: string) => page.evaluate(async path => {
+    const response = await fetch(path, { cache: 'no-store' })
+    return { status: response.status, body: await response.json().catch(() => null) }
+  }, path)
   await expect.poll(async () => {
-    const response = await page.request.get(`/api/sites/${siteId}`)
-    if (!response.ok()) return null
-    const body = (await response.json().catch(() => null)) as {
+    const response = await creatorRead(`/api/sites/${siteId}`)
+    if (response.status !== 200) return `HTTP ${response.status}`
+    const body = response.body as {
       audit?: { status?: string; id?: string | null }
     } | null
     return body?.audit?.status
   }, { timeout: 240_000 }).toBe('COMPLETED')
 
-  const board = await page.request.get(`/api/sites/${siteId}`)
-  const boardBody = (await board.json()) as SiteHomeView
+  const board = await creatorRead(`/api/sites/${siteId}`)
+  expect(board.status).toBe(200)
+  const boardBody = board.body as SiteHomeView
   const reportId = boardBody?.audit?.id
   expect(reportId).toBeTruthy()
 
   // Teaser scans run the reduced pipeline: the status payload streams
   // deterministic findings and never records flow-walk or journey events.
-  const teaserStatus = await page.request.get(`/api/reports/${reportId}/status`)
-  const teaserBody = (await teaserStatus.json().catch(() => null)) as {
+  const teaserStatus = await creatorRead(`/api/reports/${reportId}/status`)
+  expect(teaserStatus.status).toBe(200)
+  const teaserBody = teaserStatus.body as {
     progress?: number
     partialFlags?: Array<Record<string, unknown>>
     actionTimeline?: Array<{ kind?: string }>
@@ -391,15 +400,18 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   // A healthy target need not produce a Flag. Existing findings still cannot
   // expose a private fix prompt through the anonymous action endpoint.
   for (const flag of boardBody.flags) {
-    const response = await page.request.post(`/api/sites/${siteId}/flags/${flag.id}/fix`, { data: { action: 'copy' } })
-    expect([401, 403], await response.text()).toContain(response.status())
-    expect((await response.json()).prompt).toBeUndefined()
+    const response = await page.evaluate(async path => {
+      const result = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'copy' }) })
+      return { status: result.status, body: await result.json() }
+    }, `/api/sites/${siteId}/flags/${flag.id}/fix`)
+    expect([401, 403]).toContain(response.status)
+    expect(response.body.prompt).toBeUndefined()
   }
   await expect(page.getByRole('button', { name: /verify|mark fixed/i })).toHaveCount(0)
 
   await page.goto('/new')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')
-  await page.getByRole('button', { name: 'Analyze' }).first().click()
+  await page.getByRole('button', { name: PUBLIC_SITE_COPY.analyze, exact: true }).first().click()
   await expect(
     page.getByText(/Create (a free )?account|already used your anonymous|Too many requests/i).first()
   ).toBeVisible()
@@ -507,7 +519,7 @@ for (const width of DENSITY_WIDTHS) {
     expect(dimensions.reducedMotion).toBe(true)
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
 
-    const analyze = page.getByRole('link', { name: /Analyze your website/ })
+    const analyze = page.getByRole('link', { name: PUBLIC_SITE_COPY.analyze, exact: true })
     await analyze.scrollIntoViewIfNeeded()
     await expect(analyze).toBeVisible()
     await analyze.focus()

@@ -1,7 +1,7 @@
 'use client'
 
 import { SiteAccountChecksControls } from './SiteAccountChecksControls'
-import { SiteMonitoringSettingsPanel, SiteNotificationSettingsPanel, SiteRemovalSettingsPanel, type NotificationLevel } from './SiteSettingsPanels'
+import { SiteAdvancedSettings, SiteMonitoringSettingsPanel, SiteNotificationSettingsPanel, SiteRemovalSettingsPanel, type NotificationLevel } from './SiteSettingsPanels'
 import { useEffect, useState, useRef, type ReactNode } from 'react'
 import { SiteRemovalDialog } from './SiteRemovalDialog'
 import { ACCOUNT_CHECK_COPY as A } from '@/lib/marketing/copy/account-checks'
@@ -104,8 +104,8 @@ export function SiteSettingsControls({
 
       {busy ? <p role="status" className="text-sm">{C.settings.saving}</p> : null}
       <SiteActionFeedback message={message} error={error} siteId={siteId} />
-      <SiteAccountChecksControls siteId={siteId} initial={initial.accountChecks} onRefresh={onRefresh} />
-      {children}
+      <SiteAdvancedSettings><SiteAccountChecksControls siteId={siteId} initial={initial.accountChecks} onRefresh={onRefresh} />
+      {children}</SiteAdvancedSettings>
       <SiteRemovalSettingsPanel busy={busy} onRemove={() => { removalOpener.current = document.activeElement as HTMLElement; setRemovalOpen(true) }} />
       <SiteRemovalDialog open={removalOpen} onOpenChange={setRemovalOpen} accounts={initial.accountChecks} busy={busy}
         onCleanup={() => void cleanupAccounts()} onRemove={remaining => void removeSite(remaining)}

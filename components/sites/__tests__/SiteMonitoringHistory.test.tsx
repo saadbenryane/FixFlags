@@ -1,8 +1,20 @@
+import { act } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
+import { hydrateRoot } from 'react-dom/client'
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SiteMonitoringHistory } from '../SiteMonitoringHistory'
 
 describe('monitoring evidence chart', () => {
+  it('shows the Overview trend without duplicating the latest count or timeline', () => {
+    render(<SiteMonitoringHistory variant="overview" points={[{ label: 'Oct 11', flagCount: 2 }, { label: 'Oct 12', flagCount: 1 }]} events={[
+      { id: 'one', title: 'Check completed', time: 'Oct 12', state: 'attention' },
+    ]} emptyMessage="No history" />)
+    expect(screen.getByRole('img')).toHaveAccessibleDescription('Oct 11: 2 Flags; Oct 12: 1 Flag')
+    expect(screen.queryByText(/Latest website check/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Check history' })).not.toBeInTheDocument()
+  })
+
   it('leaves a gap between complete checks when evidence is incomplete', () => {
     render(<SiteMonitoringHistory points={[
       { label: 'Oct 8', flagCount: 3 }, { label: 'Oct 9', flagCount: 2 },
@@ -49,7 +61,7 @@ describe('monitoring evidence chart', () => {
     render(<SiteMonitoringHistory points={[{ label: 'Oct 11', flagCount: null }, { label: 'Oct 12', flagCount: null }]} events={[
       { id: 'failed', title: 'Check incomplete', time: 'Oct 12', state: 'unknown' },
     ]} emptyMessage="No history" />)
-    expect(screen.getByText(/No complete website checks yet/)).toBeVisible()
+    expect(screen.getByText('A trend needs complete check results.')).toBeVisible()
     expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
@@ -60,7 +72,7 @@ describe('monitoring evidence chart', () => {
     const chart = screen.getByRole('img', { name: 'Flag count across 2 checks' })
     expect(chart).toHaveAccessibleDescription('Oct 11: 0 Flags; Oct 12: 0 Flags')
     expect(chart.querySelectorAll('polyline')).toHaveLength(1)
-    expect([...chart.querySelectorAll('text')].map(label => label.textContent)).toEqual(['0', '0'])
+    expect([...chart.querySelectorAll('text[data-count-label]')].map(label => label.textContent)).toEqual(['0', '0'])
     expect(screen.getByText(/Read the results for any areas that could not be checked/)).toBeVisible()
   })
 
@@ -79,4 +91,14 @@ describe('monitoring evidence chart', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.queryByText('No history')).not.toBeInTheDocument()
   })
+})
+
+it('hydrates chart descriptions and per-point titles without replacing the server content', async () => {
+  const content = <SiteMonitoringHistory points={[{ label: 'Oct 11', flagCount: 2 }, { label: 'Oct 12', flagCount: 0 }]} events={[]} emptyMessage="No history" />
+  const container = document.createElement('div'); document.body.append(container)
+  container.innerHTML = renderToString(content)
+  const errors: unknown[] = []
+  let root: ReturnType<typeof hydrateRoot>
+  await act(async () => { root = hydrateRoot(container, content, { onRecoverableError: error => errors.push(error) }) })
+  try { expect(errors).toEqual([]) } finally { await act(async () => root!.unmount()); container.remove() }
 })

@@ -35,7 +35,7 @@
 .sampleSection > .intro h2 { font-size: clamp(36px, 4.44vw, 57.6px); }
 .introMcpLink { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; color: hsl(var(--foreground)); font-weight: 550; }
 .introMcpLink:hover { text-decoration: underline; text-underline-offset: 4px; }
-.board { position: relative; container: sample-board / inline-size; display: grid; grid-template-columns: 192px minmax(0, 1fr); overflow: hidden; border: 1px solid hsl(var(--border) / .7); border-radius: 24px; background: hsl(var(--background)); box-shadow: 0 24px 64px -16px hsl(var(--foreground) / .09); }
+.board { position: relative; container: sample-board / inline-size; display: grid; grid-template-columns: 192px minmax(0, 1fr); overflow: hidden; border: 1px solid hsl(var(--border) / .7); border-radius: 24px; background: hsl(var(--background)); box-shadow: var(--shadow-board); }
 .board :is(h2, h3) { font-family: var(--font-sans), sans-serif; text-wrap: initial; }
 .browserBar { display: flex; grid-column: 1 / -1; align-items: center; gap: 6px; height: 34px; padding-inline: 16px; background: hsl(var(--muted)); }
 .browserBar span { width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--muted-foreground) / .4); }
@@ -70,7 +70,7 @@
 .boardIdentity img { display: block; width: 144px; height: auto; flex-shrink: 0; border-radius: 9px; }
 .boardIdentity strong { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .boardIdentity span { display: block; margin-top: 3.6px; font-size: 12px; color: hsl(var(--muted-foreground)); }
-.boardSummary { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+.boardSummary { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; min-width: 0; max-width: 100%; margin-left: auto; }
 .boardSummary > span { font-size: 12px; color: hsl(var(--muted-foreground)); }
 .boardSummary > a { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; min-height: 44px; border-radius: var(--radius-control); font-size: 12px; font-weight: 600; }
 .boardSummary > a:hover { text-decoration: underline; text-underline-offset: 4px; }
@@ -94,8 +94,8 @@
 .resultList span { font-size: 12px; color: hsl(var(--muted-foreground)); }
 .resultList span[data-result='Flag'] { color: hsl(var(--foreground)); font-weight: 600; }
 .resultList p, .contextConnection p, .fixGuidance p { margin-top: 8px; font-size: 13px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
-.resultList button, .fixGuidance button, .backButton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; font-weight: 550; }
-.resultList button { color: hsl(var(--foreground)); margin-top: 8px; }
+.resultList li > button, .fixGuidance button, .backButton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; font-weight: 550; }
+.resultList li > button { color: hsl(var(--foreground)); margin-top: 8px; }
 .pageResults { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pageResults li { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .pageResults li > div { width: 100%; }
@@ -107,13 +107,13 @@
 .fixGuidance button { margin-top: 12px; padding: 0 12px; border: 1px solid hsl(var(--border)); border-radius: 8px; }
 .contextConnection a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; font-weight: 600; }
 .contextConnection small { display: block; margin-top: 8px; font-size: 12px; color: hsl(var(--muted-foreground)); }
-.flagFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.flagFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 0; }
 .flagFacts > div { padding: 16px; border-radius: 10px; background: hsl(var(--muted) / .4); }
 .flagFacts > div:first-child { background: hsl(var(--brand) / .07); }
 .flagFacts dt { font-size: 12px; color: hsl(var(--muted-foreground)); }
 .flagFacts dd { margin-top: 4px; font-size: 14px; line-height: 1.6; }
-.flagSource { display: grid; gap: 10px; margin-top: 18px; }
-.flagSource img { width: 100%; height: auto; max-height: 360px; object-fit: contain; border-radius: 10px; }
+.flagSource { display: grid; gap: 8px; margin-top: 0; }
+.flagSource img { width: auto; max-width: 100%; height: auto; max-height: 180px; object-fit: contain; border-radius: 10px; }
 .flagSource a { display: inline-flex; align-items: center; width: fit-content; min-height: 44px; overflow-wrap: anywhere; font-size: 13px; font-weight: 600; color: hsl(var(--muted-foreground)); }
 .flagSource a:hover { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: 3px; }
 .fixGuidance { padding: 18px; border-radius: var(--radius-board-panel); background: hsl(var(--muted) / .35); }
@@ -147,7 +147,7 @@
   .sampleIdentity span, .sampleIdentity small { display: inline; margin-top: 0; font-size: 11px; }
   .sampleIdentity small { margin-left: 8px; white-space: nowrap; }
   .boardBrandMark { display: block; }
-  .boardSidebar nav { grid-column: 1 / -1; flex-direction: row; gap: 4px; padding-top: 0; }
+  .boardSidebar nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 72px), 1fr)); grid-column: 1 / -1; flex-direction: row; gap: 4px; padding-top: 0; }
   .boardSidebar nav :is(button, a) { flex: 1; flex-direction: column; justify-content: center; gap: 5px; min-width: 0; min-height: 48px; padding: 8px 4px; font-size: 11px; }
 }
 @media (max-width: 479px) {
@@ -178,3 +178,34 @@
 }
 
 .sampleLabel { grid-column: 1 / -1; padding: 12px 20px; font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .3); }
+
+.workspaceBoard { grid-template-columns: 56px 192px minmax(0, 1fr); }
+.accountRail { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 24px 6px 16px; background: hsl(var(--muted) / .4); }
+.accountRail > a { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: var(--radius-control); color: hsl(var(--muted-foreground)); }
+.accountRail > a:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.accountRail > a:focus-visible { outline: 2px solid hsl(var(--ring)); }
+.accountRail .accountControl { margin-top: auto; background: hsl(var(--muted)); }
+@media (max-width: 1023px) { .workspaceBoard { grid-template-columns: minmax(0, 1fr); } .accountRail { flex-direction: row; justify-content: space-between; padding: 8px 16px; } .accountRail .accountControl { margin: 0 0 0 auto; } }
+
+.modalHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; }
+.modalHeading > span { color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 400; }
+.dialog .modalHeading [data-dialog-title] { font-size: 21px; }
+.categoryAnswer { font-size: 15px; font-weight: 550; }
+.compactResults { gap: 8px; margin-top: 0; }
+.compactResults li { display: flex; align-items: center; gap: 4px; padding: 0 12px; border: 0; }
+.compactResults li > button, .compactResult { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; margin: 0; padding-block: 8px; }
+.compactResults strong { flex: 1; min-width: 0; font-size: 13px; }
+.compactResults svg { flex-shrink: 0; color: hsl(var(--muted-foreground)); }
+.compactResults .resultFlag { color: hsl(var(--destructive)); }
+.modalDetails { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.modalDetails > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; list-style: none; }
+.modalDetails > summary::-webkit-details-marker { display: none; }
+.modalDetails[open] > summary > svg { transform: rotate(180deg); }
+.modalDetails > a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+
+.resultDisclosure summary { cursor: pointer; list-style: none; }
+.resultDisclosure summary::-webkit-details-marker { display: none; }
+.resultDisclosure > p { margin: 0; padding-bottom: 12px; }
+.resultDisclosure[open] summary > svg:last-child { transform: rotate(180deg); }
+
+.compactResults li > :is(button, details) { flex: 1; min-width: 0; }

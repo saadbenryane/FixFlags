@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { afterEach, expect, it, vi } from 'vitest'
+import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import { useSiteResource } from '../useSiteResource'
 import { siteFlagFixture, siteViewFixture } from '@/lib/sites/__tests__/site-view-fixture'
 import { categoryExecutionRecovery } from '@/lib/sites/execution-recovery'
@@ -303,4 +304,21 @@ it('refreshes enabled Uptime every minute after website work is idle', async () 
     expect(fetch).toHaveBeenCalledTimes(2)
     unmount()
   } finally { vi.useRealTimers() }
+})
+
+it('never reuses cached owner instructions when the same Site is rendered for a nonowner', async () => {
+  const owner = siteViewFixture(); owner.outcomes = []; owner.flags = [siteFlagFixture({ fix: 'Owner-only instructions', repairGuidance: 'ready' })]
+  const visitor = structuredClone(owner)
+  visitor.actions = siteViewerActions(false)
+  visitor.flags[0].fix = ''; visitor.flags[0].repairGuidance = 'unavailable'
+  let current = { ...owner, inventoryPageCount: 1 }
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json(current)))
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig, { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, rerender, unmount } = renderHook(({ initial }) => useSiteResource(owner.site.siteId, initial), { wrapper, initialProps: { initial: owner } })
+  await waitFor(() => expect(result.current.view.inventoryPageCount).toBe(1))
+  current = visitor
+  rerender({ initial: visitor })
+  expect(result.current.view.flags[0].fix).toBe('')
+  expect(result.current.view.actions.ownership).toBe('provisional')
+  unmount()
 })

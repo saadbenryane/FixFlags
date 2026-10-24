@@ -8,7 +8,7 @@
 .desktopNavigation, .anonymousBrand { display: none; }
 .navigation { display: flex; flex-direction: column; gap: 4px; padding-top: 24px; }
 .mobileNavigation { grid-template-columns: repeat(auto-fit, minmax(min(100%, 6em), 1fr)); gap: 4px; }
-.mobileNavigation.withHelp { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.mobileNavigation.withHelp { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .navLink { display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-control); font-size: 13px; font-weight: 500; color: hsl(var(--muted-foreground)); }
 .navLink:hover, .selected { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
 .canvas { min-width: 0; padding: 20px 16px calc(9rem + env(safe-area-inset-bottom)); }

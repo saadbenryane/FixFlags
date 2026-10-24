@@ -5,12 +5,16 @@ import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
 import { SiteScanAccessSettings } from './SiteScanAccessSettings'
 import { SiteResearchConsentSettings } from '@/components/sites/SiteResearchConsentSettings'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
-import { useSiteResource } from '@/hooks/useSiteResource'
+import { SiteResourceBoundary, useSharedSiteResource } from './SiteResourceBoundary'
 import { SiteShell } from '@/components/sites/SiteShell'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 
-export function SiteSettingsView({ siteId, view: initial }: { siteId: string; view: SiteHomeView }) {
-  const { view, refresh, disconnected } = useSiteResource(siteId, initial)
+export function SiteSettingsView(props: { siteId: string; view: SiteHomeView }) {
+  return <SiteResourceBoundary siteId={props.siteId} initial={props.view}><SiteSettingsContent siteId={props.siteId} /></SiteResourceBoundary>
+}
+
+function SiteSettingsContent({ siteId }: { siteId: string }) {
+  const { view, refresh, disconnected } = useSharedSiteResource(siteId)
   return (
     <SiteShell
       actions={view.actions}

@@ -8,6 +8,7 @@ import { mkdir, writeFile, unlink } from 'node:fs/promises'
 import { loadEnvConfig } from '@next/env'
 import AxeBuilder from '@axe-core/playwright'
 import { SITE_BOARD_COPY } from '../lib/marketing/copy/terminology'
+import { CARE_HOME } from '../lib/marketing/copy/care-homepage'
 
 test.use({ ignoreHTTPSErrors: true })
 
@@ -37,7 +38,7 @@ test('local real analysis, claim, activation and first independent execution', a
     const consent = page.getByRole('button', { name: 'Only necessary', exact: true }); if (await consent.isVisible()) await consent.click()
     await field.fill(`https://example.com/?fixflags-activation=${nonce}`)
     const submitted = page.waitForResponse(response => response.url().endsWith('/api/checks') && response.request().method() === 'POST')
-    await page.getByRole('button', { name: 'Analyze', exact: true }).first().click()
+    await page.getByRole('button', { name: CARE_HOME.hero.cta, exact: true }).first().click()
     const created = await submitted; expect(created.ok(), 'Real URL submission accepted').toBe(true)
     const body = await created.json(); auditId = body.reportId
     expect(auditId).toBeTruthy(); const provisionalId = body.siteId as string

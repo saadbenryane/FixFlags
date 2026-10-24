@@ -26,12 +26,11 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { helpArticlePath } from '@/lib/help/types'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
+import { siteWorkspaceHref } from '@/lib/sites/workspace-location'
 const coverageHelpHref = helpArticlePath('sites-and-coverage', 'read-site-coverage')
 
 function routeHref(siteId: string, route: SiteRoute): Route {
-  if (route === 'home') return `/sites/${siteId}` as Route
-  if (route === 'timeline' || route === 'integrations') return `/sites/${siteId}?view=${route}#${route}` as Route
-  return `/sites/${siteId}/${route}` as Route
+  return siteWorkspaceHref(siteId, route) as Route
 }
 
 export function SiteShell(props: Parameters<typeof SiteShellContent>[0]) {
@@ -69,7 +68,7 @@ function SiteShellContent({
   analysisView?: SiteHomeView
   analysisStatus?: ReactNode
   chatFlag?: { id: string; title: string }
-  onWorkspaceNavigate?: (route: 'home' | 'timeline' | 'integrations') => void
+  onWorkspaceNavigate?: (route: 'home' | 'pages' | 'timeline' | 'integrations') => void
   children: ReactNode
 }) {
   const { user } = useMe()

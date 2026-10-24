@@ -1,12 +1,232 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-20
+reviewed_at: 2026-10-24
 supersedes: []
 ---
 
 
+## Website completion plan, 2026-10-24
+
+This is the current implementation plan for completing the existing website product and the dashboard work reviewed with the owner. Its status is **implementation advanced, with browser and release acceptance still open**. It does not certify the working tree or change the existing evidence, privacy, integration, email-budget, or release gates. Earlier acceptance records below retain their original dates and candidate scope.
+
+The customer outcome is a complete loop: enter a website, receive credible findings, understand what matters, choose what to fix, give a coding agent the recorded task, and see independent verification and continued monitoring. A polished sample, a successful build, and a healthy server each establish only their own part of that loop.
+
+### Reviewed baseline
+
+- The working tree contains the reviewed dashboard and homepage changes, including untracked implementation files. Freeze a complete, reviewed revision before release acceptance. Do not omit new files or combine unrelated work implicitly.
+- Public read-only checks on 2026-10-24 returned HTTP 200 for health and readiness. Health reported commit `f18b990e2d755e3c6def8483ddc6dc333239d0c4`, matching the checkout's base commit. This does not include the uncommitted dashboard changes or prove deployed worker identity or a customer repair loop.
+- Readiness reported `ok: true`, no missing prerequisites, and automatic accounts disabled by configuration. A green readiness result cannot be used to claim that disabled account checks work in production.
+- `test-results/release/website-beta-current.json` still selects `8f46c4f5`, dated 2026-10-20. Its selected completion-ledger file is absent in this checkout. The retained acceptance narrative records that candidate's failed foundation. Recover authentic receipts or create a fresh candidate namespace; do not infer current completion from the pointer or copy old results forward.
+- The preceding implementation pass passed 280 focused checks and a production build. This review additionally reproduced the priority-loss defect below using the actual producer shape and client parser. Those are different observations and must both remain visible.
+- This planning review did not run browser/E2E suites, create customer scans, send email, change provider configuration, or deploy. Browser suites require an explicit request under `AGENTS.md`. Full experience and provider acceptance remain required before release.
+
+### Implementation update, 2026-10-24
+
+The current local working tree implements the source corrections for F01 through F08. This is implementation evidence, not a release receipt. F09 retains the existing approved brand-contrast exception; full WCAG AA is not claimed.
+
+| Work package | Implemented and checked locally | Remaining acceptance |
+| --- | --- | --- |
+| Viewer and wire contracts | Chip priority survives parsing. Initial and JSON projections share an allowlist and redact nonowner repair guidance. Detail reads use the same guidance decision. GitHub grant data is owner-only. | Actual signup, claim, expired-session, and private-storage journey against a frozen candidate. |
+| Live state and navigation | One composed Site resource, validated Flag detail reads, dated-evidence refresh failures with retry, shared URL parsing, native history navigation, and viewer-scoped caches. Regressions reproduce the former priority loss, hidden refresh failure, and cached owner-guidance leak. | Real browser Back/Forward, focus/scroll restoration, slow network and session transition observations. |
+| Evidence settlement | Typed tracking reasons flow from the recorder through stored receipts into the UI. Historical text interpretation is confined to the receipt projection. No missing observation becomes a Flag or pass. Existing durable prescription settlement and native evidence custody are preserved. | Real provider, interruption, comparable repair and scheduled production settlement proof. |
+| Agent handoff | One bounded preparation hook, canceled stale reads, inspected-versus-copied task comparison, full hash revalidation, explicit selection, and original hash acknowledgements. Selection spans priority/device groups and Pages; shared Flags count once. | Actual published source change and independent comparable recovery. |
+| Shared composition | Pure page inventory projection, shared overview composition and spacing, shared evidence and selection controls. The homepage supplies local illustrative actions and a fixed recorded clock. | Responsive, zoom, touch, long-content and visual observations on the final candidate. |
+| Secondary surfaces | GitHub Connect/Manage/Reconnect reflects the saved grant. Unavailable integrations are collapsed while retained cleanup stays available. Same-day chart points show UTC times; partial checks remain gaps. Existing settings persistence/refusal behavior is retained. | Actual OAuth continuation, monitoring, removal and external cleanup acceptance. |
+| Design and code quality | Consolidated monitoring/uptime/summary CSS, removed unused pulse animation, centralized action copy, aligned design/interface documents, focused contracts/components and scoped guards. The dependency audit exposed the old Undici pin; the maintained override and lockfile now use patched 7.30.1. No advisory exemptions were added. | Browser accessibility, reflow, usability and controlled performance measurements. |
+| Release | Isolated local build and disposable persistence checks are evidence for this working tree only. Existing deployment and receipts are unchanged. | All candidate-bound customer-loop, immutable web/worker image, private storage, scheduled cycle and delivery proof in package 8. |
+
+Local persistence checks applied the complete migration history to fresh disposable databases, found no schema drift, and passed 24 current-evidence publication tests and 9 prescription-custody tests. They used no browser suite or live provider. Unit/component checks cover producer-to-wire priority, nonowner redaction, owner-to-nonowner cache changes, one Site stream, stale detail recovery, selection across groups/pages, changed prompt reviews, selected-scope validation, clipboard/receipt outcomes, tracking reasons and sample isolation. The combined focused run passed 415 tests in 40 suites. Subsequent GitHub capability and Flag-return refinements passed 14 integration-control component tests and 69 reading/navigation component tests. TypeScript, changed-file lint, UI/copy/brand/product/route/module guards, runtime and toolchain dependency audits, the worker build, and the final reviewed-source web production build passed. The reviewed web build generated all 146 static pages and prepared its standalone runtime in an isolated output directory. An earlier incremental rebuild failed inside webpack hash processing; a fresh output directory then exposed a typed-link error, which was corrected before the final successful build. These failures are not counted as passes. Validation-specific TypeScript include entries were removed afterward; the existing development server was left listening on port 3000.
+
+The owner explicitly authorized local end-to-end testing and fixes on 2026-10-24. The working tree is not deployed. Browser review reproduced an SVG title hydration mismatch, clipped mobile toolbar controls, undersized tablet navigation, low-contrast priority text, a footer heading overflow at 200 percent text, and Safari focus returning to the wrong place. The corrections preserve complete evidence, explicit scope and the approved brand-control exception. The chart measures its plot width so SVG labels remain readable. Card and timeline actions carry their actual opener rather than inferring mouse focus. The title hydration and opener regressions failed before their respective corrections and pass afterward.
+
+The website foundation passed against the working tree: all guards, lint, types, migrations, accuracy fixtures, dependency audits, web and worker builds, container build, 10,336 unit tests and the coverage thresholds. A subsequent 130-test component run, changed-file lint, types and production build passed after the Safari correction. The production browser suites passed 82 Chromium cases (one queue-backed case excluded from that UI-only invocation), 27 WebKit cases, and 27 Firefox cases. Each non-Chromium run intentionally excludes the Chromium-specific clipboard-permission case. Firefox ran in the matching official Playwright Linux image after the macOS runner failed before loading the app. The enlarged-text matrix resizes the mounted workspace across 320, 375, 768 and 1280 pixels and exercises all five views in both themes. Failures and traces remain retained; no assertion filters or application test bypasses were added.
+
+Three separate disposable local production runtimes exercised the real worker with migrated PostgreSQL and isolated Redis. The category journey retained full-Site evidence through a category recheck, copied a scoped repair task, changed the controlled website, and independently verified a comparable clear result. The recovery journey observed the actual persisted five-minute notification backoff, rejected a premature retry, accepted exactly one message after eligibility, and verified recovery, history, owner-only image reads and rejection of anonymous, foreign and unsigned private-object access. The anonymous journey entered a URL, completed its reduced scan, read its own Site through the browser's secure creator cookie, confirmed guidance stayed private and rejected a second anonymous check. These are controlled HTTP, email SDK and private-storage protocol transports, not external-provider acceptance. Obsolete test labels, a test client's omission of a Secure loopback cookie, and observers using durable rather than current source identities were corrected without weakening production policy or test deadlines.
+
+Retained local records live under `.agents/artifacts/dashboard-launch-20261024/`, `.agents/artifacts/scan-completion/`, `.agents/artifacts/customer-reliability/` and `test-results/browser/dashboard-20261024/`. An earlier incremental build, competing-build startup timeout, browser runner failures and failed journey attempts remain failures in their original artifacts. Current source still needs a clean frozen revision and new candidate-bound foundation, staging customer-loop and provider receipts, immutable web/worker attestation, rollback rehearsal and a natural scheduled production cycle. Read-only production preflight retained the current deployments, images, gates and migration ledger, found exact schema parity, and confirmed both images remain restorable. No deployment or production data mutation follows from that observation. Automatic accounts remain disabled, paid opening remains closed, the controlled mail allocation remains closed, and parked integrations remain parked.
+
+The dependency patch follows the [Undici maintainer's 7.30.1 security release](https://github.com/nodejs/undici/releases/tag/v7.30.1). Its scope is the installed npm dependency, not a claim that the host Node.js runtime has been upgraded.
+
+### Findings that determine the order
+
+| ID | Evidence and location | Consequence | Required correction |
+| --- | --- | --- | --- |
+| F01 | **Reproduced:** `site-view-contract.ts` omits `priorityBand` from `cards[].flagChips[]`. Passing a produced `fix_first` chip through `readSiteHomeView` returns no priority. | Priority labels can disappear after a validated refresh even though the first render looks correct. | Repair the declared wire contract and test complete producer-to-client round trips, including optional fields and sparse maps. Do not loosen the validator with a blanket passthrough. |
+| F02 | **Source-level finding:** `queries.ts:loadSiteHome` returns the guidance-bearing `flags`, `recommendations`, and `resolvedFlags` without a viewer projection. `ownerEvidence` gates actions and some data reads. The new individual-Flag endpoint separately redacts guidance for nonowners. | A disabled copy button is not consistent server-side enforcement of the guidance gate. This finding does not establish cross-tenant access. | Apply one explicit, allowlisted viewer projection to initial HTML, refresh payloads, and detail reads. Preserve authorized scan reading and gate repair guidance on the server. |
+| F03 | **Source-level finding:** `SiteBoard` owns `useSiteResource` directly, while its modal's `SiteFlagActions` can create another `SiteResourceBoundary`. Each resource hook installs an EventSource. | Opening a Flag can add a second event/polling owner for the same composed Site. | Use the existing resource boundary at the workspace root and subscribe all descendants to it. Verify one event owner, bounded reads, and cleanup. |
+| F04 | **Source-level finding:** `SiteFlagPanel` refetches on lifecycle changes, but retains data under only `siteId:flagId`. Its retained-data rendering takes precedence over its error rendering. | Failed refreshes can leave an earlier lifecycle visible without a refresh-failure indication or a usable retry control. | Model initial loading, current, revalidating, dated evidence, and failed refresh explicitly. Bind data to evidence identity and revision. Preserve the user's focus and verification draft. |
+| F05 | **Source-level finding:** individual and bundle prompt components prepare and cache their own previews. Copy prepares again. Bundle assembly rechecks membership IDs, rather than a complete task revision. | The preview and the copied task can differ after a source change. Hash-bound acknowledgements already prevent some false receipts, but do not make the preview contract complete. | Share preparation state and immutable scope/revision identity. Require an explicit updated preview when the task changes. Keep clipboard completion and server acknowledgement distinct. |
+| F06 | **Source-level finding:** `SitePages` and `SiteCategoryDetails` separately build page results. `HomepageDashboardPreview` shares many components but retains its own shell, state, counts, and action wiring. | Count, scope, navigation, and layout rules can drift between views and the marketing sample. | Centralize page/read-model projections and share the workspace's visual composition, with explicit product and fixture adapters. |
+| F07 | **Source-level finding:** `SiteIntegrationsPanel` chooses GitHub's Connect action from the catalog item alone. It has no GitHub grant state. Nine unavailable catalog entries remain the bulk of the list. | The action cannot reflect an existing GitHub authorization, and the main view spends attention on unusable connections. | Use actual authorization state and capability policy. Lead with supported connections; keep unavailable entries out of the primary task flow. Preserve retained-connection cleanup. |
+| F08 | **Source-level finding:** monitoring and uptime CSS contain earlier selector definitions followed by replacement definitions. Some new action and evidence labels remain inline in components. `DESIGN.md` and the interface document still describe older tool limits and navigation anatomy. | Further polish requires reading a cascade of overrides and conflicting presentation guidance. | Consolidate final CSS recipes, remove dead styles, centralize contract-bearing copy, and reconcile the existing design/interface authorities. |
+| F09 | **Documented constraint:** `QUALITY.md` retains the approved 3.13:1 white-on-orange control-label exception. | Full WCAG AA text-contrast compliance cannot be claimed. | Present an accessible control treatment for approval while preserving the approved brand identity. Keep the exception explicit until it is actually resolved. |
+
+Source-level findings require focused failing regressions before correction. They are not presented as completed browser observations. No architecture-wide rewrite follows merely from a component's length.
+
+### Information architecture and attention model
+
+Use the established Account and Site hierarchy. Preserve the dashboard as a place to survey and choose work. Outcomes remain meaningful responsibilities, and category/page views remain useful ways to inspect the same evidence.
+
+| Place | Primary user question | Primary content and action |
+| --- | --- | --- |
+| Account rail | Which website or account am I managing? | Website switcher and account menu. Profile, authentication, and account preferences stay here. |
+| Site sidebar | Where am I within this website? | Overview, Pages, Timeline, Integrations, Settings, and Help. Site identity has one primary location. |
+| Overview | What needs attention, and what matters most? | One summary; complete website preview; ranked category cards; comparable Flag trend and compact uptime. Let the user open a category, an individual Flag, or choose a repair scope. |
+| Pages | Where are the problems? | Affected pages first, consistently sized source-specific thumbnails, individual Flags, and other pages in a disclosure. Distinguish pages discovered, recorded, and fully checked. |
+| Flag depth | What happened, why does it matter, and what can I do? | Page and device, observed/expected behavior, priority rationale, usable evidence, fix prompt, and independent verification. Technical custody remains available in depth. |
+| Timeline | What changed, and what did a fresh check establish? | Significant checks, failures, verification results, recoveries, and recurrence, with scope and time. Avoid raw task-log noise. |
+| Integrations | Which connection helps me act? | Actual supported capability, one-line purpose, current authorization state, and the correct connect/manage/disconnect action. |
+| Site settings | How is this website watched? | Schedule and notification preferences first; access and test-account controls in Advanced; deliberate removal with cleanup status. |
+
+Three facts remain distinct throughout: **the number of confirmed Flags, whether sufficient checks completed, and whether monitoring is active**. Zero Flags cannot turn missing work green. Customer-facing uncertainty must identify a useful cause and recovery action without exposing a page of internal execution terminology.
+
+The primary dashboard stays concise. Full evidence is available without navigating away from the user's working context. More detail must not become a chain of nested dialogs. A category-to-Flag transition needs one predictable Back action, preserved scroll, a stable URL, and restoration to the actual opener.
+
+### Execution sequence and acceptance
+
+Every work package below belongs to this completion milestone. P0 means trust, correctness, or release proof; P1 means required experience quality. P1 is not a deferred backlog. The order expresses dependencies, not permission to ship unfinished work.
+
+#### 1. Correct the viewer and wire contracts (P0)
+
+**Own:** `lib/sites/site-view-contract.ts`, `site-home.ts`, `flag-panel.ts`, `application/queries.ts`, Site read routes, and their focused contract/access tests.
+
+- Make the client DTO and its runtime schema one maintained contract. Keep internal domain records separate from the viewer-safe DTO rather than serializing them directly.
+- Preserve priority, original/source Flag identity, affected scope, evidence time, verification state, partial recovery maps, and unreadable-evidence state through serialization and validation.
+- Build explicit owner and authorized-creator projections. Apply the same permission decision to initial rendering, polling, individual details, prompt preparation, and event subscriptions. A link never grants access.
+- Align the owner's direction to show authorized signed-out Site history with the report privacy contract. A creator reading their own scan is different from an unrelated anonymous visitor or public historical report. Do not expose another owner's private history.
+
+**Done when:** representative produced DTOs survive actual client parsing without losing declared fields; malformed data and cross-Site responses are rejected; anonymous/unrelated, authorized-creator, signed-in-unclaimed, owner, and expired-session cases have explicit assertions; repair instructions are absent from every nonowner response covered by the gate. Fix F01 and F02 before visual refinements.
+
+#### 2. Give live state and navigation one owner (P0)
+
+**Own:** `SiteResourceBoundary`, `SiteBoard`, `SiteFlagPanel`, `SiteFlagActions`, `useSiteResource`, and a focused navigation/resource module.
+
+- Put the existing shared resource boundary around the composed workspace. Board, shell, modals, and verification controls consume the same Site read and projection notifications. Do not build another synchronization engine.
+- Use a revision-aware Flag resource with bounded requests, cancellation, Site/Flag/source checks, and explicit initial-load versus refresh failure. A stale response must not overwrite newer evidence or publish after access expires.
+- Keep recorded observations immutable while fresh results change the current assessment. Retained evidence must be visibly dated when freshness cannot be established. Show refresh recovery without erasing a draft.
+- Use one parser/formatter for view, category, page selection, and Flag URL state. Use Next's documented History API integration, without depending on private `__NA` internals. Treat focus and scroll as transient UI state.
+- Cover direct links, reload, browser Back/Forward, Escape, nested category return, modifier-click/new-tab behavior, and post-sign-in return. Preserve native link destinations where the control represents navigation.
+
+**Done when:** opening Flag actions does not create another Site event connection; late reads and closed streams cannot change the current Site; a failed detail refresh exposes the problem and retry; queued verification, completion, inconclusive results, and recurrence update the open detail correctly; navigation and auth preserve the actual working context.
+
+#### 3. Finish the scan and evidence lifecycle (P0)
+
+**Own:** existing `lib/audit/progressive` task graph, collectors/evaluators, prescription scope and settlement, `lib/sites/application` reconciliation, and Operations projections.
+
+- Audit each supported check from admission to a terminal recorded result. Separate a remote website limitation from a FixFlags execution failure, a deliberately suppressed test effect, and genuinely inapplicable work.
+- Use the existing durable task ownership, deadlines, bounded retries, and reconciliation. Reproduce causes of unfinished required work before changing the engine. Do not increase deadlines or disable assertions to obtain a green run.
+- Ensure useful findings survive failed siblings, interrupted execution, and later partial checks. Findings retain their original page, viewport, source facts, supporting observations, and verification criteria.
+- Settle repair guidance for every finding intended for handoff. A confirmed Flag may appear before its guidance is ready, but pending, failed, or unavailable guidance needs a recorded reason and bounded recovery. Diagnosis text cannot be substituted for missing instructions.
+- Review precision against retained facts and actual public-page checks. Preserve cross-page identity and distinguish one shared problem affecting multiple pages from unrelated problems with similar wording.
+- Replace parsing of human observation strings, such as the tracking suppression phrase in `check-result-presentation.ts`, with typed reason codes from the evidence producer. Retain historical adapters explicitly without rewriting old observations.
+- Use existing Operations to expose stuck work, missing guidance, stale coverage, delivery problems, and the actual owning task. These are operational responsibilities, not problems for the customer to diagnose.
+
+**Done when:** each required task has an attributable terminal result; restart and duplicate-delivery tests preserve custody and settle once; complete supported runs complete without routine system-caused gaps; unsupported/blocked behavior remains explicitly unverified; original evidence and guidance survive persistence; consequential false positives are corrected at their producer or policy rather than hidden in the UI.
+
+#### 4. Complete the agent repair handoff (P0)
+
+**Own:** canonical `application/flag-copy-task.ts`, `fix-bundle.ts`, their owner routes, `SitePromptCopyButton`, `SiteFixBundleButton`, `FixPromptCard`, and the shared prompt viewer.
+
+- Use one prepared-task abstraction for a Flag, category, explicit selection, or all eligible open Flags. Reuse canonical evidence and instructions, with original task IDs and hashes.
+- Bind scope membership and task content to a prepared revision. A source or scope change must be detected and explained before copying an updated task. Preview and Copy must describe the same prepared content.
+- Include priority, relevant page/device, observed/expected behavior, reproduction context, supporting observations, acceptance criteria, and the recorded scan/Flag references. Private links stay private; authorized inline evidence makes the owner's task usable without weakening access.
+- Support choosing several Flags without forcing one-at-a-time work. Reveal selection controls when requested rather than adding permanent checkbox clutter. Make scope and included count clear.
+- Never silently omit unavailable guidance or truncate at the current 100-task bound. Offer an explicit supported selection or bounded grouping, with remaining work visible. One unavailable task must not make ready individual tasks inaccessible.
+- Distinguish preview, clipboard completion, acknowledged handoff, requested verification, and verified recovery. Clipboard and server acknowledgement are separate operations, not an invented atomic transaction.
+- Keep a readable/selectable prompt when clipboard permission is denied. Preserve the existing hash-bound acknowledgement and original historical receipts; neither a viewed prompt nor an interrupted write records a completed copy.
+
+**Done when:** zero, one, many, shared-page, unavailable-guidance, changed-membership, changed-content, over-limit, clipboard-denied, expired-session, and partial-acknowledgement cases behave explicitly. A changed prompt cannot silently replace the one the customer inspected. No handoff or local coding result resolves a Flag.
+
+#### 5. Consolidate the dashboard and homepage composition (P1)
+
+**Own:** `board-view.ts`, page-result projections, `SitePages`, `SiteCategoryDetails`, `SiteOverview`, `SiteCheckSections`, shared Flag evidence/detail content, and homepage adapters.
+
+- Create one pure page-results projection for a defined scope. Attach UI callbacks at the view boundary. Preserve source URL identity, with query/host/device shown only when needed to distinguish otherwise identical display paths.
+- Derive totals, category counts, page counts, and attention ordering from the same normalized findings. Count a distinct Flag once globally and once on each affected page. Do not sum page counts to invent a global total.
+- Keep the grid, quiet zero-Flag cards, direct Flag links, whole-category opening, aligned panels, and complete capture treatment already reviewed. Intrinsic content may grow; alignment must not depend on fixed heights that clip long content.
+- Use the same Flag detail presentation for in-place reading and canonical full-detail routes. Keep source/history functions available and compatibility routes working, with one evidence and permission model.
+- Extract the shared visual workspace composition used by product and homepage. Product commands and an explicitly labeled fixture adapter supply behavior. The sample uses a fixed recorded clock and page-specific assets, with no customer data or production side effects.
+- Check tiny, empty, partial, complete, long-title, many-Flag, many-page, missing-capture, and mixed-priority datasets. Three attractive fixture Flags are insufficient evidence for layout quality.
+
+**Done when:** the homepage and real Site consume the same layout and presentation rules; Pages and category depth agree about their declared scope; all affected Flags remain reachable; thumbnail dimensions match; missing captures remain explicit; no hidden overflow, empty layout slots, or duplicated overview counts occur in the accepted viewport matrix.
+
+#### 6. Make history, uptime, settings, and integrations useful (P1)
+
+**Own:** `SiteMonitoringHistory`, `UptimeCard`, Site settings/monitoring controls, connection queries and catalog, and contextual links.
+
+- Keep the Flag chart scoped to comparable Site checks. Incomplete observations remain gaps. Preserve the difference between fewer Flags, less coverage, and verified recovery.
+- Format time at the scale of the data. Multiple checks on the same day need distinguishable times, not identical date-only labels. Expose recorded scope and values accessibly, including empty and single-check states.
+- Make incidents and significant history readable at a glance. Keep the timeline connector, compact first panel, and row-level source/detail access. Retain actual timezone and observation provenance in depth.
+- Keep Online and its observation time together. An HTTP response is a distinct promise from rendered-page or purchase success. Missing/stale probes and unavailable history must not imply continuous availability or an invented uptime percentage.
+- Model GitHub disconnected, connected, revoked, and unavailable states using its actual grant. Use Connect or Manage accordingly. Retained connection cleanup remains functional even when routine provider activation is parked.
+- Prioritize the currently supported integration job. Unavailable integrations do not dominate the primary screen or receive working-looking Connect buttons. Do not activate unvalidated providers to fill the interface.
+- Keep account and Site settings separate. Every preference must state its effect, persist the actual server value, and expose saving/refusal. Advanced recovery anchors must open their disclosure. Removal must stop future work and preserve required evidence, with exact acknowledgement of remaining external accounts.
+
+**Done when:** monitoring changes survive reload and reflect actual scheduling; history, uptime and verification are interpreted separately; authorization states choose the correct integration action; account settings are findable; every visible setting has a real effect; cleanup/removal and failed-save recovery work through tenant-scoped commands.
+
+#### 7. Complete design, copy, accessibility, and performance (P1)
+
+**Own:** shared board/control tokens, final component CSS, `lib/marketing/copy`, `DESIGN.md`, and `docs/workspace-interface.md`.
+
+- Consolidate each final CSS recipe instead of appending overrides. Remove unused selectors and obsolete props. Keep board, marketing, and legacy report surface families deliberate.
+- Apply one spacing, radius, typography, status, and control hierarchy across overview, depth, settings, prompts, and sample. Keep dark surfaces calm, with no decorative glow, no separator lines, and motion only for feedback or running work.
+- Centralize rendered action/state copy in its existing copy modules. Use concrete failures and consequences. Avoid internal execution IDs, repetitive caveats, speculative savings, and systems jargon in primary content. Do not hide material uncertainty or shorten accurate meaning into a false pass.
+- Keep a small exact vocabulary for Flags, Pages, monitoring, guidance preparation, and verification. Action labels state what actually happens. Reconcile the design/interface documents with the approved Pages navigation, full tool list, prompt viewing, and in-place Flag experience.
+- Validate keyboard operation, real opener restoration, unobscured focus, readable headings, semantic controls, and meaningful status announcements without repeated live-region noise. Preserve the repository's 44px target policy; WCAG 2.2's AA minimum is a different 24px criterion with spacing exceptions.
+- Cover 320/375/768/1280px, 200% and 400% reflow/zoom, light/dark, long content, reduced motion, touch, and slow/unavailable session/data states. Resolve or explicitly retain the approved contrast exception without claiming full AA.
+- Measure the real initial-analysis and workspace experience, not only the marketing route. Keep one Site stream and bounded refresh/preparation work. Measure LCP, INP, and CLS in controlled runs and separate available field evidence. Targets are LCP <= 2.5s, INP <= 200ms, CLS <= 0.1 at the field 75th percentile by device category.
+
+**Done when:** responsive and accessibility observations are recorded against the actual candidate; all essential actions work on touch and keyboard; pending/error/expired states remain usable; copy and documentation agree with actual capabilities; performance results identify their environment and do not relabel synthetic data as field evidence.
+
+#### 8. Prove the complete customer loop and release it honestly (P0)
+
+**Own:** existing website release profile, `QUALITY.md`, release-evidence runbook, candidate receipts, and scoped deployed acceptance.
+
+| Required journey | Acceptance observation |
+| --- | --- |
+| URL to useful results | A real supported public website is admitted once, returns attributable findings and captures, settles required work, and gives a useful explicit answer when blocked. |
+| Signup and claim | The same Site, scan, page/Flag context, and evidence survive real signup/email verification, optional enrollment, claim, retry, refresh, and natural session expiry. No duplicated Site or lost task. |
+| Prioritize and choose | The user can identify priority, move between category/page views, open individual Flags, and choose several tasks without losing their place. |
+| Fix and verify | The actual Site control copies the canonical task, a source change is genuinely published, an independent comparable check establishes failure/recovery, and recurrence/restoration use fresh observations. |
+| Monitoring and notification | Actual scheduled work runs without a foreground browser. Confirmed new problems and requested recoveries produce one relevant branded notification with a working same-environment evidence link. Provider acceptance and delivery retain separate evidence. |
+| Accounts | The controlled normal-engine signup, verification, retained-account reuse, disposable deletion, and failure/cleanup cases pass before enabling production automatic-account execution. Disabled configuration is not acceptance. |
+| Isolation and storage | The right owner and authorized creator can read their own evidence; unrelated and expired callers cannot read it or execute writes. Actual private storage is exercised, including denied retrieval. |
+| Settings and removal | Schedule/pause/resume, edited notification preferences, failed writes, advanced links, cleanup and removal persist and fence pending execution. |
+| Recovery and interruption | Worker interruption, duplicate admission, stream loss, provider failure, blocked targets, and delayed responses preserve evidence and recover within their declared ownership and retry policy. |
+
+Start with failing focused regressions for the findings above, then producer/client contract tests, application and persistence checks, and affected component tests. Run TypeScript, scoped lint, copy/UI/brand/route/module/security guards appropriate to each slice. Use disposable services for lifecycle, migration, concurrency, and custody checks. Full release validation applies to the final frozen source, web and worker, schema upgrade, packaged runtime, and immutable image.
+
+Browser and real-provider acceptance are required evidence stages, not activities to conceal inside a routine verification command. Follow the explicit browser authorization rule and the existing closed email allocation. Preserve the bounded account phase and designated combined-alert proof. Do not send routine fixture mail, expand the send budget, or activate integrations as a shortcut.
+
+Freeze only after the source and review are complete. Give that revision its own results and inspect failures causally. Do not reuse a passing historical receipt, drop required scenarios, turn off validators, inflate timeouts, edit evidence timestamps, or substitute mocks for provider proof. Deployment promotion requires exact web/worker revision and image checks, fresh readiness, real customer-loop evidence, rollback custody, and a naturally scheduled production cycle. Healthy endpoints alone do not close the release.
+
+### Completion and value measures
+
+The completion review must answer these with observations, not confidence scores: can a first-time visitor understand the most important finding; can they choose a repair scope; does the prompt contain enough grounded information to act; does FixFlags independently distinguish persistent failure, inconclusive evidence, recovery, and recurrence; and does monitoring keep working after the browser closes?
+
+Use existing privacy-safe measurement to baseline time to first useful finding, claimed Site continuity, complete guidance availability, prompt handoff success, independently verified recovery, scheduled-execution settlement, notification delivery, and coverage loss. Separate denominator, scope, and unknown results. A fall in Flags is not success if coverage fell. Do not invent conversion or usability targets before observing a baseline, and do not label agent review as human research.
+
+Completion means all required work above is implemented, reviewed, and proven at its appropriate boundary, with no unresolved P0 and no unaccepted required P1. Unsupported targets can have truthful limits; supported advertised behavior must work. Paid enrollment, repository execution, MCP/CLI customer discovery, Login/Password reset verification, and unvalidated integrations retain their existing separate scope. The current completion milestone does not silently expand into another product or advertise those capabilities as available.
+
+### Research used for this plan
+
+The following sources inform the recommendations; they do not establish that FixFlags meets them.
+
+- [NN/g: Progressive disclosure](https://www.nngroup.com/articles/progressive-disclosure/). Put frequent tasks in the primary view and make advanced evidence discoverable. Avoid turning simplification into another deep sequence.
+- [NN/g: Recognition and recall](https://www.nngroup.com/articles/recognition-and-recall/). Keep visible, recognizable context and task choices rather than making customers remember where a Flag came from.
+- [Linear: Filters](https://linear.app/docs/filters). A useful reference for explicit scoped views whose main filters survive in the URL. This supports stable navigation, not importing Linear's feature set.
+- [React: You might not need an Effect](https://react.dev/learn/you-might-not-need-an-effect). Derive presentation from canonical data; reserve Effects for synchronization with actual external systems and use established resource mechanisms.
+- [W3C: Modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) and [status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html). Establish focus containment, useful initial focus, restoration, and announcements that do not unnecessarily interrupt the user.
+- [W3C: Focus not obscured](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html), [target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html), and [contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). Supply explicit accessibility acceptance rather than a visual impression of compliance.
+- [Google: Web Vitals](https://web.dev/articles/vitals). Keep loading, interaction, stability, and lab/field measurement distinct.
+- [Google SRE: Monitoring distributed systems](https://sre.google/sre-book/monitoring-distributed-systems/). Prioritize actionable user-visible symptoms, low-noise notifications, and reliable service behavior over dashboard activity.
+- [GOV.UK: Make the service simple to use](https://www.gov.uk/service-manual/service-standard/point-4-make-the-service-simple-to-use). Evaluate the complete journey consistently across its steps and devices.
+- The installed Next.js 16.4.3 navigation guide, `node_modules/next/dist/docs/01-app/01-getting-started/04-linking-and-navigating.md`, documents native History API integration. It supplies the version-matched routing reference.
+
 ## Public website validation completion ledger
+
+The acceptance records below retain their original candidate/date scope. They do not certify the 2026-10-24 working tree. Use the current completion plan above for the work now required, while preserving the release constraints and failed evidence recorded here.
 
 Accepted owner scope, 2026-10-12: the website app and persistent category board launch with one-website open-beta access. Customer-facing MCP, CLI, repository tools and paid enrollment remain parked. This section supersedes the broader launch sequence and acceptance checklist below for this release; the broader architecture remains the long-term direction.
 
@@ -22,7 +242,7 @@ Implementation and proof are separate. A requirement closes only with evidence f
 
 Owner implementation plan accepted 2026-10-16: finish the complete website beta, including automatic-account lifecycle proof. Keep eight coverage areas, the one-website policy, existing brand controls and the website-only release boundary. The current reviewed base is `5b8a25ad2e3602879cca969a0127cac0e15a5615`. Web and worker both reported successful deployments of that revision on 2026-10-16. Earlier mismatched revisions are historical evidence.
 
-### Current acceptance status
+### Retained acceptance status, 2026-10-20
 
 Candidate `8f46c4f563359ce75b69da4d2fa78db71a63334b` is clean and frozen under acceptance. It contains the sparse Site recovery-map correction and the original failing producer and refresh regressions. Complete validation of the unchanged registered source passes, including 9,389 tests, security and boundary guards, production builds and the container build. Eight production-build browser regressions and 48 documentation scenarios also pass, with one initial session request in successful and unavailable states. These establish local proof, not deployed acceptance.
 

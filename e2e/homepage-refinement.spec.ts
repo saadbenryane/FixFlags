@@ -11,16 +11,24 @@ import { inspectAccessibilityViolations } from './approved-contrast'
 async function visit(page: Page, theme: 'light' | 'dark' = 'light') {
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: theme })
   await page.goto('/', { waitUntil: 'load' })
-  await page.evaluate(value => localStorage.setItem('theme', value), theme)
-  await page.reload({ waitUntil: 'load' })
-  await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${theme}\\b`))
   const consent = page.getByRole('button', { name: 'Only necessary', exact: true })
   if (await consent.isVisible()) await consent.click()
+  // Use the product control instead of replacing a document during its prefetches.
+  if (!await page.locator('html').evaluate((node, value) => node.classList.contains(value), theme))
+    await page.locator('footer').getByRole('button', { name: 'Toggle theme', exact: true }).click()
+  await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${theme}\\b`))
+  await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeEnabled()
 }
 
 function board(page: Page) { return page.getByRole('region', { name: C.boardAria }) }
+async function openCard(page: Page, name: string) {
+  // Flag rows are independent controls inside the card. Its header opens the category.
+  const opener = board(page).getByRole('button', { name: `Open ${name}`, exact: true })
+  await opener.click({ position: { x: 24, y: 24 } })
+  return opener
+}
 async function sharedTargets(page: Page) {
   const undersized = await page.locator('main button, main input, main select, [role="dialog"] button').evaluateAll(nodes =>
     nodes.flatMap(node => {
@@ -49,6 +57,13 @@ for (const width of [320, 375, 390, 768, 1086, 1280, 1440]) for (const theme of 
       await expect(board(page).getByRole('button', { name: `Open ${category.name}`, exact: true })).toBeVisible()
     await expect(board(page).getByRole('button', { name: U.details, exact: true })).toBeVisible()
     await sharedTargets(page)
+    const chart = board(page).getByRole('img', { name: /Flag count across/ })
+    await expect.poll(() => chart.evaluate(node => Math.abs((node as SVGSVGElement).viewBox.baseVal.width - node.getBoundingClientRect().width))).toBeLessThan(1)
+    const clippedToolbar = await board(page).locator('[data-site-content] > div').first().evaluate(node => [...node.querySelectorAll('button, a')].filter(control => {
+      const box = control.getBoundingClientRect(), parent = node.getBoundingClientRect()
+      return box.width > 0 && (box.left < parent.left - 1 || box.right > parent.right + 1)
+    }).map(control => control.getAttribute('aria-label') ?? control.textContent))
+    expect(clippedToolbar).toEqual([])
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     expect(errors).toEqual([])
   })
@@ -67,6 +82,7 @@ test('category depth keeps original Flag scope, evidence, guidance and focus', a
   await expect(dialog.getByText(SAMPLE_FLAGS.checkout.observed, { exact: true })).toBeVisible()
   await expect(dialog.getByText(SAMPLE_FLAGS.checkout.expected, { exact: true })).toBeVisible()
   await expect(dialog.getByRole('link', { name: SAMPLE_FLAGS.checkout.page, exact: true })).toHaveAttribute('href', SAMPLE_FLAGS.checkout.url)
+  await dialog.getByText('Check details', { exact: true }).click()
   await expect(dialog.getByRole('link', { name: S.guidanceAction, exact: true })).toHaveAttribute('href', '/docs/fix-with-ai')
   await expect(dialog.getByRole('button', { name: S.recoveryAction, exact: true })).toHaveCount(0)
   await page.keyboard.press('Tab')
@@ -79,11 +95,10 @@ test('category depth keeps original Flag scope, evidence, guidance and focus', a
 
 test('mobile depth uses the viewport and each page’s own illustrative capture', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 }); await visit(page)
-  const opener = board(page).getByRole('button', { name: 'Open Pages', exact: true })
-  await opener.click()
+  const opener = await openCard(page, 'Pages')
   const dialog = page.getByRole('dialog'), box = await dialog.boundingBox()
   expect(box!.width).toBeCloseTo(375, 0); expect(box!.height).toBeCloseTo(812, 0)
-  await dialog.getByRole('button', { name: 'View Flag for /pricing', exact: true }).click()
+  await dialog.getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}`, exact: true }).click()
   await expect(dialog.getByRole('img', { name: S.availabilityAlt, exact: true })).toHaveAttribute('src', /pricing-unavailable\.png/)
   await expect(dialog.getByText(S.availabilityObserved, { exact: true })).toBeVisible()
   await expect(dialog.getByRole('link', { name: '/pricing', exact: true })).toHaveAttribute('href', S.sources.http)
@@ -93,20 +108,23 @@ test('mobile depth uses the viewport and each page’s own illustrative capture'
 
 test('unverified signup and analytics delivery remain separate from checked observations', async ({ page }) => {
   await visit(page)
-  await board(page).getByRole('button', { name: 'Open Conversion', exact: true }).click()
+  await openCard(page, 'Conversion')
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText(S.notVerified, { exact: true })).toBeVisible()
+  await dialog.getByText('Check details', { exact: true }).click()
   await expect(dialog.getByText(S.connections, { exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   await board(page).getByRole('button', { name: 'Open Tracking', exact: true }).click()
   await expect(dialog.getByText('Outside coverage', { exact: true })).toBeVisible()
   await expect(dialog.getByText('Analytics delivery', { exact: true })).toBeVisible()
+  await dialog.locator('summary').filter({ hasText: 'Analytics delivery' }).click()
   await expect(dialog.getByText(/does not prove it reached an analytics account/)).toBeVisible()
 })
 
 test('illustrative history, monitoring and HTTP uptime retain separate scope', async ({ page }) => {
   await visit(page)
   await board(page).getByRole('button', { name: U.details, exact: true }).click()
+  await page.getByRole('dialog').getByText('Check details', { exact: true }).click()
   await expect(page.getByRole('dialog').getByText(U.scope, { exact: false })).toBeVisible()
   await expect(page.getByRole('dialog').getByText(U.limitation, { exact: false })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -129,6 +147,7 @@ test('illustrative history, monitoring and HTTP uptime retain separate scope', a
 
 test('integration discovery reflects released authorization and parked connections', async ({ page }) => {
   await visit(page)
+  await page.getByText(C.integrations.detailsAction, { exact: true }).click()
   for (const integration of INTEGRATIONS_PAGE.items) {
     const card = page.locator(`[data-integration="${integration.id}"]`)
     await expect(card.getByRole('link')).toHaveAttribute('href', `/integrations#${integration.id}`)
@@ -165,7 +184,7 @@ test('reduced motion and shared controls remain usable across sample views', asy
 test('category depth retains keyboard containment and accessible names in both themes', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
     await visit(page, theme)
-    await board(page).getByRole('button', { name: 'Open Pages', exact: true }).click()
+    await openCard(page, 'Pages')
     const dialog = page.getByRole('dialog')
     for (const direction of ['Tab', 'Shift+Tab']) for (let step = 0; step < 12; step++) {
       await page.keyboard.press(direction)
@@ -199,5 +218,43 @@ test('brand controls preserve the measured contrast exception in both themes', a
         body: Buffer.from(JSON.stringify({ ...contrast, smallTextMinimum: 4.5, approvedException: true, fullWcagAaCompliance: false })) })
     }
     await accessible(page)
+  }
+})
+
+test('selected page fixes use the native clipboard and keep their exact scope', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Native clipboard permission proof uses Chromium')
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await visit(page)
+  await board(page).getByRole('button', { name: 'Pages', exact: true }).click()
+  await board(page).getByRole('button', { name: 'Select Flags', exact: true }).click()
+  const box = board(page).getByRole('checkbox', { name: `Select ${SAMPLE_FLAGS.availability.title}`, exact: true })
+  const label = board(page).locator('label').filter({ has: page.getByRole('checkbox', { name: `Select ${SAMPLE_FLAGS.availability.title}`, exact: true }) })
+  const bounds = await label.boundingBox()
+  expect(bounds!.width).toBeGreaterThanOrEqual(44)
+  expect(bounds!.height).toBeGreaterThanOrEqual(44)
+  await label.click({ position: { x: 2, y: 2 } })
+  await expect(box).toBeChecked()
+  await expect(board(page).getByText('1 selected', { exact: true })).toBeVisible()
+  await board(page).getByRole('button', { name: 'Copy 1 fix prompt', exact: true }).click()
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toContain(SAMPLE_FLAGS.availability.prompt)
+  expect(copied).not.toContain(SAMPLE_FLAGS.contact.prompt)
+  expect(copied).not.toContain(SAMPLE_FLAGS.checkout.prompt)
+  await board(page).getByRole('button', { name: 'Cancel selection', exact: true }).click()
+  await expect(box).toHaveCount(0)
+})
+
+for (const theme of ['light', 'dark'] as const) test(`workspace reflows with 200 percent text in ${theme}`, async ({ page }) => {
+  await visit(page, theme)
+  await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+  // Resize the mounted workspace so its live layout and chart observers are exercised.
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const view of ['Overview', 'Pages', 'Timeline', 'Integrations', 'Settings']) {
+      await board(page).getByRole('button', { name: view, exact: true }).click()
+      expect(await board(page).evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+      await sharedTargets(page)
+    }
   }
 })

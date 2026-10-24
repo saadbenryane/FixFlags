@@ -14,7 +14,7 @@ export type HomepageDetailCard = SiteCardArea
 
 const BENEFIT_ICONS = [Route, Flag, Bot] as const
 
-export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card: HomepageDetailCard) => void; onOpenFlag: (card: SampleCategory, flag: SampleFlagId) => void; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void }) {
+export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onViewAll, onCopySelection }: { onCopySelection: (prompt: string) => void; onOpen: (card: HomepageDetailCard, trigger?: HTMLElement) => void; onOpenFlag: (card: SampleCategory, flag: SampleFlagId, trigger?: HTMLElement) => void; onCopyFlag: (card: SampleCategory, flag: SampleFlagId) => void; onCopyAll: () => void; onViewAll: () => string }) {
   return <>
     <section className={s.hero}>
       <div className={s.heroContent}>
@@ -33,7 +33,7 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag }: { onOpen: (card
           return <li key={benefit.title}><Icon size={20} aria-hidden="true" /><strong>{benefit.title}</strong></li>
         })}
       </ul>
-      <HomepageDashboardPreview onOpen={onOpen} onOpenFlag={onOpenFlag} onCopyFlag={onCopyFlag} />
+      <HomepageDashboardPreview accountRail onOpen={onOpen} onOpenFlag={onOpenFlag} onCopyFlag={onCopyFlag} onCopyAll={onCopyAll} onViewAll={onViewAll} onCopySelection={onCopySelection} />
     </section>
   </>
 }

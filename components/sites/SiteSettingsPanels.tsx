@@ -1,7 +1,7 @@
 'use client'
 
 import { InteractiveSelect } from '@/components/ui/interactive-controls'
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { Bell, ChevronDown, Clock3, UserRound, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -84,4 +84,22 @@ export function SiteAccountChecksPanel({ initial, enabled, busy = false, onToggl
 
 export function SiteRemovalSettingsPanel({ busy = false, onRemove }: { busy?: boolean; onRemove?: () => void }) {
   return <section className={styles.removal}><div><h2>{S.remove}</h2><p>{S.removeBody}</p></div><Button variant="destructive" disabled={busy || !onRemove} onClick={onRemove}>{S.remove}</Button></section>
+}
+
+export function SiteAdvancedSettings({ children }: { children: ReactNode }) {
+  const disclosure = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    let frame: number | null = null
+    const reveal = () => {
+      const hash = window.location.hash
+      if (!['#signup-setup', '#account-checks', '#scan-access', '#research'].includes(hash) || !disclosure.current) return
+      disclosure.current.open = true
+      if (frame !== null) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => document.getElementById(hash === '#signup-setup' ? 'account-checks' : hash.slice(1))?.scrollIntoView({ block: 'start' }))
+    }
+    reveal()
+    window.addEventListener('hashchange', reveal)
+    return () => { window.removeEventListener('hashchange', reveal); if (frame !== null) cancelAnimationFrame(frame) }
+  }, [])
+  return <details ref={disclosure} className={styles.advanced}><summary><span><strong>{S.advanced}</strong><span>{S.advancedBody}</span></span><ChevronDown size={16} aria-hidden /></summary><div>{children}</div></details>
 }

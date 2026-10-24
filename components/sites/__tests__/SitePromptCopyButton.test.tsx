@@ -6,6 +6,31 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { REPORT_COPY } from '@/lib/marketing/copy/report-workspace'
 
 describe('SitePromptCopyButton', () => {
+  it('requires review when copying would differ from the inspected task', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    let prepares = 0
+    vi.stubGlobal('fetch', vi.fn(async (_url, options) => {
+      const body = JSON.parse(options!.body as string)
+      if (body.action === 'prepare') {
+        prepares++
+        return Response.json({ ok: true, prompt: prepares === 1 ? 'Original repair instructions.' : 'Updated repair instructions.', sourceFlagId: 'flag-1', promptHash: (prepares === 1 ? 'a' : 'b').repeat(64) })
+      }
+      return Response.json({ ok: true, prompt: 'Updated repair instructions.', handoff: { flagId: 'flag-1', action: 'HANDOFF_COPIED', improvementId: 'i', sourceReviewId: 'a' } })
+    }))
+    render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
+    expect(await screen.findByRole('textbox')).toHaveValue('Original repair instructions.')
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
+    expect(await screen.findByRole('textbox')).toHaveValue('Updated repair instructions.')
+    expect(writeText).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledTimes(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Updated repair instructions.'))
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4))
+  })
   afterEach(() => {
     toast.dismiss()
   })
@@ -17,6 +42,17 @@ describe('SitePromptCopyButton', () => {
         ? { ok: true, prompt: 'Repair the checkout heading.', sourceFlagId: 'flag-1', promptHash: 'a'.repeat(64) }
         : { ok: true, prompt: 'Repair the checkout heading.', handoff: { flagId: 'flag-1', action: 'HANDOFF_COPIED', improvementId: 'improvement-1', sourceReviewId: 'audit-1' } },
     })))
+  })
+
+  it('lets the owner inspect the canonical prompt without copying or recording a handoff', async () => {
+    const writeText = vi.fn()
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
+    expect(await screen.findByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel })).toHaveValue('Repair the checkout heading.')
+    expect(writeText).not.toHaveBeenCalled()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string).action).toBe('prepare')
   })
 
   it('offers the public prompt guide after copying a real Flag prompt', async () => {

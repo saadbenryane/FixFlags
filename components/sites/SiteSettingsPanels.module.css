@@ -35,3 +35,12 @@
 .results time { font-size: 11px; }
 .removal { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px; padding: 20px 0 0; }
 .removal > div { flex: 1 1 240px; }
+
+.advanced { border-radius: var(--radius-board-panel); background: hsl(var(--muted) / .35); }
+.advanced > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 76px; padding: 16px 20px; cursor: pointer; list-style: none; }
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced > summary strong { display: block; font-size: 14px; font-weight: 550; }
+.advanced > summary span > span { display: block; margin-top: 4px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
+.advanced > summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: inherit; }
+.advanced[open] > summary > svg { transform: rotate(180deg); }
+.advanced > div { display: grid; gap: 16px; padding: 0 12px 12px; }

@@ -32,7 +32,7 @@ export const BOARD_PREVIEW_COPY = {
   trendDescription: (count: number) => `Flag count across ${count} ${count === 1 ? 'check' : 'checks'}`,
   latestCheck: 'Latest website check',
   firstCheck: 'Your first website check is the starting point. The next check will show how the Flag count changes.',
-  awaitingCompleteCheck: 'No complete website checks yet. Results will appear here when a check finishes.',
+  awaitingCompleteCheck: 'A trend needs complete check results.',
   scopedHistoryTrend: 'The checks below cover individual areas or actions. A website-wide check will start this trend.',
   trendHelp: 'Each point shows Flags found in a website check. See the check history below for details.',
   zeroFlagsScope: 'No Flags found in this check. Read the results for any areas that could not be checked.',

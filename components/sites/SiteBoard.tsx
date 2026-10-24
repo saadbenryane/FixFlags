@@ -5,11 +5,13 @@ import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { SiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
 import { ProductBoardCard } from '@/components/sites/BoardCard'
 import { SiteOverview } from '@/components/sites/SiteOverview'
-import { SiteCheckSections } from '@/components/sites/SiteCheckSections'
+import { SiteOverviewWorkspace } from '@/components/sites/SiteOverviewWorkspace'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
 import { SiteMonitoringHistory } from '@/components/sites/SiteMonitoringHistory'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { SiteFixBundleButton } from './SiteFixBundleButton'
+import { SitePages } from './SitePages'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteSignupPrompt } from '@/components/sites/SiteSignupPrompt'
 import { SiteActionFeedback } from './SiteActionFeedback'
@@ -17,13 +19,14 @@ import { SiteActionContinuation } from './SiteActionContinuation'
 import { Button } from '@/components/ui/button'
 import { UptimeCard } from '@/components/uptime/UptimeCard'
 import { useMe } from '@/hooks/useMe'
-import { useSiteResource } from '@/hooks/useSiteResource'
+import { SiteResourceBoundary, useSharedSiteResource } from './SiteResourceBoundary'
 import { SITE_BOARD_COPY,WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy-barrel'
 import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
+import { SITE_ROUTES } from './SiteWorkspaceNavigation'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { outcomeCardFreshness,projectSiteBoard } from '@/lib/sites/board-view'
-import { siteCardArea, type SiteCardArea } from '@/lib/sites/card-areas'
+import { type SiteCardArea } from '@/lib/sites/card-areas'
 import { cardExecution } from '@/lib/sites/card-execution'
 import { siteCheckNotice,siteSummaryNotice } from '@/lib/sites/check-notice'
 import { executeSiteAction } from '@/lib/sites/client-actions'
@@ -37,67 +40,36 @@ import { RefreshCw } from 'lucide-react'
 import type { Route } from 'next'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { useEffect,useRef,useState } from 'react'
+import { useRef } from 'react'
+import { useSiteWorkspaceNavigation } from '@/hooks/useSiteWorkspaceNavigation'
+import type { SiteBoardView } from '@/lib/sites/workspace-location'
 
 const SiteCategoryDetails = dynamic(() => import('./SiteCategoryDetails').then(module => module.SiteCategoryDetails))
+const SiteFlagPanel = dynamic(() => import('./SiteFlagPanel').then(module => module.SiteFlagPanel))
 const SiteIntegrationsControls = dynamic(() => import('./SiteIntegrationsControls').then(module => module.SiteIntegrationsControls))
 
-export type SiteBoardView = 'home' | 'timeline' | 'integrations'
+export type { SiteBoardView } from '@/lib/sites/workspace-location'
 
-export function SiteBoard({ siteId, initial, viewMode: initialViewMode = 'home', initialCategory = null }: { siteId: string; initial: SiteHomeView; viewMode?: SiteBoardView; initialCategory?: SiteCardArea | null }) {
+export function SiteBoard(props: Parameters<typeof SiteBoardContent>[0]) {
+  return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteBoardContent {...props} /></SiteResourceBoundary>
+}
+
+function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialCategory = null, initialFlag = null }: { siteId: string; initial: SiteHomeView; viewMode?: SiteBoardView; initialCategory?: SiteCardArea | null; initialFlag?: string | null }) {
   const { user } = useMe()
   const signedIn = Boolean(user)
-  const { view, refresh, disconnected: updatesDisconnected } = useSiteResource(siteId, initial)
+  const { view, refresh, disconnected: updatesDisconnected } = useSharedSiteResource(siteId)
   const disconnected = updatesDisconnected || Boolean(view.recoveryUnavailable)
   const ownsSite = view.actions.ownership === 'owner'
-  const [viewMode, setViewMode] = useState(initialViewMode)
-  const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(initialViewMode === 'home' ? initialCategory : null)
-  const { busy, message: toast, error: actionError, submit: submitAction, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
+  const navigation = useSiteWorkspaceNavigation(siteId, {
+    viewMode: initialViewMode, selectedCard: initialViewMode === 'home' ? initialCategory : null, selectedFlag: initialFlag,
+  })
+  const { viewMode, selectedCard, selectedFlag, openWorkspace, selectCategory, closeFlag } = navigation
+  const flagOpener = useRef<HTMLElement | null>(null)
   const opener = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    setViewMode(initialViewMode)
-    setSelectedCard(initialViewMode === 'home' ? initialCategory : null)
-  }, [siteId, initialViewMode, initialCategory])
-  useEffect(() => {
-    const restoreWorkspace = () => {
-      const url = new URL(window.location.href)
-      const requested = url.searchParams.get('view')
-      const next: SiteBoardView = requested === 'timeline' || requested === 'integrations' ? requested : 'home'
-      setViewMode(next)
-      setSelectedCard(next === 'home' ? siteCardArea(url.searchParams.get('category')) : null)
-    }
-    window.addEventListener('popstate', restoreWorkspace)
-    return () => window.removeEventListener('popstate', restoreWorkspace)
-  }, [])
-  function openWorkspace(route: SiteBoardView) {
-    const url = new URL(window.location.href)
-    url.searchParams.delete('category')
-    if (route === 'home') {
-      url.searchParams.delete('view')
-      url.hash = ''
-    } else {
-      url.searchParams.set('view', route)
-      url.hash = route
-    }
-    const next = `${url.pathname}${url.search}${url.hash}`
-    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
-    setViewMode(route)
-    setSelectedCard(null)
-    if (next === current) return
-    // The board already holds Overview, Timeline, and Integrations. __NA marks
-    // this history entry as the current app-router page, so the search change
-    // does not ask the server to render it again.
-    const prior = window.history.state
-    const state = prior && typeof prior === 'object' ? { ...prior, __NA: true } : { __NA: true }
-    window.history.pushState(state, '', next)
-    window.scrollTo(0, 0)
-  }
-  function selectCategory(area: SiteCardArea | null) {
-    setSelectedCard(area)
-    const url = new URL(window.location.href)
-    if (area) url.searchParams.set('category', area)
-    else url.searchParams.delete('category')
-    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  const { busy, message: toast, error: actionError, submit: submitAction, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
+  function openFlag(id: string, trigger?: HTMLElement) {
+    flagOpener.current = trigger ?? document.activeElement as HTMLElement
+    navigation.openFlag(id)
   }
   const checking = view.presentation.run.state === 'queued' || view.presentation.run.state === 'running'
   function checkAction(area?: SiteCardArea, identifyArea = false) {
@@ -171,7 +143,7 @@ export function SiteBoard({ siteId, initial, viewMode: initialViewMode = 'home',
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
-      headerAction={!checking ? checkAction() : null}>
+      headerAction={<>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
         <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
@@ -200,14 +172,14 @@ export function SiteBoard({ siteId, initial, viewMode: initialViewMode = 'home',
 
       {viewMode === 'home' ? <section id="website-checks" tabIndex={-1} aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} capturePriority summaryItems={summaryItems}
+        <SiteOverviewWorkspace summary={<SiteOverview host={view.presentation.identity.host} captures={view.captures ?? []} capturePriority summaryItems={summaryItems}
           notice={checking ? SITE_ACTION_COPY.execution.live : undefined}
           technologies={technologies} onSelectSummary={item => {
-            if (item.id === 'pages') { opener.current = document.activeElement as HTMLElement; setSelectedCard('site'); return }
+            if (item.id === 'pages') { openWorkspace('pages'); return }
             const target = document.querySelector<HTMLElement>('[data-attention="true"]') ?? document.getElementById('website-checks')
             target?.focus({ preventScroll: true }); target?.scrollIntoView({ behavior: 'instant', block: 'start' })
-          }} />
-        <SiteCheckSections uptime={ownsSite ? <div id="category-uptime" tabIndex={-1}><UptimeCard siteId={siteId} summary={view.uptime ?? null}
+          }} />}
+          trend={<SiteMonitoringHistory variant="overview" points={monitoringPoints} events={timelineEvents} emptyMessage={B.noHistory} />} uptime={ownsSite ? <div id="category-uptime" tabIndex={-1}><UptimeCard siteId={siteId} summary={view.uptime ?? null}
           verification={confirmedOutcomes.filter(outcome => outcome.kind === 'AVAILABILITY' && outcome.inferenceSource !== 'user' && outcome.name === 'This page loads').map(outcome => <OutcomeSummaryCard key={outcome.id}
             compact layout="row" name={SITE_ACTION_COPY.outcome.availability} expectation={outcome.expectation ?? outcome.summary} coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)} href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
             answer={outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined} freshness={outcomeCardFreshness(outcome)}
@@ -229,29 +201,29 @@ export function SiteBoard({ siteId, initial, viewMode: initialViewMode = 'home',
               }
               return { id: card.id, flagCount: category.flagCount,
                 healthy: !checking && displayCard.state === 'healthy' && category.flagCount === 0 && displayCard.activity !== 'checking' && !card.incompleteReason,
-                render: (layout: 'card' | 'row') => <div id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={() => {
-                opener.current = document.activeElement as HTMLElement
+                render: (layout: 'card' | 'row') => <article aria-label={card.name} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
+                opener.current = trigger
                 selectCategory(card.id)
-              }} /></div> }
+              }} /></article> }
             })} />
       </section> : null}
 
+      {viewMode === 'pages' ? <SitePages siteId={siteId} view={view} onOpenFlag={openFlag} /> : null}
       {viewMode === 'timeline' ? <section id="timeline" aria-labelledby="timeline-heading"><h2 id="timeline-heading" className="sr-only">Timeline</h2>
-        {ownsSite ? <SiteMonitoringHistory points={monitoringPoints} events={timelineEvents} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} /> : <div className="max-w-xl space-y-5 rounded-card bg-muted/20 p-6">
-          <div className="space-y-2"><h3 className="text-lg font-semibold tracking-tight">{SITE_ACTION_COPY.access.historyTitle}</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.access.historyBody}</p></div>
-          {view.audit.id ? <p role={checking ? 'status' : undefined} className="text-sm text-muted-foreground">{checking ? SITE_ACTION_COPY.access.historyRunning : view.audit.status === 'COMPLETED' ? SITE_ACTION_COPY.access.historyReady : B.historyUnavailable}</p> : null}
-          <div className="flex flex-wrap items-center gap-3"><SiteActionContinuation availability={view.actions.history} destination={`/sites/${siteId}?view=timeline#timeline`} action="history" />
-            <Button variant="ghost" onClick={() => openWorkspace('home')}>{SITE_ACTION_COPY.access.historyOverview}</Button></div>
-        </div>}
+        <SiteMonitoringHistory points={monitoringPoints} events={timelineEvents.map(event => ({ ...event, flags: 'flags' in event ? event.flags.map(flag => ({ ...flag, onOpen: (trigger: HTMLElement) => openFlag(flag.id, trigger) })) : undefined }))} emptyMessage={disconnected ? B.historyUnavailable : checking ? B.historyChecking : view.audit.id ? B.historyMissing : B.noHistory} />
       </section> : null}
 
       {viewMode === 'integrations' ? <section id="integrations" aria-labelledby="integrations-heading"><div><h2 id="integrations-heading" className="sr-only">Integrations</h2><p className="mt-1 text-sm text-muted-foreground">{B.integrationsBody}</p></div><SiteIntegrationsControls key={siteId} siteId={siteId} initial={view.settings} onRefresh={refresh} /></section> : null}
 
-      <SiteSignupPrompt key={view.audit.id ?? siteId} siteId={siteId} auditId={view.audit.id} checking={view.presentation.run.state === 'running'} paused={Boolean(selectedCard) || viewMode !== 'home'} />
+      <SiteSignupPrompt key={view.audit.id ?? siteId} siteId={siteId} auditId={view.audit.id} checking={view.presentation.run.state === 'running'} paused={Boolean(selectedCard || selectedFlag) || viewMode !== 'home'} />
       {selected ? <SiteCategoryDetails selected={selected} selectedFlags={selectedFlags} selectedRecommendations={selectedRecommendations}
         confirmedOutcomes={confirmedOutcomes} findingPages={findingPages} siteId={siteId} view={view} busy={busy}
-        checkAction={checkAction} verifyOutcome={verifyOutcome} onClose={() => selectCategory(null)} restoreFocus={() => (opener.current ?? document.getElementById(`category-${selected.id}`))?.focus()} /> : null}
+        checkAction={checkAction} verifyOutcome={verifyOutcome} onOpenFlag={openFlag} onClose={() => selectCategory(null)} restoreFocus={() => (opener.current ?? document.getElementById(`category-${selected.id}`))?.focus()} /> : null}
+      {selectedFlag ? <SiteFlagPanel siteId={siteId} flagId={selectedFlag} view={view} returnLabel={viewMode === 'home' && selected ? selected.name : SITE_ROUTES.find(([route]) => route === viewMode)?.[1]} onClose={closeFlag} restoreFocus={() => {
+        const target = flagOpener.current
+        if (target?.isConnected) target.focus({ preventScroll: true })
+        else document.querySelector<HTMLElement>('[data-site-content] main')?.focus({ preventScroll: true })
+      }} /> : null}
     </SiteShell>
   )
 }

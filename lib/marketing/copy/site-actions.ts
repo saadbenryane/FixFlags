@@ -58,7 +58,7 @@ export const SITE_ACTION_COPY = {
     retestPerformance: 'Run a new PageSpeed measurement',
     missing: 'Evidence for this Flag was not stored. A new verification must establish the same behavior independently.',
   },
-  expected: 'Expected', evidence: 'View originating evidence', resultScope: 'Each result applies only to its recorded page, time, and execution. Module completion does not certify every assertion or the whole category.',
+  expected: 'Expected', evidence: 'View originating evidence', resultScope: 'Results from the pages and checks that ran. Unverified observations are not Flags.',
   loading: 'Loading results…', historyFailed: 'Could not load more results. Try again.',
   resultsUpdated: 'The recorded evidence changed. Showing the latest results for this scope.',
   resultsCount: (shown: number, total: number) => `${shown} of ${total} recorded result${total === 1 ? '' : 's'} in this scope.`,

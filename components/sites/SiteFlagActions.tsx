@@ -20,13 +20,13 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 import styles from './SiteFlagActions.module.css'
 
-type SiteFlagActionsProps = { siteId: string; flagId: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string }
+type SiteFlagActionsProps = { compact?: boolean; siteId: string; flagId: string; initial: SiteHomeView; initialVerificationAuditId?: string | null; verifying?: boolean; repairGuidance: RepairGuidanceState; initialFix?: string; sourceAuditId?: string }
 
 export function SiteFlagActions(props: SiteFlagActionsProps) {
   return <SiteResourceBoundary siteId={props.siteId} initial={props.initial}><SiteFlagActionsContent {...props} /></SiteResourceBoundary>
 }
 
-function SiteFlagActionsContent({ siteId, flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId }: SiteFlagActionsProps) {
+function SiteFlagActionsContent({ compact = false, siteId, flagId, initialVerificationAuditId = null, verifying = false, repairGuidance, initialFix, sourceAuditId }: SiteFlagActionsProps) {
   const router = useRouter()
   const { busy, message, error, submit, clearFeedback, requestKey, completeIntent } = useSiteAction(`site:${siteId}`)
   const { view, refresh, disconnected } = useSharedSiteResource(siteId, refreshHistoricalGuidance)
@@ -106,7 +106,17 @@ function SiteFlagActionsContent({ siteId, flagId, initialVerificationAuditId = n
 
   return (
     <div className={styles.actions}>
-      <ol className={styles.steps}>
+      {compact ? <div className="space-y-3">
+        <div ref={guidanceActions}>
+          {currentGuidance === 'ready' ? <SitePromptCopyButton key={`${siteId}:${flagId}`} siteId={siteId} flagId={flagId} presentation="preview" /> : <div className="space-y-3 rounded-card bg-muted/30 p-4">
+            <p role="status" className="text-sm leading-relaxed text-muted-foreground">{SITE_ACTION_COPY.repairGuidance[currentGuidance]}</p>
+            {currentGuidance === 'pending' ? <Button type="button" variant="outline" onClick={() => { guidanceRefreshRequested.current = true; router.refresh() }}>{SITE_ACTION_COPY.repairGuidance.refresh}</Button>
+              : <Button variant="outline" asChild><Link href={`/sites/${siteId}`}>{SITE_ACTION_COPY.repairGuidance.overview}</Link></Button>}
+          </div>}
+        </div>
+        <Button variant="outline" disabled={busy || verificationRunning} onClick={() => { clearFeedback(); setVerifyOpen(true) }}><ShieldCheck aria-hidden />{verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>
+        {message && !verifyOpen ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+      </div> : <ol className={styles.steps}>
         <li>
           <span className={styles.number} aria-hidden="true">1</span>
           <div ref={guidanceActions} className={styles.step}>
@@ -142,7 +152,7 @@ function SiteFlagActionsContent({ siteId, flagId, initialVerificationAuditId = n
             ) : null}
           </div>
         </li>
-      </ol>
+      </ol>}
       {disconnected ? <p role="status" className="text-sm text-muted-foreground">{SITE_ACTION_COPY.updatesDisconnected}</p> : null}
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
         <DialogContent header={<DialogTitle>{SITE_BOARD_COPY.verifyFix}</DialogTitle>}>

@@ -5,6 +5,7 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { outcomeFreshnessDisclosure } from './outcome-state'
 import { BOARD_PREVIEW_COPY as B } from '@/lib/marketing/copy/board-preview'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { UPTIME_COPY as U } from '@/lib/marketing/copy/uptime'
 import type { ToolItem, BoardSummaryItem } from './board-types'
 
@@ -39,15 +40,18 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
     { value: view.presentation.flags.count, label: checking ? SITE_ACTION_COPY.execution.flagsSoFar : B.flags(view.presentation.flags.count).replace(/^\d+ /, ''), state: view.presentation.flags.count > 0 ? 'attention' as const : 'unknown' as const },
   ]
   const recordedPageCount = view.counts.recordedPages
-  if (recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: view.counts.checkedPages === recordedPageCount ? B.checkedPages(recordedPageCount) : B.recordedPages(recordedPageCount),
-    detail: [view.counts.checkedPages < recordedPageCount ? B.completedPages(view.counts.checkedPages) : null, pagesNeedingAttention ? B.pagesNeedAttention(pagesNeedingAttention) : null, view.counts.savedPages > recordedPageCount ? B.savedPages(view.counts.savedPages) : null].filter(Boolean).join(' · ') || undefined, state: pagesNeedingAttention ? 'attention' : 'unknown' })
+  if (recordedPageCount > 0) summaryItems.push({ id: 'pages', value: recordedPageCount, label: SITE_DASHBOARD_COPY.pageLabel(recordedPageCount),
+    detail: pagesNeedingAttention ? SITE_DASHBOARD_COPY.pagesWithFlags(pagesNeedingAttention) : undefined, state: pagesNeedingAttention ? 'attention' : 'unknown' })
   const technologies: ToolItem[] = (view.technology?.items ?? []).map(item => ({
     name: item.name,
     status: view.technology?.status === 'complete' ? 'Detected' : 'Detected in partial check',
     state: view.technology?.status === 'complete' ? 'healthy' : 'attention',
   }))
-  const monitoringPoints = siteTrendChecks(view.monitoringTrend).map(item => ({
-    label: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(item.checkedAt)),
+  const trend = siteTrendChecks(view.monitoringTrend)
+  const days = trend.map(item => item.checkedAt.slice(0, 10))
+  const sameDay = new Set(days).size < days.length
+  const monitoringPoints = trend.map(item => ({
+    label: trendLabel(item.checkedAt, sameDay),
     flagCount: item.status === 'FAILED' || item.completionState === 'PARTIAL' || !item.evidenceAt ? null : item.flagCount,
   }))
   const monitoringEvents = (view.monitoringHistory ?? []).toReversed().map(item => ({
@@ -73,4 +77,12 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
   const timelineEvents = [...monitoringEvents, ...uptimeEvents].sort((a, b) => Date.parse(b.dateTime) - Date.parse(a.dateTime))
   return { selected, selectedFlags, findingPages, selectedRecommendations, cardsById, visibleCategories,
     confirmedOutcomes, pagesNeedingAttention, summaryItems, technologies, monitoringPoints, timelineEvents }
+}
+
+function trendLabel(value: string, withTime: boolean) {
+  const date = new Date(value)
+  const parts = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC',
+    hour: 'numeric', minute: '2-digit', hourCycle: 'h12' }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? ''
+  return `${part('month')} ${part('day')}${withTime ? `, ${part('hour')}:${part('minute')} ${part('dayPeriod')} UTC` : ''}`
 }

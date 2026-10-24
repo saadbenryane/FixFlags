@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
-import { Surface } from '@/components/ui/surface'
+import { cn } from '@/lib/utils'
+import styles from './SiteSettingsSection.module.css'
 
-export function SiteSettingsSection({ children, ...props }: ComponentProps<'section'>) {
-  return <section {...props}><Surface variant="solid">{children}</Surface></section>
+export function SiteSettingsSection({ children, className, ...props }: ComponentProps<'section'>) {
+  return <section {...props} className={cn(styles.section, className)}>{children}</section>
 }

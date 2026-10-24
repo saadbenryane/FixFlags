@@ -4,12 +4,18 @@ import { z } from 'zod'
 import type { SiteHomeView } from './application/queries'
 import { siteCheckResultSchema } from './check-results'
 import { watchIntervalSchema } from './watch-schedule'
+import type { BoardCardFlagChip } from './board-card'
 
 const text = z.string(), nullableText = text.nullable(), count = z.number().int().nonnegative()
 const time = z.string().datetime({ offset: true }), nullableTime = time.nullable()
 const date = z.union([z.date(), time]).transform(value => new Date(value)).nullable()
 const area = z.enum(['site', 'security', 'search', 'performance', 'conversion', 'tracking', 'uptime', 'accessibility'])
 const health = z.enum(['healthy', 'attention', 'problem', 'unknown', 'checking'])
+const flagChip = z.object({
+  id: text, sourceFlagId: nullableText.optional(), title: text, href: text,
+  priorityBand: z.enum(['fix_first', 'other']).optional(),
+  repairGuidanceReady: z.boolean().optional(), repairGuidance: z.enum(['ready', 'pending', 'unavailable']).optional(),
+} satisfies { [Key in keyof BoardCardFlagChip]-?: z.ZodType<BoardCardFlagChip[Key]> })
 const connection = z.object({ provider: z.enum(['SEARCH_CONSOLE', 'ANALYTICS']), configured: z.boolean(),
   status: z.enum(['not_connected', 'connected', 'mismatch', 'needs_reauth', 'revoked', 'unavailable']),
   propertyLabel: nullableText, detail: nullableText, lastSyncedAt: nullableTime })
@@ -86,7 +92,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   audit: z.object({ id: nullableText, status: nullableText, progress: z.number().min(0).max(100), walkFinished: z.boolean(), failureCode: nullableText }),
   cards: z.array(z.object({ id: area, name: text, question: text, state: health, status: text, answer: text, detail: nullableText,
     facts: z.array(text), coverage: nullableText, evidenced: z.boolean(), openFlagCount: count, checkedAt: nullableTime,
-    flagIds: z.array(text), flagChips: z.array(z.object({ id: text, sourceFlagId: nullableText.optional(), title: text, href: text, repairGuidanceReady: z.boolean().optional(), repairGuidance: z.enum(['ready', 'pending', 'unavailable']).optional() })), sources: z.array(text),
+    flagIds: z.array(text), flagChips: z.array(flagChip), sources: z.array(text),
     activity: z.literal('checking').nullable(), wide: z.boolean(), captureUrl: nullableText, captureAlt: nullableText,
     cropUrl: nullableText, cropAlt: nullableText, problem: z.object({ title: text, body: nullableText, outcomeName: nullableText, href: text, actionLabel: text }).nullable(),
     incompleteReason: nullableText.optional(),
@@ -114,7 +120,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   checkedPages: z.array(z.object({ url: text, title: nullableText, status: text, checkedAt: time,
     capture: z.object({ url: text.startsWith('/api/screenshots/'), viewport: text, recordedAt: nullableTime }).nullable().optional(),
   })).optional(),
-  settings: z.object({ accountChecks: accountViewSchema.optional(), notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).nullable(), notifyOnRecovery: z.boolean().nullable(),
+  settings: z.object({ github: z.object({ configured: z.boolean(), status: z.enum(['connected', 'revoked', 'not_connected']), login: nullableText }).optional(), accountChecks: accountViewSchema.optional(), notificationLevel: z.enum(['FLAGS', 'CRITICAL_ONLY', 'OFF']).nullable(), notifyOnRecovery: z.boolean().nullable(),
     shopify: z.object({ configured: z.boolean(), state: z.enum(['connected', 'unavailable', 'not_connected']), domain: nullableText }),
     searchConsole: connection, analytics: connection }),
 })

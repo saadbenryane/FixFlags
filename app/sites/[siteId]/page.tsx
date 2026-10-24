@@ -1,22 +1,18 @@
 import { notFound, redirect } from 'next/navigation'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
-import { SiteBoard, type SiteBoardView } from '@/components/sites/SiteBoard'
-import { siteCardArea } from '@/lib/sites/card-areas'
-
-function siteBoardView(value: string | string[] | undefined): SiteBoardView {
-  return typeof value === 'string' && ['timeline', 'integrations'].includes(value) ? value as SiteBoardView : 'home'
-}
+import { SiteBoard } from '@/components/sites/SiteBoard'
+import { readWorkspaceLocation } from '@/lib/sites/workspace-location'
 
 export default async function SiteDashboardPage({
   params,
   searchParams,
 }: {
   params: Promise<{ siteId: string }>
-  searchParams: Promise<{ view?: string | string[]; category?: string | string[] }>
+  searchParams: Promise<{ view?: string | string[]; category?: string | string[]; flag?: string | string[] }>
 }) {
   const { siteId } = await params
-  const { view, category } = await searchParams
+  const { view, category, flag } = await searchParams
   const access = await requireSiteAccess(siteId)
   if (!access.ok) notFound()
 
@@ -32,5 +28,8 @@ export default async function SiteDashboardPage({
   })
   if (!home) notFound()
 
-  return <SiteBoard siteId={resolvedId} initial={home} viewMode={siteBoardView(view)} initialCategory={siteBoardView(view) === 'home' ? siteCardArea(category) : null} />
+  const paramsView = new URLSearchParams()
+  for (const [key, value] of Object.entries({ view, category, flag })) if (typeof value === 'string') paramsView.set(key, value)
+  const location = readWorkspaceLocation(paramsView)
+  return <SiteBoard siteId={resolvedId} initial={home} viewMode={location.viewMode} initialCategory={location.selectedCard} initialFlag={location.selectedFlag} />
 }

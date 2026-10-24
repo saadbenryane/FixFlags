@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { CheckAssertion } from './assertion'
+import { CHECK_OBSERVATION_REASONS, type CheckAssertion } from './assertion'
 import { CHECK_ASSERTIONS, CHECK_MODULES, CHECK_REGISTRY } from '../check-registry'
 import type { DeterministicFlag } from '../flag-types'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
@@ -23,6 +23,7 @@ export function scopeCheckEvidence(input: {
 }
 
 export const checkAssertionSchema = z.object({
+  reason: z.enum(CHECK_OBSERVATION_REASONS).optional(),
   key: z.string().min(1).max(160), name: z.string().min(1).max(300),
   expected: z.string().min(1).max(2000), observed: z.string().min(1).max(2000),
   passed: z.boolean(), disposition: z.literal('observed').optional(),

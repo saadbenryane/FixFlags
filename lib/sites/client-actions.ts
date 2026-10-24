@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { MAX_WATCH_MINUTES, watchIntervalSchema } from './watch-schedule'
 import { outcomeFixtureViewSchema } from './domain/safe-form'
+import { MAX_REPAIR_TASKS } from './repair-scope'
 
 export class SiteActionError extends Error {
   constructor(message: string, readonly status?: number, readonly code?: string) { super(message); this.name = 'SiteActionError' }
@@ -43,6 +44,9 @@ export const siteActionSchemas = {
   }).passthrough() }).strict(),
   fixPromptPreparation: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1),
     sourceFlagId: z.string().min(1), promptHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  fixBundle: z.object({ ok: z.literal(true), prompt: z.string().trim().min(1), tasks: z.array(z.object({
+    sourceFlagId: z.string().min(1), promptHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict()).min(1).max(MAX_REPAIR_TASKS) }).strict(),
   flagVerify: z.object({ ok: z.literal(true), accepted: z.literal(true), runId: z.string().min(1),
     runRequestId: z.string().min(1), verificationAuditId: z.string().min(1), siteId: z.string().min(1),
     parentAuditId: z.string().min(1), flagId: z.string().min(1), attemptId: z.string().min(1).nullable(),

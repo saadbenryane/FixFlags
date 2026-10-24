@@ -1,4 +1,5 @@
 export const SITE_CONNECTION_COPY = {
+  moreIntegrations: 'More integrations', manage: 'Manage',
   available: 'Available', manageGithub: 'Manage GitHub connection', availabilityBody: 'GitHub is available. Other connections are coming soon until tested and validated.',
   comingSoon: 'Coming soon', comingSoonBody: 'Other connections become available after testing and validation. GitHub is available now.',
   savedConnection: 'Previously saved connection. New setup and refresh are unavailable while this integration is coming soon.',
