@@ -15,6 +15,7 @@ import {
 import { useMe, type MeUser } from '@/hooks/useMe'
 import { planLabel } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
+import { SITE_SETTINGS_COPY } from '@/lib/marketing/copy/site-settings'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 
 function getInitials(name: string | null | undefined, email: string): string {
@@ -94,7 +95,7 @@ export function AvatarMenu({
         <DropdownMenuItem asChild>
           <Link href="/settings" className="gap-2">
             <Settings className="h-4 w-4" />
-            Settings
+            {SITE_SETTINGS_COPY.accountSettings}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

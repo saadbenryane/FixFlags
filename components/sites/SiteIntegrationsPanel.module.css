@@ -17,3 +17,16 @@
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .shop { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .shop input { flex: 1 1 220px; min-width: 0; }
+
+.row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; }
+.row .header { flex: 1 1 220px; flex-wrap: nowrap; }
+.purpose { margin-top: 2px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
+.rowAction { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 44px; }
+.rowAction .status { margin: 0; }
+.savedDetails { margin-top: 8px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.savedDetails summary { width: fit-content; min-height: 44px; align-content: center; cursor: pointer; }
+
+.more > summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; cursor: pointer; font-size: 13px; color: hsl(var(--muted-foreground)); }
+.more > summary span { font-variant-numeric: tabular-nums; }
+.more > div { display: grid; gap: 12px; margin-top: 12px; }
+.more > summary:focus-visible, .savedDetails summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }

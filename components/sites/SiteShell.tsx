@@ -5,10 +5,8 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { SiteAccountRail } from '@/components/layout/SiteAccountRail'
 import { AnalysisDetails, LiveSiteAnalysisDetails } from '@/components/layout/AnalysisDetails'
-import { MobileSidebar } from '@/components/layout/sidebar'
 import { SITE_WORKSPACE_COPY } from '@/lib/marketing/copy/workspace'
 import { Logo } from '@/components/brand/Logo'
-import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
 import { useSiteNavigationContinuity } from '@/hooks/useSiteNavigationContinuity'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
@@ -23,19 +21,20 @@ import { SiteResourceBoundary } from './SiteResourceBoundary'
 import { nextCheckLabel } from '@/lib/sites/monitoring-schedule'
 import { siteContinuationHref, type SiteViewerActions } from '@/lib/sites/viewer-actions'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
+import { ReportAuthGateProvider, useReportAuthGate } from '@/components/auth/ReportAuthGate'
+import { ReportMobileNav } from '@/components/layout/ReportAppRail'
 import { helpArticlePath } from '@/lib/help/types'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
+import { siteWorkspaceHref } from '@/lib/sites/workspace-location'
 const coverageHelpHref = helpArticlePath('sites-and-coverage', 'read-site-coverage')
 
 function routeHref(siteId: string, route: SiteRoute): Route {
-  if (route === 'home') return `/sites/${siteId}` as Route
-  if (route === 'timeline' || route === 'integrations') return `/sites/${siteId}?view=${route}#${route}` as Route
-  return `/sites/${siteId}/${route}` as Route
+  return siteWorkspaceHref(siteId, route) as Route
 }
 
 export function SiteShell(props: Parameters<typeof SiteShellContent>[0]) {
-  const content = <SupportProvider><SiteShellContent {...props} /></SupportProvider>
+  const content = <ReportAuthGateProvider auditId={props.auditId ?? props.analysisView?.audit.id ?? undefined}><SupportProvider><SiteShellContent {...props} /></SupportProvider></ReportAuthGateProvider>
   return props.analysisView ? <SiteResourceBoundary siteId={props.siteId} initial={props.analysisView}>{content}</SiteResourceBoundary> : content
 }
 
@@ -56,6 +55,7 @@ function SiteShellContent({
   children,
 }: {
   siteId: string
+  auditId?: string
   ownerId?: string | null
   actions: SiteViewerActions
   activeRoute: SiteRoute
@@ -69,10 +69,11 @@ function SiteShellContent({
   analysisView?: SiteHomeView
   analysisStatus?: ReactNode
   chatFlag?: { id: string; title: string }
-  onWorkspaceNavigate?: (route: 'home' | 'timeline' | 'integrations') => void
+  onWorkspaceNavigate?: (route: 'home' | 'pages' | 'timeline' | 'integrations') => void
   children: ReactNode
 }) {
   const { user } = useMe()
+  const gate = useReportAuthGate()
   useSiteNavigationContinuity(siteId)
   const signedIn = Boolean(user)
   const ownsSite = actions.ownership === 'owner'
@@ -86,8 +87,13 @@ function SiteShellContent({
   const canvasTitle = activeRoute === 'home' ? (title === host ? null : title) : routeTitle
   function openWorkspace(event: MouseEvent<HTMLAnchorElement>, route: SiteRoute, close?: () => void) {
     close?.()
-    if (!onWorkspaceNavigate || route === 'settings') return
     if (event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return
+    if (route === 'settings' && actions.monitoring === 'sign_in' && gate) {
+      event.preventDefault()
+      gate.open({ nextPath: `/sites/${siteId}/settings`, trigger: event.currentTarget })
+      return
+    }
+    if (!onWorkspaceNavigate || route === 'settings') return
     event.preventDefault()
     onWorkspaceNavigate(route)
   }
@@ -96,13 +102,12 @@ function SiteShellContent({
 
   const analyzing = presentation?.run.state === 'queued' || presentation?.run.state === 'running'
 
-  return <div className={cn(styles.workspace, signedIn && styles.withAccount)}>
+  return <div className={cn(styles.workspace, styles.withAccount)}>
     <SiteAccountRail />
     <header className={styles.mobileAccount} aria-label={SITE_WORKSPACE_COPY.accountMenu}><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
-      {signedIn ? <MobileSidebar showAdmin={user?.isAdmin} /> : <SiteChromeAuth />}
+      <ReportMobileNav showAdmin={user?.isAdmin} />
     </header>
     <aside className={styles.websiteSidebar} aria-label={SITE_WORKSPACE_COPY.siteMenu}>
-      {!signedIn ? <div className={styles.anonymousBrand}><Logo variant="lockup" size="sm" href="/" /></div> : null}
       <div className={styles.identity}>
         {canvasTitle == null ? <h1 className={styles.siteTitle}><Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link></h1>
           : <Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link>}

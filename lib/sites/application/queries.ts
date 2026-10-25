@@ -1,6 +1,7 @@
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { watchAlertDelivery } from '@/lib/audit/watch-notification'
 import { prisma } from '@/lib/db'
+import { isGithubRepoAccessConfigured } from '@/lib/integrations/github'
 import { performanceEvidenceSource } from '@/lib/sites/flag-evidence'
 import { isShopifyConfigured } from '@/lib/shopify/config'
 import { projectSiteActivity } from '@/lib/sites/activity'
@@ -36,6 +37,7 @@ import { loadActiveSiteRuns,resolveLatestAudit,resolvePriorCompletedAudit } from
 import { siteScopeCounts } from '../scope-counts'
 import { siteViewerActions } from '../viewer-actions'
 import { executionPageCoverage } from '../page-coverage'
+import { projectSiteHomeForViewer } from '../viewer-projection'
 
 export type { BoardCardView }
 
@@ -121,7 +123,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
   const trackingAudit = categoryEvidence.get('tracking')
   const [
     resultPage, captures, uptime, uptimeEvents, technologyProfile, trackingProfile,
-    activeRuns, connections, latestAlert, executionProgress, accountChecks,
+    activeRuns, connections, latestAlert, executionProgress, accountChecks, github,
   ] = await Promise.all([
     loadSiteCheckResultPage(site, audit, undefined, categoryEvidence),
     loadSiteCaptures(audit?.id ?? null, prior?.id ?? null, inFlight, audit?.startedAt ?? null),
@@ -134,6 +136,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
     loadLatestWatchAlert(site.projectId),
     loadExecutionProgress(site, audit?.id ?? null),
     site.projectId ? loadAccountChecksView(site.projectId) : undefined,
+    options.ownerEvidence && site.userId ? prisma.githubConnection.findUnique({ where: { userId: site.userId }, select: { githubLogin: true, revokedAt: true } }) : null,
   ])
   const summaryResults = audit ? projectCheckResults(audit.id, audit.verifierExecutions) : []
   const pageCoverage = executionPageCoverage({ executionSpec: audit?.executionSpec, pages: checkedPages, executions: audit?.verifierExecutions })
@@ -200,7 +203,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
       executionProgress?.recovery && executionProgress.recovery.action !== 'retry')
     presentation.run.recoveryAction = 'view_details'
 
-  return {
+  return projectSiteHomeForViewer({
     schemaVersion: 2,
     actions: siteViewerActions(Boolean(options.ownerEvidence && site.projectId), options.viewerAuthenticated),
     counts: siteScopeCounts(flags, checkedPages, pageCount),
@@ -255,6 +258,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
       },
     },
     settings: {
+      ...(options.ownerEvidence ? { github: { configured: isGithubRepoAccessConfigured(), status: github ? github.revokedAt ? 'revoked' as const : 'connected' as const : 'not_connected' as const, login: github?.githubLogin ?? null } } : {}),
       ...(accountChecks ? { accountChecks } : {}),
       notificationLevel: projectSettings?.notificationLevel ?? null,
       notifyOnRecovery: projectSettings?.notifyOnRecovery ?? null,
@@ -270,7 +274,7 @@ export async function loadSiteHome(siteId: string, options: { ownerEvidence?: bo
       searchConsole: connections?.searchConsole ?? emptyConnection('SEARCH_CONSOLE'),
       analytics: connections?.analytics ?? emptyConnection('ANALYTICS'),
     },
-  }
+  })
 }
 
 function emptyConnection(provider: PublicConnection['provider']): PublicConnection {

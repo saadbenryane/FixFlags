@@ -1,4 +1,8 @@
+export const CHECK_OBSERVATION_REASONS = ['tracking_no_library', 'tracking_no_event', 'tracking_suppressed', 'tracking_provider_unverified'] as const
+export type CheckObservationReason = typeof CHECK_OBSERVATION_REASONS[number]
+
 export type CheckAssertion = {
+  reason?: CheckObservationReason
   key: string
   name: string
   expected: string

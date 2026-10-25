@@ -14,6 +14,15 @@ describe('PromptCopyButton', () => {
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   })
 
+  it('reveals the full copy payload without writing to the clipboard or recording a handoff', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    render(<PromptCopyButton prompt="Update the headline with a specific customer outcome." flagId="flag-1" accessState="owner" />)
+    fireEvent.click(screen.getByRole('button', { name: 'View prompt' }))
+    expect(await screen.findByRole('textbox', { name: 'Fix prompt' })).toHaveValue('Update the headline with a specific customer outcome.')
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('records a handoff without claiming acceptance or creating an attempt', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ attempt: { action: 'HANDOFF_COPIED', attemptId: null } }), {

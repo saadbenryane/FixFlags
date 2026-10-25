@@ -34,7 +34,7 @@ export function siteViewFixture(): SiteHomeView {
       flagId: null, latestRunId: 'run-1', running: true }],
     watch: { state: 'off', interval: null, nextRunAt: null, lastRunAt: null, lastError: null, covered: false,
       label: 'Not monitored', alert: { state: 'none', status: null, attempts: 0, at: null } },
-    settings: { notificationLevel: 'FLAGS', notifyOnRecovery: true, shopify: { configured: false, state: 'not_connected', domain: null },
+    settings: { github: { configured: true, status: 'not_connected', login: null }, notificationLevel: 'FLAGS', notifyOnRecovery: true, shopify: { configured: false, state: 'not_connected', domain: null },
       searchConsole: { provider: 'SEARCH_CONSOLE', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
       analytics: { provider: 'ANALYTICS', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null } },
   }

@@ -1,4 +1,5 @@
 'use client'
+import { PromptPreviewButton } from '@/components/ui/prompt-preview'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -102,7 +103,7 @@ export function PromptCopyButton({
 
   if (iconOnly) {
     return (
-      <Button
+      <><Button
         type="button"
         variant="ghost"
         size="icon"
@@ -111,12 +112,12 @@ export function PromptCopyButton({
         className={cn('text-muted-foreground hover:text-foreground', className)}
       >
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-      </Button>
+      </Button><PromptPreviewButton prompt={safePrompt ?? undefined} iconOnly onLockedAction={onLockedAction} /></>
     )
   }
 
   return (
-    <Button
+    <><Button
       type="button"
       variant={variant}
       size={compact ? 'xs' : 'sm'}
@@ -128,6 +129,6 @@ export function PromptCopyButton({
       ) : (
         <><Copy className="h-3 w-3" /> {label}</>
       )}
-    </Button>
+    </Button><PromptPreviewButton prompt={safePrompt ?? undefined} onLockedAction={onLockedAction} /></>
   )
 }

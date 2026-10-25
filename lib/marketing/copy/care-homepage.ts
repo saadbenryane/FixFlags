@@ -301,7 +301,7 @@ export const HOMEPAGE_SAMPLE = {
   allAreas: 'All areas',
   summaryItems: [
     { value: 3, label: 'Flags', state: 'attention' },
-    { id: 'pages', value: 12, label: 'Pages checked', detail: '2 need attention', state: 'attention' },
+    { id: 'pages', value: 12, label: 'Pages checked', detail: '3 need attention', state: 'attention' },
     { id: 'monitoring', value: 'Monitoring', label: 'Daily', detail: 'Next in 23h 45m', accessibleDetail: 'Next check in 23 hours and 45 minutes', state: 'healthy' },
   ],
   technologies: [
@@ -383,3 +383,6 @@ export const SAMPLE_FLAGS = {
   contact: { title: 'Contact page loads too slowly', observed: 'Main content took 4.2 seconds to appear on mobile.', expected: 'The contact page shows its main content within 2.5 seconds.', fix: 'Reduce the resources delaying the main content on /contact, then measure it again on mobile.', prompt: 'FixFlags illustrative Flag: /contact took 4.2 seconds to render its main content on mobile. Inspect the loading waterfall and render-blocking resources, improve the page, then request a fresh mobile measurement. Target Largest Contentful Paint of 2.5 seconds or less.', page: '/contact', url: 'https://everydaygoods.example/contact', scope: '/contact · mobile loading time', image: null, imageAlt: null },
   checkout: { ...CART_EXAMPLE, page: '/products/canvas-tote', url: 'https://everydaygoods.example/products/canvas-tote', scope: '/products/canvas-tote · Add to cart', image: null, imageAlt: null },
 } satisfies Record<SampleFlagId, { title: string; observed: string; expected: string; fix: string; prompt: string; page: string; url: string; scope: string; image: string | null; imageAlt: string | null }>
+
+/** Named pages in the illustrative twelve-page sample, never customer scan data. */
+export const SAMPLE_CHECKED_PAGE_PATHS = ['/pricing', '/contact', '/', '/products/canvas-tote', '/products', '/collections', '/collections/everyday', '/about', '/shipping', '/returns', '/faq', '/privacy'] as const

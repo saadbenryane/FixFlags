@@ -412,6 +412,7 @@ export const REPORT_COPY = {
     body: "No PageSpeed observation completed in this run. Experience Flags use the other captured evidence.",
   },
   finishPlan: {
+    viewPrompts: 'View all prompts',
     title: "What to fix next",
     loadingBody: "Your Finish Plan will appear when the review is complete.",
     readyBody: (count: number) =>

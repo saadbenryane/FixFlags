@@ -177,6 +177,29 @@ run('URL-first analysis through claim and monitored repair', () => {
         .toMatchObject({ workState: 'COMPLETED', workResult: { data: { metadata: { renderedCopy: { complete: true } } } } })
     }, { timeout: 90_000, interval: 200 })
   }
+  it('isolates unclaimed history and fences an ownership change during the read', async () => {
+    const audits: string[] = [], sites: string[] = []
+    try {
+      for (const userId of [null, null, owner]) {
+        const audit = await prisma.audit.create({ data: { url: pageUrl, userId, status: 'COMPLETED', completedAt: new Date(), isPublic: false } })
+        audits.push(audit.id)
+      }
+      for (const primaryAuditId of audits.slice(0, 2)) {
+        const site = await prisma.provisionalSite.create({ data: { sessionKey: randomUUID(), canonicalHost: new URL(pageUrl).hostname,
+          url: pageUrl, primaryAuditId } })
+        sites.push(site.id)
+      }
+      const provisional = (await loadSiteRecord('p_' + sites[0]))!
+      const history = await loadMonitoringHistory(provisional)
+      expect(history.timeline.map(entry => entry.id)).toEqual([audits[0]])
+      expect(history.trend.map(entry => entry.id)).toEqual([audits[0]])
+      await prisma.audit.update({ where: { id: audits[0] }, data: { userId: owner } })
+      expect(await loadMonitoringHistory(provisional)).toEqual({ timeline: [], trend: [] })
+    } finally {
+      await prisma.provisionalSite.deleteMany({ where: { id: { in: sites } } })
+      await prisma.audit.deleteMany({ where: { id: { in: audits } } })
+    }
+  })
   it('keeps the original Site and evidence through signed claim, default uptime, independent repair and scheduled recurrence', async () => {
     const anonymous = await createAndEnqueueAudit({ url: pageUrl, visitorKey: 'claimed-loop-' + randomUUID() })
     expect(anonymous.siteId).toMatch(/^p_/)
@@ -189,6 +212,11 @@ run('URL-first analysis through claim and monitored repair', () => {
       renderedCopy: { pageText: expect.not.stringContaining('Lorem ipsum'), h1s: ['Useful service for your team'], complete: true } })
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'security-csp-unsafe-inline' } })
     expect(source).toMatchObject({ userId: null, projectId: null, isPublic: false })
+    const provisional = (await loadSiteRecord(anonymous.siteId!))!
+    const creatorHistory = await loadMonitoringHistory(provisional)
+    expect(creatorHistory.timeline.map(entry => entry.id)).toEqual([source.id])
+    expect(creatorHistory.trend.map(entry => entry.id)).toEqual([source.id])
+    expect(creatorHistory.timeline[0].flags).toEqual(expect.arrayContaining([{ id: flag.id, title: flag.problem }]))
     expect(await resolveAuditAccess(source, null, undefined, await readClaimedAnonymousIds())).toBe('anonymous_teaser')
     expect(await resolveAuditAccess(source, null)).toBe('denied')
     expect(await resolveAuditAccess(source, { id: owner })).toBe('denied')

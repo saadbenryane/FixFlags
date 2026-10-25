@@ -20,10 +20,11 @@ let created = false
 let redisCreated = false
 
 // Full browser repair cycles need a bounded suite budget beyond individual task deadlines.
-function run(command, args, env = process.env) {
-  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 2_700_000, maxBuffer: 32 * 1024 * 1024 })
+function run(command, args, env = process.env, stream = false) {
+  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 2_700_000, maxBuffer: 32 * 1024 * 1024,
+    ...(stream ? { stdio: 'inherit' } : {}) })
   if (result.status !== 0) throw new Error([result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n') || 'Verification process failed')
-  return result.stdout.trim()
+  return result.stdout?.trim() ?? ''
 }
 
 try {
@@ -52,7 +53,7 @@ try {
   // Global scheduler and recovery suites share this disposable database.
   // Serialize files so one fixture cannot consume another file's work; tests
   // still exercise concurrent requests and worker deliveries within each suite.
-  const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', '--no-file-parallelism',
+  const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', '--no-file-parallelism', '--reporter=verbose',
     ...suites], {
     ...env, REDIS_URL: `redis://127.0.0.1:${port}`, PROGRESSIVE_EXECUTION_DB_REQUIRED: 'true',
     ...(uptime ? { UPTIME_TEST_DATABASE_URL: disposable.toString() } : {}),
@@ -64,8 +65,8 @@ try {
     PUBLIC_TRUST_DB_REQUIRED: 'true', SCHEDULED_SITE_CARE_REQUIRED: 'true', CLAIM_SCHEDULER_DB_REQUIRED: 'true',
     TOKEN_ENCRYPTION_KEY: '11'.repeat(32), OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', PAGESPEED_API_KEY: '',
     R2_ACCESS_KEY_ID: '', R2_SECRET_ACCESS_KEY: '', RESEND_API_KEY: '',
-  })
-  console.log(output)
+  }, true)
+  if (output) console.log(output)
 } finally {
   try {
     if (redisCreated) run('docker', ['rm', '--force', redisName])

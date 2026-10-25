@@ -21,7 +21,7 @@ import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { BoardDetails } from '@/components/sites/BoardDetails'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { FlagEvidenceDetails } from '@/components/sites/FlagEvidenceDetails'
-import { SiteActionContinuation } from '@/components/sites/SiteActionContinuation'
+import { SitePromptAccessActions } from '@/components/sites/SiteActionContinuation'
 import styles from './FlagDetailPage.module.css'
 
 function recordedPathLabel(url: string): string {
@@ -252,7 +252,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
               </aside>
             ) : null}
 
-            {!ownsSite ? <SiteActionContinuation availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} action="copy" /> : null}
+            {!ownsSite ? <SitePromptAccessActions availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
             {ownsSite ? <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
               <div className="flex flex-wrap items-center gap-3">
                 <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />

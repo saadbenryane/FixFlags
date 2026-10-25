@@ -1,3 +1,4 @@
+import { getAppUrl } from '@/lib/get-app-url'
 import { createHash } from 'node:crypto'
 import { hasRepairGuidance } from '@/lib/improvements/repair-guidance'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -14,14 +15,21 @@ export async function loadSiteFlagCopyTask(siteId: string, flagId: string, expec
   if (flag.supportingEvidenceUnreadable) throw new SiteRunRefusal(EDITOR_EVIDENCE_COPY.unreadable, 422)
   if (!hasRepairGuidance(flag.fix)) throw new SiteRunRefusal(
     SITE_ACTION_COPY.repairGuidance[flag.repairGuidance === 'pending' ? 'pending' : 'unavailable'], 422)
-  const prompt = boardFlagPrompt({
+  const recordedTask = boardFlagPrompt({
     problem: flag.problem, whyItMatters: flag.whyItMatters,
     evidence: flag.evidenceMissing ? null : flag.evidence,
     fix: flag.fix, pageUrl: flag.pageUrl, affectedPaths: flag.affectedPaths,
     journeyName: flag.relatedOutcome?.name, expectedBehavior: flag.expectedBehavior,
     supportingObservations: flag.supportingObservations,
   })
-  if (!prompt) throw new SiteRunRefusal(EDITOR_EVIDENCE_COPY.unreadable, 422)
+  if (!recordedTask) throw new SiteRunRefusal(EDITOR_EVIDENCE_COPY.unreadable, 422)
+  const base = getAppUrl().replace(/\/$/, '')
+  const reference = flag.sourceAuditId ? [
+    `Recorded scan: ${base}/report/${encodeURIComponent(flag.sourceAuditId)}`,
+    `Agent-readable scan JSON: ${base}/api/reports/${encodeURIComponent(flag.sourceAuditId)}`,
+    'Read the recorded scan for context. Access follows the scan visibility. If it is unavailable, use the recorded task below.',
+  ] : []
+  const prompt = [...reference, recordedTask].join('\n\n')
   const promptHash = createHash('sha256').update(prompt).digest('hex')
   if (expectedPromptHash && expectedPromptHash !== promptHash)
     throw new SiteRunRefusal(SITE_ACTION_COPY.repairGuidance.changed, 409, 'REPAIR_TASK_CHANGED')

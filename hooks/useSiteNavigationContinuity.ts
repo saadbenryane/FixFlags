@@ -68,15 +68,20 @@ export function useSiteNavigationContinuity(siteId: string) {
 
     const remember = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
-      const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null
-      if (!anchor || anchor.target && anchor.target !== '_self' || anchor.hasAttribute('download')) return
-      const auth = new URL(anchor.href, window.location.href)
-      if (auth.origin !== window.location.origin || !['/sign-in', '/sign-up', '/post-login'].includes(auth.pathname)) return
-      const next = auth.searchParams.get('next')
+      const anchor = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-site-auth-next],a[href]') : null
+      if (!anchor) return
+      let next = anchor.dataset.siteAuthNext
+      if (!next) {
+        if (!(anchor instanceof HTMLAnchorElement) || anchor.target && anchor.target !== '_self' || anchor.hasAttribute('download')) return
+        const auth = new URL(anchor.href, window.location.href)
+        if (auth.origin !== window.location.origin || !['/sign-in', '/sign-up', '/post-login'].includes(auth.pathname)) return
+        next = auth.searchParams.get('next') ?? undefined
+      }
       if (!next?.startsWith('/') || next.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(next)) return
-      const destination = new URL(next, window.location.origin)
+      let destination = new URL(next, window.location.origin)
       const source = new URL(window.location.href)
       if (destination.origin !== source.origin || siteNavigationRoot(destination.pathname) !== root) return
+      if (anchor.dataset.siteAuthContext === 'current') destination = source
       const sameContext = destination.pathname === source.pathname && destination.search === source.search && destination.hash === source.hash
       const dialog = sameContext ? anchor.closest<HTMLElement>('[role="dialog"][data-site-return-context="category"]') : null
       const state: SiteContinuation = { version: 1, destination: destination.pathname + destination.search + destination.hash,

@@ -12,6 +12,8 @@ import { boardFindingTitle } from '@/lib/sites/board-card'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+import { SiteFlagSelection, SiteFlagSelectionCheckbox, useSiteFlagSelection } from './SiteFlagSelection'
+import { SITE_DASHBOARD_COPY as D } from '@/lib/marketing/copy/site-dashboard'
 
 const PAGE_SIZE = 6
 function pageLabel(url: string | null) {
@@ -21,7 +23,11 @@ function pageLabel(url: string | null) {
 }
 
 /** A bounded priority queue, not an undifferentiated dump of every finding. */
-export function SiteCardFindings({ siteId, flags, recommendations, copyAvailability = 'available', showPage = true }: { showPage?: boolean; copyAvailability?: SiteActionAvailability; siteId: string; flags: SiteFlagSeed[]; recommendations: SiteFlagSeed[] }) {
+export function SiteCardFindings(props: Parameters<typeof SiteCardFindingsContent>[0]) {
+  return <SiteFlagSelection siteId={props.siteId} flags={props.flags} availability={props.copyAvailability ?? 'available'}><SiteCardFindingsContent {...props} /></SiteFlagSelection>
+}
+
+function SiteCardFindingsContent({ siteId, flags, recommendations, copyAvailability = 'available', showPage = true, onOpenFlag }: { onOpenFlag?: (id: string, trigger?: HTMLElement) => void; showPage?: boolean; copyAvailability?: SiteActionAvailability; siteId: string; flags: SiteFlagSeed[]; recommendations: SiteFlagSeed[] }) {
   const id = useId()
   const groups = [
     { id: 'fix-first', label: C.findingGroups.critical, Icon: CircleAlert, items: flags.filter((flag) => flag.priorityBand === 'fix_first') },
@@ -29,6 +35,7 @@ export function SiteCardFindings({ siteId, flags, recommendations, copyAvailabil
   ].filter((group) => group.items.length > 0)
   const [selected, setSelected] = useState(groups[0]?.id)
   const [page, setPage] = useState(0)
+  const selection = useSiteFlagSelection()
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const group = groups.find((item) => item.id === selected) ?? groups[0]
   if (!group && recommendations.length === 0) return null
@@ -38,7 +45,7 @@ export function SiteCardFindings({ siteId, flags, recommendations, copyAvailabil
   const items = group.items.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
   const Icon = group.Icon
   return <section className="space-y-4" aria-label={C.findingPriority}>
-    {groups.length > 1 ? <div className="flex flex-wrap gap-2" role="tablist" aria-label="Flag priority">{groups.map((item, index) => <Button key={item.id} ref={(node) => { tabRefs.current[index] = node }} id={`${id}-flag-tab-${item.id}`} role="tab" tabIndex={group.id === item.id ? 0 : -1} aria-controls={`${id}-flag-panel-${item.id}`} aria-selected={group.id === item.id} size="sm" variant={group.id === item.id ? 'secondary' : 'ghost'} onClick={() => { setSelected(item.id); setPage(0) }} onKeyDown={(event) => {
+    {groups.length > 1 ? <div className="flex flex-wrap gap-2" role="tablist" aria-label={D.flagPriority}>{groups.map((item, index) => <Button key={item.id} ref={(node) => { tabRefs.current[index] = node }} id={`${id}-flag-tab-${item.id}`} role="tab" tabIndex={group.id === item.id ? 0 : -1} aria-controls={`${id}-flag-panel-${item.id}`} aria-selected={group.id === item.id} size="sm" variant={group.id === item.id ? 'secondary' : 'ghost'} onClick={() => { setSelected(item.id); setPage(0) }} onKeyDown={(event) => {
       const last = groups.length - 1
       const next = event.key === 'ArrowRight' ? (index === last ? 0 : index + 1) : event.key === 'ArrowLeft' ? (index === 0 ? last : index - 1) : event.key === 'Home' ? 0 : event.key === 'End' ? last : null
       if (next === null) return
@@ -52,17 +59,18 @@ export function SiteCardFindings({ siteId, flags, recommendations, copyAvailabil
     <div id={`${id}-flag-panel-${group.id}`} role={groups.length > 1 ? 'tabpanel' : undefined} aria-labelledby={groups.length > 1 ? `${id}-flag-tab-${group.id}` : undefined}>
     <ul className="space-y-2">{items.map((flag) => <li key={flag.id}>
         <div className="flex min-h-20 flex-col gap-3 rounded-card border border-border p-3 sm:flex-row sm:items-center">
+          <SiteFlagSelectionCheckbox flagId={flag.id} title={flag.problem} />
           <Icon className="h-5 w-5 shrink-0 text-brand" aria-hidden />
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold leading-snug">{boardFindingTitle(flag.problem)}</h3>
             {flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? <p className="mt-1 text-xs text-muted-foreground">{SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance]}</p> : null}
-            {showPage ? <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="truncate" title={flag.pageUrl ?? undefined}>{flag.affectedPageCount > 1 ? `${flag.affectedPageCount} affected pages` : pageLabel(flag.pageUrl)}</span></p> : null}
+            {showPage ? <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden /><span className="truncate" title={flag.pageUrl ?? undefined}>{flag.affectedPageCount > 1 ? D.affectedPages(flag.affectedPageCount) : pageLabel(flag.pageUrl)}</span></p> : null}
           </div>
-          <div className="flex shrink-0 gap-2">{hasRepairGuidance(flag.fix) ? <SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /> : null}<Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>View Flag</Link></Button></div>
+          <div className="flex shrink-0 flex-wrap gap-2">{!selection?.active && hasRepairGuidance(flag.fix) ? <SitePromptCopyButton availability={copyAvailability} compact siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} /> : null}{onOpenFlag ? <Button size="sm" variant="outline" onClick={event => onOpenFlag(flag.id, event.currentTarget)}>{D.viewFlag}</Button> : <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>{D.viewFlag}</Link></Button>}</div>
         </div>
     </li>)}</ul>
     </div>
-    {pageCount > 1 ? <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, group.items.length)} of {group.items.length}</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous</Button><Button variant="ghost" size="sm" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>Next</Button></div></div> : null}
+    {pageCount > 1 ? <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{D.range(currentPage * PAGE_SIZE + 1, Math.min((currentPage + 1) * PAGE_SIZE, group.items.length), group.items.length)}</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{D.previous}</Button><Button variant="ghost" size="sm" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>{D.next}</Button></div></div> : null}
     <RecommendationList recommendations={recommendations} />
   </section>
 }
@@ -70,7 +78,7 @@ export function SiteCardFindings({ siteId, flags, recommendations, copyAvailabil
 export function RecommendationList({ recommendations }: { recommendations: SiteFlagSeed[] }) {
   if (recommendations.length === 0) return null
   return <section className="space-y-2 pt-4" aria-labelledby="recommendations-heading">
-    <h3 id="recommendations-heading" className="text-sm font-medium text-muted-foreground">Suggestions</h3>
+    <h3 id="recommendations-heading" className="text-sm font-medium text-muted-foreground">{D.suggestions}</h3>
     <ul className="space-y-2">{recommendations.map((flag) => <li key={flag.id} className="flex min-h-16 items-start gap-3 rounded-card border border-dashed border-border p-3"><Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden /><div className="min-w-0"><p className="text-sm font-medium">{boardFindingTitle(flag.problem)}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden />{pageLabel(flag.pageUrl)}</p></div></li>)}</ul>
   </section>
 }

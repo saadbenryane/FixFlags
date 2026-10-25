@@ -9,6 +9,8 @@ export const SITE_SETTINGS_COPY = {
     removed: 'Saved access removed. New checks use public access. Previously recorded evidence keeps its original scope.',
     replacement: 'Saving replaces the previous access. Replacing or removing credentials stops unfinished checks that depend on them.',
   },
+  advanced: 'Advanced settings', advancedBody: 'Website access, test accounts, and data preferences.',
+  accountSettings: 'Account settings', accountSettingsBody: 'Your profile, sign-in, and account preferences.',
   title: 'Settings', description: 'Choose when to check your website and which emails to receive.',
   outcomes: 'Outcomes and coverage', signupSetup: 'Signup test setup',
   signupBody: 'Use synthetic data and same-origin reset and cleanup hooks so FixFlags can submit a Signup form without leaving accounts behind.',

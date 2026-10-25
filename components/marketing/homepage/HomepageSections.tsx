@@ -1,6 +1,7 @@
 'use client'
 
 import { InteractiveButton, InteractiveTextarea } from '@/components/ui/interactive-controls'
+import { PromptPreviewButton } from '@/components/ui/prompt-preview'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Route } from 'next'
@@ -17,7 +18,7 @@ import { HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 import t from './HomepageSections.module.css'
 
-export type HomepageCopySource = 'read' | 'share' | 'ai'
+export type HomepageCopySource = 'read' | 'share' | 'ai' | 'all'
 export type HomepageCopyResult = { source: HomepageCopySource; message: string } | null
 
 export function HomepageEditorTools() {
@@ -72,7 +73,7 @@ export function HomepageHandoffSection({ onCopy, copyResult, manualPrompt }: {
           <h3 id="fix-prompt-title">{C.actions.promptTitle}</h3>
           <dl>{C.actions.promptFacts.map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
           <p className={t.promptVerification}><Check size={15} aria-hidden="true" />{C.story.recoveryNote}</p>
-          <InteractiveButton type="button" className={t.copyButton} onClick={() => onCopy('share', S.availabilityPrompt)}><Copy size={16} aria-hidden="true" />{C.story.copy}<ArrowRight size={16} aria-hidden="true" /></InteractiveButton>
+          <InteractiveButton type="button" className={t.copyButton} onClick={() => onCopy('share', S.availabilityPrompt)}><Copy size={16} aria-hidden="true" />{C.story.copy}<ArrowRight size={16} aria-hidden="true" /></InteractiveButton><PromptPreviewButton prompt={S.availabilityPrompt} />
           {copyResult?.source === 'share' ? <p className={t.copyStatus} role="status">{copyResult.message}</p> : null}
           {manualPrompt && copyResult?.source === 'share' ? <div className={t.manualCopy}><label htmlFor="handoff-guidance">{S.guidanceLabel}</label><InteractiveTextarea id="handoff-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
         </article>

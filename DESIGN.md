@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-11
+reviewed_at: 2026-10-24
 supersedes: [lib/design/brand-rules.md]
 ---
 
@@ -52,9 +52,9 @@ Shared identity does not require identical card sizes, backgrounds or typography
 
 Never use line separators. Group content with whitespace, typography, and surface tone. Board cards use a soft shadow instead of an outline. Input boundaries and focus rings define their controls. Do not use standalone horizontal or vertical rules to separate content. Interaction placement and category anatomy belong to the Site interface contract.
 
-Give each piece of overview information one primary location. Site identity and the last-check time belong in the sidebar. Overall counts appear once in the summary, without a repeated Findings heading or attention sentence. The overview leads with the website capture and one summary, then problem rows and quiet clear cards. Flags are actions inside their category. Detected tools sit with the summary, showing up to four names and the actual remaining count, with the full recorded inventory in depth. Monitoring is a compact header control beside refresh, with schedule details disclosed on demand. The website preview shows the complete capture; URL, capture time, viewport, and previous-capture provenance remain available when it is enlarged. The homepage sample and real Site use the same shared components and layout.
+Give each piece of overview information one primary location. Site identity belongs in the sidebar. Availability and its observation time appear together in the uptime header; scan progress stays with the Site identity. Overall counts appear once in the summary, without a repeated Findings heading or attention sentence. The overview leads with the website capture and one summary, then aligned monitoring panels, a compact grid of categories with Flags, and quiet tiles for categories without Flags. Unfinished checks retain a neutral signal and their limitations in details. Show an overview trend only after two comparable recorded counts; keep the first check in Timeline. Flags are actions inside their category. Detected tools sit with the summary, showing the complete recorded tool list. Monitoring is a compact header control beside refresh, with schedule details disclosed on demand. The website preview shows the complete capture; URL, capture time, viewport, and previous-capture provenance remain available when it is enlarged. The homepage sample and real Site use the same shared components and layout. Signed-out visitors keep the main navigation and normal action labels, with protected actions opening authentication in place.
 
-Pages depth leads with previews for the recorded pages. Each thumbnail must use that page's own capture from its source audit. Missing or failed captures retain an explicit empty state, never a substitute screenshot. Result and Flag modals contain evidence and relevant fix actions, without an Analyze your website promotion.
+Pages depth leads with previews for the recorded pages. Each thumbnail must use that page's own capture from its source audit. Missing or failed captures retain an explicit empty state, never a substitute screenshot. Pages is a persistent workspace destination. Category and Flag modals contain evidence and relevant fix actions, without an Analyze your website promotion.
 
 ## Layout and motion
 
@@ -68,6 +68,8 @@ Marketing overview pages share `MarketingPageHeader`: centered Inter Tight displ
 - App, report, dashboard and admin surfaces idle without decorative animation. Loading indicators may animate while work is running.
 - Use specific transition properties, `--motion-fast` and `--ease-out` where applicable. Never use `transition: all`.
 - Captured evidence uses opacity-only entry effects that do not move layout. Respect `prefers-reduced-motion` for transitions, animation and scrolling.
+
+Prompt actions always offer a readable preview. Copying, inspecting, and independent verification have separate effects. A changed prompt must be reviewed before copying. Category depth supports explicit Flag selection. Unavailable integrations live in a collapsed catalog; saved connections retain review and cleanup actions.
 
 ## Interaction and validation
 

@@ -157,7 +157,7 @@ describe('board card contract', () => {
     expect(conversion?.problem?.outcomeName).toBeNull()
     expect(conversion?.problem?.href).toBe('/sites/p_example/flags/flag-1')
     expect(conversion?.flagChips).toEqual([
-      { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1', repairGuidanceReady: true },
+      { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1', repairGuidanceReady: true, priorityBand: conversionFlag.priorityBand },
     ])
     expect(boardAreaPrompt('Conversion', [{ ...conversionFlag, fix: ' ' }])).toBe('')
     expect(conversion?.sources).toEqual([SITE_BOARD_COPY.browserSource])

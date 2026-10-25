@@ -91,7 +91,14 @@ Stop the development runtime before sharing its Redis with the preview. Keep
 build and runtime. A custom `NEXT_DIST_DIR` must be the same for build and start.
 Missing runtime entries or static assets fail before migrations, with the
 correct build command. Valid production startup still applies migrations and
-refuses to start if migration deployment fails. Compiled preview processes are
+refuses to start if migration deployment fails. Web, worker and `db:deploy`
+share database-scoped migration admission. A dedicated PostgreSQL session holds
+the admission lock while the owned Prisma process runs. Other starters poll a
+nonblocking lock outside a transaction, preserving concurrent index creation.
+Coordination loss, interruption and deadlines stop startup. Migration connections
+check for disconnected clients every second so their SQL does not outlive an
+interrupted engine. Other database connections retain their existing settings.
+Compiled preview processes are
 stopped in their owning terminals, independently of `dev:stop`.
 
 ## Environment variables
@@ -272,7 +279,7 @@ Set `SEED_ADMIN_EMAIL` and a unique 12+ character `SEED_ADMIN_PASSWORD` in `.env
 
 ## Production deployment (Railway)
 
-Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not Nixpacks. Inside the image, `CMD` runs `node scripts/runtime-start.mjs web`. There is no `prestart` script: `runtime-start.mjs` invokes the Prisma CLI directly (`node node_modules/prisma/build/index.js migrate deploy`) and exits non-zero if it fails, so a failed migration blocks the server from booting. `npm start` and `npm run worker:start` call that same script.
+Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not Nixpacks. Inside the image, `CMD` runs `node scripts/runtime-start.mjs web`. There is no `prestart` script. Shared migration admission coordinates each runtime before invoking the actual Prisma CLI (`node node_modules/prisma/build/index.js migrate deploy`). Prisma's internal lock remains enabled, and a failed migration blocks the server from booting. `npm start`, `npm run worker:start` and `npm run db:deploy` use the same admission path. PostgreSQL documents the transaction waits involved in [concurrent index creation](https://www.postgresql.org/docs/16/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY) and its [client disconnect checks](https://www.postgresql.org/docs/16/runtime-config-connection.html#GUC-CLIENT-CONNECTION-CHECK-INTERVAL).
 
 ```bash
 # Local parity with Railway image (required when Dockerfile / package*.json change)

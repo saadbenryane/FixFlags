@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { monitoringHistoryMetadata, siteTrendChecks, type MonitoringHistoryEntry } from '../monitoring-history'
+import { hasFlagTrend, monitoringHistoryMetadata, siteTrendChecks, type MonitoringHistoryEntry } from '../monitoring-history'
 
 const run = { source: 'WEB', verificationTarget: null, selections: [{ outcome: { name: 'Reach checkout' } }], assessments: [{ state: 'CLEAR' }] }
 const base = { status: 'COMPLETED', flagCount: 0, executionSpec: { scope: 'SITE' } }
 
 describe('monitoring history scope and evidence', () => {
+  it('shows a trend only when two recorded counts can be compared, including zero counts', () => {
+    expect(hasFlagTrend([])).toBe(false)
+    expect(hasFlagTrend([{ flagCount: null }, { flagCount: 3 }])).toBe(false)
+    expect(hasFlagTrend([{ flagCount: 0 }, { flagCount: null }, { flagCount: 0 }])).toBe(true)
+  })
   it('labels manual and scheduled Site analyses without inventing a Site-wide Clear result', () => {
     expect(monitoringHistoryMetadata({ ...base, runRequests: [{ ...run, selections: [] }] })).toMatchObject({ scope: 'SITE', trigger: 'MANUAL', result: null })
     expect(monitoringHistoryMetadata({ ...base, runRequests: [{ ...run, source: 'WATCH', selections: [] }] })).toMatchObject({ scope: 'SITE', trigger: 'SCHEDULED' })

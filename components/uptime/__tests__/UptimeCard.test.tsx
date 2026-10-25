@@ -10,6 +10,17 @@ function history(window: UptimeHistory['window'] = '24h'): UptimeHistory {
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('recorded uptime reporting', () => {
+  it('keeps the observation time beside the current state without a fixed cadence', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-24T12:05:00Z'))
+    try {
+      render(<UptimeCard siteId="site-1" summary={{ ...summary, state: 'online', lastCheckedAt: '2026-10-24T12:00:00Z' }} />)
+      const trigger = screen.getByRole('button', { name: 'Uptime details' })
+      expect(within(trigger).getByText('Checked 5 minutes ago')).toHaveAttribute('datetime', '2026-10-24T12:00:00Z')
+      expect(trigger).toHaveTextContent('Online')
+      expect(screen.queryByText('Every 5 minutes')).not.toBeInTheDocument()
+    } finally { now.mockRestore() }
+  })
+
   it('leaves missing observations neutral and never invents an uptime percentage', () => {
     render(<UptimeCard siteId="site-1" summary={summary} />)
     const timeline = screen.getByRole('img')
@@ -27,10 +38,12 @@ describe('recorded uptime reporting', () => {
     render(<UptimeCard siteId="site-1" summary={summary} />)
     fireEvent.click(screen.getByRole('button', { name: 'Uptime details' }))
     const dialog = screen.getByRole('dialog')
-    await waitFor(() => expect(within(dialog).getByText('Recorded periods')).toBeVisible())
+    await waitFor(() => expect(within(dialog).getByText('Recorded periods')).toBeInTheDocument())
+    fireEvent.click(within(dialog).getByText('Check details'))
+    expect(within(dialog).getByText('Recorded periods')).toBeVisible()
     fireEvent.click(within(dialog).getByRole('button', { name: '7 days' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sites/site-1/uptime?window=7d', expect.objectContaining({ cache: 'no-store' })))
-    await waitFor(() => expect(dialog.querySelectorAll('details ul li')).toHaveLength(56))
+    await waitFor(() => expect(within(dialog).getByText('Recorded periods').closest('details')!.querySelectorAll('ul li')).toHaveLength(56))
     expect(within(dialog).getByRole('button', { name: '7 days' })).toHaveAttribute('aria-pressed', 'true')
     expect(within(dialog).queryByRole('progressbar')).not.toBeInTheDocument()
   })

@@ -5,7 +5,7 @@
  * Locally: loads .env.local via `dotenv` (a prod dependency) so `prisma migrate
  * deploy` can read DATABASE_URL the same way `dotenv-cli` used to.
  *
- * In Docker / Railway: .env.local doesn't exist (and isn't needed — env vars
+ * In Docker / Railway: .env.local doesn't exist (and isn't needed, env vars
  * are injected by the platform), so Prisma reads them from the process directly.
  */
 import { config } from 'dotenv'
@@ -23,6 +23,11 @@ if (args.length === 0) {
 }
 
 const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))
+if (args[0] === 'migrate' && args[1] === 'deploy') {
+  const { deployMigrations } = await import('../lib/runtime/migration-coordination.mjs')
+  try { process.exit(await deployMigrations({ args })) }
+  catch (error) { console.error(error.message); process.exit(1) }
+}
 const result = spawnSync(process.execPath, [prismaCli, ...args], {
   stdio: 'inherit',
   env: process.env,

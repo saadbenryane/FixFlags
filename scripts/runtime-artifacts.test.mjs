@@ -12,6 +12,14 @@ function isolatedStartup(cwd) {
   mkdirSync(join(cwd,'node_modules/@next'),{recursive:true})
   for (const name of ['runtime-start.mjs','runtime-artifacts.mjs']) copyFileSync(new URL(name,import.meta.url),join(cwd,'scripts',name))
   copyFileSync(new URL('../lib/runtime/environment.mjs',import.meta.url),join(cwd,'lib/runtime/environment.mjs'))
+  copyFileSync(new URL('../lib/runtime/migration-coordination.mjs',import.meta.url),join(cwd,'lib/runtime/migration-coordination.mjs'))
+  mkdirSync(join(cwd,'node_modules/pg'),{recursive:true})
+  writeFileSync(join(cwd,'node_modules/pg/package.json'),JSON.stringify({type:'module',exports:'./index.js'}))
+  writeFileSync(join(cwd,'node_modules/pg/index.js'),`import { EventEmitter } from 'node:events';
+    export class Client extends EventEmitter {
+      async connect() {} async query() { return { rows: [{ acquired: true }] } }
+      async end() { this.emit('end') }
+    }`)
   symlinkSync(new URL('../node_modules/@next/env',import.meta.url).pathname,join(cwd,'node_modules/@next/env'),'dir')
   return join(cwd,'scripts/runtime-start.mjs')
 }
@@ -52,7 +60,7 @@ test('a failed migration prevents a valid production server from booting', () =>
     mkdirSync(join(cwd,'.next/standalone/.next/static'),{recursive:true})
     mkdirSync(join(cwd,'.next/standalone/public'))
     writeFileSync(join(cwd,'.next/standalone/server.js'),`require('fs').writeFileSync(${JSON.stringify(boot)},'booted')`)
-    assert.throws(() => execFileSync(process.execPath,[script],{cwd,stdio:'pipe'}), error => error.status === 7)
+    assert.throws(() => execFileSync(process.execPath,[script],{cwd,stdio:'pipe',env:{...process.env,DATABASE_URL:'postgresql://fixture:fixture@localhost/fixture'}}), error => error.status === 7)
     assert.equal(existsSync(marker),true)
     assert.equal(existsSync(boot),false)
   } finally { rmSync(cwd,{recursive:true,force:true}) }

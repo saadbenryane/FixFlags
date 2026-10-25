@@ -256,6 +256,29 @@ run('Site Watch delivery projection with migrated PostgreSQL', () => {
     expect(await readMonitoringHealth()).toMatchObject({ ok: true, undeliveredUptimeAlerts: 0 })
   })
 
+  it('keeps non-Watch records out of the Watch retry queue without rewriting their history', async () => {
+    const now = new Date(), old = new Date(now.getTime() - 6 * 60_000)
+    await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })
+    const sessionId = randomUUID()
+    await prisma.session.create({ data: { id: sessionId, userId, token: randomUUID(), expiresAt: new Date(now.getTime() + 3600_000) } })
+    const actor = { id: userId, sessionId, role: 'admin', email: userId + '@example.test', authenticatedAt: now }
+    const retained = []
+    for (const recheckTrigger of [null, 'MANUAL'] as const) {
+      for (const watchNotificationStatus of ['PENDING', 'FAILED', 'SENDING'] as const) {
+        retained.push(await prisma.audit.create({ data: { url, userId, projectId, recheckTrigger, watchNotificationStatus,
+          status: 'COMPLETED', createdAt: old, completedAt: old, improvementProjectedAt: old } }))
+      }
+    }
+    const watch = await prisma.audit.create({ data: { url, userId, projectId, recheckTrigger: 'WATCH',
+      watchNotificationStatus: 'PENDING', status: 'COMPLETED', createdAt: old, completedAt: old, improvementProjectedAt: old } })
+    expect(await readMonitoringHealth(now)).toMatchObject({ ok: false, undeliveredWatchAlerts: 1 })
+    const operations = await loadOperations(actor, { queue: 'watch-alerts' })
+    expect(operations.total).toBe(1)
+    expect(operations.rows).toMatchObject([{ id: watch.id, action: 'WATCH_NOTIFICATION_RETRY' }])
+    expect((await loadSiteOperations(now)).find(item => item.label === 'Monitoring notifications needing attention')?.value).toBe(1)
+    for (const record of retained) expect(await prisma.audit.findUniqueOrThrow({ where: { id: record.id } })).toEqual(record)
+  })
+
   it('detects overdue Watch acceptance without rewriting its receipt or calling a live claim failed', async () => {
     const now = new Date(), old = new Date(now.getTime() - 6 * 60_000)
     await prisma.user.update({ where: { id: userId }, data: { role: 'admin' } })

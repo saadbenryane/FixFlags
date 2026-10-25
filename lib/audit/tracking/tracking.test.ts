@@ -6,6 +6,7 @@ import { parseMetadataFromHtml } from '../metadata'
 import { trackingPageKey, trackingRequestKey, TRACKING_VERIFICATION_RULE } from './identity'
 import { captureObservationKey } from '../browser/observation-scope'
 import { scopedAssertionForTarget } from '../checks/verification'
+import { projectCheckResults } from '@/lib/sites/check-results'
 import { checkReceiptSchema } from '../checks/receipt'
 
 const meta = parseMetadataFromHtml('<script src="https://www.googletagmanager.com/gtag/js?id=G-PRIVATE"></script>', 'https://example.com/')
@@ -90,6 +91,12 @@ describe('runtime Tracking assessment', () => {
     const event: TrackingRequest = { ...request, hostname: 'www.google-analytics.com', endpoint: '/g/collect', role: 'event', method: 'POST', status: null, state: 'suppressed', reason: 'scanner_suppressed' }
     const result = runTrackingChecks(meta, evidence([request, event]), 'https://example.com/')
     expect(result.flags).toEqual([])
+    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'measurement', pageUrl,
+      applicable: true, passed: false, complete: result.complete, assertions: result.assertions,
+      execution: { auditId: 'a', taskId: 't', checkVersion: 1, source: 'browser-network', collectedAt: '2026-10-24T00:00:00Z' } })
+    const published = projectCheckResults('a', [{ id: 'r', targetKey: 'module:measurement', status: 'COMPLETED', pageUrl, updatedAt: new Date(), detail: receipt }])
+    expect(published.find(item => item.assertionKey === 'tracking-http-response')).toMatchObject({ reason: 'tracking_suppressed', status: 'unknown' })
+    expect(published.find(item => item.assertionKey === 'tracking-provider-recording')).toMatchObject({ reason: 'tracking_provider_unverified', status: 'unknown' })
     expect(result.assertions.find(item => item.key === 'tracking-library')).toMatchObject({ passed: true, complete: true })
     expect(result.assertions.find(item => item.key === 'tracking-initiation')).toMatchObject({ disposition: 'observed' })
     for (const key of ['tracking-http-response', 'tracking-provider-recording'])

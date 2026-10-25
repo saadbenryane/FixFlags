@@ -16,6 +16,7 @@ export function ReportClaimDialog({
   from = 'report',
   auditId,
   reason = 'save-report',
+  restoreFocus,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -23,6 +24,7 @@ export function ReportClaimDialog({
   from?: string
   auditId?: string
   reason?: ReportClaimReason
+  restoreFocus?: () => void
 }) {
   const copy =
     reason === 'scan-limit'
@@ -42,7 +44,8 @@ export function ReportClaimDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent header={<DialogTitle className="sr-only">{copy.title}</DialogTitle>} className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md">
+      <DialogContent header={<DialogTitle className="sr-only">{copy.title}</DialogTitle>} className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md"
+        onCloseAutoFocus={restoreFocus ? event => { event.preventDefault(); restoreFocus() } : undefined}>
         <DialogDescription className="sr-only">{copy.body}</DialogDescription>
         <Suspense fallback={<p role="status" className="py-8 text-center text-sm text-muted-foreground">{AUTH.reportGate.preparingOptions}</p>}>
           <AuthFlow

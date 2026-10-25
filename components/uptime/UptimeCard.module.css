@@ -1,12 +1,13 @@
-.card { min-width: 0; padding: 12px 18px 16px; border: 0; border-radius: var(--radius-board-panel); background: hsl(var(--background)); box-shadow: var(--shadow-board); }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 44px; margin-bottom: 4px; border-radius: var(--radius-control); text-align: left; }
+.card { display: flex; flex-direction: column; min-width: 0; min-height: 200px; padding: 16px; border: 0; border-radius: var(--radius-board-panel); background: hsl(var(--surface-board)); box-shadow: var(--shadow-board); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 44px; margin-bottom: 20px; border-radius: var(--radius-control); text-align: left; }
 .header:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .header > span { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
 .header strong { font-size: 13px; font-weight: 550; }
-.header .state { gap: 7px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.header .state { justify-content: flex-end; flex-wrap: wrap; gap: 7px; font-size: 12px; color: hsl(var(--muted-foreground)); }
 .state i, .legend i { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: hsl(var(--muted-foreground) / .35); }
 .state i[data-state='online'], .legend i[data-state='online'] { background: hsl(var(--success)); }
 .state i[data-state='offline'], .legend i[data-state='offline'] { background: hsl(var(--brand)); }
+.card > div:has(> .marks) { margin-top: auto; }
 .marks { display: flex; gap: 3px; align-items: center; height: 30px; }
 .marks span { flex: 1; min-width: 0; height: 22px; border-radius: 3px; background: hsl(var(--muted-foreground) / .13); }
 .marks span[data-state='online'] { background: hsl(var(--success) / .65); }
@@ -18,13 +19,13 @@
 .scope { overflow-wrap: anywhere; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.6; }
 .windows { display: flex; flex-wrap: wrap; gap: 4px; }
 .periods { margin-block: 8px; color: hsl(var(--muted-foreground)); font-size: 12px; }
-.periods summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+.periods summary { justify-content: space-between; gap: 12px; display: flex; align-items: center; min-height: 44px; cursor: pointer; }
 .periods summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
 .periods ul { max-height: 220px; overflow: auto; }
 .periods li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; }
 .sectionTitle { margin: 10px 0; font-size: 14px; font-weight: 600; }
 .incidents, .probes { padding: 0; margin: 0; list-style: none; }
-.incidents li { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 12px 0; font-size: 12px; }
+.incidents li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 14px; border-radius: var(--radius-control); background: hsl(var(--muted) / .4); font-size: 12px; }
 .incidents strong { width: 100%; font-size: 13px; font-weight: 550; }
 .incidents span { overflow-wrap: anywhere; }
 .incidents :is(p, time) { color: hsl(var(--muted-foreground)); }
@@ -34,3 +35,22 @@
 .probes time, .probes small { color: hsl(var(--muted-foreground)); }
 .probes small { width: 100%; font-size: 11px; }
 @media (max-width: 639px) { .card { padding-inline: 14px; } .marks { gap: 2px; } }
+
+.checkedAt { font-size: 11px; font-weight: 400; }
+@media (max-width: 420px) { .header { gap: 8px; flex-wrap: wrap; } }
+
+.overviewStatus { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; min-width: 0; }
+.overviewStatus > a { overflow-wrap: anywhere; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.overviewStatus > span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.overviewStatus i { width: 6px; height: 6px; border-radius: 50%; background: hsl(var(--muted-foreground)); }
+.overviewStatus [data-state='online'] i { background: hsl(var(--success)); }
+.overviewStatus [data-state='offline'] i { background: hsl(var(--destructive)); }
+.incidents .duration { color: hsl(var(--muted-foreground)); font-size: 11px; }
+.incidentTimes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 12px; }
+.incidentTimes dt { color: hsl(var(--muted-foreground)); font-size: 11px; }
+.incidentTimes dd { margin-top: 4px; font-size: 12px; line-height: 1.5; }
+.probeDetails { grid-column: 1 / -1; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.probeDetails summary { min-height: 44px; align-content: center; cursor: pointer; }
+.probeDetails p { margin-block: 4px; overflow-wrap: anywhere; }
+.periods[open] > summary > svg { transform: rotate(180deg); }
+@media (max-width: 480px) { .incidentTimes { grid-template-columns: minmax(0, 1fr); } }

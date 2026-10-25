@@ -1,4 +1,4 @@
-import { CircleHelp, Clock3, LayoutGrid, Plug, Settings2, type LucideIcon } from 'lucide-react'
+import { CircleHelp, Clock3, Files, LayoutGrid, Plug, Settings2, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -7,10 +7,11 @@ import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
 import styles from './SiteShell.module.css'
 import { cn } from '@/lib/utils'
 
-export type SiteRoute = 'home' | 'timeline' | 'integrations' | 'settings'
+export type SiteRoute = 'home' | 'pages' | 'timeline' | 'integrations' | 'settings'
 
 export const SITE_ROUTES = [
   ['home', 'Overview', LayoutGrid],
+  ['pages', 'Pages', Files],
   ['timeline', 'Timeline', Clock3],
   ['integrations', 'Integrations', Plug],
   ['settings', 'Settings', Settings2],

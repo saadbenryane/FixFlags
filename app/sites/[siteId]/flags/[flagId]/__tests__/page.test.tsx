@@ -202,6 +202,8 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByRole('button', { name: 'Copy fix prompt' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Verification history' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in to copy the fix prompt' })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
+    for (const label of ['Copy fix prompt', 'View prompt']) {
+      expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', '/sign-in?next=%2Fsites%2Fsite-1%2Fflags%2Fflag-1')
+    }
   })
 })

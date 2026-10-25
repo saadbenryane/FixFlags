@@ -36,7 +36,7 @@ describe('comprehensive homepage experience', () => {
   it('pairs findings with the capture and puts Uptime before actionable and healthy checks', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Uptime', 'Pages', 'Conversion'])
+    expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Uptime', 'Pages', 'Conversion', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility'])
     const findings = within(board).getByRole('region', { name: 'Findings summary' })
     const capture = within(board).getByRole('region', { name: 'Website preview' })
     expect(capture.compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -47,21 +47,38 @@ describe('comprehensive homepage experience', () => {
     expect(SITE_CARD_AREAS[0]).toBe('uptime')
   })
 
-  it('opens every sample Flag from its title and arrow and restores focus on close', async () => {
+  it('opens a priority Flag directly and restores its shortcut on close', async () => {
+    render(<CareHomepage dashboardOnly />)
+    const card = screen.getByRole('article', { name: 'Pages' })
+    const trigger = within(card).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` })
+    fireEvent.click(within(card).getByText('High priority'))
+    expect(within(screen.getByRole('dialog')).getByRole('heading', { name: SAMPLE_FLAGS.availability.title })).toBeVisible()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+    fireEvent.click(within(card).getByRole('button', { name: 'Open Pages' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: '2 pages need attention' })).toBeVisible()
+    expect(within(dialog).queryByText('Results in this area')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('/about')).not.toBeVisible()
+    fireEvent.click(within(dialog).getByText('10 other pages', { selector: 'summary' }))
+    expect(within(dialog).getByText('/about')).toBeVisible()
+    expect(within(dialog).getByRole('textbox', { name: 'Fix prompt' })).not.toBeVisible()
+    fireEvent.click(within(dialog).getByLabelText('View prompt', { selector: 'summary' }))
+    expect(within(dialog).getByRole('textbox', { name: 'Fix prompt' })).toBeVisible()
+  })
+
+  it('opens sample Flags from their category without leaving the dashboard', async () => {
     render(<CareHomepage />)
-    const board = screen.getByRole('region', { name: C.boardAria })
-    for (const flag of Object.values(SAMPLE_FLAGS)) {
-      for (const name of [flag.title, `Open ${flag.title}`]) {
-        const trigger = within(board).getByRole('button', { name, exact: true })
-        trigger.focus()
-        fireEvent.click(trigger)
-        const dialog = screen.getByRole('dialog')
-        expect(within(dialog).getByRole('heading', { name: flag.title })).toBeVisible()
-        expect(within(dialog).getByText(flag.observed)).toBeVisible()
-        fireEvent.keyDown(dialog, { key: 'Escape' })
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        await waitFor(() => expect(trigger).toHaveFocus())
-      }
+    for (const category of S.categories.filter(card => card.flagCount > 0)) {
+      const dialog = openCategory(category.name)
+      const result = category.results.find(result => result.status === 'Flag')!
+      const flag = SAMPLE_FLAGS[result.flag ?? category.flag!]
+      fireEvent.click(within(dialog).getByRole('button', { name: category.id === 'site' ? `Open ${flag.title}` : `View Flag for ${result.label}` }))
+      expect(within(dialog).getByRole('heading', { name: flag.title })).toBeVisible()
+      expect(within(dialog).getByText(flag.observed)).toBeVisible()
+      fireEvent.keyDown(dialog, { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getByRole('region', { name: C.boardAria })).toBeVisible()
     }
   })
 
@@ -70,12 +87,32 @@ describe('comprehensive homepage experience', () => {
     const dialog = openCategory('Pages')
     const scrollBody = dialog.querySelector<HTMLElement>('[data-dialog-scroll]')!
     scrollBody.scrollTop = 320
-    fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /contact' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.contact.title}` }))
     await waitFor(() => expect(within(dialog).getByRole('heading', { name: SAMPLE_FLAGS.contact.title })).toHaveFocus())
     expect(scrollBody.scrollTop).toBe(0)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to Pages' }))
-    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'View Flag for /contact' })).toHaveFocus())
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.contact.title}` })).toHaveFocus())
     expect(scrollBody.scrollTop).toBe(320)
+  })
+
+  it.each([
+    ['Overview', 'availability'],
+    ['Pages', 'availability'],
+    ['Timeline', 'contact'],
+  ] as const)('returns directly to %s after opening a Flag in that workspace', async (view, flagId) => {
+    render(<CareHomepage dashboardOnly />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    const navigation = within(board).getByRole('button', { name: view, exact: true })
+    fireEvent.click(navigation)
+    const title = SAMPLE_FLAGS[flagId].title
+    const trigger = within(board).getByRole('button', { name: view === 'Timeline' ? title : `Open ${title}`, exact: true })
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: title })).toBeVisible()
+    fireEvent.click(within(dialog).getByRole('button', { name: `Back to ${view}`, exact: true }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(navigation).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   it('keeps keyboard focus in the board when a detected tool opens Integrations', async () => {
@@ -92,11 +129,12 @@ describe('comprehensive homepage experience', () => {
   it('opens the Flag list from the website count and category details from category counts', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    fireEvent.click(within(board).getByRole('button', { name: 'Pages: 2 Flags' }))
+    fireEvent.click(within(board).getByRole('button', { name: 'Open Pages' }))
     expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Pages' })).toBeVisible()
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     fireEvent.click(within(board).getByRole('button', { name: '3 Flags', exact: true }))
-    for (const flag of Object.values(SAMPLE_FLAGS)) expect(within(board).getByRole('button', { name: `Open ${flag.title}` })).toBeVisible()
+    expect(within(board).getByRole('button', { name: 'Open Pages' })).toBeVisible()
+    expect(within(board).getByRole('button', { name: 'Open Conversion' })).toBeVisible()
   })
 
   it('discloses the header schedule and preserves custom sample changes', () => {
@@ -133,10 +171,11 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByRole('heading', { name: SAMPLE_FLAGS.checkout.title })).toBeVisible()
     expect(within(dialog).getByText(SAMPLE_FLAGS.checkout.observed)).toBeVisible()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
-    fireEvent.click(screen.getByRole('button', { name: '12 Pages checked. 2 need attention' }))
-    const pages = screen.getByRole('dialog')
-    expect(within(pages).getByRole('heading', { name: 'Pages' })).toBeVisible()
-    expect(within(pages).getByText('10 other pages')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '12 Pages checked. 3 need attention' }))
+    const pages = screen.getByRole('region', { name: 'Pages' })
+    expect(within(pages).getByRole('heading', { name: '3 pages need attention' })).toBeVisible()
+    expect(within(pages).getByText('9 other pages')).toBeVisible()
+    expect(within(pages).getByRole('button', { name: `Open ${SAMPLE_FLAGS.checkout.title}` })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Add signup monitoring/ })).not.toBeInTheDocument()
   })
   it('keeps the brand, two URL entries and the sample-to-analysis path', () => {
@@ -158,7 +197,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(summary).getByText('3')).toBeVisible()
     expect(within(summary).getByText('Flags')).toBeVisible()
     expect(within(summary).getByText('Pages checked')).toBeVisible()
-    expect(within(summary).getByText('2 need attention')).toBeVisible()
+    expect(within(summary).getByText('3 need attention')).toBeVisible()
     expect(within(summary).queryByText('Monitoring')).not.toBeInTheDocument()
     expect(within(board).getByRole('button', { name: 'Monitoring: Daily' })).toHaveAttribute('aria-expanded', 'false')
     expect(within(board).queryByRole('heading', { name: 'Findings' })).not.toBeInTheDocument()
@@ -167,7 +206,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(board).getByText('www.examplesites.com')).toBeVisible()
     expect(within(board).getByRole('region', { name: 'Detected technologies' })).toBeVisible()
     expect(within(within(board).getByRole('article', { name: 'Conversion' })).queryByText('15 minutes ago')).not.toBeInTheDocument()
-    expect(within(board).getByText(/Last checked/)).toHaveAttribute('datetime', '2026-09-14T09:00:00.000Z')
+    expect(within(board).getByText(/Checked .+ ago/)).toHaveAttribute('datetime', '2026-09-14T09:00:00.000Z')
     expect(within(board).getAllByRole('button', { name: '3 Flags', exact: true })).toHaveLength(1)
     expect(within(board).getByRole('link', { name: 'Recheck website' })).toHaveAttribute('href', '#analyze')
     expect(within(board).queryByRole('button', { name: 'Flags', exact: true })).not.toBeInTheDocument()
@@ -192,7 +231,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByText('Mobile')).toBeVisible()
     expect(within(dialog).getByText('Desktop')).toBeVisible()
     expect(within(dialog).getAllByText('Checked')).toHaveLength(2)
-    expect(within(dialog).getByText('0 Flags')).toBeVisible()
+    expect(within(dialog).getByText('Main content loads in 1.8s')).toBeVisible()
   })
 
   it('shows a complete illustrative website report', () => {
@@ -203,8 +242,8 @@ describe('comprehensive homepage experience', () => {
     expect(within(board).getByRole('button', { name: `Open captured page for ${C.boardLabel}` })).toBeVisible()
     expect(within(board).getAllByText('0 Flags')).toHaveLength(5)
     expect(within(board).queryByText('Partial')).not.toBeInTheDocument()
-    expect(within(board).getByText('Main content loads in 1.8s')).toBeVisible()
-    expect(within(board).getByText('Pages use HTTPS')).toBeVisible()
+    expect(within(board).queryByText('Main content loads in 1.8s')).not.toBeInTheDocument()
+    expect(within(board).queryByText('Pages use HTTPS')).not.toBeInTheDocument()
     expect(screen.queryByText('Illustrative results and schedule. Explore any area for more detail.')).not.toBeInTheDocument()
   })
 
@@ -214,6 +253,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByText('Page titles')).toBeVisible()
     expect(within(dialog).getByText('Search rankings')).toBeVisible()
     expect(within(dialog).getByText('Outside coverage')).toBeVisible()
+    fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
     expect(within(dialog).getByRole('link', { name: /Search Console context/ })).toHaveAttribute('href', '/integrations#search-console')
   })
 
@@ -223,7 +263,7 @@ describe('comprehensive homepage experience', () => {
     expect(within(dialog).getByRole('img', { name: S.availabilityAlt })).toHaveAttribute('src', SAMPLE_FLAGS.availability.image)
     expect(within(dialog).getByRole('img', { name: 'Preview of /contact: No screenshot recorded' })).toBeVisible()
     expect(within(dialog).queryByRole('link', { name: 'Analyze your website' })).not.toBeInTheDocument()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /pricing' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
     dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('img', { name: S.availabilityAlt })).toHaveAttribute('data-src', '/marketing/evidence/pricing-unavailable.png')
     expect(within(dialog).queryByRole('link', { name: 'Analyze your website' })).not.toBeInTheDocument()
@@ -252,22 +292,24 @@ describe('comprehensive homepage experience', () => {
     render(<CareHomepage />)
     let dialog = openCategory('Pages')
     expect(within(dialog).queryByRole('link', { name: 'Recheck Pages' })).not.toBeInTheDocument()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /contact' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.contact.title}` }))
     dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'Contact page loads too slowly' })).toBeVisible()
     expect(within(dialog).getByText(SAMPLE_FLAGS.contact.observed)).toBeVisible()
     expect(within(dialog).getByRole('link', { name: '/contact' })).toHaveAttribute('href', SAMPLE_FLAGS.contact.url)
-    expect(within(dialog).queryByRole('img')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('img', { name: /Preview of/ })).not.toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(SAMPLE_FLAGS.contact.prompt))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Back to Pages' }))
-    expect(within(dialog).getByRole('button', { name: 'View Flag for /pricing' })).toBeVisible()
-    expect(within(dialog).getByRole('button', { name: 'View Flag for /contact' })).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` })).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.contact.title}` })).toBeVisible()
   })
 
   it('keeps concise scope in category depth', () => {
     render(<CareHomepage />)
     const dialog = openCategory('Pages')
+    expect(within(dialog).getByText(S.categories[0].scope)).not.toBeVisible()
+    fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
     expect(within(dialog).getByText(S.categories[0].scope)).toBeVisible()
     expect(within(dialog).queryByText(S.sources.http)).not.toBeInTheDocument()
     expect(watchableOutcomeKinds()).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
@@ -300,7 +342,7 @@ describe('comprehensive homepage experience', () => {
     expect(screen.getByText(C.hero.setup)).toBeVisible()
     const board = screen.getByRole('region', { name: C.boardAria })
     const nav = within(board).getByRole('navigation', { name: S.navigationLabel })
-    expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Overview', 'Timeline', 'Integrations', 'Settings'])
+    expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Overview', 'Pages', 'Timeline', 'Integrations', 'Settings'])
     fireEvent.click(within(nav).getByRole('button', { name: 'Settings', exact: true }))
     expect(within(board).getByRole('heading', { name: 'Settings' })).toBeVisible()
     fireEvent.change(within(board).getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
@@ -315,11 +357,12 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(board).getByRole('button', { name: S.navigation.integrations }))
     expect(within(board).getByRole('heading', { name: S.navigation.integrations })).toBeVisible()
     expect(within(board).getByText('Shopify')).toBeVisible()
+    fireEvent.click(within(board).getByText('More integrations'))
     expect(within(board).getByRole('heading', { name: 'Google Analytics' })).toBeVisible()
     expect(within(board).getByRole('heading', { name: 'Google Search Console' })).toBeVisible()
     expect(within(board).queryByRole('button', { name: 'Connect Google Analytics' })).not.toBeInTheDocument()
     expect(within(board).getByRole('button', { name: 'Disconnect Shopify', exact: true })).toBeVisible()
-    expect(within(board).getByText('Available')).toBeVisible()
+    expect(within(board).getByRole('link', { name: 'Manage GitHub connection' })).toHaveTextContent('Connect')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -344,6 +387,7 @@ describe('comprehensive homepage experience', () => {
     fireEvent.click(within(board).getByRole('button', { name: 'Settings', exact: true }))
     fireEvent.change(within(board).getByRole('combobox', { name: 'Email me' }), { target: { value: 'OFF' } })
     fireEvent.click(within(board).getByRole('button', { name: 'Pause monitoring' }))
+    fireEvent.click(within(board).getByText('Advanced settings', { selector: 'strong' }))
     fireEvent.click(within(board).getByRole('button', { name: 'Test signup again' }))
     expect(within(board).getByRole('status')).toHaveTextContent('Sample account check completed.')
     fireEvent.click(within(board).getByRole('button', { name: 'Delete FixFlags test accounts' }))
@@ -360,16 +404,32 @@ describe('comprehensive homepage experience', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('previews selected page fixes through the shared selection UI without production requests', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
+    render(<CareHomepage />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    fireEvent.click(within(board).getByRole('button', { name: 'Pages', exact: true }))
+    fireEvent.click(within(board).getByRole('button', { name: 'Select Flags' }))
+    fireEvent.click(within(board).getAllByRole('checkbox')[0])
+    expect(within(board).getByText('1 selected')).toBeVisible()
+    const previews = within(board).getAllByRole('button', { name: 'View prompt' })
+    fireEvent.click(previews.at(-1)!)
+    expect((await screen.findByRole('textbox') as HTMLTextAreaElement).value).toContain('Illustrative FixFlags sample.')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('opens the shared uptime history and changes periods using sample observations', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sample must stay local'))
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
     fireEvent.click(within(board).getByRole('button', { name: 'Uptime details' }))
     const dialog = screen.getByRole('dialog')
-    await waitFor(() => expect(within(dialog).getByText('Recorded periods')).toBeVisible())
-    expect(within(dialog).getByText('Back online')).toBeVisible()
+    await waitFor(() => expect(within(dialog).getByText('Check details')).toBeVisible())
+    fireEvent.click(within(dialog).getByText('Check details'))
+    expect(within(dialog).getByText('Recorded periods')).toBeVisible()
+    expect(within(dialog).getByText('Back online', { selector: 'strong' })).toBeVisible()
     fireEvent.click(within(dialog).getByRole('button', { name: '7 days' }))
-    await waitFor(() => expect(dialog.querySelectorAll('details ul li')).toHaveLength(56))
+    await waitFor(() => expect(within(dialog).getByText('Recorded periods').closest('details')!.querySelectorAll('ul li')).toHaveLength(56))
     expect(within(dialog).getByRole('button', { name: '7 days' })).toHaveAttribute('aria-pressed', 'true')
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -388,13 +448,14 @@ describe('comprehensive homepage experience', () => {
     render(<><CareHomepage /><Toaster /></>)
     const opener = screen.getByRole('button', { name: 'Open Pages' }); opener.focus()
     let dialog = openCategory('Pages')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /pricing' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
     dialog = screen.getByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
     expect(within(dialog).queryByText(S.unresolved)).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
+    fireEvent.click(within(dialog).getByText('Check details', { selector: 'summary' }))
     expect(within(dialog).getByRole('link', { name: 'How to fix with AI' })).toHaveAttribute('href', '/docs/fix-with-ai')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(opener).toHaveFocus())
@@ -404,11 +465,13 @@ describe('comprehensive homepage experience', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<><CareHomepage /><Toaster /></>)
-    fireEvent.click(screen.getByRole('button', { name: 'Copy fix prompt for Pricing page is not loading' }))
+    const dialog = openCategory('Pages')
+    fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
+    fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(S.availabilityPrompt))
     await waitFor(() => expect(screen.getByText('Fix prompt copied')).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'How to use this prompt' })).toHaveAttribute('href', '/docs/fix-with-ai')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeVisible()
   })
 
   it('copies from Beyond the Flags and links to public guidance without requiring sign-in', async () => {
@@ -426,7 +489,7 @@ describe('comprehensive homepage experience', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
     render(<CareHomepage />)
     const dialog = openCategory('Pages')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'View Flag for /pricing' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: `Open ${SAMPLE_FLAGS.availability.title}` }))
     fireEvent.click(within(dialog).getByRole('button', { name: S.sampleCopy }))
     await waitFor(() => expect(within(dialog).getByRole('textbox', { name: S.guidanceLabel })).toHaveValue(S.availabilityPrompt))
   })
@@ -574,4 +637,26 @@ describe('comprehensive homepage experience', () => {
     }
   })
 
+})
+
+
+it.each([true, false])('offers all fixes and manual copying in the shared preview (dashboardOnly=%s)', async dashboardOnly => {
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })
+  render(<CareHomepage dashboardOnly={dashboardOnly} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Copy all fix prompts' }))
+  const dialog = await screen.findByRole('dialog')
+  expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain('These are not results from a real website.')
+  for (const flag of Object.values(SAMPLE_FLAGS)) expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain(flag.prompt)
+})
+
+it('previews the entire homepage fix prompt before copying anything', async () => {
+  const writeText = vi.fn()
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+  render(<CareHomepage />)
+  const board = screen.getByRole('region', { name: C.boardAria })
+  expect(within(board).getByText('Checked 15 minutes ago')).toBeVisible()
+  fireEvent.click(within(board).getByRole('button', { name: 'View prompt' }))
+  const prompt = await screen.findByRole('textbox', { name: 'Fix prompt' })
+  for (const flag of Object.values(SAMPLE_FLAGS)) expect((prompt as HTMLTextAreaElement).value).toContain(flag.prompt)
+  expect(writeText).not.toHaveBeenCalled()
 })

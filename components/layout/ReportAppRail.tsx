@@ -16,9 +16,9 @@ function useGatedNav() {
   const { user } = useMe()
   const gate = useReportAuthGate()
 
-  return (href: string) => {
+  return (href: string, trigger: HTMLElement) => {
     if (user || !GATED_HREFS.has(href)) return false
-    gate?.open({ reason: 'create-account' })
+    gate?.open({ reason: 'create-account', nextPath: href, trigger })
     return true
   }
 }

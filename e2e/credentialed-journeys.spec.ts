@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import { PrismaClient } from '@prisma/client'
 import type { SiteHomeView } from '@/lib/sites/site-home'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
+import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
@@ -165,7 +166,7 @@ test.describe('credentialed revenue journeys', () => {
 
     await page.goto('/new')
     await page.getByLabel('Website URL').first().fill(targetUrl)
-    await page.getByRole('button', { name: 'Analyze' }).first().click()
+    await page.getByRole('button', { name: PUBLIC_SITE_COPY.analyze, exact: true }).first().click()
     await page.waitForURL(/\/sites\//, { timeout: 30_000 })
     await expect(page.getByRole('heading', { name: host, exact: true })).toBeVisible()
     await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
@@ -187,15 +188,15 @@ test.describe('credentialed revenue journeys', () => {
     await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
     const originalCategory = page.getByRole('dialog')
     await expect(originalCategory.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible()
-    const continuation = originalCategory.getByRole('link', { name: 'Sign in to check again', exact: true }).last()
+    const continuation = originalCategory.getByRole('button', { name: 'Check again', exact: true }).last()
     await continuation.focus()
     await originalCategory.locator('[data-dialog-scroll]').evaluate(node => { node.scrollTop = Math.min(24, node.scrollHeight - node.clientHeight) })
     const beforeAuth = await originalCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY, destination: location.pathname + location.search + location.hash }))
     await expect(continuation).toBeInViewport()
     await continuation.click()
-    await page.waitForURL(url => url.pathname === '/sign-in')
-    expect(new URL(page.url()).searchParams.get('next')).toBe(beforeAuth.destination)
-    await page.getByRole('button', { name: 'Sign up', exact: true }).click()
+    const authentication = page.getByRole('dialog').filter({ has: page.getByLabel('Email') })
+    await expect(authentication).toBeVisible()
+    expect(new URL(page.url()).pathname + new URL(page.url()).search + new URL(page.url()).hash).toBe(beforeAuth.destination)
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Create account', exact: true }).click()
@@ -210,7 +211,7 @@ test.describe('credentialed revenue journeys', () => {
     const afterAuth = await returnedCategory.evaluate(node => ({ dialogTop: node.querySelector('[data-dialog-scroll]')!.scrollTop, x: scrollX, y: scrollY,
       focusInsideCategory: node.contains(document.activeElement), destination: location.pathname + location.search + location.hash }))
     await test.info().attach('actual-authentication-context-continuity', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ beforeAuth, afterAuth,
-      scope: 'Actual anonymous category, normal sign-in link, signup, exact claim and restored browser reading position. No storage values, application timestamps or assessment records were seeded.' })) })
+      scope: 'Actual anonymous category, normal Check again action, authentication modal, signup, exact claim and restored browser reading position. No storage values, application timestamps or assessment records were seeded.' })) })
     await page.keyboard.press('Escape')
     await expect(returnedCategory).toBeHidden()
     await page.goBack()

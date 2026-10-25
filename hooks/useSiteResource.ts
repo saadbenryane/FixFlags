@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR, { useSWRConfig } from 'swr'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { readSiteHomeView } from '@/lib/sites/site-view-contract'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
@@ -21,6 +21,9 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
     return () => { activeSite.current = null }
   }, [siteId, onUpdate])
   const endpoint = `/api/sites/${siteId}`
+  // Public and owner projections must never share a cached repair payload.
+  const viewerScope = `${initial.actions.ownership}:${initial.actions.copy}`
+  const cacheKey = useMemo(() => [endpoint, viewerScope] as const, [endpoint, viewerScope])
   const read = useCallback((url: string) => {
     // Settle superseded reads from the newest read of this Site. SWR fences
     // stale data, but an older rejection can still overwrite its cached error
@@ -49,7 +52,7 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
     if (activeSite.current === siteId) latestRead.current = { siteId, promise: pending }
     return pending
   }, [siteId])
-  const resource = useSWR<SiteHomeView>(endpoint, read, {
+  const resource = useSWR<SiteHomeView>(cacheKey, ([url]) => read(url), {
     fallbackData: initial,
     refreshInterval: (view) => {
       const current = view ?? initial
@@ -63,7 +66,7 @@ export function useSiteResource(siteId: string, initial: SiteHomeView, onUpdate?
   // Revalidation can resolve with retained data after its fetcher fails. An
   // action must await a validated read, with mutation ownership fencing older
   // in-flight reads, before reporting that the Site view was refreshed.
-  const refresh = useCallback(() => mutate<SiteHomeView>(endpoint, () => read(endpoint), { revalidate: false }), [mutate, read, endpoint])
+  const refresh = useCallback(() => mutate<SiteHomeView>(cacheKey, () => read(endpoint), { revalidate: false }), [mutate, read, endpoint, cacheKey])
   useEffect(() => {
     if (typeof EventSource === 'undefined') return
     const cursor = initial.executionProgress?.eventCursor

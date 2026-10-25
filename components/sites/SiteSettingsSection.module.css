@@ -1,0 +1,2 @@
+.section { min-width: 0; padding: 20px; border-radius: var(--radius-board-panel); background: hsl(var(--surface-board)); box-shadow: var(--shadow-board); }
+@media (max-width: 639px) { .section { padding: 16px; } }

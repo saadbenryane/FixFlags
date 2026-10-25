@@ -101,6 +101,16 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     expect(scheduled.ok(), await scheduled.text()).toBe(true)
     const watch = await scheduled.json(); const failedRecord = await waitRun(watch.runId, 'FLAG')
     await expect.poll(async () => (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))?.watchNotificationStatus).toBe('FAILED')
+    const firstFailure = await db.audit.findUniqueOrThrow({ where: { id: failedRecord.auditId! } })
+    expect(firstFailure.watchNotificationNextAttemptAt).not.toBeNull()
+    const retryDueAt = firstFailure.watchNotificationNextAttemptAt!.getTime()
+    expect(retryDueAt).toBeGreaterThan(Date.now())
+    const premature = await page.request.post(`${runtime.fixtureOrigin}/retry`, { headers: { Authorization: `Bearer ${runtime.token}` } })
+    expect(premature.ok()).toBe(true)
+    expect((await db.audit.findUniqueOrThrow({ where: { id: failedRecord.auditId! } })).watchNotificationAttempts).toBe(firstFailure.watchNotificationAttempts)
+    expect((await control()).messages).toHaveLength(0)
+    // Observe the persisted backoff in real time. Never rewrite its due time or the clock.
+    await expect.poll(() => Date.now(), { timeout: 360_000, intervals: [1000] }).toBeGreaterThanOrEqual(retryDueAt)
     const retried = await page.request.post(`${runtime.fixtureOrigin}/retry`, { headers: { Authorization: `Bearer ${runtime.token}` } })
     expect(retried.ok()).toBe(true)
     await expect.poll(async () => (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))?.watchNotificationStatus).toBe('SENT')
@@ -114,7 +124,7 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     const inbox = await browser.newPage(); await inbox.setContent(state.messages[0].html); await inbox.screenshot({ path: `${output}/notification.png`, fullPage: true }); await inbox.close()
     const destination = state.messages[0].html.match(/href="([^"]+)"/)[1]
     await page.goto(destination, { waitUntil: 'networkidle' }); await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-    proof.notification = { transport: 'real Resend SDK to local controlled inbox', attempts: (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))!.watchNotificationAttempts, acceptedMessages: state.messages.length }
+    proof.notification = { transport: 'real Resend SDK to local controlled inbox', attempts: (await db.audit.findUnique({ where: { id: failedRecord.auditId! } }))!.watchNotificationAttempts, acceptedMessages: state.messages.length, retryDueAt: new Date(retryDueAt).toISOString(), observedAfterDueAt: new Date().toISOString(), prematureRetryConsumedNoAttempt: true }
     const home = await (await page.request.get(`/api/sites/${projectId}`)).json()
     const checkout = home.outcomes.find((item: { id: string }) => item.id === outcome.id)
     expect(checkout.state).toBe('FLAG'); expect(checkout.flagId).toBeTruthy()
@@ -143,7 +153,12 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     // Private, captured screenshot bytes: owner can read; strangers cannot.
     const audit = await db.audit.findUnique({ where: { id: failedRecord.auditId! }, include: { screenshots: true } })
     expect(audit!.isPublic).toBe(false); expect(audit!.screenshots.length).toBeGreaterThan(0)
-    const shotPath = `/api/screenshots/${audit!.id}/desktop?page=p0`
+    const storedCapture = audit!.screenshots.find(capture => capture.device === 'DESKTOP')
+    expect(storedCapture).toBeTruthy()
+    const shotUrl = new URL(storedCapture!.url, baseURL)
+    expect(shotUrl.origin).toBe(new URL(baseURL).origin)
+    expect(shotUrl.pathname).toBe(`/api/screenshots/${audit!.id}/desktop`)
+    const shotPath = shotUrl.pathname + shotUrl.search
     const shot = await page.request.get(shotPath); expect(shot.status()).toBe(200)
     expect(shot.headers()['cache-control']).toContain('private'); expect((await shot.body()).subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
     const stranger = await browser.newContext({ baseURL, ignoreHTTPSErrors: true })
@@ -158,14 +173,21 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
       expect((await stranger.request.get(shotPath)).status()).toBe(404)
       expect((await stranger.request.post(`/api/sites/${projectId}/flags/${flagId}/verify`, { data: {} })).status()).not.toBe(202)
     } finally { await stranger.close(); await db.user.delete({ where: { id: foreign.id } }) }
-    expect((await page.request.get(`${runtime.fixtureOrigin}/evidence/screenshots/${audit!.id}/p0-desktop.png`)).status()).toBe(403)
+    const pageKey = shotUrl.searchParams.get('page')
+    const objectKey = `screenshots/${audit!.id}/${pageKey ? `${pageKey}-` : ''}desktop.png`
+    expect((await control()).objects).toContain(objectKey)
+    expect((await page.request.get(`${runtime.fixtureOrigin}/evidence/${objectKey}`)).status()).toBe(403)
     proof.privateEvidence = 'actual worker capture -> signed S3 SDK PUT -> private object -> owner-authorized GET; anonymous Site/screenshot and unsigned object access denied'
 
     const verify = async () => {
       await page.reload({ waitUntil: 'networkidle' })
+      const currentResponse = await page.request.get(`/api/sites/${projectId}/flags/${flagId}`)
+      expect(currentResponse.ok()).toBe(true)
+      const current = await currentResponse.json()
+      const sourceFlagId = current.flag.sourceFlagId ?? current.flag.id
       await expect(page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true })).toBeEnabled()
       await page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
-      const responseWait = page.waitForResponse(response => response.url().endsWith(`/flags/${flagId}/verify`) && response.request().method() === 'POST')
+      const responseWait = page.waitForResponse(response => response.url().endsWith(`/flags/${sourceFlagId}/verify`) && response.request().method() === 'POST')
       await page.getByRole('dialog').getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
       const response = await responseWait
       expect(response.status(), await response.text()).toBe(202); return response.json()

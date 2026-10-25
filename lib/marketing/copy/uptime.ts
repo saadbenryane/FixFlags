@@ -1,6 +1,7 @@
 import { TLS_CERTIFICATE_LABELS } from './tls'
 
 export const UPTIME_COPY = {
+  checkDetails: 'Check details', probeDetails: 'Details', incidentDuration: (minutes: number) => `${minutes} min`,
   renderedVerification: 'Rendered-page verification', renderedLimitation: 'Existing page verification uses separate browser evidence. Availability probes do not verify or recover these findings.',
   confirmed: 'Confirmed', scheduled: 'Scheduled',
   title: 'Uptime', details: 'Uptime details',
@@ -20,7 +21,7 @@ export const UPTIME_COPY = {
     response_timeout: 'Response timed out', rate_limited: 'Rate limited', access_blocked: 'Access blocked', public_target_unverified: 'Public target could not be verified',
     redirect_loop: 'Redirect loop', redirect_unresolved: 'Redirect could not be verified', probe_unavailable: 'Observation unavailable' },
   confirmationPending: 'Confirmation pending', recovered: 'Back online', incidentOpen: 'Confirmed unavailable',
-  targetChanged: 'Target changed. Recovery was not verified.', lastChecked: 'Last checked',
+  targetChanged: 'Target changed. Recovery was not verified.', lastChecked: 'Last checked', checked: 'Checked',
   openIncidents: (count: number) => `${count} open ${count === 1 ? 'incident' : 'incidents'}`,
   periodSummary: (checked: number, expected: number, state: string) => `${checked} of ${expected} scheduled checks recorded. ${state}.`,
   observedDuration: (minutes: number) => `Observed incident duration: ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,

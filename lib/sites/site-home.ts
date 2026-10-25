@@ -77,6 +77,7 @@ export type SiteHomeView = {
   }
   checkedPages?: Array<{ url: string; title: string | null; status: string; checkedAt: string; capture?: { url: string; viewport: string; recordedAt: string | null } | null }>
   settings: {
+    github?: { configured: boolean; status: 'connected' | 'revoked' | 'not_connected'; login: string | null }
     accountChecks?: AccountChecksView
     notificationLevel: 'FLAGS' | 'CRITICAL_ONLY' | 'OFF' | null
     notifyOnRecovery: boolean | null

@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteAccountRail } from '../SiteAccountRail'
 
-const state = vi.hoisted(() => ({ pathname: '/sites/site-1', user: { id: 'owner', email: 'owner@example.com', isAdmin: false } as { id: string; email: string; isAdmin: boolean } | null }))
-vi.mock('next/navigation', () => ({ usePathname: () => state.pathname }))
+const state = vi.hoisted(() => ({ open: vi.fn(), pathname: '/sites/site-1', user: { id: 'owner', email: 'owner@example.com', isAdmin: false } as { id: string; email: string; isAdmin: boolean } | null }))
+vi.mock('next/navigation', () => ({ usePathname: () => state.pathname, useSearchParams: () => new URLSearchParams() }))
+vi.mock('@/components/auth/ReportAuthGate', () => ({ useReportAuthGate: () => ({ open: state.open }) }))
 vi.mock('@/hooks/useMe', () => ({ useMe: () => ({ user: state.user }) }))
 vi.mock('@/components/theme-toggle', () => ({ ThemeToggle: () => <button>Theme</button> }))
 vi.mock('@/components/layout/AvatarMenu', () => ({ AvatarMenu: () => <button>Account menu</button> }))
@@ -25,9 +26,14 @@ describe('persistent account navigation within a website', () => {
     render(<SiteAccountRail />)
     expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin')
   })
-  it('does not expose account chrome on an anonymous website', () => {
+  it('retains main navigation for visitors and gates account destinations when clicked', () => {
     state.user = null
     render(<SiteAccountRail />)
-    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'App' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute('href', '/docs')
+    const websites = screen.getByRole('link', { name: 'Websites' })
+    fireEvent.click(websites)
+    expect(state.open).toHaveBeenCalledWith({ reason: 'create-account', nextPath: '/dashboard', trigger: websites })
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeVisible()
   })
 })

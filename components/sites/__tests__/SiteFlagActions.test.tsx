@@ -25,6 +25,13 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  it.each(['pending', 'unavailable'] as const)('keeps compact %s guidance concise while preserving verification', repairGuidance => {
+    render(<SiteFlagActions compact repairGuidance={repairGuidance} initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
+    expect(screen.getByText(SITE_ACTION_COPY.repairGuidance[repairGuidance])).toBeVisible()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).not.toBeInTheDocument()
+  })
   it.each(['COMPLETED', 'BLOCKED', 'EXHAUSTED'])('refreshes pending historical guidance from its own %s prescription notice', state => {
     const initial = siteViewFixture()
     render(<SiteFlagActions repairGuidance="pending" sourceAuditId="original-audit" initial={initial} siteId="p_site" flagId="historical-flag" />)
@@ -144,6 +151,19 @@ describe('SiteFlagActions', () => {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
     })
+  })
+
+  it('keeps modal actions compact while preserving the full prompt and verification dialog', async () => {
+    vi.stubGlobal('fetch', copyResponse('Canonical task with recorded evidence.'))
+    render(<SiteFlagActions compact repairGuidance="ready" initial={siteViewFixture()} siteId="p_site" flagId="flag-1" />)
+    expect(await screen.findByText('Canonical task with recorded evidence.', { selector: 'summary > span' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.fixStep })).not.toBeInTheDocument()
+    const preview = screen.getByLabelText('View prompt', { selector: 'summary' })
+    fireEvent.click(preview)
+    expect(screen.getByRole('textbox', { name: SITE_BOARD_COPY.fixPromptLabel })).toHaveValue('Canonical task with recorded evidence.')
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }))
+    expect(within(screen.getByRole('dialog')).getByRole('textbox', { name: SITE_BOARD_COPY.changeLabel })).toBeVisible()
   })
 
   it('copies the fix prompt without treating copy as verification', async () => {

@@ -53,7 +53,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Copy production node_modules (pruned — no dev tools, no TypeScript, no test libs).
+# Copy production node_modules (pruned, no dev tools, no TypeScript, no test libs).
 COPY --from=builder /app/node_modules ./node_modules
 
 # Prisma schema + migrations (needed by `prisma migrate deploy` at startup).
@@ -73,6 +73,7 @@ COPY --from=builder /app/scripts/db-run.mjs ./scripts/db-run.mjs
 COPY --from=builder /app/scripts/runtime-start.mjs ./scripts/runtime-start.mjs
 COPY --from=builder /app/scripts/runtime-artifacts.mjs ./scripts/runtime-artifacts.mjs
 COPY --from=builder /app/lib/runtime/environment.mjs ./lib/runtime/environment.mjs
+COPY --from=builder /app/lib/runtime/migration-coordination.mjs ./lib/runtime/migration-coordination.mjs
 COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 8080

@@ -50,7 +50,7 @@ function FooterColumn({
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-3 font-sans text-sm font-semibold tracking-normal text-foreground/85">
+      <p className="mb-3 font-sans text-sm font-semibold tracking-normal text-foreground/85 [overflow-wrap:anywhere]">
         {title}
       </p>
       <ul className="min-w-0">

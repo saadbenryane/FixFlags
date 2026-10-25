@@ -23,7 +23,7 @@ export function SiteIntegrationsControls({ siteId, initial, onRefresh }: {
     }, 'acknowledgement'), () => C.settings.googleDisconnected(provider), onRefresh)
   }
 
-  return <SiteIntegrationsPanel siteId={siteId} shopify={initial.shopify} searchConsole={initial.searchConsole} analytics={initial.analytics} busy={busy}
+  return <SiteIntegrationsPanel github={initial.github} siteId={siteId} shopify={initial.shopify} searchConsole={initial.searchConsole} analytics={initial.analytics} busy={busy}
     onDisconnectShopify={() => void disconnectShopify()} onDisconnectGoogle={provider => void disconnectGoogle(provider)}
     feedback={<SiteActionFeedback message={message} error={error} siteId={siteId} />} />
 }

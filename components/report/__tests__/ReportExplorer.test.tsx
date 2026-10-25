@@ -359,6 +359,20 @@ describe('ReportExplorer anonymous teaser', () => {
     expect(copied).toContain('Generic headline')
   })
 
+  it.each([false, true])('previews the aggregate prompt with the same access gate (locked: %s)', async aiLocked => {
+    writeText.mockClear()
+    const prompt = `${AGENT_COPY_LEAD}\n\n1. Fix the CTA.`
+    render(<MeProvider initialUser={null}><ReportExplorer model={{ ...model, polishPassPrompt: prompt, flags: [locked, demonstrated], flagCount: 2 }} aiLocked={aiLocked} signUpHref="/sign-in?next=%2Fsamples" /></MeProvider>)
+    if (!aiLocked) fireEvent.click(screen.getByRole('button', { name: 'Demonstrated fix' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: /^Copy All Prompts$/i }), { button: 0, ctrlKey: false })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'View all prompts' }))
+    if (aiLocked) {
+      expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
+      expect(screen.queryByRole('textbox', { name: 'Fix prompt' })).not.toBeInTheDocument()
+    } else expect(await screen.findByRole('textbox', { name: 'Fix prompt' })).toHaveValue(prompt)
+    expect(writeText).not.toHaveBeenCalled()
+  })
+
   it('gates Copy All Prompts to create-account when prompts are locked', async () => {
     writeText.mockClear()
     render(

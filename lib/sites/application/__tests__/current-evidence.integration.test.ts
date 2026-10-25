@@ -69,7 +69,7 @@ run('current Site evidence publication in PostgreSQL', () => {
       // evidence or a claim that these synthetic rechecks visited a website.
       const active = await prisma.audit.create({ data: { projectId, userId, url, parentId: auditId, status: 'FAILED',
         createdAt: new Date(time - 20_000), completedAt: new Date(time - 19_000), failedModules: ['http'], executionSpec: snapshot as Prisma.InputJsonValue } })
-      const before = (await loadSiteHome(projectId))!
+      const before = (await loadSiteHome(projectId, { ownerEvidence: true }))!
       expect(before.presentation.categories.find(category => category.id === 'security')).toMatchObject({ state: 'unknown' })
       const summaryBefore = (await loadSiteSummaries(userId))[0]
       let sourceAuditId = auditId
@@ -89,7 +89,7 @@ run('current Site evidence publication in PostgreSQL', () => {
         const selected = await loadCategoryEvidence([{ projectId, auditId }, { projectId, auditId: sourceAuditId }])
         expect(selected.map(category => category.id).sort()).toEqual([active.id, unrelated.id].sort())
       }
-      const home = (await loadSiteHome(projectId))!
+      const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
       expect(home.presentation.categories.find(category => category.id === 'security'))
         .toEqual(before.presentation.categories.find(category => category.id === 'security'))
       expect((await loadSiteSummaries(userId))[0].presentation.result).toEqual(summaryBefore.presentation.result)
@@ -142,7 +142,7 @@ run('current Site evidence publication in PostgreSQL', () => {
         recommendedChange: '', successCondition: 'The original button has an accessible name' } })
       await prisma.improvementOccurrence.create({ data: { improvementId: improvement.id, auditId: source.id, flagId: flag.id, kind: 'OBSERVED' } })
     }
-    const home = (await loadSiteHome(projectId))!
+    const home = (await loadSiteHome(projectId, { ownerEvidence: true }))!
     expect(home.flags.find(item => item.sourceFlagId === flag.id)?.repairGuidance).toBe(state)
     expect((await loadSiteFlagDetail(home.site, flag.id))?.repairGuidance).toBe(state)
     expect(readSiteHomeView(JSON.parse(JSON.stringify(home)), projectId).flags.find(item => item.sourceFlagId === flag.id)?.repairGuidance).toBe(state)
@@ -153,7 +153,7 @@ run('current Site evidence publication in PostgreSQL', () => {
         problem: 'The current button needs a label', evidence: 'A newer recorded occurrence', whyItMatters: flag.whyItMatters,
         fix: 'Guidance for the newer occurrence.', pageUrl: latest.url } })
       newerFlagId = newer.id
-      expect((await loadSiteHome(projectId))!.flags.some(item => item.sourceFlagId === flag.id)).toBe(false)
+      expect((await loadSiteHome(projectId, { ownerEvidence: true }))!.flags.some(item => item.sourceFlagId === flag.id)).toBe(false)
       expect((await loadSiteFlagDetail(home.site, flag.id))?.repairGuidance).toBe('pending')
     }
     await prisma.flag.update({ where: { id: flag.id }, data: { fix: 'Give the original button a clear accessible name.' } })
@@ -165,7 +165,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     const notices = await readSiteEvents(home.site, BigInt(0))
     expect(notices).toMatchObject([{ auditId: source.id, detail: { kind: 'prescription', state: 'COMPLETED' } }])
     expect(notices.some(notice => notice.auditId === foreign.id)).toBe(false)
-    expect((await loadSiteHome(projectId))!.flags.find(item => item.sourceFlagId === (newerFlagId ?? flag.id))?.repairGuidance).toBe('ready')
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))!.flags.find(item => item.sourceFlagId === (newerFlagId ?? flag.id))?.repairGuidance).toBe('ready')
     expect(await loadSiteFlagDetail(home.site, flag.id)).toMatchObject({ repairGuidance: 'ready', fix: 'Give the original button a clear accessible name.' })
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toEqual(latest)
   })
@@ -174,7 +174,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     async function expectState(state: 'clear' | 'could_not_verify') {
       const outcome = state === 'clear' ? 'CLEAR' : 'COULD_NOT_VERIFY'
       expect(await getOwnedRun(userId, runId)).toMatchObject({ result: outcome })
-      const home = await loadSiteHome(projectId)
+      const home = await loadSiteHome(projectId, { ownerEvidence: true })
       expect(home?.presentation.result.state).toBe(state)
       expect(home?.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject({
         result: outcome, completionState: state === 'clear' ? 'COMPLETED' : 'PARTIAL',
@@ -201,7 +201,7 @@ run('current Site evidence publication in PostgreSQL', () => {
       problem: 'The page heading contradicts its stated purpose.', evidence: 'Recorded conflicting heading and page introduction.',
       whyItMatters: 'Visitors cannot identify the page purpose.', fix: 'Align the heading with the page purpose.',
       confidence: 0.9, position: 0, pageUrl: 'https://example.com/' } })
-    const home = await loadSiteHome(projectId)
+    const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.presentation.coverage.complete).toBe(true)
     expect(home?.counts.categories.site).toBe(1)
     expect(home?.presentation.categories.find(category => category.id === 'site')).toMatchObject({
@@ -218,7 +218,7 @@ run('current Site evidence publication in PostgreSQL', () => {
       whyItMatters: 'Its source observations need inspection.', fix: 'Retained original guidance.', confidence: 1, position: 0,
       pageUrl: 'https://example.com/', supportingObservations } })
     await persistFlagDiffSummary(null, auditId)
-    const home = await loadSiteHome(projectId)
+    const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.flags).toHaveLength(0)
     expect(home?.recommendations.find(item => item.sourceFlagId === flag.id)).toMatchObject({ supportingEvidenceUnreadable: true })
     expect(home?.recommendations.find(item => item.sourceFlagId === flag.id)).toMatchObject({ fix: '', repairGuidance: 'unavailable' })
@@ -246,7 +246,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     await prisma.flag.create({ data: { ...observation, ...supporting, auditId, source: 'DETERMINISTIC', rubric: 'REACH', severity: 'IMPORTANT',
       problem: 'Recorded diagnosis', whyItMatters: 'Recorded impact', fix: 'Preserve the source and correct the observed failure.', confidence: 1, position: 0 } })
     await persistFlagDiffSummary(null, auditId)
-    const home = await loadSiteHome(projectId)
+    const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.flags).toHaveLength(1)
     expect(home?.flags[0].repairGuidance).toBe('ready')
     expect(home?.presentation.result.state).toBe('flags')
@@ -260,7 +260,7 @@ run('current Site evidence publication in PostgreSQL', () => {
       problem: 'Review the headline', evidence: 'Original wording', whyItMatters: 'Consider the page purpose', fix: 'Review the page purpose.',
       confidence: 1, position: 0, supportingObservations: { version: 99, items: [] } } })
     await persistFlagDiffSummary(null, auditId)
-    expect((await loadSiteHome(projectId))?.presentation.result.state).toBe('clear')
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.presentation.result.state).toBe('clear')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
     expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'CLEAR' })
   })
@@ -286,14 +286,14 @@ run('current Site evidence publication in PostgreSQL', () => {
       requestId = request.id
       await persistFlagDiffSummary(auditId, observedId)
     }
-    expect((await loadSiteHome(projectId))?.monitoringHistory.find(entry => entry.id === observedId))
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.monitoringHistory.find(entry => entry.id === observedId))
       .toMatchObject({ result: 'CLEAR', completionState: 'COMPLETED' })
     expect(await getOwnedRun(userId, requestId)).toMatchObject({ result: 'CLEAR', completionState: 'FULL' })
     const original = CHECK_REGISTRY['no-https']
     const before = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: observedId, targetKey: 'projection:flag-comparison' } })
     try {
       CHECK_REGISTRY['no-https'] = { ...original, version: original.version + 1 }
-      const home = await loadSiteHome(projectId)
+      const home = await loadSiteHome(projectId, { ownerEvidence: true })
       expect(home?.presentation.result.state).toBe('could_not_verify')
       expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('could_not_verify')
       expect(home?.monitoringHistory.find(entry => entry.id === observedId)).toMatchObject({ result: 'CLEAR', completionState: 'COMPLETED' })
@@ -308,9 +308,9 @@ run('current Site evidence publication in PostgreSQL', () => {
       fix: 'Recorded repair guidance', confidence: 1, position: 0, pageUrl: 'https://example.com/' } })
     await persistFlagDiffSummary(null, auditId)
     const expected = { result: 'FLAG', flagCount: 1, flags: [{ id: flag.id, title: flag.problem }] }
-    expect((await loadSiteHome(projectId))?.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject(expected)
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject(expected)
     await prisma.flag.update({ where: { id: flag.id }, data: { severity: 'POLISH', problem: 'Later corrected wording', status: 'FIXED' } })
-    expect((await loadSiteHome(projectId))?.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject(expected)
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.monitoringHistory.find(entry => entry.id === auditId)).toMatchObject(expected)
     expect(await getOwnedRun(userId, runId)).toMatchObject({ result: 'FLAG' })
   })
 
@@ -325,7 +325,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     await prisma.uptimeMonitor.upsert({ where: { projectId },
       create: { projectId, targetUrl: 'https://example.com/', state: 'online', lastCheckedAt: new Date() },
       update: { state: 'online', lastCheckedAt: new Date() } })
-    expect((await loadSiteHome(projectId))?.presentation.result.state).toBe('clear')
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.presentation.result.state).toBe('clear')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
 
     expect(await setProjectWatch({ projectId, userId, interval: 'daily' })).toMatchObject({ ok: true })
@@ -351,7 +351,7 @@ run('current Site evidence publication in PostgreSQL', () => {
     await prisma.runRequest.create({ data: { projectId, auditId: refreshed.id, requestedByUserId: userId, source: 'WATCH',
       idempotencyKey: randomUUID(), executionSpec: original.executionSpec!, status: 'COMPLETED', completedAt: refreshed.completedAt } })
     await persistFlagDiffSummary(null, refreshed.id)
-    expect((await loadSiteHome(projectId))?.presentation.result.state).toBe('clear')
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.presentation.result.state).toBe('clear')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
     expect(await getOwnedRun(userId, runId)).toEqual(recorded)
     expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: publication.id } })).toEqual(publication)
@@ -383,12 +383,12 @@ run('current Site evidence publication in PostgreSQL', () => {
     // an independent recent reachability observation after monitoring starts.
     await prisma.uptimeMonitor.upsert({ where: { projectId }, create: { projectId, targetUrl, state: 'online', lastCheckedAt: new Date() },
       update: { state: 'online', lastCheckedAt: new Date() } })
-    expect((await loadSiteHome(projectId))?.presentation.result.state).toBe('clear')
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.presentation.result.state).toBe('clear')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
 
     expect(await setProjectWatch({ projectId, userId, interval: 'hourly' })).toMatchObject({ ok: true })
     const currentUntil = new Date(assessedAt.getTime() + 13 * 3600_000).toISOString()
-    const home = await loadSiteHome(projectId)
+    const home = await loadSiteHome(projectId, { ownerEvidence: true })
     expect(home?.outcomes.find(item => item.id === outcome.id)).toMatchObject({ state: 'STALE', validUntil: currentUntil })
     expect(home?.presentation.result.state).toBe('stale')
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('stale')
@@ -406,14 +406,14 @@ run('current Site evidence publication in PostgreSQL', () => {
       selections: { create: { outcomeId: outcome.id } } } })
     await prisma.outcomeAssessment.create({ data: { ...assessment, id: undefined, auditId: refreshedAudit.id,
       runRequestId: refreshedRun.id, assessedAt: refreshedAt, validUntil: refreshedUntil } })
-    expect((await loadSiteHome(projectId))?.outcomes.find(item => item.id === outcome.id))
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.outcomes.find(item => item.id === outcome.id))
       .toMatchObject({ state: 'CLEAR', validUntil: refreshedUntil.toISOString() })
     expect((await loadSiteSummaries(userId))[0].presentation.result.state).toBe('clear')
 
     const changedAt = new Date()
     expect(await setProjectWatch({ projectId, userId, interval: 'weekly' }, { clock: fixedClock(changedAt) })).toMatchObject({ ok: true })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ watchNextRunAt: changedAt })
-    expect((await loadSiteHome(projectId))?.outcomes.find(item => item.id === outcome.id))
+    expect((await loadSiteHome(projectId, { ownerEvidence: true }))?.outcomes.find(item => item.id === outcome.id))
       .toMatchObject({ state: 'CLEAR', validUntil: refreshedUntil.toISOString() })
     expect(await prisma.outcomeAssessment.findUniqueOrThrow({ where: { id: assessment.id } })).toEqual(assessment)
   })

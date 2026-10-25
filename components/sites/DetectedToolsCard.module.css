@@ -1,9 +1,9 @@
 .card { display: flex; min-width: 0; border-radius: var(--radius-board-card); background: hsl(var(--muted) / .3); }
-.trigger { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 12px; min-width: 0; width: 100%; min-height: 160px; padding: 20px; border-radius: inherit; text-align: left; }
+.trigger { display: flex; flex: 1; flex-direction: column; justify-content: flex-start; gap: 12px; min-width: 0; width: 100%; min-height: 0; padding: 16px; border-radius: inherit; text-align: left; }
 .trigger:hover { background: hsl(var(--foreground) / .025); }
 .trigger:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .heading { display: flex; align-items: baseline; gap: 8px; color: hsl(var(--muted-foreground)); font-size: 12px; }
-.heading strong { color: hsl(var(--foreground)); font-size: 23px; font-weight: 650; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.heading strong { color: hsl(var(--foreground)); font-size: 28px; font-weight: 650; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
 .heading svg { align-self: center; margin-left: auto; }
 .tools { display: grid; gap: 7px; min-width: 0; width: 100%; }
 .tools > span { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }

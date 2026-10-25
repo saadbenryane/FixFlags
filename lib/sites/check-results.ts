@@ -2,6 +2,7 @@ import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { CHECK_ASSERTIONS, CHECK_MODULES } from '@/lib/audit/check-registry'
 import { readCheckReceipt } from '@/lib/audit/checks/receipt'
 import { z } from 'zod'
+import { CHECK_OBSERVATION_REASONS, type CheckAssertion, type CheckObservationReason } from '@/lib/audit/checks/assertion'
 import { searchObservationSchema, searchReceiptSchema, type SearchObservation } from '@/lib/audit/search/contracts'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 
@@ -18,6 +19,7 @@ export type SiteCheckResult = {
   limitation: string
   source: string
   evidenceReference: { auditId: string; executionId: string; pageUrl: string | null }
+  reason?: CheckObservationReason
   assertionKey?: string
   observation?: string
   expected?: string
@@ -64,7 +66,7 @@ export function projectCheckResults(auditId: string, receipts: Array<{
           return [{ id: `${receipt.id}:${assertion.key}${assertion.context ? ':' + assertion.context : ''}${repeated ? ':' + index : ''}`, auditId, ...provenance,
             name: assertion.name, area: CHECK_ASSERTIONS[receipt.targetKey.replace(/^module:/, '')]?.[assertion.key]?.area ?? descriptor.area,
             kind: 'assertion' as const, status: assertion.complete === false ? 'unknown' as const : assertion.disposition === 'observed' ? 'observed' as const : assertion.passed ? 'passed' as const : 'findings' as const,
-            assertionKey: assertion.key, observation: assertion.observed, expected: assertion.expected, pageUrl: receipt.pageUrl,
+            reason: assertion.reason ?? historicalTrackingReason(assertion, provenance.source), assertionKey: assertion.key, observation: assertion.observed, expected: assertion.expected, pageUrl: receipt.pageUrl,
             checkedAt: 'execution' in detail && detail.execution ? detail.execution.collectedAt : receipt.updatedAt.toISOString(), historical,
             limitation: 'This result establishes only the stated assertion in the recorded execution scope.' } satisfies SiteCheckResult]
         }) : []
@@ -84,8 +86,17 @@ export const siteCheckResultSchema = z.object({
   name: z.string(), kind: z.enum(['execution', 'assertion']), status: z.enum(['passed', 'completed', 'findings', 'failed', 'not_applicable', 'observed', 'unknown']),
   pageUrl: z.string().nullable(), checkedAt: z.string(), historical: z.boolean(), limitation: z.string(), source: z.string(),
   evidenceReference: z.object({ auditId: z.string(), executionId: z.string(), pageUrl: z.string().nullable() }),
-  assertionKey: z.string().optional(), observation: z.string().optional(), expected: z.string().optional(),
+  reason: z.enum(CHECK_OBSERVATION_REASONS).optional(), assertionKey: z.string().optional(), observation: z.string().optional(), expected: z.string().optional(),
   search: searchObservationSchema.optional(),
 })
 export const siteCheckPageSchema = z.object({ results: z.array(siteCheckResultSchema), nextCursor: z.string().nullable(), total: z.number().int().nonnegative().nullable().optional() })
 export const RESULT_SELECTION_CHANGED = 'RESULT_SELECTION_CHANGED'
+
+/** Older receipts lack reason codes. Adapt only known incomplete tracking observations at the read boundary. */
+function historicalTrackingReason(assertion: CheckAssertion, source: string): CheckObservationReason | undefined {
+  if (source !== 'browser-network' || assertion.complete !== false || assertion.passed) return undefined
+  if (assertion.key === 'tracking-library' && assertion.name === 'Library loading not established') return 'tracking_no_library'
+  if (assertion.key === 'tracking-initiation' && assertion.name === 'Event initiation not established') return 'tracking_no_event'
+  if (assertion.key === 'tracking-provider-recording') return 'tracking_provider_unverified'
+  if (assertion.key === 'tracking-http-response' && assertion.observed.includes('intentionally stopped by FixFlags before delivery.')) return 'tracking_suppressed'
+}

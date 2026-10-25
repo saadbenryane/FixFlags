@@ -70,7 +70,7 @@ describe('AvatarMenu', () => {
       'href',
       '/dashboard'
     )
-    expect(screen.getByRole('menuitem', { name: 'Settings' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Account settings' })).toHaveAttribute(
       'href',
       '/settings'
     )

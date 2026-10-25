@@ -25,6 +25,42 @@ describe('BoardCard chrome', () => {
     rerender(<ProductBoardCard card={{ ...card, checkedAt: null, incompleteReason: null, answer: 'Not checked yet', status: 'Not checked yet' }} compact layout="row" />)
     expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
   })
+  it('reduces a completed zero-Flag category to its name and count', () => {
+    const open = vi.fn()
+    render(<BoardCard compact name="Security" icon="security" state="healthy" status="Checked" answer="Pages use HTTPS" detail="Certificate checked" onOpen={open} />)
+    expect(screen.getByText('0 Flags')).toBeVisible()
+    expect(screen.queryByText('Pages use HTTPS')).not.toBeInTheDocument()
+    expect(screen.queryByText('Certificate checked')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Security' }))
+    expect(open).toHaveBeenCalledOnce()
+  })
+
+  it('shows the recorded priority beside each preview Flag', () => {
+    render(<BoardCard compact showFlagPreview name="Pages" icon="site" state="problem" status="2 Flags" answer="Problems" flags={[
+      { id: 'high', title: 'Pricing unavailable', href: '#high', priorityBand: 'fix_first' },
+      { id: 'lower', title: 'Contact loads slowly', href: '#lower', priorityBand: 'other' },
+    ]} />)
+    expect(screen.getByText('High priority').parentElement).toHaveTextContent('Pricing unavailable')
+    expect(screen.getByText('Lower priority').parentElement).toHaveTextContent('Contact loads slowly')
+  })
+
+  it('opens individual preview Flags and keeps the category target separate', () => {
+    const category = vi.fn(), open = vi.fn()
+    render(<BoardCard compact showFlagPreview name="Pages" icon="site" state="problem" status="2 Flags" answer="Problems" onOpen={category} onOpenFlag={open} flags={[
+      { id: 'high', title: 'Pricing unavailable', href: '#high', priorityBand: 'fix_first' },
+      { id: 'lower', title: 'Contact loads slowly', href: '#lower', priorityBand: 'other' },
+    ]} />)
+    fireEvent.click(screen.getByText('High priority'))
+    expect(open).toHaveBeenCalledWith('high', screen.getByRole('button', { name: 'Open Pricing unavailable' }))
+    expect(category).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Contact loads slowly' }))
+    expect(open).toHaveBeenLastCalledWith('lower', expect.any(HTMLButtonElement))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pages' }))
+    expect(category).toHaveBeenCalledOnce()
+    expect(category).toHaveBeenCalledWith(screen.getByRole('button', { name: 'Open Pages' }))
+    expect(screen.getByRole('button', { name: 'Open Pricing unavailable' }).closest('button')?.parentElement?.closest('button')).toBeNull()
+  })
+
   it('hydrates recorded freshness even when the browser arrives after a minute boundary', async () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-19T12:00:59Z'))
     const element = <BoardCard name="Search" status="Not checked yet" state="unknown" answer="Recorded checks"

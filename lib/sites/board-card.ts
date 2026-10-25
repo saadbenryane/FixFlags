@@ -30,6 +30,7 @@ export type BoardCardProblem = {
 }
 
 export type BoardCardFlagChip = {
+  priorityBand?: SiteFlagSeed['priorityBand']
   repairGuidanceReady?: boolean
   repairGuidance?: SiteFlagSeed['repairGuidance']
   id: string
@@ -230,7 +231,8 @@ export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string
 }
 
 function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip[] {
-  return flags.map((flag) => ({
+  return [...flags].sort((a, b) => b.priorityScore - a.priorityScore).map((flag) => ({
+    priorityBand: flag.priorityBand,
     id: flag.id,
     sourceFlagId: flag.sourceFlagId,
     title: flag.problem,

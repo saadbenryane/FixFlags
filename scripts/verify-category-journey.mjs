@@ -10,6 +10,8 @@ config({ path: '.env.local', quiet: true })
 const databaseSource = new URL(process.env.DATABASE_URL ?? '')
 if (!['localhost', '127.0.0.1'].includes(databaseSource.hostname)) throw new Error('Local PostgreSQL required')
 if (!existsSync('.next-e2e/standalone/server.js')) throw new Error('Build the current revision with scripts/next-build.mjs .next-e2e first')
+const journeySuite = process.argv[2] ?? 'e2e/category-recheck.spec.ts'
+if (!['e2e/category-recheck.spec.ts', 'e2e/customer-reliability.spec.ts', 'e2e/public-journeys.spec.ts'].includes(journeySuite)) throw new Error('Choose a supported local customer journey')
 const appPort = Number(process.env.FIXFLAGS_LOCAL_APP_PORT ?? 3145)
 const fixturePort = Number(process.env.FIXFLAGS_LOCAL_FIXTURE_PORT ?? 3146)
 if (![appPort, fixturePort].every(port => Number.isInteger(port) && port > 1024 && port < 65536) || appPort === fixturePort) throw new Error('Choose two distinct local verification ports')
@@ -43,9 +45,9 @@ let created = false, redisCreated = false, runtime
 const receipt = { environment: 'isolated local production app and real worker; controlled transports, no external acceptance',
   appBuildId: readFileSync('.next-e2e/BUILD_ID', 'utf8').trim(),
   appBundleSha256: treeFingerprint(['.next-e2e/server', '.next-e2e/static']),
-  status: 'running', startedAt: new Date().toISOString() }
-function run(command, args, env = process.env) {
-  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout: 300_000 })
+  journeySuite, status: 'running', startedAt: new Date().toISOString() }
+function run(command, args, env = process.env, timeout = 300_000) {
+  const result = spawnSync(command, args, { env, encoding: 'utf8', timeout })
   if (result.status !== 0) throw new Error([result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n') || 'Verification process failed')
   return result.stdout.trim()
 }
@@ -75,8 +77,21 @@ try {
     if (response?.ok) break
     await new Promise(resolve => setTimeout(resolve, 500))
   }
-  console.log('Isolated runtime ready. Running the browser category journey.')
-  const result = run(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', 'e2e/category-recheck.spec.ts', '--project=chromium'], { ...env, E2E_BASE_URL: appOrigin })
+  if (journeySuite === 'e2e/public-journeys.spec.ts') {
+    const fixture = JSON.parse(readFileSync('.cache/customer-reliability-runtime.json', 'utf8'))
+    const configured = await fetch(`${fixture.fixtureOrigin}/control`, {
+      method: 'POST', headers: { authorization: `Bearer ${fixture.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ fixtureEnabled: true, broken: false }), signal: AbortSignal.timeout(10_000),
+    })
+    if (!configured.ok) throw new Error('Could not prepare this isolated public website fixture')
+    env.E2E_FULL = 'true'
+    env.E2E_AUDIT_URL = `https://example.com${fixture.prefix}`
+  }
+  console.log(`Isolated runtime ready. Running ${journeySuite}.`)
+  // The recovery spec already owns a 15-minute deadline and observes real delivery backoff.
+  const result = run(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', journeySuite, '--project=chromium',
+    ...(journeySuite === 'e2e/public-journeys.spec.ts' ? ['--grep', 'anonymous check reaches a Site board without exposing fix prompts$'] : []),
+  ], { ...env, E2E_BASE_URL: appOrigin }, journeySuite === 'e2e/customer-reliability.spec.ts' ? 960_000 : 300_000)
   writeFileSync(output + '/playwright.log', result + '\n')
   console.log(result)
   receipt.status = 'passed'

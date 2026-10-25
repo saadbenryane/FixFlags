@@ -8,7 +8,7 @@ import type { SiteHomeView } from '../lib/sites/application/queries'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { MCP_TOOLS } from '../lib/mcp/tool-manifest'
 import { z } from 'zod'
-import { SITE_BOARD_COPY } from '../lib/marketing/copy/terminology'
+import { REVIEW_ENTRY, SITE_BOARD_COPY } from '../lib/marketing/copy/terminology'
 
 test('owned URL entry, partial scan, precise category recheck and responsive evidence', async ({ page, baseURL }) => {
   test.skip(process.env.FIXFLAGS_LOCAL_RELIABILITY_PROOF !== '1' || process.env.FIXFLAGS_LOCAL_PROVIDER_REFUSAL !== '1', 'Explicit isolated local proof only')
@@ -46,7 +46,7 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
     const consent = page.getByRole('button', { name: 'Only necessary', exact: true })
     if (await consent.isVisible()) await consent.click()
     await page.getByRole('textbox', { name: 'Website URL' }).first().fill(`https://example.com${runtime.prefix}`)
-    await page.getByRole('button', { name: 'Analyze', exact: true }).first().click()
+    await page.getByRole('button', { name: REVIEW_ENTRY.cta, exact: true }).first().click()
     await page.waitForURL(/\/sites\//)
     const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
     let home: SiteHomeView
@@ -56,6 +56,11 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
       home = await response.json()
       return home.audit.status
     }, { timeout: 150_000, intervals: [1000] }).toBe('COMPLETED')
+    // Default monitoring can already own an independent first check. Let admitted
+    // Site work settle before comparing it with a category-only publication.
+    await expect.poll(() => db.audit.count({ where: { projectId: siteId, status: { notIn: ['COMPLETED', 'FAILED'] } } }),
+      { timeout: 150_000, intervals: [1000] }).toBe(0)
+    home = await (await page.request.get(`/api/sites/${siteId}`)).json()
     const fullAuditId = home!.audit.id
     expect(home!.captures?.some(capture => capture.device === 'desktop')).toBe(true)
     expect(home!.presentation.result.state).not.toBe('clear')
@@ -63,14 +68,18 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
     await page.reload()
     const search = page.getByRole('article', { name: 'Search', exact: true })
     await expect(search).toBeVisible()
-    await expect(search.getByRole('button', { name: 'Check Search again' })).toBeVisible()
+    await search.getByRole('button', { name: 'Open Search', exact: true }).click({ position: { x: 24, y: 24 } })
+    const categoryDetails = page.getByRole('dialog')
+    const checkAgain = categoryDetails.getByRole('button', { name: SITE_BOARD_COPY.checkAreaAgain('Search'), exact: true })
+    await expect(checkAgain).toBeEnabled()
     const submitted = page.waitForRequest(request => request.url().endsWith(`/api/sites/${siteId}/runs`) && request.method() === 'POST')
     const accepted = page.waitForResponse(response => response.url().endsWith(`/api/sites/${siteId}/runs`) && response.request().method() === 'POST')
-    await search.getByRole('button', { name: 'Check Search again' }).click()
+    await checkAgain.click()
     expect((await submitted).postDataJSON()).toEqual({ scope: 'category', area: 'search' })
     const response = await accepted
     expect([200, 202], await response.text()).toContain(response.status())
     const admitted = await response.json()
+    await page.keyboard.press('Escape')
     const category = await db.runRequest.findUniqueOrThrow({ where: { id: admitted.runId } })
     await expect.poll(async () => (await db.runRequest.findUnique({ where: { id: category.id } }))?.status, { timeout: 60_000, intervals: [500] }).toBe('COMPLETED')
     const categoryRun = await (await page.request.get(`/api/sites/${siteId}/runs/${category.id}`)).json()
@@ -129,8 +138,10 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
       }
     }
     proof.rendered = { widths: [320, 390, 768, 1440], themes: ['light', 'dark'], overflow: false }
-    const titleFlag = after.flags.find((flag: { checkId: string }) => flag.checkId === 'title-missing')
+    const current = await (await page.request.get(`/api/sites/${siteId}`)).json()
+    const titleFlag = current.flags.find((flag: { checkId: string }) => flag.checkId === 'title-missing')
     expect(titleFlag).toBeTruthy()
+    const sourceFlagId = titleFlag.sourceFlagId ?? titleFlag.id
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseURL })
     await page.goto(`/sites/${siteId}/flags/${titleFlag.id}`)
     await expect(page.getByRole('heading', { name: titleFlag.problem, exact: true })).toBeVisible()
@@ -142,14 +153,14 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
       data: { missingTitle: false } })).ok()).toBe(true)
     await page.getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
     await page.getByLabel(SITE_BOARD_COPY.changeLabel).fill('Restored the original and rendered page title.')
-    const verifyResponse = page.waitForResponse(response => response.url().endsWith(`/api/sites/${siteId}/flags/${titleFlag.id}/verify`) && response.request().method() === 'POST')
+    const verifyResponse = page.waitForResponse(response => response.url().endsWith(`/api/sites/${siteId}/flags/${sourceFlagId}/verify`) && response.request().method() === 'POST')
     await page.getByRole('dialog').getByRole('button', { name: SITE_BOARD_COPY.verifyFix, exact: true }).click()
     const acceptedVerification = await verifyResponse
     expect(acceptedVerification.status()).toBe(202)
     const verified = await acceptedVerification.json()
     await expect.poll(async () => {
       const attempt = await db.improvementAttempt.findUnique({ where: { id: verified.attemptId }, select: { outcome: true, verificationReason: true, comparable: true } })
-      proof.repair = { flagId: titleFlag.id, attemptId: verified.attemptId, verificationAuditId: verified.verificationAuditId,
+      proof.repair = { flagId: titleFlag.id, sourceFlagId, attemptId: verified.attemptId, verificationAuditId: verified.verificationAuditId,
         runId: verified.runRequestId, recordedOutcome: attempt?.outcome, reason: attempt?.verificationReason, comparable: attempt?.comparable }
       return attempt?.outcome
     },
@@ -160,7 +171,7 @@ test('owned URL entry, partial scan, precise category recheck and responsive evi
     await expect(page.getByRole('heading', { name: SITE_BOARD_COPY.flagRecovered, exact: true })).toBeVisible()
     await page.screenshot({ path: `${output}/flag-recovered-dark-1440.png`, fullPage: true, animations: 'disabled' })
     expect(await db.improvementAttempt.count({ where: { improvementId: titleFlag.id } })).toBe(1)
-    proof.repair = { flagId: titleFlag.id, attemptId: verified.attemptId, verificationAuditId: verified.verificationAuditId,
+    proof.repair = { flagId: titleFlag.id, sourceFlagId, attemptId: verified.attemptId, verificationAuditId: verified.verificationAuditId,
       runId: verified.runRequestId, result: repairRun.result, copiedGuidanceCreatedNoRepair: true, declaredRepairWasIndependentlyVerified: true }
   } finally {
     await writeFile(`${output}/proof.json`, JSON.stringify(proof, null, 2))
