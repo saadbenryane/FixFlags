@@ -1,6 +1,6 @@
 import { EDITOR_EVIDENCE_COPY } from '@/lib/marketing/copy/verification-evidence'
 import type { ReactNode } from 'react'
-import type { publicSupportingObservations } from '@/lib/audit/flag-observations'
+import type { SupportingObservationView } from '@/lib/audit/flag-observations'
 import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { presentObservedEvidence, type ObservedPage } from '@/lib/sites/observed-evidence'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
@@ -35,7 +35,7 @@ function ObservedFact({ text }: { text: string }) {
 /** Presentation is shared; sample actions and owner-authorized actions stay with their callers. */
 export function FlagEvidenceDetails({ observed, expected, supportingObservations = [], supportingEvidenceUnreadable = false, factsClassName,
   observedLabel = SITE_ACTION_COPY.flagEvidence.observed, expectedLabel = SITE_ACTION_COPY.expected, children }: {
-  observed: string | null; expected: string; supportingObservations?: ReturnType<typeof publicSupportingObservations>;
+  observed: string | null; expected: string; supportingObservations?: SupportingObservationView[];
   supportingEvidenceUnreadable?: boolean; factsClassName?: string; observedLabel?: string; expectedLabel?: string; children?: ReactNode;
 }) {
   return <>

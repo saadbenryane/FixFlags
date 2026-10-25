@@ -37,7 +37,7 @@ export function SiteFlagPanel({ siteId, flagId, view, onClose, restoreFocus, ret
         <FlagEvidenceDetails observed={flag.evidenceMissing ? null : flag.evidence} expected={flag.expectedBehavior}
           factsClassName="grid gap-3 text-sm sm:grid-cols-2 [&>div]:rounded-control [&>div]:bg-muted/30 [&>div]:p-4"
           observedLabel={flag.status === 'FIXED' ? C.previousObservation : undefined}
-          supportingObservations={flag.supportingObservations.map(item => ({ ...item, references: item.references.map(reference => ({ ...reference, selector: reference.selector })) }))} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
+          supportingObservations={flag.supportingObservations} supportingEvidenceUnreadable={flag.supportingEvidenceUnreadable} />
       </section>
       {view.actions.copy === 'available' && !['FIXED', 'VERIFIED', 'DISMISSED'].includes(flag.status) ? <SiteFlagActions compact key={key}
         siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} sourceAuditId={flag.sourceAuditId}

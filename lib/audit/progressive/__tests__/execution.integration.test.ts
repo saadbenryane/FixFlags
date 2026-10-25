@@ -3,7 +3,7 @@ import { TASK_QUEUES, queueForTask } from '../queues'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { Worker as ParserWorker } from 'node:worker_threads'
-import type { Route } from 'playwright'
+import { chromium, type Route } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { requestSiteRun } from '@/lib/sites/application/run-requests'
@@ -887,6 +887,7 @@ run('migrated progressive execution', () => {
   })
 
   it('publishes independent category evidence during a real browser outage and retains honest incomplete coverage', async () => {
+    await withNativeScenario(async ({ projectId, userId }) => {
     releaseResources()
     headerMode = 'partial'
     const transport = fixtureTransport()
@@ -902,10 +903,11 @@ run('migrated progressive execution', () => {
         await dispatchReadyTasks(await reconcileTasks(source.auditId!))
         expect(await prisma.audit.findUnique({ where: { id: source.auditId! } })).toMatchObject({ improvementProjectedAt: expect.any(Date) })
       }, { timeout: 30_000, interval: 250 })
-      await closeBrowser()
-      const rendering = await import('@/lib/audit/screenshot')
-      const unavailable = vi.spyOn(rendering, 'getAuditBrowser').mockRejectedValue(new Error('Controlled browser startup failure'))
+      // All browser callers share this launch boundary, including screenshot
+      // collection that calls the internal browser getter directly.
+      const unavailable = vi.spyOn(chromium, 'launch').mockRejectedValue(new Error('Controlled browser startup failure'))
       restoreBrowser = () => { unavailable.mockRestore() }
+      await closeBrowser()
       expect(getBrowserDiagnostics().connected).toBe(false)
       await touchWorkerHeartbeat({ browserOk: false, activeBrowserContexts: 0, queueState: 'idle' })
       expect(await readWorkerHeartbeat()).toMatchObject({ alive: true, browserOk: false })
@@ -937,6 +939,7 @@ run('migrated progressive execution', () => {
       await touchWorkerHeartbeat({ browserOk: getBrowserDiagnostics().connected, queueState: 'idle' })
       transport.mockRestore()
     }
+    })
   }, 90_000)
 
   it('retries an interrupted category through shared owner admission and workers without broadening its scope', async () => {

@@ -9,9 +9,7 @@ import { Logo } from '@/components/brand/Logo'
 import { BoardCard } from '@/components/sites/BoardCard'
 import { SiteOverview } from '@/components/sites/SiteOverview'
 import { SiteOverviewWorkspace } from '@/components/sites/SiteOverviewWorkspace'
-import { SitePageResults } from '@/components/sites/SitePageResults'
-import { SampleFlagSelection } from './SampleFlagSelection'
-import { samplePages } from './sample-pages'
+import { SamplePageReview } from './SamplePageReview'
 import { SITE_DASHBOARD_COPY as Dashboard } from '@/lib/marketing/copy/site-dashboard'
 import { SiteMonitoringMenu } from '@/components/sites/SiteMonitoringMenu'
 import { UptimeCard } from '@/components/uptime/UptimeCard'
@@ -107,10 +105,7 @@ export function HomepageDashboardPreview({ onOpen, onOpenFlag, onCopyFlag, onCop
           uptime={<UptimeCard siteId="sample" summary={{ ...SAMPLE_UPTIME, enabled: Boolean(schedule) && !paused, state: schedule && !paused ? SAMPLE_UPTIME.state : 'paused' }} historySource={sampleUptimeHistory} referenceTime={referenceTime} />} />
       </> : null}
       {view === 'timeline' ? <section className={s.boardPane} aria-label={S.navigation.timeline}><p className={s.paneDescription}>{M.historyBody}</p><SiteMonitoringHistory points={C.monitoring.history} events={timeline} emptyMessage={B.noHistory} /></section> : null}
-      {view === 'pages' ? <section className={s.boardPane} aria-label={Dashboard.pages}><SampleFlagSelection ids={Object.keys(SAMPLE_FLAGS) as SampleFlagId[]} onCopy={onCopySelection}><SitePageResults pages={samplePages(Object.keys(SAMPLE_FLAGS) as SampleFlagId[], (id, trigger) => {
-        const category = S.categories.find(card => sampleFlagsForCategory(card).includes(id))
-        if (category) onOpenFlag(category, id, trigger, 'pages')
-      })} /></SampleFlagSelection></section> : null}
+      {view === 'pages' ? <section className={s.boardPane} aria-label={Dashboard.pages}><SamplePageReview onCopyFlag={onCopyFlag} onCopySelection={onCopySelection} onOpenFlag={onOpenFlag} /></section> : null}
       {view === 'integrations' ? <section className={s.boardPane} aria-label={S.navigation.integrations}><p className={s.paneDescription}>{Settings.connectionsBody}</p><p className={s.sampleNotice}>{B.sampleConnection}</p>
         <SiteIntegrationsPanel github={{ configured: true, status: 'not_connected', login: null }} shopify={{ configured: true, state: shopConnected ? 'connected' : 'not_connected', domain: shopConnected ? shop : null }} searchConsole={connections.SEARCH_CONSOLE} analytics={connections.ANALYTICS}
           onDisconnectShopify={() => { setShopConnected(false); setIntegrationMessage(P.disconnected('Shopify')) }}

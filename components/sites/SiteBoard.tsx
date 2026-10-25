@@ -144,7 +144,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
   return (
     <SiteShell siteId={siteId} auditId={view.audit.id ?? undefined} ownerId={view.site.userId} actions={view.actions} activeRoute={viewMode} onWorkspaceNavigate={openWorkspace} title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
       analysisStatus={<SiteAnalysisDetails view={view} disconnected={disconnected} />}
-      headerAction={<>{view.flags.length ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>}>
+      headerAction={<>{view.flags.length && viewMode !== 'pages' ? <SiteFixBundleButton key={siteId} siteId={siteId} availability={view.actions.copy} /> : null}{!checking ? checkAction() : null}</>}>
       {view.activeRuns.some(run => run.scope !== 'SITE') ? <section className="rounded-card bg-muted/20 p-4" aria-labelledby="scoped-run-heading">
         <h2 id="scoped-run-heading" className="text-sm font-semibold">{SITE_ACTION_COPY.scopedRun.title}</h2>
         <ul className="mt-2 space-y-1 text-sm">{view.activeRuns.filter(run => run.scope !== 'SITE').map(run => <li key={run.id}>
@@ -203,7 +203,8 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
               return { id: card.id, flagCount: category.flagCount,
                 render: (layout: 'card' | 'row') => <article aria-label={card.name} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
                 opener.current = trigger
-                selectCategory(card.id)
+                if (card.id === 'site') openWorkspace('pages')
+                else selectCategory(card.id)
               }} /></article> }
             })} />
       </section> : null}
