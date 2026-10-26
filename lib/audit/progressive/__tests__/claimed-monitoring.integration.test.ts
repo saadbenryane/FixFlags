@@ -1,5 +1,5 @@
 import { recordFlagImprovementAttempt } from '@/lib/improvements/service'
-import * as finalization from '@/lib/audit/finalize'
+import * as prescriptionSettlement from '../incomplete'
 import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
 import type { PageEvidence, PipelineContext } from '@/lib/audit/pipeline/types'
 import { parseMetadataFromHtml } from '@/lib/audit/metadata'
@@ -379,7 +379,7 @@ run('URL-first analysis through claim and monitored repair', () => {
       const incompletePrescriptions = condition === 'incomplete-prescriptions'
       const failedPrescriptions = primaryMissing || captureMissing || incompletePrescriptions
       const interrupted = condition === 'interrupted-after-guidance'
-      const completion = interrupted ? vi.spyOn(finalization, 'finalizeAudit').mockRejectedValueOnce(new Error('Controlled interruption after guidance commit')) : null
+      const completion = interrupted ? vi.spyOn(prescriptionSettlement, 'settlePrescriptionAudit').mockRejectedValueOnce(new Error('Controlled interruption after guidance commit')) : null
       const linkedUrl = origin + '/linked', reviewUrl = primaryMissing ? linkedUrl : pageUrl
       const metadata = parseMetadataFromHtml('<title>Plan releases together. Coordinate your team.</title><h1>Release planning for teams</h1>', reviewUrl)
       metadata.renderedCopy = { version: 1, pageUrl: reviewUrl, complete: true, textTruncated: false,

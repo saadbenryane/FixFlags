@@ -156,6 +156,7 @@ that the server never returned an HTTP response.
 - Client Site refreshes validate the complete matching projection and update an explicit Site cache key. Captured callbacks and closed streams cannot redirect an old Site's result into the current Site after navigation. Server ownership checks remain the authorization boundary; cached display state never authorizes a write. Settings controls submit only edited notification fields and render validated server values rather than inferred mutation results.
 - Anonymous report claims use an HttpOnly, SameSite=Lax HMAC proof scoped to one audit ID and a bounded expiry. A raw or tampered audit ID cannot transfer ownership. A linked Site must still belong to the claiming account in the serializable claim transaction. Report possession does not authorize restoring or changing another account's Site after an ownership change.
 - `/post-login` awaits the anonymous claim before passkey enrollment or onward navigation. A failed claim leaves the user on the recovery screen.
+- The client session provider shares an in-flight claim with joining consumers and session refreshes. Earlier session reads cannot overwrite its owner state, loading state, or refusal. This display ordering does not replace server authorization.
 - Authorized anonymous creator responses may include confirmed Flags, private captures, textual evidence, rubric results, and deterministic scan messages. Historical public reports retain their explicit public access policy.
 - Anonymous live-report responses omit fix prompts, Timeline events and playback metadata, pipeline logs, owner and plan state, Product Memory, private history, Canvas data, and watch configuration.
 - Repository-owned curated samples may ship versioned static Timeline fixtures because they contain no production report payload or private viewer data.
@@ -255,9 +256,11 @@ Product Signal ingestion is the explicit exception.
 
 ## Prompt injection risks
 
-- User-provided URL → page content sent to AI. Page text trimmed to 2500/5000 chars (see `lib/audit/page-text-limits.ts`). Sanitized before prompt injection.
-- Sanitization: `lib/audit/metadata.ts` `sanitizeText()` strips scripts, event handlers, embedded content.
-- AI prompt templates in `lib/prompts/system-prompt.ts` do not interpolate raw user input into system instructions.
+- Website text, metadata, screenshots, retained observations and provider output are untrusted. `lib/audit/metadata.ts` extracts bounded text and removes selected non-prose nodes; `lib/audit/page-text-limits.ts` owns the limits. Text extraction and truncation do not remove instructions or establish resistance to prompt injection.
+- `lib/prompts/system-prompt.ts` separates stable system instructions from per-request page data. Provider structured-output tools collect assessment data; they do not authorize application actions. Role separation, JSON schemas and prompt wording cannot by themselves establish semantic correctness.
+- `lib/audit/triage-grounding.ts` checks assessment references against recorded sources. Prescription validation and `lib/audit/prescription-scope.ts` bind guidance to exact admitted findings, evidence and hashes. These contracts constrain publication; they do not make a model-generated diagnosis inherently trustworthy.
+- Permissions, origin restrictions, credential grants, effect admission and independent verification remain enforced outside model output through the Site application and native request boundary. Page instructions and an agent's completion claim cannot grant authority or close a Flag.
+- Copied repair bundles identify recorded website evidence as untrusted and preserve scope and independent verification requirements. The recipient's coding tool must still enforce its own permissions. Current adversarial acceptance remains a separate proof requirement; passing parser, custody or boundary tests is not a general prompt-injection security guarantee.
 
 ## Billing (production)
 

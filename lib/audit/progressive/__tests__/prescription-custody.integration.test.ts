@@ -8,7 +8,7 @@ import { runAiReview } from '@/lib/audit/run-ai-review'
 import { beginPrescriptionUsage } from '@/lib/audit/prescription-usage'
 import { beginProviderUsage } from '@/lib/audit/provider-usage'
 import { persistAuditRunCost } from '@/lib/billing/costs'
-import { recordSettledPrescriptionCost } from '../incomplete'
+import { recordSettledPrescriptionCost, settlePrescriptionAudit } from '../incomplete'
 import type { PrescriptionOutput } from '@/lib/audit/judge-prescription-schema'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
@@ -43,6 +43,63 @@ run('prescription custody in PostgreSQL', () => {
       agentPrompt: null, cursorPrompt: null, claudePrompt: null, windsurfPrompt: null, lovablePrompt: null, boltPrompt: null })), rubricPrescriptions: [] })
     return { audit, task, owner, output }
   }
+
+  it.each(['COMPLETED', 'BLOCKED'] as const)('preserves an unrelated analysis failure when guidance settles as %s', async workState => {
+    const f = await fixture()
+    const failure = { failureCode: 'FINALIZATION_INCOMPLETE' as const, failureStage: 'finalizing',
+      errorMsg: 'Recorded results have an incomplete final projection.', failureMetadata: { phase: 'finalization', reason: 'projection_failed' } }
+    await prisma.audit.update({ where: { id: f.audit.id }, data: failure })
+    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState,
+      workErrorCode: workState === 'BLOCKED' ? 'AI_CONTRACT_INVALID' : null } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    const audit = await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })
+    expect(audit).toMatchObject(failure)
+    expect(audit.aiReviewAt === null).toBe(workState !== 'COMPLETED')
+    expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: f.task.id } }))
+      .toMatchObject({ workState, workErrorCode: workState === 'BLOCKED' ? 'AI_CONTRACT_INVALID' : null })
+  })
+
+  it('clears only its own recorded failure after guidance recovery', async () => {
+    const f = await fixture()
+    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'BLOCKED', workErrorCode: 'AI_CONTRACT_INVALID' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({
+      failureCode: 'AI_CONTRACT_INVALID', failureMetadata: { phase: 'prescription', reason: 'AI_CONTRACT_INVALID', version: 1 }, aiReviewAt: null,
+    })
+    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED', workErrorCode: null } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({
+      failureCode: null, failureStage: null, errorMsg: null, failureMetadata: null, aiReviewAt: expect.any(Date),
+    })
+  })
+
+  it('publishes completion after every batch settles without rewriting the original coverage', async () => {
+    const f = await fixture()
+    const original = { reportCompleteness: 'PARTIAL' as const, failedModules: ['keyboard'],
+      evidenceCoverage: { metadata: true, desktopScreenshot: true, mobileScreenshot: false } }
+    await prisma.audit.update({ where: { id: f.audit.id }, data: original })
+    const sibling = await prisma.auditVerifierExecution.create({ data: { auditId: f.audit.id, targetKey: 'task:prescription:1',
+      scopeKey: 'custody-sibling', pageUrl: f.audit.url, source: 'EXECUTION', status: 'RUNNING', workKind: 'prescription', workState: 'RUNNING' } })
+    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({ ...original, aiReviewAt: null })
+    await prisma.auditVerifierExecution.update({ where: { id: sibling.id }, data: { workState: 'COMPLETED' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    const completed = await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })
+    expect(completed).toMatchObject({ ...original, status: 'COMPLETED', aiReviewAt: expect.any(Date) })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect((await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).aiReviewAt).toEqual(completed.aiReviewAt)
+  })
+
+  it('does not infer prescription ownership from an AI failure code recorded by another phase', async () => {
+    const f = await fixture()
+    const failure = { failureCode: 'AI_CONTRACT_INVALID' as const, failureStage: 'judging',
+      errorMsg: 'The original triage result is incomplete.', failureMetadata: { phase: 'triage', reason: 'invalid_original_assessment' } }
+    await prisma.audit.update({ where: { id: f.audit.id }, data: failure })
+    await prisma.auditVerifierExecution.update({ where: { id: f.task.id }, data: { workState: 'COMPLETED' } })
+    await prisma.$transaction(tx => settlePrescriptionAudit(tx, f.audit.id))
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: f.audit.id } })).toMatchObject({ ...failure, aiReviewAt: expect.any(Date) })
+  })
 
   it('prices rejected and successful triage responses once from durable measurements', async () => {
     const f = await fixture('judge')

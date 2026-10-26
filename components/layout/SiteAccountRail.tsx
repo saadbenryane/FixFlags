@@ -16,7 +16,7 @@ export function SiteAccountRail() {
     return true
   }
   return <TooltipProvider delayDuration={150}>
-    <aside className="fixed inset-y-0 left-0 z-navbar hidden w-16 flex-col bg-background md:flex" aria-label="App">
+    <aside className="fixed inset-y-0 left-0 z-navbar hidden w-[var(--site-account-rail-width)] flex-col bg-background md:flex" aria-label="App">
       <div className="flex h-16 shrink-0 items-center justify-center">
         <Logo variant="mark" size="md" href={user ? '/dashboard' : '/'} className="flex min-h-11 min-w-11 items-center justify-center" />
       </div>

@@ -1,24 +1,22 @@
-.checks { container: site-checks / inline-size; display: grid; gap: 16px; min-width: 0; }
-.checks .categoryGrid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.checks { container: site-checks / inline-size; display: grid; gap: 24px; min-width: 0; }
+.group { min-width: 0; }
+.group > :is(h2, h3) { margin: 4px 0 12px; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 550; letter-spacing: -.01em; }
+.checks .categoryGrid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .categoryGrid > :is(div, article) { display: flex; min-width: 0; }
 .categoryGrid > :is(div, article) > * { flex: 1; }
 .checks .quietGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .quietGrid > :is(div, article) { display: flex; min-width: 0; }
 .quietGrid > :is(div, article) > * { flex: 1; }
 @container site-checks (min-width: 440px) {
-  .checks .categoryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .checks .quietGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container site-checks (min-width: 760px) {
-  .checks .categoryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .checks .quietGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-.monitoring { display: grid; gap: 16px; min-width: 0; align-items: stretch; }
+.monitoring { display: grid; gap: 24px; min-width: 0; align-items: stretch; }
 .monitoring > * { display: flex; flex-direction: column; min-width: 0; }
 .monitoring > * > article { flex: 1; }
 @container site-checks (min-width: 760px) {
-  .checks .categoryGrid.twoCards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .monitoring:has(> :nth-child(2)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.checks .categoryGrid.oneCard { grid-template-columns: minmax(0, 1fr); }

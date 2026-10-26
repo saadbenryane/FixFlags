@@ -27,6 +27,7 @@ import { helpArticlePath } from '@/lib/help/types'
 
 import { SiteWorkspaceNavigation, SITE_ROUTES as routes, type SiteRoute } from './SiteWorkspaceNavigation'
 import { siteWorkspaceHref } from '@/lib/sites/workspace-location'
+import { SiteWorkspaceHeader } from './SiteWorkspaceHeader'
 const coverageHelpHref = helpArticlePath('sites-and-coverage', 'read-site-coverage')
 
 function routeHref(siteId: string, route: SiteRoute): Route {
@@ -107,25 +108,20 @@ function SiteShellContent({
     <header className={styles.mobileAccount} aria-label={SITE_WORKSPACE_COPY.accountMenu}><Logo variant="lockup" size="sm" href={signedIn ? '/dashboard' : '/'} />
       <ReportMobileNav showAdmin={user?.isAdmin} />
     </header>
-    <aside className={styles.websiteSidebar} aria-label={SITE_WORKSPACE_COPY.siteMenu}>
-      <div className={styles.identity}>
+    <div className={styles.canvas} data-site-content>
+      <CustomerMain className="space-y-5">
+        <SiteWorkspaceHeader identity={<>
         {canvasTitle == null ? <h1 className={styles.siteTitle}><Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link></h1>
           : <Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link>}
         {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : analyzing ? <AnalysisDetails statusLabel={presentation?.run.label ?? watch.label} active disconnected={false} /> : null)}
-      </div>
-      <div className={styles.desktopNavigation}>{navigation('Site')}</div>
-    </aside>
-    <div className={styles.canvas} data-site-content>
-      <CustomerMain className="space-y-5">
-        <header className={styles.header}>{canvasTitle ? <div className="min-w-0"><h1>{canvasTitle}</h1>
-          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div> : null}
-          <div className={styles.actions}><SiteMonitoringMenu label={watch.label}
+        </>} navigation={<div className={styles.desktopNavigation}>{navigation('Site')}</div>}
+          heading={canvasTitle ? <><h1>{canvasTitle}</h1>{description ? <p>{description}</p> : null}</> : null}
+          actions={<><SiteMonitoringMenu label={watch.label}
             state={watch.state === 'watching' ? 'healthy' : watch.state === 'delayed' || watch.state === 'quota' ? 'attention' : 'unknown'}
             nextCheck={() => nextCheckLabel(watch.nextRunAt, Date.now())}
             manageLabel={ownsSite ? undefined : SITE_ACTION_COPY.access.monitoring}
             manageHref={ownsSite ? `/sites/${siteId}/settings#watch` as Route : siteContinuationHref(actions.monitoring as 'sign_in' | 'claim', `/sites/${siteId}/settings#watch`) as Route} />{headerAction}
-          </div>
-        </header>
+          </>} />
         {statusMessage ? <p role="status" className="text-sm">{statusMessage}</p> : null}
         {children}
       </CustomerMain>

@@ -17,7 +17,7 @@ export function SiteOverview({ host, captures, capturePriority = false, summaryI
 }) {
   return <div className={styles.overview}>
     {notice ? <p role="status" className={styles.notice}>{notice}</p> : null}
-    <div className={`${styles.layout} ${technologies.length ? styles.withTools : ''}`}>
+    <div className={styles.layout}>
       <SitePreviewCard host={host} captures={captures} priority={capturePriority} />
       <div className={styles.summaries}>
         <section className={styles.findings} aria-label="Findings summary">

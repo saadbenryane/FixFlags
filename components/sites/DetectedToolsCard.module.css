@@ -1,11 +1,10 @@
-.card { display: flex; min-width: 0; border-radius: var(--radius-board-card); background: hsl(var(--muted) / .3); }
-.trigger { display: flex; flex: 1; flex-direction: column; justify-content: flex-start; gap: 12px; min-width: 0; width: 100%; min-height: 0; padding: 16px; border-radius: inherit; text-align: left; }
+.card { display: flex; min-width: 0; border-radius: var(--radius-control); }
+.trigger { display: flex; flex: 1; flex-direction: column; gap: 10px; min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: inherit; text-align: left; }
 .trigger:hover { background: hsl(var(--foreground) / .025); }
 .trigger:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
-.heading { display: flex; align-items: baseline; gap: 8px; color: hsl(var(--muted-foreground)); font-size: 12px; }
-.heading strong { color: hsl(var(--foreground)); font-size: 28px; font-weight: 650; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.heading { display: flex; align-items: baseline; gap: 8px; color: hsl(var(--muted-foreground)); font-size: 13px; }
 .heading svg { align-self: center; margin-left: auto; }
-.tools { display: grid; gap: 7px; min-width: 0; width: 100%; }
-.tools > span { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 16px; min-width: 0; width: 100%; }
+.tools > span { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
 .tools > span > span:last-child { overflow-wrap: anywhere; }
 .more { font-size: 11px; color: hsl(var(--muted-foreground)); }

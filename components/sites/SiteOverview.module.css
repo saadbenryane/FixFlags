@@ -1,15 +1,10 @@
-.workspace { display: grid; gap: 16px; min-width: 0; }
+.workspace { display: grid; gap: 24px; min-width: 0; }
 .overview { container: site-overview / inline-size; min-width: 0; }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: stretch; }
-.summaries { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; align-self: stretch; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-items: center; }
+.summaries { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .findings { display: flex; align-items: stretch; min-width: 0; }
 .findings > * { width: 100%; }
 .notice { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
-@container site-overview (min-width: 420px) {
-  .withTools .summaries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .withTools .findings dl { grid-template-columns: minmax(0, 1fr); }
-}
 @container site-overview (min-width: 640px) {
-  .layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .findings dl { grid-template-columns: minmax(0, 1fr); }
+  .layout { grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); }
 }

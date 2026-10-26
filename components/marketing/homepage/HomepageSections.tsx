@@ -67,6 +67,7 @@ export function HomepageHandoffSection({ onCopy, copyResult, manualPrompt }: {
           <h2 id="handoff-title">{C.story.guidanceTitle}</h2>
           <p>{C.story.guidance}</p>
           <Link href="/docs/fix-with-ai" className={t.guidanceAction}>{C.actions.guidanceAction}<ArrowRight size={16} aria-hidden="true" /></Link>
+          <HomepageEditorTools />
         </div>
         <article className={t.prompt} aria-labelledby="fix-prompt-title">
           <div className={t.promptHeading}><span>{C.actions.promptLabel}</span><Copy size={16} aria-hidden="true" /></div>

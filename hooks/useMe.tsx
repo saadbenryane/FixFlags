@@ -125,6 +125,8 @@ export function MeProvider({
   const [claimUpgrade, setClaimUpgrade] = useState<ClaimUpgrade | null>(sharedClaimUpgrade)
   const settledRef = useRef(initiallyResolved)
   const requestRef = useRef<Promise<{ user?: MeUser | null } | null> | null>(null)
+  const claimRequestRef = useRef<Promise<{ user?: MeUser | null; claimedCount?: number } | null> | null>(null)
+  const sessionRevision = useRef(0)
 
   useEffect(() => {
     const listener = (next: ClaimUpgrade | null) => setClaimUpgrade(next)
@@ -136,38 +138,42 @@ export function MeProvider({
   }, [])
 
   const load = useCallback(async (force = false) => {
+    if (claimRequestRef.current) return claimRequestRef.current
     if (!force && settledRef.current) return { user: state.user }
     if (requestRef.current) return requestRef.current
+    const revision = sessionRevision.current
 
     // Background session updates must preserve content that is still hydrating.
     startTransition(() => {
-      setState((current) => ({ ...current, isLoading: true, error: null }))
+      setState((current) => revision === sessionRevision.current ? { ...current, isLoading: true, error: null } : current)
     })
     requestRef.current = fetch('/api/me')
       .then(async (response) => {
         if (!response.ok) throw new Error(AUTH.me.loadError)
         const data = await response.json()
+        if (revision !== sessionRevision.current) return null
         settledRef.current = true
         startTransition(() => {
-          setState((current) => ({
+          setState((current) => revision === sessionRevision.current ? {
             ...current,
             user: data.user ?? null,
             isLoading: false,
             error: null,
-          }))
+          } : current)
         })
         return data
       })
       .catch((error) => {
+        if (revision !== sessionRevision.current) return null
         const message = error instanceof Error ? error.message : AUTH.me.loadError
         settledRef.current = true
         startTransition(() => {
-          setState((current) => ({ ...current, isLoading: false, error: message }))
+          setState((current) => revision === sessionRevision.current ? { ...current, isLoading: false, error: message } : current)
         })
         return null
       })
       .finally(() => {
-        requestRef.current = null
+        if (revision === sessionRevision.current) requestRef.current = null
       })
 
     return requestRef.current
@@ -176,45 +182,56 @@ export function MeProvider({
   const ensureLoaded = useCallback(() => load(false), [load])
   const refresh = useCallback(() => load(true), [load])
 
-  const claimAnonymous = useCallback(async (options?: { showToast?: boolean }) => {
+  const claimAnonymous = useCallback((options?: { showToast?: boolean }) => {
+    if (claimRequestRef.current) return claimRequestRef.current
+    // Claim is the authoritative session transition. Earlier lookups cannot
+    // overwrite it, and consumers joining during claim await the same result.
+    sessionRevision.current += 1
+    requestRef.current = null
     // Clear the previous attempt's limit signal so a retry after a real change
     // is not blocked by a stale notice.
     publishClaimUpgrade(null)
     setState((current) => ({ ...current, isLoading: true, error: null }))
-    try {
-      const response = await fetch('/api/me/claim', { method: 'POST' })
-      if (!response.ok) {
-        // A refused claim is not a transient fault, so the body is read before
-        // falling back. The plan limit keeps its own signal for the UI.
-        const upgrade = claimUpgradeFrom(await parseApiErrorResponse(response), response.status)
-        publishClaimUpgrade(upgrade)
+    const pending = Promise.resolve().then(async () => {
+      try {
+        const response = await fetch('/api/me/claim', { method: 'POST' })
+        if (!response.ok) {
+          // A refused claim is not a transient fault, so the body is read before
+          // falling back. The plan limit keeps its own signal for the UI.
+          const upgrade = claimUpgradeFrom(await parseApiErrorResponse(response), response.status)
+          publishClaimUpgrade(upgrade)
+          setState((current) => ({ ...current, isLoading: false, error: AUTH.me.claimError }))
+          if (options?.showToast) toast.error(AUTH.me.claimFailure)
+          return null
+        }
+        const data = await response.json()
+        settledRef.current = true
+        publishClaimUpgrade(null)
+        setState({
+          user: data.user ?? null,
+          isLoading: false,
+          claimedCount: data.claimedCount ?? 0,
+          error: null,
+        })
+        if (options?.showToast && data.claimedCount > 0 && !claimToastShown) {
+          claimToastShown = true
+          toast.success(AUTH.me.claimSuccess(data.claimedCount))
+        }
+        if (data.claimedCount > 0) {
+          trackEvent('audits_claimed', { claimed_count: data.claimedCount })
+        }
+        return data
+      } catch {
+        publishClaimUpgrade(null)
         setState((current) => ({ ...current, isLoading: false, error: AUTH.me.claimError }))
         if (options?.showToast) toast.error(AUTH.me.claimFailure)
         return null
       }
-      const data = await response.json()
-      settledRef.current = true
-      publishClaimUpgrade(null)
-      setState({
-        user: data.user ?? null,
-        isLoading: false,
-        claimedCount: data.claimedCount ?? 0,
-        error: null,
-      })
-      if (options?.showToast && data.claimedCount > 0 && !claimToastShown) {
-        claimToastShown = true
-        toast.success(AUTH.me.claimSuccess(data.claimedCount))
-      }
-      if (data.claimedCount > 0) {
-        trackEvent('audits_claimed', { claimed_count: data.claimedCount })
-      }
-      return data
-    } catch {
-      publishClaimUpgrade(null)
-      setState((current) => ({ ...current, isLoading: false, error: AUTH.me.claimError }))
-      if (options?.showToast) toast.error(AUTH.me.claimFailure)
-      return null
-    }
+    }).finally(() => {
+      if (claimRequestRef.current === pending) claimRequestRef.current = null
+    })
+    claimRequestRef.current = pending
+    return pending
   }, [])
 
   const dismissClaimUpgrade = useCallback(() => {

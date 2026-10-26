@@ -5,7 +5,6 @@ import { executionWrite } from '@/lib/audit/execution-ownership'
 import { currentExecutionOwnership } from './execution-ownership'
 import { prisma } from '@/lib/db'
 import { mergePrescriptionResults, flagKeyForRow } from './persist'
-import { finalizeAudit } from './finalize'
 import { JudgeContractError } from './validate-judge-output'
 import { loadAuditScreenshotBase64 } from './load-screenshot-base64'
 import type { PageMetadata } from './metadata'
@@ -134,7 +133,6 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
 
   const { verdict, score } = audit
   if (verdict == null || score == null) throw new Error('A recorded assessment is required before preparing this explanation')
-  const startedAt = Date.now()
   await executionWrite(tx => tx.audit.update({
     where: { id: auditId },
     // Prescription enriches an already completed report. Its lease and events
@@ -183,41 +181,11 @@ export async function runAiReview(auditId: string, deadline?: number, flagKeys?:
     throw cause
   }
 
-  const evidence = audit.evidenceCoverage as {
-    desktopScreenshot?: boolean
-    mobileScreenshot?: boolean
-    metadata?: boolean
-    aiAssessment?: boolean
-    desktopPageSpeed?: boolean
-    mobilePageSpeed?: boolean
-    flowScan?: boolean
-  } | null
-
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'prescription_persist' })
   if (coversAll) await mergePrescriptionResults(auditId, prescription.output, ...(scope ? [{ scope }] : []))
   else await mergePrescriptionResults(auditId, prescription.output, { rubrics: false, ...(scope ? { scope } : {}) })
 
-  // A partial batch must not stamp aiReviewAt. That stamp would stop every sibling batch.
-  if (coversAll) await finalizeAudit({
-    auditId,
-    durationMs: Date.now() - startedAt,
-    pagespeedCalls: 0,
-    usage: {
-      inputTokens: prescription.usage.inputTokens,
-      outputTokens: prescription.usage.outputTokens,
-      model: prescription.usage.model,
-      cacheReadTokens: prescription.usage.cacheReadTokens,
-      cacheWriteTokens: prescription.usage.cacheWriteTokens,
-    },
-    evidence: {
-      desktopScreenshot: evidence?.desktopScreenshot === true,
-      mobileScreenshot: evidence?.mobileScreenshot === true,
-      metadata: evidence?.metadata === true,
-      aiAssessment: evidence?.aiAssessment === true,
-      desktopPageSpeed: evidence?.desktopPageSpeed === true,
-      mobilePageSpeed: evidence?.mobilePageSpeed === true,
-      flowScan: evidence?.flowScan === true,
-    },
-  })
+  // The execution engine publishes aiReviewAt and cost only after every
+  // admitted guidance task has committed its result.
   return prescriptionUsage(prescription.usage)
 }

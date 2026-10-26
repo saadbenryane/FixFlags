@@ -23,9 +23,37 @@ vi.mock('@/lib/db', async () => {
   } } }) }
 })
 import { loadSiteCheckResultPage } from '../check-results'
+import { loadMonitoringHistory } from '../monitoring-history'
+import { includeLegacySiteAnalyses } from '../analysis-scope'
+import { siteViewFixture } from '../../__tests__/site-view-fixture'
+import { readSiteHomeView } from '../../site-view-contract'
+import { projectSiteBoard } from '../../board-view'
 
 describe.skipIf(!enabled)('Recorded result history reads', () => {
   afterAll(async () => { await fixture.db?.$disconnect() })
+  it('reads completed collection and limited coverage separately from PostgreSQL through the Timeline contract', async () => {
+    const db = fixture.db!, identity = randomUUID()
+    const user = await db.user.create({ data: { email: identity + '@result-history.example' } })
+    try {
+      const project = await db.project.create({ data: { userId: user.id, name: 'Limited coverage', canonicalHost: 'example.com', url: 'https://example.com/' } })
+      const audit = await db.audit.create({ data: { userId: user.id, projectId: project.id, url: project.url,
+        status: 'COMPLETED', reportCompleteness: 'PARTIAL', failedModules: ['flow'], completedAt: new Date(),
+        evidenceCoverage: { metadata: true, desktopScreenshot: true } } })
+      const site = { siteId: project.id, kind: 'project', projectId: project.id } as SiteRecord
+      const history = await loadMonitoringHistory(site, { legacyIds: [audit.id], where: includeLegacySiteAnalyses([audit.id]) })
+      expect(history.timeline).toHaveLength(1)
+      expect(history.timeline[0]).toMatchObject({ executionState: 'COMPLETED', completionState: 'PARTIAL' })
+      const view = siteViewFixture(); view.monitoringHistory = history.timeline; view.monitoringTrend = history.trend
+      const parsed = readSiteHomeView(JSON.parse(JSON.stringify(view)), view.site.siteId)
+      const board = projectSiteBoard(parsed, view.site.siteId, true, false, null)
+      expect(board.timelineEvents[0]).toMatchObject({ title: 'Check completed', state: 'unknown' })
+      expect(board.monitoringPoints[0].flagCount).toBeNull()
+      await db.audit.update({ where: { id: audit.id }, data: { failedModules: ['browser'] } })
+      expect((await loadMonitoringHistory(site, { legacyIds: [audit.id], where: includeLegacySiteAnalyses([audit.id]) })).timeline[0])
+        .toMatchObject({ executionState: 'PARTIAL', completionState: 'PARTIAL' })
+    } finally { await db.user.delete({ where: { id: user.id } }) }
+  })
+
   it('counts accumulated monitoring evidence with bounded database round trips and retains exact snapshot fencing', async () => {
     const db = fixture.db!, identity = randomUUID()
     const user = await db.user.create({ data: { email: identity + '@result-history.example' } })

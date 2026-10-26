@@ -20,10 +20,10 @@ export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
   hero: {
     headline: PRODUCT_STORY.headline,
-    body: WEBSITE_PROMISE,
+    body: PRODUCT_STORY.summary,
     setup: PRODUCT_STORY.setup,
     cta: PRODUCT_STORY.action,
-    sampleAction: 'See it in action',
+    sampleAction: 'Explore the sample',
     placeholder: 'yourwebsite.com',
     benefits: [
       { title: 'Checks on your schedule' },

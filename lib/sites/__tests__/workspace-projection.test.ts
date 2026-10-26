@@ -33,14 +33,24 @@ describe('workspace projections', () => {
   it('distinguishes same-day checks and keeps incomplete observations as gaps', () => {
     const view = siteViewFixture()
     view.monitoringTrend = [
-      { checkedAt: '2026-10-24T12:00:00Z', flagCount: 5, scope: 'SITE', evidenceAt: '2026-10-24T12:00:00Z', completionState: 'COMPLETED' },
-      { checkedAt: '2026-10-24T12:05:00Z', flagCount: 0, scope: 'SITE', evidenceAt: '2026-10-24T12:05:00Z', completionState: 'PARTIAL' },
-      { checkedAt: '2026-10-24T12:10:00Z', flagCount: 0, scope: 'CATEGORY', evidenceAt: '2026-10-24T12:10:00Z', completionState: 'COMPLETED' },
+      { checkedAt: '2026-10-24T12:00:00Z', flagCount: 5, scope: 'SITE', evidenceAt: '2026-10-24T12:00:00Z', executionState: 'COMPLETED', completionState: 'COMPLETED' },
+      { checkedAt: '2026-10-24T12:05:00Z', flagCount: 0, scope: 'SITE', evidenceAt: '2026-10-24T12:05:00Z', executionState: 'COMPLETED', completionState: 'PARTIAL' },
+      { checkedAt: '2026-10-24T12:10:00Z', flagCount: 0, scope: 'CATEGORY', evidenceAt: '2026-10-24T12:10:00Z', executionState: 'COMPLETED', completionState: 'COMPLETED' },
     ]
     const { monitoringPoints } = projectSiteBoard(view, view.site.siteId, true, false, null)
     expect(monitoringPoints).toHaveLength(2)
     expect(monitoringPoints[0].label).not.toBe(monitoringPoints[1].label)
     expect(monitoringPoints.map(point => point.flagCount)).toEqual([5, null])
     expect(monitoringPoints.every(point => point.label.includes('UTC'))).toBe(true)
+  })
+  it('does not turn interrupted collection into a clear history event or a comparable zero', () => {
+    const view = siteViewFixture()
+    const entry = { id: 'interrupted', checkedAt: '2026-10-24T12:00:00Z', evidenceAt: '2026-10-24T12:00:00Z',
+      flagCount: 0, scope: 'SITE' as const, status: 'COMPLETED' as const, executionState: 'PARTIAL' as const,
+      completionState: 'COMPLETED' as const, result: 'CLEAR' as const }
+    view.monitoringHistory = [entry]; view.monitoringTrend = [entry]
+    const board = projectSiteBoard(view, view.site.siteId, true, false, null)
+    expect(board.timelineEvents[0]).toMatchObject({ title: 'Check incomplete', state: 'unknown' })
+    expect(board.monitoringPoints[0].flagCount).toBeNull()
   })
 })

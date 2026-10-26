@@ -13,6 +13,7 @@ export type MonitoringHistoryEntry = {
   status?: 'COMPLETED' | 'FAILED'
   evidenceAt?: string | null
   completionState?: 'COMPLETED' | 'PARTIAL' | 'FAILED'
+  executionState: 'COMPLETED' | 'PARTIAL' | 'FAILED'
   flags?: Array<{ id: string; title: string }>
   scope?: 'SITE' | 'CATEGORY' | 'OUTCOMES' | 'DIAGNOSTIC' | 'UNKNOWN'
   targetLabel?: string | null

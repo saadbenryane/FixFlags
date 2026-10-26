@@ -16,7 +16,7 @@ export async function loadSiteFixBundle(site: SiteRecord, area?: SiteCardArea, f
   const flags = await select()
   if (selected && flags.length !== selected.size) throw new SiteRunRefusal(C.bundleSelectionChanged, 409)
   if (!flags.length) throw new SiteRunRefusal(C.bundleEmpty, 422)
-  if (flags.length > MAX_REPAIR_TASKS) throw new SiteRunRefusal(C.bundleTooLarge, 422)
+  if (flags.length > MAX_REPAIR_TASKS) throw new SiteRunRefusal(C.bundleTooLarge(MAX_REPAIR_TASKS), 422)
   const tasks: Awaited<ReturnType<typeof loadSiteFlagCopyTask>>[] = []
   for (let offset = 0; offset < flags.length; offset += 4) {
     const batch = flags.slice(offset, offset + 4)

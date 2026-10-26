@@ -37,13 +37,19 @@ export async function settlePrescriptionAudit(tx: Prisma.TransactionClient, audi
   const decision = prescriptionSettlement(tasks)
   if (decision.kind === 'open') return decision
   const where = { id: auditId, status: 'COMPLETED' as const, triageAt: { not: null }, aiReviewAt: null }
+  const ownFailure = { failureCode: { in: ['AI_CONTRACT_INVALID', 'AI_REVIEW_FAILED'] },
+    failureMetadata: { path: ['phase'], equals: 'prescription' } } satisfies Prisma.AuditWhereInput
   if (decision.kind === 'complete') {
-    await tx.audit.updateMany({ where, data: {
-      aiReviewAt: new Date(), failureCode: null, failureStage: null, errorMsg: null, failureMetadata: Prisma.DbNull,
+    const aiReviewAt = new Date()
+    // Guidance owns only its recorded phase failure. A completed batch cannot
+    // erase a collection or finalization failure on the same analysis.
+    const recovered = await tx.audit.updateMany({ where: { ...where, ...ownFailure }, data: {
+      aiReviewAt, failureCode: null, failureStage: null, errorMsg: null, failureMetadata: Prisma.DbNull,
     } })
+    if (!recovered.count) await tx.audit.updateMany({ where, data: { aiReviewAt } })
     return decision
   }
-  await tx.audit.updateMany({ where, data: {
+  await tx.audit.updateMany({ where: { ...where, OR: [{ failureCode: null }, ownFailure] }, data: {
     failureCode: decision.failureCode, failureStage: 'judging', errorMsg: getUserFacingAuditError(decision.failureCode),
     failureMetadata: { version: 1, phase: 'prescription', reason: decision.reason },
   } })

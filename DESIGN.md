@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-24
+reviewed_at: 2026-10-25
 supersedes: [lib/design/brand-rules.md]
 ---
 
@@ -29,7 +29,7 @@ Use existing semantic tokens before adding values. Add a shared token for a repe
 - Original owner sources and asset provenance live in [the reference index](docs/brand/reference/README.md). Use `npm run brand:icons` to derive runtime logo sizes.
 - Inter is the product UI and body face. Inter Tight is used for marketing display, prices, wordmarks and editorial Help/Docs headings. JetBrains Mono is used for code, IDs and numeric evidence, not marketing display.
 - Preserve the existing responsive heading sizes and weights. Use `text-balance` for headings, `text-pretty` for body, and `tabular-nums` for comparable numbers.
-- Marketing section labels use sentence case. The current homepage hero eyebrow and prompt-card metadata retain their approved uppercase treatment. Functional metadata may use mono uppercase labels.
+- Marketing section labels use sentence case. Prompt-card metadata retains its approved uppercase treatment. Functional metadata may use mono uppercase labels.
 
 ## Color and controls
 
@@ -52,13 +52,15 @@ Shared identity does not require identical card sizes, backgrounds or typography
 
 Never use line separators. Group content with whitespace, typography, and surface tone. Board cards use a soft shadow instead of an outline. Input boundaries and focus rings define their controls. Do not use standalone horizontal or vertical rules to separate content. Interaction placement and category anatomy belong to the Site interface contract.
 
-Give each piece of overview information one primary location. Site identity belongs in the sidebar. Availability and its observation time appear together in the uptime header; scan progress stays with the Site identity. Overall counts appear once in the summary, without a repeated Findings heading or attention sentence. The overview leads with the website capture and one summary, then aligned monitoring panels, a compact grid of categories with Flags, and quiet tiles for categories without Flags. Unfinished checks retain a neutral signal and their limitations in details. Show an overview trend only after two comparable recorded counts; keep the first check in Timeline. Flags are actions inside their category. Detected tools sit with the summary, showing the complete recorded tool list. Monitoring is a compact header control beside refresh, with schedule details disclosed on demand. The website preview shows the complete capture; URL, capture time, viewport, and previous-capture provenance remain available when it is enlarged. The homepage sample and real Site use the same shared components and layout. Signed-out visitors keep the main navigation and normal action labels, with protected actions opening authentication in place.
+Give each piece of overview information one primary location. Site identity and check status belong in the shared website header, with actions beside them and horizontal website navigation beneath. Account destinations retain their own rail. Overall counts appear once in the summary. The overview leads with the website capture and summary, followed by actionable category rows, monitoring panels, and compact tiles for other checks. Long overview rows show a bounded preview with an explicit action for the remaining Flags; category depth retains the complete set. Unfinished checks retain a neutral signal and their limitations in details. Show an overview trend only after two comparable recorded counts; keep the first check in Timeline. Flag rows have one open target and a separate, always visible copy action. Keep Flag titles at a readable 16px and supporting priority labels at 12px; quiet category names use 14px. Detected tools form a quiet, wrapping inventory below the summary rather than another large metric. Monitoring is a compact header control beside refresh, with schedule details disclosed on demand. The website preview shows the complete capture; URL, capture time, viewport, and previous-capture provenance remain available when it is enlarged. The homepage sample and real Site use the same shared components and layout. Signed-out visitors keep the main navigation and normal action labels, with protected actions opening authentication in place.
 
 Pages depth leads with previews for the recorded pages. Each thumbnail must use that page's own capture from its source audit. Missing or failed captures retain an explicit empty state, never a substitute screenshot. Pages is a persistent workspace destination. Category and Flag modals contain evidence and relevant fix actions, without an Analyze your website promotion.
 
 ## Layout and motion
 
 Marketing overview pages share `MarketingPageHeader`: centered Inter Tight display title, a constrained description, sentence-case neutral eyebrow with a bright orange dot, and centered actions. The header owns its top and bottom spacing; enclosing Sections use `overview` spacing. Avoid repeating the page introduction above its first content section. Homepage heroes, articles, docs, legal reading pages, tools, and connection flows retain their own compositions.
+
+The homepage hero pairs the shared product promise and URL entry with one continuous folded-F studio backdrop. The photographed glass stays still. Fine-pointer input moves two soft reflections within the official silhouette, with time-based damping and no idle render loop. No image tilt, automatic sweep or decorative sparkle is added. The artwork remains complete without JavaScript. Reduced-motion and touch users retain a still composition. The hero leads into the shared interactive Site sample; editor guides belong beside fix guidance. The former design-study route redirects to the real homepage.
 
 - Keep responsive containers and spacing in the shared Container and Section primitives where they apply. Their variants intentionally use different widths and rhythms.
 - Reflow real-length names, answers and status controls without overlap. Preserve mobile access to the same content and actions; do not impose fixed card heights to hide wrapping.

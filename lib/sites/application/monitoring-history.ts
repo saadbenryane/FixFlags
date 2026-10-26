@@ -11,9 +11,10 @@ import { readExecutionSpec } from '../domain/execution-spec'
 import { categoryCoverageExecutionSelect, siteCoverageExecutionSelect } from './site-execution'
 import { executionPageCoverage } from '../page-coverage'
 import { projectRecordedSiteResult } from './recorded-assessment'
+import { analysisDidNotFinish } from '../analysis-completion'
 
 const historySelect = {
-  id: true, parentId: true, status: true, failureCode: true, failedModules: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
+  id: true, parentId: true, status: true, failureCode: true, failedModules: true, reportCompleteness: true, evidenceCoverage: true, pages: { select: { url: true, status: true } }, completedAt: true, updatedAt: true, executionSpec: true, recheckTrigger: true,
   runRequests: { orderBy: { requestedAt: 'desc' }, take: 1, select: {
     source: true, executionSpec: true, verificationTarget: true,
     selections: { select: { outcome: { select: { name: true } } } },
@@ -120,6 +121,7 @@ export function projectHistory(audit: Prisma.AuditGetPayload<{ select: typeof hi
     completionState = audit.status === 'FAILED' ? 'FAILED' : assessment.completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL'
   }
   return {
+    executionState: audit.status === 'FAILED' ? 'FAILED' : !audit.completedAt || analysisDidNotFinish(audit) ? 'PARTIAL' : 'COMPLETED',
     completionState,
     id: audit.id, checkedAt: (audit.completedAt ?? audit.updatedAt).toISOString(),
     evidenceAt: audit.status === 'COMPLETED' ? audit.completedAt?.toISOString() ?? null : null,

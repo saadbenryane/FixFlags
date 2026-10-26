@@ -80,7 +80,6 @@ import {
   persistAuditFailedModules,
   finalizeTriageAudit,
   finalizeTriageDegraded,
-  finalizeAudit,
   finalizePartialAudit,
   finalizeDeterministicOnly,
   persistFailedAuditCost,
@@ -250,7 +249,7 @@ describe('persistAuditFailedModules', () => {
 describe('recorded coverage gaps during finalization', () => {
   beforeEach(() => resetMocks())
   afterEach(() => vi.restoreAllMocks())
-  it.each([{ name: 'triage', finalize: finalizeTriageAudit }, { name: 'prescription', finalize: finalizeAudit },
+  it.each([{ name: 'triage', finalize: finalizeTriageAudit },
     { name: 'deterministic', finalize: finalizeDeterministicOnly }])('preserves partial completion despite available collectors: $name', async ({ finalize }) => {
       mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, failedModules: ['performance'] })
       await finalize(BASE_INPUT)
@@ -423,92 +422,6 @@ describe('finalizeTriageDegraded', () => {
     await finalizeTriageDegraded(degradedInput)
     expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledWith('audit-1', 'parent-1')
     expect(mocks.incrementUsageOnCompleteForAudit).toHaveBeenCalledWith('audit-1', 'user-1')
-  })
-})
-
-describe('finalizeAudit', () => {
-  it.each(['COMPLETED', 'FINALIZING'])('retains immutable partial triage coverage after prescription in %s', async status => {
-    resetMocks()
-    const evidence = { ...BASE_INPUT.evidence, aiAssessment: false, metadata: false }
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status, triageAt: new Date(), completedAt: new Date(),
-      reportCompleteness: 'PARTIAL', evidenceCoverage: evidence, failedModules: ['page-triage-evaluation'] })
-    await finalizeAudit({ ...BASE_INPUT, evidence })
-    const data = mocks.auditUpdate.mock.calls[0][0].data
-    expect(data).toMatchObject({ aiReviewAt: expect.any(Date), status: 'COMPLETED' })
-    expect(data).not.toHaveProperty('reportCompleteness')
-    expect(data).not.toHaveProperty('evidenceCoverage')
-    expect(data).not.toHaveProperty('failedModules')
-  })
-
-  beforeEach(() => resetMocks())
-  afterEach(() => vi.restoreAllMocks())
-
-  it('throws when the audit is missing', async () => {
-    mocks.auditFindUnique.mockResolvedValue(null)
-    await assert.rejects(() => finalizeAudit(BASE_INPUT), /not found during finalization/)
-  })
-
-  it('returns early when fully completed with AI review', async () => {
-    mocks.auditFindUnique.mockResolvedValue({
-      ...AUDIT_ROW,
-      status: 'COMPLETED',
-      completedAt: new Date(),
-      aiReviewAt: new Date(),
-    })
-    await finalizeAudit(BASE_INPUT)
-    expect(mocks.auditUpdate).not.toHaveBeenCalled()
-  })
-
-  it('rejects incomplete analysis as a prescription completion', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'CHECKING' })
-    await assert.rejects(() => finalizeAudit(BASE_INPUT), /not ready to finalize prescription/)
-  })
-
-  it('enriches completed triage without reopening the report', async () => {
-    const completedAt = new Date(), triageAt = new Date(completedAt.getTime() - 1000)
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'COMPLETED', completedAt, triageAt })
-    await finalizeAudit(BASE_INPUT)
-    expect(mocks.auditUpdate).toHaveBeenCalledWith({ where: { id: 'audit-1' }, data: expect.objectContaining({
-      status: 'COMPLETED', completedAt, aiReviewAt: expect.any(Date),
-    }) })
-    mocks.auditUpdate.mockClear()
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'COMPLETED', completedAt, triageAt: null })
-    await expect(finalizeAudit(BASE_INPUT)).rejects.toThrow('not ready to finalize prescription')
-    expect(mocks.auditUpdate).not.toHaveBeenCalled()
-  })
-
-  it('finalizes a JUDGING audit with prescription phase cost', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, status: 'JUDGING' })
-    await finalizeAudit(BASE_INPUT)
-    expect(mocks.persistAuditRunCost).toHaveBeenCalledWith('audit-1', {
-      durationMs: 1200,
-      llmInputTokens: 100,
-      llmOutputTokens: 50,
-      llmModel: 'gpt-4o',
-      pagespeedCalls: 2,
-      llmCacheReadTokens: 10,
-      llmCacheWriteTokens: 5,
-      phase: 'prescription',
-    })
-    const update = mocks.auditUpdate.mock.calls[0][0]
-    expect(update.data.reportCompleteness).toBe('FULL')
-    expect(update.data.aiReviewAt).toBeInstanceOf(Date)
-    expect(mocks.incrementUsageOnCompleteForAudit).toHaveBeenCalledWith('audit-1', 'user-1')
-  })
-
-  it('skips usage increment when the audit has no user', async () => {
-    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, userId: null })
-    await finalizeAudit(BASE_INPUT)
-    expect(mocks.incrementUsageOnCompleteForAudit).not.toHaveBeenCalled()
-    expect(mocks.auditUpdate).toHaveBeenCalled()
-  })
-
-  it('throws on incomplete evidence', async () => {
-    await assert.rejects(
-      () => finalizeAudit({ ...BASE_INPUT, evidence: { ...BASE_INPUT.evidence, metadata: false } }),
-      /Required audit evidence is incomplete/
-    )
-    expect(mocks.auditUpdate).not.toHaveBeenCalled()
   })
 })
 

@@ -15,7 +15,7 @@ import { SiteFixBundleButton } from './SiteFixBundleButton'
 import { SitePages } from './SitePages'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteSignupPrompt } from '@/components/sites/SiteSignupPrompt'
-import { SiteActionFeedback } from './SiteActionFeedback'
+import { SiteActionRecovery } from './SiteActionFeedback'
 import { SiteActionContinuation } from './SiteActionContinuation'
 import { Button } from '@/components/ui/button'
 import { UptimeCard } from '@/components/uptime/UptimeCard'
@@ -152,7 +152,7 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
         </li>)}</ul>
         <p className="mt-2 text-sm text-muted-foreground">{SITE_ACTION_COPY.scopedRun.retained}</p>
       </section> : null}
-      <SiteActionFeedback siteId={siteId} message={null} error={actionError} availability={view.actions.check} />
+      <SiteActionRecovery siteId={siteId} error={actionError} availability={view.actions.check} />
       {viewMode === 'home' && showActivityPanel && !notice ? <SiteActivityPanel banner={banner} disconnected={disconnected}>
       {summaryNote ? <p className="mt-2 text-sm text-muted-foreground">{summaryNote.body}</p> : null}
       </SiteActivityPanel> : null}
@@ -201,10 +201,12 @@ function SiteBoardContent({ siteId, viewMode: initialViewMode = 'home', initialC
                 ...(card.id === 'site' ? { facts: [], captureUrl: null, captureAlt: null } : {}),
               }
               return { id: card.id, flagCount: category.flagCount,
-                render: (layout: 'card' | 'row') => <article aria-label={card.name} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
+                render: (layout: 'card' | 'row') => {
+                const Frame = layout === 'row' ? 'div' : 'article'
+                return <Frame aria-label={layout === 'card' ? card.name : undefined} id={`category-${card.id}`} tabIndex={-1} data-attention={category.flagCount > 0 ? "true" : undefined}><ProductBoardCard compact onOpenFlag={openFlag} layout={layout} card={displayCard} freshness={category.freshness} recoveryAction={card.incompleteReason ? checkAction(card.id, true) : null} renderFlagCopy={flag => ownsSite && flag.repairGuidanceReady === true ? <SitePromptCopyButton siteId={siteId} flagId={flag.sourceFlagId ?? flag.id} availability={view.actions.copy} compact iconOnly /> : null} onOpen={trigger => {
                 opener.current = trigger
                 selectCategory(card.id)
-              }} /></article> }
+              }} /></Frame> } }
             })} />
       </section> : null}
 

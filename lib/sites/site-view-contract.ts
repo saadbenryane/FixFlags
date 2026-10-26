@@ -33,6 +33,7 @@ const flag = z.object({
 const recovery = z.object({ action: z.enum(['retry', 'access', 'connections', 'inspect', 'support']), reasons: z.array(text).max(1200) })
 
 const historyEntry = z.object({ id: text, checkedAt: time, evidenceAt: nullableTime, completionState: z.enum(['COMPLETED', 'PARTIAL', 'FAILED']), flagCount: count,
+    executionState: z.enum(['COMPLETED', 'PARTIAL', 'FAILED']),
     status: z.enum(['COMPLETED', 'FAILED']), flags: z.array(z.object({ id: text, title: text })),
 
     scope: z.enum(['SITE', 'CATEGORY', 'OUTCOMES', 'DIAGNOSTIC', 'UNKNOWN']), targetLabel: nullableText,

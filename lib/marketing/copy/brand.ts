@@ -20,7 +20,7 @@ export const BRAND = {
 
 export const SOCIAL_CARD = {
   headline: PRODUCT_STORY.headline,
-  description: 'Find problems. Get email alerts. Know what to fix.',
+  description: PRODUCT_STORY.summary,
   label: 'Checks on your schedule',
   workflow: 'Monitor. Flag. Fix.',
 } as const

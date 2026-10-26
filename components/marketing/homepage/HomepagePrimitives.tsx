@@ -16,7 +16,7 @@ export function HomepageIntro({ label, title, body }: { label?: string; title: s
   return <div className={s.intro}>{label && <p className={s.eyebrow}>{label}</p>}<h2>{title}</h2>{body && <p>{body}</p>}</div>
 }
 
-export function HomepageUrlEntry({ final = false }: { final?: boolean }) {
+export function HomepageUrlEntry({ final = false, className }: { final?: boolean; className?: string }) {
   useEffect(() => {
     if (final) return
     const focusField = () => {
@@ -45,7 +45,7 @@ export function HomepageUrlEntry({ final = false }: { final?: boolean }) {
     }
   }, [final])
 
-  return <div className={s.entry} id={final ? undefined : 'analyze'}>
+  return <div className={`${s.entry}${className ? ` ${className}` : ''}`} id={final ? undefined : 'analyze'}>
     {final ? null : <span id="audit" aria-hidden />}
     <AuditInput variant="landing" idSuffix={final ? '-care-final' : '-care-hero'} ctaPlacement={final ? 'final' : 'hero'} showLandingExtras={false} submitLabel={C.hero.cta} urlPlaceholder={C.hero.placeholder} />
   </div>

@@ -104,7 +104,7 @@ export function CareHomepage({ dashboardOnly = false }: { dashboardOnly?: boolea
   const returnLabel = flagOrigin ? SITE_ROUTES.find(([id]) => id === flagOrigin)?.[1] : selectedCard?.name ?? 'area'
 
   return <div className={s.home}>
-    {dashboardOnly ? <HomepageDashboardPreview accountRail {...previewActions} /> : <HomepageHero {...previewActions} />}
+    {dashboardOnly ? <HomepageDashboardPreview {...previewActions} /> : <HomepageHero {...previewActions} />}
     {!dashboardOnly ? <>
     <HomepageCheckCoverage />
     <HomepageLoopSection onOpenFlag={trigger => { openCard('site'); setFlag('availability'); opener.current = trigger }} />

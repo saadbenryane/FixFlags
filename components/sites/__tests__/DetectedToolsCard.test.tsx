@@ -9,7 +9,8 @@ describe('detected tools overview', () => {
     const names = ['Shopify', 'Next.js', 'Google Analytics', 'Stripe', 'React', 'Vercel', 'Sentry']
     render(<DetectedToolsCard items={names.map(name => ({ name, status: 'Detected', state: 'healthy' }))} />)
     const card = screen.getByRole('region', { name: 'Detected technologies' })
-    expect(within(card).getByText('7')).toBeVisible()
+    expect(within(card).getByText('Detected tools')).toBeVisible()
+    expect(within(card).queryByText('7')).not.toBeInTheDocument()
     expect(within(card).getByText('Stripe')).toBeVisible()
     expect(within(card).queryByText('+3 more')).not.toBeInTheDocument()
     expect(within(card).getByText('Sentry')).toBeVisible()

@@ -1,4 +1,6 @@
 export const BOARD_PREVIEW_COPY = {
+  attentionHeading: 'Needs attention',
+  otherChecksHeading: 'Other checks',
   detectedTools: 'Detected tools',
   viewTools: 'View detected tools',
   tools: (count: number) => count === 1 ? 'Tool' : 'Tools',

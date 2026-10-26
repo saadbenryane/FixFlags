@@ -43,7 +43,7 @@ describe('monitoring history scope and evidence', () => {
   })
 
   it('keeps unknown checks out and preserves failed broad checks as gaps', () => {
-    const entry = { checkedAt: '2026-10-11T09:00:00Z', flagCount: 0, status: 'COMPLETED' as const }
+    const entry = { checkedAt: '2026-10-11T09:00:00Z', flagCount: 0, status: 'COMPLETED' as const, executionState: 'COMPLETED' as const }
     const entries: MonitoringHistoryEntry[] = [
       { ...entry, id: 'site', scope: 'SITE' }, { ...entry, id: 'outcome', scope: 'OUTCOMES' },
       { ...entry, id: 'page', scope: 'DIAGNOSTIC' }, { ...entry, id: 'unknown', scope: 'UNKNOWN' },

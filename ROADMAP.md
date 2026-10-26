@@ -1,7 +1,7 @@
 ---
 status: supporting
 authority: product
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-25
 supersedes: []
 ---
 
@@ -9,9 +9,9 @@ supersedes: []
 
 ## Current delivery: website public validation
 
-The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) records implementation and exact-candidate proof separately. Paid enrollment and customer-facing MCP/CLI are parked for this milestone. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
+The accepted current milestone is the website app with one-website open-beta access. Complete the existing persistent Site board, initial analysis and claim, category evidence, independent Flag recovery, monitoring, supported automatic accounts, uptime, and Site removal. The [current completion plan](docs/product-masterplan.md#current-completion-plan-2026-10-25) owns the dependency-ordered work, information architecture, refactoring boundaries, and exit evidence. The [completion ledger](docs/product-masterplan.md#public-website-validation-completion-ledger) preserves historical implementation and exact-candidate proof separately. Paid enrollment and customer-facing MCP/CLI are parked for this milestone. The independent-monitor roadmap below remains the broader destination, not a website release prerequisite.
 
-**Direction accepted 2026-09-21. Outcome responsibility and Safe Signup are implemented locally; launch evidence gates remain open.**
+**Checkpoint, 2026-10-25:** the dashboard is merged at `557e9c22`, and public production health reports the same revision. Automatic accounts remain disabled, and current release acceptance is not established by the stale selected ledger. Follow the current completion plan rather than reusing an older candidate's status.
 
 FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
 

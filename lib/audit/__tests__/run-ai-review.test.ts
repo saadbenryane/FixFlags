@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   mergePrescriptionResults: vi.fn(),
   flagKeyForRow: vi.fn(),
   tryResolveEvidenceAnchorsForAudit: vi.fn(),
-  finalizeAudit: vi.fn(),
   loadAuditScreenshotBase64: vi.fn(),
   logPipelineEvent: vi.fn(),
   remainingAiReportCredits: vi.fn(),
@@ -41,10 +40,6 @@ vi.mock('@/lib/audit/persist', () => ({
 
 vi.mock('@/lib/audit/persist-evidence-anchors', () => ({
   tryResolveEvidenceAnchorsForAudit: mocks.tryResolveEvidenceAnchorsForAudit,
-}))
-
-vi.mock('@/lib/audit/finalize', () => ({
-  finalizeAudit: mocks.finalizeAudit,
 }))
 
 vi.mock('@/lib/audit/load-screenshot-base64', () => ({
@@ -128,7 +123,6 @@ function resetMocks(): void {
   mocks.runPrescriptionWithRetry.mockResolvedValue(PRESCRIPTION)
   mocks.mergePrescriptionResults.mockResolvedValue(undefined)
   mocks.tryResolveEvidenceAnchorsForAudit.mockResolvedValue(undefined)
-  mocks.finalizeAudit.mockResolvedValue(undefined)
   mocks.logPipelineEvent.mockResolvedValue(undefined)
 }
 
@@ -231,7 +225,7 @@ describe('runAiReview', () => {
     mocks.hasUnlimitedScans.mockReturnValue(true)
     mocks.remainingAiReportCredits.mockResolvedValue(0)
     await runAiReview('a1')
-    expect(mocks.finalizeAudit).toHaveBeenCalled()
+    expect(mocks.mergePrescriptionResults).toHaveBeenCalled()
   })
 
   it('throws when metadata is missing', async () => {
@@ -266,24 +260,20 @@ describe('runAiReview', () => {
     await assert.rejects(() => runAiReview('a1'), /PRESCRIPTION_PRIMARY_CAPTURE_MISSING/)
   })
 
-  it('runs prescription and finalizes on success', async () => {
+  it('commits guidance without publishing completion ahead of its execution task', async () => {
     await runAiReview('a1')
     expect(mocks.auditUpdate).toHaveBeenCalledWith({
       where: { id: 'a1' },
       data: { includeAi: true },
     })
     expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ scope: expect.objectContaining({ version: 1 }) }))
-    expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ auditId: 'a1' }))
+    expect(mocks.auditUpdate.mock.calls.every(([input]) => Object.keys(input.data).every(key => key === 'includeAi'))).toBe(true)
   })
 
   it.each([null, {}, { desktopPageSpeed: true }])('preserves missing observations during prescription completion: %j', async evidenceCoverage => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT, evidenceCoverage, flowData: {} })
     await runAiReview('a1')
-    expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ evidence: expect.objectContaining({
-      desktopPageSpeed: evidenceCoverage?.desktopPageSpeed === true,
-      mobilePageSpeed: false,
-      flowScan: false,
-    }) }))
+    expect(mocks.auditUpdate.mock.calls.every(([input]) => !('evidenceCoverage' in input.data) && !('reportCompleteness' in input.data))).toBe(true)
   })
 
   it.each([new Error('provider exploded'), new JudgeContractError('bad schema')])('retains the completed report until the durable task owner settles failure: %s', async error => {
@@ -299,7 +289,6 @@ describe('runAiReview', () => {
     mocks.runPrescriptionWithRetry.mockRejectedValue(new PartialPrescriptionError(PRESCRIPTION, cause))
     await expect(runAiReview('a1')).rejects.toBe(cause)
     expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ rubrics: false, scope: expect.objectContaining({ version: 1 }) }))
-    expect(mocks.finalizeAudit).not.toHaveBeenCalled()
   })
 
   it('prescribes only the requested Flags and leaves review completion to the task set', async () => {
@@ -311,7 +300,6 @@ describe('runAiReview', () => {
     const usage = await runAiReview('a1', undefined, ['key-1'])
     expect(mocks.runPrescriptionWithRetry.mock.calls[0][0].existingFlags.map((flag: { flagKey: string }) => flag.flagKey)).toEqual(['key-1'])
     expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output, expect.objectContaining({ rubrics: false, scope: expect.objectContaining({ version: 1 }) }))
-    expect(mocks.finalizeAudit).not.toHaveBeenCalled()
     expect(usage).toMatchObject({ inputTokens: 10, outputTokens: 5, model: 'gpt-4o-mini' })
   })
 

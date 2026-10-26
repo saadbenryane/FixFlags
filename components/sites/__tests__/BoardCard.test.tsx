@@ -8,6 +8,17 @@ import { SITE_ACTION_COPY } from '@/lib/marketing/copy/site-actions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
+  it('keeps a large overview row short with an explicit route to the remaining Flags', () => {
+    const open = vi.fn()
+    render(<BoardCard compact layout="row" name="Search" icon="search" state="problem" status="5 Flags" answer="Pages need attention" onOpen={open}
+      flags={Array.from({ length: 5 }, (_, index) => ({ id: String(index), title: `Finding ${index + 1}`, href: `#flag-${index}` }))} />)
+    expect(screen.getByRole('link', { name: 'Open Finding 1' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Finding 2' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Open Finding 3' })).not.toBeInTheDocument()
+    const more = screen.getByRole('button', { name: 'View 3 more Flags' })
+    fireEvent.click(more)
+    expect(open).toHaveBeenCalledWith(more)
+  })
   it('shows a recorded zero count with a neutral partial state and keeps collector details in depth', () => {
     const card: BoardCardView = {
       id: 'accessibility', name: 'Accessibility', question: 'Keyboard access', state: 'unknown',
@@ -44,9 +55,9 @@ describe('BoardCard chrome', () => {
     expect(screen.getByText('Lower priority').parentElement).toHaveTextContent('Contact loads slowly')
   })
 
-  it('opens individual preview Flags and keeps the category target separate', () => {
+  it.each(['card', 'row'] as const)('opens individual Flags and keeps the category target separate in %s layout', layout => {
     const category = vi.fn(), open = vi.fn()
-    render(<BoardCard compact showFlagPreview name="Pages" icon="site" state="problem" status="2 Flags" answer="Problems" onOpen={category} onOpenFlag={open} flags={[
+    render(<BoardCard compact showFlagPreview layout={layout} name="Pages" icon="site" state="problem" status="2 Flags" answer="Problems" onOpen={category} onOpenFlag={open} flags={[
       { id: 'high', title: 'Pricing unavailable', href: '#high', priorityBand: 'fix_first' },
       { id: 'lower', title: 'Contact loads slowly', href: '#lower', priorityBand: 'other' },
     ]} />)
@@ -102,7 +113,7 @@ describe('BoardCard chrome', () => {
     render(<BoardCard name="Search" status="1 Flag" state="problem" answer="Page title is missing" icon="search"
       layout="row" flags={[{ id: 'f1', title: 'Page title is missing', href: '#flag' }]}
       incompleteReason={SITE_BOARD_COPY.cardCheckIncomplete} recoveryAction={<button onClick={retry}>Check Search again</button>} />)
-    expect(screen.getByRole('link', { name: 'Page title is missing' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Page title is missing' })).toBeVisible()
     expect(screen.queryByText(SITE_BOARD_COPY.cardCheckIncomplete)).not.toBeInTheDocument()
     expect(screen.queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     const action = screen.getByRole('button', { name: 'Check Search again' })
@@ -119,7 +130,7 @@ describe('BoardCard chrome', () => {
       { id: 'ready', title: 'Ready finding', href: '#ready', repairGuidance: 'ready', copyAction: <button type="button">Copy fix prompt</button> },
     ]} />)
     expect(screen.getByText(SITE_ACTION_COPY.repairGuidance.label.pending)).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Ready finding' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Ready finding' })).toBeVisible()
     expect(screen.getAllByRole('button', { name: 'Copy fix prompt' })).toHaveLength(1)
   })
 
@@ -202,9 +213,9 @@ describe('BoardCard chrome', () => {
     )
 
     expect(screen.getByText('2 Flags')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Pricing page is unavailable' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Contact page returns an error' })).toHaveAttribute('href', '#contact')
-    fireEvent.click(screen.getByRole('button', { name: 'Pricing page is unavailable' }))
+    expect(screen.getByRole('button', { name: 'Open Pricing page is unavailable' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open Contact page returns an error' })).toHaveAttribute('href', '#contact')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pricing page is unavailable' }))
     expect(openFirst).toHaveBeenCalledOnce()
     expect(openCard).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Pages: 2 Flags' }))

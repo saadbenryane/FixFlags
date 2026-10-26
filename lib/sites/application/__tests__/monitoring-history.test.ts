@@ -4,6 +4,11 @@ import { categoryCoverageExecutionSelect, siteCoverageExecutionSelect } from '..
 import { initialTaskPlan } from '@/lib/audit/progressive/graph'
 import { executionSpecSchema } from '../../domain/execution-spec'
 import { serializeArtifact } from '@/lib/audit/progressive/contracts'
+import { siteViewFixture } from '../../__tests__/site-view-fixture'
+import { readSiteHomeView } from '../../site-view-contract'
+import { projectSiteBoard } from '../../board-view'
+import { runPresentation } from '../../presentation'
+import { BOARD_PREVIEW_COPY } from '@/lib/marketing/copy/board-preview'
 
 const coverage = { environment: 'production', requiredBindings: ['http'], observedBindings: ['http'],
   bindings: [{ key: 'http', version: 1, mechanism: 'HTTP_AVAILABILITY', config: { startUrl: 'https://example.com/' } }] }
@@ -30,6 +35,39 @@ describe('history execution loading', () => {
 })
 
 describe('scope completion in monitoring history', () => {
+  it('keeps finished collection distinct from partial coverage through the wire and Timeline', () => {
+    const audit = { ...row(null), executionSpec: null, runRequests: [], reportCompleteness: 'PARTIAL',
+      evidenceCoverage: { metadata: true, desktopScreenshot: true }, failedModules: ['flow'], verifierExecutions: [] }
+    const history = projectHistory(audit as never, ['audit'])
+    const view = siteViewFixture()
+    view.monitoringHistory = [history]
+    view.monitoringTrend = [history]
+    const parsed = readSiteHomeView(JSON.parse(JSON.stringify(view)), view.site.siteId)
+    const board = projectSiteBoard(parsed, view.site.siteId, true, false, null)
+    expect(runPresentation({ ...audit, auditId: audit.id, auditStatus: audit.status, startedAt: audit.completedAt }).state).toBe('idle')
+    expect(history).toMatchObject({ executionState: 'COMPLETED', completionState: 'PARTIAL', result: null })
+    expect(board.timelineEvents[0]).toMatchObject({ title: BOARD_PREVIEW_COPY.complete, state: 'unknown' })
+    expect(board.monitoringPoints[0].flagCount).toBeNull()
+  })
+
+  it.each([
+    { failureCode: 'AI_CONTRACT_INVALID', failedModules: [], evidenceCoverage: { metadata: true } },
+    { failureCode: null, failedModules: ['browser'], evidenceCoverage: { metadata: true } },
+    { failureCode: null, failedModules: ['flow'], evidenceCoverage: {} },
+  ])('retains incomplete execution when collection did not finish: %j', facts => {
+    const audit = { ...row(null), ...facts, executionSpec: null, runRequests: [], reportCompleteness: 'PARTIAL', verifierExecutions: [] }
+    const history = projectHistory(audit as never, ['audit'])
+    const view = siteViewFixture(); view.monitoringHistory = [history]
+    expect(history).toMatchObject({ executionState: 'PARTIAL', completionState: 'PARTIAL' })
+    expect(projectSiteBoard(view, view.site.siteId, true, false, null).timelineEvents[0])
+      .toMatchObject({ title: BOARD_PREVIEW_COPY.incomplete, state: 'unknown' })
+  })
+
+  it('never uses completed collection to certify missing targeted verification', () => {
+    const audit = { ...row({ state: 'COULD_NOT_VERIFY', coverage, evidence: { reason: 'bot_wall' } }), verifierExecutions: [] }
+    expect(projectHistory(audit as never, [])).toMatchObject({ executionState: 'COMPLETED', completionState: 'PARTIAL', result: 'COULD_NOT_VERIFY' })
+  })
+
   it('keeps an uncollected broad page in the historical completion denominator', () => {
     const targetUrl = 'https://example.com/', peer = targetUrl + 'pricing'
     const spec = executionSpecSchema.parse({ version: 1, engine: 'progressive-v1', scope: 'SITE', targetUrl,

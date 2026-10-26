@@ -52,18 +52,18 @@ export function projectSiteBoard(view: SiteHomeView, siteId: string, _signedIn: 
   const sameDay = new Set(days).size < days.length
   const monitoringPoints = trend.map(item => ({
     label: trendLabel(item.checkedAt, sameDay),
-    flagCount: item.status === 'FAILED' || item.completionState === 'PARTIAL' || !item.evidenceAt ? null : item.flagCount,
+    flagCount: item.status === 'FAILED' || item.executionState !== 'COMPLETED' || item.completionState === 'PARTIAL' || !item.evidenceAt ? null : item.flagCount,
   }))
   const monitoringEvents = (view.monitoringHistory ?? []).toReversed().map(item => ({
     id: item.id ?? item.checkedAt,
-    title: item.afterFix ? B.history.afterFix : item.status === 'FAILED' || item.completionState === 'PARTIAL' ? B.incomplete : B.complete,
+    title: item.afterFix ? B.history.afterFix : item.executionState === 'COMPLETED' ? B.complete : B.incomplete,
     detail: item.scope ? [item.trigger === 'SCHEDULED' ? B.history.scheduled : item.trigger === 'MANUAL' ? B.history.manual : item.trigger === 'OTHER' ? B.history.other : null,
       item.scope === 'SITE' ? B.history.site : item.scope === 'CATEGORY' ? item.targetLabel ?? B.history.unknown : item.scope === 'OUTCOMES' ? B.history.outcomes : item.scope === 'DIAGNOSTIC' ? B.history.diagnostic : B.history.unknown,
       item.targetLabel].filter(Boolean).join(' · ') : undefined,
     resultLabel: item.result === 'COULD_NOT_VERIFY' ? B.history.uncertain : item.result === 'FLAG' ? B.history.flagged : item.result === 'CLEAR' ? item.afterFix ? B.history.recovered : B.history.clear : undefined,
     time: formatEvidenceTimestamp(item.checkedAt) ?? item.checkedAt,
     dateTime: item.checkedAt,
-    state: item.status === 'FAILED' || item.completionState === 'PARTIAL' || item.result === 'COULD_NOT_VERIFY' || item.scope !== 'SITE' && item.result == null ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
+    state: item.status === 'FAILED' || item.executionState !== 'COMPLETED' || item.completionState === 'PARTIAL' || item.result === 'COULD_NOT_VERIFY' || item.scope !== 'SITE' && item.result == null ? 'unknown' as const : item.flagCount > 0 || item.result === 'FLAG' ? 'attention' as const : 'healthy' as const,
     flagCount: item.scope && item.scope !== 'SITE' ? undefined : item.flagCount,
     flags: (item.flags ?? []).map(flag => ({ ...flag, href: `/sites/${siteId}/flags/${flag.id}` })),
   }))

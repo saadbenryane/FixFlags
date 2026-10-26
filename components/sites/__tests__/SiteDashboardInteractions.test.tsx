@@ -6,6 +6,8 @@ import { SitePageResults } from '../SitePageResults'
 import { SitePages } from '../SitePages'
 import { SiteFlagPanel } from '../SiteFlagPanel'
 import { SiteFixBundleButton } from '../SiteFixBundleButton'
+import { MAX_REPAIR_TASKS } from '@/lib/sites/repair-scope'
+import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
 import { siteScopeCounts } from '@/lib/sites/scope-counts'
 import { siteViewerActions } from '@/lib/sites/viewer-actions'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -97,6 +99,33 @@ describe('dashboard reading and handoff', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
+  it('explains an oversized explicit selection before requesting or copying any tasks', () => {
+    const fetch = vi.fn(), writeText = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const flagIds = Array.from({ length: MAX_REPAIR_TASKS + 1 }, (_, index) => `flag-${index}`)
+    const rendered = render(<SiteFixBundleButton siteId="site" flagIds={flagIds} availability="available" />)
+    expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(flagIds.length) })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'View prompt' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(`Select up to ${MAX_REPAIR_TASKS} Flags`)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(writeText).not.toHaveBeenCalled()
+    rendered.rerender(<SiteFixBundleButton siteId="site" flagIds={flagIds.slice(0, MAX_REPAIR_TASKS)} availability="available" />)
+    expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(MAX_REPAIR_TASKS) })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'View prompt' })).toBeEnabled()
+    expect(screen.queryByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one fix prompt.`)).not.toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  it('keeps an oversized expanded prompt disabled without preparing an unsupported scope', () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    const flagIds = Array.from({ length: MAX_REPAIR_TASKS + 1 }, (_, index) => `flag-${index}`)
+    render(<SiteFixBundleButton siteId="site" flagIds={flagIds} availability="available" presentation="preview" />)
+    expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixSelected(flagIds.length) })).toBeDisabled()
+    expect(screen.getAllByText(`Select up to ${MAX_REPAIR_TASKS} Flags to prepare one fix prompt.`)[0]).toBeVisible()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('copies a category bundle and acknowledges each original hash only after clipboard success', async () => {
     const writes: string[] = []
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn(async value => { writes.push(value) }) }, configurable: true })
@@ -109,6 +138,19 @@ describe('dashboard reading and handoff', () => {
     expect(writes).toEqual(['All original tasks'])
     expect(fetch).toHaveBeenCalledWith('/api/sites/site/fix-prompt', expect.objectContaining({ body: JSON.stringify({ area: 'search' }) }))
     expect(fetch).toHaveBeenCalledWith('/api/sites/site/flags/source-1/fix', expect.objectContaining({ body: JSON.stringify({ action: 'copy', promptHash: 'a'.repeat(64) }) }))
+  })
+  it.each([422, 503])('shows a refused repair request and keeps copying available for an explicit retry: %s', async status => {
+    const writeText = vi.fn()
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const message = status === 422 ? 'Some selected Flags have no usable fix instructions.' : 'Fix preparation is unavailable. Try again.'
+    const fetch = vi.fn().mockResolvedValue(Response.json({ message }, { status }))
+    vi.stubGlobal('fetch', fetch)
+    render(<SiteFixBundleButton siteId="site" availability="available" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(screen.getByRole('button', { name: SITE_DASHBOARD_COPY.fixAll })).toBeEnabled()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(writeText).not.toHaveBeenCalled()
   })
   it('offers manual copying without falsely recording a clipboard handoff', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) }, configurable: true })

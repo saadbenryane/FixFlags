@@ -201,21 +201,24 @@ export function BoardCard({
     </span>
     const recovery = recoveryText && !checking ? <div className={styles.rowRecovery}><p>{recoveryText}</p></div> : null
     if (previewFlags.length > 0) {
+      const bounded = compact && Boolean(onOpen || href)
+      const rowFlags = bounded ? visiblePreviewFlags : previewFlags
       return <article className={`${rowClassName} ${styles.rowWithFlags}`} aria-label={name}>
         {onOpen ? <InteractiveButton type="button" className={styles.rowTitleButton} onClick={event => onOpen(event.currentTarget)} aria-label={`Open ${name}`}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</InteractiveButton>
           : <span className={styles.rowTitle}><Icon className={iconClass} size={18} aria-hidden="true" />{name}</span>}
         {rowMeta}
         <ul className={styles.rowFlagList}>
-          {previewFlags.map(flag => {
+          {rowFlags.map(flag => {
             const guidance = flag.repairGuidance === 'pending' || flag.repairGuidance === 'unavailable' ? SITE_ACTION_COPY.repairGuidance.label[flag.repairGuidance] : null
+            const content = <><span className={styles.rowFlagTitle}><strong>{flag.title}</strong>{flag.priorityBand ? <small className={styles.priority} data-priority={flag.priorityBand}>{SITE_DASHBOARD_COPY.priority[flag.priorityBand]}</small> : null}</span>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}<ArrowRight size={16} aria-hidden /></>
             return <li key={flag.id}>
-            {flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagName} onClick={flag.onOpen}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</InteractiveButton>
-              : <Link className={styles.rowFlagName} href={flag.href as Route}><strong>{flag.title}</strong>{guidance ? <span className={styles.rowFlagGuidance}>{guidance}</span> : null}</Link>}
-            <span className={styles.rowFlagActions}>{flag.copyAction ? <span className={styles.rowCopyAction}>{flag.copyAction}</span> : null}
-              {flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagOpen} onClick={flag.onOpen} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></InteractiveButton>
-                : <Link className={styles.rowFlagOpen} href={flag.href as Route} aria-label={`Open ${flag.title}`}><ArrowRight size={17} aria-hidden="true" /></Link>}
-            </span>
+            {onOpenFlag || flag.onOpen ? <InteractiveButton type="button" className={styles.rowFlagName} aria-label={`Open ${flag.title}`} onClick={event => { if (onOpenFlag) onOpenFlag(flag.id, event.currentTarget); else flag.onOpen?.() }}>{content}</InteractiveButton>
+              : <Link className={styles.rowFlagName} href={flag.href as Route} aria-label={`Open ${flag.title}`}>{content}</Link>}
+            {flag.copyAction ? <span className={styles.rowFlagActions}><span className={styles.rowCopyAction}>{flag.copyAction}</span></span> : null}
           </li> })}
+          {bounded && hiddenPreviewCount > 0 ? <li>{onOpen
+            ? <InteractiveButton type="button" className={styles.rowMoreAction} onClick={event => onOpen(event.currentTarget)}>{SITE_DASHBOARD_COPY.moreFlags(hiddenPreviewCount)}</InteractiveButton>
+            : <Link className={styles.rowMoreAction} href={href as Route}>{SITE_DASHBOARD_COPY.moreFlags(hiddenPreviewCount)}</Link>}</li> : null}
         </ul>
         {recovery}
       </article>

@@ -15,7 +15,7 @@ export function DetectedToolsCard({ items, onSelect }: { items: readonly ToolIte
   if (!items.length) return null
   return <section className={styles.card} aria-label="Detected technologies">
     <InteractiveButton ref={trigger} type="button" className={styles.trigger} aria-label={C.viewTools} onClick={() => setOpen(true)}>
-      <span className={styles.heading}><strong>{items.length}</strong><span>{C.tools(items.length)}</span><ArrowUpRight size={15} aria-hidden /></span>
+      <span className={styles.heading}><span>{C.detectedTools}</span><ArrowUpRight size={14} aria-hidden /></span>
       <span className={styles.tools}>{items.map(item => <span key={item.name} title={`${item.name}: ${item.status}`}><ToolLogo name={item.name} /><span>{item.name}</span></span>)}</span>
     </InteractiveButton>
     <ResponsiveDepth header={<DialogTitle>{C.detectedTools}</DialogTitle>} open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>

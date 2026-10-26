@@ -17,6 +17,14 @@ function openCategory(name: string) {
 }
 
 describe('comprehensive homepage experience', () => {
+  it('keeps one brand and one website identity in the sample shell', () => {
+    render(<CareHomepage dashboardOnly />)
+    const board = screen.getByRole('region', { name: C.boardAria })
+    expect(board.querySelectorAll('[data-src="/brand/logo-mark.svg"]')).toHaveLength(1)
+    expect(within(board).getAllByText(C.boardLabel, { exact: true })).toHaveLength(1)
+    expect(within(board).getByRole('complementary', { name: 'App' })).toContainElement(within(board).getByRole('link', { name: 'FixFlags' }))
+  })
+
   it('switches between matching desktop and mobile sample captures', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -33,10 +41,10 @@ describe('comprehensive homepage experience', () => {
     expect(within(tools).queryByText(/more$/)).not.toBeInTheDocument()
   })
 
-  it('pairs findings with the capture and puts Uptime before actionable and healthy checks', () => {
+  it('pairs findings with the capture and puts actionable Flags before monitoring and other checks', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Uptime', 'Pages', 'Conversion', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility'])
+    expect(within(board).getAllByRole('article').map(article => article.getAttribute('aria-label'))).toEqual(['Pages', 'Conversion', 'Uptime', 'Security', 'Search', 'Performance', 'Tracking', 'Accessibility'])
     const findings = within(board).getByRole('region', { name: 'Findings summary' })
     const capture = within(board).getByRole('region', { name: 'Website preview' })
     expect(capture.compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -186,7 +194,7 @@ describe('comprehensive homepage experience', () => {
     expect(screen.getByText(C.hero.body)).toBeVisible()
     const benefits = screen.getByRole('list', { name: 'What FixFlags does' })
     for (const benefit of C.hero.benefits) expect(within(benefits).getByText(benefit.title)).toBeVisible()
-    expect(screen.queryByRole('link', { name: S.exploreAction })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: S.exploreAction })).toHaveLength(1)
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     const board = screen.getByRole('region', { name: C.boardAria })
     for (const card of S.categories.filter(card => card.id !== 'uptime')) expect(within(board).getByRole('button', { name: `Open ${card.name}` })).toBeVisible()
@@ -579,7 +587,7 @@ describe('comprehensive homepage experience', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('places AI tools below the hero entry and benefits below the dashboard introduction', () => {
+  it('keeps the hero focused on entry and places editor guides with fix guidance', () => {
     render(<CareHomepage />)
     const guides = screen.getByRole('list', { name: C.actions.editorGuidesLabel })
     expect(within(guides).getAllByRole('link')).toHaveLength(8)
@@ -589,18 +597,19 @@ describe('comprehensive homepage experience', () => {
     const hero = entry.closest('section')!
     const product = document.getElementById('product')!
     const intro = within(product).getByRole('heading', { name: S.title }).parentElement!
-    expect(guides.closest('section')).toBe(hero)
+    const handoff = screen.getByRole('region', { name: C.story.guidanceTitle })
+    expect(guides.closest('section')).toBe(handoff)
+    expect(within(hero).queryByRole('list', { name: C.actions.editorGuidesLabel })).not.toBeInTheDocument()
     expect(intro).toHaveTextContent(S.subtitle)
     expect(within(intro).getByRole('link', { name: C.workflow.action })).toHaveAttribute('href', '/how-it-works')
     expect(entry.nextElementSibling).toHaveTextContent(C.hero.setup)
-    expect(entry.nextElementSibling?.nextElementSibling).toBe(guides.parentElement)
     expect(entry.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.queryByText('No credit card required')).not.toBeInTheDocument()
     const benefits = screen.getByRole('list', { name: 'What FixFlags does' })
     expect(benefits.closest('section')).toBe(product)
     expect(intro.nextElementSibling).toBe(benefits)
     expect(benefits.nextElementSibling).toBe(screen.getByRole('region', { name: C.boardAria }))
-    expect(guides.compareDocumentPosition(benefits)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(benefits.compareDocumentPosition(guides)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(benefits.compareDocumentPosition(screen.getByRole('region', { name: C.boardAria }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 

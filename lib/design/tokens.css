@@ -8,6 +8,8 @@
 
 :root {
   --surface-board: var(--background);
+  --site-account-rail-width: 64px;
+  --site-content-gutter: 24px;
   /* ── Surfaces: white canvas, cool stone panels ── */
   /* #FFFFFF / #0B0B0D / #F5F6F7 / #E6E6E8 / #61646B */
   --background: 0 0% 100%;

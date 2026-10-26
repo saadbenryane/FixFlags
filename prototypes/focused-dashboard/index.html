@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex,nofollow">
+  <title>FixFlags · Focused dashboard design study</title>
+  <style>
+    @font-face{font-family:Inter;src:url('@@INTER@@') format('woff2');font-weight:100 900;font-display:swap}
+    @font-face{font-family:'Inter Tight';src:url('@@TIGHT@@') format('woff2');font-weight:100 900;font-display:swap}
+    @@STYLE@@
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to dashboard</a>
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="FixFlags overview">@@LOGO@@<span><b>Fix</b>Flags</span></a>
+    <span class="study"><i></i>Design study<span class="desktop-only"> · Sample data</span></span>
+    <div class="top-actions"><button class="button quiet" data-action="about"><span class="desktop-only">Design notes</span><span data-icon="CircleHelp"></span></button><button class="avatar" data-action="account" aria-label="Sample account">JD</button></div>
+  </header>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Workspace">
+      <button class="site-switch" data-action="sites"><span class="site-icon">e.</span><span><strong>Everyday Goods</strong><small>everydaygoods.example</small></span><span data-icon="ChevronDown"></span></button>
+      <nav class="primary-nav" aria-label="Website navigation">
+        <button data-view="overview"><span data-icon="LayoutDashboard"></span>Overview</button>
+        <button data-view="pages"><span data-icon="FileText"></span>Pages</button>
+        <button data-view="timeline"><span data-icon="Clock3"></span>Timeline</button>
+      </nav>
+      <div class="sidebar-bottom"><nav aria-label="Website configuration"><button data-action="connections"><span data-icon="Link2"></span>Connections</button><button data-action="settings"><span data-icon="Settings2"></span>Settings</button></nav><button class="prototype-note" data-action="about"><span data-icon="MousePointer2"></span><span>Made to explore.<small>All changes stay in this sample.</small></span></button></div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <div class="page-header"><div><div class="eyebrow">YOUR WEBSITE, IN FOCUS</div><h1 id="page-title" tabindex="-1">Overview</h1></div><div class="header-controls"><button class="button quiet monitoring" data-action="monitoring"><span class="status-dot good"></span>Daily monitoring<span data-icon="ChevronDown"></span></button><button class="button secondary icon-button" data-action="check-site" aria-label="Check website in sample"><span data-icon="RefreshCw"></span></button></div></div>
+      <div id="view"></div>
+      <footer class="workspace-footer"><span>Illustrative website and evidence. No live checks run here.</span><button data-action="reset">Reset sample</button></footer>
+    </main>
+  </div>
+  <dialog id="dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script>const ICONS = @@ICONS@@; const ASSETS = {cart:'@@CART@@',pricing:'@@PRICING@@'};
+    @@SCRIPT@@
+  </script>
+</body>
+</html>

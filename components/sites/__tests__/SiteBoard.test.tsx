@@ -241,7 +241,7 @@ function openFlag(partial: Partial<SiteFlagSeed> = {}): SiteFlagSeed {
 }
 
 describe('SiteBoard chrome', () => {
-  it('keeps the check time in the sidebar without repeating it on category rows', () => {
+  it('keeps the check time with website identity without repeating it on category rows', () => {
     const initial = boardView({ cards: [card({ id: 'search', name: 'Search', state: 'unknown', checkedAt: '2026-10-19T12:00:00Z' })] })
     initial.presentation.categories[0].freshness = SITE_PRESENTATION_COPY.freshness.minutes(2)
     initial.presentation.freshness.checkedAt = '2026-10-19T12:00:00Z'
@@ -294,7 +294,7 @@ describe('SiteBoard chrome', () => {
     })
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
     const header = screen.getByRole('button', { name: SITE_BOARD_COPY.checkAgain }).closest('header')!
-    expect(header).not.toHaveTextContent('example.com')
+    expect(within(header).getAllByText('example.com')).toHaveLength(1)
     expect(screen.getByRole('heading', { name: 'example.com', level: 1 })).toBeVisible()
     expect(within(header).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toBeVisible()
     expect(screen.queryByRole('link', { name: SITE_ACTION_COPY.recovery.access })).not.toBeInTheDocument()
@@ -318,7 +318,7 @@ describe('SiteBoard chrome', () => {
     })
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
     const header = screen.getByRole('button', { name: 'Monitoring: Not monitored' }).closest('header')!
-    expect(header).not.toHaveTextContent('example.com')
+    expect(within(header).getAllByText('example.com')).toHaveLength(1)
     expect(within(header).getByRole('link', { name: SITE_ACTION_COPY.recovery.access })).toHaveAttribute('href', '/sites/p_example/settings#scan-access')
     expect(within(header).queryByRole('button', { name: SITE_BOARD_COPY.checkAgain })).not.toBeInTheDocument()
   })
@@ -361,7 +361,7 @@ describe('SiteBoard chrome', () => {
     expect(within(detail).getByRole('button', { name: SITE_BOARD_COPY.checkAgain })).toHaveAttribute('data-site-auth-next', SITE_PATH + '?category=search')
   })
 
-  it('puts Uptime first, followed by flagged, unfinished, and healthy checks', () => {
+  it('puts actionable Flags before monitoring and keeps unfinished coverage visible', () => {
     const view = boardView({ cards: [
       card({ id: 'security', name: 'Security', state: 'healthy', evidenced: true, answer: 'Protected' }),
       card({ id: 'search', name: 'Search', state: 'healthy', evidenced: true, answer: 'Crawl access checked', incompleteReason: SITE_BOARD_COPY.cardCheckIncomplete }),
@@ -374,7 +374,7 @@ describe('SiteBoard chrome', () => {
     expect(within(search).getByRole('button', { name: 'Open Search' })).toHaveAccessibleDescription(/Crawl access checked/)
     expect(within(search).queryByText(/Unfinished checks:/)).not.toBeInTheDocument()
     const uptime = screen.getByRole('article', { name: 'Uptime' })
-    expect(uptime.compareDocumentPosition(conversion)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(conversion.compareDocumentPosition(uptime)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(uptime.compareDocumentPosition(screen.getByRole('button', { name: 'Open Security' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     const findings = screen.getByRole('region', { name: 'Findings summary' })
     expect(screen.getByRole('region', { name: 'Website preview' }).compareDocumentPosition(findings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -852,7 +852,7 @@ describe('SiteBoard chrome', () => {
 
   it('shows available Timeline data to an authorized signed-out scan visitor', () => {
     const initial = boardView({ actions: siteViewerActions(false), monitoringHistory: [
-      { id: 'current', checkedAt: '2026-10-23T09:00:00Z', flagCount: 1, scope: 'SITE', status: 'COMPLETED', evidenceAt: '2026-10-23T09:00:00Z' },
+      { id: 'current', checkedAt: '2026-10-23T09:00:00Z', flagCount: 1, scope: 'SITE', status: 'COMPLETED', executionState: 'COMPLETED', evidenceAt: '2026-10-23T09:00:00Z' },
     ] })
     render(<MeProvider initialUser={null}><SiteBoard siteId="p_example" initial={initial} viewMode="timeline" /></MeProvider>)
     expect(screen.getByRole('list', { name: 'Check history' })).toBeVisible()
@@ -862,7 +862,7 @@ describe('SiteBoard chrome', () => {
 
   it('omits an empty overview trend while preserving the first recorded check in Timeline', () => {
     const view = boardView({ monitoringHistory: [
-      { id: 'first', checkedAt: '2026-10-23T09:00:00Z', flagCount: 0, scope: 'SITE', status: 'COMPLETED', completionState: 'PARTIAL' },
+      { id: 'first', checkedAt: '2026-10-23T09:00:00Z', flagCount: 0, scope: 'SITE', status: 'COMPLETED', executionState: 'COMPLETED', completionState: 'PARTIAL' },
     ] })
     view.monitoringTrend = view.monitoringHistory
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
@@ -874,8 +874,8 @@ describe('SiteBoard chrome', () => {
   it('shows real monitoring history in the same Site shell', async () => {
     const view = boardView({
       monitoringHistory: [
-        { checkedAt: '2026-10-09T09:00:00.000Z', flagCount: 0 },
-        { checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, flags: [{ id: 'flag-1', title: 'Pricing page is unavailable' }] },
+        { checkedAt: '2026-10-09T09:00:00.000Z', flagCount: 0, executionState: 'COMPLETED' },
+        { checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, executionState: 'COMPLETED', flags: [{ id: 'flag-1', title: 'Pricing page is unavailable' }] },
       ],
       flags: [openFlag()],
     })
@@ -892,9 +892,9 @@ describe('SiteBoard chrome', () => {
 
   it('shows a manual recovery check by scope without including it in the Site-wide trend', async () => {
     const view = boardView({ monitoringHistory: [
-      { id: 'site-1', checkedAt: '2026-10-09T09:00:00.000Z', flagCount: 2, scope: 'SITE', trigger: 'SCHEDULED' },
-      { id: 'site-2', checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, scope: 'SITE', trigger: 'SCHEDULED' },
-      { id: 'fix-1', checkedAt: '2026-10-11T09:00:00.000Z', flagCount: 0, scope: 'OUTCOMES', trigger: 'MANUAL', afterFix: true, targetLabel: 'Reach checkout', result: 'CLEAR' },
+      { id: 'site-1', checkedAt: '2026-10-09T09:00:00.000Z', flagCount: 2, executionState: 'COMPLETED', scope: 'SITE', trigger: 'SCHEDULED' },
+      { id: 'site-2', checkedAt: '2026-10-10T09:00:00.000Z', flagCount: 1, executionState: 'COMPLETED', scope: 'SITE', trigger: 'SCHEDULED' },
+      { id: 'fix-1', checkedAt: '2026-10-11T09:00:00.000Z', flagCount: 0, executionState: 'COMPLETED', scope: 'OUTCOMES', trigger: 'MANUAL', afterFix: true, targetLabel: 'Reach checkout', result: 'CLEAR' },
     ] })
     view.monitoringTrend = view.monitoringHistory.filter(entry => entry.scope === 'SITE').map(entry => ({ ...entry, status: 'COMPLETED', evidenceAt: entry.checkedAt }))
     render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} viewMode="timeline" /></MeProvider>)
@@ -985,7 +985,7 @@ describe('SiteBoard chrome', () => {
     expect(within(screen.getByRole('article', { name: 'Performance' })).queryByText(/running/)).not.toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Performance' })).getByRole('button', { name: 'Open Performance' })).toHaveAccessibleDescription(/Waiting/)
     expect(screen.queryByText('No completed analysis')).not.toBeInTheDocument()
-    const header = screen.getByRole('complementary', { name: 'Website navigation' })
+    const header = screen.getByRole('heading', { name: 'example.com', level: 1 }).closest('header')!
     const status = within(header).getByRole('status')
     expect(status).toHaveTextContent('Analyzing')
     expect(status.querySelector('svg')).not.toBeNull()

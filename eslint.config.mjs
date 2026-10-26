@@ -19,6 +19,7 @@ const config = [
       'output/**',
       'playwright-report/**',
       'test-results/**',
+      '.agents/artifacts/**',
       'next-env.d.ts',
     ],
   },

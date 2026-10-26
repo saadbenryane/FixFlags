@@ -5,6 +5,7 @@ import { SITE_BOARD_COPY, SITE_PRESENTATION_COPY } from '@/lib/marketing/copy/te
 import { UPTIME_COPY } from '@/lib/marketing/copy/uptime'
 import type { uptimeAssessment } from '@/lib/uptime/status'
 import type { WatchBoardState } from '@/lib/sites/watch-state'
+import { analysisDidNotFinish } from './analysis-completion'
 
 export type SiteResultState =
   | 'checking'
@@ -217,30 +218,6 @@ export function siteSortRank(site: SitePresentation): number {
       site.monitoring.state === 'delayed' || site.monitoring.state === 'quota_blocked') return 2
   if (site.flags.count > 0) return 3
   return 4
-}
-
-const COLLECTION_FAILURES = new Set(['browser', 'http', 'pagespeed', 'captures', 'finalize'])
-
-function pageWasCaptured(evidenceCoverage: unknown): boolean {
-  if (!evidenceCoverage || typeof evidenceCoverage !== 'object' || Array.isArray(evidenceCoverage)) return false
-  const evidence = evidenceCoverage as Record<string, unknown>
-  return ['metadata', 'desktopScreenshot', 'mobileScreenshot', 'desktopPageSpeed', 'mobilePageSpeed']
-    .some(key => evidence[key] === true)
-}
-
-/** A finished check with the page in hand is not an incomplete analysis.
- * Collection that never captured the page, or a recorded failure, still is.
- * Bounded card gaps stay on those cards. */
-function analysisDidNotFinish(input: {
-  failureCode: string | null
-  reportCompleteness?: string | null
-  failedModules?: unknown
-  evidenceCoverage?: unknown
-}): boolean {
-  if (input.failureCode) return true
-  const modules = Array.isArray(input.failedModules) ? input.failedModules.filter((module): module is string => typeof module === 'string') : []
-  if (modules.some(module => COLLECTION_FAILURES.has(module))) return true
-  return !pageWasCaptured(input.evidenceCoverage) && (input.reportCompleteness === 'PARTIAL' || modules.length > 0)
 }
 
 export function runPresentation(input: {

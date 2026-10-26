@@ -1,0 +1,41 @@
+.study {
+  min-height: 100dvh;
+  padding: 20px clamp(12px, 3vw, 40px) 40px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 1280px;
+  margin: 0 auto 20px;
+}
+
+.toolbar h1 {
+  font-size: 14px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.toolbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 12px;
+  border-radius: var(--radius-control);
+  font-size: 13px;
+}
+
+.toolbar a:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+.preview {
+  max-width: 1280px;
+  margin-inline: auto;
+}
