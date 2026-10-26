@@ -4,6 +4,7 @@ import { InteractiveButton } from '@/components/ui/interactive-controls'
 import { usePathname } from 'next/navigation'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useFixedBottomNotice } from '@/components/system/useFixedBottomNotice'
+import { ChevronDown } from 'lucide-react'
 import Script from 'next/script'
 import { getGoogleAdsId, getMetaPixelId } from '@/lib/analytics/ad-conversions'
 import {
@@ -22,6 +23,7 @@ import {
 import { ANALYTICS_CONSENT_COPY } from '@/lib/marketing/copy/legal'
 import { getGoogleAnalyticsId, initializeGoogleTag } from '@/lib/analytics/gtag'
 import { ANALYTICS_JOURNEY_STORAGE_KEY } from '@/lib/analytics/journey-id'
+import styles from './ConversionScripts.module.css'
 
 /**
  * Capture ad click ids (gclid/fbclid) from the landing URL into a first-party
@@ -148,16 +150,13 @@ export function ConversionScripts() {
           role="dialog"
           aria-label={ANALYTICS_CONSENT_COPY.title}
           aria-describedby="analytics-consent-description"
-          className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+var(--bottom-notice-offset,0px))] z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:p-5"
+          className={styles.notice}
         >
-          <p className="text-sm font-semibold text-foreground">{ANALYTICS_CONSENT_COPY.title}</p>
-          <p
-            id="analytics-consent-description"
-            className="mt-1 text-xs leading-relaxed text-muted-foreground"
-          >
-            {ANALYTICS_CONSENT_COPY.body}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <details className={styles.details}>
+            <summary>{ANALYTICS_CONSENT_COPY.compactTitle}<ChevronDown size={14} aria-hidden /></summary>
+            <p id="analytics-consent-description">{ANALYTICS_CONSENT_COPY.body}</p>
+          </details>
+          <div className={styles.actions}>
             <InteractiveButton
               type="button"
               className="min-h-11 rounded-full bg-foreground px-4 text-xs font-semibold text-background"

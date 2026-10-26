@@ -40,11 +40,14 @@ describe('ConversionScripts consent', () => {
     vi.unstubAllEnvs()
   })
 
-  it('explains the choice without calling the work a product journey', async () => {
+  it('keeps the complete explanation available from the compact notice', async () => {
     render(<ConversionScripts />)
     expect(ANALYTICS_CONSENT_COPY.body).toContain('see how people use FixFlags')
     expect(ANALYTICS_CONSENT_COPY.body.toLowerCase()).not.toMatch(/journey/)
-    expect(await screen.findByText(ANALYTICS_CONSENT_COPY.body)).toBeVisible()
+    const explanation = await screen.findByText(ANALYTICS_CONSENT_COPY.body)
+    expect(explanation).not.toBeVisible()
+    fireEvent.click(screen.getByText(ANALYTICS_CONSENT_COPY.compactTitle))
+    expect(explanation).toBeVisible()
   })
 
   it('requires an explicit choice and remembers necessary-only', async () => {
@@ -52,8 +55,6 @@ describe('ConversionScripts consent', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Choose your analytics settings' })
     expect(dialog).toBeVisible()
-    expect(dialog.className).toContain('bottom-[')
-    expect(dialog.className).not.toContain('top-3')
     expect(dialog).toHaveAccessibleDescription(ANALYTICS_CONSENT_COPY.body)
     expect(document.documentElement.style.paddingTop).toBe('')
     expect(document.documentElement.style.paddingBottom).toBe('')

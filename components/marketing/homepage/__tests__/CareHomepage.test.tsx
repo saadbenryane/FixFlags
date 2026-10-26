@@ -344,7 +344,7 @@ describe('comprehensive homepage experience', () => {
 
   it('links the intro to the walkthrough and provides settings in the sample navigation', () => {
     render(<CareHomepage />)
-    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true }).closest('p')).toHaveTextContent(S.subtitle)
+    expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true }).parentElement).toHaveTextContent(S.subtitle)
     expect(within(document.getElementById('product')!).getByRole('link', { name: C.workflow.action, exact: true })).toHaveAttribute('href', '/how-it-works')
     expect(screen.getByText(C.hero.body)).toBeVisible()
     expect(screen.getByText(C.hero.setup)).toBeVisible()

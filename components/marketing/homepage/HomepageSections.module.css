@@ -1,5 +1,5 @@
 .handoffIntro h2, .integrationCopy h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 600; line-height: 1.1; letter-spacing: -.045em; }
-.handoffIntro > p:not(:first-child) { margin-top: 18px; color: hsl(var(--muted-foreground)); font-size: 16px; line-height: 1.65; }
+.handoffIntro > p:not(:first-child) { margin-top: 18px; color: hsl(var(--muted-foreground)); font-size: 18px; line-height: 1.7; }
 
 .handoff { padding-top: 80px; padding-bottom: 80px; background: hsl(var(--muted) / .48); }
 .handoffGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 88px); }
@@ -98,7 +98,7 @@
 }
 .monitoringGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 88px); }
 .monitoringIntro h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: -.045em; line-height: 1.1; }
-.monitoringIntro > p:not(:first-child) { margin-top: 20px; color: hsl(var(--muted-foreground)); font-size: 16px; line-height: 1.7; }
+.monitoringIntro > p:not(:first-child) { margin-top: 20px; color: hsl(var(--muted-foreground)); font-size: 18px; line-height: 1.7; }
 .monitoringDetails { margin-top: 18px; }
 .monitoringDetails summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; width: fit-content; max-width: 100%; border-radius: var(--radius-control); font-size: 13px; font-weight: 550; cursor: pointer; list-style: none; }
 .monitoringDetails summary::-webkit-details-marker { display: none; }
@@ -130,4 +130,8 @@
 @media (max-width: 767px) {
   .monitoringGrid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .loop { grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 40px; }
+}
+
+@media (max-width: 767px) {
+  .handoffIntro > p:not(:first-child), .monitoringIntro > p:not(:first-child) { font-size: 16px; }
 }

@@ -11,6 +11,7 @@ export const LEGAL_PAGE_META = {
 
 export const ANALYTICS_CONSENT_COPY = {
   title: 'Choose your analytics settings',
+  compactTitle: 'Optional analytics',
   body:
     'FixFlags uses optional analytics to see how people use FixFlags. Google Analytics receives basic cookieless measurement signals. Analytics cookies and advertising scripts are enabled only when you allow them. Necessary cookies keep the product working.',
   allow: 'Allow analytics',

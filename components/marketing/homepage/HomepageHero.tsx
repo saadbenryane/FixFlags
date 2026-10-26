@@ -28,7 +28,7 @@ export function HomepageHero({ onOpen, onOpenFlag, onCopyFlag, onCopyAll, onView
       </div>
     </section>
     <section className={s.product} id="product" tabIndex={-1}>
-      <div className={s.productIntro}><h2>{S.title}</h2><p>{S.subtitle} <Link href="/how-it-works">{C.workflow.action}<ArrowRight size={14} aria-hidden="true" /></Link></p></div>
+      <div className={s.productIntro}><h2>{S.title}</h2><p>{S.subtitle}</p><Link href="/how-it-works">{C.workflow.action}<ArrowRight size={16} aria-hidden="true" /></Link></div>
       <ul className={s.benefits} aria-label="What FixFlags does">
         {C.hero.benefits.map((benefit, index) => {
           const Icon = BENEFIT_ICONS[index]

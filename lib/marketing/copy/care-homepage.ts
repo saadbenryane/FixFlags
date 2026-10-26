@@ -189,7 +189,7 @@ export const CARE_HOME = {
   },
   notifications: {
     label: 'Email alerts',
-    title: 'The problem, in your inbox.',
+    title: 'Get notified. Keep building.',
     body: 'FixFlags checks on your schedule. Get email alerts about new problems and confirmed fixes, with a link to the evidence.',
     detailTitle: 'What gets checked?',
     detailBody: 'Save your Site to activate monitoring. Your Site shows the supported checks, schedule, and latest results. Email alerts follow your notification settings. Problems can be detected at the next scheduled check.',
@@ -287,10 +287,10 @@ export function sampleFlagsForCategory(card: SampleCategory): SampleFlagId[] {
 }
 
 export const HOMEPAGE_SAMPLE = {
-  exploreAction: 'Explore the sample', sampleLabel: 'Interactive sample · illustrative evidence',
+  exploreAction: 'Explore the sample', sampleLabel: 'Interactive dashboard · Sample data',
   identityAlt: 'Everyday Goods sample homepage, shown for website identity',
   title: 'See what needs attention.',
-  subtitle: 'A Flag is a problem that needs attention. Open one to see the evidence and fix guidance.',
+  subtitle: 'Open a Flag to see what happened and how to fix it.',
   summary: '3 Flags',
   freshness: '15 minutes ago',
   boardAction: 'Recheck',
