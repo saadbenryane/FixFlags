@@ -7,8 +7,8 @@
 .domain:focus-visible, .navLink:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
 .desktopNavigation { display: none; }
 .navigation { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding: 2px; scrollbar-width: thin; }
-.mobileNavigation { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
-.mobileNavigation span { white-space: nowrap; }
+/* Larger text receives wider columns while ordinary phone labels keep three columns. */
+.mobileNavigation { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(6em, calc((100% - 8px) / 3))), 1fr)); gap: 4px; }
 .navLink { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border-radius: var(--radius-control); font-size: 14px; font-weight: 500; color: hsl(var(--muted-foreground)); white-space: nowrap; }
 .navLink:hover { background: hsl(var(--muted) / .6); color: hsl(var(--foreground)); }
 .selected { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
