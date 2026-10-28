@@ -15,8 +15,8 @@ const accounts = (view: Home): AccountChecksView => {
   expect(view.settings.accountChecks, 'Site account projection is available').toBeDefined()
   return view.settings.accountChecks!
 }
-async function home(request: APIRequestContext, siteId: string): Promise<Home> {
-  const response = await request.get(`/api/sites/${siteId}`)
+async function home(request: APIRequestContext, siteId: string, scope: 'overview' | 'settings' = 'overview'): Promise<Home> {
+  const response = await request.get(`/api/sites/${siteId}${scope === 'settings' ? '?scope=settings' : ''}`)
   expect(response.status(), await response.text()).toBe(200)
   return response.json()
 }
@@ -77,7 +77,7 @@ test.describe('controlled website capabilities', () => {
       expect(saved.status()).toBe(200)
       const key = `account-lifecycle:${required('RELEASE_RUN_ID')}`
       const admitted = await run(page.request, siteId, 'account-checks', { action: 'retest' }, key)
-      const first = accounts(await home(page.request, siteId))
+      const first = accounts(await home(page.request, siteId, 'settings'))
       expect(first.accounts.filter(account => account.purpose === 'retained')).toEqual([expect.objectContaining({ state: 'ACTIVE' })])
       expect(first.accounts.filter(account => account.purpose === 'disposable')).toEqual([expect.objectContaining({ state: 'DELETED' })])
       for (const kind of ['signup', 'verification', 'signed_in', 'deletion'])
@@ -103,7 +103,7 @@ test.describe('controlled website capabilities', () => {
       }, { timeout: 120_000, intervals: [2000] }).toBe(true)
       const expired = await targetSessions()
       await run(page.request, siteId, 'account-checks', { action: 'retest' }, `account-reuse:${required('RELEASE_RUN_ID')}`)
-      expect(accounts(await home(page.request, siteId)).accounts.find(account => account.purpose === 'retained')?.email)
+      expect(accounts(await home(page.request, siteId, 'settings')).accounts.find(account => account.purpose === 'retained')?.email)
         .toBe(retainedEmail)
       const renewed = await targetSessions()
       expect(Math.max(...renewed.map(session => new Date(session.expiresAt).getTime())))
@@ -112,10 +112,10 @@ test.describe('controlled website capabilities', () => {
         body: Buffer.from(JSON.stringify({ targetSessionLifetimeSeconds: 60, beforeExpiry, expired, renewed,
           timestampMutation: false, scope: 'Natural controlled-target session expiry followed by normal retained-account reauthentication.' })) })
       expect((await page.request.patch(`/api/sites/${siteId}/settings`, { data: { accountChecksEnabled: false } })).status()).toBe(200)
-      expect(accounts(await home(page.request, siteId)).canCleanup).toBe(true)
+      expect(accounts(await home(page.request, siteId, 'settings')).canCleanup).toBe(true)
       expect((await page.request.post(`/api/sites/${siteId}/account-checks`, { headers: { 'Idempotency-Key': 'refused-retest' }, data: { action: 'retest' } })).status()).toBe(409)
       await run(page.request, siteId, 'account-checks', { action: 'cleanup' }, `account-cleanup:${required('RELEASE_RUN_ID')}`)
-      expect(accounts(await home(page.request, siteId)).accounts.every(account => account.state === 'DELETED')).toBe(true)
+      expect(accounts(await home(page.request, siteId, 'settings')).accounts.every(account => account.state === 'DELETED')).toBe(true)
     } finally { await control(page.request, { sessionTtlSeconds: 3600 }) }
   })
 
@@ -153,7 +153,7 @@ test.describe('controlled website capabilities', () => {
     try {
       await control(page.request, { deletionUnavailable: true })
       await run(page.request, siteId, 'account-checks', { action: 'cleanup' }, `unresolved-cleanup:${required('RELEASE_RUN_ID')}`)
-      const remaining = accounts(await home(page.request, siteId)).accounts.filter(account => account.state !== 'DELETED')
+      const remaining = accounts(await home(page.request, siteId, 'settings')).accounts.filter(account => account.state !== 'DELETED')
       expect(remaining.length).toBeGreaterThan(0)
       expect((await page.request.delete(`/api/sites/${siteId}`, { data: {} })).status()).toBe(409)
       expect((await page.request.delete(`/api/sites/${siteId}`, { data: { acknowledgeRemainingAccounts: true, remainingAccounts: [] } })).status()).toBe(409)
