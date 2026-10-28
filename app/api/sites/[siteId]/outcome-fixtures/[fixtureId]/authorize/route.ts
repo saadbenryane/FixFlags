@@ -8,7 +8,7 @@ export async function POST(_request: Request, context: { params: Promise<{ siteI
     const { siteId, fixtureId } = await context.params
     const owner = await requireSiteOwner(siteId)
     if (!owner.ok) return apiError(owner.message, owner.status)
-    return NextResponse.json({ fixture: await authorizeOutcomeFixture(owner.projectId, fixtureId) })
+    return NextResponse.json({ fixture: await authorizeOutcomeFixture(owner.projectId, fixtureId, owner.decision.site.userId!) })
   } catch (error) {
     if (error instanceof OutcomeFixtureError) return apiError(error.message, error.status, { code: error.code })
     return handleRouteError(error, 'Could not authorize this Safe Form fixture')

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import axe from 'axe-core'
 import type { AxeResults } from 'axe-core'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from '../browser/accessibility-evidence'
-import { accessibilityObservations, scopeAccessibilityFlags } from './accessibility-observations'
+import { accessibilityObservations, evaluateAccessibility, scopeAccessibilityFlags } from './accessibility-observations'
 import { isIframeAxeTarget, runAccessibilityChecks, type AxeViolation } from './accessibility'
 import { parseMetadataFromHtml } from '../metadata'
 import { scopedAssertionForTarget } from './verification'
@@ -33,6 +33,32 @@ const original = scopeAccessibilityFlags(runAccessibilityChecks(metadata, null, 
 const proof = (value: AccessibilityEvidence) => scopedAssertionForTarget({ receipt: receipt(value), checkId: original.checkId, flag: original })?.assertion
 
 describe('automated accessibility responsibilities', () => {
+  it('keeps mobile target failures and repairs scoped to the measured mobile viewport', () => {
+    const mobileScope = { ...scope, profile: 'mobile' }
+    const mobileEvidence = (state: 'passed' | 'failed' | 'incomplete', profile = 'mobile') => evidence(state, {
+      scope: { ...mobileScope, profile }, rules: [{ id: 'target-size', state, nodes: 2 }],
+    })
+    const mobileViolation = { ...violation, id: 'target-size' }
+    const before = evaluateAccessibility({ metadata, scope, evidence: evidence('passed'),
+      mobileAccessibility: { evidence: mobileEvidence('failed'), violations: [mobileViolation] } })
+    const flag = before.flags.find(item => item.checkId === 'axe-target-size')!
+    expect(flag.evidenceTargets).toEqual(expect.arrayContaining([expect.objectContaining({ device: 'mobile',
+      context: expect.stringContaining('accessibility:axe:mobile:') })]))
+    const inspect = (mobileAccessibility?: Parameters<typeof evaluateAccessibility>[0]['mobileAccessibility']) => {
+      const after = evaluateAccessibility({ metadata, scope, evidence: evidence('passed', {
+        rules: [{ id: 'target-size', state: 'passed', nodes: 2 }],
+      }), mobileAccessibility })
+      return scopedAssertionForTarget({ receipt: { ...receipt(evidence('passed')), assertions: after.assertions }, checkId: flag.checkId, flag })?.assertion
+    }
+    expect(inspect()).toBeUndefined()
+    expect(inspect({})).toBeUndefined()
+    expect(inspect({ evidence: mobileEvidence('incomplete') })).toBeUndefined()
+    expect(inspect({ evidence: mobileEvidence('passed', 'changed-mobile') })).toBeUndefined()
+    expect(inspect({ evidence: mobileEvidence('failed') })).toMatchObject({ passed: false, complete: true })
+    expect(inspect({ evidence: mobileEvidence('passed') })).toMatchObject({ passed: true, complete: true })
+    expect(screenshotSnapshotSchema.shape.mobileAccessibility.parse({ evidence: mobileEvidence('failed'), violations: [mobileViolation] }))
+      .toEqual({ evidence: mobileEvidence('failed'), violations: [mobileViolation] })
+  })
   it('keeps the portable execution inventory aligned with the installed WCAG policy and registers every emitted rule identity', () => {
     expect(axe.getRules(ACCESSIBILITY_TAGS).map(rule => rule.ruleId).sort()).toEqual([...AXE_POLICY_RULE_IDS])
     const installed = new Set(axe.getRules().map(rule => rule.ruleId))

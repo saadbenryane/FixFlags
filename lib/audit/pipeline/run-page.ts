@@ -499,7 +499,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.axeViolations,
     true, undefined, { head, tracking: screenshots.tracking, consoleCoverage: screenshots.consoleCoverage,
       publicDocument: screenshots.originalDocument,
-      accessibilityEvidence: screenshots.accessibilityEvidence, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
+      accessibilityEvidence: screenshots.accessibilityEvidence, mobileAccessibility: screenshots.mobileAccessibility, renderedScope: screenshots.renderedScope, deadline: ctx.deadline },
   )
 
   const unfinishedModules = [...new Set([...failedModules, ...executions

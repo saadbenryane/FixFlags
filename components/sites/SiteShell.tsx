@@ -57,14 +57,12 @@ function SiteShellContent({
 }: {
   siteId: string
   auditId?: string
-  ownerId?: string | null
   actions: SiteViewerActions
   activeRoute: SiteRoute
   title: string
   description: string
-  presentation?: SitePresentation
+  presentation: SitePresentation
   watch: SiteHomeView['watch']
-  checking?: boolean
   statusMessage?: string | null
   headerAction?: ReactNode
   analysisView?: SiteHomeView
@@ -82,8 +80,7 @@ function SiteShellContent({
   const navigationHref = (route: SiteRoute) => route === 'settings' && !ownsSite
     ? siteContinuationHref(actions.monitoring as 'sign_in' | 'claim', `/sites/${siteId}/settings`) as Route
     : routeHref(siteId, route)
-  const identity = presentation?.identity
-  const host = identity?.host ?? title
+  const host = presentation.identity.host
   const routeTitle = routes.find(([id]) => id === activeRoute)?.[1] ?? title
   const canvasTitle = activeRoute === 'home' ? (title === host ? null : title) : routeTitle
   function openWorkspace(event: MouseEvent<HTMLAnchorElement>, route: SiteRoute, close?: () => void) {
@@ -101,7 +98,7 @@ function SiteShellContent({
   const navigation = (label: string, close?: () => void) => <SiteWorkspaceNavigation activeRoute={activeRoute} label={label} showSettings={showSettings} helpHref={coverageHelpHref}
     renderItem={({ id, selected, className, content }) => <Link key={id} href={navigationHref(id)} prefetch={onWorkspaceNavigate && id !== 'settings' ? false : undefined} onClick={event => openWorkspace(event, id, close)} aria-current={selected ? 'page' : undefined} className={className}>{content}</Link>} />
 
-  const analyzing = presentation?.run.state === 'queued' || presentation?.run.state === 'running'
+  const analyzing = presentation.run.state === 'queued' || presentation.run.state === 'running'
 
   return <div className={cn(styles.workspace, styles.withAccount)}>
     <SiteAccountRail />
@@ -113,7 +110,7 @@ function SiteShellContent({
         <SiteWorkspaceHeader identity={<>
         {canvasTitle == null ? <h1 className={styles.siteTitle}><Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link></h1>
           : <Link href={routeHref(siteId, 'home')} prefetch={onWorkspaceNavigate ? false : undefined} onClick={event => openWorkspace(event, 'home')} className={styles.domain}>{host}</Link>}
-        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : analyzing ? <AnalysisDetails statusLabel={presentation?.run.label ?? watch.label} active disconnected={false} /> : null)}
+        {analysisStatus ?? (analysisView ? <LiveSiteAnalysisDetails siteId={siteId} /> : analyzing ? <AnalysisDetails statusLabel={presentation.run.label} active disconnected={false} /> : null)}
         </>} navigation={<div className={styles.desktopNavigation}>{navigation('Site')}</div>}
           heading={canvasTitle ? <><h1>{canvasTitle}</h1>{description ? <p>{description}</p> : null}</> : null}
           actions={<><SiteMonitoringMenu label={watch.label}

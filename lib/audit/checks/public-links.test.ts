@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { capturedPageLinks, publicLinkObservations, publicLinkUrls } from './public-links'
 import { parseMetadataFromHtml } from '../metadata'
 import type { OpenCheckResult } from '../open-check'
-import { destinationContext } from './destination-evidence'
+import { destinationContext, publicLinkContext, DESTINATION_VERIFICATION_RULE } from './destination-evidence'
+import { scopedAssertionForTarget } from './verification'
+import { checkReceiptSchema } from './receipt'
 
 const page = 'https://example.com/'
 function response(url: string, overrides: Partial<OpenCheckResult> = {}): OpenCheckResult {
@@ -23,9 +25,23 @@ describe('public link observations', () => {
   it('retains query identity in scoped proof while redacting signed values from findings', () => {
     const url = page + 'gone?token=PRIVATE_VALUE'
     const result = publicLinkObservations(page, [url], [response(url, { status: 404, outcome: 'not_found', shouldFlagDead: true })])
-    expect(result.flags[0].evidenceTargets?.[0].context).toBe(destinationContext(page, url))
-    expect(result.assertions[0].context).toBe(destinationContext(page, url))
+    expect(result.flags[0].evidenceTargets?.[0].context).toBe(publicLinkContext(page, url))
+    expect(result.assertions[0].context).toBe(publicLinkContext(page, url))
     expect(JSON.stringify(result)).not.toContain('PRIVATE_VALUE')
+  })
+
+  it('compares independent current GET evidence without certifying a historical detector correction', () => {
+    const url = page + 'details'
+    const source = publicLinkObservations(page, [url], [response(url, { status: 404, outcome: 'not_found', shouldFlagDead: true })])
+    const current = publicLinkObservations(page, [url], [response(url)])
+    const receipt = checkReceiptSchema.parse({ kind: 'site-module-check', version: 1, module: 'seo', pageUrl: page,
+      applicable: true, passed: true, complete: true, assertions: current.assertions,
+      execution: { auditId: 'independent', taskId: 'http-observation', checkVersion: 1, source: 'http', collectedAt: new Date().toISOString() } })
+    expect(scopedAssertionForTarget({ receipt, checkId: 'broken-internal-links', flag: source.flags[0] }))
+      .toMatchObject({ assertion: { passed: true, complete: true } })
+    const historical = { ...source.flags[0], verificationRule: DESTINATION_VERIFICATION_RULE,
+      evidenceTargets: [{ kind: 'page', source: 'measured', device: 'desktop', context: destinationContext(page, url) }] }
+    expect(scopedAssertionForTarget({ receipt, checkId: 'broken-internal-links', flag: historical })).toBeUndefined()
   })
   it('never substitutes an inventory-equivalent URL for the requested response', () => {
     const result = publicLinkObservations(page, [page + 'en/gone'], [response(page + 'gone')])

@@ -2,7 +2,6 @@ import { integrationRelease } from '@/lib/integrations/release-policy'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { completeGoogleConnection } from '@/lib/sites/connections/google'
 import { getAuthBaseUrl } from '@/lib/auth/env'
 
@@ -21,13 +20,6 @@ export async function GET(request: NextRequest) {
       state,
       code,
       sessionUserId: session.user.id,
-      hostForProject: async (projectId, userId) => {
-        const project = await prisma.project.findFirst({
-          where: { id: projectId, userId, deletedAt: null },
-          select: { url: true },
-        })
-        return project?.url ?? null
-      },
     })
     if ('error' in result) return NextResponse.redirect(`${base}/dashboard`)
     return NextResponse.redirect(`${base}/sites/${result.projectId}?view=integrations#integrations`)

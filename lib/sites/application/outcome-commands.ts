@@ -60,18 +60,19 @@ export async function confirmSiteOutcome(input: {
       : { provisionalSiteId: input.site.provisionalSiteId! }
 
   let safeFixture: { id: string; targetUrl: string } | undefined
-  if (input.confirmed && input.kind === 'SIGNUP') {
-    if (!input.site.projectId || !input.fixtureId) throw new OutcomeFixtureRequiredError()
-    const fixture = await prisma.outcomeFixture.findFirst({
-      where: { id: input.fixtureId, projectId: input.site.projectId, enabled: true, authorizedAt: { not: null } },
-      select: { id: true, targetUrl: true, version: true, lastDryRunVersion: true },
-    })
-    if (!fixture || fixture.lastDryRunVersion !== fixture.version) throw new OutcomeFixtureRequiredError()
-    safeFixture = { id: fixture.id, targetUrl: fixture.targetUrl }
-  }
 
   const updated = await executionTransaction(async (tx) => {
     if (!await lockOutcomeAuthority(tx, input.site)) return null
+    if (input.confirmed && input.kind === 'SIGNUP') {
+      if (!input.site.projectId || !input.site.userId || !input.fixtureId) throw new OutcomeFixtureRequiredError()
+      const fixture = await tx.outcomeFixture.findFirst({
+        where: { id: input.fixtureId, projectId: input.site.projectId, configuredByUserId: input.site.userId,
+          enabled: true, authorizedAt: { not: null } },
+        select: { id: true, targetUrl: true, version: true, lastDryRunVersion: true },
+      })
+      if (!fixture || fixture.lastDryRunVersion !== fixture.version) throw new OutcomeFixtureRequiredError()
+      safeFixture = { id: fixture.id, targetUrl: fixture.targetUrl }
+    }
     // Every confirmation, reconfirmation and withdrawal for one Outcome must
     // observe the previous mutation after it commits. Without this row lock, a
     // withdrawal can scan bindings before a concurrent confirmation inserts
@@ -199,19 +200,24 @@ export async function createSiteOutcome(input: {
   }
   if (input.kind === 'SIGNUP') {
     const fixture = await prisma.outcomeFixture.findFirst({
-      where: { id: input.fixtureId ?? '', projectId: input.site.projectId, enabled: true, authorizedAt: { not: null } },
+      where: { id: input.fixtureId ?? '', projectId: input.site.projectId, configuredByUserId: input.site.userId,
+        enabled: true, authorizedAt: { not: null } },
       select: { version: true, lastDryRunVersion: true, targetUrl: true },
     })
     if (!fixture || fixture.version !== fixture.lastDryRunVersion || fixture.targetUrl !== target.toString()) throw new OutcomeFixtureRequiredError()
   }
   const slug = `${input.kind.toLowerCase()}-${createHash('sha256').update(target.toString()).digest('hex').slice(0, 24)}`
   const projectId = input.site.projectId
-  const row = await executionWrite(tx => tx.siteOutcome.upsert({
-    where: { projectId_slug: { projectId, slug } },
-    create: { projectId: input.site.projectId, slug, name: nameForConfirmedOutcomeKind(input.kind), kind: input.kind,
-      expectation: expectationForKind(input.kind), inferenceSource: 'user' },
-    update: {},
-  }))
+  const row = await executionTransaction(async tx => {
+    if (!await lockOutcomeAuthority(tx, input.site)) return null
+    return tx.siteOutcome.upsert({
+      where: { projectId_slug: { projectId, slug } },
+      create: { projectId: input.site.projectId, slug, name: nameForConfirmedOutcomeKind(input.kind), kind: input.kind,
+        expectation: expectationForKind(input.kind), inferenceSource: 'user' },
+      update: {},
+    })
+  })
+  if (!row) return null
   return confirmSiteOutcome({ site: input.site, outcomeId: row.id, confirmed: true, kind: input.kind, fixtureId: input.fixtureId, targetUrl: target.toString() })
 }
 

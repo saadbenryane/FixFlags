@@ -19,7 +19,6 @@ function SiteSettingsContent({ siteId }: { siteId: string }) {
     <SiteShell
       actions={view.actions}
       siteId={siteId}
-      ownerId={view.site.userId}
       activeRoute="settings"
       title={S.title}
       description={S.description}

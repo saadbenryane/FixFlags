@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import type { CurrentBindingRevision } from '../domain/assessment-comparability'
+import { fixtureOwnerCurrent } from '../domain/fixture-authority'
 
 type OutcomeBindings = {
   projectId?: string | null
@@ -20,7 +21,8 @@ export async function loadOutcomeBindingRevisions(outcomes: OutcomeBindings[]): 
   }
   const fixtures = requested.size ? await prisma.outcomeFixture.findMany({
     where: { OR: [...requested.values()] },
-    select: { id: true, projectId: true, version: true, enabled: true, authorizedAt: true, lastDryRunVersion: true },
+    select: { id: true, projectId: true, version: true, enabled: true, authorizedAt: true, lastDryRunVersion: true,
+      configuredByUserId: true, project: { select: { userId: true } } },
   }) : []
   const byScope = new Map(fixtures.map(fixture => [identity(fixture.projectId, fixture.id), fixture]))
   return outcomes.map(outcome => outcome.bindings.map(binding => {
@@ -28,6 +30,6 @@ export async function loadOutcomeBindingRevisions(outcomes: OutcomeBindings[]): 
     const fixture = id && outcome.projectId ? byScope.get(identity(outcome.projectId, id)) : undefined
     return { key: binding.key, required: binding.required, version: binding.version, mechanism: binding.mechanism,
       ...(fixture ? { fixture: { id: fixture.id, version: fixture.version,
-        authorized: fixture.enabled && Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version } } : {}) }
+        authorized: fixtureOwnerCurrent(fixture) && fixture.enabled && Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version } } : {}) }
   }))
 }

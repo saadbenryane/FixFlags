@@ -14,7 +14,7 @@ vi.mock('playwright', () => ({ chromium: { launch: async () => ({
   on: vi.fn(), once: vi.fn(), isConnected: () => true, contexts: () => [], close: mocks.close,
 }) } }))
 vi.mock('@axe-core/playwright', () => ({ AxeBuilder: class {
-  options() { return this } setLegacyMode() { return this } analyze() { return mocks.axe() }
+  options() { return this } withRules() { return this } setLegacyMode() { return this } analyze() { return mocks.axe() }
 } }))
 vi.mock('@/lib/audit/capture-metrics', () => ({ measureMobileLayout: async () => ({ mobileViewportHeight: 812 }) }))
 vi.mock('@/lib/audit/browser/page-session', () => ({ settleAuditPage: vi.fn(), createAuditPage: vi.fn(async () => {
@@ -57,7 +57,11 @@ describe('independent rendered evidence', () => {
     expect(result.axeViolations).toEqual([])
     expect(result.consoleCoverage?.desktop.complete).toBe(true)
     expect(result.captureStatus).toEqual({ desktop: 'failed', mobile: collectMobile ? 'failed' : 'pending' })
-    if (collectMobile) expect(result.captureMetrics?.mobileViewportHeight).toBe(812)
+    if (collectMobile) {
+      expect(result.captureMetrics?.mobileViewportHeight).toBe(812)
+      expect(result.mobileAccessibility?.evidence?.scope.profile).toMatch(/^[a-f0-9]{64}$/)
+      expect(result.mobileAccessibility?.evidence?.scope.profile).not.toBe(result.accessibilityEvidence?.scope.profile)
+    } else expect(result.mobileAccessibility).toBeUndefined()
     expect(result.actionTimeline?.some(event => event.label === 'Desktop screenshot captured')).toBe(false)
     expect(result.desktopUrl).toBeNull()
     expect(result.desktopBase64).toBeNull()
@@ -72,6 +76,7 @@ describe('independent rendered evidence', () => {
     expect(result.desktopHtml).toContain('<title>Example</title>')
     expect(result.captureMetrics).toBeNull()
     expect(result.accessibilityEvidence).toBeUndefined()
+    expect(result.mobileAccessibility).toBeUndefined()
     expect(result.axeViolations).toBeUndefined()
     expect(result.consoleCoverage?.mobile.complete).toBe(false)
     expect(result.captureFailures).toEqual([])

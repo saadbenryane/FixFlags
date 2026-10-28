@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { evidence } from '../../search/__tests__/fixtures'
+import { withExecutionOwnership, ExecutionOwnershipLost } from '../../execution-ownership'
+
+vi.mock('@/lib/db', () => ({ prisma: { audit: {
+  updateMany: vi.fn(async () => ({ count: 1 })), findFirst: vi.fn(async () => ({ id: 'parser-owner' })),
+} } }))
 
 const mocks = vi.hoisted(() => ({ workers: [] as Array<{
   emit: (event: string, value: unknown) => boolean; posts: unknown[];
@@ -28,6 +33,47 @@ afterEach(async () => { await closeParserWorker(); vi.useRealTimers() })
 const evaluate = (deadline = Date.now() + 30_000) => evaluateSearchIsolated(evidence(), null, deadline, ['crawl'])
 
 describe('bounded parser lifecycle', () => {
+  it('cancels obsolete work but holds capacity until its worker actually terminates', async () => {
+    mocks.reply = false
+    let terminated!: (code: number) => void
+    mocks.terminate.mockReturnValueOnce(new Promise<number>(resolve => { terminated = resolve }))
+    const controller = new AbortController()
+    const first = withExecutionOwnership({ auditId: 'parser-owner', token: 'attempt', generation: 1, signal: controller.signal }, () => evaluate())
+    const rejected = expect(first).rejects.toBeInstanceOf(ExecutionOwnershipLost)
+    await vi.waitFor(() => expect(mocks.workers).toHaveLength(1))
+    controller.abort()
+    const next = evaluate()
+    try {
+      await vi.waitFor(() => expect(mocks.terminate).toHaveBeenCalledOnce(), { timeout: 500 })
+      expect(mocks.workers).toHaveLength(1)
+      mocks.workers[0].emit('message', [{ stale: true }])
+    } finally {
+      mocks.reply = true
+      terminated(0)
+      await rejected
+      expect(await next).toEqual([])
+    }
+    expect(mocks.workers).toHaveLength(2)
+  })
+
+  it('removes a canceled waiter without disrupting the active parser', async () => {
+    mocks.reply = false
+    const first = evaluate()
+    await vi.waitFor(() => expect(mocks.workers).toHaveLength(1))
+    const controller = new AbortController()
+    const queued = withExecutionOwnership({ auditId: 'parser-owner', token: 'attempt', generation: 1, signal: controller.signal }, () => evaluate())
+    const rejected = expect(queued).rejects.toThrow('cancelled')
+    controller.abort()
+    await rejected
+    expect(mocks.terminate).not.toHaveBeenCalled()
+    expect(mocks.workers[0].posts).toHaveLength(1)
+    mocks.workers[0].emit('message', [])
+    expect(await first).toEqual([])
+    mocks.reply = true
+    expect(await evaluate()).toEqual([])
+    expect(mocks.workers).toHaveLength(1)
+  })
+
   it('reuses one live worker for independent sequential requests', async () => {
     await evaluate(); await evaluate()
     expect(mocks.workers).toHaveLength(1)

@@ -17,7 +17,7 @@ export function siteViewFixture(): SiteHomeView {
     schemaVersion: 2, counts: siteScopeCounts([], [], 0), actions: siteViewerActions(true), inventoryPageCount: 0, activeRuns: [], monitoringHistory: [], monitoringTrend: [],
     site: { siteId: 'fixture-site', kind: 'project', url: 'https://example.com', canonicalHost: 'example.com', name: 'Example',
       projectId: 'fixture-site', provisionalSiteId: null, primaryAuditId: 'audit-1', watchInterval: null,
-      watchNextRunAt: null, watchLastRunAt: null, watchLastError: null, watchConsecutiveFailures: 0, userId: 'owner-1' },
+      watchNextRunAt: null, watchPausedAt: null, watchLastRunAt: null, watchLastError: null, watchConsecutiveFailures: 0, userId: 'owner-1' },
     presentation: {
       identity: { siteId: 'fixture-site', name: 'Example', host: 'example.com', preview: null },
       result: { state: 'could_not_verify', label: 'Not verified' }, monitoring: { state: 'not_monitored', label: 'Not monitored' },

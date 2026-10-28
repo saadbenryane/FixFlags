@@ -1,6 +1,7 @@
 import { AuditUrlError, safeFetchDocument } from './url'
 import { publicResponseRestriction } from './browser/page-capture'
-import { destinationContext, displayDestination, DESTINATION_VERIFICATION_RULE } from './checks/destination-evidence'
+import { publicLinkContext, displayDestination, PUBLIC_LINK_VERIFICATION_RULE } from './checks/destination-evidence'
+import { parseActiveHtmlDocument } from './html-document'
 import type { EvidenceTarget } from './evidence-targets'
 import { PublicRedirectError } from './redirect-evidence'
 import { hasMissingPageContent } from './soft-404'
@@ -42,7 +43,6 @@ export type OpenCheckFetch = (
 ) => Promise<Response>
 
 const AUTH_PATH = /\/(login|log-in|signin|sign-in|sign_in|auth|account\/login)(\/|$)/i
-const TITLE_OR_H1 = /<title[^>]*>([\s\S]*?)<\/title>|<h1[^>]*>([\s\S]*?)<\/h1>/gi
 
 export const DEFAULT_OPEN_CHECK_CEILING = 80
 export const OPEN_CHECK_TIMEOUT_MS = 8_000
@@ -63,19 +63,14 @@ function looksLikeAuth(url: string, status: number | null, wwwAuthenticate: stri
   return false
 }
 
-function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-}
-
 export function detectSoft404(html: string, status: number | null): boolean {
   if (status !== 200) return false
-  const text = stripTags(html).slice(0, 2_000)
-  const headings: string[] = []
-  TITLE_OR_H1.lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = TITLE_OR_H1.exec(html))) {
-    headings.push(stripTags(match[1] || match[2] || ''))
-  }
+  const { document: $ } = parseActiveHtmlDocument(html)
+  // Error templates, executable strings and SVG accessible names do not
+  // establish the page's content. Decode text through the shared HTML parser.
+  $('script, style, svg title').remove()
+  const headings = $('head > title, h1').toArray().map(element => $(element).text().replace(/\s+/g, ' ').trim())
+  const text = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 2_000)
   return hasMissingPageContent(headings, text)
 }
 
@@ -348,9 +343,9 @@ export function deadDestinationFlags(
       confidence: 1,
       source: 'DETERMINISTIC',
       pageUrl: sourceUrl,
-      verificationRule: DESTINATION_VERIFICATION_RULE,
+      verificationRule: PUBLIC_LINK_VERIFICATION_RULE,
       evidenceTargets: dead.map(result => ({ kind: 'page', source: 'measured', device: 'desktop',
-        label: 'Public link response', context: destinationContext(sourceUrl, result.url) })),
+        label: 'Public link response', context: publicLinkContext(sourceUrl, result.url) })),
     },
   ]
 }

@@ -7,7 +7,7 @@ import { scopeTaskArtifact } from './results'
 import { getAuditTaskQueue } from '@/lib/queue/client'
 import { queueForTask, priorityForTask } from './queues'
 import { logUnrecordedPrescriptionCost, publishUnfinishedCoverage, recordSettledPrescriptionCost, settleFailedFinalization, settlePrescriptionAudit } from './incomplete'
-import { executionTransaction, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
+import { executionTransaction, lockExecutionSite, transactionAborted, withExecutionOwnership, withExecutionSignal, currentExecutionOwnership, EXECUTION_LEASE_MS, ExecutionOwnershipLost } from '../execution-ownership'
 import { recordProgress } from './events'
 import { taskPlanSchema, taskInputSchema, taskJobSchema, taskArtifactSchema, taskIsSettled, validateTaskGraph,
   retryDecision, TaskFailure, ANALYSIS_RECOVERY_MS, MAX_TASKS_PER_AUDIT, COMPLETION_TASK_KINDS, runsAfterCompletion, type TaskPlan, type TaskKind } from './contracts'
@@ -261,10 +261,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
   const token = randomUUID(), now = new Date()
   const input = taskInputSchema.parse(original.workInput)
   const claimed = await executionTransaction(async tx => {
-    const projects = await tx.$queryRaw<Array<{ deletedAt: Date | null }>>`
-      SELECT p."deletedAt" FROM "projects" p JOIN "audits" a ON a."projectId" = p."id"
-      WHERE a."id" = ${job.auditId} FOR SHARE OF p`
-    if (projects.some(project => project.deletedAt)) return { count: 0 }
+    if (!await lockExecutionSite(tx, job.auditId)) return { count: 0 }
     await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${job.auditId} FOR UPDATE`
     await tx.$queryRaw`SELECT "id" FROM "audit_verifier_executions" WHERE "id" = ${original.id} FOR UPDATE`
     if (original.workKind === 'prescription') {

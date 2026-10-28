@@ -23,7 +23,7 @@ import { actionableConsoleErrors, type ConsoleCoverage } from './console-evidenc
 import { captureProfileKey, captureAccessKey, type CaptureObservationScope } from './browser/observation-scope'
 import { documentEvidenceWithheld } from './browser/document-evidence'
 import { recordedAxeViolations, summarizeAccessibility, type AccessibilityEvidence } from './browser/accessibility-evidence'
-import { ACCESSIBILITY_RUN_OPTIONS } from './checks/accessibility-rules'
+import { ACCESSIBILITY_RUN_OPTIONS, MOBILE_ACCESSIBILITY_RULE_IDS } from './checks/accessibility-rules'
 import type { ConsoleMessage } from './console-evidence'
 import { randomUUID } from 'node:crypto'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
@@ -172,6 +172,7 @@ export interface ScreenshotResult {
   formProbe?: FormProbeResult | null
   axeViolations?: import('./checks/accessibility').AxeViolation[]
   accessibilityEvidence?: AccessibilityEvidence
+  mobileAccessibility?: import('./browser/accessibility-evidence').MobileAccessibilityCapture
   renderedScope?: CaptureObservationScope
   collectionRestrictions?: string[]
   evidenceHarvest?: HarvestedEvidence[]
@@ -594,7 +595,7 @@ async function captureMobileViewport(
   options: ProfileCaptureOptions,
 ): Promise<ViewportCapture> {
   const { scanAccess, deadline, captureMedia = true, mediaOnly = false, consoleIdentityKey,
-    consoleObservationMs = 0, captureMotion = true } = options
+    consoleObservationMs = 0, captureMotion = true, collectAccessibility = true } = options
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
   let disposeNetwork: (() => void) | null = null
@@ -648,6 +649,15 @@ async function captureMobileViewport(
     }
 
     result.loadExperience = { ...await finishedLoad, initialScreenshotUrl: result.initialUrl, initialCaptureElapsedMs }
+
+    if (!mediaOnly && collectAccessibility) try {
+      const axeResults = await new AxeBuilder({ page }).withRules([...MOBILE_ACCESSIBILITY_RULE_IDS]).setLegacyMode(true).analyze()
+      result.axeViolations = recordedAxeViolations(axeResults)
+      result.accessibilityEvidence = summarizeAccessibility(axeResults, { pageUrl: targetUrl, finalUrl: axeResults.url,
+        profile: captureProfileKey(MOBILE_CAPTURE_PROFILE), access: captureAccessKey(scanAccess, targetUrl) })
+    } catch (error) {
+      logger.warn('Mobile accessibility rule evidence is unavailable', error)
+    }
 
     if (captureMedia) try {
       const buffer = await captureScreenshot(page, { type: 'png', fullPage: false }, deadline)
@@ -826,6 +836,8 @@ export async function captureScreenshots(
     formProbe: desktop.formProbe ?? null,
     axeViolations: desktop.axeViolations,
     accessibilityEvidence: desktop.accessibilityEvidence,
+    ...(!options?.mediaOnly && options?.collectAccessibility !== false && options?.collectMobile !== false
+      ? { mobileAccessibility: { evidence: mobile.accessibilityEvidence, violations: mobile.axeViolations } } : {}),
     renderedScope: desktop.renderedScope,
     collectionRestrictions: desktop.collectionRestrictions ?? [],
     evidenceHarvest: [desktop.evidenceHarvest, mobile.evidenceHarvest].filter(

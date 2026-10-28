@@ -329,7 +329,7 @@ export async function createAndEnqueueAudit(
         // admission may create or restore a Site through hostname resolution.
         const [ownedProject] = await tx.$queryRaw<Array<ScheduledClaimProject & { id: string; canonicalHost: string | null }>>`
           SELECT "id", "url", "canonicalHost", "watchInterval", "watchEveryMinutes",
-            "watchNextRunAt", "watchLastAttemptAt", "watchLeaseUntil" FROM "projects"
+            "watchNextRunAt", "watchLastAttemptAt", "watchLeaseUntil", "watchPausedAt" FROM "projects"
           WHERE "id" = ${options.runRequestAdmission.projectId} AND "userId" = ${userId}
             AND (${cleanup} OR "deletedAt" IS NULL)
           FOR UPDATE

@@ -11,7 +11,7 @@ import { readResourceAudits, projectResourceOpportunities } from '../../pagespee
 import { hasRecordedRecoveryEvidence } from '../../recovery-evidence'
 import { CHECK_REGISTRY } from '../../check-registry'
 import { readTapTargetAudits } from '../../pagespeed-tap-targets'
-import { performanceMeasurement } from '../../performance-measurement'
+import { pageSpeedMeasurementFixture } from '../../__tests__/check-fixtures'
 
 const pageUrl = 'https://example.com/pricing'
 const evaluate = evaluatorHandlers.find(handler => handler.kind === 'check')!.evaluate
@@ -24,8 +24,7 @@ function measurement(overrides: Partial<PageSpeedResult> = {}): PageSpeedResult 
       'unused-javascript': { score: 1, details: { overallSavingsBytes: 0 } },
       'unused-css-rules': { score: 1, details: { overallSavingsBytes: 0 } },
       'image-delivery-insight': { score: 1, details: { debugData: { wastedBytes: 0 } } },
-    }), failedAccessibilityAudits: [], diagnostics: { measurement: performanceMeasurement({ requestedUrl: pageUrl, finalUrl: pageUrl,
-      lighthouseVersion: '13.0.0', configSettings: { formFactor: strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } } }, strategy) },
+    }), failedAccessibilityAudits: [], diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, strategy) },
     raw: {}, crux: null, ...overrides }
 }
 function context(data: PageSpeedResult, module = 'performance', device?: 'mobile'): TaskContext {
@@ -100,10 +99,9 @@ describe('progressive Performance evidence', () => {
     const repaired = await categoryMeasurement(measurement({ score: null, lcp: null, cls: null, resourceAudits: [] }), 'conversion')
     expect(scopedAssertionForTarget({ receipt: repaired.receipt, flag: failed.flags[0], checkId: 'tap-targets-small' })?.assertion)
       .toMatchObject({ passed: true, complete: true })
-    const changed = await categoryMeasurement(measurement({ diagnostics: { measurement: performanceMeasurement({
-      requestedUrl: pageUrl, finalUrl: pageUrl, lighthouseVersion: '14.0.0',
-      configSettings: { formFactor: 'mobile', throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } },
-    }, 'mobile') } }), 'conversion')
+    const changed = await categoryMeasurement(measurement({ diagnostics: { measurement: pageSpeedMeasurementFixture(pageUrl, 'mobile', {
+      lighthouseVersion: '14.0.0',
+    }) } }), 'conversion')
     expect(changed.receipt).toMatchObject({ passed: true, complete: true })
     expect(scopedAssertionForTarget({ receipt: changed.receipt, flag: failed.flags[0], checkId: 'tap-targets-small' })).toBeUndefined()
     const missing = await categoryMeasurement(measurement({ tapTargetAudits: [] }), 'conversion')
@@ -134,8 +132,7 @@ describe('progressive Performance evidence', () => {
       { configSettings: { formFactor: fixture.strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 1 } } },
       { configSettings: { formFactor: fixture.strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 }, screenEmulation: { width: 400, height: 800, mobile: true } } },
     ]) {
-      const recorded = performanceMeasurement({ requestedUrl: pageUrl, finalUrl: pageUrl, lighthouseVersion: '13.0.0',
-        configSettings: { formFactor: fixture.strategy, throttlingMethod: 'simulate', throttling: { cpuSlowdownMultiplier: 4 } }, ...changed }, fixture.strategy)
+      const recorded = pageSpeedMeasurementFixture(pageUrl, fixture.strategy, changed)
       const after = checkArtifactSchema.parse(readArtifact(await evaluate(context({ ...healthy, diagnostics: { measurement: recorded } }, fixture.module)), 'check').data)
       expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: flag.checkId, flag })).toBeUndefined()
       expect(recovery(after.receipt)).toBe(false)

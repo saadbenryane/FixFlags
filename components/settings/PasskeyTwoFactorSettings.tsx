@@ -124,6 +124,7 @@ export function PasskeyTwoFactorSettings({
     try {
       const { data, error: enableError } = await authClient.twoFactor.enable({
         password: password || undefined,
+        method: 'totp',
       })
       if (enableError) {
         setError(enableError.message || sec.enableError)
@@ -131,7 +132,7 @@ export function PasskeyTwoFactorSettings({
       }
       setEnabled(true)
       setPassword('')
-      setBackupCodes(data?.backupCodes ?? null)
+      setBackupCodes(data?.method === 'totp' ? data.backupCodes : null)
       toast.success(sec.enableSuccess)
       router.refresh()
     } finally {

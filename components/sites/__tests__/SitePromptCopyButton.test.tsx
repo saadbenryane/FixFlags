@@ -55,6 +55,16 @@ describe('SitePromptCopyButton', () => {
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string).action).toBe('prepare')
   })
 
+  it('retires manual instructions when the selected Flag changes', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
+    const rendered = render(<SitePromptCopyButton siteId="site-1" flagId="flag-1" />)
+    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }))
+    expect(await screen.findByRole('textbox')).toHaveValue('Repair the checkout heading.')
+    rendered.rerender(<SitePromptCopyButton siteId="site-1" flagId="flag-2" />)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByText(SITE_BOARD_COPY.copyPromptCopied)).not.toBeInTheDocument()
+  })
+
   it('offers the public prompt guide after copying a real Flag prompt', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })

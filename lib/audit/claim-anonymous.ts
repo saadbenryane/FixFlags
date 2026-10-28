@@ -20,6 +20,8 @@ import { claimProvisionalSitesForProject, migrateProvisionalSiteDataToProject } 
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { ensureOwnedFlagIdentities, ownedFlagIdentityInclude } from '@/lib/improvements/owned-flag-identity'
+import { isCustomerFlag } from '@/lib/audit/attention'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -147,6 +149,11 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         // migration rolls back the claim rather than publishing an empty Site.
         if (project.restored) await ensureDefaultMonitoring(tx, project.id, userId, undefined, { restored: true })
         else await ensureDefaultMonitoring(tx, project.id, userId)
+        // Owned results publish durable incident links with the claim. Exact
+        // source links remain historical resources after repair and recurrence.
+        const unlinked = await tx.flag.findMany({ where: { auditId: { in: project.auditIds },
+          improvementOccurrence: null, status: { in: ['OPEN', 'REGRESSED'] } }, include: ownedFlagIdentityInclude })
+        await ensureOwnedFlagIdentities(tx, unlinked.filter(isCustomerFlag), { userId, transport: 'SYSTEM' })
       }
       return { audits: claimable, claimedProjects: [...projects.values()] }
     }

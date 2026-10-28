@@ -139,7 +139,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
     : flag.problem
 
   return (
-    <SiteShell actions={home.actions} siteId={resolvedId} ownerId={site.userId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} checking={flag.verifying} chatFlag={{ id: flag.id, title: flag.problem }}>
+    <SiteShell actions={home.actions} siteId={resolvedId} activeRoute="home" title={title} description={resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters} presentation={home.presentation} analysisView={home} watch={home.watch} chatFlag={{ id: flag.id, title: flag.problem }}>
       <div className={`mx-auto w-full max-w-5xl ${styles.layout}`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground" asChild>

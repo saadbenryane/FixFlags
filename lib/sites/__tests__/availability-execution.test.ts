@@ -1,5 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { assessRequiredBindings } from '@/lib/sites/application/binding-assessment'
+
+// Transport and rendering are controlled below. Public admission must not
+// depend on a real DNS service while exercising those synthetic responses.
+vi.mock('node:dns/promises', () => ({ resolve4: async () => ['93.184.216.34'], resolve6: async () => [] }))
+afterEach(() => vi.unstubAllGlobals())
 
 const mocks = vi.hoisted(() => ({
   runFindFirst: vi.fn(),

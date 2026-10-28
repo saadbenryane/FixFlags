@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), delete: vi.fn(),
-  bindingFindMany: vi.fn(), bindingUpdateMany: vi.fn(), runFindMany: vi.fn(), requestRun: vi.fn(), transaction: vi.fn(), execute: vi.fn(), encrypt: vi.fn(),
+  bindingFindMany: vi.fn(), bindingUpdateMany: vi.fn(), runFindMany: vi.fn(), requestRun: vi.fn(), transaction: vi.fn(), query: vi.fn(), execute: vi.fn(), encrypt: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -12,7 +12,7 @@ vi.mock('@/lib/db', () => ({
       update: mocks.update, updateMany: mocks.updateMany, delete: mocks.delete,
     },
     outcomeExecutionBinding: { findMany: mocks.bindingFindMany, updateMany: mocks.bindingUpdateMany },
-    $transaction: mocks.transaction, runRequest: { findMany: mocks.runFindMany },
+    $transaction: mocks.transaction, $queryRaw: mocks.query, runRequest: { findMany: mocks.runFindMany },
   },
 }))
 vi.mock('@/lib/sites/application/run-requests', () => ({ requestSiteRun: mocks.requestRun }))
@@ -30,9 +30,11 @@ import {
   OutcomeFixtureError,
   updateOutcomeFixture, revokeOutcomeFixture,
 } from '@/lib/sites/application/outcome-fixtures'
+import { prisma } from '@/lib/db'
 
 const stored = {
   id: 'fixture-1', name: 'Signup', targetUrl: 'https://example.com/signup',
+  configuredByUserId: 'owner', project: { userId: 'owner' },
   fieldMapping: { fields: { email: { by: 'label', value: 'Email' } }, submit: { by: 'role', role: 'button', value: 'Create account' } },
   encryptedValues: 'encrypted-values', successCriterion: { type: 'text', value: 'Welcome' },
   resetUrl: 'https://example.com/test/reset', cleanupUrl: 'https://example.com/test/cleanup',
@@ -56,11 +58,13 @@ describe('Outcome fixture lifecycle', () => {
     mocks.updateMany.mockResolvedValue({ count: 1 })
     mocks.bindingUpdateMany.mockResolvedValue({ count: 1 })
     mocks.delete.mockResolvedValue(stored)
-    mocks.transaction.mockImplementation(async (operations: Array<Promise<unknown>>) => Promise.all(operations))
+    mocks.transaction.mockImplementation(async work => typeof work === 'function' ? work(prisma) : Promise.all(work))
+    mocks.query.mockImplementation(async (query: TemplateStringsArray) => query.join('').includes('FROM projects')
+      ? [{ id: 'project-1', url: 'https://example.com/' }] : [{ id: 'owner' }])
   })
 
   it('creates an unauthorized, encrypted fixture on the exact Site origin', async () => {
-    const fixture = await createOutcomeFixture({ projectId: 'project-1', siteUrl: 'https://example.com', fixture: input })
+    const fixture = await createOutcomeFixture({ projectId: 'project-1', userId: 'owner', fixture: input })
     expect(fixture.authorizedAt).toBeNull()
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       projectId: 'project-1', encryptedValues: expect.stringContaining('synthetic@example.test'),
@@ -70,7 +74,7 @@ describe('Outcome fixture lifecycle', () => {
 
   it('preserves the browser form route without granting authorization or changing its HTTP hooks', async () => {
     const targetUrl = 'https://example.com/#/signup'
-    await createOutcomeFixture({ projectId: 'project-1', siteUrl: 'https://example.com', fixture: { ...input, targetUrl } })
+    await createOutcomeFixture({ projectId: 'project-1', userId: 'owner', fixture: { ...input, targetUrl } })
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       targetUrl, resetUrl: stored.resetUrl, cleanupUrl: stored.cleanupUrl, authorizedAt: null,
     }) }))
@@ -78,7 +82,7 @@ describe('Outcome fixture lifecycle', () => {
 
   it('rejects target and hook URLs outside the exact Site origin', async () => {
     await expect(createOutcomeFixture({
-      projectId: 'project-1', siteUrl: 'https://example.com',
+      projectId: 'project-1', userId: 'owner',
       fixture: { ...input, cleanupUrl: 'https://other.example/cleanup' },
     })).rejects.toMatchObject({ code: 'FIXTURE_ORIGIN_MISMATCH' })
     expect(mocks.create).not.toHaveBeenCalled()
@@ -98,7 +102,7 @@ describe('Outcome fixture lifecycle', () => {
 
   it('authorizes only a successful dry run of the current version', async () => {
     mocks.findFirst.mockResolvedValue({ ...stored, lastDryRunVersion: 1, lastDryRunResult: { disposition: 'FAILED' } })
-    await expect(authorizeOutcomeFixture('project-1', stored.id)).rejects.toBeInstanceOf(OutcomeFixtureError)
+    await expect(authorizeOutcomeFixture('project-1', stored.id, 'owner')).rejects.toBeInstanceOf(OutcomeFixtureError)
     expect(mocks.update).not.toHaveBeenCalled()
   })
 
@@ -108,7 +112,7 @@ describe('Outcome fixture lifecycle', () => {
       ...exercised, authorizedAt: new Date('2026-10-04T12:00:00Z'),
     })
     mocks.updateMany.mockResolvedValueOnce({ count: 1 })
-    const fixture = await authorizeOutcomeFixture('project-1', stored.id)
+    const fixture = await authorizeOutcomeFixture('project-1', stored.id, 'owner')
     expect(fixture.authorizedAt).not.toBeNull()
     expect(mocks.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ projectId: 'project-1', version: 1, lastDryRunVersion: 1 }),
@@ -116,21 +120,21 @@ describe('Outcome fixture lifecycle', () => {
 
     mocks.findFirst.mockResolvedValueOnce(exercised)
     mocks.updateMany.mockResolvedValueOnce({ count: 0 })
-    await expect(authorizeOutcomeFixture('project-1', stored.id)).rejects.toMatchObject({ code: 'FIXTURE_CHANGED' })
+    await expect(authorizeOutcomeFixture('project-1', stored.id, 'owner')).rejects.toMatchObject({ code: 'FIXTURE_CHANGED' })
   })
 
   it('requires proved cleanup as well as a successful form criterion before authorization', async () => {
     mocks.findFirst.mockResolvedValue({ ...stored, lastDryRunVersion: 1, lastDryRunResult: {
       disposition: 'SUCCEEDED', reason: 'success_criterion_observed', detail: { fieldCount: 1, cleanupStatus: 'unknown' },
     } })
-    await expect(authorizeOutcomeFixture('project-1', stored.id)).rejects.toMatchObject({ code: 'FIXTURE_DRY_RUN_REQUIRED' })
+    await expect(authorizeOutcomeFixture('project-1', stored.id, 'owner')).rejects.toMatchObject({ code: 'FIXTURE_DRY_RUN_REQUIRED' })
     expect(mocks.updateMany).not.toHaveBeenCalled()
   })
 
   it('revocation advances the version so pending setup consent cannot still submit', async () => {
     mocks.findFirst.mockResolvedValue(stored)
     mocks.update.mockResolvedValue({ ...stored, version: 2 })
-    await revokeOutcomeFixture('project-1', stored.id)
+    await revokeOutcomeFixture('project-1', stored.id, 'owner')
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ version: { increment: 1 },
       authorizedAt: null, lastDryRunVersion: null, lastDryRunAt: null, lastDryRunResult: expect.anything() }) }))
   })
@@ -146,7 +150,7 @@ describe('Outcome fixture lifecycle', () => {
       authorizedAt: null,
     })
     const fixture = await updateOutcomeFixture({
-      projectId: 'project-1', fixtureId: stored.id, siteUrl: 'https://example.com', fixture: input,
+      projectId: 'project-1', fixtureId: stored.id, userId: 'owner', fixture: input,
     })
     expect(fixture.version).toBe(2)
     expect(fixture.authorizedAt).toBeNull()
@@ -163,7 +167,7 @@ describe('Outcome fixture lifecycle', () => {
       { id: 'binding-1', config: { fixtureId: stored.id } },
       { id: 'binding-2', config: { fixtureId: 'other' } },
     ])
-    await deleteOutcomeFixture('project-1', stored.id)
+    await deleteOutcomeFixture('project-1', stored.id, 'owner')
     expect(mocks.bindingUpdateMany).toHaveBeenCalledWith({ where: { id: { in: ['binding-1'] } }, data: { enabled: false } })
   })
 })

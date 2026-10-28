@@ -28,6 +28,7 @@ vi.mock('@/lib/sites/outcomes', () => ({
 vi.mock('@/components/sites/SiteShell', () => ({
   SiteShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
+vi.mock('@/components/sites/SiteOutcomeActions', () => ({ SiteOutcomeActions: () => null }))
 
 function evidence(reason: string) {
   return {
@@ -123,11 +124,24 @@ describe('Outcome proof card', () => {
     expect(screen.getByText('Form')).toBeVisible()
     expect(screen.getByText('Page availability')).toBeVisible()
     expect(screen.getByText('Check')).toBeVisible()
-    expect(screen.getAllByText(clock!, { exact: false }).length).toBeGreaterThanOrEqual(6)
+    for (const time of document.querySelectorAll('time')) {
+      expect(time).toHaveTextContent(clock!)
+      expect(time).toHaveAttribute('dateTime', OBSERVED)
+    }
+    expect(screen.queryByText(OUTCOME_DETAIL_COPY.lastSuccessfulVerification, { exact: false })).not.toBeInTheDocument()
     expect(screen.queryByText('Http availability')).not.toBeInTheDocument()
     expect(screen.queryByText('Browser journey')).not.toBeInTheDocument()
     expect(screen.queryByText('Safe form')).not.toBeInTheDocument()
     expect(screen.queryByText('Custom signal')).not.toBeInTheDocument()
+  })
+
+  it('keeps an older successful verification distinct from the latest inconclusive attempt', async () => {
+    const outcome = await mocks.loadSiteOutcomeDetail()
+    const attempted = '2026-09-24T10:00:00.000Z'
+    mocks.loadSiteOutcomeDetail.mockResolvedValue({ ...outcome, state: 'COULD_NOT_VERIFY', lastVerifiedAt: attempted })
+    render(await OutcomeDetailPage({ params: Promise.resolve({ siteId: 'site-1', outcomeId: 'outcome-1' }) }))
+    expect(screen.getByText('Last attempted', { exact: false })).toHaveTextContent(formatEvidenceTimestamp(attempted)!)
+    expect(screen.getByText(OUTCOME_DETAIL_COPY.lastSuccessfulVerification, { exact: false })).toHaveTextContent(formatEvidenceTimestamp(OBSERVED)!)
   })
 
   it('asks for a fresh check when the current method has only historical evidence', async () => {
@@ -137,5 +151,21 @@ describe('Outcome proof card', () => {
     render(await OutcomeDetailPage({ params: Promise.resolve({ siteId: 'site-1', outcomeId: 'outcome-1' }) }))
     expect(screen.getAllByText(OUTCOME_DETAIL_COPY.currentEvidenceMissing)).toHaveLength(2)
     expect(screen.queryByText(OUTCOME_DETAIL_COPY.noEvidence)).not.toBeInTheDocument()
+  })
+
+  it('keeps recovery instructions out of the current action while verification is running', async () => {
+    const outcome = await mocks.loadSiteOutcomeDetail()
+    mocks.loadSiteOutcomeDetail.mockResolvedValue({ ...outcome, running: true, recoveryAction: 'Verify again.' })
+    render(await OutcomeDetailPage({ params: Promise.resolve({ siteId: 'site-1', outcomeId: 'outcome-1' }) }))
+    expect(screen.getByRole('status')).toHaveTextContent('Verifying')
+    expect(screen.queryByText('Verify again.')).not.toBeInTheDocument()
+  })
+
+  it('states a shared summary and limitation once in the primary answer', async () => {
+    const outcome = await mocks.loadSiteOutcomeDetail()
+    mocks.loadSiteOutcomeDetail.mockResolvedValue({ ...outcome, summary: 'No recorded verification yet.', limitation: 'No recorded verification yet.' })
+    render(await OutcomeDetailPage({ params: Promise.resolve({ siteId: 'site-1', outcomeId: 'outcome-1' }) }))
+    expect(screen.getAllByText('No recorded verification yet.')).toHaveLength(1)
+    expect(screen.queryByRole('heading', { name: OUTCOME_DETAIL_COPY.limitationHeading })).not.toBeInTheDocument()
   })
 })

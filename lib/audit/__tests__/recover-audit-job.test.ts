@@ -26,7 +26,7 @@ vi.mock('@/lib/db', () => ({
       findUniqueOrThrow: mocks.auditFindUniqueOrThrow,
     },
     $transaction: async (work: (tx: unknown) => Promise<unknown>) => work({ $queryRaw: mocks.queryRaw, audit: {
-      update: mocks.auditUpdate, updateMany: mocks.auditUpdateMany,
+      update: mocks.auditUpdate, updateMany: mocks.auditUpdateMany, findUniqueOrThrow: mocks.auditFindUniqueOrThrow,
     } }),
   },
 }))
@@ -89,7 +89,7 @@ function resetMocks(): void {
   mocks.auditUpdate.mockResolvedValue({})
   mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
   mocks.auditFindUniqueOrThrow.mockResolvedValue({ executionGeneration: 1 })
-  mocks.queryRaw.mockResolvedValue([{ id: 'execution' }])
+  mocks.queryRaw.mockResolvedValue([{ id: 'execution', authorized: true }])
 }
 
 describe('deadline helpers', () => {

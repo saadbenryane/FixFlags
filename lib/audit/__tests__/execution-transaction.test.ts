@@ -2,11 +2,12 @@ import { Prisma } from '@prisma/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const transaction = vi.hoisted(() => vi.fn())
-const findTask = vi.hoisted(() => vi.fn())
+const watchOwnership = vi.hoisted(() => vi.fn())
 const releaseTask = vi.hoisted(() => vi.fn(async () => ({ count: 0 })))
 vi.mock('@/lib/db', () => ({ prisma: {
   $transaction: transaction,
-  auditVerifierExecution: { findFirst: findTask, updateMany: releaseTask },
+  $queryRaw: watchOwnership,
+  auditVerifierExecution: { updateMany: releaseTask },
   audit: { findFirst: vi.fn(), updateMany: vi.fn(async () => ({ count: 0 })) },
 } }))
 
@@ -121,7 +122,7 @@ describe('execution transaction conflicts', () => {
   })
 
   it('releases in-flight work when the ledger no longer owns the task', async () => {
-    findTask.mockReset().mockResolvedValue(null)
+    watchOwnership.mockReset().mockResolvedValue([])
     let seen: AbortSignal | undefined
     const running = withExecutionOwnership({ auditId: 'audit', taskId: 'task', token: 'token', generation: 1 }, () => new Promise((_resolve, reject) => {
       seen = currentExecutionOwnership()?.signal
@@ -134,7 +135,7 @@ describe('execution transaction conflicts', () => {
   })
 
   it('keeps the attempt while the ledger still owns the task', async () => {
-    findTask.mockReset().mockResolvedValue({ id: 'task' })
+    watchOwnership.mockReset().mockResolvedValue([{ id: 'audit' }])
     let seen: AbortSignal | undefined
     const running = withExecutionOwnership({ auditId: 'audit', taskId: 'task', token: 'token', generation: 1 }, async () => {
       seen = currentExecutionOwnership()?.signal

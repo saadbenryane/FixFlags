@@ -24,7 +24,7 @@ Prisma
 } from '@prisma/client'
 import { assertAttemptReplay,attemptIntentHash,normalizedAttemptValue } from './attempt-intent'
 
-import { improvementFingerprint,occurrenceKind } from './occurrences'
+import { ensureOwnedFlagIdentity, ownedFlagIdentityInclude } from './owned-flag-identity'
 import type { ImprovementServiceDependencies } from './service-types'
 
 export async function createImprovementAttempt(input: {
@@ -178,45 +178,27 @@ export async function recordFlagImprovementAttempt(input: {
   const clock = dependencies.clock ?? systemClock
   const flag = await prisma.flag.findFirst({
     where: { id: input.flagId, audit: { userId: input.userId } },
-    include: {
-      improvementOccurrence: { select: { id: true, improvementId: true } },
-      audit: { select: { id: true, projectId: true, productContract: true } },
-    },
+    include: ownedFlagIdentityInclude,
   })
   if (!flag?.audit.projectId) throw new Error('Flag is not attached to an owned Product')
   if (input.action === 'HANDOFF_COPIED' && !hasRepairGuidance(repairGuidanceText(flag))) throw new Error('Repair guidance is unavailable for this Flag')
-  const projectId = flag.audit.projectId
-
-  let improvementId = flag.improvementOccurrence?.improvementId
-  if (!improvementId) {
-    const contract = parseProductContract(flag.audit.productContract)
-    const fingerprint = improvementFingerprint(flag)
-    const linked = await executionTransaction(async tx => {
-      const owned = await tx.flag.findFirst({ where: { id: flag.id,
-        audit: { userId: input.userId, projectId, project: { userId: input.userId } } }, select: { id: true } })
-      if (!owned) throw new Error('Flag is not attached to an owned Product')
-      // Empty-update ORM upserts can race through read-then-create. Native
-      // conflict-safe inserts converge without rewriting existing history.
-      await tx.improvement.createMany({ data: [{ projectId, fingerprint, title: flag.problem,
-        judgment: flag.whyItMatters, expectedBenefit: flag.whyItMatters, recommendedChange: repairGuidanceText(flag),
-        protectedScope: contract?.criticalOutcomes.length ? 'Keep these Product outcomes unchanged: ' + contract.criticalOutcomes.join('; ') : null,
-        successCondition: flag.verificationRule || 'A fresh Product Review no longer observes: ' + flag.problem,
-        priority: 50, status: 'PROPOSED' }], skipDuplicates: true })
-      const improvement = await tx.improvement.findUniqueOrThrow({ where: { projectId_fingerprint: { projectId, fingerprint } }, select: { id: true } })
-      const created = await tx.improvementOccurrence.createMany({ data: [{ improvementId: improvement.id,
-        auditId: flag.audit.id, flagId: flag.id, kind: occurrenceKind(flag.status) }], skipDuplicates: true })
-      const occurrence = await tx.improvementOccurrence.findUniqueOrThrow({ where: { flagId: flag.id } })
-      if (created.count > 0) await appendImprovementCycleEvent({ projectId, improvementId: occurrence.improvementId,
-        occurrenceId: occurrence.id, sourceAuditId: flag.audit.id, idempotencyKey: 'generated:' + flag.id,
-        type: 'GENERATED', transport: input.builder, client: input.client, actor: input.actor }, tx)
-      return occurrence
+  if (input.action === 'REJECT' && !input.rejectionReason) throw new Error('Choose why this recommendation was rejected')
+  const linked = await executionTransaction(async tx => {
+    // Keep authority and the customer action under the same Site lock. A
+    // transfer or removal must settle before this action can publish a receipt.
+    const projects = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "projects" WHERE "id" = ${flag.audit.projectId}
+        AND "userId" = ${input.userId} AND "deletedAt" IS NULL FOR UPDATE`
+    if (projects.length !== 1) throw new Error('Flag is not attached to an owned Product')
+    const linked = await ensureOwnedFlagIdentity(tx, flag, {
+      userId: input.userId, transport: input.builder, client: input.client, actor: input.actor,
     })
-    improvementId = linked.improvementId
-  }
-
-  if (input.action === 'REJECT') {
-    if (!input.rejectionReason) throw new Error('Choose why this recommendation was rejected')
-    await executionTransaction(async (tx) => {
+    const improvementId = linked.improvementId
+    const event = {
+      projectId: flag.audit.projectId!, improvementId, occurrenceId: linked.id,
+      sourceAuditId: flag.audit.id, transport: input.builder, client: input.client, actor: input.actor,
+    }
+    if (input.action === 'REJECT') {
       await tx.improvement.update({
         where: { id: improvementId },
         data: {
@@ -227,58 +209,21 @@ export async function recordFlagImprovementAttempt(input: {
         },
       })
       await appendImprovementCycleEvent({
-        projectId: flag.audit.projectId!,
-        improvementId,
-        occurrenceId: flag.improvementOccurrence?.id,
-        sourceAuditId: flag.audit.id,
+        ...event,
         idempotencyKey: `rejected:${flag.id}:${input.rejectionReason}`,
         type: 'REJECTED',
-        transport: input.builder,
-        client: input.client,
-        actor: input.actor,
         rejectionReason: input.rejectionReason,
         rejectionNote: input.rejectionNote?.trim() || null,
         revisitAt: input.rejectionRevisitAt,
         contextCorrection: input.contextCorrection,
       }, tx)
-    })
-    return {
-      flagId: flag.id,
-      action: input.action,
-      productId: flag.audit.projectId,
-      improvementId,
-      attemptId: null,
-      sourceReviewId: flag.audit.id,
-      rejectionReason: input.rejectionReason,
-      nextAction: { type: 'NONE' as const },
-    }
-  }
-
-  if (input.action === 'HANDOFF_COPIED') {
-    await appendImprovementCycleEvent({
-      projectId: flag.audit.projectId,
-      improvementId,
-      occurrenceId: flag.improvementOccurrence?.id,
-      sourceAuditId: flag.audit.id,
-      idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}`,
-      type: 'HANDOFF_COPIED',
-      transport: input.builder,
-      client: input.client,
-      actor: input.actor,
-    })
-    return {
-      flagId: flag.id,
-      action: input.action,
-      productId: flag.audit.projectId,
-      improvementId,
-      attemptId: null,
-      sourceReviewId: flag.audit.id,
-      nextAction: { type: 'NONE' as const },
-    }
-  }
-
-  if (input.action === 'ACCEPT') {
-    await executionTransaction(async (tx) => {
+    } else if (input.action === 'HANDOFF_COPIED') {
+      await appendImprovementCycleEvent({
+        ...event,
+        idempotencyKey: `handoff-copied:${flag.id}${handoffProtocolSuffix(input.client)}`,
+        type: 'HANDOFF_COPIED',
+      }, tx)
+    } else if (input.action === 'ACCEPT') {
       await tx.improvement.updateMany({
         where: { id: improvementId, acceptedAt: null },
         data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
@@ -288,26 +233,22 @@ export async function recordFlagImprovementAttempt(input: {
         data: { status: 'ACCEPTED' },
       })
       await appendImprovementCycleEvent({
-        projectId: flag.audit.projectId!,
-        improvementId,
-        occurrenceId: flag.improvementOccurrence?.id,
-        sourceAuditId: flag.audit.id,
-        idempotencyKey: `accepted-explicit:${flag.id}`,
-        type: 'ACCEPTED_EXPLICIT',
-        transport: input.builder,
-        client: input.client,
-        actor: input.actor,
+        ...event, idempotencyKey: `accepted-explicit:${flag.id}`, type: 'ACCEPTED_EXPLICIT',
       }, tx)
-    })
-    return {
-      flagId: flag.id,
-      action: input.action,
-      productId: flag.audit.projectId,
-      improvementId,
-      attemptId: null,
-      sourceReviewId: flag.audit.id,
-      nextAction: { type: 'IMPLEMENT' as const },
     }
+    return linked
+  })
+  const improvementId = linked.improvementId
+
+  if (input.action !== 'READY_TO_VERIFY') return {
+    flagId: flag.id,
+    action: input.action,
+    productId: flag.audit.projectId,
+    improvementId,
+    attemptId: null,
+    sourceReviewId: flag.audit.id,
+    ...(input.action === 'REJECT' ? { rejectionReason: input.rejectionReason } : {}),
+    nextAction: { type: input.action === 'ACCEPT' ? 'IMPLEMENT' as const : 'NONE' as const },
   }
 
   const attempt = await createImprovementAttempt({

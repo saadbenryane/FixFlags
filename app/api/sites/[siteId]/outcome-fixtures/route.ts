@@ -33,7 +33,7 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
     if (!parsed.success) return apiError('Complete every Safe Form field with valid values.', 400, { code: 'FIXTURE_INPUT_INVALID' })
     const fixture = await createOutcomeFixture({
       projectId: owner.projectId,
-      siteUrl: owner.decision.site.url,
+      userId: owner.decision.site.userId!,
       fixture: parsed.data,
     })
     return NextResponse.json({ fixture }, { status: 201 })

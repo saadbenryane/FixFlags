@@ -60,6 +60,7 @@ export const screenshotSnapshotSchema = z.object({
   consoleErrors: z.array(z.object({ type: text, text, identity: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict()).max(500),
   consoleCoverage: consoleCoverageSchema.optional(),
   accessibilityEvidence: accessibilityEvidenceSchema.optional(), renderedScope: captureObservationScopeSchema.optional(),
+  mobileAccessibility: z.object({ evidence: accessibilityEvidenceSchema.optional(), violations: z.array(object).max(500).optional() }).strict().optional(),
   captureStatus: z.object({ desktop: z.enum(['ok', 'failed', 'pending']), mobile: z.enum(['ok', 'failed', 'pending']) }).strict(),
   captureFailures: z.array(object).max(10), captureMetrics: object.nullable().optional(), loadExperience: object.nullable().optional(),
   motionWindow: motionWindowSchema.optional(),

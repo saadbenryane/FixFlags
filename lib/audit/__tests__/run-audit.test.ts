@@ -11,7 +11,7 @@ import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'
 const { prismaMock } = vi.hoisted(() => {
   const prismaMock = {
     audit: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    $queryRaw: vi.fn(async () => [{ id: 'audit-1', lifecycleStatus: 'ACTIVE', deletedAt: null, cleanup: false }]),
+    $queryRaw: vi.fn(async () => [{ id: 'audit-1', authorized: true }]),
     runRequest: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
     screenshot: { deleteMany: vi.fn() },
     auditPage: { deleteMany: vi.fn() },

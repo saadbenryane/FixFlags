@@ -1,5 +1,6 @@
 /** Portable inventory of the installed axe WCAG policy. Runtime results retain actual rule outcomes. */
 export const ACCESSIBILITY_TAGS = ['wcag2a', 'wcag2aa', 'wcag22aa']
+export const MOBILE_ACCESSIBILITY_RULE_IDS = ['target-size'] as const
 // Explicit registered responsibilities outside the WCAG tag selection.
 // duplicate-id-active is retained as a legacy control-identifier diagnostic.
 export const ACCESSIBILITY_ADDITIONAL_RULE_IDS = ['duplicate-id-active', 'heading-order', 'landmark-banner-is-top-level',

@@ -378,7 +378,7 @@ runPostgres('Outcome confirmation PostgreSQL serialization', () => {
     await expectCurrent('COULD_NOT_VERIFY')
     expect(await prisma.outcomeAssessment.findUniqueOrThrow({ where: { id: assessment.id } })).toEqual(assessment)
     await prisma.siteOutcome.update({ where: { id: outcome.id }, data: { environment: 'production' } })
-    const fixture = await prisma.outcomeFixture.create({ data: { projectId, name: 'Read-only fixture metadata', targetUrl: site.url,
+    const fixture = await prisma.outcomeFixture.create({ data: { projectId, configuredByUserId: userId, name: 'Read-only fixture metadata', targetUrl: site.url,
       fieldMapping: {}, encryptedValues: 'unused-in-read-fixture', successCriterion: {}, resetUrl: site.url, cleanupUrl: site.url,
       version: 1, lastDryRunVersion: 1, authorizedAt: new Date() } })
     await prisma.outcomeExecutionBinding.update({ where: { outcomeId_key: { outcomeId: outcome.id, key: 'http' } },

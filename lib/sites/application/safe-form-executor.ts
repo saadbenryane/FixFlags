@@ -12,17 +12,18 @@ import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { executionWrite, executionTransaction, currentExecutionOwnership } from '@/lib/audit/execution-ownership'
 import { safeFormRequestAllowed } from '@/lib/audit/browser/safe-form-safety'
 import { safeFormMappingSchema, safeFormValuesSchema, safeFormSuccessSchema, type AccessibleTarget } from '../domain/safe-form'
+import { fixtureOwnerCurrent } from '../domain/fixture-authority'
 export { accessibleTargetSchema, safeFormMappingSchema, safeFormValuesSchema, safeFormSuccessSchema } from '../domain/safe-form'
 export type { AccessibleTarget } from '../domain/safe-form'
 
 /** Retry is allowed only after the admitted fixture's cleanup is proved, using
  * current authorization. No secret values or external effects are replayed here. */
-export async function reconcileSafeFixtureCleanup(input: { projectId: string; fixtureId: string; version: number; auditId?: string; requireAuthorization?: boolean }) {
+export async function reconcileSafeFixtureCleanup(input: { projectId: string; fixtureId: string; version: number; requireAuthorization?: boolean }) {
   const fixture = await prisma.outcomeFixture.findFirst({ where: {
     id: input.fixtureId, projectId: input.projectId, enabled: true, version: input.version,
     ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: input.version }),
-  } })
-  if (!fixture) return false
+  }, include: { project: { select: { userId: true } } } })
+  if (!fixture || !fixtureOwnerCurrent(fixture)) return false
   const target = normalizeAuditNavigationUrl(fixture.targetUrl)
   if (!target.ok) return false
   const cleanup = safeExactOrigin(fixture.cleanupUrl, new URL(target.url).origin)
@@ -30,21 +31,31 @@ export async function reconcileSafeFixtureCleanup(input: { projectId: string; fi
   try {
     const secret = fixture.encryptedHookSecret ? decryptSecret(fixture.encryptedHookSecret) : null
     await executionWrite(tx => tx.outcomeFixture.findUniqueOrThrow({ where: { id: fixture.id } }))
-    const submission = await prisma.auditPipelineEvent.findFirst({
-      where: { audit: { projectId: input.projectId }, event: 'protected_submission_admitted',
-        detail: { path: ['fixtureId'], equals: fixture.id } }, orderBy: { sequence: 'desc' }, select: { detail: true },
-    })
-    if (!submission) return true
-    const operation = z.object({ operationId: z.string(), fixtureId: z.literal(fixture.id), fixtureVersion: z.number().int().positive() }).safeParse(submission.detail)
-    if (!operation?.success) return false
-    const completed = await prisma.auditPipelineEvent.findFirst({ where: { audit: { projectId: input.projectId },
-      executionId: operation.data.operationId, event: 'protected_cleanup_completed' }, select: { id: true } })
-    if (completed) return true
-    if (operation.data.fixtureVersion !== fixture.version) return false
-    if (input.requireAuthorization === false && !await setupConsent(input.projectId, fixture.id, fixture.version)) return false
-    const cleaned = await callHook(cleanup, secret, fixture.id, { operationId: operation.data.operationId, requireSettled: true })
-    if (cleaned) await recordFixtureCleanup(operation.data.operationId, fixture.id, operation.data.fixtureVersion)
-    return cleaned
+    // A newer settled operation cannot hide an older unsettled one. Match
+    // receipts before LIMIT, including cleanup recorded by a later recovery run.
+    const pending = await prisma.$queryRaw<Array<{ executionId: string; detail: Prisma.JsonValue }>>`
+      SELECT e."executionId", e.detail FROM audit_pipeline_events e
+      JOIN audits a ON a.id = e."auditId"
+      WHERE a."projectId" = ${input.projectId} AND e.event = 'protected_submission_admitted'
+        AND e.detail->>'fixtureId' = ${fixture.id}
+        AND NOT EXISTS (
+          SELECT 1 FROM audit_pipeline_events c JOIN audits ca ON ca.id = c."auditId"
+          WHERE ca."projectId" = a."projectId" AND c.event = 'protected_cleanup_completed'
+            AND c."executionId" = e."executionId"
+            AND c.detail->>'fixtureId' = e.detail->>'fixtureId'
+            AND c.detail->'fixtureVersion' = e.detail->'fixtureVersion'
+        )
+      ORDER BY e.sequence ASC LIMIT 3`
+    for (const submission of pending.slice(0, 2)) {
+      const operation = z.object({ operationId: z.string(), fixtureId: z.literal(fixture.id), fixtureVersion: z.number().int().positive() }).safeParse(submission.detail)
+      if (!operation.success || operation.data.operationId !== submission.executionId || operation.data.fixtureVersion !== fixture.version) return false
+      // The recorded admission retains settlement of this operation, not
+      // permission for another reset or submission. Those still need live consent.
+      if (!await callHook(cleanup, secret, fixture.id, { operationId: operation.data.operationId, requireSettled: true })) return false
+      await recordFixtureCleanup(operation.data.operationId, fixture.id, operation.data.fixtureVersion)
+    }
+    // Bound hook calls without allowing the uninspected remainder to grant replay.
+    return pending.length <= 2
   } catch { return false }
 }
 
@@ -165,8 +176,11 @@ export async function executeSafeFormFixture(input: {
   deadline?: number
 }): Promise<SafeFormExecutionResult> {
   const fixture = await prisma.outcomeFixture.findFirst({
-    where: { id: input.fixtureId, projectId: input.projectId, enabled: true },
+    where: { id: input.fixtureId, projectId: input.projectId, enabled: true,
+      project: { deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } } },
+    include: { project: { select: { userId: true } } },
   })
+  if (!fixture || !fixture.configuredByUserId || !fixtureOwnerCurrent(fixture)) return blockedAdmission('fixture_not_authorized')
   const setupAdmitted = fixture && input.requireAuthorization === false ? await setupConsent(input.projectId, fixture.id, fixture.version) : true
   const refused = refuseSafeFormAdmission(fixture, { ...input, setupAdmitted })
   if (refused || !fixture) return refused ?? blockedAdmission('fixture_not_authorized')
@@ -192,6 +206,8 @@ export async function executeSafeFormFixture(input: {
   const fixturePermission = async (tx: Prisma.TransactionClient) => {
     const current = await tx.outcomeFixture.findFirst({ where: {
       id: fixture.id, projectId: input.projectId, version: fixture.version, enabled: true,
+      configuredByUserId: fixture.configuredByUserId,
+      project: { userId: fixture.configuredByUserId!, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
       ...(input.requireAuthorization === false ? {} : { authorizedAt: { not: null }, lastDryRunVersion: fixture.version }),
     }, select: { authorizedAt: true, lastDryRunVersion: true } })
     return current && (input.requireAuthorization !== false || await setupConsent(input.projectId, fixture.id, fixture.version, tx)) ? current : null
@@ -200,9 +216,11 @@ export async function executeSafeFormFixture(input: {
   if (owner) {
     const current = await executionWrite(tx => tx.outcomeFixture.findFirst({ where: {
       id: fixture.id, projectId: input.projectId, version: fixture.version, enabled: true,
+      configuredByUserId: fixture.configuredByUserId,
+      project: { userId: fixture.configuredByUserId!, deletedAt: null, user: { lifecycleStatus: 'ACTIVE' } },
     } }))
     if (!current || !await reconcileSafeFixtureCleanup({ projectId: input.projectId, fixtureId: fixture.id,
-      version: fixture.version, auditId: owner.auditId, requireAuthorization: input.requireAuthorization }))
+      version: fixture.version, requireAuthorization: input.requireAuthorization }))
       return { disposition: 'BLOCKED', reason: 'protected_effect_unresolved', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
   if (!await callHook(resetUrl, hookSecret, fixture.id, { beforeRequest: async () => {

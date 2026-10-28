@@ -74,7 +74,7 @@ export function SiteCategoryDetails({ selected, selectedFlags, selectedRecommend
           <DialogDescription className="sr-only">{selectedFlags.length ? SITE_BOARD_COPY.openFlagCount(selectedFlags.length) : C.noFlags}</DialogDescription>
           {selected ? (
             <>
-              {selected.id === 'site' ? <SitePageResults pages={pageResults} /> : <>
+              {selected.id === 'site' ? <SitePageResults pages={pageResults} headingLevel={3} /> : <>
               {!selectedFlags.length ? <p className="text-sm text-muted-foreground">{C.noFlags}</p> : null}
               {selected.id === 'performance' ? <SitePerformanceFindings siteId={siteId} flags={selectedFlags} availability={view.actions.copy} onOpenFlag={onOpenFlag} /> : <SiteCardFindings copyAvailability={view.actions.copy} key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={[]} onOpenFlag={onOpenFlag} />}
               </>}

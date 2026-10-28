@@ -217,7 +217,7 @@ export const lifecycleHandlers: TaskHandler[] = [
     async reconcile(context) {
       const setup = readExecutionSpec(context.audit.executionSpec)?.fixtureSetup
       return Boolean(setup && context.audit.projectId && await reconcileSafeFixtureCleanup({
-        projectId: context.audit.projectId, fixtureId: setup.id, version: setup.version, auditId: context.audit.id,
+        projectId: context.audit.projectId, fixtureId: setup.id, version: setup.version,
         requireAuthorization: false,
       }))
     },
@@ -233,7 +233,7 @@ export const lifecycleHandlers: TaskHandler[] = [
     async commit(context, artifact, tx) {
       const setup = readExecutionSpec(context.audit.executionSpec)!.fixtureSetup!
       const result = safeFormExecutionResultSchema.parse(artifact.data)
-      await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: context.audit.projectId!, version: setup.version },
+      await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: context.audit.projectId!, configuredByUserId: context.audit.userId, version: setup.version },
         data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(artifact.collectedAt), lastDryRunResult: result, authorizedAt: null } })
     },
   },
@@ -321,7 +321,7 @@ export const lifecycleHandlers: TaskHandler[] = [
       const saved = await prisma.outcomeBindingExecution.findUnique({ where: { auditId_outcomeId_bindingKey: {
         auditId: context.audit.id, outcomeId: context.input.outcomeId!, bindingKey: binding.key } }, select: { id: true } })
       return Boolean(saved) || reconcileSafeFixtureCleanup({ projectId: context.audit.projectId,
-        fixtureId: binding.fixture.id, version: binding.fixture.version, auditId: context.audit.id })
+        fixtureId: binding.fixture.id, version: binding.fixture.version })
     },
     async evaluate(context) {
       if (!context.input.outcomeId || !context.input.bindingKey) throw new TaskFailure('BINDING_INTENT_INVALID', false)

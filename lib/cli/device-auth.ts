@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { prisma } from '@/lib/db'
 import { encryptSecret, decryptSecret } from '@/lib/security/crypto'
+import type { Prisma, CliDeviceAuthorization } from '@prisma/client'
+import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
 import {
   generateApiKey,
   MAX_ACTIVE_API_KEYS,
@@ -34,6 +36,29 @@ function formatUserCode(value: string): string {
   return `${value.slice(0, 4)}-${value.slice(4, 8)}`
 }
 
+/** Expiry owns only credentials that were approved but never collected. The
+ * conditional claim and revocation commit together against competing polls. */
+async function revokeExpiredUncollectedCredential(
+  tx: Prisma.TransactionClient,
+  authorization: Pick<CliDeviceAuthorization, 'id' | 'apiKeyId' | 'userId'>,
+  now: Date,
+) {
+  if (!authorization.apiKeyId || !authorization.userId) return
+  const claimed = await tx.cliDeviceAuthorization.updateMany({
+    where: {
+      id: authorization.id, status: 'APPROVED', apiKeyId: authorization.apiKeyId,
+      userId: authorization.userId, expiresAt: { lte: now },
+    },
+    data: { status: 'CONSUMED', encryptedCredential: null, consumedAt: now },
+  })
+  if (claimed.count) {
+    await tx.apiKey.updateMany({
+      where: { id: authorization.apiKeyId, userId: authorization.userId, revokedAt: null },
+      data: { revokedAt: now },
+    })
+  }
+}
+
 export async function createCliDeviceAuthorization(baseUrl: string) {
   const deviceCode = randomBytes(32).toString('base64url')
   const userCode = formatUserCode(
@@ -46,26 +71,18 @@ export async function createCliDeviceAuthorization(baseUrl: string) {
   )
   const expiresAt = new Date(Date.now() + CLI_DEVICE_EXPIRES_SECONDS * 1000)
 
+  const cleanupAt = new Date()
   const expired = await prisma.cliDeviceAuthorization.findMany({
-    where: { expiresAt: { lt: new Date() } },
-    select: { id: true, apiKeyId: true },
+    where: { expiresAt: { lte: cleanupAt } },
+    orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }], take: 100,
+    select: { id: true, apiKeyId: true, userId: true },
   })
-  const expiredApiKeyIds = expired
-    .map(({ apiKeyId }) => apiKeyId)
-    .filter((apiKeyId): apiKeyId is string => Boolean(apiKeyId))
-  await prisma.$transaction([
-    ...(expiredApiKeyIds.length
-      ? [
-          prisma.apiKey.updateMany({
-            where: { id: { in: expiredApiKeyIds }, revokedAt: null },
-            data: { revokedAt: new Date() },
-          }),
-        ]
-      : []),
-    prisma.cliDeviceAuthorization.deleteMany({
-      where: { id: { in: expired.map(({ id }) => id) } },
-    }),
-  ])
+  if (expired.length) await prisma.$transaction(async tx => {
+    for (const authorization of expired) await revokeExpiredUncollectedCredential(tx, authorization, cleanupAt)
+    await tx.cliDeviceAuthorization.deleteMany({
+      where: { id: { in: expired.map(({ id }) => id) }, expiresAt: { lte: cleanupAt } },
+    })
+  })
   await prisma.cliDeviceAuthorization.create({
     data: {
       deviceCodeHash: hashCliDeviceCode(deviceCode),
@@ -104,6 +121,10 @@ export async function decideCliDeviceAuthorization(input: {
   approve: boolean
 }) {
   return prisma.$transaction(async (tx) => {
+    // Approval shares the developer-key limit and account lifecycle lock with
+    // Settings. Then serialize every terminal decision on this one-use code.
+    if (input.approve) await requireActiveAccountForWrite(tx, input.userId)
+    await tx.$queryRaw`SELECT id FROM cli_device_authorizations WHERE "userCodeHash" = ${hashCliUserCode(input.userCode)} FOR UPDATE`
     const authorization = await tx.cliDeviceAuthorization.findUnique({
       where: { userCodeHash: hashCliUserCode(input.userCode) },
     })
@@ -167,25 +188,19 @@ export async function exchangeCliDeviceCode(deviceCode: string) {
     where: { deviceCodeHash: hashCliDeviceCode(deviceCode) },
   })
   if (!authorization) return { ok: false as const, code: 'INVALID_DEVICE_CODE' }
+  if (authorization.status === 'CONSUMED') return { ok: false as const, code: 'DEVICE_CODE_ALREADY_USED' }
   if (authorization.expiresAt <= now) {
-    await prisma.$transaction([
-      ...(authorization.apiKeyId
-        ? [
-            prisma.apiKey.updateMany({
-              where: { id: authorization.apiKeyId, revokedAt: null },
-              data: { revokedAt: now },
-            }),
-          ]
-        : []),
-      prisma.cliDeviceAuthorization.update({
-        where: { id: authorization.id },
+    await prisma.$transaction(async tx => {
+      await revokeExpiredUncollectedCredential(tx, authorization, now)
+      await tx.cliDeviceAuthorization.updateMany({
+        where: { id: authorization.id, status: { not: 'CONSUMED' }, expiresAt: { lte: now } },
         data: {
           status: 'CONSUMED',
           encryptedCredential: null,
           consumedAt: now,
         },
-      }),
-    ])
+      })
+    })
     return { ok: false as const, code: 'EXPIRED_DEVICE_CODE' }
   }
   if (
@@ -217,6 +232,8 @@ export async function exchangeCliDeviceCode(deviceCode: string) {
     return { ok: false as const, code: 'DEVICE_CODE_ALREADY_USED' }
   }
 
+  // Keep the one-use grant available if its stored credential cannot be read.
+  const accessToken = decryptSecret(authorization.encryptedCredential)
   const consumed = await prisma.cliDeviceAuthorization.updateMany({
     where: { id: authorization.id, status: 'APPROVED' },
     data: {
@@ -231,7 +248,7 @@ export async function exchangeCliDeviceCode(deviceCode: string) {
 
   return {
     ok: true as const,
-    accessToken: decryptSecret(authorization.encryptedCredential),
+    accessToken,
     tokenType: 'Bearer' as const,
   }
 }

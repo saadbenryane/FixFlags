@@ -37,7 +37,7 @@ import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadMonitoringHistory } from '@/lib/sites/application/monitoring-history'
 import { classifyWatchResult, notifyWatchRegression, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
 import { fetchPageSpeedData } from '@/lib/audit/pagespeed'
-import { runPerformanceChecks } from '@/lib/audit/checks/performance'
+import { runInpChecks, runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { persistControlledNativeSource } from './controlled-native-source'
 import { materializeAttentionForAudit } from '@/lib/improvements/service'
@@ -132,7 +132,7 @@ run('migrated progressive execution', () => {
   let destinationLarge = false
   let independentActions: 'failed' | 'missing' | 'healthy' = 'failed'
   let independentInventoryBound = false
-  let publicLinksMode: 'failed' | 'blocked' | 'removed' | 'healthy' = 'failed'
+  let publicLinksMode: 'failed' | 'soft-missing' | 'blocked' | 'removed' | 'healthy' = 'failed'
   let sectionLinksMode: 'failed' | 'partial' | 'inert' | 'challenge' | 'changed' | 'removed' | 'healthy' = 'failed'
   let primaryActionMode: 'failed' | 'blocked' | 'challenge' | 'competing' | 'changed' | 'removed' | 'healthy' = 'failed'
   let primaryControlMode: 'missing' | 'disabled' | 'deadend' | 'healthy' = 'missing'
@@ -146,11 +146,12 @@ run('migrated progressive execution', () => {
   let signupCleanupOk = true
   let signupSubmissions = 0
   let pageSpeedMode: 'failed' | 'missing' | 'healthy' | 'different-resources' | 'refused' | 'failed-vitals' | 'missing-vitals' | null = null
+  let fieldDataMode: 'failed' | 'healthy' | 'foreign-page' | 'foreign-origin' | null = null
   let mobileResourceMode: 'failed' | 'missing' | 'different' | 'healthy' | null = null
   let resourcePeerCriteria = false
   let resourceImageMode: 'original' | 'partial-failed' | 'partial-healthy' | 'different-failure' | 'healthy' | null = null
   let mobileTapMode: 'failed' | 'missing' | 'different' | 'healthy' | null = null
-  let performanceScopeMode: 'original' | 'engine' | 'redirect' | 'profile' | 'missing' = 'original'
+  let performanceScopeMode: 'original' | 'engine' | 'redirect' | 'profile' | 'missing' | 'stale' | 'future' | 'undated' = 'original'
   let publicFormMode: 'broken' | 'blocked' | 'socket' | 'peer' | 'popup' | 'hidden' | 'unrelated' | 'outside' | 'slow' | 'healthy' | 'native' | 'prefilled' = 'broken'
   let publicFormSubmissions = 0
   let formInventoryCount = 7
@@ -320,9 +321,12 @@ run('migrated progressive execution', () => {
         '<noscript><a href="/inactive-fallback">Inactive fallback</a></noscript><template><a href="/inert-template">Inert template</a></template>' +
         '<div hidden>' + 'x'.repeat(1_100_000) + '</div></main></body></html>')
     } else if (req.url === '/resolved/public-links-gone' || req.url === '/resolved/public-links-other-gone') {
-      res.statusCode = publicLinksMode === 'healthy' ? 200 : publicLinksMode === 'blocked' ? 429 : 404
+      res.statusCode = publicLinksMode === 'healthy' || publicLinksMode === 'soft-missing' ? 200 : publicLinksMode === 'blocked' ? 429 : 404
       res.setHeader('content-type', 'text/html')
-      res.end('<!doctype html><html><head><title>' + (publicLinksMode === 'healthy' ? 'Useful details' : 'Unavailable page') + '</title></head><body><h1>Useful details</h1></body></html>')
+      res.end('<!doctype html><html><head><title>' + (publicLinksMode === 'healthy' ? 'Useful details' : 'Page not found') + '</title></head><body>' +
+        '<script type="application/json">{"fallback":"<h1>Page not found</h1>","status":404}</script>' +
+        '<template><h1>Page not found</h1></template><noscript><h1>Page not found</h1></noscript><svg><title>404 fallback symbol</title></svg>' +
+        '<h1>' + (publicLinksMode === 'soft-missing' ? 'Page not found' : 'Useful details') + '</h1></body></html>')
     } else if (req.url === '/structure' || req.url === '/structure-missing') {
       if (req.url === '/structure-missing' && structureUnavailable) { res.writeHead(503); res.end('Unavailable'); return }
       const missing = req.url === '/structure-missing'
@@ -549,6 +553,8 @@ run('migrated progressive execution', () => {
         resourcePeerCriteria && requestedResourcePage === origin + '/performance-peer'
       res.setHeader('content-type', 'application/json')
       res.end(JSON.stringify({ lighthouseResult: {
+        ...(performanceScopeMode === 'undated' ? {} : { fetchTime: new Date(Date.now() +
+          (performanceScopeMode === 'stale' ? -86_400_000 : performanceScopeMode === 'future' ? 86_400_000 : 0)).toISOString() }),
         ...(performanceScopeMode === 'missing' ? {} : { requestedUrl: requestedResourcePage,
           finalUrl: performanceScopeMode === 'redirect' ? origin + '/changed-provider-destination' : requestedResourcePage,
           lighthouseVersion: performanceScopeMode === 'engine' ? '14.0.0' : '13.0.0',
@@ -583,7 +589,10 @@ run('migrated progressive execution', () => {
             'image-delivery-insight': { score: failedResources ? 0 : 1, details: { debugData: { wastedBytes: failedResources ? 150_000 : 0 } } },
           }),
         }),
-      } } }))
+      } }, ...(fieldDataMode ? fieldDataMode === 'foreign-origin' ? {
+        originLoadingExperience: { id: 'https://other.example/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
+      } : { loadingExperience: { id: fieldDataMode === 'foreign-page' ? origin + '/unrelated-field-page' : requestedResourcePage,
+        metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: fieldDataMode === 'healthy' ? 100 : 900 } } } } : {}) }))
     } else if (req.url === '/robots.txt') {
       res.setHeader('content-type', 'text/plain')
       res.end('User-agent: *\nDisallow: /private\nSitemap: ' + origin + '/sitemap.xml')
@@ -707,7 +716,10 @@ run('migrated progressive execution', () => {
       res.end('<!doctype html><html><head><title>Keyboard entry</title></head><body><script>location.replace("/keyboard")</script></body></html>')
     } else if (req.url === '/keyboard') {
       res.setHeader('content-type', 'text/html')
-      res.end('<!doctype html><html lang="en"><head><title>Keyboard fixture</title><style>#first:focus-visible,#second:focus-visible {' +
+      res.end('<!doctype html><html lang="en"><head><title>Keyboard fixture</title><style>' +
+        '#first,#second{border:0 solid red;text-decoration:none red}#first:focus-visible,#second:focus-visible{border-color:blue;text-decoration-color:blue}' +
+        '#first::after{content:"";display:block;width:0;height:0}#first:focus-visible::after{background:blue}' +
+        '#first:focus-visible,#second:focus-visible {' +
         (focusRepaired ? 'outline:3px solid blue;outline-offset:2px' : 'outline:3px solid white;outline-offset:2px;box-shadow:none') +
         '}#second:focus-visible span{color:blue}#second:focus-visible::after{background:blue}</style></head><body><main><h1>Keyboard fixture</h1><button id="first">First</button><button id="second" aria-label="Second">Second<span hidden>Hidden detail</span></button>' +
         '<button id="options" aria-haspopup="menu" aria-controls="menu">Options</button><div role="menu" id="menu" hidden>' +
@@ -1106,7 +1118,7 @@ run('migrated progressive execution', () => {
 
   it('fences an interrupted Signup owner and refuses replay until exact-operation cleanup is settled', async () => {
     await getAuditTaskQueue('browser').pause()
-    const fixture = await prisma.outcomeFixture.create({ data: { projectId, name: 'Signup fixture', targetUrl: origin + '/signup',
+    const fixture = await prisma.outcomeFixture.create({ data: { projectId, configuredByUserId: userId, name: 'Signup fixture', targetUrl: origin + '/signup',
       fieldMapping: { fields: { email: { by: 'label', value: 'Email' } }, submit: { by: 'role', role: 'button', value: 'Sign up' } },
       encryptedValues: encryptSecret(JSON.stringify({ email: 'synthetic@example.test' })),
       successCriterion: { type: 'text', value: 'Check your inbox' }, resetUrl: origin + '/reset', cleanupUrl: origin + '/cleanup',
@@ -1144,7 +1156,7 @@ run('migrated progressive execution', () => {
     expect(requests).not.toContain('/signup')
     expect(await prisma.runRequest.findUnique({ where: { id: admitted.runId } })).toMatchObject({ status: 'FAILED' })
     expect((await listOutcomeFixtures(projectId))[0]).toMatchObject({ authorizedAt: null, lastDryRunResult: { disposition: 'BLOCKED', detail: { cleanupStatus: 'unknown' } } })
-    await expect(authorizeOutcomeFixture(projectId, fixture.id)).rejects.toMatchObject({ code: 'FIXTURE_DRY_RUN_REQUIRED' })
+    await expect(authorizeOutcomeFixture(projectId, fixture.id, userId)).rejects.toMatchObject({ code: 'FIXTURE_DRY_RUN_REQUIRED' })
     const site = await loadSiteHome(projectId)
     expect(site).not.toBeNull()
     expect(site!.audit.id).not.toBe(auditId)
@@ -1187,6 +1199,20 @@ run('migrated progressive execution', () => {
       expect(flag).toMatchObject({ source: 'DETERMINISTIC', pageUrl: origin + '/keyboard-entry',
         evidenceTargets: [{ selector: '#first', source: 'measured' }, { selector: '#second', source: 'measured' }] })
       expect(flag.fix).toContain(':focus-visible')
+      expect(JSON.stringify(flag.evidenceTargets)).toContain(':focus:painted-properties-v2')
+      const ineffective = await recordSiteFlagFix({ siteId: keyboardSiteId, flagId: flag.id, userId: keyboardUserId,
+        idempotencyKey: 'keyboard-unpainted-fix', changeSummary: 'Change declared border and decoration colors without painting a focus cue' })
+      const unchanged = await requestSiteRun({ projectId: keyboardSiteId, userId: keyboardUserId, outcomeIds: [], source: 'WEB',
+        idempotencyKey: 'keyboard-unpainted-verification', verificationTarget: { kind: 'DIAGNOSTIC', pageUrl: flag.pageUrl!,
+          checkId: flag.checkId!, attemptId: ineffective.attemptId, parentAuditId: beforeId } })
+      await vi.waitFor(async () => {
+        expect(await prisma.auditVerifierExecution.findFirst({ where: { auditId: unchanged.auditId!, workKind: 'finalize' } }))
+          .toMatchObject({ workState: 'COMPLETED' })
+      }, { timeout: 15_000, interval: 100 })
+      const unchangedProof = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: unchanged.auditId!, targetKey: 'check:focus-visible-missing' } })
+      expect(checkVerifierSchema.parse(unchangedProof.detail)).toMatchObject({ verdict: 'failed', source: 'keyboard' })
+      expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: ineffective.attemptId } }))
+        .toMatchObject({ outcome: 'UNCHANGED', comparable: true })
       const fix = await recordSiteFlagFix({ siteId: keyboardSiteId, flagId: flag.id, userId: keyboardUserId, idempotencyKey: 'keyboard-fix',
         changeSummary: 'Restore the focus outline on the two reported controls' })
       focusRepaired = true
@@ -1760,6 +1786,8 @@ run('migrated progressive execution', () => {
         return { run, attempt: await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }) }
       }
       expect((await verify('unchanged')).attempt).toMatchObject({ outcome: 'UNCHANGED', comparable: true })
+      publicLinksMode = 'soft-missing'
+      expect((await verify('active-soft-404')).attempt).toMatchObject({ outcome: 'UNCHANGED', comparable: true })
       publicLinksMode = 'blocked'
       expect((await verify('blocked')).attempt).toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
       publicLinksMode = 'removed'
@@ -2359,7 +2387,7 @@ run('migrated progressive execution', () => {
     const browserWasPaused = await getAuditTaskQueue('browser').isPaused()
     try {
       await getAuditTaskQueue('browser').resume()
-      const fixture = await prisma.outcomeFixture.create({ data: { projectId, name: 'Reversible signup', targetUrl: origin + '/signup-flow',
+      const fixture = await prisma.outcomeFixture.create({ data: { projectId, configuredByUserId: userId, name: 'Reversible signup', targetUrl: origin + '/signup-flow',
         fieldMapping: { fields: { email: { by: 'label', value: 'Email' } }, submit: { by: 'role', role: 'button', value: 'Sign up' } },
         encryptedValues: encryptSecret(JSON.stringify({ email: 'synthetic@example.test' })),
         successCriterion: { type: 'text', value: 'Check your inbox' }, resetUrl: origin + '/signup-reset', cleanupUrl: origin + '/signup-cleanup' } })
@@ -2370,7 +2398,7 @@ run('migrated progressive execution', () => {
       }, { timeout: 15_000, interval: 100 })
       expect(await prisma.outcomeFixture.findUnique({ where: { id: fixture.id } })).toMatchObject({
         lastDryRunVersion: 1, lastDryRunResult: { disposition: 'SUCCEEDED', detail: { cleanupStatus: 'succeeded' } } })
-      await authorizeOutcomeFixture(projectId, fixture.id)
+      await authorizeOutcomeFixture(projectId, fixture.id, userId)
       const outcome = await prisma.siteOutcome.create({ data: { projectId, slug: 'signup-functional', name: 'Signup completes', kind: 'SIGNUP',
         bindings: { create: { key: 'signup-v1', mechanism: 'SAFE_FORM', required: true,
           config: { startUrl: origin + '/signup-flow', safety: 'reversible', authorized: true, fixtureId: fixture.id } } } } })
@@ -4229,6 +4257,49 @@ run('migrated progressive execution', () => {
     }
   }, 120_000)
 
+  it('keeps foreign field metrics out of worker findings without using rolling INP as immediate repair proof', async () => {
+    await resumeExternalQueues()
+    const transport = fixtureTransport(), pageUrl = origin + '/performance-fixture'
+    const fieldOwner = userId + '-field-scope', fieldSite = projectId + '-field-scope'
+    await prisma.user.create({ data: { id: fieldOwner, email: fieldOwner + '@example.test', auditsLimit: 100 } })
+    await prisma.project.create({ data: { id: fieldSite, userId: fieldOwner, name: 'Field scope fixture', canonicalHost: 'example.com', url: pageUrl } })
+    try {
+      pageSpeedMode = 'healthy'; fieldDataMode = 'failed'
+      const measured = await fetchPageSpeedData(pageUrl, undefined, { fresh: true, singleAttempt: true, strategies: ['mobile'] })
+      const flags = runInpChecks(measured.mobile!).map(flag => ({ ...flag, pageUrl }))
+      expect(flags.map(flag => flag.checkId)).toEqual(['inp-critical'])
+      const source = await prisma.audit.create({ data: { projectId: fieldSite, userId: fieldOwner, url: pageUrl,
+        status: 'COMPLETED', startedAt: new Date(), completedAt: new Date(), performanceData: { mobile: measured.mobile! } } })
+      await persistControlledNativeSource(source.id, flags, { MESSAGE: null, EXPERIENCE: null, REACH: null }, { 'inp-critical': 1 })
+      await materializeAttentionForAudit(source.id)
+      const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: source.id, checkId: 'inp-critical' } })
+      for (const mode of ['foreign-page', 'foreign-origin', 'healthy', 'failed'] as const) {
+        fieldDataMode = mode
+        const fix = await recordSiteFlagFix({ siteId: fieldSite, userId: fieldOwner, flagId: flag.id,
+          idempotencyKey: 'field-scope-fix:' + mode, changeSummary: 'Improve interaction responsiveness' })
+        const run = await requestSiteRun({ projectId: fieldSite, userId: fieldOwner, outcomeIds: [], source: 'WEB', scope: 'DIAGNOSTIC',
+          idempotencyKey: 'field-scope-verify:' + mode, verificationTarget: { kind: 'DIAGNOSTIC', pageUrl,
+            checkId: 'inp-critical', parentAuditId: source.id, attemptId: fix.attemptId } })
+        await vi.waitFor(async () => expect(await prisma.audit.findUnique({ where: { id: run.auditId! } }))
+          .toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 20_000, interval: 100 })
+        const receipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: run.auditId!, targetKey: 'module:performance' } })
+        expect(receipt.detail).toMatchObject({ assertions: [expect.objectContaining({ key: 'inp',
+          complete: mode === 'healthy' || mode === 'failed', passed: mode === 'healthy' })] })
+        const capture = await prisma.audit.findUniqueOrThrow({ where: { id: run.auditId! } })
+        expect(capture.performanceData).toMatchObject({ mobile: { score: 95, lcp: 1000,
+          inp: mode === 'healthy' ? 100 : mode === 'failed' ? 900 : null } })
+        expect(await prisma.flag.count({ where: { auditId: run.auditId!, checkId: 'inp-critical' } })).toBe(mode === 'failed' ? 1 : 0)
+        expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: fix.attemptId } }))
+          .toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
+        expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
+      }
+      expect((await prisma.audit.findUniqueOrThrow({ where: { id: source.id } })).performanceData).toEqual({ mobile: measured.mobile })
+    } finally {
+      fieldDataMode = null; pageSpeedMode = null; transport.mockRestore()
+      await prisma.user.delete({ where: { id: fieldOwner } })
+    }
+  }, 90_000)
+
   it('verifies mobile tap-target repair under the original provider criteria and preserves scheduled recurrence', async () => {
     await resumeExternalQueues()
     const transport = fixtureTransport(), pageUrl = origin + '/performance-fixture'
@@ -4409,14 +4480,21 @@ run('migrated progressive execution', () => {
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
       }
       pageSpeedMode = 'healthy'
-      for (const flag of [scoreFlag, unusedJs]) for (const mode of ['engine', 'redirect', 'profile', 'missing'] as const) {
+      for (const flag of [scoreFlag, unusedJs]) for (const mode of ['stale', 'future', 'undated', 'engine', 'redirect', 'profile', 'missing'] as const) {
         performanceScopeMode = mode
         attempts.set(flag.id, (await recordSiteFlagFix({ siteId: projectId, flagId: flag.id, userId,
           idempotencyKey: 'performance-condition-fix:' + flag.id + ':' + mode, changeSummary: 'Recheck the original measurement conditions' })).attemptId)
-        await verify(flag, 'condition-' + mode)
+        const verification = await verify(flag, 'condition-' + mode)
         expect(await prisma.improvementAttempt.findUniqueOrThrow({ where: { id: attempts.get(flag.id)! } }))
           .toMatchObject({ outcome: 'INCONCLUSIVE', comparable: false })
         expect(await prisma.flag.findUniqueOrThrow({ where: { id: flag.id } })).toMatchObject({ status: 'OPEN' })
+        if (['stale', 'future', 'undated'].includes(mode)) {
+          const receipt = await prisma.auditVerifierExecution.findFirstOrThrow({ where: { auditId: verification.auditId!,
+            targetKey: { startsWith: 'module:performance' } } })
+          expect(checkReceiptSchema.parse(receipt.detail)).toMatchObject({ passed: false, complete: false })
+          expect(await prisma.audit.findUniqueOrThrow({ where: { id: verification.auditId! } }))
+            .toMatchObject({ performanceData: { desktop: { score: 95 } } })
+        }
       }
       performanceScopeMode = 'original'
       for (const flag of findings) {

@@ -5,6 +5,7 @@ import { startRecoveryScheduler } from '../recovery-scheduler'
 import { retryPendingWatchNotifications } from '@/lib/audit/project-watch'
 import * as watches from '@/lib/audit/project-watch'
 import * as comparison from '@/lib/audit/diff-flags'
+import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 
 const provider = vi.hoisted(() => ({ send: vi.fn() }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: provider.send } } }))
@@ -44,6 +45,31 @@ run('Watch retry backlog through the installed scheduler', () => {
       problem: 'Content policy is missing', evidence: 'Controlled missing header', whyItMatters: 'Policy is absent', fix: 'Add the policy' })) })
     return { ids, now }
   }
+
+  it.each(['already-paused', 'changed-during-classification'] as const)('suppresses Watch alerts when monitoring is %s without erasing the findings', async phase => {
+    const { ids: [id] } = await cohort(1)
+    provider.send.mockReset().mockResolvedValue({ data: { id: 'must-not-send' }, error: null })
+    const audit = await prisma.audit.findUniqueOrThrow({ where: { id } })
+    const pause = () => setProjectWatch({ projectId: audit.projectId!, userId: audit.userId!, action: 'pause' })
+    if (phase === 'already-paused') expect(await pause()).toMatchObject({ ok: true })
+    else {
+      const original = comparison.getFlagDiffSummary
+      vi.spyOn(comparison, 'getFlagDiffSummary').mockImplementation(async (parent, child) => {
+        const result = await original(parent, child)
+        expect(await pause()).toMatchObject({ ok: true })
+        return result
+      })
+    }
+    await watches.notifyWatchRegression(null, id)
+    expect(provider.send).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
+    // A rejected stale claim is cancelled by the next permission-aware pass.
+    await retryPendingWatchNotifications(5)
+    expect(provider.send).not.toHaveBeenCalled()
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id } })).toMatchObject({ watchNotificationStatus: 'NOT_APPLICABLE',
+      watchNotificationAttempts: 0, watchRegressionCount: 1 })
+    expect(await prisma.flag.count({ where: { auditId: id } })).toBe(1)
+  })
 
   it('recovers more than one batch without consuming failed retries or duplicating accepted alerts', async () => {
     const { ids, now } = await cohort(61)
@@ -119,5 +145,30 @@ run('Watch retry backlog through the installed scheduler', () => {
     await retryPendingWatchNotifications(1)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: broken } })).toMatchObject({
       watchNotificationStatus: 'SENT', watchNotificationAttempts: 1 })
+  })
+
+  it.each(['PENDING', 'FAILED', 'SENDING'] as const)('excludes transferred and undated %s observations before limiting the retry batch', async status => {
+    const { ids, now } = await cohort(3)
+    const [transferred, undated, eligible] = ids
+    const replacement = await prisma.user.create({ data: { email: randomUUID() + '@notification.test' } })
+    users.push(replacement.id)
+    await prisma.project.update({ where: { id: 'site-' + transferred }, data: { userId: replacement.id } })
+    await prisma.audit.updateMany({ where: { id: { in: [transferred, undated] } }, data: {
+      watchNotificationStatus: status, updatedAt: new Date(now.getTime() - 60_000) } })
+    await prisma.audit.update({ where: { id: undated }, data: {
+      completedAt: null, updatedAt: new Date(now.getTime() - 60_000) } })
+    provider.send.mockReset().mockResolvedValue({ data: { id: 'accepted-current-owner' }, error: null })
+
+    expect(await retryPendingWatchNotifications(1)).toBe(1)
+
+    expect(await prisma.audit.findUniqueOrThrow({ where: { id: eligible } })).toMatchObject({
+      watchNotificationStatus: 'SENT', watchNotificationAttempts: 1,
+      watchNotificationProviderId: 'accepted-current-owner' })
+    expect(provider.send).toHaveBeenCalledOnce()
+    const preserved = await prisma.audit.findMany({ where: { id: { in: [transferred, undated] } } })
+    for (const audit of preserved) expect(audit).toMatchObject({ watchNotificationStatus: status,
+      watchNotificationAttempts: 0, watchNotificationPayload: null, watchNotifiedAt: null })
+    expect(await retryPendingWatchNotifications(1)).toBe(0)
+    expect(provider.send).toHaveBeenCalledOnce()
   })
 })

@@ -11,6 +11,7 @@ const measurementScopeSchema = z.object({ requestedKey: key, finalKey: key, prof
 export const performanceMeasurementSchema = z.object({
   version: z.literal(1), source: z.literal('google-pagespeed'), strategy: z.enum(['desktop', 'mobile']),
   receivedAt: z.string().datetime(), measuredAt: z.string().datetime().nullable(),
+  requestedAt: z.string().datetime().optional(),
   lighthouseVersion: z.string().max(100).nullable(), formFactor: z.string().max(40).nullable(),
   throttlingMethod: z.string().max(40).nullable(),
   scope: measurementScopeSchema.nullable().optional(),
@@ -37,7 +38,7 @@ function pageKey(value: unknown): string | null {
 }
 
 /** Whitelist provider conditions before its raw response is discarded. */
-export function performanceMeasurement(raw: Record<string, unknown>, strategy: 'desktop' | 'mobile'): PerformanceMeasurement {
+export function performanceMeasurement(raw: Record<string, unknown>, strategy: 'desktop' | 'mobile', requestedAt?: Date): PerformanceMeasurement {
   const settings = settingsSchema.safeParse(raw.configSettings)
   const measuredAt = z.string().datetime().safeParse(raw.fetchTime)
   const engine = z.string().max(100).safeParse(raw.lighthouseVersion)
@@ -50,6 +51,7 @@ export function performanceMeasurement(raw: Record<string, unknown>, strategy: '
       screenEmulation: settings.data.screenEmulation ?? null, emulatedUserAgent: settings.data.emulatedUserAgent ?? null,
       userAgent: userAgent.success ? userAgent.data : null, locale: settings.data.locale ?? null }) } : null
   return { version: 1, source: 'google-pagespeed', strategy, receivedAt: new Date().toISOString(),
+    ...(requestedAt ? { requestedAt: requestedAt.toISOString() } : {}),
     measuredAt: measuredAt.success ? measuredAt.data : null, lighthouseVersion: engine.success ? engine.data : null,
     formFactor, throttlingMethod: settings.success ? settings.data.throttlingMethod ?? null : null, scope }
 }
@@ -67,13 +69,20 @@ export function readPerformanceContext(value: string | undefined) {
 }
 export function performancePageKey(url: string) { return pageKey(url) }
 
+/** Receiving a provider response does not establish a new measurement. Missing
+ * timing and inconsistent clocks remain observable, without certifying repair. */
+function measuredDuringRequest(measurement: PerformanceMeasurement) {
+  const requested = Date.parse(measurement.requestedAt ?? ''), measured = Date.parse(measurement.measuredAt ?? '')
+  return Number.isFinite(requested) && Number.isFinite(measured) && requested <= measured && measured <= Date.parse(measurement.receivedAt)
+}
+
 export function performanceConditionContext(data: PageSpeedResult, url: string, context: string) {
-  if (context.startsWith('pagespeed-condition:v1:')) return context
+  const condition = /^pagespeed-condition:v1:[^:]+:[^:]+:(.+)$/.exec(context)?.[1] ?? context
   const measurement = performanceMeasurementSchema.safeParse(data.diagnostics.measurement)
   const requestedKey = pageKey(url)
-  const scope = measurement.success && measurement.data.strategy === data.strategy &&
+  const scope = measurement.success && measuredDuringRequest(measurement.data) && measurement.data.strategy === data.strategy &&
     measurement.data.scope?.requestedKey === requestedKey ? measurement.data.scope : null
-  return `pagespeed-condition:v1:${requestedKey ?? 'unknown'}:${scope ? hash([data.strategy, scope]) : 'unknown'}:${context}`
+  return `pagespeed-condition:v1:${requestedKey ?? 'unknown'}:${scope ? hash([data.strategy, scope]) : 'unknown'}:${condition}`
 }
 
 /** Counts remain observable when old provider conditions are missing, but an
@@ -90,7 +99,10 @@ export function scopePerformanceFlags(data: PageSpeedResult, url: string | undef
 }
 
 export function scopePerformanceAssertions(data: PageSpeedResult, url: string, assertions: CheckAssertion[]) {
+  const measurement = performanceMeasurementSchema.safeParse(data.diagnostics.measurement)
+  const fresh = measurement.success && measuredDuringRequest(measurement.data)
   return assertions.map(assertion => assertion.key === 'inp' ? assertion : { ...assertion,
+    ...(!fresh ? { complete: false } : {}),
     ...(['score', 'lcp', 'cls'].includes(assertion.key) || assertion.context ? { context: performanceConditionContext(data, url, assertion.context ?? 'lab:' + assertion.key) } : {}),
     ...(assertion.measurements ? { measurements: assertion.measurements.map(measurement => ({ ...measurement,
       context: performanceConditionContext(data, url, measurement.context) })) } : {}),

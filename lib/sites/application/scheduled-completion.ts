@@ -29,7 +29,7 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
   claim: ScheduledRunClaim; operator?: AdminDomainActor }) {
   const complete = await productTransaction(async tx => {
     const [site] = await tx.$queryRaw<Array<ScheduledClaimProject & { watchConsecutiveFailures: number }>>`
-      SELECT p.url, p."watchInterval", p."watchEveryMinutes", p."watchNextRunAt", p."watchLastAttemptAt", p."watchLeaseUntil", p."watchConsecutiveFailures"
+      SELECT p.url, p."watchInterval", p."watchEveryMinutes", p."watchNextRunAt", p."watchLastAttemptAt", p."watchLeaseUntil", p."watchPausedAt", p."watchConsecutiveFailures"
       FROM projects p JOIN users u ON u.id = p."userId" WHERE p.id = ${input.projectId} AND p."userId" = ${input.userId}
         AND p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' FOR UPDATE OF p`
     if (!site) throw staleScheduledClaim()
@@ -56,7 +56,7 @@ export async function commitScheduledRun(input: { projectId: string; userId: str
       nextRunAt: calcWatchNextRun(input.claim.interval, input.admittedAt, input.claim.everyMinutes).getTime(), failures: site.watchConsecutiveFailures })
     const context = run.context && typeof run.context === 'object' && !Array.isArray(run.context) ? run.context : {}
     await tx.runRequest.update({ where: { id: input.runId }, data: { context: { ...context, scheduled } } })
-    const changed = await tx.project.updateMany({ where: { id: input.projectId, userId: input.userId, deletedAt: null,
+    const changed = await tx.project.updateMany({ where: { id: input.projectId, userId: input.userId, deletedAt: null, watchPausedAt: null,
       watchNextRunAt: input.claim.scheduledAt, watchLastAttemptAt: input.claim.attemptedAt, watchLeaseUntil: input.claim.leaseUntil },
       data: { watchNextRunAt: new Date(scheduled.nextRunAt), watchLeaseUntil: null } })
     if (changed.count !== 1) throw staleScheduledClaim()
@@ -79,7 +79,7 @@ export async function reconcileScheduledCompletions(limit = 20, clock: Clock = s
       ${interruptedAnalysisWorkSql} AS interrupted
     FROM run_requests r JOIN audits "source" ON "source".id = r."auditId" AND "source"."projectId" = r."projectId"
     JOIN projects p ON p.id = r."projectId" AND p."userId" = "source"."userId" JOIN users u ON u.id = p."userId"
-    WHERE p."deletedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND p."watchLeaseUntil" IS NULL
+    WHERE p."deletedAt" IS NULL AND p."watchPausedAt" IS NULL AND u."lifecycleStatus" = 'ACTIVE' AND p."watchLeaseUntil" IS NULL
       AND r.environment = 'production' AND ${analysisEnvironmentSourceSql('production')} AND r.context#>'{scheduled,version}' = '1'::jsonb
       AND ((r.status = 'FAILED' AND "source".status = 'FAILED') OR (r.status = 'COMPLETED' AND "source".status = 'COMPLETED'
         AND (p."watchConsecutiveFailures" > 0 OR p."watchLastError" IS NOT NULL OR ${interruptedAnalysisWorkSql})))
@@ -101,7 +101,7 @@ export async function reconcileScheduledCompletions(limit = 20, clock: Clock = s
     const failed = row.status === 'FAILED' || row.interrupted
     const delay = [15, 60, 360][Math.min(saved.failures, 2)] * 60_000
     try {
-      const result = await prisma.project.updateMany({ where: { id: row.projectId, userId: row.userId, url: row.targetUrl, deletedAt: null,
+    const result = await prisma.project.updateMany({ where: { id: row.projectId, userId: row.userId, url: row.targetUrl, deletedAt: null, watchPausedAt: null,
         user: { lifecycleStatus: 'ACTIVE' }, watchInterval: toStoredWatchInterval(saved.interval), watchEveryMinutes: saved.everyMinutes,
         watchNextRunAt: new Date(saved.nextRunAt), watchLastAttemptAt: new Date(saved.attemptedAt), watchLeaseUntil: null,
         watchConsecutiveFailures: saved.failures, watchLastError: row.watchLastError,

@@ -293,7 +293,7 @@ npm start
 FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=2 npm run worker:start
 ```
 
-**Docker / Playwright:** image installs apt `chromium`, sets `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`. Auth packages are pinned in `package.json` `overrides` (better-auth 1.6.22 + Zod 4). If you add an `.npmrc`, COPY it **before** `npm ci` in the Dockerfile.
+**Docker / Playwright:** image installs apt `chromium`, sets `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`. Auth packages are pinned in `package.json` `overrides` (better-auth 1.7.14 + Zod 4). If you add an `.npmrc`, COPY it **before** `npm ci` in the Dockerfile.
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 

@@ -140,9 +140,9 @@ export async function publishUnfinishedCoverage(tx: Prisma.TransactionClient, ta
   }
 
   if (task.workKind === 'fixture-setup') {
-    const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { projectId: true, executionSpec: true } })
+    const audit = await tx.audit.findUnique({ where: { id: task.auditId }, select: { projectId: true, userId: true, executionSpec: true } })
     const setup = readExecutionSpec(audit?.executionSpec)?.fixtureSetup
-    if (setup && audit?.projectId) await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: audit.projectId, version: setup.version },
+    if (setup && audit?.projectId) await tx.outcomeFixture.updateMany({ where: { id: setup.id, projectId: audit.projectId, configuredByUserId: audit.userId, version: setup.version },
       data: { lastDryRunVersion: setup.version, lastDryRunAt: new Date(), authorizedAt: null,
         lastDryRunResult: { disposition: 'BLOCKED', reason, detail: { fieldCount: 0, cleanupStatus: 'unknown' } } } })
   }

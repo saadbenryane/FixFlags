@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { prisma } from '@/lib/db'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
+import { recordFlagImprovementAttempt } from './attempts'
 
 const run = process.env.PROGRESSIVE_EXECUTION_DB_REQUIRED === 'true' ? describe : describe.skip
 run('retained clipboard handoff provenance in PostgreSQL', () => {
@@ -61,5 +62,62 @@ run('retained clipboard handoff provenance in PostgreSQL', () => {
     expect(lifecycle.find(event => event.id !== legacyLifecycle.id)?.properties).toMatchObject({ client: 'website-clipboard-v2' })
     expect(await prisma.improvementAttempt.count({ where: { improvement: { projectId } } })).toBe(0)
     expect(await prisma.improvement.findFirstOrThrow({ where: { projectId } })).toMatchObject({ status: 'PROPOSED', acceptedAt: null })
+  })
+
+  it('refuses an already-linked handoff after Site ownership changes or removal', async () => {
+    const nextOwner = 'next-clipboard-owner-' + randomUUID()
+    const events = await prisma.improvementCycleEvent.count({ where: { cycle: { projectId } } })
+    await prisma.user.create({ data: { id: nextOwner, email: nextOwner + '@example.test' } })
+    try {
+      await prisma.project.update({ where: { id: projectId }, data: { userId: nextOwner } })
+      await expect(executeSiteCommand({ type: 'RECORD_FIX_HANDOFF', flagId, userId: owner, builder: 'copy' }))
+        .rejects.toThrow('Flag is not attached to an owned Product')
+      await prisma.project.update({ where: { id: projectId }, data: { userId: owner, deletedAt: new Date() } })
+      await expect(executeSiteCommand({ type: 'RECORD_FIX_HANDOFF', flagId, userId: owner, builder: 'copy' }))
+        .rejects.toThrow('Flag is not attached to an owned Product')
+      expect(await prisma.improvementCycleEvent.count({ where: { cycle: { projectId } } })).toBe(events)
+    } finally {
+      await prisma.project.update({ where: { id: projectId }, data: { userId: owner, deletedAt: null } })
+      await prisma.user.delete({ where: { id: nextOwner } })
+    }
+  })
+
+  it('settles a concurrent ownership transfer before recording a linked handoff', async () => {
+    const nextOwner = 'concurrent-clipboard-owner-' + randomUUID()
+    await prisma.user.create({ data: { id: nextOwner, email: nextOwner + '@example.test' } })
+    const before = await prisma.improvementCycleEvent.findMany({ where: { cycle: { projectId } }, orderBy: { id: 'asc' } })
+    let release = () => {}
+    let announce = () => {}
+    const held = new Promise<void>(resolve => { release = resolve })
+    const acquired = new Promise<void>(resolve => { announce = resolve })
+    const transfer = prisma.$transaction(async tx => {
+      await tx.project.update({ where: { id: projectId }, data: { userId: nextOwner } })
+      announce()
+      await held
+    }, { timeout: 10_000 })
+    let command: Promise<unknown> | undefined
+    try {
+      await acquired
+      // A normal read still sees the old owner while the transfer is uncommitted.
+      command = recordFlagImprovementAttempt({ flagId, userId: owner, builder: 'stale-copy', action: 'HANDOFF_COPIED' })
+        .then(result => ({ result }), error => ({ error: error.message }))
+      await expect.poll(async () => {
+        const waiting = await prisma.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+            AND pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+            AND query LIKE '%SELECT "id" FROM "projects"%FOR UPDATE%') AS waiting`
+        return waiting[0].waiting
+      }, { timeout: 3_000 }).toBe(true)
+      release()
+      await transfer
+      expect(await command).toEqual({ error: 'Flag is not attached to an owned Product' })
+      expect(await prisma.improvementCycleEvent.findMany({ where: { cycle: { projectId } }, orderBy: { id: 'asc' } })).toEqual(before)
+    } finally {
+      release()
+      await transfer
+      await command
+      await prisma.project.update({ where: { id: projectId }, data: { userId: owner } })
+      await prisma.user.delete({ where: { id: nextOwner } })
+    }
   })
 })

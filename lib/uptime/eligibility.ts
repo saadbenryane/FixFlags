@@ -1,7 +1,7 @@
 import type { Project, User } from '@prisma/client'
 import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 
-export type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watchInterval' | 'watchNextRunAt'> & {
+export type MonitoringProject = Pick<Project, 'id' | 'url' | 'deletedAt' | 'watchInterval' | 'watchNextRunAt' | 'watchPausedAt'> & {
   user: Pick<User, 'id' | 'lifecycleStatus'>
 }
 
@@ -12,5 +12,5 @@ export const uptimeProjectInclude = {
 } as const
 
 export function uptimeEligible(project: MonitoringProject) {
-  return project.user.lifecycleStatus === 'ACTIVE' && !project.deletedAt && fromStoredWatchInterval(project.watchInterval) !== null
+  return project.user.lifecycleStatus === 'ACTIVE' && !project.deletedAt && !project.watchPausedAt && fromStoredWatchInterval(project.watchInterval) !== null
 }

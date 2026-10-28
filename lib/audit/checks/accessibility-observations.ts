@@ -3,16 +3,16 @@ import type { PageSpeedResult } from '../pagespeed'
 import { filterToolingPathFlags } from '../tooling-path-filter'
 import type { DeterministicFlag } from '../flag-types'
 import type { CheckAssertion } from './assertion'
-import type { AccessibilityEvidence } from '../browser/accessibility-evidence'
+import type { AccessibilityEvidence, MobileAccessibilityCapture } from '../browser/accessibility-evidence'
 import { captureObservationKey, type CaptureObservationScope } from '../browser/observation-scope'
-import { AXE_POLICY_CHECK_IDS, ACCESSIBILITY_DOM_CHECK_IDS, ACCESSIBILITY_VERIFICATION_RULE, axeRuleToCheckId } from './accessibility-rules'
+import { AXE_POLICY_CHECK_IDS, ACCESSIBILITY_DOM_CHECK_IDS, ACCESSIBILITY_VERIFICATION_RULE, MOBILE_ACCESSIBILITY_RULE_IDS, axeRuleToCheckId } from './accessibility-rules'
 import { filterOutIframeAxeViolations, runAccessibilityChecks, type AxeViolation } from './accessibility'
 
-function context(kind: 'axe' | 'dom', scope: CaptureObservationScope, checkId: string, engine = '', rules: string[] = []) {
-  return 'accessibility:' + kind + ':desktop:' + captureObservationKey(scope) + ':' + checkId + ':' + engine + ':' + rules.sort().join(',')
+function context(kind: 'axe' | 'dom', scope: CaptureObservationScope, checkId: string, engine = '', rules: string[] = [], device = 'desktop') {
+  return 'accessibility:' + kind + ':' + device + ':' + captureObservationKey(scope) + ':' + checkId + ':' + engine + ':' + rules.sort().join(',')
 }
 
-export function accessibilityObservations(input: { metadata: PageMetadata | null; evidence?: AccessibilityEvidence; scope?: CaptureObservationScope }): CheckAssertion[] {
+export function accessibilityObservations(input: { metadata: PageMetadata | null; evidence?: AccessibilityEvidence; scope?: CaptureObservationScope; device?: 'desktop' | 'mobile' }): CheckAssertion[] {
   const { evidence, scope, metadata } = input
   const result: CheckAssertion[] = []
   const known = evidence && captureObservationKey(evidence.scope) !== 'unknown'
@@ -24,7 +24,7 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
     result.push({ key: 'axe:' + checkId, name: 'Automated accessibility: ' + checkId,
       expected: 'No failed or unresolved results for the recorded automated rule responsibility',
       observed: rules.map(rule => `${rule.id}: ${rule.state}, ${rule.nodes} inspected nodes`).join('; ').slice(0, 2000),
-      passed: complete && !failed, complete, context: context('axe', evidence!.scope, checkId, evidence!.engine, rules.map(rule => rule.id)) })
+      passed: complete && !failed, complete, context: context('axe', evidence!.scope, checkId, evidence!.engine, rules.map(rule => rule.id), input.device) })
   }
   const counts: Record<typeof ACCESSIBILITY_DOM_CHECK_IDS[number], number | undefined> = {
     'images-missing-alt': metadata?.imagesWithoutAlt, 'form-inputs-no-label': metadata?.inputsWithoutLabel,
@@ -56,7 +56,7 @@ export function accessibilityObservations(input: { metadata: PageMetadata | null
   return result
 }
 
-export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations: CheckAssertion[], axe?: AxeViolation[]): DeterministicFlag[] {
+export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations: CheckAssertion[], axe?: AxeViolation[], device: 'desktop' | 'mobile' = 'desktop'): DeterministicFlag[] {
   const violations = filterOutIframeAxeViolations(axe ?? [])
   return flags.map(flag => {
     // Axe findings retain their existing human copy. Fallback findings use the
@@ -64,21 +64,36 @@ export function scopeAccessibilityFlags(flags: DeterministicFlag[], observations
     const fromAxe = violations.some(violation => axeRuleToCheckId(violation.id) === flag.checkId)
     const assertion = observations.find(item => item.key === (fromAxe ? 'axe:' : 'dom:') + flag.checkId && item.context)
     return assertion ? { ...flag, verificationRule: ACCESSIBILITY_VERIFICATION_RULE,
-      evidenceTargets: fromAxe ? violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId).flatMap(violation => violation.nodes).slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device: 'desktop' as const, selector: node.target.join(' > '), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: assertion.context }))
-        : [{ kind: 'page', source: 'measured', device: 'desktop', label: flag.checkId, context: assertion.context }] } : flag
+      evidenceTargets: fromAxe ? violations.filter(violation => axeRuleToCheckId(violation.id) === flag.checkId).flatMap(violation => violation.nodes).slice(0, 20).map(node => ({ kind: 'element' as const, source: 'measured' as const, device, selector: node.target.join(' > '), label: node.html.replace(/\s+/g, ' ').slice(0, 160), context: assertion.context }))
+        : [{ kind: 'page', source: 'measured', device, label: flag.checkId, context: assertion.context }] } : flag
   })
 }
 
 /** Both execution adapters use the same native and HTML evidence policies. */
 export function evaluateAccessibility(input: { metadata: PageMetadata | null; evidence?: AccessibilityEvidence;
-  scope?: CaptureObservationScope; axe?: AxeViolation[]; pagespeed?: PageSpeedResult | null }) {
+  scope?: CaptureObservationScope; axe?: AxeViolation[]; pagespeed?: PageSpeedResult | null; mobileAccessibility?: MobileAccessibilityCapture }) {
   const assertions = accessibilityObservations(input)
+  const flags = scopeAccessibilityFlags(runAccessibilityChecks(input.metadata, input.pagespeed ?? null, input.axe), assertions, input.axe)
+  if (input.mobileAccessibility) {
+    const mobile = input.mobileAccessibility
+    const checkIds = new Set<string>(MOBILE_ACCESSIBILITY_RULE_IDS.map(axeRuleToCheckId))
+    const observed = accessibilityObservations({ metadata: null, evidence: mobile.evidence, device: 'mobile' })
+      .filter(assertion => checkIds.has(assertion.key.replace(/^axe:/, '')))
+    for (const checkId of checkIds) if (!observed.some(assertion => assertion.key === 'axe:' + checkId)) observed.push({
+      key: 'axe:' + checkId, name: 'Mobile automated accessibility: ' + checkId,
+      expected: 'The admitted mobile rule completes without failures or unresolved results',
+      observed: 'No valid mobile rule observation is available.', passed: false, complete: false,
+    })
+    const violations = mobile.violations?.filter(violation => (MOBILE_ACCESSIBILITY_RULE_IDS as readonly string[]).includes(violation.id))
+    flags.push(...scopeAccessibilityFlags(runAccessibilityChecks(null, null, violations), observed, violations, 'mobile'))
+    assertions.push(...observed)
+  }
   return {
-    flags: filterToolingPathFlags(scopeAccessibilityFlags(runAccessibilityChecks(input.metadata, input.pagespeed ?? null, input.axe), assertions, input.axe)),
+    flags: filterToolingPathFlags(flags),
     assertions,
-    applicable: input.axe !== undefined || Boolean(input.evidence || input.pagespeed),
+    applicable: input.axe !== undefined || Boolean(input.evidence || input.pagespeed || input.mobileAccessibility),
     complete: assertions.find(assertion => assertion.key === 'automated-accessibility')?.complete === true &&
       assertions.every(assertion => assertion.complete !== false || assertion.disposition === 'observed'),
-    limitation: 'Automated desktop rule outcomes and captured HTML signals are recorded separately. Unavailable HTML does not discard native rule evidence. Unresolved rules require further review; manual accessibility was not evaluated.',
+    limitation: 'Automated desktop rules, mobile target-size rules and captured HTML signals retain their own scopes. Unavailable HTML does not discard native rule evidence. Unresolved rules require further review; manual accessibility was not evaluated.',
   }
 }

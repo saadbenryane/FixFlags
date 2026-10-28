@@ -9,7 +9,7 @@ import { baseCheckId } from '../flag-identity'
 import { verifierScopeKey, verifierTargetKey } from '@/lib/improvements/verifier-provenance'
 import { checkAssertionSchema, checkReceiptSchema, recordedCheckVersion } from './receipt'
 import { MODULE_CHECK_DEFINITIONS } from './definitions'
-import { DESTINATION_VERIFICATION_RULE } from './destination-evidence'
+import { DESTINATION_VERIFICATION_RULE, PUBLIC_LINK_VERIFICATION_RULE } from './destination-evidence'
 import { FORM_VERIFICATION_RULE } from '../flow/form-evidence'
 import { currentFormFeedbackObservation } from './form-validation'
 import { SECURITY_HEADER_VERIFICATION_RULE, currentSecurityHeaderObservation } from './security-headers'
@@ -352,7 +352,7 @@ export function scopedAssertionForTarget(input: {
       const pricing = primaryAction && checkId === 'flow-pricing-nav-broken'
       const destinationTrust = primaryAction && checkId === 'flow-cta-destination-no-trust'
       const destinationContent = primaryAction && DESTINATION_CONTENT_CHECKS.includes(checkId)
-      const scopedRule = accounts ? flag.verificationRule === 'Automatic account observation v1' : sections ? flag.verificationRule === SECTION_LINK_VERIFICATION_RULE : pricing ? flag.verificationRule === PRICING_NAVIGATION_RULE : postClick ? flag.verificationRule === POST_CLICK_VERIFICATION_RULE : destinationTrust ? flag.verificationRule === DESTINATION_TRUST_VERIFICATION_RULE : destinationContent ? flag.verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE : primaryAction ? flag.verificationRule === PRIMARY_ACTION_VERIFICATION_RULE : accessibility ? flag.verificationRule === ACCESSIBILITY_VERIFICATION_RULE : tracking ? flag.verificationRule === TRACKING_VERIFICATION_RULE : form ? flag.verificationRule === FORM_VERIFICATION_RULE : headers ? flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE : flag.verificationRule === DESTINATION_VERIFICATION_RULE
+      const scopedRule = receipt.module === 'seo' && checkId === 'broken-internal-links' ? flag.verificationRule === PUBLIC_LINK_VERIFICATION_RULE : accounts ? flag.verificationRule === 'Automatic account observation v1' : sections ? flag.verificationRule === SECTION_LINK_VERIFICATION_RULE : pricing ? flag.verificationRule === PRICING_NAVIGATION_RULE : postClick ? flag.verificationRule === POST_CLICK_VERIFICATION_RULE : destinationTrust ? flag.verificationRule === DESTINATION_TRUST_VERIFICATION_RULE : destinationContent ? flag.verificationRule === DESTINATION_CONTENT_VERIFICATION_RULE : primaryAction ? flag.verificationRule === PRIMARY_ACTION_VERIFICATION_RULE : accessibility ? flag.verificationRule === ACCESSIBILITY_VERIFICATION_RULE : tracking ? flag.verificationRule === TRACKING_VERIFICATION_RULE : form ? flag.verificationRule === FORM_VERIFICATION_RULE : headers ? flag.verificationRule === SECURITY_HEADER_VERIFICATION_RULE : flag.verificationRule === DESTINATION_VERIFICATION_RULE
       if (!scopedRule || !contexts.success || !contexts.data.length) return undefined
       if (tracking && contexts.data.some(target => !TRACKING_REQUEST_CONTEXT.test(target.context))) return undefined
       if (sections && contexts.data.some(target => !/^section:(?:v2:)?[a-f0-9]{64}:[a-f0-9]{64}$/.test(target.context))) return undefined

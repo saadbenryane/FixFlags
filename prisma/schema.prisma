@@ -31,7 +31,7 @@ model User {
   subscriptionStatus       SubscriptionStatus           @default(NONE)
   licensedSiteQuantity     Int                          @default(0)
   stripeSubscriptionEventAt DateTime?
-  preferredTools           String[]
+  preferredTools           String[]                     @default([])
   vibecodingLevel          String?
   image                    String?
   gclid                    String?
@@ -41,6 +41,9 @@ model User {
   deepReviewsUsed          Int                          @default(0)
   deepReviewsLimit         Int                          @default(1)
   gscConnection            GscConnection?
+  authorizedSiteConnections SiteConnection[]
+  authorizedScanAccessProjects Project[] @relation("ScanAccessAuthorizer")
+  configuredOutcomeFixtures OutcomeFixture[]
   accounts                 Account[]
   apiKeys                  ApiKey[]
   audits                   Audit[]
@@ -499,6 +502,8 @@ model OAuthRefreshToken {
 model SiteConnection {
   id                    String                 @id @default(cuid())
   projectId             String
+  /// The owner who authorized this grant, independent of later Site ownership.
+  authorizedByUserId    String?
   provider              SiteConnectionProvider
   externalAccount       String?
   propertyId            String?
@@ -514,10 +519,12 @@ model SiteConnection {
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorizedBy          User?                  @relation(fields: [authorizedByUserId], references: [id], onDelete: SetNull)
   facts                 SiteConnectionFact[]
 
   @@unique([projectId, provider])
   @@index([projectId])
+  @@index([authorizedByUserId])
   @@map("site_connections")
 }
 
@@ -562,6 +569,8 @@ model Project {
   ///    * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
   productIntelligence         Json?
   watchNextRunAt              DateTime?
+  /// Explicit monitoring intent, separate from analysis due time and allowance.
+  watchPausedAt               DateTime?
   monitoringSetupRetryAt      DateTime?
   watchLastRunAt              DateTime?
   /// *
@@ -584,6 +593,9 @@ model Project {
   /// *
   ///    * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
   scanAccessEncrypted         String?
+  /// The owner who supplied or revoked the current saved access decision.
+  scanAccessAuthorizedByUserId String?
+  scanAccessAuthorizedBy       User? @relation("ScanAccessAuthorizer", fields: [scanAccessAuthorizedByUserId], references: [id], onDelete: SetNull)
   audits                      Audit[]
   canvases                    ReportCanvas[]
   improvements                Improvement[]
@@ -608,6 +620,7 @@ model Project {
   @@index([watchNextRunAt])
   @@index([monitoringSetupRetryAt, createdAt, id])
   @@index([watchLeaseUntil])
+  @@index([scanAccessAuthorizedByUserId])
   @@map("projects")
 }
 
@@ -2136,6 +2149,8 @@ model OutcomeExecutionBinding {
 model OutcomeFixture {
   id                  String   @id @default(cuid())
   projectId           String
+  /// The owner who supplied the executable configuration and secrets.
+  configuredByUserId  String?
   name                String
   targetUrl           String
   fieldMapping        Json
@@ -2155,8 +2170,10 @@ model OutcomeFixture {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  configuredBy        User?    @relation(fields: [configuredByUserId], references: [id], onDelete: SetNull)
 
   @@index([projectId, enabled])
+  @@index([configuredByUserId])
   @@map("outcome_fixtures")
 }
 

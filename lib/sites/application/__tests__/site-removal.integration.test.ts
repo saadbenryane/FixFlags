@@ -22,8 +22,8 @@ run('Site removal with real execution and persistence', () => {
   it('fences an in-flight writer and duplicate deliveries while preserving completed history', async () => {
     const project = await prisma.project.create({ data: { userId, name: 'Controlled removal', url: 'https://example.com/', canonicalHost: 'example.com' } })
     const owner = { projectId: project.id, userId }
-    const historical = await prisma.audit.create({ data: { projectId: project.id, url: project.url, status: 'COMPLETED', completedAt: new Date() } })
-    const audit = await prisma.audit.create({ data: { projectId: project.id, url: project.url, status: 'CHECKING', startedAt: new Date() } })
+    const historical = await prisma.audit.create({ data: { userId, projectId: project.id, url: project.url, status: 'COMPLETED', completedAt: new Date() } })
+    const audit = await prisma.audit.create({ data: { userId, projectId: project.id, url: project.url, status: 'CHECKING', startedAt: new Date() } })
     const outcomes = await Promise.all(['completed', 'pending'].map(slug => prisma.siteOutcome.create({
       data: { projectId: project.id, slug, name: slug },
     })))

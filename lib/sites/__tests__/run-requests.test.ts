@@ -246,7 +246,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.outcomeFindMany.mockResolvedValue([])
     mocks.fixtureFindFirst.mockResolvedValue({ id: 'fixture', version: 4, targetUrl: 'https://shop.example/signup' })
     await requestSiteRun({ projectId: 'project-1', userId: 'user-1', outcomeIds: [], source: 'WEB', scope: 'FIXTURE_SETUP', fixtureId: 'fixture', idempotencyKey: 'setup' })
-    expect(mocks.fixtureFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'fixture', projectId: 'project-1', enabled: true } }))
+    expect(mocks.fixtureFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'fixture', projectId: 'project-1', configuredByUserId: 'user-1', enabled: true } }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({ parentId: undefined, skipUsageCount: true, useProjectScanAccess: false,
       executionSpec: expect.objectContaining({ scope: 'FIXTURE_SETUP', fixtureSetup: { id: 'fixture', version: 4 }, checks: {}, outcomes: [] }) }))
     expect(mocks.auditFindFirst).not.toHaveBeenCalled()

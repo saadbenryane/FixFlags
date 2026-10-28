@@ -9,7 +9,7 @@ const grant: EntitlementGrant = { id: 'grant', userId: 'owner', operationId: 'op
   siteAllowance: null, scanAllowance: null, deepReviewAllowance: null, allowedWatchIntervals: [],
   expiresAt: new Date(now.getTime() + 60_000), revokedAt: null, createdAt: now }
 function project(grants: EntitlementGrant[] = []): MonitoringProject {
-  return { id: 'site', url: 'https://example.com/', deletedAt: null, watchInterval: 'DAILY', watchNextRunAt: now,
+  return { id: 'site', url: 'https://example.com/', deletedAt: null, watchInterval: 'DAILY', watchNextRunAt: now, watchPausedAt: null,
     user: { id: 'owner', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE', lifecycleStatus: 'ACTIVE',
       auditsLimit: 5, deepReviewsLimit: 1, licensedSiteQuantity: 0, entitlementGrants: grants } } as MonitoringProject
 }
@@ -33,6 +33,7 @@ describe('uptime included independently of analysis entitlements', () => {
     const site = project()
     expect(uptimeEligible(site)).toBe(true)
     expect(uptimeEligible({ ...site, watchNextRunAt: null })).toBe(true)
+    expect(uptimeEligible({ ...site, watchPausedAt: now })).toBe(false)
     expect(uptimeEligible({ ...site, watchInterval: null, watchNextRunAt: null })).toBe(false)
     expect(uptimeEligible({ ...site, deletedAt: now })).toBe(false)
     expect(uptimeEligible({ ...site, user: { ...site.user, lifecycleStatus: 'SUSPENDED' } })).toBe(false)

@@ -400,7 +400,7 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
       lastError: 'Delivery confirmation expired after the final attempt' })
   })
 
-  it.each(['preferences', 'recipient', 'account', 'site', 'target', 'version', 'ceiling', 'owner', 'recovery'] as const)(
+  it.each(['preferences', 'recipient', 'account', 'site', 'target', 'version', 'ceiling', 'owner', 'recovery', 'pause'] as const)(
     'rejects stale batch permission after a %s change', async change => {
       const first = await receiptFixture('DOWN', 'first')
       const second = await receiptFixture(change === 'recovery' ? 'RECOVERED' : 'DOWN', 'second')
@@ -409,6 +409,7 @@ describe.skipIf(!process.env.UPTIME_TEST_DATABASE_URL)('Uptime notification rece
       // the second one's permission. The database claim must reject that snapshot.
       fixture.send.mockImplementationOnce(async () => {
         if (change === 'preferences') await db().project.update({ where: { id: second.project.id }, data: { notificationLevel: 'OFF' } })
+        if (change === 'pause') await db().project.update({ where: { id: second.project.id }, data: { watchPausedAt: now, watchNextRunAt: null } })
         if (change === 'recipient') await db().user.update({ where: { id: second.user.id }, data: { email: 'changed@uptime-test.example' } })
         if (change === 'account') await db().user.update({ where: { id: second.user.id }, data: { lifecycleStatus: 'SUSPENDED' } })
         if (change === 'site') await db().project.update({ where: { id: second.project.id }, data: { deletedAt: now } })

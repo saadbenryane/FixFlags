@@ -29,7 +29,7 @@ export async function setProjectWatch(input: { projectId: string; userId: string
   const apply = async (tx: Prisma.TransactionClient): Promise<MonitoringResult> => {
     const owner = { id: input.projectId, userId: input.userId, deletedAt: null }
     const project = await tx.project.findFirst({ where: owner,
-      select: { id: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true } })
+      select: { id: true, watchInterval: true, watchEveryMinutes: true, watchNextRunAt: true, watchPausedAt: true } })
     if (!project) return { ok: false, error: 'Site not found' }
     const previous = fromStoredWatchInterval(project.watchInterval)
     if (action && !previous)
@@ -55,10 +55,10 @@ export async function setProjectWatch(input: { projectId: string; userId: string
     const sameCadence = previous === interval && (interval !== 'custom' || project.watchEveryMinutes === everyMinutes)
     let data: Prisma.ProjectUpdateManyMutationInput
     if (action === 'pause') {
-      data = { watchNextRunAt: null, watchLeaseUntil: null,
+      data = { watchPausedAt: project.watchPausedAt ?? now, watchNextRunAt: null, watchLeaseUntil: null,
         watchLastError: 'Paused. This Site is not on a check schedule.' }
     } else if (interval) {
-      data = { watchInterval: toStoredWatchInterval(interval), watchEveryMinutes: interval === 'custom' ? everyMinutes : null }
+      data = { watchPausedAt: null, watchInterval: toStoredWatchInterval(interval), watchEveryMinutes: interval === 'custom' ? everyMinutes : null }
       // Changed cadence establishes fresh evidence under its new policy.
       // Repeated saves preserve both due intent and a live scheduler lease.
       if (!sameCadence || !project.watchNextRunAt) Object.assign(data, {
@@ -66,12 +66,13 @@ export async function setProjectWatch(input: { projectId: string; userId: string
         watchLeaseUntil: null, watchConsecutiveFailures: 0, watchLastError: null,
       })
     } else {
-      data = { watchInterval: null, watchEveryMinutes: null, watchNextRunAt: null, watchLeaseUntil: null,
+      data = { watchPausedAt: project.watchPausedAt ?? now, watchInterval: null, watchEveryMinutes: null, watchNextRunAt: null, watchLeaseUntil: null,
         watchLastError: 'Paused. This Site is not on a check schedule.' }
     }
     const changed = await tx.project.updateMany({
       where: { ...owner, watchInterval: project.watchInterval, watchEveryMinutes: project.watchEveryMinutes ?? null,
-        watchNextRunAt: project.watchNextRunAt ?? null, ...(enabling ? { user: { lifecycleStatus: 'ACTIVE' } } : {}) },
+        watchNextRunAt: project.watchNextRunAt ?? null, watchPausedAt: project.watchPausedAt ?? null,
+        ...(enabling ? { user: { lifecycleStatus: 'ACTIVE' } } : {}) },
       data,
     })
     if (changed.count !== 1) {
@@ -79,6 +80,10 @@ export async function setProjectWatch(input: { projectId: string; userId: string
       return current ? { ok: false, error: 'Monitoring settings changed. Refresh and try again.', code: 'WATCH_CHANGED' }
         : { ok: false, error: 'Site not found' }
     }
+    if (!enabling) await tx.uptimeMonitor.updateMany({ where: { projectId: project.id }, data: {
+      enabled: false, state: 'paused', leaseUntil: null, leaseToken: null,
+      pendingFailureAt: null, pendingSlotAt: null, confirmationDueAt: null,
+    } })
     if (action !== 'pause') await tx.siteOutcome.updateMany({ where: { projectId: project.id },
       data: { staleAfterMinutes: outcomeFreshnessMinutes(interval, everyMinutes) } })
     return action ? { ok: true, interval, everyMinutes: everyMinutes ?? null } : { ok: true }

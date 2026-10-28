@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 import { startWorker } from '@/lib/queue/worker'
+import { startRecoveryScheduler } from '@/lib/queue/recovery-scheduler'
 import { getAuditQueue, getAuditTaskQueue } from '@/lib/queue/client'
 import { clearWorkerHeartbeat, touchWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { getAuditBrowser, getBrowserDiagnostics, closeBrowser } from '@/lib/audit/screenshot'
@@ -26,6 +27,8 @@ run('Google indexed-version worker observations', () => {
   let peerCrawl = crawl
   let currentProperty = property
   let providerRequests = 0
+  let tokenRenewals = 0
+  let tokenUnavailable = false
   let worker: ReturnType<typeof startWorker> | undefined
   const server = createServer((request, response) => {
     if (request.url === '/robots.txt') { response.setHeader('content-type', 'text/plain'); response.end('User-agent: *\nAllow: /\nSitemap: ' + origin + '/sitemap.xml'); return }
@@ -40,6 +43,12 @@ run('Google indexed-version worker observations', () => {
     const nativeFetch = globalThis.fetch, transport = 'http://127.0.0.1:' + (server.address() as { port: number }).port
     vi.stubGlobal('fetch', async (input: string | URL | Request, options?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      if (url.hostname === 'oauth2.googleapis.com' && url.pathname === '/token') {
+        tokenRenewals++
+        expect(new URLSearchParams(String(options?.body)).get('refresh_token')).toBe('fixture-search-refresh')
+        if (tokenUnavailable) return Response.json({ error: 'temporarily_unavailable' }, { status: 503, headers: { 'retry-after': '1' } })
+        return Response.json({ access_token: 'fixture-search-access', expires_in: 3600 })
+      }
       if (url.hostname === 'searchconsole.googleapis.com' && url.pathname === '/v1/urlInspection/index:inspect') {
         providerRequests++
         const requested = JSON.parse(String(options?.body))
@@ -78,7 +87,7 @@ run('Google indexed-version worker observations', () => {
     await prisma.audit.create({ data: { projectId, userId, url: pageUrl, status: 'COMPLETED', completedAt: new Date(),
       executionSpec: { version: 1, scope: 'SITE', targetUrl: pageUrl, environment: 'production', checks: {}, outcomes: [], verificationTarget: null },
       pages: { create: [pageUrl, peerUrl].map((url, position) => ({ url, normalizedUrl: url, role: position ? 'pricing' : 'primary', position, status: 'COMPLETED' })) } } })
-    await prisma.siteConnection.create({ data: { projectId, provider: 'SEARCH_CONSOLE', status: 'CONNECTED', propertyId: property,
+    await prisma.siteConnection.create({ data: { projectId, authorizedByUserId: userId, provider: 'SEARCH_CONSOLE', status: 'CONNECTED', propertyId: property,
       encryptedAccessToken: encryptSecret('fixture-search-access'), tokenExpiresAt: new Date(Date.now() + 3600_000) } })
     await getAuditBrowser(); worker = startWorker(); await worker.waitUntilReady()
     const diagnostics = getBrowserDiagnostics()
@@ -90,7 +99,11 @@ run('Google indexed-version worker observations', () => {
       const client = await queue.client; await queue.close(); client.disconnect()
     }
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()))
-    vi.restoreAllMocks(); vi.unstubAllGlobals(); await prisma.$disconnect()
+    vi.restoreAllMocks(); vi.unstubAllGlobals()
+    // Other suites exercise global upkeep against this same disposable database.
+    await prisma.audit.deleteMany({ where: { projectId } })
+    await prisma.user.deleteMany({ where: { id: userId } })
+    await prisma.$disconnect()
   })
   async function complete(auditId: string) {
     await vi.waitFor(async () => expect(await prisma.audit.findUniqueOrThrow({ where: { id: auditId } })).toMatchObject({ improvementProjectedAt: expect.any(Date) }), { timeout: 60_000, interval: 200 })
@@ -131,7 +144,27 @@ run('Google indexed-version worker observations', () => {
     }
   }, 120_000)
   it('persists soft 404 evidence, refuses stale repair proof, verifies a later crawl and preserves recurrence', async () => {
-    await category('google-index-baseline')
+    await prisma.siteConnection.update({ where: { projectId_provider: { projectId, provider: 'SEARCH_CONSOLE' } },
+      data: { tokenExpiresAt: new Date(0), encryptedRefreshToken: encryptSecret('fixture-search-refresh') } })
+    tokenUnavailable = true
+    const recovery = startRecoveryScheduler()
+    const pendingBaseline = category('google-index-baseline')
+    let interruption: unknown
+    try {
+      await vi.waitFor(async () => {
+        const event = await prisma.auditPipelineEvent.findFirst({ where: { audit: { projectId }, event: 'provider_attempt_observed' } })
+        expect(event?.detail).toMatchObject({ receipts: [expect.objectContaining({ complete: false,
+          observations: expect.arrayContaining([expect.objectContaining({ reason: 'PROVIDER_UNAVAILABLE' })]) })] })
+      }, { timeout: 15_000, interval: 50 })
+    } catch (error) { interruption = error }
+    finally { tokenUnavailable = false }
+    const baseline = await pendingBaseline.finally(() => recovery.stop())
+    if (interruption) throw interruption
+    expect(tokenRenewals).toBeGreaterThan(0)
+    const baselineReceipts = await prisma.auditVerifierExecution.findMany({ where: {
+      auditId: baseline.auditId!, targetKey: { startsWith: 'module:search-google' } } })
+    expect(baselineReceipts).toHaveLength(4)
+    expect(baselineReceipts.every(receipt => searchReceiptSchema.parse(receipt.detail).complete)).toBe(true)
     verdict = 'NEUTRAL'; fetchState = 'SOFT_404'; crawl = '2026-10-10T00:00:00Z'; peerCrawl = '2026-10-12T00:00:00Z'
     const failure = await category('google-index-failure')
     const flag = await prisma.flag.findFirstOrThrow({ where: { auditId: failure.auditId!, checkId: 'indexing-failure' } })

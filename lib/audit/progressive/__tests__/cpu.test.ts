@@ -1,10 +1,28 @@
-import { afterAll, expect, it } from 'vitest'
+import { afterAll, expect, it, vi } from 'vitest'
 import { closeParserWorker, evaluateSearchIsolated, parseMetadataIsolated } from '../cpu'
 import { document, evidence, PAGE } from '../../search/__tests__/fixtures'
 import { collectSearchEvidence } from '../../search/collect'
 import type { RenderedSearchSnapshot } from '../../search/rendered-snapshot'
+import { withExecutionOwnership, ExecutionOwnershipLost } from '../../execution-ownership'
+
+vi.mock('@/lib/db', () => ({ prisma: { audit: {
+  updateMany: vi.fn(async () => ({ count: 1 })), findFirst: vi.fn(async () => ({ id: 'parser-owner' })),
+} } }))
 
 afterAll(() => closeParserWorker())
+
+it('terminates a canceled native parser and then parses fresh evidence', async () => {
+  await closeParserWorker()
+  const controller = new AbortController()
+  const obsolete = withExecutionOwnership({ auditId: 'parser-owner', token: 'attempt', generation: 1, signal: controller.signal }, () =>
+    parseMetadataIsolated('<h1>Obsolete observation</h1>', PAGE, Date.now() + 10_000))
+  const rejected = expect(obsolete).rejects.toBeInstanceOf(ExecutionOwnershipLost)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  controller.abort()
+  await rejected
+  expect(await parseMetadataIsolated('<h1>Current observation</h1>', PAGE, Date.now() + 10_000))
+    .toMatchObject({ h1s: ['Current observation'] })
+}, 15_000)
 
 it('keeps rendered and crawler metadata distinct across calls to the real parser worker', async () => {
   const html = '<main><h1>Useful service</h1></main><noscript><form><input><button>Sign up</button></form></noscript>' +

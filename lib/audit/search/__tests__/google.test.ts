@@ -6,7 +6,11 @@ const stubs = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/sites/connections/google', async importOriginal => ({ ...await importOriginal<object>(), accessTokenForConnection: stubs.token }))
 vi.mock('@/lib/integrations/google-search-console', async importOriginal => ({
-  ...await importOriginal<object>(), inspectSearchUrl: stubs.inspect, querySearchAnalytics: stubs.analytics, getGscAccessToken: stubs.legacyToken,
+  ...await importOriginal<object>(), inspectSearchUrl: stubs.inspect, querySearchAnalytics: stubs.analytics,
+  getGscAccess: async (userId: string) => {
+    const token = await stubs.legacyToken(userId)
+    return token ? { token, grant: await stubs.legacy() } : null
+  },
 }))
 vi.mock('@/lib/audit/search/workflow', () => ({ recordSearchVerifiers: vi.fn() }))
 vi.mock('@/lib/db', () => {
@@ -19,10 +23,12 @@ vi.mock('@/lib/db', () => {
     upsert: vi.fn(async ({ create }) => { stubs.persisted.set(create.auditId + create.scopeKey, create.detail); return create }),
   }
   const tx = { $executeRaw: vi.fn(), auditVerifierExecution: ledger,
+    $queryRaw: vi.fn(async () => []), project: { findFirst: vi.fn(async () => ({ id: 'site' })) },
+    siteConnection: { findUnique: stubs.connection, findFirst: vi.fn(async () => ({ id: 'connection' })), updateMany: stubs.update },
+    gscConnection: { findUnique: stubs.legacy, findFirst: stubs.legacy },
     indexStatus: { upsert: vi.fn() }, searchPerformance: { createMany: stubs.createRows } }
   return { prisma: { ...tx, audit: { findFirst: stubs.audit },
-    siteConnection: { findUnique: stubs.connection, updateMany: stubs.update },
-    gscConnection: { findUnique: stubs.legacy }, $transaction: async (callback: (db: unknown) => unknown) => callback(tx) } }
+    $transaction: async (callback: (db: unknown) => unknown) => callback(tx) } }
 })
 import { runGoogleSearchForAudit } from '../google'
 import { SearchConsoleError } from '@/lib/integrations/google-search-console'
@@ -30,7 +36,7 @@ import { prisma } from '@/lib/db'
 beforeEach(() => {
   vi.clearAllMocks(); stubs.persisted.clear()
   stubs.audit.mockResolvedValue({ id: 'audit', projectId: 'site', parentId: null, userId: 'owner', project: { userId: 'owner' } })
-  stubs.connection.mockResolvedValue({ id: 'connection', status: 'CONNECTED', propertyId: 'https://example.com/',
+  stubs.connection.mockResolvedValue({ id: 'connection', authorizedByUserId: 'owner', status: 'CONNECTED', propertyId: 'https://example.com/',
     encryptedAccessToken: 'fixture-encrypted-access', encryptedRefreshToken: 'fixture-encrypted-grant', tokenExpiresAt: null })
   stubs.token.mockResolvedValue('test-access')
   stubs.legacy.mockResolvedValue(null)
@@ -41,6 +47,15 @@ beforeEach(() => {
 })
 const run = (pages = [PAGE]) => runGoogleSearchForAudit({ auditId: 'audit', userId: 'owner', pages: pages.map(url => ({ url })), deadline: Date.now() + 10_000 })
 describe('owner-scoped Google evidence', () => {
+  it.each([null, 'former-owner'])('refuses a retained grant authorized by %s without borrowing legacy access', async authorizedByUserId => {
+    stubs.connection.mockResolvedValue({ authorizedByUserId, status: 'CONNECTED', propertyId: 'https://example.com/' })
+    const result = await run()
+    expect(result.receipts[0].observations).toEqual(expect.arrayContaining([expect.objectContaining({ reason: 'NOT_CONNECTED' })]))
+    expect(stubs.token).not.toHaveBeenCalled()
+    expect(stubs.legacyToken).not.toHaveBeenCalled()
+    expect(stubs.inspect).not.toHaveBeenCalled()
+    expect(stubs.analytics).not.toHaveBeenCalled()
+  })
   it('does not require or refresh an account legacy property belonging to another website', async () => {
     stubs.connection.mockResolvedValue(null)
     stubs.legacy.mockResolvedValue({ siteUrl: 'https://unrelated.example/' })
@@ -103,7 +118,7 @@ describe('owner-scoped Google evidence', () => {
     expect(stubs.token).not.toHaveBeenCalled()
   })
   it('does not use a wrong protocol/path property', async () => {
-    stubs.connection.mockResolvedValue({ status: 'CONNECTED', propertyId: 'http://example.com/private/' })
+    stubs.connection.mockResolvedValue({ id: 'connection', authorizedByUserId: 'owner', status: 'CONNECTED', propertyId: 'http://example.com/private/' })
     const result = await run()
     expect(result.receipts[0].observations.every(item => item.reason === 'PROPERTY_MISMATCH')).toBe(true)
     expect(stubs.inspect).not.toHaveBeenCalled()
@@ -155,7 +170,8 @@ describe('owner-scoped Google evidence', () => {
     const result = await run()
     expect(result.receipts[0].observations.some(item => item.reason === 'PERMISSION_REFUSED')).toBe(true)
     expect(stubs.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'connection', status: { not: 'REVOKED' }, encryptedRefreshToken: 'fixture-encrypted-grant' }),
+      where: expect.objectContaining({ id: 'connection', status: { in: ['CONNECTED', 'UNAVAILABLE'] },
+        projectId: 'site', propertyId: 'https://example.com/', encryptedRefreshToken: 'fixture-encrypted-grant' }),
       data: expect.objectContaining({ status: 'NEEDS_REAUTH' }),
     }))
   })

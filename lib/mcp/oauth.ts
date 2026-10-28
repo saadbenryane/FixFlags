@@ -2,10 +2,11 @@ import { requireActiveAccountForWrite } from '@/lib/auth/account-availability'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { createHash, randomBytes } from 'node:crypto'
 import { SITE_URL } from '@/lib/marketing/copy/brand'
-import { normalizeAuditUrl } from '@/lib/audit/url'
+import { normalizeAuditUrl, safeFetchResource } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
 import { toolDefinition, type McpScope } from '@/lib/mcp/tool-manifest'
+import type { Prisma } from '@prisma/client'
 
 export const MCP_SCOPES = [
   'sites:read',
@@ -145,16 +146,15 @@ export async function redirectAllowedForClient(
   if (clientId.startsWith('https://')) {
     const safe = normalizeAuditUrl(clientId)
     if (!safe.ok) return false
-    const response = await fetch(safe.url, {
-      signal: AbortSignal.timeout(5_000),
-      redirect: 'error',
-      headers: { accept: 'application/json' },
-    }).catch(() => null)
-    if (!response?.ok) return false
-    const body = (await response.json().catch(() => null)) as {
+    const response = await safeFetchResource(safe.url, { publicOnly: true, timeoutMs: 5_000,
+      maxBytes: 64_000, maxRedirects: 0, accept: 'application/json' }).catch(() => null)
+    if (!response || !response.complete || response.statusCode < 200 || response.statusCode >= 300) return false
+    let body: {
       client_id?: string
       redirect_uris?: unknown
     } | null
+    try { body = JSON.parse(response.body.toString('utf8')) as typeof body }
+    catch { return false }
     return (
       body?.client_id === clientId &&
       Array.isArray(body.redirect_uris) &&
@@ -195,10 +195,13 @@ export async function issueAuthorizationCode(input: {
   return code
 }
 
-async function issueTokenPair(userId: string, resource: string, scopes: string[]) {
+async function issueTokenPair(userId: string, resource: string, scopes: string[], consume: (tx: Prisma.TransactionClient) => Promise<Prisma.BatchPayload>) {
   try {
     return await prisma.$transaction(async (tx) => {
       await requireActiveAccountForWrite(tx, userId)
+      // A failed replacement write must roll back the one-use grant as well.
+      // The active-account lock also serializes competing exchanges for its owner.
+      if ((await consume(tx)).count !== 1) return null
       const access = generateApiKey()
       await tx.apiKey.create({
         data: {
@@ -254,12 +257,10 @@ export async function exchangeAuthorizationCode(input: {
     !pkceMatches(input.codeVerifier, row.codeChallenge)
   )
     return null
-  const consumed = await prisma.oAuthAuthorizationCode.updateMany({
-    where: { id: row.id, consumedAt: null },
+  return issueTokenPair(row.userId, row.resource, row.scopes, tx => tx.oAuthAuthorizationCode.updateMany({
+    where: { id: row.id, userId: row.userId, consumedAt: null, expiresAt: { gt: new Date() } },
     data: { consumedAt: new Date() },
-  })
-  if (consumed.count !== 1) return null
-  return issueTokenPair(row.userId, row.resource, row.scopes)
+  }))
 }
 
 export async function exchangeRefreshToken(input: { refreshToken: string; resource: string }) {
@@ -269,12 +270,10 @@ export async function exchangeRefreshToken(input: { refreshToken: string; resour
   })
   if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now()) return null
   if (!audienceMatches(row.audience, input.resource)) return null
-  const revoked = await prisma.oAuthRefreshToken.updateMany({
-    where: { id: row.id, revokedAt: null },
+  return issueTokenPair(row.userId, row.audience, row.scopes, tx => tx.oAuthRefreshToken.updateMany({
+    where: { id: row.id, userId: row.userId, revokedAt: null, expiresAt: { gt: new Date() } },
     data: { revokedAt: new Date() },
-  })
-  if (revoked.count !== 1) return null
-  return issueTokenPair(row.userId, row.audience, row.scopes)
+  }))
 }
 
 export async function revokeCredential(token: string): Promise<void> {

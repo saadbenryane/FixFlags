@@ -39,6 +39,7 @@ export async function deliverUptimeNotifications(now = new Date(), limit = 20, o
       recoveredAt: incident.recoveredAt,
       monitor: { id: monitor.id, version: monitor.version, targetUrl: monitor.targetUrl, enabled: monitor.enabled,
         project: { id: project.id, userId: project.userId, url: project.url, deletedAt: project.deletedAt,
+          watchPausedAt: project.watchPausedAt,
           watchInterval: project.watchInterval ? { not: null } : null,
           notificationLevel: project.notificationLevel, notifyOnRecovery: project.notifyOnRecovery,
           user: { id: project.user.id, email: project.user.email, lifecycleStatus: project.user.lifecycleStatus } } } } }

@@ -23,7 +23,7 @@ export function SiteFlagPanel({ siteId, flagId, view, onClose, restoreFocus, ret
   const lastCheck = view.monitoringHistory?.findLast(entry => entry.flags?.some(flag => flag.id === flagId || flag.id === seed?.sourceFlagId))
   const lifecycle = [view.audit?.id, seed?.status, seed?.verificationState, seed?.latestOccurrenceAt,
     lastCheck?.id, view.actions.copy].join(':')
-  const { data, failed, stale, refreshing, retry } = useSiteFlagDetail(siteId, flagId, lifecycle)
+  const { data, failed, stale, refreshing, retry } = useSiteFlagDetail(siteId, flagId, lifecycle, view.actions.copy === 'available')
   const flag = data?.flag
   return <ResponsiveDepth open={Boolean(flagId)} onOpenChange={open => { if (!open) onClose() }}
     header={<div className="space-y-2">{returnLabel ? <Button variant="ghost" size="sm" onClick={onClose}><ArrowLeft aria-hidden />{C.backTo(returnLabel)}</Button> : null}<DialogTitle>{flag?.problem ?? seed?.problem ?? SITE_BOARD_COPY.openFlag}</DialogTitle></div>}

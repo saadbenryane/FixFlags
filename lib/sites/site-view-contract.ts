@@ -64,7 +64,7 @@ export const siteHomeViewSchema: z.ZodType<SiteHomeView> = z.object({
   site: z.object({ siteId: text, kind: z.enum(['project', 'provisional']), url: text, canonicalHost: text, name: text,
     projectId: nullableText, provisionalSiteId: nullableText, primaryAuditId: nullableText,
     watchInterval: watchIntervalSchema.nullable(), watchEveryMinutes: count.nullable().optional(),
-    watchNextRunAt: date, watchLastRunAt: date, watchLastError: nullableText, watchConsecutiveFailures: count, userId: nullableText }),
+    watchNextRunAt: date, watchPausedAt: date.optional().default(null), watchLastRunAt: date, watchLastError: nullableText, watchConsecutiveFailures: count, userId: nullableText }),
   presentation: z.object({
     identity: z.object({ siteId: text, name: text, host: text,
       preview: z.object({ url: text, pageUrl: text, viewport: text, recordedAt: nullableTime }).nullable() }),

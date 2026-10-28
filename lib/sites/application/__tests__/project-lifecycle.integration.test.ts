@@ -109,14 +109,14 @@ run('legacy Project API uses the Site lifecycle with migrated PostgreSQL', () =>
 
   it('restores the same removed Site with automatic monitoring without erasing its previous monitoring time', async () => {
     const lastRunAt = new Date(now.getTime() - 86_400_000)
-    await prisma.project.update({ where: { id: projectId }, data: { watchLastRunAt: lastRunAt } })
+    await prisma.project.update({ where: { id: projectId }, data: { watchLastRunAt: lastRunAt, watchPausedAt: now } })
     const outcome = await prisma.siteOutcome.findFirstOrThrow({ where: { projectId } })
     await removeSite({ projectId, userId: owner })
     const response = await POST(request('POST', { name: 'Restored fixture', url }))
     expect(response.status).toBe(201)
     expect(await response.json()).toMatchObject({ id: projectId, watchInterval: 'WEEKLY', watchNextRunAt: expect.any(String) })
     expect(await prisma.project.findUniqueOrThrow({ where: { id: projectId } })).toMatchObject({ deletedAt: null,
-      watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date), watchLastRunAt: lastRunAt })
+      watchInterval: 'WEEKLY', watchNextRunAt: expect.any(Date), watchLastRunAt: lastRunAt, watchPausedAt: null })
     expect(await prisma.siteOutcome.findFirstOrThrow({ where: { projectId } })).toMatchObject({ id: outcome.id, confirmedAt: outcome.confirmedAt })
   })
 

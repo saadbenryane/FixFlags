@@ -34,6 +34,7 @@ export async function runAllChecks(
     head?: import('./head-metadata').HeadMetadataObservation;
     publicDocument?: import('../search/contracts').PublicDocument;
     accessibilityEvidence?: import('../browser/accessibility-evidence').AccessibilityEvidence; renderedScope?: import('../browser/observation-scope').CaptureObservationScope; deadline?: number;
+    mobileAccessibility?: import('../browser/accessibility-evidence').MobileAccessibilityCapture;
     allowedCheckIds?: readonly string[]; area?: import('@/lib/sites/card-areas').SiteCardArea;
     destinations?: Pick<DestinationCheckOptions, 'observeImage' | 'openDestination' | 'collectedAt'> },
 ): Promise<RunAllChecksResult> {
@@ -45,7 +46,7 @@ export async function runAllChecks(
     const input: PageCheckContext = { url, metadata, desktop, mobile, consoleErrors, purpose,
       head: runtimeEvidence?.head,
       scope: {}, deadline: runtimeEvidence?.deadline, destinations: runtimeEvidence?.destinations, tracking: runtimeEvidence?.tracking, consoleCoverage: runtimeEvidence?.consoleCoverage,
-      accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
+      accessibilityEvidence: runtimeEvidence?.accessibilityEvidence, mobileAccessibility: runtimeEvidence?.mobileAccessibility, renderedCopy: runtimeEvidence?.renderedCopy, renderedScope: runtimeEvidence?.renderedScope,
       publicDocument: runtimeEvidence?.publicDocument, metrics: captureMetrics, headers: responseHeaders, axe: axeViolations,
       record: assertion => { assertions.push(assertion) } }
     try {

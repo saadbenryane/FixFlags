@@ -4,8 +4,11 @@ import type { SiteRecord } from '../types'
 /** Permission commands take the same parent-first locks as worker publication. */
 export async function lockOutcomeAuthority(tx: Prisma.TransactionClient, site: SiteRecord) {
   if (site.projectId) {
+    if (!site.userId) return false
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${site.userId} FOR SHARE`
     const projects = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM projects WHERE id = ${site.projectId} AND "deletedAt" IS NULL FOR UPDATE
+      SELECT id FROM projects WHERE id = ${site.projectId} AND "userId" = ${site.userId}
+        AND url = ${site.url} AND "deletedAt" IS NULL FOR UPDATE
     `
     if (projects.length !== 1) return false
     await tx.$queryRaw`

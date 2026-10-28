@@ -8,11 +8,12 @@ import { executeSiteAction } from '@/lib/sites/client-actions'
 import { SITE_ACTION_COPY as C } from '@/lib/marketing/copy/site-actions'
 import { SiteActionFeedback } from './SiteActionFeedback'
 
-export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running }: {
+export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running, onRefresh }: {
   siteId: string
   outcomeId: string
   enabled: boolean
   running: boolean
+  onRefresh?: () => Promise<unknown>
 }) {
   const router = useRouter()
   const { busy, message, error, submit } = useSiteAction()
@@ -25,7 +26,7 @@ export function OutcomeEnabledControl({ siteId, outcomeId, enabled, running }: {
       }, 'outcomeEnabled'), body => !body.outcome.enabled
         ? running ? C.outcome.pausedRunning : C.outcome.paused
         : body.verificationQueued ? C.outcome.enabledVerifying : body.verificationError ?? C.outcome.enabled,
-      () => router.refresh())
+      onRefresh ?? (() => router.refresh()))
   }
 
   return (

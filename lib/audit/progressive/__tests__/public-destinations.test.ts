@@ -12,7 +12,7 @@ import { healthyMeta } from '../../__tests__/check-fixtures'
 import { scopedAssertionForTarget, recordAssertionVerifiers } from '../../checks/verification'
 import { hasRecordedRecoveryEvidence } from '../../recovery-evidence'
 import { collapseRecordedFixtureFlags as collapseFlagsWithAffectedPaths } from '@/lib/audit/__tests__/recorded-flag-fixtures'
-import { destinationContext, DESTINATION_VERIFICATION_RULE } from '../../checks/destination-evidence'
+import { destinationContext, publicLinkContext, DESTINATION_VERIFICATION_RULE, PUBLIC_LINK_VERIFICATION_RULE } from '../../checks/destination-evidence'
 import { publicHttpCapacity } from '../capacity'
 import { openCheckDestination } from '../../open-check'
 import { collectDocument, missingDocument } from '../../search/collect'
@@ -78,7 +78,7 @@ describe('guarded public destination evidence', () => {
     fetchMock.mockImplementation(async () => new Response('Missing', { status: 404 }))
     const before = await checked(nativeContext('item'))
     expect(before.flags[0]).toMatchObject({ checkId: 'broken-internal-links', evidenceTargets: [{
-      context: destinationContext(pageUrl, 'https://example.com/catalog/item'),
+      context: publicLinkContext(pageUrl, 'https://example.com/catalog/item'),
     }] })
     fetchMock.mockImplementation(async () => new Response('Ready', { status: 200 }))
     const partial = await checked(nativeContext('item', false))
@@ -126,12 +126,16 @@ describe('guarded public destination evidence', () => {
     const ctx = context('seo', actionMeta([{ href: '/missing', text: 'Details', rel: null }]))
     fetchMock.mockResolvedValue(new Response('<title>Page not found</title>', { status: 200, headers: { 'content-type': 'text/html' } }))
     const before = await checked(ctx)
-    expect(before.flags[0]).toMatchObject({ checkId: 'broken-internal-links', verificationRule: DESTINATION_VERIFICATION_RULE,
-      evidenceTargets: [{ context: destinationContext(pageUrl, 'https://example.com/missing') }] })
+    expect(before.flags[0]).toMatchObject({ checkId: 'broken-internal-links', verificationRule: PUBLIC_LINK_VERIFICATION_RULE,
+      evidenceTargets: [{ context: publicLinkContext(pageUrl, 'https://example.com/missing') }] })
     expect(before.receipt.assertions[0]).toMatchObject({ passed: false, complete: true })
     fetchMock.mockResolvedValue(new Response('<title>Useful details</title>', { status: 200, headers: { 'content-type': 'text/html' } }))
     const after = await checked(ctx)
     expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'broken-internal-links', flag: before.flags[0] })?.assertion.passed).toBe(true)
+    const historical = { ...before.flags[0], verificationRule: DESTINATION_VERIFICATION_RULE,
+      evidenceTargets: before.flags[0].evidenceTargets?.map(target => ({ ...target,
+        context: destinationContext(pageUrl, 'https://example.com/missing') })) }
+    expect(scopedAssertionForTarget({ receipt: after.receipt, checkId: 'broken-internal-links', flag: historical })).toBeUndefined()
     expect(hasRecordedRecoveryEvidence({ auditId: 'after', executionSpec: ctx.audit.executionSpec, flag: before.flags[0],
       executions: [{ targetKey: 'module:seo', status: 'COMPLETED', detail: after.receipt }] })).toBe(true)
     const removed = await checked(context('seo', actionMeta([])))
@@ -147,7 +151,7 @@ describe('guarded public destination evidence', () => {
     fetchMock.mockResolvedValue(new Response('Missing', { status: 404 }))
     const result = await checked(context('seo', actionMeta([{ href: url, text: 'Details', rel: null }])))
     expect(fetchMock).toHaveBeenCalledWith(url, expect.objectContaining({ redirect: 'manual' }))
-    expect(result.flags[0].evidenceTargets?.[0].context).toBe(destinationContext(pageUrl, url))
+    expect(result.flags[0].evidenceTargets?.[0].context).toBe(publicLinkContext(pageUrl, url))
     expect(JSON.stringify(result)).not.toContain('PRIVATE_VALUE')
   })
 

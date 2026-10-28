@@ -1,4 +1,5 @@
 import { fixedClock, systemClock } from '@/lib/time/clock'
+import { readFile } from 'node:fs/promises'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrismaClient, User } from '@prisma/client'
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
@@ -21,6 +22,7 @@ vi.mock('@/lib/db', async () => {
 vi.mock('./queue', () => ({ enqueueUptimeProbe: fixture.enqueue }))
 import { executeUptimeProbe, retainUptimeHistory, scheduleUptimeProbes } from './service'
 import { MONITORING_SETUP_UNAVAILABLE_RETRY_MS } from '@/lib/sites/application/monitoring-setup'
+import { setProjectWatch } from '@/lib/sites/application/monitoring-settings'
 import { loadUptimeHistory, loadUptimeSummary } from './queries'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
@@ -61,6 +63,83 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     vi.useRealTimers()
     try { await fixture.db?.user.deleteMany({ where: { email: { endsWith: '@uptime-test.example' } } }) }
     finally { await fixture.db?.$disconnect() }
+  })
+
+  it('honors Pause monitoring for uptime while retaining the cadence for resume', async () => {
+    const { project, user, job, monitor } = await monitorFixture()
+    expect(await setProjectWatch({ projectId: project.id, userId: user.id, action: 'pause' })).toMatchObject({ ok: true })
+    expect(await db().project.findUniqueOrThrow({ where: { id: project.id } }))
+      .toMatchObject({ watchInterval: 'WEEKLY', watchNextRunAt: null, watchPausedAt: originTime })
+    vi.setSystemTime(new Date(originTime.getTime() + 1000))
+    expect(await setProjectWatch({ projectId: project.id, userId: user.id, action: 'pause' })).toMatchObject({ ok: true })
+    expect((await db().project.findUniqueOrThrow({ where: { id: project.id } })).watchPausedAt).toEqual(originTime)
+    expect(await loadSiteHome(project.id, { ownerEvidence: true })).toMatchObject({ watch: { state: 'paused' },
+      presentation: { monitoring: { state: 'paused' } }, uptime: { enabled: false, state: 'paused' } })
+    expect((await loadSiteSummaries(user.id))[0].presentation.monitoring.state).toBe('paused')
+    await scheduleUptimeProbes(systemClock, 10)
+    expect(fixture.enqueue).not.toHaveBeenCalled()
+    const observe = vi.fn(async () => online)
+    await executeUptimeProbe(job, observe)
+    expect(observe).not.toHaveBeenCalled()
+    expect(await db().uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(0)
+    expect(await setProjectWatch({ projectId: project.id, userId: user.id, action: 'resume' })).toMatchObject({ ok: true })
+    await scheduleUptimeProbes(systemClock, 10)
+    expect(fixture.enqueue).toHaveBeenCalledOnce()
+    await executeUptimeProbe(fixture.enqueue.mock.calls[0][0], observe)
+    expect(observe).toHaveBeenCalledOnce()
+    expect(await db().uptimeMonitor.findUniqueOrThrow({ where: { id: monitor.id } })).toMatchObject({ state: 'online' })
+    expect(await loadSiteHome(project.id, { ownerEvidence: true })).toMatchObject({ watch: { state: 'watching' },
+      presentation: { monitoring: { state: 'weekly' } }, uptime: { enabled: true, state: 'online' } })
+    expect((await loadSiteSummaries(user.id))[0].presentation.monitoring.state).toBe('weekly')
+  })
+
+  it('projects a limited analysis clock separately from active uptime in Site home and list', async () => {
+    const { project, user, job } = await monitorFixture()
+    await db().project.update({ where: { id: project.id }, data: { watchNextRunAt: null,
+      watchLastError: 'This month’s Site check allowance is used.' } })
+    await executeUptimeProbe(job, async () => online)
+    expect(await loadSiteHome(project.id, { ownerEvidence: true })).toMatchObject({ watch: { state: 'quota' },
+      presentation: { monitoring: { state: 'quota_blocked' } }, uptime: { enabled: true, state: 'online' } })
+    expect((await loadSiteSummaries(user.id))[0].presentation.monitoring.state).toBe('quota_blocked')
+  })
+
+  it('keeps incident history through a pause during observation and recovers only after resume', async () => {
+    const { project, user, job, monitor } = await monitorFixture()
+    const incident = await db().uptimeIncident.create({ data: { monitorId: monitor.id, version: monitor.version,
+      targetUrl: project.url, startedAt: originTime, confirmedAt: originTime, reason: 'response_error' } })
+    const observe = vi.fn(async () => {
+      expect(await setProjectWatch({ projectId: project.id, userId: user.id, action: 'pause' })).toMatchObject({ ok: true })
+      return online
+    })
+    await executeUptimeProbe(job, observe)
+    expect(observe).toHaveBeenCalledOnce()
+    expect(await db().uptimeProbe.count({ where: { monitorId: monitor.id } })).toBe(0)
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: null })
+    expect(await loadUptimeSummary(project.id)).toMatchObject({ enabled: false, state: 'paused' })
+    expect(await db().uptimeNotification.count({ where: { incidentId: incident.id } })).toBe(0)
+    expect(await setProjectWatch({ projectId: project.id, userId: user.id, action: 'resume' })).toMatchObject({ ok: true })
+    await scheduleUptimeProbes(systemClock, 10)
+    await executeUptimeProbe(fixture.enqueue.mock.calls[0][0], async () => online)
+    expect(await db().uptimeIncident.findUniqueOrThrow({ where: { id: incident.id } })).toMatchObject({ recoveredAt: originTime })
+    expect(await db().uptimeNotification.findMany({ where: { incidentId: incident.id } }))
+      .toEqual([expect.objectContaining({ kind: 'RECOVERED' })])
+  })
+
+  it('migrates known explicit pauses without converting plan limits or a missing analysis clock into a pause', async () => {
+    const sql = await readFile(new URL('../../prisma/migrations/20261026190000_project_monitoring_pause/migration.sql', import.meta.url), 'utf8')
+    await db().$transaction(async tx => {
+      await tx.$executeRaw`CREATE TEMP TABLE projects (id text, "updatedAt" timestamp NOT NULL,
+        "watchNextRunAt" timestamp, "watchLastError" text) ON COMMIT DROP`
+      await tx.$executeRaw`INSERT INTO projects VALUES ('paused', ${originTime}, NULL, 'Paused. This Site is not on a check schedule.'),
+        ('legacy-paused', ${originTime}, NULL, 'Paused.'), ('halted', ${originTime}, NULL, NULL),
+        ('quota', ${originTime}, NULL, 'Watch paused because this month’s Site check allowance is used.'),
+        ('resumed', ${originTime}, ${originTime}, 'Paused.')`
+      for (const statement of sql.split(';').map(value => value.trim()).filter(Boolean)) await tx.$executeRawUnsafe(statement)
+      expect(await tx.$queryRaw`SELECT id, "watchPausedAt" FROM projects ORDER BY id`).toEqual([
+        { id: 'halted', watchPausedAt: null }, { id: 'legacy-paused', watchPausedAt: originTime },
+        { id: 'paused', watchPausedAt: originTime }, { id: 'quota', watchPausedAt: null }, { id: 'resumed', watchPausedAt: null },
+      ])
+    })
   })
 
   it('publishes a current slot for the next monitor after an earlier queue delay', async () => {
@@ -437,7 +516,8 @@ describe.skipIf(!databaseUrl)('Uptime persistence and scheduling', () => {
     for (const index of [1, 2, 3]) {
       const project = await db().project.create({ data: {
         userId: user.id, name: `Inactive ${index}`, canonicalHost: `inactive${index}.example.com`, url: `https://inactive${index}.example.com/`,
-        ...(index === 3 ? { deletedAt: originTime, watchInterval: 'WEEKLY', watchNextRunAt: originTime } : {}),
+        ...(index === 3 ? { deletedAt: originTime, watchInterval: 'WEEKLY', watchNextRunAt: originTime }
+          : index === 2 ? { watchInterval: 'WEEKLY', watchPausedAt: originTime } : {}),
       } })
       await db().uptimeMonitor.create({ data: { projectId: project.id, targetUrl: project.url, nextProbeAt: older } })
     }

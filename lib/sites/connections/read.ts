@@ -21,10 +21,11 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
 }> {
   const rows = await prisma.siteConnection.findMany({
     where: { projectId },
-    include: { facts: true, project: { select: { canonicalHost: true } } },
+    include: { facts: true, project: { select: { canonicalHost: true, userId: true } } },
   })
   const configured = googleConnectionConfigured()
-  const byProvider = new Map(rows.map((row) => [row.provider, row]))
+  const authorized = rows.filter(row => row.authorizedByUserId === row.project.userId)
+  const byProvider = new Map(authorized.map((row) => [row.provider, row]))
   const view = (provider: SiteConnectionProvider): PublicConnection => {
     const row = byProvider.get(provider)
     if (!row || row.status === 'REVOKED') {
@@ -49,7 +50,7 @@ export async function loadSiteConnectionViews(projectId: string): Promise<{
   return {
     searchConsole: view('SEARCH_CONSOLE'),
     analytics: view('ANALYTICS'),
-    facts: rows.flatMap((row) => ['CONNECTED', 'UNAVAILABLE', 'NEEDS_REAUTH', 'REVOKED'].includes(row.status)
+    facts: authorized.flatMap((row) => ['CONNECTED', 'UNAVAILABLE', 'NEEDS_REAUTH', 'REVOKED'].includes(row.status)
       ? row.facts.flatMap((fact) => {
         const reportScope = row.provider === 'ANALYTICS' && fact.kind === 'analytics_page'
           ? readAnalyticsPageFactScope(fact.reportScope, row.propertyId, row.project.canonicalHost)

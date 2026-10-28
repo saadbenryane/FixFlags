@@ -62,7 +62,9 @@ describe('bounded provider capacity admission', () => {
     const controller = new AbortController()
     const options = { idempotencyKey: 'same-delivery', signal: controller.signal }
     const message = { from: 'sender@example.test', to: 'owner@example.test', subject: 'Alert', html: '<p>Evidence</p>' }
-    expect(await resend!.emails.send(message, options)).toEqual({ data: { id: 'confirmed' }, error: null })
+    expect(await resend!.emails.send(message, options)).toEqual({
+      data: { id: 'confirmed' }, error: null, headers: { 'content-type': 'text/plain;charset=UTF-8' },
+    })
     expect(fetch).toHaveBeenCalledOnce()
     expect(fetch.mock.calls[0][1].signal).toBe(controller.signal)
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(message)

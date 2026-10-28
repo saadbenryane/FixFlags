@@ -23,6 +23,9 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supp
 
 export const auth = betterAuth({
   appName: BRAND.name,
+  // Backup-code enrollment uses the plugin's secret record. Public
+  // authenticator-app routes stay unavailable for passkey-only two-factor.
+  disabledPaths: ['/two-factor/get-totp-uri', '/two-factor/verify-totp'],
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
@@ -162,10 +165,6 @@ export const auth = betterAuth({
       issuer: BRAND.name,
       // Passkey is the primary second factor; backup codes cover recovery.
       skipVerificationOnEnable: true,
-      // Disable authenticator-app TOTP so the second factor is passkey-only.
-      totpOptions: {
-        disable: true,
-      },
       allowPasswordless: true,
     }),
   ],

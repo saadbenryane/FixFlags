@@ -23,7 +23,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ siteI
     const fixture = await updateOutcomeFixture({
       projectId: owner.projectId,
       fixtureId,
-      siteUrl: owner.decision.site.url,
+      userId: owner.decision.site.userId!,
       fixture: parsed.data,
     })
     return NextResponse.json({ fixture })
@@ -37,7 +37,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ sit
     const { siteId, fixtureId } = await context.params
     const owner = await requireSiteOwner(siteId)
     if (!owner.ok) return apiError(owner.message, owner.status)
-    await deleteOutcomeFixture(owner.projectId, fixtureId)
+    await deleteOutcomeFixture(owner.projectId, fixtureId, owner.decision.site.userId!)
     return NextResponse.json({ ok: true })
   } catch (error) {
     return fixtureError(error)

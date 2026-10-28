@@ -135,7 +135,7 @@ export const collectionHandlers: TaskHandler[] = [
           workDependencies: { has: context.task.targetKey.slice(5) } },
           select: { workKind: true, workInput: true }, take: MAX_TASKS_PER_AUDIT + 1 }) : []
       if (consumers.length > MAX_TASKS_PER_AUDIT) throw new TaskFailure('TASK_GRAPH_LIMIT', false)
-      const requirements = browserCollectionRequirements(consumers)
+      const requirements = browserCollectionRequirements(consumers, spec?.checks)
       // DOM and semantics have no private-storage dependency. Media has its own
       // checkpoint and recovery window, so an upload outage cannot erase this input.
       const captured = await captureScreenshots(pageUrl, context.audit.id,
@@ -206,8 +206,9 @@ export const collectionHandlers: TaskHandler[] = [
     validateResult: artifact => { speedArtifactSchema.parse(artifact.data) },
     async evaluate(context) {
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), Math.max(1, context.deadline - Date.now()))
+      const signal = context.signal ? AbortSignal.any([controller.signal, context.signal]) : controller.signal
       try {
-        const result = await fetchPageSpeedData(context.input.pageUrl, controller.signal,
+        const result = await fetchPageSpeedData(context.input.pageUrl, signal,
           { fresh: true, strategies: [context.input.device ?? 'desktop'], singleAttempt: true })
         const failure = context.input.device === 'mobile' ? result.mobileFailure : result.desktopFailure
         if (failure?.retryable) {

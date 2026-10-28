@@ -5,6 +5,7 @@ import { TaskFailure } from './contracts'
 import { pageMetadataSchema } from './snapshots'
 import { searchObservationSchema, type SearchPageEvidence, type SearchReceipt } from '../search/contracts'
 import type { MetadataMode } from '../metadata'
+import { currentExecutionOwnership, ExecutionOwnershipLost } from '../execution-ownership'
 
 const capacity = new BoundedSemaphore(1)
 const DEV_BOOTSTRAP = 'require("tsx/cjs"); require(workerData.module);'
@@ -40,7 +41,11 @@ export async function closeParserWorker() {
 }
 
 async function isolated(input: object, deadline: number): Promise<unknown> {
+  const executionSignal = currentExecutionOwnership()?.signal
+  const deadlineSignal = AbortSignal.timeout(Math.max(1, deadline - Date.now()))
+  const signal = executionSignal ? AbortSignal.any([deadlineSignal, executionSignal]) : deadlineSignal
   return capacity.run(() => new Promise((resolve, reject) => {
+    if (executionSignal?.aborted) return reject(new ExecutionOwnershipLost())
     if (Date.now() >= deadline) return reject(new TaskFailure('PARSER_DEADLINE', true, undefined, true))
     const worker = parserWorker()
     worker.ref()
@@ -48,6 +53,7 @@ async function isolated(input: object, deadline: number): Promise<unknown> {
     const finish = (error: Error | null, value?: unknown) => {
       if (settled) return
       settled = true; clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
       worker.off('message', onMessage); worker.off('error', onError); worker.off('exit', onExit)
       if (error) {
         if (parser === worker) parser = null
@@ -63,10 +69,13 @@ async function isolated(input: object, deadline: number): Promise<unknown> {
     const onMessage = (value: unknown) => finish(null, value)
     const onError = () => finish(new TaskFailure('PARSER_CRASH', true, undefined, true))
     const onExit = (code: number) => finish(new TaskFailure(code ? 'PARSER_CRASH' : 'PARSER_NO_RESULT', true, undefined, true))
+    const onAbort = () => finish(executionSignal?.aborted ? new ExecutionOwnershipLost() : new TaskFailure('PARSER_DEADLINE', true, undefined, true))
     const timer = setTimeout(() => finish(new TaskFailure('PARSER_DEADLINE', true, undefined, true)), Math.max(1, Math.min(25_000, deadline - Date.now())))
     worker.once('message', onMessage); worker.once('error', onError); worker.once('exit', onExit)
-    try { worker.postMessage(input) } catch { onError() }
-  }), AbortSignal.timeout(Math.max(1, deadline - Date.now())))
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) onAbort()
+    else try { worker.postMessage(input) } catch { onError() }
+  }), signal)
 }
 export async function parseMetadataIsolated(html: string, url: string, deadline: number, mode: MetadataMode = 'crawler') {
   if (Buffer.byteLength(html) > 1_000_000) throw new TaskFailure('HTML_BODY_LIMIT', false)

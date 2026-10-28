@@ -18,6 +18,8 @@ import { executionSpecSchema } from '@/lib/sites/domain/execution-spec'
 import { collectionHandlers } from '../collectors'
 import * as deliveryWindow from '../delivery-window'
 import { taskDeliveryWindow } from '../queues'
+import { safeFetchDocument } from '../../url'
+import { publicHttpCapacity } from '../capacity'
 
 const dispatch = vi.hoisted(() => ({ queues: new Map<string, Queue>() }))
 vi.mock('@/lib/queue/client', () => ({ getAuditTaskQueue: (resource: string) => dispatch.queues.get(resource)!,
@@ -445,6 +447,102 @@ run('durable task dispatch with real PostgreSQL, Redis and workers', () => {
     expect(denied).toHaveLength(2)
     expect(denied.every(error => error instanceof ExecutionOwnershipLost)).toBe(true)
     expect(await prisma.audit.findUniqueOrThrow({ where: { id: audit.id } })).toMatchObject({ verdict: null })
+  })
+
+  it.each(['deadline', 'replacement'] as const)('cancels native HTTP on task %s and admits independent work', async mode => {
+    const { tasks } = await admission(['http', 'http'])
+    let closed = false
+    const requested: string[] = []
+    const server = createServer((request, response) => {
+      requested.push(request.url!)
+      response.setHeader('content-type', 'text/html')
+      if (request.url === '/current') response.end('<html>Current observation</html>')
+      else { response.write('<html>Incomplete observation'); response.on('close', () => { closed = true }) }
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const origin = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    vi.stubEnv('DEV_ALLOW_LOCALHOST', 'true')
+    const releases: Array<() => void> = []
+    for (let index = 1; index < publicHttpCapacity.capacity; index++) releases.push(await publicHttpCapacity.acquire())
+    const selected = new Map<string, TaskHandler>([['http', { kind: 'http', replay: 'read_only',
+      timeoutMs: (_audit, input) => input.module === 'obsolete' && mode === 'deadline' ? 500 : 5000,
+      validateResult: () => {}, evaluate: async context => {
+        const document = await safeFetchDocument(origin + (context.task.id === tasks[0].id ? '/obsolete' : '/current'), { timeoutMs: 4000 })
+        return serializeArtifact('http', { observed: document.complete })
+      } }]])
+    await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id },
+      data: { workInput: { ...(tasks[0].workInput as object), module: 'obsolete' } } })
+    const worker = await startHttpWorker(selected)
+    try {
+      await dispatchTask(tasks[0].id)
+      await vi.waitFor(() => expect(requested).toEqual(['/obsolete']), { timeout: 3000, interval: 10 })
+      if (mode === 'replacement') await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id },
+        data: { workState: 'EXHAUSTED', status: 'FAILED', workGeneration: { increment: 1 }, workToken: 'replacement', workLeaseUntil: null } })
+      await dispatchTask(tasks[1].id)
+      await vi.waitFor(() => expect(closed).toBe(true), { timeout: 2000, interval: 20 })
+      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[1].id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: { data: { observed: true } } }), { timeout: 2000, interval: 20 })
+      expect(requested).toEqual(['/obsolete', '/current'])
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject(mode === 'deadline'
+          ? { workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null }
+          : { workState: 'EXHAUSTED', workGeneration: 2, workToken: 'replacement', workResult: null })
+      expect(publicHttpCapacity.running).toBe(releases.length)
+    } finally {
+      server.closeAllConnections()
+      releases.forEach(release => release())
+      await worker.close()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('cancels an expired native PageSpeed request before the next worker observation', async () => {
+    const { audit, tasks } = await admission(['pagespeed', 'pagespeed'])
+    let closed = false
+    const requested: string[] = []
+    const server = createServer((request, response) => {
+      requested.push(request.url!)
+      if (request.url === '/obsolete') { response.on('close', () => { closed = true }); return }
+      response.setHeader('content-type', 'application/json')
+      response.end(JSON.stringify({ lighthouseResult: { requestedUrl: audit.url, finalUrl: audit.url, lighthouseVersion: '13.5.0',
+        configSettings: { formFactor: 'desktop' }, categories: { performance: { score: 0.85 } },
+        audits: { 'largest-contentful-paint': { numericValue: 2500 }, 'cumulative-layout-shift': { numericValue: 0.01 } } } }))
+    })
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const origin = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    const nativeFetch = globalThis.fetch
+    const transport = vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) => {
+      const target = new URL(String(url))
+      if (target.origin !== 'https://www.googleapis.com') throw new Error('External transport unavailable in this fixture')
+      return nativeFetch(origin + (target.searchParams.get('url')?.endsWith('/obsolete') ? '/obsolete' : '/current'), options)
+    })
+    await prisma.auditVerifierExecution.update({ where: { id: tasks[0].id },
+      data: { workInput: { ...(tasks[0].workInput as object), pageUrl: audit.url + 'obsolete' } } })
+    const handler = collectionHandlers.find(handler => handler.kind === 'pagespeed')!
+    const selected = new Map<string, TaskHandler>([['pagespeed', { ...handler,
+      timeoutMs: (_audit, input) => input.pageUrl.endsWith('/obsolete') ? 500 : 5000 }]])
+    const connection = createWorkerRedis()
+    connections.push(connection)
+    const worker = new Worker(dispatch.queues.get('pagespeed')!.name, job => executeTask(job.data, selected), { connection })
+    workers.push(worker)
+    try {
+      await worker.waitUntilReady()
+      await dispatchTask(tasks[0].id)
+      await vi.waitFor(() => expect(requested).toEqual(['/obsolete']), { timeout: 3000, interval: 10 })
+      await dispatchTask(tasks[1].id)
+      await vi.waitFor(() => expect(closed).toBe(true), { timeout: 2000, interval: 20 })
+      await vi.waitFor(async () => expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[1].id } }))
+        .toMatchObject({ workState: 'COMPLETED', workAttempts: 1, workResult: { data: { desktop: { score: 85 } } } }), { timeout: 3000, interval: 20 })
+      expect(await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: tasks[0].id } }))
+        .toMatchObject({ workState: 'RETRY_WAIT', workErrorCode: 'TASK_DEADLINE_EXCEEDED', workResult: null })
+      expect(requested).toEqual(['/obsolete', '/current'])
+    } finally {
+      server.closeAllConnections()
+      await worker.close()
+      transport.mockRestore()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+    }
   })
 
   it('rolls back a commit that crosses the task deadline before releasing later work', async () => {

@@ -66,7 +66,7 @@ export async function resolveRunExecution(input: RunInput, selection: ReturnType
   if (!project) throw new SiteRunRefusal('Site not found', 404)
 
   const fixture = input.fixtureId ? await prisma.outcomeFixture.findFirst({
-    where: { id: input.fixtureId, projectId: input.projectId, enabled: true }, select: { id: true, version: true, targetUrl: true },
+    where: { id: input.fixtureId, projectId: input.projectId, configuredByUserId: input.userId, enabled: true }, select: { id: true, version: true, targetUrl: true },
   }) : null
   if (input.fixtureId && !fixture) throw new SiteRunRefusal('Signup fixture not found', 404)
 

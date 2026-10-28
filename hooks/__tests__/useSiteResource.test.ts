@@ -115,7 +115,7 @@ it('retains the recorded view when a successful HTTP response has malformed stat
 })
 afterEach(() => { vi.unstubAllGlobals() })
 
-it('keeps a captured refresh bound to its original Site after navigation', async () => {
+it('retires a captured refresh after navigation without affecting the current Site', async () => {
   const first = siteViewFixture(); first.outcomes = []
   const next = structuredClone(first)
   next.site.siteId = 'next-site'; next.site.projectId = 'next-site'; next.presentation.identity.siteId = 'next-site'
@@ -132,12 +132,12 @@ it('keeps a captured refresh bound to its original Site after navigation', async
   rerender({ siteId: next.site.siteId, initial: next })
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
   expect(result.current.view.site.siteId).toBe(next.site.siteId)
-  await act(async () => { await refreshFirst() })
+  await act(async () => { await expect(refreshFirst()).rejects.toThrow() })
   expect(result.current.view.site.siteId).toBe(next.site.siteId)
   failNext = true
   await act(async () => { await expect(result.current.refresh()).rejects.toThrow() })
   expect(result.current.disconnected).toBe(true)
-  await act(async () => { await refreshFirst() })
+  await act(async () => { await expect(refreshFirst()).rejects.toThrow() })
   expect(result.current.view.site.siteId).toBe(next.site.siteId)
   expect(result.current.disconnected).toBe(true)
   unmount()
@@ -321,4 +321,54 @@ it('never reuses cached owner instructions when the same Site is rendered for a 
   expect(result.current.view.flags[0].fix).toBe('')
   expect(result.current.view.actions.ownership).toBe('provisional')
   unmount()
+})
+
+it('does not let a pending visitor read adopt owner instructions across a claim', async () => {
+  const owner = siteViewFixture(); owner.outcomes = []
+  owner.flags = [siteFlagFixture({ fix: 'Private owner repair task', repairGuidance: 'ready' })]
+  const visitor = structuredClone(owner)
+  visitor.actions = siteViewerActions(false)
+  visitor.flags[0].fix = ''; visitor.flags[0].repairGuidance = 'unavailable'
+  const reads: Array<(response: Response) => void> = []
+  const fetch = vi.fn(() => new Promise<Response>(resolve => { reads.push(resolve) }))
+  vi.stubGlobal('fetch', fetch)
+  const cache = new Map()
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => cache, shouldRetryOnError: false } }, children)
+  const { result, rerender, unmount } = renderHook(({ initial }) => useSiteResource(owner.site.siteId, initial),
+    { wrapper, initialProps: { initial: visitor } })
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    rerender({ initial: owner })
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    await act(async () => { reads[1](Response.json(owner)) })
+    expect(result.current.view.flags[0].fix).toBe('Private owner repair task')
+    await act(async () => { reads[0](Response.json(visitor)) })
+    rerender({ initial: visitor })
+    expect(result.current.view.flags[0].fix).toBe('')
+    expect(result.current.view.actions.ownership).toBe('provisional')
+  } finally {
+    unmount()
+    for (const resolve of reads) resolve(Response.json(visitor))
+  }
+})
+
+it('refuses to cache an owner response under a visitor scope when the session changes', async () => {
+  const owner = siteViewFixture(); owner.outcomes = []
+  owner.flags = [siteFlagFixture({ fix: 'Private owner repair task', repairGuidance: 'ready' })]
+  const visitor = structuredClone(owner)
+  visitor.actions = siteViewerActions(false)
+  visitor.flags[0].fix = ''; visitor.flags[0].repairGuidance = 'unavailable'
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json(owner)))
+  const wrapper = ({ children }: { children: React.ReactNode }) => createElement(SWRConfig,
+    { value: { provider: () => new Map(), shouldRetryOnError: false } }, children)
+  const { result, rerender, unmount } = renderHook(({ initial }) => useSiteResource(owner.site.siteId, initial),
+    { wrapper, initialProps: { initial: visitor } })
+  try {
+    await waitFor(() => expect(result.current.disconnected).toBe(true))
+    expect(result.current.view.flags[0].fix).toBe('')
+    rerender({ initial: owner })
+    await waitFor(() => expect(result.current.disconnected).toBe(false))
+    expect(result.current.view.flags[0].fix).toBe('Private owner repair task')
+  } finally { unmount() }
 })

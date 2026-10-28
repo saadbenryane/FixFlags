@@ -706,7 +706,7 @@ describe('createAndEnqueueAudit', () => {
   it('uses current Site access instead of credentials retained on the parent', async () => {
     const config = { httpBasic: { username: 'preview', password: 'new-secret' } }
     const encrypted = encryptScanAccess({ httpBasic: { username: 'preview', password: 'old-secret' } })
-    prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', url: AUDIT_URL, deletedAt: null, scanAccessEncrypted: encryptScanAccess(config) })
+    prismaMock.project.findFirst.mockResolvedValue({ id: 'project-1', userId: 'user-1', scanAccessAuthorizedByUserId: 'user-1', url: AUDIT_URL, deletedAt: null, scanAccessEncrypted: encryptScanAccess(config) })
     prismaMock.audit.findUnique.mockResolvedValue({
       id: 'parent-1',
       userId: 'user-1',

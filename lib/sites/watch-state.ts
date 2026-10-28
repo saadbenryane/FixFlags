@@ -6,6 +6,7 @@ export type WatchBoardState = 'off' | 'watching' | 'paused' | 'delayed' | 'quota
 export function watchBoardState(input: {
   interval: WatchInterval | null
   nextRunAt: Date | string | null
+  pausedAt: Date | string | null
   lastError: string | null
   consecutiveFailures: number
   now: Date
@@ -14,8 +15,9 @@ export function watchBoardState(input: {
   const error = input.lastError ?? ''
   const quota = /allowance|quota|upgrade/i.test(error)
 
-  if (input.interval && !nextRunAt) return 'paused'
+  if (input.interval && input.pausedAt) return 'paused'
   if (quota && input.interval) return 'quota'
+  if (input.interval && !nextRunAt) return 'delayed'
   if (input.consecutiveFailures > 0 || (error && input.interval && nextRunAt)) return 'delayed'
   if (input.interval && nextRunAt) return monitoringIsOverdue(nextRunAt, input.now) ? 'delayed' : 'watching'
   return 'off'

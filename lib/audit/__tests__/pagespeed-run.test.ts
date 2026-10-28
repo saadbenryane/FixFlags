@@ -147,6 +147,71 @@ describe('fetchPageSpeedData', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it.each(['https://other.example/page', 'https://example.com/other', 'http://example.com/page',
+    'https://example.com:8443/page', 'https://private@example.com/page'])(
+    'withholds field data for an unrelated page while preserving lab evidence: %s', async id => {
+      fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: {
+        id, metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } },
+      } })))
+      const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+      expect(result.mobile).toMatchObject({ score: 85, lcp: 2500, cls: 0.12, inp: null, crux: null })
+      expect(runInpChecks(result.mobile!)).toEqual([])
+      expect(recordInpObservation(result.mobile!)).toMatchObject({ complete: false, passed: false })
+    })
+
+  it('keeps matching page evidence when origin field data belongs to another origin', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: {
+      id: 'https://example.com/page', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 } },
+    }, originLoadingExperience: { id: 'https://other.example/', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } } })))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(readCruxMetric(result.mobile!.crux, 'lcp')?.value).toBe(1400)
+    expect(result.mobile!.inp).toBeNull()
+    expect(runInpChecks(result.mobile!)).toEqual([])
+  })
+
+  it('retains the provider page granularity across query and fragment variants', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: {
+      id: 'https://example.com/page', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } },
+    } })))
+    const result = await fetchPageSpeedData('https://example.com/page?variant=teams#pricing', undefined,
+      { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile!.inp).toBe(900)
+    expect(readCruxMetric(result.mobile!.crux, 'inp')?.cohort.url).toBe('https://example.com/page')
+  })
+
+  it('retains independent field context for the final page reported by a redirected lab measurement', async () => {
+    const requestedUrl = 'https://example.com/old', finalUrl = 'https://www.example.com/current'
+    const payload = lighthouseBody({ loadingExperience: { id: finalUrl, metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } },
+      originLoadingExperience: { id: 'https://www.example.com/', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1400 } } } })
+    payload.lighthouseResult = { ...payload.lighthouseResult as object, requestedUrl, finalUrl }
+    fetchMock.mockResolvedValueOnce(Response.json(payload))
+    const result = await fetchPageSpeedData(requestedUrl, undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(readCruxMetric(result.mobile!.crux, 'inp')).toMatchObject({ value: 900, cohort: { url: finalUrl, scope: 'page' } })
+    expect(readCruxMetric(result.mobile!.crux, 'lcp')).toMatchObject({ value: 1400, cohort: { url: 'https://www.example.com/', scope: 'origin' } })
+  })
+
+  it('does not accept a page path as an origin-level cohort', async () => {
+    fetchMock.mockResolvedValueOnce(Response.json(lighthouseBody({ loadingExperience: { id: 'https://example.com/page', metrics: {} },
+      originLoadingExperience: { id: 'https://example.com/unrelated', metrics: { INTERACTION_TO_NEXT_PAINT: { percentile: 900 } } } })))
+    const result = await fetchPageSpeedData('https://example.com/page', undefined, { fresh: true, strategies: ['mobile'], singleAttempt: true })
+    expect(result.mobile!.crux).toBeNull()
+    expect(result.mobile!.inp).toBeNull()
+  })
+
+  it.each(['desktop', 'mobile'] as const)('preserves cached %s evidence when a fresh attempt is canceled', async strategy => {
+    fetchMock.mockImplementation(async () => okApiResponse())
+    const url = 'https://retained.example/'
+    const original = (await fetchPageSpeedData(url, undefined, { strategies: [strategy], singleAttempt: true }))[strategy]
+    expect(original?.score).toBe(85)
+    delayedProvider(61_000)
+    const controller = new AbortController()
+    const cancelled = fetchPageSpeedData(url, controller.signal, { fresh: true, strategies: [strategy], singleAttempt: true })
+    controller.abort()
+    expect((await cancelled)[strategy]).toBeNull()
+    expect((await fetchPageSpeedData(url, undefined, { strategies: [strategy] }))[strategy]).toEqual(original)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it.each(['requestedUrl', 'formFactor'] as const)('refuses a provider response with a different %s', async changed => {
     fetchMock.mockResolvedValue(Response.json(lighthouseBody({ lighthouseResult: {
       ...(lighthouseBody().lighthouseResult as object), requestedUrl: changed === 'requestedUrl' ? 'https://other.example/' : 'https://example.com/',
@@ -174,7 +239,7 @@ describe('fetchPageSpeedData', () => {
         'first-contentful-paint': { numericValue: 500, ...unavailable },
         'total-blocking-time': { numericValue: 0, ...unavailable },
       } } })))
-      const result = await fetchPageSpeedData('https://unavailable-metrics.example', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
+      const result = await fetchPageSpeedData('https://example.com/', undefined, { fresh: true, strategies: ['desktop'], singleAttempt: true })
       expect(result.desktop).toMatchObject({ score: 95, lcp: null, cls: null, fcp: null, tbt: null })
       expect(readCruxMetric(result.desktop!.crux, 'lcp')?.value).toBe(2400)
       expect(readCruxMetric(result.desktop!.crux, 'cls')?.value).toBe(0.12)
