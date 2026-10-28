@@ -3,7 +3,7 @@
 .identity { min-width: 0; }
 .identity > p { margin-top: 4px; }
 .siteTitle { margin: 0; min-width: 0; font: inherit; }
-.domain { display: block; overflow-wrap: anywhere; font-size: 20px; font-weight: 600; line-height: 1.4; letter-spacing: -.025em; }
+.domain { display: flex; align-items: center; min-width: 44px; min-height: 44px; overflow-wrap: anywhere; font-size: 20px; font-weight: 600; line-height: 1.4; letter-spacing: -.025em; }
 .domain:focus-visible, .navLink:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: var(--radius-control); }
 .desktopNavigation { display: none; }
 .navigation { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding: 2px; scrollbar-width: thin; }

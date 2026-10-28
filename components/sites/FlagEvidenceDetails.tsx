@@ -8,7 +8,7 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 function ObservedPageRow({ page }: { page: ObservedPage }) {
   return <li className="min-w-0">
     <div className="flex min-w-0 items-baseline justify-between gap-3">
-      <a href={page.url} target="_blank" rel="noreferrer" className="min-w-0 break-all underline decoration-border underline-offset-4 hover:decoration-foreground">{page.label}</a>
+      <a href={page.url} target="_blank" rel="noreferrer" className="flex min-h-11 min-w-11 max-w-full items-center break-all underline decoration-border underline-offset-4 hover:decoration-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{page.label}</a>
       {page.valueLabel ? <span className="shrink-0 font-medium tabular-nums">{page.valueLabel}</span> : null}
     </div>
     {page.share != null ? <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true"><span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(12, Math.round(page.share * 100))}%` }} /></span> : null}
