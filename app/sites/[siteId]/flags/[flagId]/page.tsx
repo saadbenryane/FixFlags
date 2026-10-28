@@ -255,7 +255,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             ) : null}
 
             {!ownsSite ? <SitePromptAccessActions availability={home.actions.copy} destination={`/sites/${resolvedId}/flags/${flag.id}`} label={SITE_BOARD_COPY.copyPrompt} /> : null}
-            {ownsSite ? <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
+            {ownsSite && (resolution.kind !== 'proven' || flag.attempts.length > 0) ? <section className="rounded-board-panel border-0 bg-background p-5 shadow-board sm:p-6 lg:col-start-1" aria-labelledby="verification-history-heading">
               <div className="flex flex-wrap items-center gap-3">
                 <History className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <h2 id="verification-history-heading" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere] font-semibold">

@@ -192,6 +192,26 @@ describe('Flag verification attempts', () => {
     expect(prisma.audit.findFirst).not.toHaveBeenCalled()
   })
 
+  it.each([false, true])('presents independently recovered evidence without denying verification, with manual history: %s', async hasManualHistory => {
+    vi.mocked(prisma.audit.findFirst).mockResolvedValue({ id: 'audit-recovery', status: 'COMPLETED',
+      completedAt: new Date(ATTEMPTED), createdAt: new Date(ATTEMPTED) } as never)
+    const detail = await mocks.loadSiteBoardFlag()
+    mocks.loadSiteBoardFlag.mockResolvedValue({ ...detail, site: { ...detail.site, projectId: 'project-1' },
+      flag: { ...detail.flag, status: 'FIXED', resolvedInId: 'audit-recovery',
+        attempts: hasManualHistory ? [attempt('earlier-manual-check', 'site', 'UNCHANGED')] : [] } })
+
+    render(await SiteFlagPage({ params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }), searchParams: Promise.resolve({}) }))
+
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.previousFailure })).toBeVisible()
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.flagRecovered })).toBeVisible()
+    expect(screen.queryByText(SITE_BOARD_COPY.noVerificationYet)).not.toBeInTheDocument()
+    expect(screen.queryByText(SITE_BOARD_COPY.noVerificationBody)).not.toBeInTheDocument()
+    if (hasManualHistory) {
+      expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.verificationHistory })).toBeVisible()
+      expect(screen.getByText('Repaired the purchase control.')).toBeVisible()
+    } else expect(screen.queryByRole('heading', { name: SITE_BOARD_COPY.verificationHistory })).not.toBeInTheDocument()
+  })
+
   it('keeps anonymous evidence visible while requiring sign-in for fixes and private attempts', async () => {
     mocks.loadSiteHome.mockResolvedValue({ ...siteViewFixture(), actions: siteViewerActions(false) })
     mocks.requireSiteAccess.mockResolvedValue({ ok: true, decision: { role: 'provisional_session', site: { siteId: 'site-1' } } })

@@ -9,6 +9,7 @@ import type { SiteHomeView } from '@/lib/sites/site-home'
 import { OPEN_BETA_ACCESS } from '@/lib/billing/beta-policy'
 import { PUBLIC_SITE_COPY } from '@/lib/marketing/copy/public-site'
 import { SITE_DASHBOARD_COPY } from '@/lib/marketing/copy/site-dashboard'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { NOTIFICATION_EMAIL_COPY } from '@/lib/marketing/copy/notification-emails'
 import { readOutcomeIncident } from '@/lib/sites/domain/outcome-incident'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
@@ -424,7 +425,7 @@ test.describe('credentialed revenue journeys', () => {
       })
       expect(settings.status(), await settings.text()).toBe(200)
       const monitoringRequestedAt = new Date()
-      expect((await user.page.request.put(`/api/projects/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
+      expect((await user.page.request.post(`/api/sites/${projectId}/watch`, { data: { interval: 'weekly' } })).status()).toBe(200)
       // The owner command makes a paused schedule due. The real worker owns admission.
       await expect.poll(async () => fixtureDb.audit.findFirst({
         where: { projectId, recheckTrigger: 'WATCH', createdAt: { gte: beganAt }, status: 'COMPLETED', watchNotificationStatus: 'SENT', watchNotificationProviderId: { not: null } },
@@ -483,9 +484,13 @@ test.describe('credentialed revenue journeys', () => {
       try {
         expect((await otherOwner.page.request.get(`/api/sites/${projectId}/flags`)).status()).toBe(404)
         for (const link of distinctLinks) {
-          await user.page.goto(link)
-          await expect(user.page.getByRole('heading', { name: 'What FixFlags saw', exact: true })).toBeVisible()
           const url = new URL(link)
+          const linkedFlagId = url.pathname.split('/').at(-1)!
+          const recovered = recovery.recoveredFlagIds.includes(linkedFlagId)
+          expect(recovered || failure.flagIds.includes(linkedFlagId), 'Each delivered link belongs to its recorded failure or recovery').toBe(true)
+          await user.page.goto(link)
+          await expect(user.page.getByRole('heading', { name: recovered ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence, exact: true })).toBeVisible()
+          if (recovered) await expect(user.page.getByText(SITE_BOARD_COPY.noVerificationYet, { exact: true })).toHaveCount(0)
           const forbidden = await otherOwner.page.request.post('/api' + url.pathname + '/fix', { data: { action: 'copy' } })
           expect(forbidden.status(), 'An unrelated owner cannot retrieve a private notification fix prompt').toBe(404)
         }
